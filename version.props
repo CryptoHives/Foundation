@@ -1,0 +1,27 @@
+<Project>
+  <ItemGroup Condition="'$(TF_BUILD)' != 'true' AND '$(GITHUB_ACTIONS)' != 'true' AND '$(CODEQL_RUNNER)' == '' AND '$(Dockerbuild)' != 'true'">
+    <!-- Note: Keep Version 3.7.115, it is known working for 4 digit versioning -->
+    <PackageReference Include="Nerdbank.GitVersioning">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  
+  <!-- set version manually in docker builds -->
+  <PropertyGroup Condition="'$(Dockerbuild)' == 'true'">
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+  
+  <!-- NBGV_ variables are only available in cloud build -->
+  <PropertyGroup Condition="'$(NBGV_PublicRelease)' == 'True'">
+    <Version>$(NBGV_Version)$(NBGV_PrereleaseVersion)</Version>
+    <VersionPrefix>$(NBGV_SimpleVersion)</VersionPrefix>
+    <VersionSuffix>$(NBGV_VersionRevision)$(NBGV_PrereleaseVersion)</VersionSuffix>
+    <AssemblyVersion>$(NBGV_SimpleVersion)</AssemblyVersion>
+    <FileVersion>$(NBGV_Version)</FileVersion>
+    <PackageVersion>$(NBGV_Version)$(NBGV_PrereleaseVersion)</PackageVersion>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GitVersionBaseDirectory>$(MSBuildThisFileDirectory)</GitVersionBaseDirectory>
+  </PropertyGroup>
+</Project>

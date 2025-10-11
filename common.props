@@ -1,0 +1,81 @@
+<Project>
+  <PropertyGroup>
+    <Product>CryptoHives .NET Cryptography</Product>
+    <RepositoryUrl>https://github.com/CryptoHives/Cryptography</RepositoryUrl>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>preview-$([System.DateTime]::Now.ToString("yyyyMMdd"))</VersionSuffix>
+    <Copyright>Copyright © 2025 The Keepers of the CryptoHives</Copyright>
+    <PackagePrefix>CryptoHives.Cryptography</PackagePrefix>
+    <AssemblyPrefix>CryptoHives.Cryptography</AssemblyPrefix>
+    <Company></Company>
+    <Authors>The Keepers of the CryptoHives</Authors>
+    <NoWarn>NU5125;CA2254;CA1307</NoWarn>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <HighEntropyVA>true</HighEntropyVA>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Highest language version supported -->
+    <LangVersion>12</LangVersion>
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- to check the package validation on a release build, uncomment here -->
+    <!--<PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>-->
+    <!-- to regenerate the compatibility suppression file, uncomment here -->
+    <!--<GenerateCompatibilitySuppressionFile>true</GenerateCompatibilitySuppressionFile>-->
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAudit>true</NuGetAudit>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageIcon>images/logo.jpg</PackageIcon>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <!-- deprecated <PackageLicenseUrl>https://opcfoundation.org/license/source/1.11/index.html</PackageLicenseUrl>-->
+    <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
+    <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>CryptoHives security cryptography</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">
+    <None Include="$(MSBuildThisFileDirectory)/licenses/CryptoHives MIT license.txt" Pack="true" PackagePath="$(PackageLicenseFile)"/>
+  </ItemGroup>
+  
+  <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == ''">
+    <None Include="$(MSBuildThisFileDirectory)/LICENSE" Pack="true" PackagePath="$(PackageLicenseFile)"/>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)/nuget/logo.jpg" Pack="true" PackagePath="$(PackageIcon)"/>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)/nuget/README.md" Pack="true" PackagePath="$(PackageReadmeFile)"/>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(NBGV_PublicRelease)' != ''">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
+  </ItemGroup>
+
+  <!-- Deterministic build is currently not supported for code coverage tests. -->
+  <PropertyGroup Condition="'$(CollectCoverage)' != 'true' AND ('$(TF_BUILD)' == 'true' OR '$(GITHUB_ACTIONS)' == 'true')">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+</Project>
