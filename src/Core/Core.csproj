@@ -5,7 +5,7 @@
     <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
     <AssemblyName>$(AssemblyPrefix).Core</AssemblyName>
     <PackageId>$(PackagePrefix).Core</PackageId>
-    <RootNamespace>$(AssemblyPrefix)</RootNamespace>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
     <Description>CryptoHives Cryptography Core Library</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

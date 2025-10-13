@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <AssemblyName>$(AssemblyPrefix).Core.Tests</AssemblyName>
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
-    <RootNamespace>$(AssemblyPrefix).Core.Tests</RootNamespace>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
