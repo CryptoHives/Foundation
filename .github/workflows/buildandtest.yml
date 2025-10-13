@@ -32,7 +32,7 @@ jobs:
       DOTNET_VERSION: ${{ matrix.dotnet-version }}
       CONFIGURATION:  ${{ matrix.configuration }}
       CSPROJ: ${{ matrix.csproj }}
-      CSPROJECT: "./Tests/${{ matrix.csproj }}.Tests/${{ matrix.csproj }}.Tests.csproj"
+      CSPROJECT: "./tests/${{ matrix.csproj }}/${{ matrix.csproj }}.Tests.csproj"
       TESTRESULTS: "TestResults-${{matrix.csproj}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}"
       
     steps:
