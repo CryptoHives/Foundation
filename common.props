@@ -4,7 +4,7 @@
     <RepositoryUrl>https://github.com/CryptoHives/Cryptography</RepositoryUrl>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>preview-$([System.DateTime]::Now.ToString("yyyyMMdd"))</VersionSuffix>
-    <Copyright>Copyright © 2025 The Keepers of the CryptoHives</Copyright>
+    <Copyright>Copyright © 2025 The Keepers of the CryptoHives. All rights reserved.</Copyright>
     <PackagePrefix>CryptoHives.Cryptography</PackagePrefix>
     <AssemblyPrefix>CryptoHives.Cryptography</AssemblyPrefix>
     <Company></Company>

@@ -22,7 +22,6 @@
          set the CustomTestTarget environment variable accordingly -->
     <When  Condition="'$(CustomTestTarget)' == 'net462'">
       <PropertyGroup>
-        <DisableECCTests>true</DisableECCTests>
         <AnalysisLevel>preview</AnalysisLevel>
         <AnalysisMode>all</AnalysisMode>
         <AnalysisModeStyle>default</AnalysisModeStyle>
@@ -30,9 +29,6 @@
         <AppTargetFramework>net462</AppTargetFramework>
         <TestsTargetFrameworks>net462</TestsTargetFrameworks>
         <LibTargetFrameworks>net462</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net462</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net462</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net462</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net472'">
@@ -44,14 +40,10 @@
         <AppTargetFramework>net472</AppTargetFramework>
         <TestsTargetFrameworks>net472</TestsTargetFrameworks>
         <LibTargetFrameworks>net472</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net472</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net472</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net472</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'netstandard2.0'">
       <PropertyGroup>
-        <DisableECCTests>true</DisableECCTests>
         <AnalysisLevel>preview</AnalysisLevel>
         <AnalysisMode>all</AnalysisMode>
         <AnalysisModeStyle>default</AnalysisModeStyle>
@@ -59,9 +51,6 @@
         <AppTargetFramework>net8.0</AppTargetFramework>
         <TestsTargetFrameworks>net8.0</TestsTargetFrameworks>
         <LibTargetFrameworks>netstandard2.0</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>netstandard2.0</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>netstandard2.1</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>netstandard2.0</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'netstandard2.1'">
@@ -73,9 +62,6 @@
         <AppTargetFramework>net8.0</AppTargetFramework>
         <TestsTargetFrameworks>net8.0</TestsTargetFrameworks>
         <LibTargetFrameworks>netstandard2.1</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>netstandard2.1</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>netstandard2.1</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>netstandard2.1</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net48'">
@@ -87,9 +73,6 @@
         <AppTargetFramework>net48</AppTargetFramework>
         <TestsTargetFrameworks>net48</TestsTargetFrameworks>
         <LibTargetFrameworks>net48</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net48</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net48</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net48</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net8.0'">
@@ -101,9 +84,6 @@
         <AppTargetFramework>net8.0</AppTargetFramework>
         <TestsTargetFrameworks>net8.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net8.0</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net8.0</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net8.0</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net8.0</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net9.0'">
@@ -115,9 +95,6 @@
         <AppTargetFramework>net9.0</AppTargetFramework>
         <TestsTargetFrameworks>net9.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net9.0</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net9.0</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net9.0</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net9.0</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <!-- Note: .NET Core 2.x and 3.x is end of life, removed netcoreapp2.1/3.1 from any target. -->
@@ -128,13 +105,10 @@
         <AnalysisLevel>preview</AnalysisLevel>
         <AnalysisMode>all</AnalysisMode>
         <AnalysisModeStyle>default</AnalysisModeStyle>
-        <AppTargetFrameworks>net9.0;net8.0;net48</AppTargetFrameworks>
-        <AppTargetFramework>net9.0</AppTargetFramework>
-        <TestsTargetFrameworks>net48;net9.0</TestsTargetFrameworks>
-        <LibTargetFrameworks>net472;net48;netstandard2.0;netstandard2.1;net8.0;net9.0</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net472;net48;netstandard2.0;netstandard2.1;net8.0;net9.0</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net462;net472;net48;netstandard2.1;net8.0;net9.0</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net472;net48;netstandard2.0;netstandard2.1;net8.0;net9.0</HttpsTargetFrameworks>
+        <AppTargetFrameworks>net8.0;net48</AppTargetFrameworks>
+        <AppTargetFramework>net8.0</AppTargetFramework>
+        <TestsTargetFrameworks>net48;net8.0</TestsTargetFrameworks>
+        <LibTargetFrameworks>net48;netstandard2.0;netstandard2.1;net8.0</LibTargetFrameworks>
       </PropertyGroup>
     </When>
     <!-- Visual Studio 2019, supports .NET Framework 4.8 and .NET Core 3.1 -->
@@ -145,9 +119,6 @@
         <AppTargetFramework>net48</AppTargetFramework>
         <TestsTargetFrameworks>net48</TestsTargetFrameworks>
         <LibTargetFrameworks>net48;netstandard2.1</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net48;netstandard2.0;netstandard2.1</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net48;netstandard2.1</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net48</HttpsTargetFrameworks>
       </PropertyGroup>
     </When>
     <!-- Visual Studio 2017 and earlier, support only .NET Framework 4.8 because .NET Core 2.x is end of life. -->
@@ -157,9 +128,6 @@
         <AppTargetFramework>net48</AppTargetFramework>
         <TestsTargetFrameworks>net48</TestsTargetFrameworks>
         <LibTargetFrameworks>net48</LibTargetFrameworks>
-        <LibCoreTargetFrameworks>net48</LibCoreTargetFrameworks>
-        <LibxTargetFrameworks>net48</LibxTargetFrameworks>
-        <HttpsTargetFrameworks>net48</HttpsTargetFrameworks>
       </PropertyGroup>
     </Otherwise>
   </Choose>
