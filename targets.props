@@ -12,11 +12,11 @@
   Uncomment the following lines to test a custom test target 
   supported values: net462, netstandard2.0, netstandard2.1, net472, net48, net6.0, net8.0, net9.0
    -->
-  <!--
+
   <PropertyGroup>
-    <CustomTestTarget>netstandard2.1</CustomTestTarget>
-  </PropertyGroup> 
-  -->
+    <CustomTestTarget>net8.0</CustomTestTarget>
+  </PropertyGroup>
+
   <Choose>
     <!-- Note: to test targets which support deprecated platforms, 
          set the CustomTestTarget environment variable accordingly -->
@@ -107,7 +107,7 @@
         <AnalysisModeStyle>default</AnalysisModeStyle>
         <AppTargetFrameworks>net8.0;net48</AppTargetFrameworks>
         <AppTargetFramework>net8.0</AppTargetFramework>
-        <TestsTargetFrameworks>net48;net8.0</TestsTargetFrameworks>
+        <TestsTargetFrameworks>net48;net8.0;net9.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net48;netstandard2.0;netstandard2.1;net8.0</LibTargetFrameworks>
       </PropertyGroup>
     </When>

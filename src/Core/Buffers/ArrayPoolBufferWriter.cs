@@ -1,0 +1,171 @@
+// ------------------------------------------------------------
+//  Copyright (c) 2025 The Keepers of the CryptoHives.  All rights reserved.
+//  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// ------------------------------------------------------------
+
+namespace CryptoHives.Cryptography.Core.Buffers;
+
+using System;
+using System.Buffers;
+using System.Runtime.CompilerServices;
+
+/// <summary>
+/// Helper to build a <see cref="ReadOnlySequence{T}"/> from a set of buffers.
+/// Implements <see cref="IBufferWriter{T}"/> interface to support a writer
+/// for e.g. <see cref="System.Text.Json.Utf8JsonWriter"/>.
+/// </summary>
+public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
+{
+    private const int DefaultChunkSize = 256;
+    private const int MaxChunkSize = 65536;
+    private readonly bool _clearArray;
+    private readonly int _maxChunkSize;
+    private int _chunkSize;
+    private T[] _currentBuffer;
+    private ArrayPoolBufferSegment<T>? _firstSegment;
+    private ArrayPoolBufferSegment<T>? _nextSegment;
+    private int _offset;
+    private bool _disposed;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArrayPoolBufferWriter{T}"/> class.
+    /// </summary>
+    public ArrayPoolBufferWriter()
+        : this(false, DefaultChunkSize, MaxChunkSize)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArrayPoolBufferWriter{T}"/> class.
+    /// </summary>
+    public ArrayPoolBufferWriter(int defaultChunksize, int maxChunkSize)
+        : this(false, defaultChunksize, maxChunkSize)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArrayPoolBufferWriter{T}"/> class.
+    /// </summary>
+    public ArrayPoolBufferWriter(bool clearArray, int defaultChunksize, int maxChunkSize)
+    {
+        _firstSegment = _nextSegment = null;
+        _offset = 0;
+        _clearArray = clearArray;
+        _chunkSize = defaultChunksize;
+        _maxChunkSize = maxChunkSize;
+        _currentBuffer = Array.Empty<T>();
+        _disposed = false;
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_firstSegment != null)
+        {
+            ArrayPoolBufferSegment<T>? segment = _firstSegment;
+            while (segment != null)
+            {
+                segment.Return(_clearArray);
+                segment = (ArrayPoolBufferSegment<T>?)segment.Next;
+            }
+
+            _firstSegment = _nextSegment = null;
+        }
+
+        _disposed = true;
+    }
+
+    /// <inheritdoc/>
+    public void Advance(int count)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, nameof(ArrayPoolBufferWriter<T>));
+        ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(_offset + count, _currentBuffer.Length, $"Cannot advance past the end of the buffer, which has a size of {_currentBuffer.Length}.");
+
+        _offset += count;
+    }
+
+    /// <inheritdoc/>
+    public Memory<T> GetMemory(int sizeHint = 0)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, nameof(ArrayPoolBufferWriter<T>));
+        ArgumentOutOfRangeException.ThrowIfNegative(sizeHint, nameof(sizeHint));
+
+        int remainingSpace = CheckAndAllocateBuffer(sizeHint);
+        return _currentBuffer.AsMemory(_offset, remainingSpace);
+    }
+
+    /// <inheritdoc/>
+    public Span<T> GetSpan(int sizeHint = 0)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, nameof(ArrayPoolBufferWriter<T>));
+        ArgumentOutOfRangeException.ThrowIfNegative(sizeHint, nameof(sizeHint));
+
+        int remainingSpace = CheckAndAllocateBuffer(sizeHint);
+        return _currentBuffer.AsSpan(_offset, remainingSpace);
+    }
+
+    /// <summary>
+    /// Get a ReadOnlySequence that represents the written data.
+    /// The sequence is only valid until the next write operation or
+    /// until the writer is disposed.
+    /// </summary>
+    public ReadOnlySequence<T> GetReadOnlySequence()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, nameof(ArrayPoolBufferWriter<T>));
+
+        AddSegment();
+
+        if (_firstSegment == null || _nextSegment == null)
+        {
+            return ReadOnlySequence<T>.Empty;
+        }
+
+        return new ReadOnlySequence<T>(_firstSegment, 0, _nextSegment, _nextSegment.Memory.Length);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AddSegment()
+    {
+        if (_offset > 0)
+        {
+            if (_firstSegment == null)
+            {
+                _firstSegment = _nextSegment = new ArrayPoolBufferSegment<T>(_currentBuffer, 0, _offset);
+            }
+            else
+            {
+                _nextSegment = _nextSegment!.Append(_currentBuffer, 0, _offset);
+            }
+        }
+        else if (_currentBuffer.Length > 0)
+        {
+            ArrayPool<T>.Shared.Return(_currentBuffer, _clearArray);
+        }
+
+        _offset = 0;
+        _currentBuffer = Array.Empty<T>();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int CheckAndAllocateBuffer(int sizeHint)
+    {
+        int remainingSpace = _currentBuffer.Length - _offset;
+        if (remainingSpace < sizeHint || sizeHint == 0)
+        {
+            AddSegment();
+
+            remainingSpace = Math.Max(sizeHint, _chunkSize);
+
+            _currentBuffer = ArrayPool<T>.Shared.Rent(remainingSpace);
+            _offset = 0;
+
+            if (_chunkSize < _maxChunkSize)
+            {
+                _chunkSize *= 2;
+            }
+        }
+
+        return remainingSpace;
+    }
+}

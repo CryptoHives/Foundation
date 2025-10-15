@@ -199,25 +199,13 @@ dotnet_naming_symbols.any_async_methods.required_modifiers                    = 
 dotnet_naming_style.end_in_async.required_suffix                              = Async
 dotnet_naming_style.end_in_async.capitalization                               = pascal_case
 
-# Private Constants are PascalCase and start with k
-dotnet_naming_rule.constants_private_should_start_with_k.severity             = suggestion
-dotnet_naming_rule.constants_private_should_start_with_k.symbols              = constants_with_k
-dotnet_naming_rule.constants_private_should_start_with_k.style                = constants_with_k_style
-
-dotnet_naming_symbols.constants_with_k.applicable_kinds                       = field, local
-dotnet_naming_symbols.constants_with_k.applicable_accessibilities             = private, protected, private_protected, protected_friend
-dotnet_naming_symbols.constants_with_k.required_modifiers                     = const
-
-dotnet_naming_style.constants_with_k_style.capitalization                     = pascal_case
-dotnet_naming_style.constants_with_k_style.required_prefix                    = k
-
 # Constants are PascalCase
 dotnet_naming_rule.constants_should_be_pascal_case.severity                   = suggestion
 dotnet_naming_rule.constants_should_be_pascal_case.symbols                    = constants
 dotnet_naming_rule.constants_should_be_pascal_case.style                      = non_private_static_field_style
 
 dotnet_naming_symbols.constants.applicable_kinds                              = field, local
-dotnet_naming_symbols.constants.applicable_accessibilities                    = public, internal, protected_internal
+dotnet_naming_symbols.constants.applicable_accessibilities                    = public, internal, protected_internal, private, protected, private_protected, protected_friend
 dotnet_naming_symbols.constants.required_modifiers                            = const
 
 dotnet_naming_style.constant_style.capitalization                             = pascal_case
@@ -314,3 +302,5 @@ dotnet_diagnostic.CA1860.severity 											  = suggestion
 # CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array
 dotnet_diagnostic.CA1861.severity 											  = suggestion
 
+# IDE0301: Simplify collection initialization
+dotnet_style_prefer_collection_expression                                     = never
