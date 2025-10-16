@@ -11,7 +11,8 @@ using System.IO;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Class to create a MemoryStream which uses a <see cref="ReadOnlySequence{T}"/>.
+/// Class to create a MemoryStream which uses a <see cref="ReadOnlySequence{T}"/>
+/// where T must be a <see cref="byte"/>.
 /// </summary>
 public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 {
