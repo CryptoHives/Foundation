@@ -3,7 +3,7 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Cryptography.Core.Buffers;
+namespace CryptoHives.Memory.Buffers;
 
 using System;
 using System.Buffers;

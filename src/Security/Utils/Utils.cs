@@ -4,7 +4,7 @@
 // ------------------------------------------------------------
 
 
-namespace CryptoHives.Cryptography.Core.Utils;
+namespace CryptoHives.Security.Utils;
 
 /// <summary>
 /// Defines static utility functions.

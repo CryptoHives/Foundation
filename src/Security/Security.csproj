@@ -3,10 +3,10 @@
   <PropertyGroup>
     <DefineConstants>$(DefineConstants)</DefineConstants>
     <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
-    <AssemblyName>$(AssemblyPrefix).Core</AssemblyName>
-    <PackageId>$(PackagePrefix).Core</PackageId>
+    <AssemblyName>$(AssemblyPrefix).Security</AssemblyName>
+    <PackageId>$(PackagePrefix).Security</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <Description>CryptoHives Cryptography Core Library</Description>
+    <Description>CryptoHives Security Library</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
@@ -23,29 +23,8 @@
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
   </PropertyGroup>
 
-  <Choose>
-    <When Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1'">
-      <ItemGroup>
-        <PackageReference Include="System.Memory" />
-      </ItemGroup>
-    </When>
-    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
-      <ItemGroup>
-        <PackageReference Include="System.Memory" />
-      </ItemGroup>
-    </When>
-    <Otherwise>
-      <ItemGroup>
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
-
   <ItemGroup>
     <Folder Include="Properties\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.ObjectPool" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
