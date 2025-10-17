@@ -6,6 +6,7 @@
 namespace CryptoHives.Cryptography.Core.Tests.Types.UtilsTests;
 
 using NUnit.Framework;
+using System.Security.Cryptography;
 
 /// <summary>
 /// Tests for the BuiltIn Types.
@@ -18,6 +19,6 @@ public class UtilsTests
     [Test]
     public void UtilsTest()
     {
-
+        using var sha256 = SHA256.Create();
     }
 }

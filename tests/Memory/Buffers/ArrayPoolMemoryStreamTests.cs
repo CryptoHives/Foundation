@@ -16,7 +16,7 @@ using System.IO;
 /// Tests for <see cref="ArrayPoolBufferWriter{T}"/> where T is <see cref="byte"/>.
 /// </summary>
 [Parallelizable(ParallelScope.All)]
-internal class ArrayPoolMemoryStreamTests
+public class ArrayPoolMemoryStreamTests
 {
     /// <summary>
     /// Test the default behavior of <see cref="ArrayPoolMemoryStream"/>.
@@ -28,38 +28,45 @@ internal class ArrayPoolMemoryStreamTests
         using ArrayPoolMemoryStream stream = new();
 
         // Act
-        Action act = () => stream.Dispose();
-        var buffer = new byte[1] { 0x55 };
+        Action act = stream.Dispose;
+        byte[] buffer = "U"u8.ToArray();
 
-        // Assert
-        Assert.That(stream.CanSeek, Is.True);
-        Assert.That(stream.CanRead, Is.True);
-        Assert.That(stream.CanWrite, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            // Assert
+            Assert.That(stream.CanSeek, Is.True);
+            Assert.That(stream.CanRead, Is.True);
+            Assert.That(stream.CanWrite, Is.True);
+        }
+
         Assert.Throws<NotSupportedException>(() => stream.SetLength(0));
         Assert.Throws<IOException>(() => stream.Seek(-1, SeekOrigin.Begin));
         Assert.Throws<IOException>(() => stream.Seek(0, (SeekOrigin)66));
 
-        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.EqualTo(0));
+        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
         Assert.That(stream.ReadByte(), Is.EqualTo(-1));
-        Assert.That(stream.Read(buffer, 0, 1), Is.EqualTo(0));
-        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.EqualTo(0));
+        Assert.That(stream.Read(buffer, 0, 1), Is.Zero);
+        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.Zero);
 
         stream.Position = 0;
-        Assert.That(stream.Position, Is.EqualTo(0));
+        Assert.That(stream.Position, Is.Zero);
 
-        Assert.That(stream.Length, Is.EqualTo(0));
+        Assert.That(stream.Length, Is.Zero);
 
-        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.EqualTo(0));
+        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
         stream.WriteByte(0xaa);
         stream.Write(buffer, 0, 1);
         stream.Write(buffer.AsSpan(0, 1));
         stream.Flush();
         Assert.That(stream.Length, Is.EqualTo(3));
 
-        Assert.That(stream.Position, Is.EqualTo(3));
-        Assert.That(stream.Length, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(stream.Position, Is.EqualTo(3));
+            Assert.That(stream.Length, Is.EqualTo(3));
+        }
 
-        Assert.That(stream.Seek(-3, SeekOrigin.Current), Is.EqualTo(0));
+        Assert.That(stream.Seek(-3, SeekOrigin.Current), Is.Zero);
         Assert.That(stream.ReadByte(), Is.EqualTo(0xaa));
         Assert.That(stream.Length, Is.EqualTo(3));
         Assert.That(stream.Position, Is.EqualTo(1));
@@ -72,24 +79,24 @@ internal class ArrayPoolMemoryStreamTests
         Assert.That(stream.Length, Is.EqualTo(3));
         Assert.That(buffer[0], Is.EqualTo(0x55));
         Assert.That(stream.ReadByte(), Is.EqualTo(-1));
-        Assert.That(stream.Read(buffer, 0, 1), Is.EqualTo(0));
-        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.EqualTo(0));
+        Assert.That(stream.Read(buffer, 0, 1), Is.Zero);
+        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.Zero);
 
-        var sequence = stream.GetReadOnlySequence();
+        ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
         Assert.That(sequence.Length, Is.EqualTo(3));
         Assert.That(sequence.Slice(0, 1).ToArray()[0], Is.EqualTo(0xaa));
         Assert.That(sequence.Slice(1, 1).ToArray()[0], Is.EqualTo(0x55));
         Assert.That(sequence.Slice(2, 1).ToArray()[0], Is.EqualTo(0x55));
 
-        var array = stream.ToArray();
-        Assert.That(array.Length, Is.EqualTo(3));
+        byte[] array = stream.ToArray();
+        Assert.That(array, Has.Length.EqualTo(3));
         Assert.That(array[0], Is.EqualTo(0xaa));
         Assert.That(array[1], Is.EqualTo(0x55));
         Assert.That(array[2], Is.EqualTo(0x55));
 
         Assert.DoesNotThrow(() => act());
 
-        Assert.That(stream.ToArray().Length, Is.EqualTo(0));
+        Assert.That(stream.ToArray(), Is.Empty);
     }
 
     /// <summary>
@@ -141,7 +148,7 @@ internal class ArrayPoolMemoryStreamTests
         buffer = sequence.ToArray();
 
         // Assert sequence properties
-        Assert.That(buffer.Length, Is.EqualTo(length));
+        Assert.That(buffer, Has.Length.EqualTo(length));
         Assert.That(sequence.Length, Is.EqualTo(length));
 
         for (int i = 0; i < buffer.Length; i++)
@@ -151,7 +158,7 @@ internal class ArrayPoolMemoryStreamTests
 
         for (int i = 0; i <= byte.MaxValue; i++)
         {
-            var chunkSequence = sequence.Slice(i * chunkSize, chunkSize);
+            ReadOnlySequence<byte> chunkSequence = sequence.Slice(i * chunkSize, chunkSize);
             Assert.That(chunkSequence.Length, Is.EqualTo((long)chunkSize));
 
             buffer = chunkSequence.ToArray();
@@ -162,14 +169,14 @@ internal class ArrayPoolMemoryStreamTests
         }
 
         long result = writer.Seek(0, SeekOrigin.Begin);
-        Assert.That(result, Is.EqualTo(0));
+        Assert.That(result, Is.Zero);
 
         result = writer.Seek(0, SeekOrigin.End);
         Assert.That(result, Is.EqualTo(length));
 
         // read back from writer MemoryStream
         result = writer.Seek(0, SeekOrigin.Begin);
-        Assert.That(result, Is.EqualTo(0));
+        Assert.That(result, Is.Zero);
 
         Assert.That(writer.Length, Is.EqualTo(length));
 
@@ -211,7 +218,7 @@ internal class ArrayPoolMemoryStreamTests
         }
 
         position = writer.Seek(0, SeekOrigin.Begin);
-        Assert.That(position, Is.EqualTo(0));
+        Assert.That(position, Is.Zero);
 
         // read sequence using ReadOnlySequenceMemoryStream
         using var reader = new ReadOnlySequenceMemoryStream(sequence);
@@ -254,6 +261,6 @@ internal class ArrayPoolMemoryStreamTests
         }
 
         position = reader.Seek(0, SeekOrigin.Begin);
-        Assert.That(position, Is.EqualTo(0));
+        Assert.That(position, Is.Zero);
     }
 }

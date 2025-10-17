@@ -7,7 +7,6 @@ namespace CryptoHives.Cryptography.Core.Tests.Buffers;
 
 using CryptoHives.Cryptography.Core.Buffers;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 using System;
 using System.Buffers;
 using System.IO;
@@ -16,7 +15,7 @@ using System.IO;
 /// Tests for <see cref="ReadOnlySequenceMemoryStreamTests"/>.
 /// </summary>
 [Parallelizable(ParallelScope.All)]
-internal class ReadOnlySequenceMemoryStreamTests
+public class ReadOnlySequenceMemoryStreamTests
 {
     /// <summary>
     /// Test the default behavior of <see cref="ReadOnlySequenceMemoryStream"/>.
@@ -28,21 +27,29 @@ internal class ReadOnlySequenceMemoryStreamTests
         using ReadOnlySequenceMemoryStream stream = new(ReadOnlySequence<byte>.Empty);
 
         // Act
-        Action act = () => stream.Dispose();
-        var buffer = new byte[1];
+        void act() => stream.Dispose();
+        byte[] buffer = new byte[1];
 
         // Assert
-        Assert.That(stream.CanSeek, Is.True);
-        Assert.That(stream.CanRead, Is.True);
-        Assert.That(stream.CanWrite, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+
+            Assert.That(stream.CanSeek, Is.True);
+            Assert.That(stream.CanRead, Is.True);
+            Assert.That(stream.CanWrite, Is.False);
+        }
 
         Assert.That(stream.ReadByte(), Is.EqualTo(-1));
-        Assert.That(stream.Read(buffer, 0, 1), Is.EqualTo(0));
-        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.EqualTo(0));
+        Assert.That(stream.Read(buffer, 0, 1), Is.Zero);
+        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.Zero);
 
-        Assert.That(stream.Seek(0, SeekOrigin.End), Is.EqualTo(0));
-        Assert.That(stream.Seek(0, SeekOrigin.Current), Is.EqualTo(0));
-        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(stream.Seek(0, SeekOrigin.End), Is.Zero);
+            Assert.That(stream.Seek(0, SeekOrigin.Current), Is.Zero);
+            Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
+        }
+
         Assert.Throws<IOException>(() => stream.Seek(-1, SeekOrigin.Begin));
         Assert.Throws<IOException>(() => stream.Seek(0, (SeekOrigin)66));
         Assert.Throws<IOException>(() => stream.Seek(1000, SeekOrigin.Begin));
@@ -52,21 +59,21 @@ internal class ReadOnlySequenceMemoryStreamTests
         Assert.Throws<NotSupportedException>(() => stream.Write(buffer, 0, 1));
         Assert.Throws<NotSupportedException>(() => stream.Write(buffer.AsSpan(0, 1)));
 
-        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.EqualTo(0));
+        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
         Assert.That(stream.ReadByte(), Is.EqualTo(-1));
-        Assert.That(stream.Read(buffer, 0, 1), Is.EqualTo(0));
-        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.EqualTo(0));
+        Assert.That(stream.Read(buffer, 0, 1), Is.Zero);
+        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.Zero);
         stream.Flush();
 
         stream.Position = 0;
-        Assert.That(stream.Position, Is.EqualTo(0));
+        Assert.That(stream, Is.Empty);
 
-        Assert.That(stream.Length, Is.EqualTo(0));
+        Assert.That(stream, Is.Empty);
 
-        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.EqualTo(0));
+        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
 
-        var array = stream.ToArray();
-        Assert.That(array.Length, Is.EqualTo(0));
+        byte[] array = stream.ToArray();
+        Assert.That(array, Is.Empty);
 
         Assert.DoesNotThrow(() => act());
     }

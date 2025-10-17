@@ -15,7 +15,7 @@ using System.Buffers;
 /// Tests for <see cref="ArrayPoolBufferWriter{T}"/> where T is <see cref="byte"/>.
 /// </summary>
 [Parallelizable(ParallelScope.All)]
-internal class ArrayPoolBufferTests
+public class ArrayPoolBufferTests
 {
     /// <summary>
     /// Test the default behavior of <see cref="ArrayPoolBufferWriter{T}"/>.
@@ -28,13 +28,13 @@ internal class ArrayPoolBufferTests
 
         // Act
         Action act = () => writer.Dispose();
-        var buffer = new byte[1];
+        byte[] buffer = new byte[1];
 
-        var memory = writer.GetMemory(1);
+        Memory<byte> memory = writer.GetMemory(1);
         memory.Span[0] = 0;
         writer.Advance(1);
         writer.Write(buffer);
-        var sequence = writer.GetReadOnlySequence();
+        ReadOnlySequence<byte> sequence = writer.GetReadOnlySequence();
 
         // Assert
         Assert.Throws<ArgumentOutOfRangeException>(() => writer.GetMemory(-1));
@@ -79,7 +79,7 @@ internal class ArrayPoolBufferTests
                 // get a new chunk
                 if (random.Next(2) == 0)
                 {
-                    var memory = writer.GetMemory(randomGetChunkSize);
+                    Memory<byte> memory = writer.GetMemory(randomGetChunkSize);
                     Assert.That(memory.Length, Is.GreaterThanOrEqualTo(chunkSize));
                     span = memory.Span;
                 }
@@ -107,9 +107,12 @@ internal class ArrayPoolBufferTests
                 sequence = writer.GetReadOnlySequence();
                 buffer = sequence.ToArray();
 
-                // Assert
-                Assert.That(buffer.Length, Is.EqualTo(length));
-                Assert.That(sequence.Length, Is.EqualTo(length));
+                using (Assert.EnterMultipleScope())
+                {
+                    // Assert
+                    Assert.That(buffer, Has.Length.EqualTo(length));
+                    Assert.That(sequence.Length, Is.EqualTo(length));
+                }
             }
         }
 
@@ -117,9 +120,12 @@ internal class ArrayPoolBufferTests
         sequence = writer.GetReadOnlySequence();
         buffer = sequence.ToArray();
 
-        // Assert
-        Assert.That(buffer.Length, Is.EqualTo(length));
-        Assert.That(sequence.Length, Is.EqualTo(length));
+        using (Assert.EnterMultipleScope())
+        {
+            // Assert
+            Assert.That(buffer, Has.Length.EqualTo(length));
+            Assert.That(sequence.Length, Is.EqualTo(length));
+        }
 
         for (int i = 0; i < buffer.Length; i++)
         {
@@ -147,7 +153,7 @@ internal class ArrayPoolBufferTests
                 // get a new chunk
                 if (random.Next(2) == 0)
                 {
-                    var memory = writer.GetMemory(randomGetChunkSize);
+                    Memory<byte> memory = writer.GetMemory(randomGetChunkSize);
                     Assert.That(memory.Length, Is.GreaterThanOrEqualTo(chunkSize));
                     span = memory.Span;
                 }
