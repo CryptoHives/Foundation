@@ -304,3 +304,6 @@ dotnet_diagnostic.CA1861.severity 											  = suggestion
 
 # IDE0301: Simplify collection initialization
 dotnet_style_prefer_collection_expression                                     = never
+
+# IDE0290: Use primary constructor
+csharp_style_prefer_primary_constructors                                      = false

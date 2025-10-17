@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\Security.csproj" />
+    <ProjectReference Include="..\..\src\Memory\Memory.csproj" />
   </ItemGroup>
   
 </Project>

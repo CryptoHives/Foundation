@@ -3,9 +3,9 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Cryptography.Core.Tests.Buffers;
+namespace CryptoHives.Memory.Tests.Buffers;
 
-using CryptoHives.Cryptography.Core.Buffers;
+using CryptoHives.Memory.Buffers;
 using NUnit.Framework;
 using System;
 using System.Buffers;
@@ -27,7 +27,7 @@ public class ReadOnlySequenceMemoryStreamTests
         using ReadOnlySequenceMemoryStream stream = new(ReadOnlySequence<byte>.Empty);
 
         // Act
-        void act() => stream.Dispose();
+        void Act() => stream.Dispose();
         byte[] buffer = new byte[1];
 
         // Assert
@@ -75,6 +75,6 @@ public class ReadOnlySequenceMemoryStreamTests
         byte[] array = stream.ToArray();
         Assert.That(array, Is.Empty);
 
-        Assert.DoesNotThrow(() => act());
+        Assert.DoesNotThrow(() => Act());
     }
 }

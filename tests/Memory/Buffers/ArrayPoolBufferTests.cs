@@ -3,9 +3,9 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Cryptography.Core.Tests.Buffers;
+namespace CryptoHives.Memory.Tests.Buffers;
 
-using CryptoHives.Cryptography.Core.Buffers;
+using CryptoHives.Memory.Buffers;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 using System;
@@ -27,7 +27,7 @@ public class ArrayPoolBufferTests
         using ArrayPoolBufferWriter<byte> writer = new();
 
         // Act
-        Action act = () => writer.Dispose();
+        void Act() => writer.Dispose();
         byte[] buffer = new byte[1];
 
         Memory<byte> memory = writer.GetMemory(1);
@@ -42,7 +42,7 @@ public class ArrayPoolBufferTests
         Assert.Throws<ArgumentOutOfRangeException>(() => writer.Advance(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => writer.Advance(2));
 
-        Assert.DoesNotThrow(() => act());
+        Assert.DoesNotThrow(() => Act());
 
         Assert.Throws<ObjectDisposedException>(() => writer.GetReadOnlySequence());
         Assert.Throws<ObjectDisposedException>(() => writer.GetMemory(2));
