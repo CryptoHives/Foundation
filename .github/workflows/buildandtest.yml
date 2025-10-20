@@ -36,12 +36,12 @@ jobs:
       TESTRESULTS: "TestResults-${{matrix.csproj}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}"
       
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
     
     - name: Setup .NET ${{ matrix.dotnet-version }}
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ matrix.dotnet-version }}
 
