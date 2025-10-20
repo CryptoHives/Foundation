@@ -3,13 +3,13 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Cryptography.Core.Tests.Types.UtilsTests;
+namespace CryptoHives.Security.Tests.UtilsTests;
 
 using NUnit.Framework;
 using System.Security.Cryptography;
 
 /// <summary>
-/// Tests for the BuiltIn Types.
+/// Tests for misc. functions.
 /// </summary>
 [TestFixture, Category("Utils")]
 [SetCulture("en-us"), SetUICulture("en-us")]

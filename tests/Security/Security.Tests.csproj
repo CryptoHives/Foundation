@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <AssemblyName>$(AssemblyPrefix).Core.Tests</AssemblyName>
+    <AssemblyName>$(AssemblyPrefix).Security.Tests</AssemblyName>
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>

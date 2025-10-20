@@ -21,15 +21,15 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// </summary>
     public const int DefaultBufferSize = 4096;
     private const int DefaultBufferListSize = 8;
+    private readonly List<ArraySegment<byte>> _buffers;
+    private readonly int _start;
+    private readonly int _count;
+    private readonly int _bufferSize;
+    private readonly bool _externalBuffersReadOnly;
     private int _bufferIndex;
     private ArraySegment<byte> _currentBuffer;
     private int _currentPosition;
-    private List<ArraySegment<byte>> _buffers;
-    private int _start;
-    private int _count;
-    private int _bufferSize;
     private int _endOfLastBuffer;
-    private bool _externalBuffersReadOnly;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.

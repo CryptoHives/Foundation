@@ -12,7 +12,7 @@ using System.Buffers;
 using System.IO;
 
 /// <summary>
-/// Tests for <see cref="ReadOnlySequenceMemoryStreamTests"/>.
+/// Tests for <see cref="ReadOnlySequenceMemoryStream"/>.
 /// </summary>
 [Parallelizable(ParallelScope.All)]
 public class ReadOnlySequenceMemoryStreamTests
@@ -33,7 +33,6 @@ public class ReadOnlySequenceMemoryStreamTests
         // Assert
         using (Assert.EnterMultipleScope())
         {
-
             Assert.That(stream.CanSeek, Is.True);
             Assert.That(stream.CanRead, Is.True);
             Assert.That(stream.CanWrite, Is.False);
@@ -66,14 +65,11 @@ public class ReadOnlySequenceMemoryStreamTests
         stream.Flush();
 
         stream.Position = 0;
-        Assert.That(stream, Is.Empty);
-
-        Assert.That(stream, Is.Empty);
+        Assert.That(stream.ToArray(), Is.Empty);
 
         Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
 
-        byte[] array = stream.ToArray();
-        Assert.That(array, Is.Empty);
+        Assert.That(stream.ToArray(), Is.Empty);
 
         Assert.DoesNotThrow(() => Act());
     }

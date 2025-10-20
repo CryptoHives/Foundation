@@ -65,7 +65,7 @@ public class ArrayPoolBufferTests
         byte[] buffer;
 
         // Arrange
-        using var writer = new ArrayPoolBufferWriter<byte>(false, defaultChunkSize, maxChunkSize);
+        using var writer = new ArrayPoolBufferWriter<byte>(true, defaultChunkSize, maxChunkSize);
 
         // Act
         for (int i = 0; i <= byte.MaxValue; i++)

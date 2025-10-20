@@ -88,7 +88,7 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
 
         if (_offset + count > _currentBuffer.Length)
         {
-            throw new InvalidOperationException($"Cannot advance past the end of the buffer, which has a size of {_currentBuffer.Length}.");
+            throw new ArgumentOutOfRangeException(nameof(count), $"Cannot advance to {_offset + count} at the end of the buffer, which has a size of {_currentBuffer.Length}.");
         }
 
         _offset += count;
@@ -97,6 +97,11 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     /// <inheritdoc/>
     public Memory<T> GetMemory(int sizeHint = 0)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
+        }
+
         if (sizeHint < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(sizeHint), $"{nameof(sizeHint)} must be non-negative.");
@@ -109,6 +114,11 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     /// <inheritdoc/>
     public Span<T> GetSpan(int sizeHint = 0)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
+        }
+
         if (sizeHint < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(sizeHint), $"{nameof(sizeHint)} must be non-negative.");
@@ -166,11 +176,6 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int CheckAndAllocateBuffer(int sizeHint)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
-        }
-
         int remainingSpace = _currentBuffer.Length - _offset;
         if (remainingSpace < sizeHint || sizeHint == 0)
         {
@@ -182,7 +187,7 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
 
             if (_chunkSize < _maxChunkSize)
             {
-                _chunkSize *= 2;
+                _chunkSize = Math.Min(_maxChunkSize, _chunkSize * 2);
             }
         }
 
