@@ -19,7 +19,7 @@
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.7.115" />
     <PackageVersion Include="NUnit" Version="4.4.0" />
-    <PackageVersion Include="NUnit.Console" Version="3.20.1" />
+    <PackageVersion Include="NUnit.Console" Version="3.20.2" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.2.0" />
     <PackageVersion Include="SharpFuzz" Version="2.2.0" />
     <PackageVersion Include="System.Text.Json" Version="9.0.5" />
