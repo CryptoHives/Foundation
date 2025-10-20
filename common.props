@@ -14,6 +14,9 @@
     <HighEntropyVA>true</HighEntropyVA>
     <IsPackable>false</IsPackable>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <PublishAot>true</PublishAot>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Highest language version supported -->
     <LangVersion>latest</LangVersion>
@@ -44,7 +47,7 @@
     <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>CryptoHives security cryptography</PackageTags>
+    <PackageTags>CryptoHives Foundation security cryptography</PackageTags>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">
