@@ -3,7 +3,7 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Security.Tests.UtilsTests;
+namespace CryptoHives.Security.Tests.Utils;
 
 using NUnit.Framework;
 using System.Security.Cryptography;

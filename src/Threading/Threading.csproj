@@ -3,15 +3,15 @@
   <PropertyGroup>
     <DefineConstants>$(DefineConstants)</DefineConstants>
     <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
-    <AssemblyName>$(AssemblyPrefix).Threads</AssemblyName>
-    <PackageId>$(PackagePrefix).Threads</PackageId>
+    <AssemblyName>$(AssemblyPrefix).Threading</AssemblyName>
+    <PackageId>$(PackagePrefix).Threading</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <Description>CryptoHives Threads Library</Description>
+    <Description>CryptoHives Threading Library</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

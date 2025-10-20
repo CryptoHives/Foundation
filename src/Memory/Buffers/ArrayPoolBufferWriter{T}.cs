@@ -15,8 +15,15 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
 {
-    private const int DefaultChunkSize = 256;
-    private const int MaxChunkSize = 65536;
+    /// <summary>
+    /// The default chunk size.
+    /// </summary>
+    public static readonly int DefaultChunkSize = 256;
+
+    /// <summary>
+    /// The default maximum chunk size.
+    /// </summary>
+    public static readonly int MaxChunkSize = 65536;
     private readonly bool _clearArray;
     private readonly int _maxChunkSize;
     private int _chunkSize;
