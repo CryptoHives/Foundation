@@ -14,7 +14,7 @@
     <HighEntropyVA>true</HighEntropyVA>
     <IsPackable>false</IsPackable>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
