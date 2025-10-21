@@ -3,7 +3,7 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Tests.Memory.Buffers;
+namespace CryptoHives.Memory.Tests.Buffers;
 
 using CryptoHives.Memory.Buffers;
 using NUnit.Framework;

@@ -3,7 +3,7 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Tests.Memory.Buffers;
+namespace CryptoHives.Memory.Tests.Buffers;
 
 using CryptoHives.Memory.Buffers;
 using NUnit.Framework;
@@ -293,9 +293,9 @@ public class ReadOnlySequenceMemoryStreamTests
         public TestSegment Append(ReadOnlyMemory<byte> memory)
         {
             var next = new TestSegment(memory) {
-                RunningIndex = this.RunningIndex + this.Memory.Length
+                RunningIndex = RunningIndex + Memory.Length
             };
-            this.Next = next;
+            Next = next;
             return next;
         }
     }

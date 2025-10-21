@@ -20,8 +20,8 @@ public static class ObjectPools
     /// Gets a pooled <see cref="StringBuilder"/> instance.
     /// </summary>
     /// <remarks>
-    /// Please ensure that the following pattern is used to ensure that the
-    /// object is appropriately disposed and returned to the pool.
+    /// Ensure that the following usage pattern is applied to
+    /// appropriately dispose the object and return it to the pool.
     /// <code>
     ///     using var owner = ObjectPools.GetStringBuilder();
     ///     StringBuilder sb = owner.Object;
@@ -42,15 +42,26 @@ public static class ObjectPools
 /// performance by reducing strain on the garbage collector.
 /// </remarks>
 [ExcludeFromCodeCoverage]
-internal static class PoolFactory
+public static class PoolFactory
 {
-    private const int DefaultCapacity = 1024;
-    private const int DefaultMaxStringBuilderCapacity = 8 * 1024;
-    private const int InitialStringBuilderCapacity = 128;
+    /// <summary>
+    /// The capacity of the StringBuilder objects to keep in the pool.
+    /// </summary>
+    public const int DefaultStringBuilderCapacity = 1024;
+
+    /// <summary>
+    /// The max capacity of the StringBuilder object pool.
+    /// </summary>
+    public const int DefaultMaxStringBuilderCapacity = 8 * 1024;
+
+    /// <summary>
+    /// The initial capacity of the StringBuilder object pool.
+    /// </summary>
+    public const int InitialStringBuilderCapacity = 128;
 
     private static readonly IPooledObjectPolicy<StringBuilder> _defaultStringBuilderPolicy = new StringBuilderPooledObjectPolicy {
         InitialCapacity = InitialStringBuilderCapacity,
-        MaximumRetainedCapacity = DefaultCapacity
+        MaximumRetainedCapacity = DefaultStringBuilderCapacity
     };
 
     /// <summary>
@@ -59,7 +70,7 @@ internal static class PoolFactory
     /// <param name="maxCapacity">The maximum number of items to keep in the pool. This defaults to 1024. This value is a recommendation, the pool may keep more objects than this.</param>
     /// <param name="maxStringBuilderCapacity">The maximum capacity of the string builders to keep in the pool. This defaults to 64K.</param>
     /// <returns>The pool.</returns>
-    public static ObjectPool<StringBuilder> CreateStringBuilderPool(int maxCapacity = DefaultCapacity, int maxStringBuilderCapacity = DefaultMaxStringBuilderCapacity)
+    public static ObjectPool<StringBuilder> CreateStringBuilderPool(int maxCapacity = DefaultStringBuilderCapacity, int maxStringBuilderCapacity = DefaultMaxStringBuilderCapacity)
     {
         if (maxCapacity < 1) throw new ArgumentOutOfRangeException(nameof(maxCapacity));
         if (maxStringBuilderCapacity < 1) throw new ArgumentOutOfRangeException(nameof(maxStringBuilderCapacity));

@@ -117,7 +117,7 @@ csharp_style_pattern_matching_over_as_with_null_check                         = 
 #Style - expression bodied member options
 csharp_style_expression_bodied_operators                                      = false:silent
 csharp_style_expression_bodied_indexers                                       = true:silent
-csharp_style_expression_bodied_accessors                                      = true:suggestion
+csharp_style_expression_bodied_accessors                                      = when_on_single_line:suggestion
 csharp_style_expression_bodied_constructors                                   = false:suggestion
 csharp_style_expression_bodied_methods                                        = false:suggestion
 csharp_style_expression_bodied_properties                                     = true:silent
@@ -125,7 +125,7 @@ csharp_style_expression_bodied_lambdas                                        = 
 csharp_style_expression_bodied_local_functions                                = false:silent
 
 #Style - expression level options
-csharp_prefer_braces                                                          = true  : suggestion
+csharp_prefer_braces                                                          = when_multiline : suggestion
 csharp_style_deconstructed_variable_declaration                               = true  : suggestion
 csharp_prefer_simple_default_expression                                       = false : suggestion
 csharp_style_inlined_variable_declaration                                     = false : suggestion

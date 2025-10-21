@@ -3,9 +3,10 @@ using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace CryptoHives.Tests.Memory.Pools
+namespace CryptoHives.Memory.Tests.Pools
 {
     [TestFixture]
     public class ObjectPoolsTests
@@ -47,16 +48,19 @@ namespace CryptoHives.Tests.Memory.Pools
             const int concurrency = 32;
             const int iterations = 100;
             var exceptions = new ConcurrentQueue<Exception>();
+            int index = 0;
+            int GetUniqueIndex() => Interlocked.Increment(ref index);
 
             Parallel.For(0, concurrency, _ => {
                 try
                 {
+                    int myIndex = GetUniqueIndex();
                     for (int i = 0; i < iterations; i++)
                     {
                         using var owner = ObjectPools.GetStringBuilder();
                         var sb = owner.Object;
-                        sb.AppendFormat("threadsafe {0}", i);
-                        Assert.That(sb.ToString(), Is.EqualTo($"threadsafe {i}"));
+                        sb.AppendFormat("{0}:{1}", myIndex, i);
+                        Assert.That(sb.ToString(), Is.EqualTo($"{myIndex}:{i}"));
                     }
                 }
                 catch (Exception ex)
