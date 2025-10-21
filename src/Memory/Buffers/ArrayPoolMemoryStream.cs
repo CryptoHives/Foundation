@@ -17,10 +17,15 @@ using System.Runtime.CompilerServices;
 public sealed class ArrayPoolMemoryStream : MemoryStream
 {
     /// <summary>
-    /// The default buffer size of the array pool buffer chunks.
+    /// The default buffer size of the allocated array pool buffers.
     /// </summary>
-    public const int DefaultBufferSize = 4096;
-    private const int DefaultBufferListSize = 8;
+    public static readonly int DefaultBufferSize = 4096;
+
+    /// <summary>
+    /// The default list size for the array segments.
+    /// </summary>
+    public static readonly int DefaultBufferListSize = 8;
+
     private readonly List<ArraySegment<byte>> _buffers;
     private readonly int _start;
     private readonly int _count;
@@ -54,9 +59,19 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
     /// Creates a writeable stream that rents ArrayPool buffers as necessary.
     /// </summary>
-    public ArrayPoolMemoryStream(int bufferSize, int start, int count)
+    /// <param name="bufferListSize">The size of the buffer list</param>
+    /// <param name="bufferSize">The size of the buffers</param>
+    /// <param name="start">The start of the ArraySegment in a buffer</param>
+    /// <param name="count">The count of bytes in the ArraySegment that is used in the buffer</param>
+    /// <exception cref="ArgumentException"></exception>
+    public ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count)
     {
-        _buffers = new List<ArraySegment<byte>>(DefaultBufferListSize);
+        if (start < 0 || count <= 0 || bufferSize <= 0 || bufferListSize <= 0)
+        {
+            throw new ArgumentException("An invalid buffer parameters was in the constructor");
+        }
+
+        _buffers = new List<ArraySegment<byte>>(bufferListSize);
         _bufferSize = bufferSize;
         _start = start;
         _count = count;
@@ -68,26 +83,36 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
+    /// Creates a writeable stream that creates buffers as necessary using buffer defaults.
+    /// </summary>
+    public ArrayPoolMemoryStream() :
+        this(DefaultBufferListSize, DefaultBufferSize, 0, DefaultBufferSize)
+    { }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
+    /// Creates a writeable stream that creates buffers as necessary using buffer list size defaults.
+    /// </summary>
+    public ArrayPoolMemoryStream(int bufferSize) :
+        this(DefaultBufferListSize, bufferSize, 0, bufferSize)
+    { }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
     /// Creates a writeable stream that creates buffers as necessary.
     /// </summary>
-    public ArrayPoolMemoryStream(int bufferSize = DefaultBufferSize)
-    {
-        _buffers = new List<ArraySegment<byte>>(DefaultBufferListSize);
-        _bufferSize = bufferSize;
-        _start = 0;
-        _count = bufferSize;
-        _endOfLastBuffer = 0;
-        _externalBuffersReadOnly = false;
-    }
+    public ArrayPoolMemoryStream(int bufferListSize, int bufferSize) :
+        this(bufferListSize, bufferSize, 0, bufferSize)
+    { }
 
     /// <inheritdoc/>
-    public override bool CanRead => _buffers != null;
+    public override bool CanRead => true;
 
     /// <inheritdoc/>
-    public override bool CanSeek => _buffers != null;
+    public override bool CanSeek => true;
 
     /// <inheritdoc/>
-    public override bool CanWrite => _buffers != null && !_externalBuffersReadOnly;
+    public override bool CanWrite => !_externalBuffersReadOnly;
 
     /// <inheritdoc/>
     public override long Length => GetAbsoluteLength();
@@ -106,7 +131,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     }
 
     /// <summary>
-    /// Returns ReadOnlySequence of the buffers stored in the stream.
+    /// Returns a ReadOnlySequence of the buffers stored in the stream.
     /// ReadOnlySequence is only valid as long as the stream is not
     /// disposed and no more data is written.
     /// </summary>

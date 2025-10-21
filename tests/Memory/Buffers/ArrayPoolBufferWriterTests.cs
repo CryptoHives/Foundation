@@ -3,7 +3,7 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace CryptoHives.Memory.Tests.Buffers;
+namespace CryptoHives.Tests.Memory.Buffers;
 
 using CryptoHives.Memory.Buffers;
 using NUnit.Framework;
@@ -15,7 +15,7 @@ using System.Buffers;
 /// Tests for <see cref="ArrayPoolBufferWriter{T}"/> where T is <see cref="byte"/>.
 /// </summary>
 [Parallelizable(ParallelScope.All)]
-public class ArrayPoolBufferTests
+public class ArrayPoolBufferWriterTests
 {
     /// <summary>
     /// Test the default behavior of <see cref="ArrayPoolBufferWriter{T}"/>.

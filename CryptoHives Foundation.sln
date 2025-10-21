@@ -6,13 +6,6 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
-		common.props = common.props
-		Directory.Build.props = Directory.Build.props
-		Directory.Packages.props = Directory.Packages.props
-		NuGet.Config = NuGet.Config
-		targets.props = targets.props
-		version.json = version.json
-		version.props = version.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github", "github", "{3486943F-256D-4CB8-9554-2628A14A9181}"
@@ -33,6 +26,25 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Security.Tests", "tests\Security\Security.Tests.csproj", "{EE83CE8C-21C1-9CC9-42F1-4D4555FBBD10}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Threading.Tests", "tests\Threading\Threading.Tests.csproj", "{E4B3A6F7-2225-8727-6781-CF800D23A2E5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{7E3ADE36-3B5E-4829-BB9A-75EB9C339DD0}"
+	ProjectSection(SolutionItems) = preProject
+		common.props = common.props
+		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
+		NuGet.Config = NuGet.Config
+		targets.props = targets.props
+		version.json = version.json
+		version.props = version.props
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nuget", "nuget", "{51D53384-310F-4754-8C6D-99A9177C9DB2}"
+	ProjectSection(SolutionItems) = preProject
+		nuget\logo.jpg = nuget\logo.jpg
+		nuget\README.md = nuget\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{69C6A38B-5F20-4894-9543-10EFF1AA4203}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -70,6 +82,11 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3486943F-256D-4CB8-9554-2628A14A9181} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{FC473F08-8A7A-BD30-8040-CEB2DA5A8D81} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
+		{EE83CE8C-21C1-9CC9-42F1-4D4555FBBD10} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
+		{E4B3A6F7-2225-8727-6781-CF800D23A2E5} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
+		{7E3ADE36-3B5E-4829-BB9A-75EB9C339DD0} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{51D53384-310F-4754-8C6D-99A9177C9DB2} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F988604C-4BC8-40BB-856F-A1F90C1FF377}

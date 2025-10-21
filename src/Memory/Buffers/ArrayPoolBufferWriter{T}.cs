@@ -24,6 +24,8 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     /// The default maximum chunk size.
     /// </summary>
     public static readonly int MaxChunkSize = 65536;
+
+    private static readonly T[] _emptyBuffer = Array.Empty<T>();
     private readonly bool _clearArray;
     private readonly int _maxChunkSize;
     private int _chunkSize;
@@ -59,7 +61,7 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
         _clearArray = clearArray;
         _chunkSize = defaultChunksize;
         _maxChunkSize = maxChunkSize;
-        _currentBuffer = Array.Empty<T>();
+        _currentBuffer = _emptyBuffer;
         _disposed = false;
     }
 
@@ -177,7 +179,7 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
         }
 
         _offset = 0;
-        _currentBuffer = Array.Empty<T>();
+        _currentBuffer = _emptyBuffer;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

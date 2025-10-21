@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Product>CryptoHives .NET Cryptography</Product>
+    <Product>CryptoHives .NET Foundation</Product>
     <RepositoryUrl>https://github.com/CryptoHives/Cryptography</RepositoryUrl>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>preview-$([System.DateTime]::Now.ToString("yyyyMMdd"))</VersionSuffix>

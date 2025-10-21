@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Class to create a MemoryStream which uses a <see cref="ReadOnlySequence{T}"/>
-/// where T must be a <see cref="byte"/>.
+/// for the stream, where T must be a <see cref="byte"/>.
 /// </summary>
 public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 {
@@ -21,7 +21,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     private long _sequenceOffset;
     private ReadOnlyMemory<byte> _currentBuffer;
     private int _currentOffset;
-    private bool _endOfStream;
+    private bool _endOfSequence;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ReadOnlySequenceMemoryStream"/> class.
@@ -30,7 +30,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     {
         _sequence = sequence;
         _nextSequencePosition = sequence.GetPosition(0);
-        _endOfStream = SetNextBuffer();
+        _endOfSequence = SetNextBuffer();
     }
 
     /// <inheritdoc/>
@@ -72,7 +72,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             }
 
             // move to next buffer.
-            if (!SetNextBuffer())
+            if (SetNextBuffer())
             {
                 // end of stream.
                 return -1;
@@ -95,7 +95,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             // move to next buffer.
             if (bytesToCopy <= 0)
             {
-                if (!SetNextBuffer())
+                if (SetNextBuffer())
                 {
                     return bytesRead;
                 }
@@ -127,7 +127,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             // move to next buffer.
             if (bytesToCopy <= 0)
             {
-                if (!SetNextBuffer())
+                if (SetNextBuffer())
                 {
                     return bytesRead;
                 }
@@ -200,8 +200,8 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     {
         _sequenceOffset = _sequence.GetOffset(_nextSequencePosition);
         _currentOffset = 0;
-        _endOfStream = _sequence.TryGet(ref _nextSequencePosition, out _currentBuffer, advance: true);
-        return _endOfStream;
+        _endOfSequence = !_sequence.TryGet(ref _nextSequencePosition, out _currentBuffer, advance: true);
+        return _endOfSequence;
     }
 
     /// <summary>
@@ -213,7 +213,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
         _nextSequencePosition = _sequence.GetPosition(offset);
         _sequenceOffset = _sequence.GetOffset(_nextSequencePosition);
 
-        _endOfStream = _sequence.TryGet(ref _nextSequencePosition, out _currentBuffer, advance: true);
+        _endOfSequence = !_sequence.TryGet(ref _nextSequencePosition, out _currentBuffer, advance: true);
         long currentOffset = offset - _sequenceOffset;
         if (currentOffset < 0 || (currentOffset >= _currentBuffer.Length && currentOffset > 0))
         {
@@ -230,6 +230,6 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private long GetAbsolutePosition()
     {
-        return _currentOffset + _sequenceOffset;
+        return _endOfSequence ? _sequence.Length : _currentOffset + _sequenceOffset;
     }
 }

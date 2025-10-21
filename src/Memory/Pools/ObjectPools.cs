@@ -17,8 +17,17 @@ using System.Text;
 public static class ObjectPools
 {
     /// <summary>
-    /// 
+    /// Gets a pooled <see cref="StringBuilder"/> instance.
     /// </summary>
+    /// <remarks>
+    /// Please ensure that the following pattern is used to ensure that the
+    /// object is appropriately disposed and returned to the pool.
+    /// <code>
+    ///     using var owner = ObjectPools.GetStringBuilder();
+    ///     StringBuilder sb = owner.Object;
+    ///     ...
+    /// </code>
+    /// </remarks>
     public static ObjectOwner<StringBuilder> GetStringBuilder()
     {
         return new ObjectOwner<StringBuilder>(PoolFactory.SharedStringBuilderPool);
