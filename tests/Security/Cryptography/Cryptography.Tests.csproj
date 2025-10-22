@@ -33,11 +33,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\Main.cs" />
+    <Compile Include="..\..\Common\Main.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Security\Security.csproj" />
+    <ProjectReference Include="..\..\..\src\Security\Cryptography\Cryptography.csproj" />
   </ItemGroup>
   
 </Project>

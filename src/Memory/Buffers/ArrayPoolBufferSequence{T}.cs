@@ -22,6 +22,8 @@ public sealed class ArrayPoolBufferSequence<T> : IDisposable
     /// </summary>
     public ArrayPoolBufferSequence(ArrayPoolBufferSegment<T>? firstSegment, ReadOnlySequence<T> sequence, bool clearArray = false)
     {
+        if (firstSegment == null) throw new ArgumentNullException(nameof(firstSegment));
+
         _firstSegment = firstSegment;
         _sequence = sequence;
         _clearArray = clearArray;
