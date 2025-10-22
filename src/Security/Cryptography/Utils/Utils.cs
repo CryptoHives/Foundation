@@ -3,8 +3,7 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-
-namespace CryptoHives.Security.Utils;
+namespace CryptoHives.Security.Cryptography.Utils;
 
 /// <summary>
 /// Defines static utility functions.

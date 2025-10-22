@@ -3,8 +3,8 @@
   <PropertyGroup>
     <DefineConstants>$(DefineConstants)</DefineConstants>
     <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
-    <AssemblyName>$(AssemblyPrefix).Security</AssemblyName>
-    <PackageId>$(PackagePrefix).Security</PackageId>
+    <AssemblyName>$(AssemblyPrefix).Security.Cryptography</AssemblyName>
+    <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <Description>CryptoHives Security Cryptography Library</Description>
     <IsPackable>true</IsPackable>

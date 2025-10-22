@@ -3,8 +3,7 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
-
-namespace CryptoHives.Security.Hash;
+namespace CryptoHives.Security.Cryptography.Hash;
 
 using System.Collections.Generic;
 using System.Threading;
