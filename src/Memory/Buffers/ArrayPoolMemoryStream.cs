@@ -38,7 +38,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
-    /// Attaches the stream to read from a list of buffers.
+    /// Attaches the stream to read from a enumerable of buffers wrapped in <see cref="ArraySegment{Byte}"/>.
     /// Buffers are not returned to the ArrayPool when the stream is disposed.
     /// </summary>
     public ArrayPoolMemoryStream(IEnumerable<ArraySegment<byte>> buffers)
@@ -59,17 +59,18 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
     /// Creates a writeable stream that rents ArrayPool buffers as necessary.
     /// </summary>
-    /// <param name="bufferListSize">The size of the buffer list</param>
+    /// <param name="bufferListSize">The initial size of the buffer list</param>
     /// <param name="bufferSize">The size of the buffers</param>
     /// <param name="start">The start of the ArraySegment in a buffer</param>
     /// <param name="count">The count of bytes in the ArraySegment that is used in the buffer</param>
     /// <exception cref="ArgumentException"></exception>
     public ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count)
     {
-        if (start < 0 || count <= 0 || bufferSize <= 0 || bufferListSize <= 0)
-        {
-            throw new ArgumentException("An invalid buffer parameters was in the constructor");
-        }
+        if (bufferSize <= 0) throw new ArgumentException("The bufferSize must be larger than zero", nameof(bufferSize));
+        if (bufferListSize <= 0) throw new ArgumentException("The initial bufferListSize must be larger than zero", nameof(bufferListSize));
+        if (start < 0) throw new ArgumentException("The start of a segment in the buffer must be at least zero", nameof(start));
+        if (count <= 0) throw new ArgumentException("The count of bytes in a buffer must be larger than zero", nameof(count));
+        if (start + count > bufferSize) throw new ArgumentException("The segment exceeds the size of the buffer");
 
         _buffers = new List<ArraySegment<byte>>(bufferListSize);
         _bufferSize = bufferSize;
@@ -131,7 +132,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     }
 
     /// <summary>
-    /// Returns a ReadOnlySequence of the buffers stored in the stream.
+    /// Returns a <see cref="ReadOnlySequence{Byte}"/> of the buffers stored in the stream.
     /// ReadOnlySequence is only valid as long as the stream is not
     /// disposed and no more data is written.
     /// </summary>
@@ -322,7 +323,10 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     }
 
     /// <inheritdoc/>
-    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
 
     /// <inheritdoc/>
     public override void WriteByte(byte value)

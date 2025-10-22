@@ -11,8 +11,8 @@ using System.IO;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Class to create a MemoryStream which uses a <see cref="ReadOnlySequence{T}"/>
-/// for the stream, where T must be a <see cref="byte"/>.
+/// Class to create a read only MemoryStream which uses a <see cref="ReadOnlySequence{T}"/>
+/// for the buffer stream, where T must be a <see cref="byte"/>.
 /// </summary>
 public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 {
@@ -166,22 +166,14 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
                 throw new IOException("Invalid seek origin value.");
         }
 
-        if (offset < 0)
-        {
-            throw new IOException("Cannot seek beyond the beginning of the stream.");
-        }
+        if (offset < 0) throw new IOException("Cannot seek beyond the beginning of the stream.");
 
         // special case
-        if (offset > _sequence.Length)
-        {
-            throw new IOException("Cannot seek beyond the end of the stream.");
-        }
+        if (offset > _sequence.Length) throw new IOException("Cannot seek beyond the end of the stream.");
 
         _nextSequencePosition = _sequence.GetPosition(offset);
-        if (!SetCurrentBuffer(offset))
-        {
-            throw new IOException("Cannot seek beyond the end of the stream.");
-        }
+
+        if (!SetCurrentBuffer(offset)) throw new IOException("Cannot seek beyond the end of the stream.");
 
         return GetAbsolutePosition();
     }
