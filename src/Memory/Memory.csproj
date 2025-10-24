@@ -22,14 +22,23 @@
   </PropertyGroup>
 
   <Choose>
-    <When Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1'">
+    <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
       </ItemGroup>
     </When>
-    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
+    <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
+      </ItemGroup>
+    </When>    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
+      <ItemGroup>
+        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
       </ItemGroup>
     </When>
     <Otherwise>
@@ -47,5 +56,5 @@
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
-  
+
 </Project>

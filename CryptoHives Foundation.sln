@@ -46,6 +46,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography.Tests", "tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "src\Security\Cryptography\Cryptography.csproj", "{ED53E1F7-E3C2-5E07-22F5-476CBD125D11}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Certificates", "src\Security\Certificates\Certificates.csproj", "{D2655574-43C6-DA67-4F91-ED320AB34096}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -76,6 +78,10 @@ Global
 		{ED53E1F7-E3C2-5E07-22F5-476CBD125D11}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED53E1F7-E3C2-5E07-22F5-476CBD125D11}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED53E1F7-E3C2-5E07-22F5-476CBD125D11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2655574-43C6-DA67-4F91-ED320AB34096}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2655574-43C6-DA67-4F91-ED320AB34096}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2655574-43C6-DA67-4F91-ED320AB34096}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2655574-43C6-DA67-4F91-ED320AB34096}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

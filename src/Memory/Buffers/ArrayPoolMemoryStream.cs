@@ -3,6 +3,10 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+#define MEMORYSTREAM_WITH_SPAN_SUPPORT
+#endif
+
 namespace CryptoHives.Memory.Buffers;
 
 using System;
@@ -180,7 +184,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
             // copy the bytes requested.
             if (bytesLeft > 0)
             {
-                return _currentBuffer[_currentPosition++];
+                return _currentBuffer.Array[_currentBuffer.Offset + _currentPosition++];
             }
 
             // move to next buffer.
@@ -188,8 +192,13 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         } while (true);
     }
 
+#if MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public override int Read(Span<byte> buffer)
+#else
+    /// <inheritdoc/>
+    public int Read(Span<byte> buffer)
+#endif
     {
         int count = buffer.Length;
         int offset = 0;
@@ -341,7 +350,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
             // copy the byte requested.
             if (bytesLeft >= 1)
             {
-                _currentBuffer[_currentPosition] = value;
+                _currentBuffer.Array![_currentBuffer.Offset + _currentPosition] = value;
                 UpdateCurrentPosition(1);
 
                 return;
@@ -352,8 +361,13 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         } while (true);
     }
 
+#if MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public override void Write(ReadOnlySpan<byte> buffer)
+#else
+    /// <inheritdoc/>
+    public void Write(ReadOnlySpan<byte> buffer)
+#endif
     {
         int count = buffer.Length;
         int offset = 0;
@@ -419,7 +433,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// <inheritdoc/>
     public override byte[] ToArray()
     {
-        ObjectDisposedException.ThrowIf(_buffers == null, this);
+        if (_buffers == null) throw new ObjectDisposedException(nameof(ArrayPoolMemoryStream));
 
         int absoluteLength = GetAbsoluteLength();
         if (absoluteLength == 0)
@@ -427,7 +441,11 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
             return Array.Empty<byte>();
         }
 
+#if NET8_0_OR_GREATER
         byte[] array = GC.AllocateUninitializedArray<byte>(absoluteLength);
+#else
+        byte[] array = new byte[absoluteLength];
+#endif
 
         int offset = 0;
         foreach (ArraySegment<byte> buffer in _buffers)

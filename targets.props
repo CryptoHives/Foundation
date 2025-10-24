@@ -14,9 +14,11 @@
   supported values: net462, netstandard2.0, netstandard2.1, net472, net48, net6.0, net8.0, net9.0
    -->
 
+  <!--
   <PropertyGroup>
     <CustomTestTarget>net8.0</CustomTestTarget>
   </PropertyGroup>
+  -->
 
   <Choose>
     <!-- Note: to test targets which support deprecated platforms, 
@@ -107,8 +109,8 @@
         <AnalysisModeStyle>default</AnalysisModeStyle>
         <AppTargetFrameworks>net8.0;net48</AppTargetFrameworks>
         <AppTargetFramework>net8.0</AppTargetFramework>
-        <TestsTargetFrameworks>net48;net8.0;net9.0</TestsTargetFrameworks>
-        <LibTargetFrameworks>net48;netstandard2.0;netstandard2.1;net8.0</LibTargetFrameworks>
+        <TestsTargetFrameworks>net462;net48;net8.0;net9.0</TestsTargetFrameworks>
+        <LibTargetFrameworks>net462;net48;netstandard2.0;netstandard2.1;net8.0;net9.0</LibTargetFrameworks>
       </PropertyGroup>
     </When>
     <!-- Visual Studio 2019, supports .NET Framework 4.8 and .NET Core 3.1 -->

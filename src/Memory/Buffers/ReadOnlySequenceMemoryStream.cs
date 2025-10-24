@@ -3,10 +3,15 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+#define MEMORYSTREAM_WITH_SPAN_SUPPORT
+#endif
+
 namespace CryptoHives.Memory.Buffers;
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 
@@ -18,8 +23,8 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 {
     private readonly ReadOnlySequence<byte> _sequence;
     private SequencePosition _nextSequencePosition;
-    private long _sequenceOffset;
     private ReadOnlyMemory<byte> _currentBuffer;
+    private long _sequenceOffset;
     private int _currentOffset;
     private bool _endOfSequence;
 
@@ -80,8 +85,13 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
         } while (true);
     }
 
+#if MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public override int Read(Span<byte> buffer)
+#else
+    /// <inheritdoc/>
+    public int Read(Span<byte> buffer)
+#endif
     {
         int count = buffer.Length;
         int offset = 0;
@@ -146,6 +156,14 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
         return bytesRead;
     }
 
+#if !MEMORYSTREAM_WITH_SPAN_SUPPORT
+    /// <inheritdoc/>
+    public void Write(ReadOnlySpan<byte> buffer)
+    {
+        throw new NotSupportedException();
+    }
+#endif
+
     /// <inheritdoc/>
     public override long Seek(long offset, SeekOrigin loc)
     {
@@ -190,7 +208,11 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool SetNextBuffer()
     {
+#if NET8_0_OR_GREATER
         _sequenceOffset = _sequence.GetOffset(_nextSequencePosition);
+#else
+        _sequenceOffset = GetOffset(_nextSequencePosition);
+#endif
         _currentOffset = 0;
         _endOfSequence = !_sequence.TryGet(ref _nextSequencePosition, out _currentBuffer, advance: true);
         return _endOfSequence;
@@ -203,8 +225,11 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     private bool SetCurrentBuffer(long offset)
     {
         _nextSequencePosition = _sequence.GetPosition(offset);
+#if NET8_0_OR_GREATER
         _sequenceOffset = _sequence.GetOffset(_nextSequencePosition);
-
+#else
+        _sequenceOffset = GetOffset(_nextSequencePosition);
+#endif
         _endOfSequence = !_sequence.TryGet(ref _nextSequencePosition, out _currentBuffer, advance: true);
         long currentOffset = offset - _sequenceOffset;
         if (currentOffset < 0 || (currentOffset >= _currentBuffer.Length && currentOffset > 0))
@@ -224,4 +249,66 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     {
         return _endOfSequence ? _sequence.Length : _currentOffset + _sequenceOffset;
     }
+
+#if !NET8_0_OR_GREATER
+    /// <summary>
+    /// Returns the offset of a <paramref name="position" /> within this sequence from the start.
+    /// </summary>
+    /// <param name="position">The <see cref="System.SequencePosition"/> of which to get the offset.</param>
+    /// <returns>The offset from the start of the sequence.</returns>
+    /// <exception cref="System.ArgumentOutOfRangeException">The position is out of range.</exception>
+    private long GetOffset(SequencePosition position)
+    {
+        object? positionSequenceObject = position.GetObject();
+        bool positionIsNull = positionSequenceObject == null;
+        //BoundsCheck(position, !positionIsNull);
+
+        object? startObject = _sequence.Start.GetObject();
+        object? endObject = _sequence.End.GetObject();
+
+        uint positionIndex = (uint)position.GetInteger();
+
+        // if sequence object is null we suppose start segment
+        if (positionIsNull)
+        {
+            positionSequenceObject = _sequence.Start.GetObject();
+            positionIndex = (uint)_sequence.Start.GetInteger();
+        }
+
+        // Single-Segment Sequence
+        if (startObject == endObject)
+        {
+            return positionIndex;
+        }
+        else
+        {
+            // Verify position validity, this is not covered by BoundsCheck for Multi-Segment Sequence
+            // BoundsCheck for Multi-Segment Sequence check only validity inside current sequence but not for SequencePosition validity.
+            // For single segment position bound check is implicit.
+            Debug.Assert(positionSequenceObject != null);
+
+            if (((ReadOnlySequenceSegment<byte>)positionSequenceObject!).Memory.Length - positionIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+
+            // Multi-Segment Sequence
+            ReadOnlySequenceSegment<byte>? currentSegment = (ReadOnlySequenceSegment<byte>?)startObject;
+            while (currentSegment != null && currentSegment != positionSequenceObject)
+            {
+                currentSegment = currentSegment.Next!;
+            }
+
+            // Hit the end of the segments but didn't find the segment
+            if (currentSegment is null)
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+
+            Debug.Assert(currentSegment!.RunningIndex + positionIndex >= 0);
+
+            return currentSegment!.RunningIndex + positionIndex;
+        }
+    }
+#endif
 }

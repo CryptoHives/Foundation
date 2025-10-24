@@ -3,6 +3,10 @@
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // ------------------------------------------------------------
 
+#if !NETFRAMEWORK
+#define STREAM_WITH_READEXACTLY_SUPPORT
+#endif
+
 namespace CryptoHives.Memory.Tests.Buffers;
 
 using CryptoHives.Memory.Buffers;
@@ -132,7 +136,6 @@ public class ArrayPoolMemoryStreamTests
                     {
                         writer.WriteByte((byte)i);
                     }
-
                     break;
                 case 1:
                     writer.Write(buffer, 0, chunkSize);
@@ -196,23 +199,28 @@ public class ArrayPoolMemoryStreamTests
                     {
                         Assert.That(writer.ReadByte(), Is.EqualTo((byte)i));
                     }
-
                     break;
                 case 1:
+#if STREAM_WITH_READEXACTLY_SUPPORT
                     writer.ReadExactly(buffer, 0, chunkSize);
+#else
+                    writer.Read(buffer, 0, chunkSize);
+#endif
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));
                     }
-
                     break;
                 default:
+#if STREAM_WITH_READEXACTLY_SUPPORT
                     writer.ReadExactly(buffer.AsSpan(0, chunkSize));
+#else
+                    writer.Read(buffer.AsSpan(0, chunkSize));
+#endif                    
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));
                     }
-
                     break;
             }
         }
@@ -239,18 +247,24 @@ public class ArrayPoolMemoryStreamTests
                     {
                         Assert.That(reader.ReadByte(), Is.EqualTo((byte)i));
                     }
-
                     break;
                 case 1:
+#if STREAM_WITH_READEXACTLY_SUPPORT
                     reader.ReadExactly(buffer, 0, chunkSize);
+#else
+                    reader.Read(buffer, 0, chunkSize);
+#endif
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));
                     }
-
                     break;
                 default:
+#if STREAM_WITH_READEXACTLY_SUPPORT
                     reader.ReadExactly(buffer.AsSpan(0, chunkSize));
+#else
+                    reader.Read(buffer.AsSpan(0, chunkSize));
+#endif              
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));
