@@ -1,0 +1,76 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
+    <PackageId>$(PackagePrefix).Security.Certificates</PackageId>
+    <AssemblyName>$(AssemblyPrefix).Security.Certificates</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <Description>CryptoHives Security X509 Cryptography Library</Description>
+    <IsPackable>true</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseFile></PackageLicenseFile>
+    <EnablePackageValidation>false</EnablePackageValidation>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <!-- Choose which platforms support ECC -->
+  <Choose>
+    <When Condition="'$(TargetFramework)' == 'net462'">
+      <ItemGroup>
+        <PackageReference Include="BouncyCastle.Cryptography" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
+      <ItemGroup>
+        <PackageReference Include="BouncyCastle.Cryptography" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);ECC_SUPPORT</DefineConstants>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageId>$(PackageId).Debug</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
+    <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Choose Asn1 encoder and additional crypto library version -->
+  <Choose>
+    <When Condition="'$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
+      <ItemGroup>
+        <PackageReference Include="BouncyCastle.Cryptography" />
+        <PackageReference Include="Microsoft.Bcl.Cryptography" />
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
+        <PackageReference Include="System.Formats.Asn1" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net8.0'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Bcl.Cryptography" />
+        <PackageReference Include="System.Formats.Asn1" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net9.0'">
+      <ItemGroup>
+        <PackageReference Include="System.Formats.Asn1" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Bcl.Cryptography" />
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
+        <PackageReference Include="System.Formats.Asn1" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
+  <Target Name="GetPackagingOutputs" />
+
+</Project>

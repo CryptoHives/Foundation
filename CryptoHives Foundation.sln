@@ -48,6 +48,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "src\Securit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Certificates", "src\Security\Certificates\Certificates.csproj", "{D2655574-43C6-DA67-4F91-ED320AB34096}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Certificates.Tests", "tests\Security\Certificates\Certificates.Tests.csproj", "{F0F5C058-95F0-57D7-F9CC-4137A1681A8C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -82,6 +84,10 @@ Global
 		{D2655574-43C6-DA67-4F91-ED320AB34096}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D2655574-43C6-DA67-4F91-ED320AB34096}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D2655574-43C6-DA67-4F91-ED320AB34096}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F0F5C058-95F0-57D7-F9CC-4137A1681A8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F0F5C058-95F0-57D7-F9CC-4137A1681A8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F0F5C058-95F0-57D7-F9CC-4137A1681A8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F0F5C058-95F0-57D7-F9CC-4137A1681A8C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +99,7 @@ Global
 		{7E3ADE36-3B5E-4829-BB9A-75EB9C339DD0} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{51D53384-310F-4754-8C6D-99A9177C9DB2} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{BB62C54C-1437-206A-A79B-AFF23405B974} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
+		{F0F5C058-95F0-57D7-F9CC-4137A1681A8C} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F988604C-4BC8-40BB-856F-A1F90C1FF377}
