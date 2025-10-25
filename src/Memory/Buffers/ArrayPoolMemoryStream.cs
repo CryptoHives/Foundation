@@ -4,7 +4,7 @@
 // ------------------------------------------------------------
 
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
-#define MEMORYSTREAM_WITH_SPAN_SUPPORT
+#define MEMORYSTREA_WITH_SPAN_SUPPORT
 #endif
 
 namespace CryptoHives.Memory.Buffers;
@@ -192,7 +192,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         } while (true);
     }
 
-#if MEMORYSTREAM_WITH_SPAN_SUPPORT
+#if MEMORYSTREA_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public override int Read(Span<byte> buffer)
 #else
@@ -361,7 +361,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         } while (true);
     }
 
-#if MEMORYSTREAM_WITH_SPAN_SUPPORT
+#if MEMORYSTREA_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public override void Write(ReadOnlySpan<byte> buffer)
 #else
