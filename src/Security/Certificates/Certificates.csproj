@@ -5,7 +5,7 @@
     <PackageId>$(PackagePrefix).Security.Certificates</PackageId>
     <AssemblyName>$(AssemblyPrefix).Security.Certificates</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <Description>CryptoHives Security X509 Cryptography Library</Description>
+    <Description>CryptoHives Security X509 Cryptography Certificates Library</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>

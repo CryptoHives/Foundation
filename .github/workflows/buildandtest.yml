@@ -1,9 +1,9 @@
-name: Build and Test .NET 9.0
+name: Build and Test .NET
 
 on:
   push:
   pull_request:
-    branches: [ master, main ]
+    branches: [ main ]
     paths:
     - '**.cs'
     - '**.csproj'
@@ -20,7 +20,7 @@ jobs:
       fail-fast: false    
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]    
-        csproj: [Threading, Memory, Security]
+        csproj: [Threading, Memory, Cryptography, Certificates]
         include:
           - framework: 'net9.0'
             dotnet-version: '9.0.x'
