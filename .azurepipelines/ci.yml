@@ -47,27 +47,27 @@ jobs:
     displayName: Build Release Tests
     inputs:
       command: build
-      projects: './tests/**/*.csproj'
+      projects: '**/*.Tests.csproj'
       arguments: '--framework ${{ parameters.framework }} --configuration Release ${{ parameters.buildoption }} /p:RCS=true'
   - task: DotNetCoreCLI@2
     displayName: Pack Release Libraries
     condition: eq(variables['poolImage'], 'windows-2022')
     inputs:
       command: pack
-      packagesToPack:  './src/**/*.csproj'
+      packagesToPack:  'src/**/*.csproj'
       configuration: Release
       configurationToPack: Release
   - task: DotNetCoreCLI@2
     displayName: Build Debug Tests
     inputs:
       command: build
-      projects: './tests/**/*.csproj'
+      projects: '**/*.Tests.csproj'
       arguments: '--framework ${{ parameters.framework }} --configuration Debug ${{ parameters.buildoption }} /p:RCS=true'
   - task: DotNetCoreCLI@2
     displayName: Pack Debug Libraries
     condition: eq(variables['poolImage'], 'windows-2022')
     inputs:
       command: pack
-      packagesToPack:  './src/**/*.csproj'
+      packagesToPack:  'src/**/*.csproj'
       configuration: Debug
       configurationToPack: Debug
