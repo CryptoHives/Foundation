@@ -44,30 +44,30 @@ jobs:
       targetType: filePath
       filePath: ./.azurepipelines/set-version.ps1
   - task: DotNetCoreCLI@2
-    displayName: Release Build
+    displayName: Build Release Tests
     inputs:
       command: build
-      projects: '**/@(Console|NetCore)*.csproj'
+      projects: './tests/**/*.csproj'
       arguments: '--framework ${{ parameters.framework }} --configuration Release ${{ parameters.buildoption }} /p:RCS=true'
   - task: DotNetCoreCLI@2
-    displayName: Release Pack 
+    displayName: Pack Release Libraries
     condition: eq(variables['poolImage'], 'windows-2022')
     inputs:
       command: pack
-      packagesToPack:  '**/Opc.Ua.*.csproj'
+      packagesToPack:  './src/**/*.csproj'
       configuration: Release
       configurationToPack: Release
   - task: DotNetCoreCLI@2
-    displayName: Debug Build
+    displayName: Build Debug Tests
     inputs:
       command: build
-      projects: '**/@(Console|NetCore)*.csproj'
+      projects: './tests/**/*.csproj'
       arguments: '--framework ${{ parameters.framework }} --configuration Debug ${{ parameters.buildoption }} /p:RCS=true'
   - task: DotNetCoreCLI@2
-    displayName: Debug Pack 
+    displayName: Pack Debug Libraries
     condition: eq(variables['poolImage'], 'windows-2022')
     inputs:
       command: pack
-      packagesToPack:  '**/Opc.Ua.*.csproj'
+      packagesToPack:  './src/**/*.csproj'
       configuration: Debug
       configurationToPack: Debug

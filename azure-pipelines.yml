@@ -32,15 +32,15 @@ stages:
   displayName: 'Build .NET Core Samples'
   jobs:
   - template: .azurepipelines/ci.yml
-- stage: buildnohttps
-  dependsOn: []
-  displayName: 'Build NoHttps .NET Core Samples'
-  condition: ne(variables.FullBuild, 'False')
-  jobs:
-  - template: .azurepipelines/ci.yml
-    parameters:
-      buildoption: '-p:NoHttps=true'
-      agents: '@{ linux = "ubuntu-24.04" }'
+#- stage: buildnohttps
+#  dependsOn: []
+#  displayName: 'Build NoHttps .NET Core Samples'
+#  condition: ne(variables.FullBuild, 'False')
+#  jobs:
+#  - template: .azurepipelines/ci.yml
+#    parameters:
+#      buildoption: '-p:NoHttps=true'
+#      agents: '@{ linux = "ubuntu-24.04" }'
 - stage: solutions
   dependsOn: []
   displayName: 'Build Solutions'
