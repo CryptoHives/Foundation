@@ -41,7 +41,8 @@ public class AsyncAutoResetEvent
     }
 
     /// <summary>
-    /// Set next waiting task.
+    /// Signals the next waiting task to proceed or
+    /// sets the signaled state if no tasks are waiting.
     /// </summary>
     public void Set()
     {
@@ -62,7 +63,7 @@ public class AsyncAutoResetEvent
     }
 
     /// <summary>
-    /// Set all waiting tasks.
+    /// Signals all waiting tasks to complete successfully.
     /// </summary>
     public void SetAll()
     {
