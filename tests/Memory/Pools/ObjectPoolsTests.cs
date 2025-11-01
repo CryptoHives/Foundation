@@ -1,7 +1,5 @@
-// ------------------------------------------------------------
-//  Copyright (c) 2025 The Keepers of the CryptoHives.  All rights reserved.
-//  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
-// ------------------------------------------------------------
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Memory.Tests.Pools;
 
@@ -80,3 +78,4 @@ public class ObjectPoolsTests
         Assert.That(exceptions, Is.Empty, "No exceptions should be thrown during concurrent use.");
     }
 }
+

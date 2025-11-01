@@ -1,21 +1,56 @@
-MIT License
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
 
-Copyright (c) 2025 The Keepers of the CryptoHives
+MIT License  
+Copyright (c) 2025 The Keepers of the CryptoHives  
+All rights assigned to the CryptoHives organization
+
+---
+
+Attribution and Copyright Assignment Notice
+-------------------------------------------
+
+"The Keepers of the CryptoHives" is a collective pseudonym representing 
+contributors to the CryptoHives GitHub organization and its projects, 
+including Foundation and related subprojects and components.
+
+Each contributor who provides source code, documentation, or other materials 
+under this name hereby assigns all copyright and related rights in their 
+respective contributions to the CryptoHives organization, which acts as the 
+custodian and steward of the project’s intellectual property.
+
+Unless otherwise stated, all source files marked with:
+
+    // SPDX-FileCopyrightText: <year> The Keepers of the CryptoHives
+    // SPDX-License-Identifier: MIT
+
+are collectively owned and maintained by the CryptoHives organization, as 
+assigned by the Keepers of the CryptoHives.
+
+The CryptoHives organization holds these rights in trust for the community, 
+ensuring that the project remains open, auditable, and consistent with the 
+MIT License terms below.
+
+The use of the pseudonym "The Keepers of the CryptoHives" expresses the 
+shared authorship and custodial spirit of the contributors, while legal 
+ownership and license stewardship reside with the CryptoHives organization.
+
+---
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is 
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in 
+all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
 SOFTWARE.

@@ -1,3 +1,5 @@
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
 // ------------------------------------------------------------
 //  Copyright (c) 2025 The Keepers of the CryptoHives.  All rights reserved.
 //  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
@@ -98,4 +100,5 @@ public static class PoolFactory
         return new(policy, maxRetained);
     }
 }
+
 

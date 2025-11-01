@@ -1,10 +1,12 @@
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT -->
 <Project>
   <PropertyGroup>
     <Product>CryptoHives .NET Foundation</Product>
-    <RepositoryUrl>https://github.com/CryptoHives/Cryptography</RepositoryUrl>
+    <RepositoryUrl>https://github.com/CryptoHives/Foundation</RepositoryUrl>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>preview-$([System.DateTime]::Now.ToString("yyyyMMdd"))</VersionSuffix>
-    <Copyright>Copyright © 2025 The Keepers of the CryptoHives. All rights reserved.</Copyright>
+    <Copyright>Copyright Â© 2025 The Keepers of the CryptoHives. All rights reserved.</Copyright>
     <PackagePrefix>CryptoHives</PackagePrefix>
     <AssemblyPrefix>CryptoHives</AssemblyPrefix>
     <Company></Company>
@@ -22,7 +24,7 @@
     <LangVersion>latest</LangVersion>
     <EnablePackageValidation>true</EnablePackageValidation>
     <!-- to check the package validation on a release build, uncomment here -->
-    <!--<PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>-->
+    <!--<PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>-->
     <!-- to regenerate the compatibility suppression file, uncomment here -->
     <!--<GenerateCompatibilitySuppressionFile>true</GenerateCompatibilitySuppressionFile>-->
     <NuGetAuditMode>all</NuGetAuditMode>
@@ -43,11 +45,10 @@
     <PackageIcon>images/logo.jpg</PackageIcon>
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <!-- deprecated <PackageLicenseUrl>https://opcfoundation.org/license/source/1.11/index.html</PackageLicenseUrl>-->
     <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>CryptoHives Foundation security cryptography</PackageTags>
+    <PackageTags>CryptoHives Foundation security cryptography perf</PackageTags>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">
@@ -82,3 +83,4 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 </Project>
+
