@@ -1,5 +1,5 @@
-#
-# Build all .Net Core projects on all platforms
+﻿#
+# Build all .NET Foundation projects on all platforms
 #
 parameters:
   buildoption: ''
