@@ -1,7 +1,5 @@
-// ------------------------------------------------------------
-//  Copyright (c) 2025 The Keepers of the CryptoHives.  All rights reserved.
-//  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
-// ------------------------------------------------------------
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Security.Certificates;
 
@@ -323,3 +321,4 @@ public class X509AuthorityKeyIdentifierExtension : X509Extension
     private byte[] _serialNumber;
     #endregion
 }
+

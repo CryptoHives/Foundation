@@ -1,7 +1,5 @@
-// ------------------------------------------------------------
-//  Copyright (c) 2025 The Keepers of the CryptoHives.  All rights reserved.
-//  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
-// ------------------------------------------------------------
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
 
 using System;
 using System.Runtime.CompilerServices;
@@ -18,3 +16,4 @@ using System.Runtime.CompilerServices;
 #else
 [assembly: InternalsVisibleTo("CryptoHives.Security.Certificates.Tests")]
 #endif
+
