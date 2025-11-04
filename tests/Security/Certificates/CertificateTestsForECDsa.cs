@@ -55,15 +55,15 @@ public class CertificateTestsForECDsa
     [Test]
     public void VerifyOneSelfSignedAppCertForAll()
     {
-        var builder = CertificateBuilder.Create(Subject)
+        ICertificateBuilder builder = CertificateBuilder.Create(Subject)
             .SetNotBefore(DateTime.Today.AddYears(-1))
             .SetNotAfter(DateTime.Today.AddYears(25))
             .AddExtension(new X509SubjectAltNameExtension("urn:cryptohives.org:mypc", new string[] { "mypc", "mypc.cryptohives.org", "192.168.1.100" }));
         byte[] previousSerialNumber = null;
-        foreach (var eCCurveHash in ECCurveHashPairs)
+        foreach (ECCurveHashPair eCCurveHash in ECCurveHashPairs)
         {
             if (!eCCurveHash.Curve.IsNamed) continue;
-            using var cert = builder
+            using X509Certificate2 cert = builder
                 .SetHashAlgorithm(eCCurveHash.HashAlgorithmName)
                 .SetECCurve(eCCurveHash.Curve)
                 .CreateForECDsa();
@@ -91,13 +91,13 @@ public class CertificateTestsForECDsa
             .CreateForECDsa();
         Assert.NotNull(cert);
         WriteCertificate(cert, "Default ECDsa cert");
-        using (var privateKey = cert.GetECDsaPrivateKey())
+        using (ECDsa privateKey = cert.GetECDsaPrivateKey())
         {
             Assert.NotNull(privateKey);
             privateKey.ExportParameters(false);
             privateKey.ExportParameters(true);
         }
-        using (var publicKey = cert.GetECDsaPublicKey())
+        using (ECDsa publicKey = cert.GetECDsaPublicKey())
         {
             Assert.NotNull(publicKey);
             publicKey.ExportParameters(false);
@@ -106,7 +106,7 @@ public class CertificateTestsForECDsa
         Assert.GreaterOrEqual(DateTime.UtcNow, cert.NotBefore);
         Assert.GreaterOrEqual(DateTime.UtcNow.AddMonths(X509Defaults.LifeTime), cert.NotAfter.ToUniversalTime());
         TestUtils.ValidateSelSignedBasicConstraints(cert);
-        var keyUsage = X509Extensions.FindExtension<X509KeyUsageExtension>(cert.Extensions);
+        X509KeyUsageExtension keyUsage = X509Extensions.FindExtension<X509KeyUsageExtension>(cert.Extensions);
         Assert.NotNull(keyUsage);
         X509PfxUtils.VerifyECDsaKeyPair(cert, cert, true);
         Assert.True(X509Utils.VerifySelfSigned(cert), "Verify self signed.");
@@ -119,9 +119,9 @@ public class CertificateTestsForECDsa
         )
     {
         // set dates and extension
-        var applicationUri = "urn:cryptohives.org:mypc";
-        var domains = new string[] { "mypc", "mypc.cryptohives.org", "192.168.1.100" };
-        var cert = CertificateBuilder.Create(Subject)
+        string applicationUri = "urn:cryptohives.org:mypc";
+        string[] domains = new string[] { "mypc", "mypc.cryptohives.org", "192.168.1.100" };
+        X509Certificate2 cert = CertificateBuilder.Create(Subject)
             .SetNotBefore(DateTime.Today.AddYears(-1))
             .SetNotAfter(DateTime.Today.AddYears(25))
             .AddExtension(new X509SubjectAltNameExtension(applicationUri, domains))
@@ -131,13 +131,13 @@ public class CertificateTestsForECDsa
         Assert.NotNull(cert);
         WriteCertificate(cert, $"Default cert ECDsa {ecCurveHashPair.Curve.Oid.FriendlyName} with modified lifetime and alt name extension");
         Assert.That(cert.Subject, Is.EqualTo(Subject));
-        using (var privateKey = cert.GetECDsaPrivateKey())
+        using (ECDsa privateKey = cert.GetECDsaPrivateKey())
         {
             Assert.NotNull(privateKey);
             privateKey.ExportParameters(false);
             privateKey.ExportParameters(true);
         }
-        using (var publicKey = cert.GetECDsaPublicKey())
+        using (ECDsa publicKey = cert.GetECDsaPublicKey())
         {
             Assert.NotNull(publicKey);
             publicKey.ExportParameters(false);
@@ -155,7 +155,7 @@ public class CertificateTestsForECDsa
         )
     {
         // create a CA cert
-        var cert = CertificateBuilder.Create(Subject)
+        X509Certificate2 cert = CertificateBuilder.Create(Subject)
             .SetCAConstraint()
             .SetHashAlgorithm(ecCurveHashPair.HashAlgorithmName)
             .AddExtension(X509Extensions.BuildX509CRLDistributionPoints(new string[] { "http://myca/mycert.crl", "http://myaltca/mycert.crl" }))
@@ -164,7 +164,7 @@ public class CertificateTestsForECDsa
         Assert.NotNull(cert);
         WriteCertificate(cert, "Default cert with RSA {keyHashPair.KeySize} {keyHashPair.HashAlgorithmName} and CRL distribution points");
         Assert.That(Oids.GetHashAlgorithmName(cert.SignatureAlgorithm.Value), Is.EqualTo(ecCurveHashPair.HashAlgorithmName));
-        var basicConstraintsExtension = X509Extensions.FindExtension<X509BasicConstraintsExtension>(cert.Extensions);
+        X509BasicConstraintsExtension basicConstraintsExtension = X509Extensions.FindExtension<X509BasicConstraintsExtension>(cert.Extensions);
         Assert.NotNull(basicConstraintsExtension);
         Assert.True(basicConstraintsExtension.CertificateAuthority);
         Assert.False(basicConstraintsExtension.HasPathLengthConstraint);
@@ -176,7 +176,7 @@ public class CertificateTestsForECDsa
     [Test]
     public void CreateECDsaDefaultWithSerialTest()
     {
-        var eccurve = ECCurve.NamedCurves.nistP256;
+        ECCurve eccurve = ECCurve.NamedCurves.nistP256;
         // default cert
         Assert.Throws<ArgumentOutOfRangeException>(
             () => {
@@ -194,13 +194,13 @@ public class CertificateTestsForECDsa
                 .CreateForECDsa();
             }
         );
-        var builder = CertificateBuilder.Create(Subject)
+        ICertificateBuilderCreateForECDsaAny builder = CertificateBuilder.Create(Subject)
             .SetSerialNumberLength(X509Defaults.SerialNumberLengthMax)
             .SetECCurve(eccurve);
 
         // ensure every cert has a different serial number
-        var cert1 = builder.CreateForECDsa();
-        var cert2 = builder.CreateForECDsa();
+        X509Certificate2 cert1 = builder.CreateForECDsa();
+        X509Certificate2 cert2 = builder.CreateForECDsa();
         WriteCertificate(cert1, "Cert1 with max length serial number");
         WriteCertificate(cert2, "Cert2 with max length serial number");
         Assert.GreaterOrEqual(X509Defaults.SerialNumberLengthMax, cert1.GetSerialNumber().Length);
@@ -211,7 +211,7 @@ public class CertificateTestsForECDsa
     [Test]
     public void CreateECDsaManualSerialTest()
     {
-        var eccurve = ECCurve.NamedCurves.nistP256;
+        ECCurve eccurve = ECCurve.NamedCurves.nistP256;
         // default cert
         Assert.Throws<ArgumentOutOfRangeException>(
             () => {
@@ -229,32 +229,35 @@ public class CertificateTestsForECDsa
                 .CreateForECDsa();
             }
         );
-        var serial = new byte[X509Defaults.SerialNumberLengthMax];
+        byte[] serial = new byte[X509Defaults.SerialNumberLengthMax];
         for (int i = 0; i < serial.Length; i++)
         {
             serial[i] = (byte)((i + 1) | 0x80);
         }
 
         // test if sign bit is cleared
-        var builder = CertificateBuilder.Create(Subject)
+        ICertificateBuilder builder = CertificateBuilder.Create(Subject)
             .SetSerialNumber(serial);
 
         serial[^1] &= 0x7f;
         Assert.That(builder.GetSerialNumber(), Is.EqualTo(serial));
-        var cert1 = builder.SetECCurve(eccurve).CreateForECDsa();
+        X509Certificate2 cert1 = builder.SetECCurve(eccurve).CreateForECDsa();
         WriteCertificate(cert1, "Cert1 with max length serial number");
         TestContext.Out.WriteLine($"Serial: {serial.ToHexString(true)}");
         Assert.That(cert1.GetSerialNumber(), Is.EqualTo(serial));
-        Assert.That(cert1.GetSerialNumber().Length, Is.EqualTo(X509Defaults.SerialNumberLengthMax));
+        Assert.That(cert1.GetSerialNumber(), Has.Length.EqualTo(X509Defaults.SerialNumberLengthMax));
 
         // clear sign bit
         builder.SetSerialNumberLength(X509Defaults.SerialNumberLengthMax);
 
-        var cert2 = builder.SetECCurve(eccurve).CreateForECDsa();
+        X509Certificate2 cert2 = builder.SetECCurve(eccurve).CreateForECDsa();
         WriteCertificate(cert2, "Cert2 with max length serial number");
         TestContext.Out.WriteLine($"Serial: {cert2.SerialNumber}");
-        Assert.GreaterOrEqual(X509Defaults.SerialNumberLengthMax, cert2.GetSerialNumber().Length);
-        Assert.That(cert2.SerialNumber, Is.Not.EqualTo(cert1.SerialNumber));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(X509Defaults.SerialNumberLengthMax, Is.GreaterThanOrEqualTo(cert2.GetSerialNumber().Length));
+            Assert.That(cert2.SerialNumber, Is.Not.EqualTo(cert1.SerialNumber));
+        }
     }
 
     [Theory]
@@ -274,10 +277,10 @@ public class CertificateTestsForECDsa
         using (ECDsa ecdsaPrivateKey = signingCert.GetECDsaPrivateKey())
         {
             var generator = X509SignatureGenerator.CreateForECDsa(ecdsaPrivateKey);
-            var cert = CertificateBuilder.Create("CN=App Cert")
+            X509Certificate2 cert = CertificateBuilder.Create("CN=App Cert")
                 .SetIssuer(X509CertificateLoader.LoadCertificate(signingCert.RawData))
                 .CreateForRSA(generator);
-            Assert.NotNull(cert);
+            Assert.That(cert, Is.Not.Null);
             WriteCertificate(cert, "Default signed ECDsa cert");
         }
 
@@ -285,24 +288,24 @@ public class CertificateTestsForECDsa
         using (ECDsa ecdsaPublicKey = signingCert.GetECDsaPublicKey())
         {
             var generator = X509SignatureGenerator.CreateForECDsa(ecdsaPrivateKey);
-            var cert = CertificateBuilder.Create("CN=App Cert")
+            X509Certificate2 cert = CertificateBuilder.Create("CN=App Cert")
                 .SetHashAlgorithm(ecCurveHashPair.HashAlgorithmName)
                 .SetIssuer(X509CertificateLoader.LoadCertificate(signingCert.RawData))
                 .SetECDsaPublicKey(ecdsaPublicKey)
                 .CreateForECDsa(generator);
-            Assert.NotNull(cert);
+            Assert.That(cert, Is.Not.Null);
             WriteCertificate(cert, "Default signed ECDsa cert with Public Key");
         }
 
         using (ECDsa ecdsaPrivateKey = signingCert.GetECDsaPrivateKey())
         {
             var generator = X509SignatureGenerator.CreateForECDsa(ecdsaPrivateKey);
-            var cert = CertificateBuilder.Create("CN=App Cert")
+            X509Certificate2 cert = CertificateBuilder.Create("CN=App Cert")
                 .SetHashAlgorithm(ecCurveHashPair.HashAlgorithmName)
                 .SetIssuer(X509CertificateLoader.LoadCertificate(signingCert.RawData))
                 .SetECCurve(ecCurveHashPair.Curve)
                 .CreateForECDsa(generator);
-            Assert.NotNull(cert);
+            Assert.That(cert, Is.Not.Null);
             WriteCertificate(cert, "Default signed RSA cert");
             CheckPEMWriter(cert);
         }
@@ -311,7 +314,7 @@ public class CertificateTestsForECDsa
         Assert.Throws<NotSupportedException>(() => {
             using ECDsa ecdsaPrivateKey = signingCert.GetECDsaPrivateKey();
             var generator = X509SignatureGenerator.CreateForECDsa(ecdsaPrivateKey);
-            var cert = CertificateBuilder.Create("CN=App Cert")
+            X509Certificate2 cert = CertificateBuilder.Create("CN=App Cert")
                 .SetHashAlgorithm(ecCurveHashPair.HashAlgorithmName)
                 .SetECCurve(ecCurveHashPair.Curve)
                 .CreateForECDsa(generator);
@@ -343,7 +346,7 @@ public class CertificateTestsForECDsa
                 }
 
                 // for Azure Linux 3.0 test if cert can be created
-                using var cert = CertificateBuilder.Create(Subject)
+                using X509Certificate2 cert = CertificateBuilder.Create(Subject)
                     .SetHashAlgorithm(result[i].HashAlgorithmName)
                     .SetECCurve(result[i].Curve)
                     .CreateForECDsa();
@@ -367,7 +370,7 @@ public class CertificateTestsForECDsa
     {
         TestContext.Out.WriteLine(message);
         TestContext.Out.WriteLine(cert);
-        foreach (var ext in cert.Extensions)
+        foreach (X509Extension ext in cert.Extensions)
         {
             TestContext.Out.WriteLine(ext.Format(false));
         }
