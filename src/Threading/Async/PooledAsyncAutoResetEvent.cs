@@ -3,19 +3,21 @@
 
 namespace CryptoHives.Threading.Async;
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using CryptoHives.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 /// <summary>
-/// An async version of <see cref="AutoResetEvent"/> which uses a
-/// pooled <see cref="PooledValueTaskSource{T}"/> to avoid allocations of TaskCompletionSource and Task.
+/// An async version of <see cref="AsyncAutoResetEvent"/> which uses a
+/// poolable <see cref="PooledValueTaskSource{Boolean}"/> to avoid allocations
+/// of <see cref="TaskCompletionSource{Boolean}"/> and <see cref="Task"/>.
 /// </summary>
 public class PooledAsyncAutoResetEvent
 {
     private static readonly ValueTask _completed = new ValueTask(Task.CompletedTask);
-    private static readonly ObjectPool<PooledValueTaskSource<bool>> _pool = new DefaultObjectPool<PooledValueTaskSource<bool>>(new DefaultPooledObjectPolicy<PooledValueTaskSource<bool>>());
+    private static readonly ObjectPool<PooledValueTaskSource<bool>> _pool = new DefaultObjectPool<PooledValueTaskSource<bool>>(new ValueTaskSourcePooledObjectPolicy<bool>());
     private readonly Queue<PooledValueTaskSource<bool>> _waiters = new();
     private bool _signaled;
 
@@ -48,7 +50,7 @@ public class PooledAsyncAutoResetEvent
                 return _completed; // completed ValueTask
             }
 
-            var waiter = _pool.Get();
+            PooledValueTaskSource<bool> waiter = _pool.Get();
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
@@ -63,25 +65,21 @@ public class PooledAsyncAutoResetEvent
     /// </remarks>
     public void Set()
     {
-        PooledValueTaskSource<bool>? toRelease = null;
+        PooledValueTaskSource<bool>? toRelease;
 
         lock (_waiters)
         {
-            if (_waiters.Count > 0)
-            {
-                toRelease = _waiters.Dequeue();
-            }
-            else if (!_signaled)
+            if (_waiters.Count == 0)
             {
                 _signaled = true;
+                return;
             }
+
+            toRelease = _waiters.Dequeue();
         }
 
-        if (toRelease != null)
-        {
-            toRelease.SetResult(true);
-            _pool.Return(toRelease);
-        }
+        toRelease.SetResult(true);
+        _pool.Return(toRelease);
     }
 
     /// <summary>
@@ -89,17 +87,19 @@ public class PooledAsyncAutoResetEvent
     /// </summary>
     public void SetAll()
     {
-        List<PooledValueTaskSource<bool>> toRelease = new();
+        List<PooledValueTaskSource<bool>> toRelease;
         lock (_waiters)
         {
-            while (_waiters.Count > 0)
+            if (_waiters.Count == 0)
             {
-                toRelease.Add(_waiters.Dequeue());
+                _signaled = true;
+                return;
             }
-            _signaled = true;
+            toRelease = _waiters.ToList();
+            _waiters.Clear();
         }
 
-        foreach (var waiter in toRelease)
+        foreach (PooledValueTaskSource<bool> waiter in toRelease)
         {
             waiter.SetResult(true);
             _pool.Return(waiter);

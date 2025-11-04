@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
-#define MEMORYSTREA_WITH_SPAN_SUPPORT
+#define MEMORYSTREAM_WITH_SPAN_SUPPORT
 #endif
 
 namespace CryptoHives.Memory.Buffers;
@@ -14,8 +14,8 @@ using System.IO;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Class to create a read only MemoryStream which uses a <see cref="ReadOnlySequence{T}"/>
-/// for the buffer stream, where T must be a <see cref="byte"/>.
+/// Class to create a read only MemoryStream which uses
+/// a <see cref="ReadOnlySequence{Byte}"/> as the buffer source.
 /// </summary>
 public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 {
@@ -83,7 +83,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
         } while (true);
     }
 
-#if MEMORYSTREA_WITH_SPAN_SUPPORT
+#if MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public override int Read(Span<byte> buffer)
 #else
@@ -154,7 +154,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
         return bytesRead;
     }
 
-#if !MEMORYSTREA_WITH_SPAN_SUPPORT
+#if !MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public void Write(ReadOnlySpan<byte> buffer)
     {
@@ -259,6 +259,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     {
         object? positionSequenceObject = position.GetObject();
         bool positionIsNull = positionSequenceObject == null;
+        // TODO: Implement a BoundsCheck for SequencePosition
         //BoundsCheck(position, !positionIsNull);
 
         object? startObject = _sequence.Start.GetObject();

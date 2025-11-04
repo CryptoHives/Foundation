@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Threading.Async;
+namespace CryptoHives.Threading.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;

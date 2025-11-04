@@ -25,4 +25,10 @@
 *.snk binary
 *.vsdx binary
 *.xps binary
+*.zip binary
+*.jar binary
+*.der binary
+*.snk binary
+*.pfx binary
+*.jpg binary
 

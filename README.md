@@ -47,7 +47,9 @@ CryptoHives provides a growing set of utilities designed to optimize .NET worklo
 |----------|-------------|
 | `CryptoHives.Memory` | Fundamental interfaces, abstractions, and memory allocators |
 | `CryptoHives.Threading` | Concurrency primitives and task scheduling utilities |
-| `CryptoHives.Security` | Security algorithms and clean-room implementations |
+| `CryptoHives.Cryptography` | Security algorithms and clean-room implementations |
+| `CryptoHives.Certificates` | Certificate management and validation utilities |
+|----------|-------------|
 
 ---
 
@@ -76,7 +78,7 @@ All code within CryptoHives Foundation is written and validated under **strict c
 
 ## 🐝 About The Keepers of the CryptoHives
 
-CryptoHives Foundation is maintained by **The Keepers of the CryptoHives** —  
+The CryptoHives project is maintained by **The Keepers of the CryptoHives** —  
 a collective of developers dedicated to advancing open, verifiable, and high-performance cryptography in .NET.
 
 > _“We don’t wrap APIs. We reimagine them — securely and efficiently.”_

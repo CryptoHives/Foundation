@@ -83,20 +83,9 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     /// <inheritdoc/>
     public void Advance(int count)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
-        }
-
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), $"{nameof(count)} must be non-negative.");
-        }
-
-        if (_offset + count > _currentBuffer.Length)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), $"Cannot advance to {_offset + count} at the end of the buffer, which has a size of {_currentBuffer.Length}.");
-        }
+        if (_disposed) throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
+        if (count < 0) throw new ArgumentOutOfRangeException(nameof(count), $"{nameof(count)} must be non-negative.");
+        if (_offset + count > _currentBuffer.Length) throw new ArgumentOutOfRangeException(nameof(count), $"Cannot advance to {_offset + count} at the end of the buffer, which has a size of {_currentBuffer.Length}.");
 
         _offset += count;
     }
@@ -104,15 +93,8 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     /// <inheritdoc/>
     public Memory<T> GetMemory(int sizeHint = 0)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
-        }
-
-        if (sizeHint < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sizeHint), $"{nameof(sizeHint)} must be non-negative.");
-        }
+        if (_disposed) throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
+        if (sizeHint < 0) throw new ArgumentOutOfRangeException(nameof(sizeHint), $"{nameof(sizeHint)} must be non-negative.");
 
         int remainingSpace = CheckAndAllocateBuffer(sizeHint);
         return _currentBuffer.AsMemory(_offset, remainingSpace);
@@ -121,15 +103,8 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     /// <inheritdoc/>
     public Span<T> GetSpan(int sizeHint = 0)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
-        }
-
-        if (sizeHint < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sizeHint), $"{nameof(sizeHint)} must be non-negative.");
-        }
+        if (_disposed) throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
+        if (sizeHint < 0) throw new ArgumentOutOfRangeException(nameof(sizeHint), $"{nameof(sizeHint)} must be non-negative.");
 
         int remainingSpace = CheckAndAllocateBuffer(sizeHint);
         return _currentBuffer.AsSpan(_offset, remainingSpace);
@@ -142,10 +117,7 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     /// </summary>
     public ReadOnlySequence<T> GetReadOnlySequence()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
-        }
+        if (_disposed) throw new ObjectDisposedException(nameof(ArrayPoolBufferWriter<T>));
 
         AddSegment();
 

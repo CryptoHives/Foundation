@@ -69,7 +69,7 @@ We ask all researchers to:
 - Respect the privacy of users and systems during testing.
 
 We appreciate your contribution to the safety and trust of the CryptoHives ecosystem.  
-Together, we can keep the hive secure. 🐝
+Together, we can keep the hives secure. 🐝
 
 ---
 
