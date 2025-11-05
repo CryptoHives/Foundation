@@ -75,7 +75,7 @@ public class ExtensionTests
         TestContext.Out.WriteLine("Decoded:");
         TestContext.Out.WriteLine(akidecoded.Format(true));
         Assert.That(akidecoded.RawData, Is.EqualTo(aki.RawData));
-        Assert.That(akidecoded.Issuer.ToString(), Is.EqualTo(authorityName.ToString()));
+        Assert.That(akidecoded.Issuer.Name, Is.EqualTo(authorityName.Name));
         Assert.That(akidecoded.GetSerialNumber(), Is.EqualTo(serialNumber));
         Assert.That(akidecoded.SerialNumber, Is.EqualTo(AsnUtils.ToHexString(serialNumber, true)));
         Assert.That(akidecoded.GetKeyIdentifier(), Is.EqualTo(subjectKeyIdentifier));
@@ -83,7 +83,7 @@ public class ExtensionTests
         TestContext.Out.WriteLine("Decoded2:");
         TestContext.Out.WriteLine(akidecoded.Format(true));
         Assert.That(akidecoded.RawData, Is.EqualTo(aki.RawData));
-        Assert.That(akidecoded.Issuer.ToString(), Is.EqualTo(authorityName.ToString()));
+        Assert.That(akidecoded.Issuer.Name, Is.EqualTo(authorityName.Name));
         Assert.That(akidecoded.GetSerialNumber(), Is.EqualTo(serialNumber));
         Assert.That(akidecoded.SerialNumber, Is.EqualTo(AsnUtils.ToHexString(serialNumber, true)));
         Assert.That(akidecoded.GetKeyIdentifier(), Is.EqualTo(subjectKeyIdentifier));
