@@ -23,7 +23,7 @@ The following assets are under the control of the Labs:
 
 - Trademarks (reg. pending): "CryptoHives Labs"
 - GitHub Organization: [github.com/CryptoHives](https://github.com/CryptoHives)
-- Nuget Organization: [nuget.org/CryptoHives](https://nuget.org/CryptoHives)
+- Nuget Organization: [nuget.org/organization/CryptoHives](https://www.nuget.org/organization/CryptoHives)
 - Primary Domains: [cryptohives.org](https://cryptohives.org), [cryptohives.de](https://cryptohives.de)
 - All registered or pending ownerships are assigned to: Martin Regen, Germany
 
