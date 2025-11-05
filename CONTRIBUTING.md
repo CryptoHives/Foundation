@@ -3,7 +3,7 @@ We'll be glad to accept patches and contributions to the project. There are just
 Contribution License Agreement
 ==============================
 
-If you want/plan to contribute, there is currently no Contribution License Agreement. You are ready to go!
+If you want/plan to contribute, please sign the Contribution License Agreement. Then you are ready to go!
 
 Submitting a contribution
 =========================

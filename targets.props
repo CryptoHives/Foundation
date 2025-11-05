@@ -1,6 +1,4 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
-<!-- SPDX-License-Identifier: MIT -->
-<Project>
+﻿<Project>
   <!-- Suppress warnings for testing only. Rather use supported libraries only. -->
   <!--
   <PropertyGroup>

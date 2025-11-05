@@ -1,15 +1,13 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
-<!-- SPDX-License-Identifier: MIT -->
-<Project>
+﻿<Project>
   <PropertyGroup>
-    <Product>CryptoHives .NET Foundation</Product>
+    <Product>CryptoHives Foundation .NET Libraries</Product>
     <RepositoryUrl>https://github.com/CryptoHives/Foundation</RepositoryUrl>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>preview-$([System.DateTime]::Now.ToString("yyyyMMdd"))</VersionSuffix>
-    <Copyright>Copyright Â© 2025 The Keepers of the CryptoHives. All rights reserved.</Copyright>
+    <Copyright>Copyright Â© 2025 CryptoHives Foundation. All rights reserved.</Copyright>
     <PackagePrefix>CryptoHives</PackagePrefix>
     <AssemblyPrefix>CryptoHives</AssemblyPrefix>
-    <Company></Company>
+    <Company>CryptoHives Foundation</Company>
     <Authors>The Keepers of the CryptoHives</Authors>
     <NoWarn>NU5125;CA2254;CA1307</NoWarn>
     <NeutralLanguage>en-US</NeutralLanguage>
@@ -48,7 +46,7 @@
     <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>CryptoHives Foundation security cryptography perf</PackageTags>
+    <PackageTags>CryptoHives Foundation security cryptography certificates memory streams</PackageTags>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">
@@ -64,7 +62,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
-    <None Include="$(MSBuildThisFileDirectory)/nuget/README.md" Pack="true" PackagePath="$(PackageReadmeFile)"/>
+    <None Include="$(MSBuildThisFileDirectory)/README.md" Pack="true" PackagePath="$(PackageReadmeFile)"/>
   </ItemGroup>
 
   <ItemGroup Condition="'$(NBGV_PublicRelease)' != ''">
