@@ -1,0 +1,63 @@
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants)</DefineConstants>
+    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
+    <AssemblyName>$(AssemblyPrefix).Memory</AssemblyName>
+    <PackageId>$(PackagePrefix).Memory</PackageId>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <Description>CryptoHives Memory Library</Description>
+    <IsPackable>true</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseFile></PackageLicenseFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageId>$(PackageId).Debug</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
+    <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
+  </PropertyGroup>
+
+  <Choose>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
+      <ItemGroup>
+        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
+      <ItemGroup>
+        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
+      <ItemGroup>
+        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="Microsoft.Bcl.Memory"/>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" />
+  </ItemGroup>
+
+  <Target Name="GetPackagingOutputs" />
+
+</Project>

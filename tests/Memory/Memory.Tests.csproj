@@ -1,9 +1,12 @@
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <AssemblyName>$(AssemblyPrefix).Memory.Tests</AssemblyName>
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
-    <RootNamespace>$(AssemblyPrefix).Core.Tests</RootNamespace>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
@@ -12,6 +15,10 @@
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BouncyCastle.Cryptography" />
     <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="NUnit.Console" />
     <PackageReference Include="NUnit3TestAdapter">
       <PrivateAssets>all</PrivateAssets>
@@ -21,6 +28,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
@@ -32,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\Core.csproj" />
+    <ProjectReference Include="..\..\src\Memory\Memory.csproj" />
   </ItemGroup>
   
 </Project>

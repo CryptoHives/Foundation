@@ -3,15 +3,14 @@
   <PropertyGroup>
     <DefineConstants>$(DefineConstants)</DefineConstants>
     <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
-    <AssemblyName>$(AssemblyPrefix).Core</AssemblyName>
-    <PackageId>$(PackagePrefix).Core</PackageId>
-    <RootNamespace>$(AssemblyPrefix)</RootNamespace>
-    <Description>CryptoHives Cryptography Core Library</Description>
+    <AssemblyName>$(AssemblyPrefix).Security.Cryptography</AssemblyName>
+    <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <Description>CryptoHives Security Cryptography Library</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -21,7 +20,7 @@
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
   </PropertyGroup>
-  
+
   <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>

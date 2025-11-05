@@ -1,0 +1,59 @@
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT -->
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants)</DefineConstants>
+    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
+    <AssemblyName>$(AssemblyPrefix).Threading</AssemblyName>
+    <PackageId>$(PackagePrefix).Threading</PackageId>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <Description>CryptoHives Threading Library</Description>
+    <IsPackable>true</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseFile></PackageLicenseFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageId>$(PackageId).Debug</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
+    <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <Choose>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+        <PackageReference Include="System.Threading.Tasks.Extensions" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
+      <ItemGroup>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+        <PackageReference Include="System.Threading.Tasks.Extensions" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" />
+  </ItemGroup>
+
+  <Target Name="GetPackagingOutputs" />
+
+</Project>
