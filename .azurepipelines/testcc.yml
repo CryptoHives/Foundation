@@ -1,5 +1,5 @@
 ﻿#
-# Test .Net Core projects with code coverage
+# Test all projects with code coverage
 #
 parameters:
   configuration: 'Release'

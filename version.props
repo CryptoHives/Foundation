@@ -1,6 +1,4 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
-<!-- SPDX-License-Identifier: MIT -->
-<Project>
+﻿<Project>
   <ItemGroup Condition="'$(TF_BUILD)' != 'true' AND '$(GITHUB_ACTIONS)' != 'true' AND '$(CODEQL_RUNNER)' == '' AND '$(Dockerbuild)' != 'true'">
     <PackageReference Include="Nerdbank.GitVersioning">
       <PrivateAssets>all</PrivateAssets>
