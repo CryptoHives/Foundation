@@ -33,9 +33,11 @@ The following assets are under the control of the **CryptoHives Open Source Init
 ## 💬 Contact
 
  Martin Regen 
+ 
  Founder and Keeper — CryptoHives Open Source Initiative.
-📧 info@cryptohives.org
-🌐 https://cryptohives.org
+ 
+ 📧 info@cryptohives.org
+ 🌐 https://cryptohives.org
 
 ---
 
