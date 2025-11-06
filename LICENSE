@@ -1,7 +1,7 @@
 MIT License  
 
 Copyright (c) 2025 The Keepers of the CryptoHives  
-All rights assigned to the CryptoHives Labs
+All rights assigned to the CryptoHives Open Source Initiative
 
 ---
 
@@ -10,28 +10,29 @@ Attribution and Copyright Assignment Notice
 
 "The Keepers of the CryptoHives" is a collective pseudonym representing 
 contributors to the CryptoHives GitHub organization and its projects, 
-including CryptoHives Labs and related subprojects and components.
+including CryptoHives Open Source Initiative and related subprojects 
+and components.
 
 Each contributor who provides source code, documentation, or other materials 
 under this name hereby assigns all copyright and related rights in their 
-respective contributions to the CryptoHives Labs, which acts as the 
-custodian and steward of the project’s intellectual property.
+respective contributions to the CryptoHives Open Source Initiative, which 
+acts as the custodian and steward of the project’s intellectual property.
 
 Unless otherwise stated, all source files marked with:
 
     // SPDX-FileCopyrightText: <year> The Keepers of the CryptoHives
     // SPDX-License-Identifier: MIT
 
-are collectively owned and maintained by the CryptoHives Labs, as 
-assigned by the Keepers of the CryptoHives.
+are collectively owned and maintained by the CryptoHives Open Source Initiative,
+as assigned by the Keepers of the CryptoHives.
 
-The CryptoHives Labs holds these rights in trust for the community, 
-ensuring that the project remains open, auditable, and consistent with the 
-MIT License terms below.
+The CryptoHives Open Source Initiative holds these rights in trust for the 
+community, ensuring that the project remains open, auditable, and consistent 
+with the MIT License terms below.
 
-The use of the pseudonym "The Keepers of the CryptoHives" expresses the 
-shared authorship and custodial spirit of the contributors, while legal 
-ownership and license stewardship reside with the CryptoHives Labs.
+The use of the pseudonym "The Keepers of the CryptoHives" expresses the shared 
+authorship and custodial spirit of the contributors, while legal ownership 
+and license stewardship reside with the CryptoHives Open Source Initiative.
 
 ---
 
