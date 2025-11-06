@@ -44,6 +44,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{7E3ADE36
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nuget", "nuget", "{51D53384-310F-4754-8C6D-99A9177C9DB2}"
 	ProjectSection(SolutionItems) = preProject
+		licenses\CryptoHives MIT License.txt = licenses\CryptoHives MIT License.txt
 		nuget\logo.jpg = nuget\logo.jpg
 		nuget\README.md = nuget\README.md
 	EndProjectSection
@@ -57,6 +58,17 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Certificates", "src\Security\Certificates\Certificates.csproj", "{D2655574-43C6-DA67-4F91-ED320AB34096}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Certificates.Tests", "tests\Security\Certificates\Certificates.Tests.csproj", "{F0F5C058-95F0-57D7-F9CC-4137A1681A8C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "devops ci", "devops ci", "{509454EF-E537-4120-81D8-8C2DAA768D31}"
+	ProjectSection(SolutionItems) = preProject
+		.azurepipelines\ci.yml = .azurepipelines\ci.yml
+		.azurepipelines\get-matrix.ps1 = .azurepipelines\get-matrix.ps1
+		.azurepipelines\get-root.ps1 = .azurepipelines\get-root.ps1
+		.azurepipelines\get-version.ps1 = .azurepipelines\get-version.ps1
+		.azurepipelines\set-version.ps1 = .azurepipelines\set-version.ps1
+		.azurepipelines\sln.yml = .azurepipelines\sln.yml
+		.azurepipelines\test.yml = .azurepipelines\test.yml
+		.azurepipelines\testcc.yml = .azurepipelines\testcc.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -108,6 +120,7 @@ Global
 		{51D53384-310F-4754-8C6D-99A9177C9DB2} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{BB62C54C-1437-206A-A79B-AFF23405B974} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
 		{F0F5C058-95F0-57D7-F9CC-4137A1681A8C} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
+		{509454EF-E537-4120-81D8-8C2DAA768D31} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F988604C-4BC8-40BB-856F-A1F90C1FF377}

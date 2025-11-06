@@ -1,9 +1,12 @@
-We'll be glad to accept patches and contributions to the project. There are just few guidelines we ask to follow.
+Contributions
+=============
+
+The Keepers are glad to accept patches and contributions to the project. There are just few guidelines we ask to follow.
 
 Contribution License Agreement
 ==============================
 
-If you want/plan to contribute, please sign the Contribution License Agreement. Then you are ready to go!
+If you want/plan to contribute, please sign the Contribution License Agreement. A link to the CLA assistant will be provided once you open your first pull request. Then you are ready to go!
 
 Submitting a contribution
 =========================

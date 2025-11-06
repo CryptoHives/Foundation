@@ -7,7 +7,7 @@ using System;
 using System.Buffers;
 
 /// <summary>
-/// A class to hold a sequence of ArrayPool buffers in a <see cref="ReadOnlySequence{T}"/>"/>until disposed.
+/// A class to hold a sequence of ArrayPool buffers in a <see cref="ReadOnlySequence{T}"/> until disposed.
 /// </summary>
 public sealed class ArrayPoolBufferSequence<T> : IDisposable
 {

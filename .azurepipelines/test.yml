@@ -1,5 +1,5 @@
 ﻿#
-# Test all .Net Core projects on all platforms
+# Test all projects on all platforms
 #
 parameters:
   configuration: 'Release'

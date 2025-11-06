@@ -1,13 +1,13 @@
 ﻿<Project>
   <PropertyGroup>
-    <Product>CryptoHives Foundation .NET Libraries</Product>
+    <Product>CryptoHives Open Source Initiative .NET Libraries</Product>
     <RepositoryUrl>https://github.com/CryptoHives/Foundation</RepositoryUrl>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>preview-$([System.DateTime]::Now.ToString("yyyyMMdd"))</VersionSuffix>
-    <Copyright>Copyright Â© 2025 CryptoHives Foundation. All rights reserved.</Copyright>
+    <Copyright>Copyright Â© 2025 CryptoHives Open Source Initiative. All rights reserved.</Copyright>
     <PackagePrefix>CryptoHives</PackagePrefix>
     <AssemblyPrefix>CryptoHives</AssemblyPrefix>
-    <Company>CryptoHives Foundation</Company>
+    <Company>CryptoHives Open Source Initiative</Company>
     <Authors>The Keepers of the CryptoHives</Authors>
     <NoWarn>NU5125;CA2254;CA1307</NoWarn>
     <NeutralLanguage>en-US</NeutralLanguage>
@@ -46,7 +46,7 @@
     <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>CryptoHives Foundation security cryptography certificates memory streams</PackageTags>
+    <PackageTags>CryptoHives Labs security cryptography certificates memory streams</PackageTags>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">

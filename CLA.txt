@@ -1,30 +1,30 @@
-CryptoHives Foundation Contributor License Agreement (CLA)
+CryptoHives Open Source Initiative Contributor License Agreement (CLA)
 Version 1.0 — November 2025
-Entity: CryptoHives Foundation
+Entity: CryptoHives Open Source Initiative
 Collective pseudonym: The Keepers of the CryptoHives
 
 ---
 
 1. Definitions
 --------------
-- "You" means the individual or entity that submits a Contribution to any CryptoHives Foundation project.
-- "Contribution" means any source code, object code, documentation, artwork, or other material that you submit to a project maintained by the CryptoHives Foundation.
-- "Project" means any software repository, library, or subproject forming part of the CryptoHives Foundation SDK or related initiatives.
-- "CryptoHives Foundation" means the entity acting as the custodian and rights holder for all assigned intellectual property.
+- "You" means the individual or entity that submits a Contribution to a project of the CryptoHives Open Source Initiative.
+- "Contribution" means any source code, object code, documentation, artwork, or other material that you submit to a project maintained by the CryptoHives Open Source Initiative.
+- "Project" means any software repository, library, or subproject forming part of the CryptoHives Open Source Initiative SDK or related initiatives.
+- "CryptoHives Open Source Initiative" means the entity acting as the custodian and rights holder for all assigned intellectual property.
 
 ---
 
 2. Assignment of Copyright
 --------------------------
-You hereby assign to the CryptoHives Foundation all right, title, and interest in and to your Contributions, including any copyright and related rights that you may hold.
+You hereby assign to the CryptoHives Open Source Initiative all right, title, and interest in and to your Contributions, including any copyright and related rights that you may hold.
 
-This assignment ensures unified ownership and stewardship under the CryptoHives Foundation, consistent with the project’s open and auditable objectives.
+This assignment ensures unified ownership and stewardship under the CryptoHives Open Source Initiative, consistent with the project’s open and auditable objectives.
 
 ---
 
 3. License Grant (for transparency)
 ----------------------------------
-Notwithstanding the assignment above, you also grant the CryptoHives Foundation and downstream recipients a perpetual, worldwide, royalty-free license to use, reproduce, modify, distribute, and sublicense your Contribution under the open-source license governing the project (typically MIT).
+Notwithstanding the assignment above, you also grant the CryptoHives Open Source Initiative and downstream recipients a perpetual, worldwide, royalty-free license to use, reproduce, modify, distribute, and sublicense your Contribution under the open-source license governing the project (typically MIT).
 
 ---
 
@@ -32,7 +32,7 @@ Notwithstanding the assignment above, you also grant the CryptoHives Foundation 
 -------------------------------
 You waive enforcement of any moral rights (to the extent permitted by law) but acknowledge that your authorship may be publicly recognized.
 Your name may appear in contributor listings, release notes, or metadata, but code may also be attributed under the collective pseudonym
-"The Keepers of the CryptoHives."
+"The Keepers of the CryptoHives".
 
 ---
 
@@ -47,7 +47,7 @@ You represent that:
 
 6. Acceptance
 -------------
-By submitting a Contribution to any CryptoHives Foundation project (e.g., via pull request, patch, or direct repository access),
+By submitting a Contribution to any CryptoHives Open Source Initiative project (e.g., via pull request, patch, or direct repository access),
 you indicate your acceptance of this Contributor License Agreement and confirm that you have the legal right to do so.
 
 ---
@@ -55,7 +55,7 @@ you indicate your acceptance of this Contributor License Agreement and confirm t
 7. Governing License and Law
 ----------------------------
 Your Contribution will be released under the license stated in the repository (typically MIT License),
-and this agreement is governed by the laws applicable to the CryptoHives Foundation’s place of registration.
+and this agreement is governed by the laws applicable to the CryptoHives Open Source Initiative’s place of registration.
 
 ---
 
@@ -63,7 +63,7 @@ Signed:
 By submitting your Contribution, you agree to the terms above.
 You may optionally sign a copy of this agreement and submit it to:
     legal@cryptohives.org
-to confirm your contributor status within the collective "The Keepers of the CryptoHives."
+to confirm your contributor status within the collective "The Keepers of the CryptoHives".
 
 ---
 
