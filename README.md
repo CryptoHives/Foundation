@@ -37,7 +37,7 @@ CryptoHives provides a growing set of utilities designed to optimize high perfor
 - **ArrayPool-based allocators** for common crypto and serialization scenarios
 - Pooled implementations of `MemoryStream` and `IBufferWriter<T>` for transformation pipelines
 - Primitives to handle ownership of pooled buffers using `ReadOnlySequence<T>` with `ArrayPool<T>`
-- Zero-copy, zero-allocation design for high-frequency read/write operations
+- Zero-copy, zero-allocation design for high-frequency cryptographic workloads and transformation pipelines
 
 ### 🛠️ Concurrency Tools
 - Lightweight Async-compatible synchronization primitives based on `ObjectPool` and `ValueTask<T>`
@@ -49,11 +49,11 @@ CryptoHives provides a growing set of utilities designed to optimize high perfor
 
 | Package | Description | NuGet |
 |----------|--------------|--------|
-| `CryptoHives.Memory` | Memory primitives not only for CryptoHives components. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Memory) |
-| `CryptoHives.Threading` | Threading primitives not only for CryptoHives components. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Threading) |
+| `CryptoHives.Memory` | Memory primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Memory) |
+| `CryptoHives.Threading` | Threading primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Threading) |
 |----------|-------------|
 
-> More packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives Labs](https://www.nuget.org/packages/CryptoHives) for details.
+> More packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
 
 ---
 
@@ -83,12 +83,12 @@ using System;
 
 public class Example
 {
-    public void WriteChunk(ReadOnlySpan<byte> chunk)
+    public string WritePooledChunk(ReadOnlySpan<byte> chunk)
     {
         using var writer = new ArrayPoolMemoryStream(defaultBufferSize);
         writer.Write(chunk);
         ReadOnlySequence<byte> sequence = writer.GetReadOnlySequence();
-        var result = Encoding.UTF8.GetString(sequence);
+        return Encoding.UTF8.GetString(sequence);
     }
 }
 ```
