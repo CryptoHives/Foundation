@@ -55,7 +55,7 @@ CryptoHives provides a growing set of utilities designed to optimize high perfor
 | `CryptoHives.Certificates` | Certificate management and validation utilities | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Certificates.svg)](https://www.nuget.org/packages/CryptoHives.Certificates) |
 |----------|-------------|
 
-> More packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
+Packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
 
 ---
 
