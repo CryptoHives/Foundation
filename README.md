@@ -4,7 +4,7 @@ The **CryptoHives Open Source Initiative** brings consistent, portable, and audi
 
 ---
 
-# 🐝 CryptoHives Open Source Initiative .NET Packages
+# 🐝 CryptoHives Open Source Initiative .NET Foundation Packages
 
 The **CryptoHives Open Source Initiative** is a collection of modern, high-assurance cryptographic libraries for .NET, developed and maintained by **The Keepers of the CryptoHives**. 
 Each package is designed for security, interoperability, and clarity — making it easy to build secure systems without sacrificing developer experience.
@@ -21,7 +21,7 @@ There are also supporting packages which improve memory usage and thread synchro
 
 More packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
 
-### 🐝 Hives Health
+### 🐝 CryptoHives Health
 
 [![Azure DevOps](https://dev.azure.com/cryptohive/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohive/Foundation/_build/latest?definitionId=6&branchName=main)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
@@ -31,7 +31,7 @@ More packages are available under the `CryptoHives.*` namespace — see the Nuge
 
 ## ✨ Overview
 
-The **CryptoHives.Foundation** project serves as the first core building block for .NET libraries under the **CryptoHives Open Source Initiative** umbrella.
+The **CryptoHives .NET Foundation** project serves as the first core building block for .NET libraries under the **CryptoHives Open Source Initiative** umbrella.
 
 All implementations are developed **from first principles**, without reliance on operating system or native platform crypto providers, ensuring:
 

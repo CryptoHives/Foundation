@@ -62,16 +62,16 @@ jobs:
     displayName: Restore ${{ parameters.framework }}
     inputs:
       command: restore
-      projects: 'CryptoHives Foundation.sln'
+      projects: 'CryptoHives .NET Foundation.sln'
       arguments: '${{ variables.DotCliCommandline }} --configuration ${{ parameters.configuration }}'
   - task: DotNetCoreCLI@2
     displayName: Test ${{ parameters.framework }}
     timeoutInMinutes: 60
     inputs:
       command: test
-      projects: 'CryptoHives Foundation.sln'
+      projects: 'CryptoHives .NET Foundation.sln'
       # note: /p:CollectCoverage=true is only used to disable deterministic builds
-      arguments: '--no-restore ${{ variables.DotCliCommandline }} --configuration ${{ parameters.configuration }} /p:CollectCoverage=true --collect:"XPlat Code Coverage" --settings ./Tests/coverlet.runsettings.xml --results-directory $(Agent.TempDirectory)'
+      arguments: '--no-restore ${{ variables.DotCliCommandline }} --configuration ${{ parameters.configuration }} /p:CollectCoverage=true --collect:"XPlat Code Coverage" --settings ./tests/coverlet.runsettings.xml --results-directory $(Agent.TempDirectory)'
       publishTestResults: false
   - script: |
       bash <(curl -s https://codecov.io/bash) -s $(Agent.TempDirectory)
@@ -88,7 +88,7 @@ jobs:
       arguments: install --tool-path tools dotnet-reportgenerator-globaltool 
     displayName: Install ReportGenerator tool
   - script: |
-      tools/reportgenerator -reports:$(Agent.TempDirectory)/**/????????-*/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/CodeCoverage "-reporttypes:Cobertura;HtmlSummary" "-title:UA .Net Standard Test Coverage" "-assemblyfilters:-*.Tests"
+      tools/reportgenerator -reports:$(Agent.TempDirectory)/**/????????-*/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/CodeCoverage "-reporttypes:Cobertura;HtmlSummary" "-title:CryptoHives .NET Foundation Test Coverage" "-assemblyfilters:-*.Tests"
       mv $(Build.SourcesDirectory)/CodeCoverage/summary.htm $(Build.SourcesDirectory)/CodeCoverage/index.htm 
 
     displayName: Create Code Coverage Report
