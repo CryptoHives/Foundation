@@ -122,7 +122,9 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
         AddSegment();
 
         if (_firstSegment == null || _nextSegment == null)
+        {
             return ReadOnlySequence<T>.Empty;
+        }
 
         return new ReadOnlySequence<T>(_firstSegment, 0, _nextSegment, _nextSegment.Memory.Length);
     }
@@ -133,7 +135,9 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
         if (_offset > 0)
         {
             if (_firstSegment == null)
+            {
                 _firstSegment = _nextSegment = new ArrayPoolBufferSegment<T>(_currentBuffer, 0, _offset);
+            }
             else
             {
                 _nextSegment = _nextSegment!.Append(_currentBuffer, 0, _offset);
@@ -161,7 +165,9 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
             _offset = 0;
 
             if (_chunkSize < _maxChunkSize)
+            {
                 _chunkSize = Math.Min(_maxChunkSize, _chunkSize * 2);
+            }
         }
 
         return remainingSpace;

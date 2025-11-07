@@ -10,7 +10,7 @@ using System.Threading;
 /// <summary>
 /// Helper to build a ReadOnlySequence from a set of <see cref="ArrayPool{T}"/> allocated buffers.
 /// </summary>
-public sealed class ArrayPoolBufferSegment<T> : ReadOnlySequenceSegment<T>
+internal sealed class ArrayPoolBufferSegment<T> : ReadOnlySequenceSegment<T>
 {
     private T[]? _array;
 

@@ -70,12 +70,17 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 
             // copy the bytes requested.
             if (bytesLeft > 0)
+            {
                 return _currentBuffer.Span[_currentOffset++];
+            }
 
             // move to next buffer.
             if (SetNextBuffer())
+            {
                 // end of stream.
                 return -1;
+            }
+
         } while (true);
     }
 
@@ -130,7 +135,9 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             if (bytesToCopy <= 0)
             {
                 if (SetNextBuffer())
+                {
                     return bytesRead;
+                }
 
                 continue;
             }
@@ -251,6 +258,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     {
         object? positionSequenceObject = position.GetObject();
         bool positionIsNull = positionSequenceObject == null;
+
         // TODO: Implement a BoundsCheck for SequencePosition
         //BoundsCheck(position, !positionIsNull);
 
@@ -268,7 +276,9 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 
         // Single-Segment Sequence
         if (startObject == endObject)
+        {
             return positionIndex;
+        }
         else
         {
             // Verify position validity, this is not covered by BoundsCheck for Multi-Segment Sequence

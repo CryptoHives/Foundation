@@ -74,7 +74,9 @@ public static class PoolFactory
         if (maxStringBuilderCapacity < 1) throw new ArgumentOutOfRangeException(nameof(maxStringBuilderCapacity));
 
         if (maxStringBuilderCapacity == DefaultMaxStringBuilderCapacity)
+        {
             return MakePool(_defaultStringBuilderPolicy, maxCapacity);
+        }
 
         return MakePool(
             new StringBuilderPooledObjectPolicy {
