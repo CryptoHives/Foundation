@@ -52,7 +52,9 @@ public class AsyncAutoResetEvent
         lock (_waits)
         {
             if (_waits.Count > 0)
+            {
                 toRelease = _waits.Dequeue();
+            }
             else
             {
                 _signaled = true;
