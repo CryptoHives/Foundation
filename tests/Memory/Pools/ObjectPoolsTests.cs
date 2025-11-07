@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Memory.Tests.Pools;
+namespace CryptoHives.Foundation.Memory.Tests.Pools;
 
-using CryptoHives.Memory.Pools;
+using CryptoHives.Foundation.Memory.Pools;
 using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;

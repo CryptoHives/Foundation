@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Memory.Pools;
+namespace CryptoHives.Foundation.Memory.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
@@ -74,9 +74,7 @@ public static class PoolFactory
         if (maxStringBuilderCapacity < 1) throw new ArgumentOutOfRangeException(nameof(maxStringBuilderCapacity));
 
         if (maxStringBuilderCapacity == DefaultMaxStringBuilderCapacity)
-        {
             return MakePool(_defaultStringBuilderPolicy, maxCapacity);
-        }
 
         return MakePool(
             new StringBuilderPooledObjectPolicy {

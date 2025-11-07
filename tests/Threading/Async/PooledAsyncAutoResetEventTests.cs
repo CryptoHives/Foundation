@@ -1,14 +1,12 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Threading.Tests.Async;
+namespace CryptoHives.Foundation.Threading.Tests.Async;
 
-using System.Threading.Tasks;
+using CryptoHives.Foundation.Threading.Async;
 using NUnit.Framework;
-using CryptoHives.Threading.Async;
 using System;
-
-
+using System.Threading.Tasks;
 
 [TestFixture]
 [NonParallelizable] // prevents interference with the shared object pool
@@ -64,7 +62,7 @@ public class PooledAsyncAutoResetEventTests
         ValueTask waiter = ev.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.False, "Waiter should not be completed before Set()");
 
-        _ = Task.Run(async () => { await Task.Delay(1000).ConfigureAwait(false);  ev.Set(); });
+        _ = Task.Run(async () => { await Task.Delay(1000).ConfigureAwait(false); ev.Set(); });
 
         await waiter.ConfigureAwait(false);
 

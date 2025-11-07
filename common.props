@@ -1,12 +1,12 @@
 ﻿<Project>
   <PropertyGroup>
-    <Product>CryptoHives Open Source Initiative .NET Libraries</Product>
+    <Product>CryptoHives Open Source Initiative Foundation .NET Libraries</Product>
     <RepositoryUrl>https://github.com/CryptoHives/Foundation</RepositoryUrl>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>preview-$([System.DateTime]::Now.ToString("yyyyMMdd"))</VersionSuffix>
     <Copyright>Copyright Â© 2025 CryptoHives Open Source Initiative. All rights reserved.</Copyright>
-    <PackagePrefix>CryptoHives</PackagePrefix>
-    <AssemblyPrefix>CryptoHives</AssemblyPrefix>
+    <PackagePrefix>CryptoHives.Foundation</PackagePrefix>
+    <AssemblyPrefix>CryptoHives.Foundation</AssemblyPrefix>
     <Company>CryptoHives Open Source Initiative</Company>
     <Authors>The Keepers of the CryptoHives</Authors>
     <NoWarn>NU5125;CA2254;CA1307</NoWarn>

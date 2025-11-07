@@ -5,7 +5,7 @@
 #define MEMORYSTREAM_WITH_SPAN_SUPPORT
 #endif
 
-namespace CryptoHives.Memory.Buffers;
+namespace CryptoHives.Foundation.Memory.Buffers;
 
 using System;
 using System.Buffers;
@@ -70,16 +70,12 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 
             // copy the bytes requested.
             if (bytesLeft > 0)
-            {
                 return _currentBuffer.Span[_currentOffset++];
-            }
 
             // move to next buffer.
             if (SetNextBuffer())
-            {
                 // end of stream.
                 return -1;
-            }
         } while (true);
     }
 
@@ -104,9 +100,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             if (bytesToCopy <= 0)
             {
                 if (SetNextBuffer())
-                {
                     return bytesRead;
-                }
 
                 continue;
             }
@@ -136,9 +130,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             if (bytesToCopy <= 0)
             {
                 if (SetNextBuffer())
-                {
                     return bytesRead;
-                }
 
                 continue;
             }
@@ -252,9 +244,9 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     /// <summary>
     /// Returns the offset of a <paramref name="position" /> within this sequence from the start.
     /// </summary>
-    /// <param name="position">The <see cref="System.SequencePosition"/> of which to get the offset.</param>
+    /// <param name="position">The <see cref="SequencePosition"/> of which to get the offset.</param>
     /// <returns>The offset from the start of the sequence.</returns>
-    /// <exception cref="System.ArgumentOutOfRangeException">The position is out of range.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The position is out of range.</exception>
     private long GetOffset(SequencePosition position)
     {
         object? positionSequenceObject = position.GetObject();
@@ -276,9 +268,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 
         // Single-Segment Sequence
         if (startObject == endObject)
-        {
             return positionIndex;
-        }
         else
         {
             // Verify position validity, this is not covered by BoundsCheck for Multi-Segment Sequence
@@ -287,22 +277,17 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             Debug.Assert(positionSequenceObject != null);
 
             if (((ReadOnlySequenceSegment<byte>)positionSequenceObject!).Memory.Length - positionIndex < 0)
-            {
                 throw new ArgumentOutOfRangeException();
-            }
 
             // Multi-Segment Sequence
-            ReadOnlySequenceSegment<byte>? currentSegment = (ReadOnlySequenceSegment<byte>?)startObject;
+            var currentSegment = (ReadOnlySequenceSegment<byte>?)startObject;
             while (currentSegment != null && currentSegment != positionSequenceObject)
             {
                 currentSegment = currentSegment.Next!;
             }
 
             // Hit the end of the segments but didn't find the segment
-            if (currentSegment is null)
-            {
-                throw new ArgumentOutOfRangeException();
-            }
+            if (currentSegment is null) throw new ArgumentOutOfRangeException();
 
             Debug.Assert(currentSegment!.RunningIndex + positionIndex >= 0);
 

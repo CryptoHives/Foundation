@@ -1,16 +1,17 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Threading.Async;
+namespace CryptoHives.Foundation.Threading.Async;
 
-using CryptoHives.Threading.Pools;
+using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// An async version of <see cref="AsyncAutoResetEvent"/> which uses a
+/// An async version of <see cref="AutoResetEvent"/> which uses a
 /// poolable <see cref="PooledValueTaskSource{Boolean}"/> to avoid allocations
 /// of <see cref="TaskCompletionSource{Boolean}"/> and <see cref="Task"/>.
 /// </summary>

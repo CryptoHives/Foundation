@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Memory.Buffers;
+namespace CryptoHives.Foundation.Memory.Buffers;
 
 using System;
 using System.Buffers;

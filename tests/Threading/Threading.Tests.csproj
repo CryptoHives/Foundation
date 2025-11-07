@@ -36,7 +36,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
+    <PackageReference Include="Nito.AsyncEx" />
   </ItemGroup>
   
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
+  </ItemGroup>
+
 </Project>

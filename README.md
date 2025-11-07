@@ -2,11 +2,30 @@
 
 The **CryptoHives Open Source Initiative** brings consistent, portable, and auditable cryptography to .NET — managed code first, OS quirks gone.
 
+---
+
 # 🐝 CryptoHives Open Source Initiative .NET Packages
 
 The **CryptoHives Open Source Initiative** is a collection of modern, high-assurance cryptographic libraries for .NET, developed and maintained by **The Keepers of the CryptoHives**. 
 Each package is designed for security, interoperability, and clarity — making it easy to build secure systems without sacrificing developer experience.
 There are also supporting packages which improve memory usage and thread synchronization for high performance transformation pipelines and for cryptography workloads.
+
+---
+
+## 📦 Available Packages
+
+| Package | Description | NuGet |
+|----------|--------------|--------|
+| `CryptoHives.Foundation.Memory` | Memory primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) |
+| `CryptoHives.Foundation.Threading` | Threading primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) |
+
+More packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
+
+### 🐝 Hives Health
+
+[![Azure DevOps](https://dev.azure.com/cryptohive/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohive/Foundation/_build/latest?definitionId=6&branchName=main)
+[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
+[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
 
 ---
 
@@ -42,23 +61,6 @@ CryptoHives provides a growing set of utilities designed to optimize high perfor
 ### 🛠️ Concurrency Tools
 - Lightweight Async-compatible synchronization primitives based on `ObjectPool` and `ValueTask<T>`
 - High-performance threading helpers designed to reduce allocations of `Task` and `TaskCompletionSource<T>`
-
----
-
-## 📦 Available Packages
-
-| Package | Description | NuGet |
-|----------|--------------|--------|
-| `CryptoHives.Memory` | Memory primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Memory) |
-| `CryptoHives.Threading` | Threading primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Threading) |
-
-Packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
-
-### 🐝 Hives Health
-
-[![Azure DevOps](https://img.shields.io/azure-devops/build/CryptoHives/CryptoHives/1?logo=azuredevops)](https://dev.azure.com/CryptoHives/CryptoHives/_build/latest?definitionId=1)
-[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
-[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
 
 ---
 

@@ -5,7 +5,7 @@
 #define MEMORYSTREAM_WITH_SPAN_SUPPORT
 #endif
 
-namespace CryptoHives.Memory.Buffers;
+namespace CryptoHives.Foundation.Memory.Buffers;
 
 using System;
 using System.Buffers;
@@ -50,9 +50,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         _endOfLastBuffer = 0;
 
         if (_buffers.Count > 0)
-        {
             _endOfLastBuffer = _buffers[^1].Count;
-        }
 
         SetCurrentBuffer(0);
     }
@@ -141,15 +139,11 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     public ReadOnlySequence<byte> GetReadOnlySequence()
     {
         if (_buffers.Count == 0 || _buffers[0].Array == null)
-        {
             return ReadOnlySequence<byte>.Empty;
-        }
 
         int endIndex = GetBufferCount(0);
         if (endIndex == 0)
-        {
             return ReadOnlySequence<byte>.Empty;
-        }
 
         var firstSegment = new ArrayPoolBufferSegment<byte>(_buffers[0].Array!, _buffers[0].Offset, endIndex);
         ArrayPoolBufferSegment<byte> nextSegment = firstSegment;
@@ -173,17 +167,13 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         {
             // check for end of stream.
             if (_currentBuffer.Array == null)
-            {
                 return -1;
-            }
 
             int bytesLeft = GetBufferCount(_bufferIndex) - _currentPosition;
 
             // copy the bytes requested.
             if (bytesLeft > 0)
-            {
                 return _currentBuffer.Array[_currentBuffer.Offset + _currentPosition++];
-            }
 
             // move to next buffer.
             SetCurrentBuffer(_bufferIndex + 1);
@@ -206,9 +196,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         {
             // check for end of stream.
             if (_currentBuffer.Array == null)
-            {
                 return bytesRead;
-            }
 
             int bytesLeft = GetBufferCount(_bufferIndex) - _currentPosition;
 
@@ -244,9 +232,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         {
             // check for end of stream.
             if (_currentBuffer.Array == null)
-            {
                 return bytesRead;
-            }
 
             int bytesLeft = GetBufferCount(_bufferIndex) - _currentPosition;
 
@@ -294,9 +280,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         }
 
         if (offset < 0)
-        {
             throw new IOException("Cannot seek beyond the beginning of the stream.");
-        }
 
         // special case
         if (offset == 0)
@@ -308,9 +292,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         int position = (int)offset;
 
         if (position > GetAbsolutePosition())
-        {
             CheckEndOfStream();
-        }
 
         for (int ii = 0; ii < _buffers.Count; ii++)
         {
@@ -435,9 +417,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
 
         int absoluteLength = GetAbsoluteLength();
         if (absoluteLength == 0)
-        {
             return Array.Empty<byte>();
-        }
 
 #if NET8_0_OR_GREATER
         byte[] array = GC.AllocateUninitializedArray<byte>(absoluteLength);
@@ -469,9 +449,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
                 foreach (ArraySegment<byte> buffer in _buffers)
                 {
                     if (buffer.Array != null)
-                    {
                         ArrayPool<byte>.Shared.Return(buffer.Array);
-                    }
                 }
             }
 
@@ -536,9 +514,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     {
         // check if at end of stream.
         if (_currentBuffer.Array == null)
-        {
             return GetAbsoluteLength();
-        }
 
         // calculate position.
         int position = 0;
@@ -560,9 +536,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     private int GetBufferCount(int index)
     {
         if (index == _buffers.Count - 1)
-        {
             return _endOfLastBuffer;
-        }
 
         return _buffers[index].Count;
     }

@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Memory.Tests.Buffers;
+namespace CryptoHives.Foundation.Memory.Tests.Buffers;
 
-using CryptoHives.Memory.Buffers;
+using CryptoHives.Foundation.Memory.Buffers;
 using NUnit.Framework;
 using System;
 using System.Buffers;
@@ -301,9 +301,7 @@ public class ReadOnlySequenceMemoryStreamTests
     private static ReadOnlySequence<byte> CreateSequence(params byte[][] parts)
     {
         if (parts == null || parts.Length == 0)
-        {
             return ReadOnlySequence<byte>.Empty;
-        }
 
         var first = new TestSegment(parts[0]);
         TestSegment last = first;
