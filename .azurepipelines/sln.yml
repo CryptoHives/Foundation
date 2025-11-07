@@ -11,6 +11,8 @@ jobs:
   pool:
     vmImage: ${{ parameters.poolImage }}
   steps:
+  - checkout: self
+    fetchDepth: 0  # fetch all commits for versioning
   - task: NuGetToolInstaller@1
     inputs:
       versionSpec: '>=5.8.x'

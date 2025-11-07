@@ -40,6 +40,8 @@ jobs:
   pool:
     vmImage: $(poolImage)
   steps:
+  - checkout: self
+    fetchDepth: 0  # fetch all commits for versioning
   - task: UseDotNet@2
     displayName: 'Install .NET 8.0'
     condition: eq('${{parameters.framework}}', 'net8.0')

@@ -54,6 +54,12 @@ CryptoHives provides a growing set of utilities designed to optimize high perfor
 
 Packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
 
+### 🐝 Hives Health
+
+[![Azure DevOps](https://img.shields.io/azure-devops/build/CryptoHives/CryptoHives/1?logo=azuredevops)](https://dev.azure.com/CryptoHives/CryptoHives/_build/latest?definitionId=1)
+[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
+[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
+
 ---
 
 ## 🚀 Installation
