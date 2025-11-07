@@ -10,11 +10,11 @@ updates:
       - "nuget"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
 
   - package-ecosystem: github-actions
     labels:
       - "actions"
     directory: "./"
     schedule:
-      interval: "weekly"
+      interval: "daily"

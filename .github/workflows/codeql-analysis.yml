@@ -55,12 +55,12 @@ jobs:
 
     - name: Restore Packages
       run: |
-        nuget restore "CryptoHives Foundation.sln"
+        nuget restore "CryptoHives .NET Foundation.sln"
         
     - name: Build Solution
       run: |
-        msbuild.exe "CryptoHives Foundation.sln" /p:configuration="Release" /p:UseSharedCompilation=false
-        msbuild.exe "CryptoHives Foundation.sln" /p:configuration="Release" /p:UseSharedCompilation=false
+        msbuild.exe "CryptoHives .NET Foundation.sln" /p:configuration="Release" /p:UseSharedCompilation=false
+        msbuild.exe "CryptoHives .NET Foundation.sln" /p:configuration="Debug" /p:UseSharedCompilation=false
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
