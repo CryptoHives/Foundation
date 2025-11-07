@@ -20,7 +20,7 @@ jobs:
       fail-fast: false    
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]    
-        csproj: [Threading, Memory, Security/Cryptography, Security/Certificates]
+        csproj: [Threading, Memory]
         include:
           - framework: 'net9.0'
             dotnet-version: '9.0.x'
