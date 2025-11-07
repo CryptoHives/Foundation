@@ -51,9 +51,8 @@ CryptoHives provides a growing set of utilities designed to optimize high perfor
 |----------|--------------|--------|
 | `CryptoHives.Memory` | Memory primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Memory) |
 | `CryptoHives.Threading` | Threading primitives. | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Threading) |
-|----------|-------------|
 
-> More packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
+Packages are available under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages/CryptoHives) for details.
 
 ---
 
