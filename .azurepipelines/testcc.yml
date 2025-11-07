@@ -62,14 +62,14 @@ jobs:
     displayName: Restore ${{ parameters.framework }}
     inputs:
       command: restore
-      projects: 'UA Core Library.sln'
+      projects: 'CryptoHives Foundation.sln'
       arguments: '${{ variables.DotCliCommandline }} --configuration ${{ parameters.configuration }}'
   - task: DotNetCoreCLI@2
     displayName: Test ${{ parameters.framework }}
     timeoutInMinutes: 60
     inputs:
       command: test
-      projects: 'UA Core Library.sln'
+      projects: 'CryptoHives Foundation.sln'
       # note: /p:CollectCoverage=true is only used to disable deterministic builds
       arguments: '--no-restore ${{ variables.DotCliCommandline }} --configuration ${{ parameters.configuration }} /p:CollectCoverage=true --collect:"XPlat Code Coverage" --settings ./Tests/coverlet.runsettings.xml --results-directory $(Agent.TempDirectory)'
       publishTestResults: false
