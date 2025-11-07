@@ -105,7 +105,9 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             if (bytesToCopy <= 0)
             {
                 if (SetNextBuffer())
+                {
                     return bytesRead;
+                }
 
                 continue;
             }
@@ -157,7 +159,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     /// <inheritdoc/>
     public void Write(ReadOnlySpan<byte> buffer)
     {
-        throw new NotSupportedException();
+        throw new NotSupportedException("Writing to a ReadOnlySequence is not supported.");
     }
 #endif
 
@@ -251,6 +253,10 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     /// <summary>
     /// Returns the offset of a <paramref name="position" /> within this sequence from the start.
     /// </summary>
+    /// <remarks>
+    /// Function is not supported by System.Memory for older .NET versions, so the function is 
+    /// copied from here https://source.dot.net/#System.Memory/System/Buffers/ReadOnlySequence.cs,532.
+    /// </remarks>
     /// <param name="position">The <see cref="SequencePosition"/> of which to get the offset.</param>
     /// <returns>The offset from the start of the sequence.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The position is out of range.</exception>
@@ -287,7 +293,9 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             Debug.Assert(positionSequenceObject != null);
 
             if (((ReadOnlySequenceSegment<byte>)positionSequenceObject!).Memory.Length - positionIndex < 0)
+            {
                 throw new ArgumentOutOfRangeException();
+            }
 
             // Multi-Segment Sequence
             var currentSegment = (ReadOnlySequenceSegment<byte>?)startObject;
