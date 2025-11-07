@@ -32,7 +32,7 @@ public class PooledAsyncAutoResetEventTests
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.True, "Expected WaitAsync to return a completed ValueTask when initially signaled");
 
-        await vt; // should complete immediately
+        await vt.ConfigureAwait(false); // should complete immediately
 
         // Subsequent waiter should not be completed because the signal is auto-reset
         ValueTask vt2 = ev.WaitAsync();
@@ -49,7 +49,7 @@ public class PooledAsyncAutoResetEventTests
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.True, "Expected WaitAsync to return a completed ValueTask after Set() with no waiters");
 
-        await vt;
+        await vt.ConfigureAwait(false);
 
         // After consuming the signaled state it should reset again
         ValueTask vt2 = ev.WaitAsync();
@@ -64,13 +64,13 @@ public class PooledAsyncAutoResetEventTests
         ValueTask waiter = ev.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.False, "Waiter should not be completed before Set()");
 
-        _ = Task.Run(async () => { await Task.Delay(1000);  ev.Set(); });
+        _ = Task.Run(async () => { await Task.Delay(1000).ConfigureAwait(false);  ev.Set(); });
 
-        await waiter;
+        await waiter.ConfigureAwait(false);
 
         Assert.That(waiter.IsCompleted, Is.True, "Expected no leftover signaled state after releasing a queued waiter");
 
-        await waiter;
+        await waiter.ConfigureAwait(false);
 
         // Ensure no leftover signaled state
         ValueTask vt2 = ev.WaitAsync();
@@ -100,14 +100,14 @@ public class PooledAsyncAutoResetEventTests
         ev.SetAll();
 
         Assert.Multiple(() => {
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await w1);
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await w2);
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await w3);
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await w1.ConfigureAwait(false));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await w2.ConfigureAwait(false));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await w3.ConfigureAwait(false));
         });
 
-        await aw1;
-        await aw2;
-        await aw3;
+        await aw1.ConfigureAwait(false);
+        await aw2.ConfigureAwait(false);
+        await aw3.ConfigureAwait(false);
 
         // After SetAll consumed, no lingering signaled state (auto-reset behavior)
         ValueTask vt = ev.WaitAsync();
@@ -124,7 +124,7 @@ public class PooledAsyncAutoResetEventTests
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.True, "Expected WaitAsync to return a completed ValueTask after SetAll() with no waiters");
 
-        await vt;
+        await vt.ConfigureAwait(false);
 
         // Consumed, next waiter should be non-completed
         ValueTask vt2 = ev.WaitAsync();

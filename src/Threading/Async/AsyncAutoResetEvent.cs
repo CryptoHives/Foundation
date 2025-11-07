@@ -32,7 +32,6 @@ public class AsyncAutoResetEvent
             else
             {
                 // TaskCreationOptions.RunContinuationsAsynchronously is needed
-                // to decouple the reader thread from the processing in the subscriptions.
                 var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _waits.Enqueue(tcs);
                 return tcs.Task;
