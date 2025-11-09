@@ -32,7 +32,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{7E3ADE36-3B5E-4829-BB9A-75EB9C339DD0}"
 	ProjectSection(SolutionItems) = preProject
 		common.props = common.props
-		tests\coverlet.runsettings.xml = tests\coverlet.runsettings.xml
 		Directory.Build.props = Directory.Build.props
 		Directory.Packages.props = Directory.Packages.props
 		NuGet.Config = NuGet.Config
@@ -59,6 +58,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "devops ci", "devops ci", "{
 		.azurepipelines\sln.yml = .azurepipelines\sln.yml
 		.azurepipelines\test.yml = .azurepipelines\test.yml
 		.azurepipelines\testcc.yml = .azurepipelines\testcc.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{01ED31D9-948B-49CA-8329-A7C4CB2C930C}"
+	ProjectSection(SolutionItems) = preProject
+		tests\coverlet.runsettings.xml = tests\coverlet.runsettings.xml
 	EndProjectSection
 EndProject
 Global
@@ -94,6 +98,7 @@ Global
 		{7E3ADE36-3B5E-4829-BB9A-75EB9C339DD0} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{51D53384-310F-4754-8C6D-99A9177C9DB2} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{509454EF-E537-4120-81D8-8C2DAA768D31} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{01ED31D9-948B-49CA-8329-A7C4CB2C930C} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F988604C-4BC8-40BB-856F-A1F90C1FF377}

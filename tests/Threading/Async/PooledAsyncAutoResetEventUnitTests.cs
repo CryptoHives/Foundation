@@ -10,10 +10,10 @@ using System.Threading.Tasks;
 
 [TestFixture]
 [NonParallelizable] // prevents interference with the shared object pool
-public class PooledAsyncAutoResetEventTests
+public class PooledAsyncAutoResetEventUnitTests
 {
     [Test]
-    public void WaitAsync_WhenNotSignaled_ReturnsNonCompletedValueTask()
+    public void WaitAsyncWhenNotSignaledReturnsNonCompletedValueTask()
     {
         var ev = new PooledAsyncAutoResetEvent();
 
@@ -23,7 +23,19 @@ public class PooledAsyncAutoResetEventTests
     }
 
     [Test]
-    public async Task WaitAsync_WhenInitiallySignaled_ReturnsCompletedAndResetsAsync()
+    public async Task WaitAsyncWhenNotSignaledTaskNeverCompletes()
+    {
+        var ev = new PooledAsyncAutoResetEvent();
+
+        Task t = ev.WaitAsync().AsTask();
+
+        Assert.That(t.IsCompleted, Is.False, "Expected WaitAsync to return a non-completed Task when not signaled");
+
+        await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncWhenInitiallySignaledReturnsCompletedAndResetsAsync()
     {
         var ev = new PooledAsyncAutoResetEvent(initialState: true);
 
@@ -35,10 +47,13 @@ public class PooledAsyncAutoResetEventTests
         // Subsequent waiter should not be completed because the signal is auto-reset
         ValueTask vt2 = ev.WaitAsync();
         Assert.That(vt2.IsCompleted, Is.False, "Expected subsequent WaitAsync to return a non-completed ValueTask after reset");
+
+        Task t = ev.WaitAsync().AsTask();
+        await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
     }
 
     [Test]
-    public async Task Set_WithNoWaiters_SetsSignaledForNextWaiterAsync()
+    public async Task SetWithNoWaitersSetsSignaledForNextWaiterAsync()
     {
         var ev = new PooledAsyncAutoResetEvent();
 
@@ -52,10 +67,13 @@ public class PooledAsyncAutoResetEventTests
         // After consuming the signaled state it should reset again
         ValueTask vt2 = ev.WaitAsync();
         Assert.That(vt2.IsCompleted, Is.False, "Expected subsequent WaitAsync to be non-completed after consuming signaled state");
+
+        Task t = ev.WaitAsync().AsTask();
+        await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(5000)]
-    public async Task Set_ReleasesSingleWaiterAsync()
+    public async Task SetReleasesSingleWaiterAsync()
     {
         var ev = new PooledAsyncAutoResetEvent();
 
@@ -68,15 +86,16 @@ public class PooledAsyncAutoResetEventTests
 
         Assert.That(waiter.IsCompleted, Is.True, "Expected no leftover signaled state after releasing a queued waiter");
 
-        await waiter.ConfigureAwait(false);
-
         // Ensure no leftover signaled state
         ValueTask vt2 = ev.WaitAsync();
         Assert.That(vt2.IsCompleted, Is.False, "Expected no leftover signaled state after releasing a queued waiter");
+
+        Task t = ev.WaitAsync().AsTask();
+        await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
     }
 
     [Test]
-    public async Task SetAll_ReleasesAllQueuedWaitersAsync()
+    public async Task SetAllReleasesAllQueuedWaitersAsync()
     {
         var ev = new PooledAsyncAutoResetEvent();
 
@@ -110,10 +129,13 @@ public class PooledAsyncAutoResetEventTests
         // After SetAll consumed, no lingering signaled state (auto-reset behavior)
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.False, "Expected subsequent WaitAsync to be non-completed after SetAll() released queued waiters");
+
+        Task t = ev.WaitAsync().AsTask();
+        await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
     }
 
     [Test]
-    public async Task SetAll_WithNoWaiters_SetsSignaledForNextWaiterAsync()
+    public async Task SetAllWithNoWaitersSetsSignaledForNextWaiterAsync()
     {
         var ev = new PooledAsyncAutoResetEvent();
 
@@ -127,6 +149,21 @@ public class PooledAsyncAutoResetEventTests
         // Consumed, next waiter should be non-completed
         ValueTask vt2 = ev.WaitAsync();
         Assert.That(vt2.IsCompleted, Is.False, "Expected subsequent WaitAsync to be non-completed after consuming signaled state");
+
+        Task t = ev.WaitAsync().AsTask();
+        await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
+    }
+
+    private static class AsyncAssert
+    {
+        public static async Task NeverCompletesAsync(Task task, int timeoutMs = 1000)
+        {
+            Task completed = await Task.WhenAny(task, Task.Delay(timeoutMs)).ConfigureAwait(false);
+            if (completed == task)
+            {
+                Assert.Fail("Expected task to never complete.");
+            }
+        }
     }
 }
 
