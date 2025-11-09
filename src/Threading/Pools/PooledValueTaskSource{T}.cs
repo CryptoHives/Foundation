@@ -11,7 +11,7 @@ using System.Threading.Tasks.Sources;
 /// Represents a synchronization primitive that can be used to signal the completion of an operation.
 /// </summary>
 /// <remarks>
-/// This class is a sealed implementation of <see cref="IValueTaskSource"/> and provides methods to
+/// This class is a sealed implementation of <see cref="IValueTaskSource{T}"/> and provides methods to
 /// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
 /// and supports querying the status and retrieving the result.
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse by an <see cref="ObjectPool"/>.

@@ -16,7 +16,7 @@ public class AsyncAutoResetEventSetBenchmarks : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Set", "Standard")]
-    public void AutoResetEvent_Set()
+    public void AutoResetEventSet()
     {
         _eventStandard!.Set();
     }
@@ -24,7 +24,7 @@ public class AsyncAutoResetEventSetBenchmarks : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Set", "Pooled")]
-    public void PooledAsyncAutoResetEvent_Set()
+    public void PooledAsyncAutoResetEventSet()
     {
         _eventPooled!.Set();
     }
@@ -32,7 +32,7 @@ public class AsyncAutoResetEventSetBenchmarks : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Set", "Nito")]
-    public void NitoAsyncAutoResetEvent_Set()
+    public void NitoAsyncAutoResetEventSet()
     {
         _eventNitoAsync!.Set();
     }
@@ -40,7 +40,7 @@ public class AsyncAutoResetEventSetBenchmarks : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Set", "RefImpl")]
-    public void RefImplAsyncAutoResetEvent_Set()
+    public void RefImplAsyncAutoResetEventSet()
     {
         _eventRefImpl!.Set();
     }

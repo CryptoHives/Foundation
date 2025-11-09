@@ -26,13 +26,13 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
     [Test]
     public void AutoResetEvent()
     {
-        AutoResetEvent_Setup();
-        AutoResetEvent_WaitSet();
-        AutoResetEvent_Cleanup();
+        AutoResetEventSetup();
+        AutoResetEventWaitSet();
+        AutoResetEventCleanup();
     }
 
-    [IterationSetup(Target = nameof(AutoResetEvent_WaitSet))]
-    public void AutoResetEvent_Setup()
+    [IterationSetup(Target = nameof(AutoResetEventWaitSet))]
+    public void AutoResetEventSetup()
     {
         _eventStandard!.Reset();
 
@@ -44,8 +44,8 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         }
     }
 
-    [IterationCleanup(Target = nameof(AutoResetEvent_WaitSet))]
-    public void AutoResetEvent_Cleanup()
+    [IterationCleanup(Target = nameof(AutoResetEventWaitSet))]
+    public void AutoResetEventCleanup()
     {
         while (_activeThreads > 0)
         {
@@ -55,7 +55,7 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
 
     [Benchmark]
     [BenchmarkCategory("WaitSet", "Standard")]
-    public void AutoResetEvent_WaitSet()
+    public void AutoResetEventWaitSet()
     {
         _eventStandard!.Set();
     }
@@ -70,23 +70,21 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
     [Test]
     public async Task PooledAsyncAutoResetEvent()
     {
-        PooledAsyncAutoResetEvent_Setup();
-        await PooledAsyncAutoResetEvent_WaitSet().ConfigureAwait(false);
-        PooledAsyncAutoResetEvent_Cleanup();
+        PooledAsyncAutoResetEventSetup();
+        await PooledAsyncAutoResetEventWaitSet().ConfigureAwait(false);
+        PooledAsyncAutoResetEventCleanup();
     }
 
-    [IterationSetup(Target = nameof(PooledAsyncAutoResetEvent_WaitSet))]
-    public void PooledAsyncAutoResetEvent_Setup()
+    [IterationSetup(Target = nameof(PooledAsyncAutoResetEventWaitSet))]
+    public void PooledAsyncAutoResetEventSetup()
     {
         _task = _eventPooled!.WaitAsync().AsTask();
 
         for (int i = 1; i < Iterations; i++)
         {
-            _ = Task.Run(async () => {
-                Interlocked.Increment(ref _activeThreads);
-                await _eventPooled!.WaitAsync().ConfigureAwait(false);
-                Interlocked.Decrement(ref _activeThreads);
-            });
+            Thread t = new Thread(PooledAsyncAutoResetEventWaiterThread);
+            t.Name = "PooledAutoResetEventThread_" + i;
+            t.Start();
         }
 
         while (_activeThreads < Iterations - 1)
@@ -95,8 +93,8 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         }
     }
 
-    [IterationCleanup(Target = nameof(PooledAsyncAutoResetEvent_WaitSet))]
-    public void PooledAsyncAutoResetEvent_Cleanup()
+    [IterationCleanup(Target = nameof(PooledAsyncAutoResetEventWaitSet))]
+    public void PooledAsyncAutoResetEventCleanup()
     {
         while (_activeThreads > 0)
         {
@@ -104,9 +102,16 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         }
     }
 
+    private void PooledAsyncAutoResetEventWaiterThread()
+    {
+        Interlocked.Increment(ref _activeThreads);
+        _eventPooled!.WaitAsync().AsTask().GetAwaiter().GetResult();
+        Interlocked.Decrement(ref _activeThreads);
+    }
+
     [Benchmark]
     [BenchmarkCategory("WaitSet", "Pooled")]
-    public async Task PooledAsyncAutoResetEvent_WaitSet()
+    public async Task PooledAsyncAutoResetEventWaitSet()
     {
         _eventPooled!.Set();
         await _task!.ConfigureAwait(false);
@@ -115,23 +120,21 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
     [Test]
     public async Task NitoAsyncAutoResetEvent()
     {
-        NitoAsyncAutoResetEvent_Setup();
-        await NitoAsyncAutoResetEvent_WaitSet().ConfigureAwait(false);
-        NitoAsyncAutoResetEvent_Cleanup();
+        NitoAsyncAutoResetEventSetup();
+        await NitoAsyncAutoResetEventWaitSet().ConfigureAwait(false);
+        NitoAsyncAutoResetEventCleanup();
     }
 
-    [IterationSetup(Target = nameof(NitoAsyncAutoResetEvent_WaitSet))]
-    public void NitoAsyncAutoResetEvent_Setup()
+    [IterationSetup(Target = nameof(NitoAsyncAutoResetEventWaitSet))]
+    public void NitoAsyncAutoResetEventSetup()
     {
         _task = _eventNitoAsync!.WaitAsync();
 
         for (int i = 1; i < Iterations; i++)
         {
-            _ = Task.Run(async () => {
-                Interlocked.Increment(ref _activeThreads);
-                await _eventNitoAsync!.WaitAsync().ConfigureAwait(false);
-                Interlocked.Decrement(ref _activeThreads);
-            });
+            Thread t = new Thread(NitoAsyncAutoResetEventWaiterThread);
+            t.Name = "NitoAsyncAutoResetEventThread_" + i;
+            t.Start();
         }
 
         while (_activeThreads < Iterations - 1)
@@ -140,8 +143,8 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         }
     }
 
-    [IterationCleanup(Target = nameof(NitoAsyncAutoResetEvent_WaitSet))]
-    public void NitoAsyncAutoResetEvent_Cleanup()
+    [IterationCleanup(Target = nameof(NitoAsyncAutoResetEventWaitSet))]
+    public void NitoAsyncAutoResetEventCleanup()
     {
         while (_activeThreads > 0)
         {
@@ -149,9 +152,16 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         }
     }
 
+    private void NitoAsyncAutoResetEventWaiterThread()
+    {
+        Interlocked.Increment(ref _activeThreads);
+        _eventNitoAsync!.WaitAsync().GetAwaiter().GetResult();
+        Interlocked.Decrement(ref _activeThreads);
+    }
+
     [Benchmark]
     [BenchmarkCategory("WaitSet", "Nito")]
-    public async Task NitoAsyncAutoResetEvent_WaitSet()
+    public async Task NitoAsyncAutoResetEventWaitSet()
     {
         _eventNitoAsync!.Set();
         await _task!.ConfigureAwait(false);
@@ -160,24 +170,21 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
     [Test]
     public async Task RefImplAsyncAutoResetEvent()
     {
-        RefImplAsyncAutoResetEvent_Setup();
-        await RefImplAsyncAutoResetEvent_WaitSet().ConfigureAwait(false);
+        RefImplAsyncAutoResetEventSetup();
+        await RefImplAsyncAutoResetEventWaitSet().ConfigureAwait(false);
+        RefImplAsyncAutoResetEventCleanup();
     }
 
-    [IterationSetup(Target = nameof(RefImplAsyncAutoResetEvent_WaitSet))]
-    public void RefImplAsyncAutoResetEvent_Setup()
+    [IterationSetup(Target = nameof(RefImplAsyncAutoResetEventWaitSet))]
+    public void RefImplAsyncAutoResetEventSetup()
     {
-        _eventRefImpl!.SetAll();
-
         _task = _eventRefImpl!.WaitAsync();
 
         for (int i = 1; i < Iterations; i++)
         {
-            _ = Task.Run(async () => {
-                Interlocked.Increment(ref _activeThreads);
-                await _eventRefImpl!.WaitAsync().ConfigureAwait(false);
-                Interlocked.Decrement(ref _activeThreads);
-            });
+            Thread t = new Thread(RefImplAsyncAutoResetEventWaiterThread);
+            t.Name = "RefImplAsyncAutoResetEventThread_" + i;
+            t.Start();
         }
 
         while (_activeThreads < Iterations - 1)
@@ -186,9 +193,25 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         }
     }
 
+    [IterationCleanup(Target = nameof(RefImplAsyncAutoResetEventWaitSet))]
+    public void RefImplAsyncAutoResetEventCleanup()
+    {
+        while (_activeThreads > 0)
+        {
+            _eventRefImpl!.Set();
+        }
+    }
+
+    private void RefImplAsyncAutoResetEventWaiterThread()
+    {
+        Interlocked.Increment(ref _activeThreads);
+        _eventRefImpl!.WaitAsync().GetAwaiter().GetResult();
+        Interlocked.Decrement(ref _activeThreads);
+    }
+
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("WaitSet", "RefImpl")]
-    public async Task RefImplAsyncAutoResetEvent_WaitSet()
+    public async Task RefImplAsyncAutoResetEventWaitSet()
     {
         _eventRefImpl!.Set();
         await _task!.ConfigureAwait(false);

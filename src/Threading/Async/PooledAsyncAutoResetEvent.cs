@@ -18,9 +18,9 @@ using System.Threading.Tasks;
 public class PooledAsyncAutoResetEvent
 {
     private static readonly ValueTask _completed = new ValueTask(Task.CompletedTask);
-    private static readonly ObjectPool<PooledValueTaskSource<bool>> _pool = new DefaultObjectPool<PooledValueTaskSource<bool>>(new ValueTaskSourcePooledObjectPolicy<bool>());
-    private readonly Queue<PooledValueTaskSource<bool>> _waiters = new();
-    private bool _signaled;
+    private static readonly ObjectPool<PooledValueTaskSource<bool>> _pool = new DefaultObjectPool<PooledValueTaskSource<bool>>(new PooledValueTaskSourceObjectPolicy<bool>());
+    private readonly Queue<PooledValueTaskSource<bool>> _waiters = new(10);
+    private int _signaled;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PooledAsyncAutoResetEvent"/>
@@ -30,7 +30,7 @@ public class PooledAsyncAutoResetEvent
     /// signaled; otherwise, <see langword="false"/>.</param>
     public PooledAsyncAutoResetEvent(bool initialState = false)
     {
-        _signaled = initialState;
+        _signaled = initialState ? 1 : 0;
     }
 
     /// <summary>
@@ -43,12 +43,16 @@ public class PooledAsyncAutoResetEvent
     /// <returns>A <see cref="ValueTask"/> that represents the asynchronous wait operation.</returns>
     public ValueTask WaitAsync()
     {
+        if (Interlocked.Exchange(ref _signaled, 0) != 0) 
+        {
+            return _completed;
+        }
+
         lock (_waiters)
         {
-            if (_signaled)
+            if (Interlocked.Exchange(ref _signaled, 0) != 0)
             {
-                _signaled = false;
-                return _completed; // completed ValueTask
+                return new ValueTask(Task.CompletedTask);
             }
 
             PooledValueTaskSource<bool> waiter = _pool.Get();
@@ -72,7 +76,7 @@ public class PooledAsyncAutoResetEvent
         {
             if (_waiters.Count == 0)
             {
-                _signaled = true;
+                Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
 
@@ -93,9 +97,10 @@ public class PooledAsyncAutoResetEvent
         {
             if (_waiters.Count == 0)
             {
-                _signaled = true;
+                Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
+
             toRelease = _waiters.ToList();
             _waiters.Clear();
         }

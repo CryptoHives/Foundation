@@ -8,7 +8,7 @@ using Microsoft.Extensions.ObjectPool;
 /// <summary>
 /// A policy for pooling <see cref="PooledValueTaskSource{T}"/> instances.
 /// </summary>
-internal class ValueTaskSourcePooledObjectPolicy<T> : PooledObjectPolicy<PooledValueTaskSource<T>>
+internal class PooledValueTaskSourceObjectPolicy<T> : PooledObjectPolicy<PooledValueTaskSource<T>>
 {
     /// <inheritdoc />
     public override PooledValueTaskSource<T> Create()
