@@ -11,44 +11,55 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// An async version of <see cref="AutoResetEvent"/> which uses a
+/// An async version of <see cref="ManualResetEvent"/> which uses a
 /// poolable <see cref="ManualResetValueTaskSource{Boolean}"/> to avoid allocations
 /// of <see cref="TaskCompletionSource{Boolean}"/> and <see cref="Task"/>.
 /// </summary>
-public class PooledAsyncAutoResetEvent
+public sealed class PooledAsyncManualResetEvent
 {
+    /// <summary>
+    /// The queue of waiting ValueTasks to wake up on Set.
+    /// </summary>
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
-    private int _signaled;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="PooledAsyncAutoResetEvent"/>
-    /// class with the specified initial state.
+    /// Whether the event is currently signaled.
     /// </summary>
-    /// <param name="initialState">A boolean value indicating the initial state of the event. <see langword="true"/> if the event is initially
-    /// signaled; otherwise, <see langword="false"/>.</param>
-    public PooledAsyncAutoResetEvent(bool initialState = false)
+    private bool _signaled;
+
+    /// <summary>
+    /// Creates an async ValueTask compatible ManualResetEvent.
+    /// </summary>
+    /// <param name="set">The initial state of the ManualResetEvent</param>
+    public PooledAsyncManualResetEvent(bool set)
     {
-        _signaled = initialState ? 1 : 0;
+        _signaled = set;
     }
 
     /// <summary>
-    /// Asynchronously waits for a signal to be received.
+    /// Creates an async ValueTask compatible ManualResetEvent which is not set.
     /// </summary>
-    /// <remarks>
-    /// If the signal has already been received, the method returns a completed <see cref="ValueTask"/>.
-    /// Otherwise, it enqueues a waiter and returns a task that completes when the signal is received.
-    /// </remarks>
-    /// <returns>A <see cref="ValueTask"/> that represents the asynchronous wait operation.</returns>
+    public PooledAsyncManualResetEvent()
+        : this(false)
+    {
+    }
+
+    /// <summary>
+    /// Whether this event is currently set.
+    /// </summary>
+    public bool IsSet
+    {
+        get { lock (_waiters) return _signaled; }
+    }
+
+    /// <summary>
+    /// Asynchronously waits for this event to be set.
+    /// </summary>
     public ValueTask WaitAsync()
     {
-        if (Interlocked.Exchange(ref _signaled, 0) != 0)
-        {
-            return PooledEventsCommon.CompletedTask;
-        }
-
         lock (_waiters)
         {
-            if (Interlocked.Exchange(ref _signaled, 0) != 0)
+            if (_signaled)
             {
                 return PooledEventsCommon.CompletedTask;
             }
@@ -70,45 +81,24 @@ public class PooledAsyncAutoResetEvent
 #endif
 
     /// <summary>
-    /// Signals the event, releasing a single waiting thread if any are queued.
+    /// Sets the event, completes every waiting ValueTask.
     /// </summary>
-    /// <remarks>
-    /// If no threads are waiting, the event is set to a signaled state, allowing any subsequent
-    /// threads to proceed without blocking. This method is thread-safe.
-    /// </remarks>
     public void Set()
     {
-        ManualResetValueTaskSource<bool>? toRelease;
+        int count;
+        ManualResetValueTaskSource<bool>[] toRelease;
 
         lock (_waiters)
         {
-            if (_waiters.Count == 0)
+            if (_signaled)
             {
-                _ = Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
+            _signaled = true;
 
-            toRelease = _waiters.Dequeue();
-        }
-
-        toRelease.SetResult(true);
-        PooledEventsCommon.ValueTaskSourcePool.Return(toRelease);
-    }
-
-    /// <summary>
-    /// Signals all waiting tasks to complete successfully.
-    /// </summary>
-    public void SetAll()
-    {
-        int count;
-        ManualResetValueTaskSource<bool>[]? toRelease;
-
-        lock (_waiters)
-        {
             count = _waiters.Count;
             if (count == 0)
             {
-                _ = Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
 
@@ -134,6 +124,19 @@ public class PooledAsyncAutoResetEvent
         finally
         {
             ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
+        }
+    }
+
+    /// <summary>
+    /// Resets the event.
+    /// If the event is already reset, this method does nothing.
+    /// </summary>
+    public void Reset()
+    {
+        lock (_waiters)
+        {
+            Debug.Assert(_waiters.Count == 0, "There should be no waiters when resetting the event.");
+            _signaled = false;
         }
     }
 }

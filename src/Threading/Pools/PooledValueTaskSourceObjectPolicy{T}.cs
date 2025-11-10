@@ -6,18 +6,18 @@ namespace CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 
 /// <summary>
-/// A policy for pooling <see cref="PooledValueTaskSource{T}"/> instances.
+/// A policy for pooling <see cref="ManualResetValueTaskSource{T}"/> instances.
 /// </summary>
-internal class PooledValueTaskSourceObjectPolicy<T> : PooledObjectPolicy<PooledValueTaskSource<T>>
+public class PooledValueTaskSourceObjectPolicy<T> : PooledObjectPolicy<ManualResetValueTaskSource<T>>
 {
     /// <inheritdoc />
-    public override PooledValueTaskSource<T> Create()
+    public override ManualResetValueTaskSource<T> Create()
     {
-        return new PooledValueTaskSource<T>();
+        return new ManualResetValueTaskSource<T>();
     }
 
     /// <inheritdoc />
-    public override bool Return(PooledValueTaskSource<T> obj)
+    public override bool Return(ManualResetValueTaskSource<T> obj)
     {
         return obj.TryReset();
     }

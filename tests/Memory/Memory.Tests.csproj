@@ -6,7 +6,7 @@
     <OutputType>Exe</OutputType>
     <AssemblyName>Memory.Tests</AssemblyName>
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
-    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <RootNamespace>$(AssemblyPrefix).$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 

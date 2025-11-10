@@ -16,7 +16,7 @@ using System.Threading.Tasks.Sources;
 /// and supports querying the status and retrieving the result.
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse by an <see cref="ObjectPool"/>.
 /// </remarks>
-internal sealed class PooledValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
+public sealed class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
     private ManualResetValueTaskSourceCore<T> _core;
     private short _version;
@@ -38,7 +38,7 @@ internal sealed class PooledValueTaskSource<T> : IValueTaskSource<T>, IValueTask
     }
 
     /// <summary>
-    /// Signals the completion of an operation, setting the result to <see langword="true"/>.
+    /// Signals the completion of an operation, setting the result to T.
     /// </summary>
     /// <remarks>
     /// This method is typically used to indicate that an asynchronous operation has completed successfully.

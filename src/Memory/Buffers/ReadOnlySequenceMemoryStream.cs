@@ -294,7 +294,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 
             if (((ReadOnlySequenceSegment<byte>)positionSequenceObject!).Memory.Length - positionIndex < 0)
             {
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(position));
             }
 
             // Multi-Segment Sequence
@@ -305,7 +305,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             }
 
             // Hit the end of the segments but didn't find the segment
-            if (currentSegment is null) throw new ArgumentOutOfRangeException();
+            if (currentSegment is null) throw new ArgumentOutOfRangeException(nameof(position));
 
             Debug.Assert(currentSegment!.RunningIndex + positionIndex >= 0);
 

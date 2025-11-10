@@ -23,7 +23,7 @@ public class PooledAsyncAutoResetEventUnitTests
     }
 
     [Test]
-    public async Task WaitAsyncWhenNotSignaledTaskNeverCompletes()
+    public async Task WaitAsyncWhenNotSignaledTaskNeverCompletesAsync()
     {
         var ev = new PooledAsyncAutoResetEvent();
 
@@ -116,11 +116,12 @@ public class PooledAsyncAutoResetEventUnitTests
 
         ev.SetAll();
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.ThrowsAsync<InvalidOperationException>(async () => await w1.ConfigureAwait(false));
             Assert.ThrowsAsync<InvalidOperationException>(async () => await w2.ConfigureAwait(false));
             Assert.ThrowsAsync<InvalidOperationException>(async () => await w3.ConfigureAwait(false));
-        });
+        }
 
         await aw1.ConfigureAwait(false);
         await aw2.ConfigureAwait(false);

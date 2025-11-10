@@ -17,7 +17,7 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Pooled")]
-    public async Task PooledAsyncAutoResetEventTaskWait()
+    public async Task PooledAsyncAutoResetEventTaskWaitAsync()
     {
         Task t = _eventPooled!.WaitAsync().AsTask();
         _eventPooled!.Set();
@@ -39,7 +39,7 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Nito")]
-    public async Task NitoAsyncAutoResetEventTaskWait()
+    public async Task NitoAsyncAutoResetEventTaskWaitAsync()
     {
         Task t = _eventNitoAsync!.WaitAsync();
         _eventNitoAsync!.Set();
@@ -49,7 +49,7 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Wait", "RefImpl")]
-    public async Task RefImplAsyncAutoResetEventTaskWait()
+    public async Task RefImplAsyncAutoResetEventTaskWaitAsync()
     {
         Task t = _eventRefImpl!.WaitAsync();
         _eventRefImpl!.Set();
