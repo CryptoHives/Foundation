@@ -18,13 +18,13 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
-    private ManualResetValueTaskSourceCore<T> _core;
-    private short _version;
+    private ManualResetValueTaskSourceCore<T> _core = default;
+
 
     /// <summary>
     /// Gets the version number of the current instance.
     /// </summary>
-    public short Version => _version;
+    public short Version => _core.Version;
 
     /// <inheritdoc/>
     /// <remarks>
@@ -33,7 +33,6 @@ public sealed class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueT
     public bool TryReset()
     {
         _core.Reset();
-        unchecked { _version++; }
         return true;
     }
 
