@@ -27,13 +27,11 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Pooled")]
-    public void PooledAsyncAutoResetEventValueTaskWait()
+    public async Task PooledAsyncAutoResetEventValueTaskWaitAsync()
     {
-        // Using ValueTask directly without converting to Task,
-        // it cannot be awaited after setting the event
-        // Thus, we just get the memory effect of ValueTask usage here.
-        _ = _eventPooled!.WaitAsync();
+        ValueTask vt = _eventPooled!.WaitAsync();
         _eventPooled!.Set();
+        await vt.ConfigureAwait(false);
     }
 
     [Test]

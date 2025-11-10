@@ -12,12 +12,12 @@ InvocationCount=1  UnrollFactor=1
 ```
 | Method                                 | Iterations | Mean     | Error     | StdDev    | Median   | Ratio | RatioSD | Allocated | Alloc Ratio |
 |--------------------------------------- |----------- |---------:|----------:|----------:|---------:|------:|--------:|----------:|------------:|
-| **NitoAsyncAutoResetEventWaitSetAsync**    | **1**          | **1.437 μs** | **0.1003 μs** | **0.2909 μs** | **1.400 μs** |  **1.34** |    **0.35** |         **-** |          **NA** |
-| PooledAsyncAutoResetEventWaitSetAsync  | 1          | 1.468 μs | 0.1117 μs | 0.3187 μs | 1.500 μs |  1.37 |    0.37 |         - |          NA |
-| RefImplAsyncAutoResetEventWaitSetAsync | 1          | 1.095 μs | 0.0581 μs | 0.1657 μs | 1.050 μs |  1.02 |    0.22 |         - |          NA |
-| AutoResetEventWaitSet                  | 1          | 2.689 μs | 0.0614 μs | 0.1741 μs | 2.700 μs |  2.51 |    0.43 |         - |          NA |
+| **NitoAsyncAutoResetEventWaitSetAsync**    | **1**          | **1.285 μs** | **0.1029 μs** | **0.2919 μs** | **1.300 μs** |  **1.21** |    **0.35** |         **-** |          **NA** |
+| PooledAsyncAutoResetEventWaitSetAsync  | 1          | 1.492 μs | 0.1021 μs | 0.2931 μs | 1.400 μs |  1.40 |    0.37 |         - |          NA |
+| RefImplAsyncAutoResetEventWaitSetAsync | 1          | 1.094 μs | 0.0571 μs | 0.1657 μs | 1.100 μs |  1.03 |    0.24 |         - |          NA |
+| AutoResetEventWaitSet                  | 1          | 2.639 μs | 0.0656 μs | 0.1851 μs | 2.600 μs |  2.48 |    0.46 |         - |          NA |
 |                                        |            |          |           |           |          |       |         |           |             |
-| **NitoAsyncAutoResetEventWaitSetAsync**    | **10**         | **4.641 μs** | **0.1093 μs** | **0.3066 μs** | **4.600 μs** |  **1.02** |    **0.10** |         **-** |          **NA** |
-| PooledAsyncAutoResetEventWaitSetAsync  | 10         | 5.240 μs | 0.1390 μs | 0.4056 μs | 5.100 μs |  1.16 |    0.12 |         - |          NA |
-| RefImplAsyncAutoResetEventWaitSetAsync | 10         | 4.557 μs | 0.1184 μs | 0.3320 μs | 4.500 μs |  1.01 |    0.10 |         - |          NA |
-| AutoResetEventWaitSet                  | 10         | 2.830 μs | 0.0696 μs | 0.1905 μs | 2.800 μs |  0.62 |    0.06 |         - |          NA |
+| **NitoAsyncAutoResetEventWaitSetAsync**    | **10**         | **4.575 μs** | **0.0933 μs** | **0.2218 μs** | **4.600 μs** |  **1.00** |    **0.08** |         **-** |          **NA** |
+| PooledAsyncAutoResetEventWaitSetAsync  | 10         | 5.131 μs | 0.1082 μs | 0.3087 μs | 5.100 μs |  1.12 |    0.10 |         - |          NA |
+| RefImplAsyncAutoResetEventWaitSetAsync | 10         | 4.600 μs | 0.1122 μs | 0.3108 μs | 4.500 μs |  1.00 |    0.09 |         - |          NA |
+| AutoResetEventWaitSet                  | 10         | 2.761 μs | 0.0579 μs | 0.1420 μs | 2.750 μs |  0.60 |    0.05 |         - |          NA |

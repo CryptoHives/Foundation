@@ -26,7 +26,17 @@ public static class PooledEventsCommon
     public static readonly ValueTask CompletedTask = new(Task.CompletedTask);
 
     /// <summary>
-    /// Gets an instance of a <see cref="ManualResetValueTaskSource{Boolean}"/> object pool.
+    /// Holds the shared <see cref="ManualResetValueTaskSource{Boolean}"/> object pool.
     /// </summary>
-    public static readonly ObjectPool<ManualResetValueTaskSource<bool>> ValueTaskSourcePool = new DefaultObjectPool<ManualResetValueTaskSource<bool>>(new PooledValueTaskSourceObjectPolicy<bool>());
+    private static readonly ObjectPool<ManualResetValueTaskSource<bool>> ValueTaskSourcePool = new DefaultObjectPool<ManualResetValueTaskSource<bool>>(new PooledValueTaskSourceObjectPolicy<bool>());
+
+    /// <summary>
+    /// Gets a ValueTaskSource from the pool.
+    /// </summary>
+    public static ManualResetValueTaskSource<bool> GetPooledValueTaskSource()
+    {
+        ManualResetValueTaskSource<bool> vts = ValueTaskSourcePool.Get();
+        vts.SetOwnerPool(ValueTaskSourcePool);
+        return vts;
+    }
 }

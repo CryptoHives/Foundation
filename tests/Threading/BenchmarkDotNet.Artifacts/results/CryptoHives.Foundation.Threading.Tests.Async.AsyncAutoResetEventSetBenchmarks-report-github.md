@@ -9,9 +9,9 @@ AMD Ryzen 9 8945HS w/ Radeon 780M Graphics 4.00GHz, 1 CPU, 16 logical and 8 phys
 Job=.NET 8.0  Runtime=.NET 8.0  Toolchain=net8.0  
 
 ```
-| Method                        | Mean       | Error     | StdDev     | Median     | Ratio | RatioSD | Allocated | Alloc Ratio |
-|------------------------------ |-----------:|----------:|-----------:|-----------:|------:|--------:|----------:|------------:|
-| NitoAsyncAutoResetEventSet    |   5.773 ns | 0.0500 ns |  0.0467 ns |   5.758 ns |  1.02 |    0.01 |         - |          NA |
-| PooledAsyncAutoResetEventSet  |   5.890 ns | 0.0274 ns |  0.0229 ns |   5.893 ns |  1.04 |    0.00 |         - |          NA |
-| RefImplAsyncAutoResetEventSet |   5.658 ns | 0.0164 ns |  0.0145 ns |   5.654 ns |  1.00 |    0.00 |         - |          NA |
-| AutoResetEventSet             | 247.801 ns | 5.8377 ns | 17.2125 ns | 237.331 ns | 43.79 |    3.03 |         - |          NA |
+| Method                        | Mean       | Error     | StdDev    | Ratio | RatioSD | Allocated | Alloc Ratio |
+|------------------------------ |-----------:|----------:|----------:|------:|--------:|----------:|------------:|
+| NitoAsyncAutoResetEventSet    |   5.695 ns | 0.0230 ns | 0.0215 ns |  1.00 |    0.01 |         - |          NA |
+| PooledAsyncAutoResetEventSet  |   5.777 ns | 0.0201 ns | 0.0188 ns |  1.02 |    0.01 |         - |          NA |
+| RefImplAsyncAutoResetEventSet |   5.667 ns | 0.0250 ns | 0.0222 ns |  1.00 |    0.01 |         - |          NA |
+| AutoResetEventSet             | 231.564 ns | 1.4633 ns | 1.3688 ns | 40.86 |    0.28 |         - |          NA |

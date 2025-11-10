@@ -47,9 +47,14 @@ public class PooledAsyncAutoResetEventUnitTests
         // Subsequent waiter should not be completed because the signal is auto-reset
         ValueTask vt2 = ev.WaitAsync();
         Assert.That(vt2.IsCompleted, Is.False, "Expected subsequent WaitAsync to return a non-completed ValueTask after reset");
+        ev.Set();
+        await vt2.ConfigureAwait(false);
 
         Task t = ev.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
+        ev.Set();
+        ev.Set();
+        await t.ConfigureAwait(false);
     }
 
     [Test]
@@ -84,7 +89,7 @@ public class PooledAsyncAutoResetEventUnitTests
 
         await waiter.ConfigureAwait(false);
 
-        Assert.That(waiter.IsCompleted, Is.True, "Expected no leftover signaled state after releasing a queued waiter");
+        Assert.Throws<InvalidOperationException>(() => { _ = waiter.IsCompleted; });
 
         // Ensure no leftover signaled state
         ValueTask vt2 = ev.WaitAsync();
@@ -110,12 +115,18 @@ public class PooledAsyncAutoResetEventUnitTests
             Assert.That(w3.IsCompleted, Is.False, "w3 should not be completed before SetAll()");
         }
 
-        Task aw1 = w1.AsTask();
-        Task aw2 = w2.AsTask();
-        Task aw3 = w3.AsTask();
+        Task aw1 = ev.WaitAsync().AsTask();
+        Task aw2 = ev.WaitAsync().AsTask();
+        Task aw3 = ev.WaitAsync().AsTask();
 
         ev.SetAll();
 
+        // ValueTask can be awaited one time
+        await w1.ConfigureAwait(false);
+        await w2.ConfigureAwait(false);
+        await w3.ConfigureAwait(false);
+
+        // ValueTask throws on the second await
         using (Assert.EnterMultipleScope())
         {
             Assert.ThrowsAsync<InvalidOperationException>(async () => await w1.ConfigureAwait(false));
@@ -123,6 +134,12 @@ public class PooledAsyncAutoResetEventUnitTests
             Assert.ThrowsAsync<InvalidOperationException>(async () => await w3.ConfigureAwait(false));
         }
 
+        // Task can be awaited multiple times
+        await aw1.ConfigureAwait(false);
+        await aw2.ConfigureAwait(false);
+        await aw3.ConfigureAwait(false);
+
+        // Task can be awaited multiple times
         await aw1.ConfigureAwait(false);
         await aw2.ConfigureAwait(false);
         await aw3.ConfigureAwait(false);
@@ -131,6 +148,7 @@ public class PooledAsyncAutoResetEventUnitTests
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.False, "Expected subsequent WaitAsync to be non-completed after SetAll() released queued waiters");
 
+        // The task is not signalled
         Task t = ev.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
     }

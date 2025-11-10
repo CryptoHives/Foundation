@@ -11,6 +11,6 @@ Job=.NET 8.0  Runtime=.NET 8.0  Toolchain=net8.0
 ```
 | Method                            | Mean     | Error    | StdDev   | Ratio | Allocated | Alloc Ratio |
 |---------------------------------- |---------:|---------:|---------:|------:|----------:|------------:|
-| NitoAsyncAutoResetEventSetWait    | 17.87 ns | 0.063 ns | 0.049 ns |  0.95 |         - |          NA |
-| PooledAsyncAutoResetEventSetWait  | 15.92 ns | 0.201 ns | 0.178 ns |  0.84 |         - |          NA |
-| RefImplAsyncAutoResetEventSetWait | 18.86 ns | 0.118 ns | 0.099 ns |  1.00 |         - |          NA |
+| NitoAsyncAutoResetEventSetWait    | 17.53 ns | 0.053 ns | 0.047 ns |  0.95 |         - |          NA |
+| PooledAsyncAutoResetEventSetWait  | 15.56 ns | 0.115 ns | 0.107 ns |  0.84 |         - |          NA |
+| RefImplAsyncAutoResetEventSetWait | 18.55 ns | 0.079 ns | 0.074 ns |  1.00 |         - |          NA |

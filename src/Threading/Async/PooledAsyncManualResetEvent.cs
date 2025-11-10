@@ -64,7 +64,7 @@ public sealed class PooledAsyncManualResetEvent
                 return PooledEventsCommon.CompletedTask;
             }
 
-            ManualResetValueTaskSource<bool> waiter = PooledEventsCommon.ValueTaskSourcePool.Get();
+            ManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
@@ -118,7 +118,6 @@ public sealed class PooledAsyncManualResetEvent
             {
                 waiter = toRelease[i];
                 waiter.SetResult(true);
-                PooledEventsCommon.ValueTaskSourcePool.Return(waiter);
             }
         }
         finally

@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Threading.Async;
 
 using CryptoHives.Foundation.Threading.Pools;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -37,10 +38,13 @@ public class PooledAsyncAutoResetEvent
     /// <remarks>
     /// If the signal has already been received, the method returns a completed <see cref="ValueTask"/>.
     /// Otherwise, it enqueues a waiter and returns a task that completes when the signal is received.
+    /// The ValueTask can only be awaited or transformed with AsTask() one single time, then it is returned to
+    /// the pool and every subsequent access throws a <see cref="InvalidOperationException"/>
     /// </remarks>
     /// <returns>A <see cref="ValueTask"/> that represents the asynchronous wait operation.</returns>
     public ValueTask WaitAsync()
     {
+        // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
         {
             return PooledEventsCommon.CompletedTask;
@@ -48,12 +52,13 @@ public class PooledAsyncAutoResetEvent
 
         lock (_waiters)
         {
+            // due to race conditions, _signalled may have changed
             if (Interlocked.Exchange(ref _signaled, 0) != 0)
             {
                 return PooledEventsCommon.CompletedTask;
             }
 
-            ManualResetValueTaskSource<bool> waiter = PooledEventsCommon.ValueTaskSourcePool.Get();
+            ManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
@@ -92,7 +97,6 @@ public class PooledAsyncAutoResetEvent
         }
 
         toRelease.SetResult(true);
-        PooledEventsCommon.ValueTaskSourcePool.Return(toRelease);
     }
 
     /// <summary>
@@ -128,7 +132,6 @@ public class PooledAsyncAutoResetEvent
             {
                 waiter = toRelease[i];
                 waiter.SetResult(true);
-                PooledEventsCommon.ValueTaskSourcePool.Return(waiter);
             }
         }
         finally
