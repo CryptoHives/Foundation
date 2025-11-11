@@ -1,6 +1,6 @@
 <#
  .SYNOPSIS
-    find the top most folder with file in it and return the path
+    Find the topmost folder that contains the specified file and return the path
 
  .DESCRIPTION
     Generic functionality needed to find a root.

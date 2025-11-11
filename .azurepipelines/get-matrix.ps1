@@ -1,11 +1,11 @@
 <#
  .SYNOPSIS
-    Creates buildjob matrix based on the specified file names in the tree.
+    Creates a build job matrix based on the specified file names in the tree.
 
  .DESCRIPTION
     The script traverses the build root to find all folders with a matching 
-    file and populates the matrix.  The matrix is used to spawn jobs that
-    run on multiple different environments for each file.  E.g. build all
+    file and populates the matrix. The matrix is used to spawn jobs that
+    run on multiple different environments for each file. E.g. build all
     solution files on all platforms, run tests per particular folder of 
     the tree, etc.
 

@@ -5,27 +5,28 @@ namespace CryptoHives.Foundation.Threading.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
-using System.Threading;
 using System.Threading.Tasks.Sources;
 
 /// <summary>
-/// Represents a synchronization primitive that can be used to signal the completion of an operation.
+/// An implementation of <see cref="IValueTaskSource{T}"/>.
 /// </summary>
 /// <remarks>
 /// This class is a sealed implementation of <see cref="IValueTaskSource{T}"/> and provides methods to
 /// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
-/// and supports querying the status and retrieving the result.
-/// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse by an <see cref="ObjectPool"/>.
+/// and supports querying the status and retrieving the result. In addition, the owner pool can be set to return
+/// the instance to the pool when it is no longer needed.
+/// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
+/// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
-public sealed class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
+internal sealed class PooledManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
     private ManualResetValueTaskSourceCore<T> _core = default;
-    private ObjectPool<ManualResetValueTaskSource<T>>? _ownerPool;
+    private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
 
     /// <summary>
     /// Sets the pool to which the object is returned after it was awaited.
     /// </summary>
-    public void SetOwnerPool(ObjectPool<ManualResetValueTaskSource<T>>? ownerPool)
+    public void SetOwnerPool(ObjectPool<PooledManualResetValueTaskSource<T>>? ownerPool)
     {
         _ownerPool = ownerPool;
     }
@@ -68,7 +69,6 @@ public sealed class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueT
         _ownerPool?.Return(this);
         return result;
     }
-
 
     /// <inheritdoc/>
     void IValueTaskSource.GetResult(short token)

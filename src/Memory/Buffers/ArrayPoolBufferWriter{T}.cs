@@ -13,16 +13,6 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
 {
-    /// <summary>
-    /// The default chunk size.
-    /// </summary>
-    public static readonly int DefaultChunkSize = 256;
-
-    /// <summary>
-    /// The default maximum chunk size.
-    /// </summary>
-    public static readonly int MaxChunkSize = 65536;
-
     private static readonly T[] _emptyBuffer = Array.Empty<T>();
     private readonly bool _clearArray;
     private readonly int _maxChunkSize;
@@ -32,6 +22,16 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
     private ArrayPoolBufferSegment<T>? _nextSegment;
     private int _offset;
     private bool _disposed;
+
+    /// <summary>
+    /// The default chunk size.
+    /// </summary>
+    public static readonly int DefaultChunkSize = 256;
+
+    /// <summary>
+    /// The default maximum chunk size.
+    /// </summary>
+    public static readonly int MaxChunkSize = 65536;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolBufferWriter{T}"/> class.
@@ -78,6 +78,7 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
             _firstSegment = _nextSegment = null;
         }
         _disposed = true;
+        GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc/>
