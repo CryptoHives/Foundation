@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 /// Provides common constants, static variables and pools for efficient memory usage in async events.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public static class PooledEventsCommon
+internal static class PooledEventsCommon
 {
     /// <summary>
     /// The default size for a queue used in a event.
@@ -26,16 +26,16 @@ public static class PooledEventsCommon
     public static readonly ValueTask CompletedTask = new(Task.CompletedTask);
 
     /// <summary>
-    /// Holds the shared <see cref="ManualResetValueTaskSource{Boolean}"/> object pool.
+    /// Holds the shared <see cref="PooledManualResetValueTaskSource{Boolean}"/> object pool.
     /// </summary>
-    private static readonly ObjectPool<ManualResetValueTaskSource<bool>> ValueTaskSourcePool = new DefaultObjectPool<ManualResetValueTaskSource<bool>>(new PooledValueTaskSourceObjectPolicy<bool>());
+    private static readonly ObjectPool<PooledManualResetValueTaskSource<bool>> ValueTaskSourcePool = new DefaultObjectPool<PooledManualResetValueTaskSource<bool>>(new PooledValueTaskSourceObjectPolicy<bool>());
 
     /// <summary>
     /// Gets a ValueTaskSource from the pool.
     /// </summary>
-    public static ManualResetValueTaskSource<bool> GetPooledValueTaskSource()
+    public static PooledManualResetValueTaskSource<bool> GetPooledValueTaskSource()
     {
-        ManualResetValueTaskSource<bool> vts = ValueTaskSourcePool.Get();
+        PooledManualResetValueTaskSource<bool> vts = ValueTaskSourcePool.Get();
         vts.SetOwnerPool(ValueTaskSourcePool);
         return vts;
     }

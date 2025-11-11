@@ -11,13 +11,13 @@ using System;
 /// is responsible for disposing the underlying object appropriately.
 /// </summary>
 /// <remarks>
-/// Use only in a limited scope such as a using statement to ensure
-/// that the the ObjectOwner struct is not copied and the Object is returned to the pool, e.g.
+/// Use only in a limited scope such as in a using statement to ensure
+/// that the ObjectOwner struct is not copied and the object is returned to the pool, e.g.
 /// <code>
 ///     using var owner = new ObjectOwner&lt;MyType&gt;(myPool);
 ///     MyType obj = owner.Object;
 /// </code>
-/// note: do not cast to IDisposable to avoid a boxing allocation
+/// Note: do not cast to IDisposable to avoid a boxing allocation.
 /// </remarks>
 public readonly struct ObjectOwner<T> : IDisposable where T : class
 {

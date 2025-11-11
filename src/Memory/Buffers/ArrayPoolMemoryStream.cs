@@ -18,16 +18,6 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public sealed class ArrayPoolMemoryStream : MemoryStream
 {
-    /// <summary>
-    /// The default buffer size of the allocated array pool buffers.
-    /// </summary>
-    public static readonly int DefaultBufferSize = 4096;
-
-    /// <summary>
-    /// The default list size for the array segments.
-    /// </summary>
-    public static readonly int DefaultBufferListSize = 8;
-
     private readonly List<ArraySegment<byte>> _buffers;
     private readonly int _start;
     private readonly int _count;
@@ -37,6 +27,16 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     private ArraySegment<byte> _currentBuffer;
     private int _currentPosition;
     private int _endOfLastBuffer;
+
+    /// <summary>
+    /// The default buffer size of the allocated array pool buffers.
+    /// </summary>
+    public static readonly int DefaultBufferSize = 4096;
+
+    /// <summary>
+    /// The default list size for the array segments.
+    /// </summary>
+    public static readonly int DefaultBufferListSize = 8;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.

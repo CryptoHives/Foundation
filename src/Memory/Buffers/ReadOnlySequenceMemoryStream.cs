@@ -32,7 +32,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
     public ReadOnlySequenceMemoryStream(ReadOnlySequence<byte> sequence)
     {
         _sequence = sequence;
-        _nextSequencePosition = sequence.GetPosition(0);
+        _nextSequencePosition = _sequence.GetPosition(0);
         _endOfSequence = SetNextBuffer();
     }
 

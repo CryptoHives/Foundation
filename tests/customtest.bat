@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo This script is used to run custom platform tests for the CryptoHives Libraries
-echo Supported parameters: net462, netstandard2.0, netstandard2.1, net472, net48, net8.0, net 9.0
+echo Supported parameters: net462, netstandard2.0, netstandard2.1, net472, net48, net8.0, net9.0
 
 REM Check if the target framework parameter is provided
 if "%1"=="" (

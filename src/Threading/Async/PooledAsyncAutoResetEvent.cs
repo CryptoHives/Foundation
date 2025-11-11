@@ -10,15 +10,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 
 /// <summary>
 /// An async version of <see cref="AutoResetEvent"/> which uses a
-/// poolable <see cref="ManualResetValueTaskSource{Boolean}"/> to avoid allocations
+/// poolable <see cref="PooledManualResetValueTaskSource{Boolean}"/> to avoid allocations
 /// of <see cref="TaskCompletionSource{Boolean}"/> and <see cref="Task"/>.
 /// </summary>
 public class PooledAsyncAutoResetEvent
 {
-    private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
+    private readonly Queue<PooledManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private int _signaled;
 
     /// <summary>
@@ -38,10 +39,35 @@ public class PooledAsyncAutoResetEvent
     /// <remarks>
     /// If the signal has already been received, the method returns a completed <see cref="ValueTask"/>.
     /// Otherwise, it enqueues a waiter and returns a task that completes when the signal is received.
-    /// The ValueTask can only be awaited or transformed with AsTask() one single time, then it is returned to
-    /// the pool and every subsequent access throws a <see cref="InvalidOperationException"/>
+    /// The ValueTask is a struct that can only be awaited or transformed with AsTask() ONE time, then
+    /// it is returned to the pool and every subsequent access throws an <see cref="InvalidOperationException"/>.
+    /// <code>
+    ///     var event = new PooledAsyncAutoResetEvent();
+    ///     
+    ///     // GOOD: single await
+    ///     await _event.WaitAsync().ConfigureAwait(false);
+    ///     
+    ///     // GOOD: single await after calling WaitAsync()
+    ///     ValueTask vt = _event.WaitAsync();
+    ///     _event.Set();
+    ///     await vt.ConfigureAwait(false)
+    ///
+    ///     // FAIL: multiple awaits on ValueTask - throws InvalidOperationException on second await
+    ///     await vt.WaitAsync().ConfigureAwait(false);
+    /// 
+    ///     // GOOD: single AsTask() usage, multiple await on Task
+    ///     Task t = await _event.WaitAsync().AsTask();
+    ///     _event.Set();
+    ///     await t.ConfigureAwait(false);
+    ///     await t.ConfigureAwait(false);
+    ///     
+    ///     // FAIL: single await with GetAwaiter().GetResult() - may throw InvalidOperationException
+    ///     await _event.WaitAsync().GetAwaiter().GetResult();
+    /// </code>
+    /// Be aware that the underlying pooled implementation of <see cref="IValueTaskSource"/>
+    /// may leak if the returned ValueTask is never awaited or transformed to a <see cref="Task"/>.
     /// </remarks>
-    /// <returns>A <see cref="ValueTask"/> that represents the asynchronous wait operation.</returns>
+    /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
     public ValueTask WaitAsync()
     {
         // fast path without lock
@@ -58,7 +84,7 @@ public class PooledAsyncAutoResetEvent
                 return PooledEventsCommon.CompletedTask;
             }
 
-            ManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
+            PooledManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
@@ -83,7 +109,7 @@ public class PooledAsyncAutoResetEvent
     /// </remarks>
     public void Set()
     {
-        ManualResetValueTaskSource<bool>? toRelease;
+        PooledManualResetValueTaskSource<bool>? toRelease;
 
         lock (_waiters)
         {
@@ -105,7 +131,7 @@ public class PooledAsyncAutoResetEvent
     public void SetAll()
     {
         int count;
-        ManualResetValueTaskSource<bool>[]? toRelease;
+        PooledManualResetValueTaskSource<bool>[]? toRelease;
 
         lock (_waiters)
         {
@@ -116,7 +142,7 @@ public class PooledAsyncAutoResetEvent
                 return;
             }
 
-            toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(count);
+            toRelease = ArrayPool<PooledManualResetValueTaskSource<bool>>.Shared.Rent(count);
             for (int i = 0; i < count; i++)
             {
                 toRelease[i] = _waiters.Dequeue();
@@ -127,7 +153,7 @@ public class PooledAsyncAutoResetEvent
 
         try
         {
-            ManualResetValueTaskSource<bool> waiter;
+            PooledManualResetValueTaskSource<bool> waiter;
             for (int i = 0; i < count; i++)
             {
                 waiter = toRelease[i];
@@ -136,7 +162,7 @@ public class PooledAsyncAutoResetEvent
         }
         finally
         {
-            ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
+            ArrayPool<PooledManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
         }
     }
 }

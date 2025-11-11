@@ -36,9 +36,9 @@ The **CryptoHives .NET Foundation** project serves as the first core building bl
 
 All implementations are developed **from first principles**, without reliance on operating system or native platform crypto providers, ensuring:
 
-- 🔒 **Security Transparency** — all algorithms are clean-room verified and auditable  
+- 🔒 **Security Transparency** — all algorithms are clean-room verified and auditable 
 - ⚙️ **Predictable Performance** — optimized memory usage and allocation-free APIs 
-- 🧱 **Composable Architecture** — designed for integration in modern .NET applications, from libraries to microservices  
+- 🧱 **Composable Architecture** — designed for integration in modern .NET applications, from libraries to microservices 
 
 ---
 
@@ -105,9 +105,9 @@ public class Example
 
 ## 🧪 Clean-Room Policy
 
-All code within the **CryptoHives Open Source Initiative** is written and validated under **strict clean-room conditions**:
+All code within the **CryptoHives .NET Foundation** is written and validated under **strict clean-room conditions**:
 
-- No reverse engineering or derived code from existing proprietary libraries  
+- No reverse engineering or derived code from existing proprietary libraries
 - Implementations are verified against public specifications and test vectors  
 - Review process includes formal algorithm validation and peer verification  
 
@@ -122,6 +122,19 @@ Instead, please follow the guidelines on the [CryptoHives Open Source Initiative
 
 ---
 
+## 📝 No-Nonsense Matters
+
+This project is released under the MIT License because open collaboration matters.  
+However, the Keepers are well aware that MIT-licensed code often gets copied, repackaged, or commercialized without giving credit.  
+
+If you use this code, please do so responsibly:
+- Give visible credit to the **CryptoHives Open Source Initiative** or **The Keepers of the CryptoHives** and refer to the original source.
+- Contribute improvements back and report issues.
+
+Open source thrives on respect, not just permissive licenses.
+
+---
+
 ## ⚖️ License
 
 Each component of the CryptoHives Open Source Initiative is licensed under a SPDX-compatible license.  
@@ -133,24 +146,10 @@ By default, packages use the following license tags:
 ```
 
 Some inherited components may use alternative MIT license headers, according to their origin and specific requirements those headers are retained.
-
+<!--
 ---
-
-
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_large)
-
-## 📝 No-Nonsense Matters
-
-This project is released under the MIT License because open collaboration matters.  
-However, the Keepers are well aware that MIT-licensed code often gets copied, repackaged, or commercialized without giving credit.  
-
-If you use this code, please do so responsibly:
-- Give visible credit to the **CryptoHives Open Source Initiative** or **The Keepers of the CryptoHives** and refer to the original source.
-- Contribute improvements back and report issues.
-- Don’t pretend you wrote it from scratch.
-
-Open source thrives on respect, not just permissive licenses.
-
+-->
 ---
 
 ## 🐝 About The Keepers of the CryptoHives
