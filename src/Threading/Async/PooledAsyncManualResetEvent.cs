@@ -77,7 +77,7 @@ public sealed class PooledAsyncManualResetEvent
     ///     await vt.ConfigureAwait(false);
     /// 
     ///     // GOOD: single AsTask() usage, multiple await on Task
-    ///     Task t = await _event.WaitAsync().AsTask();
+    ///     Task t = _event.WaitAsync().AsTask();
     ///     _event.Set();
     ///     await t.ConfigureAwait(false);
     ///     await t.ConfigureAwait(false);
