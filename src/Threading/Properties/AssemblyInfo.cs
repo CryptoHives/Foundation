@@ -5,5 +5,5 @@ using System;
 using System.Runtime.CompilerServices;
 
 [assembly: CLSCompliant(false)]
-[assembly: InternalsVisibleTo("CryptoHives.Threading.Tests")]
+[assembly: InternalsVisibleTo("Threading.Tests")]
 

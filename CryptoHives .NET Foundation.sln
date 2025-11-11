@@ -54,6 +54,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "devops ci", "devops ci", "{
 		.azurepipelines\get-matrix.ps1 = .azurepipelines\get-matrix.ps1
 		.azurepipelines\get-root.ps1 = .azurepipelines\get-root.ps1
 		.azurepipelines\get-version.ps1 = .azurepipelines\get-version.ps1
+		.azurepipelines\nuget.yml = .azurepipelines\nuget.yml
 		.azurepipelines\set-version.ps1 = .azurepipelines\set-version.ps1
 		.azurepipelines\sln.yml = .azurepipelines\sln.yml
 		.azurepipelines\test.yml = .azurepipelines\test.yml
