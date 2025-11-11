@@ -71,7 +71,7 @@ public sealed class PooledAsyncManualResetEvent
     ///     // GOOD: single await after calling WaitAsync()
     ///     ValueTask vt = _event.WaitAsync();
     ///     _event.Set();
-    ///     await vt.ConfigureAwait(false)
+    ///     await vt.ConfigureAwait(false);
     ///
     ///     // FAIL: multiple awaits on ValueTask - throws InvalidOperationException on second await
     ///     await vt.WaitAsync().ConfigureAwait(false);
