@@ -53,7 +53,7 @@ public class PooledAsyncAutoResetEvent
     ///     await vt.ConfigureAwait(false);
     ///
     ///     // FAIL: multiple awaits on ValueTask - throws InvalidOperationException on second await
-    ///     await vt.WaitAsync().ConfigureAwait(false);
+    ///     await vt.ConfigureAwait(false);
     /// 
     ///     // GOOD: single AsTask() usage, multiple await on Task
     ///     Task t = await _event.WaitAsync().AsTask();
