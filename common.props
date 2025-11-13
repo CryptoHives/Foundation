@@ -74,6 +74,15 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
+    <!-- a strong name public key -->
+    <PublicKey>00240000043F00003F0000000602000000240000525341310004000001000100</PublicKey>
+    <PublicKey>$(PublicKey)793F3F653F3F247C1B3F613F6D3F3F3F7F7A343F3F3F5D21443F621E233F3F7C</PublicKey>
+    <PublicKey>$(PublicKey)517845493F3F3F016A5A323F0C3F3F3F3F3F4525773F462C3F3F1E3F3F66413F</PublicKey>
+    <PublicKey>$(PublicKey)3F763F3F5A363F763F3B2A5E573F3F3F3F3F3F3F4C103F3F3F5F3F3F3F5C263F</PublicKey>
+    <PublicKey>$(PublicKey)6D6D3F3F153F473F3F283F3F733F3C3F4E67563F163F3F3F52753B3F3F60473F</PublicKey>
+  </PropertyGroup>
+
   <PropertyGroup>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
