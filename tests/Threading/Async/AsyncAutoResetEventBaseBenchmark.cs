@@ -8,10 +8,16 @@ using CryptoHives.Foundation.Threading.Async;
 using NUnit.Framework;
 using System.Threading;
 
+#if SIGNASSEMBLY
+using NitoAsyncEx = RefImpl;
+#else
+using NitoAsyncEx = Nito.AsyncEx;
+#endif
+
 public abstract class AsyncAutoResetEventBaseBenchmarks
 {
     protected PooledAsyncAutoResetEvent? _eventPooled;
-    protected Nito.AsyncEx.AsyncAutoResetEvent? _eventNitoAsync;
+    protected NitoAsyncEx.AsyncAutoResetEvent? _eventNitoAsync;
     protected RefImpl.AsyncAutoResetEvent? _eventRefImpl;
     protected AutoResetEvent? _eventStandard;
 
@@ -23,7 +29,7 @@ public abstract class AsyncAutoResetEventBaseBenchmarks
     public void GlobalSetup()
     {
         _eventPooled = new PooledAsyncAutoResetEvent();
-        _eventNitoAsync = new Nito.AsyncEx.AsyncAutoResetEvent();
+        _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
         _eventRefImpl = new RefImpl.AsyncAutoResetEvent();
         _eventStandard = new AutoResetEvent(false);
     }

@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Nito.AsyncEx" />
+    <PackageReference Condition="'$(SignAssembly)' != 'true'" Include="Nito.AsyncEx" />
   </ItemGroup>
   
   <ItemGroup>

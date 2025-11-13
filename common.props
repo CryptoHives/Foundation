@@ -14,8 +14,9 @@
     <HighEntropyVA>true</HighEntropyVA>
     <IsPackable>false</IsPackable>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <IsAotCompatible>true</IsAotCompatible>
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
     <Nullable>enable</Nullable>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Highest language version supported -->
@@ -74,13 +75,13 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
-    <!-- a strong name public key -->
-    <PublicKey>002400000480000094000000060200000024000052534131000400000100010079ff8565b99f24</PublicKey>
-    <PublicKey>$(PublicKey)7c1b8461da6d8abfd37f7a34babee05d2144d3621e239dd97c51784549a7a1e5016a5a32a80cba</PublicKey>
-    <PublicKey>$(PublicKey)cecfe588452577ce462c92cd1ed7cb6641e0e376d18a5a36b876b73b2a5e57fdae91a08ca5e14c</PublicKey>
-    <PublicKey>$(PublicKey)10beb5f15fb09bf55c26d26d6dd6f315e247a6c228cacf73973cee4e6756be163f939752753bc1</PublicKey>
-    <PublicKey>$(PublicKey)cd6047dc</PublicKey>
+  <PropertyGroup>
+    <StrongNameKeyFile>$(MSBuildThisFileDirectory)/CryptoHives.Foundation.Key.snk</StrongNameKeyFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="Exists('$(StrongNameKeyFile)')">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(StrongNameKeyFile)</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <PropertyGroup>
