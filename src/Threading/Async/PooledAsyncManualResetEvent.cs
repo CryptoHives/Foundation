@@ -95,7 +95,7 @@ public sealed class PooledAsyncManualResetEvent
         {
             if (_signaled)
             {
-                return PooledEventsCommon.CompletedTask;
+                return default;
             }
 
             PooledManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();

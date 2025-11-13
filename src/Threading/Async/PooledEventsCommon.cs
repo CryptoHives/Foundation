@@ -17,13 +17,7 @@ internal static class PooledEventsCommon
     /// <summary>
     /// The default size for a queue used in a event.
     /// </summary>
-    public const int DefaultEventQueueSize = 4;
-
-    /// <summary>
-    /// A cached version of a completed ValueTask.
-    /// As a struct, assigning it is just copy from here.
-    /// </summary>
-    public static readonly ValueTask CompletedTask = new(Task.CompletedTask);
+    public const int DefaultEventQueueSize = 8;
 
     /// <summary>
     /// Holds the shared <see cref="PooledManualResetValueTaskSource{Boolean}"/> object pool.

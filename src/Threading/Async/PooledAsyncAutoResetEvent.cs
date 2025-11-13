@@ -73,7 +73,7 @@ public class PooledAsyncAutoResetEvent
         // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
         {
-            return PooledEventsCommon.CompletedTask;
+            return default;
         }
 
         lock (_waiters)
@@ -81,7 +81,7 @@ public class PooledAsyncAutoResetEvent
             // due to race conditions, _signalled may have changed
             if (Interlocked.Exchange(ref _signaled, 0) != 0)
             {
-                return PooledEventsCommon.CompletedTask;
+                return default;
             }
 
             PooledManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
