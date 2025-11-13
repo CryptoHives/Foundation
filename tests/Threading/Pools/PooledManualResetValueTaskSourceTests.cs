@@ -81,7 +81,6 @@ public class PooledManualResetValueTaskSourceTests
         short token = vts.Version;
         var tcs = new TaskCompletionSource<bool>();
 
-        ValueTask<bool> vt = new ValueTask<bool>(vts, vts.Version);
 
         // register continuation
         vts.OnCompleted(state => ((TaskCompletionSource<bool>)state!).SetResult(true), tcs, token, ValueTaskSourceOnCompletedFlags.None);
