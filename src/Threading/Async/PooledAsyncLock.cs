@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 
 /// <summary>
 /// An allocation-free async-compatible exclusive lock implemented with pooled ValueTask sources.
@@ -43,7 +44,8 @@ using System.Threading.Tasks;
 /// </remarks>
 public sealed class PooledAsyncLock
 {
-    private readonly Queue<PooledManualResetValueTaskSource<Releaser>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
+    private readonly Queue<ManualResetValueTaskSource<Releaser>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
+    private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter = new();
     private bool _taken;
 
     // Pool for Releaser-typed value task sources.
@@ -137,6 +139,12 @@ public sealed class PooledAsyncLock
                 return new ValueTask<Releaser>(Task.FromException<Releaser>(new OperationCanceledException(cancellationToken)));
             }
 
+            if (_localWaiter.TryGetValueTaskSource())
+            {
+                _waiters.Enqueue(_localWaiter);
+                return new ValueTask<Releaser>(_localWaiter, _localWaiter.Version);
+            }
+
             PooledManualResetValueTaskSource<Releaser> waiter = _pool.Get();
             waiter.SetOwnerPool(_pool);
             _waiters.Enqueue(waiter);
@@ -149,7 +157,7 @@ public sealed class PooledAsyncLock
     /// </summary>
     internal void ReleaseLock()
     {
-        PooledManualResetValueTaskSource<Releaser> toRelease;
+        ManualResetValueTaskSource<Releaser> toRelease;
 
         lock (_waiters)
         {

@@ -14,67 +14,79 @@ using System.Threading.Tasks.Sources;
 public class PooledManualResetValueTaskSourceTests
 {
     [Test, CancelAfter(1000)]
-    public async Task ValueTaskCompletesWhenSetResultCalled()
+    public async Task ValueTaskCompletesWhenSetResultCalledAsync()
     {
         PooledManualResetValueTaskSource<bool> vts = PooledEventsCommon.GetPooledValueTaskSource();
 
-        ValueTask<bool> vt = new ValueTask<bool>(vts, vts.Version);
+        var vt = new ValueTask<bool>(vts, vts.Version);
         short version = vts.Version;
 
-        // version matches
-        Assert.That(version, Is.EqualTo(vts.Version));
+        using (Assert.EnterMultipleScope())
+        {
+            // version matches
+            Assert.That(version, Is.EqualTo(vts.Version));
 
-        // not completed yet
-        Assert.That(vt.IsCompleted, Is.False);
+            // not completed yet
+            Assert.That(vt.IsCompleted, Is.False);
+        }
 
         // complete
         vts.SetResult(true);
 
         // now completed
         bool result = await vt.ConfigureAwait(false);
-        Assert.That(result, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.True);
 
-        // version has changed
-        Assert.That(version, Is.Not.EqualTo(vts.Version));
+            // version has changed
+            Assert.That(version, Is.Not.EqualTo(vts.Version));
+        }
 
         // calling with old version throws
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
-        Assert.ThrowsAsync<InvalidOperationException>(() => vt.AsTask());
+        _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+        _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
     }
 
     [Test, CancelAfter(1000)]
-    public async Task ValueTaskAsTaskCompletesWhenSetResultCalled()
+    public async Task ValueTaskAsTaskCompletesWhenSetResultCalledAsync()
     {
         PooledManualResetValueTaskSource<bool> vts = PooledEventsCommon.GetPooledValueTaskSource();
 
-        ValueTask<bool> vt = new ValueTask<bool>(vts, vts.Version);
+        var vt = new ValueTask<bool>(vts, vts.Version);
         short version = vts.Version;
 
         Task<bool> t = vt.AsTask();
 
-        // version matches
-        Assert.That(version, Is.EqualTo(vts.Version));
+        using (Assert.EnterMultipleScope())
+        {
+            // version matches
+            Assert.That(version, Is.EqualTo(vts.Version));
 
-        // not completed yet
-        Assert.That(t.IsCompleted, Is.False);
+            // not completed yet
+            Assert.That(t.IsCompleted, Is.False);
+        }
 
         // complete
         vts.SetResult(true);
 
         // now completed
         bool result = await t.ConfigureAwait(false);
-        Assert.That(result, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.True);
 
-        // version changed
-        Assert.That(version, Is.Not.EqualTo(vts.Version));
+            // version changed
+            Assert.That(version, Is.Not.EqualTo(vts.Version));
+        }
 
         // calling with old version throws
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
-        Assert.ThrowsAsync<InvalidOperationException>(() => vt.AsTask());
+        _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+        _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
     }
 
     [Test]
-    public async Task OnCompletedInvokesContinuationWhenSignaled()
+    public async Task OnCompletedInvokesContinuationWhenSignaledAsync()
     {
         PooledManualResetValueTaskSource<bool> vts = PooledEventsCommon.GetPooledValueTaskSource();
 
@@ -111,10 +123,13 @@ public class PooledManualResetValueTaskSourceTests
         bool reset = vts.TryReset();
         short after = vts.Version;
 
-        // reset successful
-        Assert.That(reset, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            // reset successful
+            Assert.That(reset, Is.True);
 
-        // version has changed
-        Assert.That(after, Is.Not.EqualTo(version));
+            // version has changed
+            Assert.That(after, Is.Not.EqualTo(version));
+        }
     }
 }

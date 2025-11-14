@@ -13,7 +13,7 @@ using System.Threading;
 public class AsyncLockUnitTests
 {
     [Test]
-    public async Task LockUnlockSingleAwaiter()
+    public async Task LockUnlockSingleAwaiterAsync()
     {
         var al = new PooledAsyncLock();
 
@@ -29,7 +29,7 @@ public class AsyncLockUnitTests
     }
 
     [Test]
-    public async Task MultipleWaitersAreServedSequentially()
+    public async Task MultipleWaitersAreServedSequentiallyAsync()
     {
         var al = new PooledAsyncLock();
 
@@ -48,7 +48,7 @@ public class AsyncLockUnitTests
     }
 
     [Test]
-    public async Task CancellationBeforeQueueingThrows()
+    public async Task CancellationBeforeQueueingThrowsAsync()
     {
         var al = new PooledAsyncLock();
 

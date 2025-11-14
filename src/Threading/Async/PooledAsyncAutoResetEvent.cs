@@ -19,7 +19,8 @@ using System.Threading.Tasks.Sources;
 /// </summary>
 public class PooledAsyncAutoResetEvent
 {
-    private readonly Queue<PooledManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
+    private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
+    private readonly LocalManualResetValueTaskSource<bool> _localWaiter = new();
     private int _signaled;
 
     /// <summary>
@@ -84,6 +85,12 @@ public class PooledAsyncAutoResetEvent
                 return default;
             }
 
+            if (_localWaiter.TryGetValueTaskSource())
+            {
+                _waiters.Enqueue(_localWaiter);
+                return new ValueTask(_localWaiter, _localWaiter.Version);
+            }
+
             PooledManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
@@ -109,7 +116,7 @@ public class PooledAsyncAutoResetEvent
     /// </remarks>
     public void Set()
     {
-        PooledManualResetValueTaskSource<bool>? toRelease;
+        ManualResetValueTaskSource<bool>? toRelease;
 
         lock (_waiters)
         {
@@ -131,7 +138,7 @@ public class PooledAsyncAutoResetEvent
     public void SetAll()
     {
         int count;
-        PooledManualResetValueTaskSource<bool>[]? toRelease;
+        ManualResetValueTaskSource<bool>[]? toRelease;
 
         lock (_waiters)
         {
@@ -142,7 +149,7 @@ public class PooledAsyncAutoResetEvent
                 return;
             }
 
-            toRelease = ArrayPool<PooledManualResetValueTaskSource<bool>>.Shared.Rent(count);
+            toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(count);
             for (int i = 0; i < count; i++)
             {
                 toRelease[i] = _waiters.Dequeue();
@@ -153,7 +160,7 @@ public class PooledAsyncAutoResetEvent
 
         try
         {
-            PooledManualResetValueTaskSource<bool> waiter;
+            ManualResetValueTaskSource<bool> waiter;
             for (int i = 0; i < count; i++)
             {
                 waiter = toRelease[i];
@@ -162,7 +169,7 @@ public class PooledAsyncAutoResetEvent
         }
         finally
         {
-            ArrayPool<PooledManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
+            ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
         }
     }
 }
