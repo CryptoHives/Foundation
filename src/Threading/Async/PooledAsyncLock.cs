@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Sources;
 
 /// <summary>
 /// An allocation-free async-compatible exclusive lock implemented with pooled ValueTask sources.
