@@ -89,7 +89,7 @@ public class PooledAsyncAutoResetEventUnitTests
 
         await waiter.ConfigureAwait(false);
 
-        Assert.Throws<InvalidOperationException>(() => { _ = waiter.IsCompleted; });
+        Assert.Throws<InvalidOperationException>(() => _ = waiter.IsCompleted);
 
         // Ensure no leftover signaled state
         ValueTask vt2 = ev.WaitAsync();

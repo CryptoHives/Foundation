@@ -6,7 +6,6 @@ namespace CryptoHives.Foundation.Threading.Async;
 using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading.Tasks;
 
 /// <summary>
 /// Provides common constants, static variables and pools for efficient memory usage in async events.
@@ -17,26 +16,20 @@ internal static class PooledEventsCommon
     /// <summary>
     /// The default size for a queue used in a event.
     /// </summary>
-    public const int DefaultEventQueueSize = 4;
-
-    /// <summary>
-    /// A cached version of a completed ValueTask.
-    /// As a struct, assigning it is just copy from here.
-    /// </summary>
-    public static readonly ValueTask CompletedTask = new(Task.CompletedTask);
+    public const int DefaultEventQueueSize = 8;
 
     /// <summary>
     /// Holds the shared <see cref="PooledManualResetValueTaskSource{Boolean}"/> object pool.
     /// </summary>
-    private static readonly ObjectPool<PooledManualResetValueTaskSource<bool>> ValueTaskSourcePool = new DefaultObjectPool<PooledManualResetValueTaskSource<bool>>(new PooledValueTaskSourceObjectPolicy<bool>());
+    private static readonly ObjectPool<PooledManualResetValueTaskSource<bool>> _valueTaskSourcePool = new DefaultObjectPool<PooledManualResetValueTaskSource<bool>>(new PooledValueTaskSourceObjectPolicy<bool>());
 
     /// <summary>
     /// Gets a ValueTaskSource from the pool.
     /// </summary>
     public static PooledManualResetValueTaskSource<bool> GetPooledValueTaskSource()
     {
-        PooledManualResetValueTaskSource<bool> vts = ValueTaskSourcePool.Get();
-        vts.SetOwnerPool(ValueTaskSourcePool);
+        PooledManualResetValueTaskSource<bool> vts = _valueTaskSourcePool.Get();
+        vts.SetOwnerPool(_valueTaskSourcePool);
         return vts;
     }
 }

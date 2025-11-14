@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Threading.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
+using System.Threading;
 using System.Threading.Tasks.Sources;
 
 /// <summary>
@@ -18,21 +19,22 @@ using System.Threading.Tasks.Sources;
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
 /// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
-internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
+internal sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
 {
     private ManualResetValueTaskSourceCore<T> _core;
-    private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
+    private int _inUse;
 
     /// <summary>
-    /// Sets the pool to which the object is returned after it was awaited.
+    /// Tries to get ownership of the local value task source.
     /// </summary>
-    public void SetOwnerPool(ObjectPool<PooledManualResetValueTaskSource<T>>? ownerPool)
+    /// <returns>Returns <c>true</c> if ownership was acquired; otherwise, <c>false</c>.</returns>
+    public bool TryGetValueTaskSource()
     {
-        _ownerPool = ownerPool;
+        return Interlocked.Exchange(ref _inUse, 1) == 0;
     }
 
     /// <inheritdoc/>
-    public override short Version => _core.Version;
+    public override short Version { get => _core.Version; }
 
     /// <inheritdoc/>
     public override void SetResult(T result)
@@ -43,21 +45,17 @@ internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTask
         => _core.SetException(ex);
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// This method increments the version number to reflect the reset operation.
-    /// </remarks>
     public override bool TryReset()
     {
-        _ownerPool = null;
         _core.Reset();
-        return true;
+        return Interlocked.Exchange(ref _inUse, 0) == 1;
     }
 
     /// <inheritdoc/>
     public override T GetResult(short token)
     {
         T result = _core.GetResult(token);
-        _ownerPool?.Return(this);
+        TryReset();
         return result;
     }
 

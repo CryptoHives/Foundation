@@ -45,15 +45,20 @@ public class ArrayPoolMemoryStreamTests
         Assert.Throws<IOException>(() => stream.Seek(-1, SeekOrigin.Begin));
         Assert.Throws<IOException>(() => stream.Seek(0, (SeekOrigin)66));
 
-        Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
-        Assert.That(stream.ReadByte(), Is.EqualTo(-1));
-        Assert.That(stream.Read(buffer, 0, 1), Is.Zero);
-        Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
+            Assert.That(stream.ReadByte(), Is.EqualTo(-1));
+            Assert.That(stream.Read(buffer, 0, 1), Is.Zero);
+            Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.Zero);
+        }
 
         stream.Position = 0;
-        Assert.That(stream.Position, Is.Zero);
-
-        Assert.That(stream.Length, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(stream.Position, Is.Zero);
+            Assert.That(stream.Length, Is.Zero);
+        }
 
         Assert.That(stream.Seek(0, SeekOrigin.Begin), Is.Zero);
         stream.WriteByte(0xaa);
@@ -86,15 +91,21 @@ public class ArrayPoolMemoryStreamTests
 
         ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
         Assert.That(sequence.Length, Is.EqualTo(3));
-        Assert.That(sequence.Slice(0, 1).ToArray()[0], Is.EqualTo(0xaa));
-        Assert.That(sequence.Slice(1, 1).ToArray()[0], Is.EqualTo(0x55));
-        Assert.That(sequence.Slice(2, 1).ToArray()[0], Is.EqualTo(0x55));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(sequence.Slice(0, 1).ToArray()[0], Is.EqualTo(0xaa));
+            Assert.That(sequence.Slice(1, 1).ToArray()[0], Is.EqualTo(0x55));
+            Assert.That(sequence.Slice(2, 1).ToArray()[0], Is.EqualTo(0x55));
+        }
 
         byte[] array = stream.ToArray();
         Assert.That(array, Has.Length.EqualTo(3));
-        Assert.That(array[0], Is.EqualTo(0xaa));
-        Assert.That(array[1], Is.EqualTo(0x55));
-        Assert.That(array[2], Is.EqualTo(0x55));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(array[0], Is.EqualTo(0xaa));
+            Assert.That(array[1], Is.EqualTo(0x55));
+            Assert.That(array[2], Is.EqualTo(0x55));
+        }
 
         Assert.DoesNotThrow(() => act());
 
@@ -148,9 +159,12 @@ public class ArrayPoolMemoryStreamTests
         sequence = writer.GetReadOnlySequence();
         buffer = sequence.ToArray();
 
-        // Assert sequence properties
-        Assert.That(buffer, Has.Length.EqualTo(length));
-        Assert.That(sequence.Length, Is.EqualTo(length));
+        using (Assert.EnterMultipleScope())
+        {
+            // Assert sequence properties
+            Assert.That(buffer, Has.Length.EqualTo(length));
+            Assert.That(sequence.Length, Is.EqualTo(length));
+        }
 
         for (int i = 0; i < buffer.Length; i++)
         {
@@ -177,9 +191,11 @@ public class ArrayPoolMemoryStreamTests
 
         // read back from writer MemoryStream
         result = writer.Seek(0, SeekOrigin.Begin);
-        Assert.That(result, Is.Zero);
-
-        Assert.That(writer.Length, Is.EqualTo(length));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.Zero);
+            Assert.That(writer.Length, Is.EqualTo(length));
+        }
 
         long position;
         for (int i = 0; i <= byte.MaxValue; i++)
