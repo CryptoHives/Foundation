@@ -1,0 +1,52 @@
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
+
+namespace CryptoHives.Foundation.Threading.Tests.Async.RefImpl;
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+/// <summary>
+/// An async version of <see cref="lock"/> based on
+/// https://devblogs.microsoft.com/dotnet/building-async-coordination-primitives-part-6-asynclock/.
+/// </summary>
+/// <remarks>
+/// A reference implementation that uses TaskCompletionSource and Task.
+/// </remarks>
+public class AsyncLock
+{
+    private readonly AsyncSemaphore _semaphore;
+    private readonly Task<AsyncLockReleaser> _releaser;
+
+    public struct AsyncLockReleaser : IDisposable
+    {
+        private readonly AsyncLock _toRelease;
+
+        internal AsyncLockReleaser(AsyncLock toRelease)
+        {
+            _toRelease = toRelease;
+        }
+
+        public void Dispose()
+        {
+            if (_toRelease != null)
+            { _toRelease._semaphore.Release(); }
+        }
+    }
+
+    public AsyncLock()
+    {
+        _semaphore = new AsyncSemaphore(1);
+        _releaser = Task.FromResult(new AsyncLockReleaser(this));
+    }
+
+    public Task<AsyncLockReleaser> LockAsync()
+    {
+        var wait = _semaphore.WaitAsync();
+        return wait.IsCompleted
+            ? _releaser
+            : wait.ContinueWith((_, state) => new AsyncLockReleaser((AsyncLock)state!), this, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+}
+
