@@ -17,10 +17,10 @@ public class AsyncLockUnitTests
     {
         var al = new PooledAsyncLock();
 
-        ValueTask<PooledAsyncLock.Releaser> vt = al.LockAsync();
+        ValueTask<PooledAsyncLock.AsyncLockReleaser> vt = al.LockAsync();
         Assert.That(vt.IsCompleted);
 
-        using (var releaser = await vt.ConfigureAwait(false))
+        using (await vt.ConfigureAwait(false))
         {
             Assert.That(al.IsTaken);
         }

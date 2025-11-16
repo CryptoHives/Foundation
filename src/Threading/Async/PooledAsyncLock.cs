@@ -43,21 +43,21 @@ using System.Threading.Tasks;
 /// </remarks>
 public sealed class PooledAsyncLock
 {
-    private readonly Queue<ManualResetValueTaskSource<Releaser>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
-    private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter = new();
-    private bool _taken;
+    private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
+    private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter = new();
+    private int _taken;
 
-    // Pool for Releaser-typed value task sources.
-    private static readonly ObjectPool<PooledManualResetValueTaskSource<Releaser>> _pool = new DefaultObjectPool<PooledManualResetValueTaskSource<Releaser>>(new PooledValueTaskSourceObjectPolicy<Releaser>());
+    // Pool for AsyncLockReleaser-typed value task sources.
+    private static readonly ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>> _pool = new DefaultObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>>(new PooledValueTaskSourceObjectPolicy<AsyncLockReleaser>());
 
     /// <summary>
     /// A small value type returned by awaiting a lock acquisition. Disposing the releaser releases the lock.
     /// </summary>
-    public readonly struct Releaser : IDisposable, IAsyncDisposable
+    public readonly struct AsyncLockReleaser : IDisposable, IAsyncDisposable
     {
         private readonly PooledAsyncLock _owner;
 
-        internal Releaser(PooledAsyncLock owner)
+        internal AsyncLockReleaser(PooledAsyncLock owner)
         {
             _owner = owner;
         }
@@ -81,7 +81,7 @@ public sealed class PooledAsyncLock
     }
 
     /// <summary>
-    /// Asynchronously acquires the lock, with a cancellation token.
+    /// Asynchronously acquires the lock.
     /// </summary>
     /// <remarks>
     /// Note that this lock is <b>not</b> recursive!
@@ -100,7 +100,7 @@ public sealed class PooledAsyncLock
     /// </code>
     /// </remarks>
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.  Dispose the returned releaser to release the lock.</returns>
-    public ValueTask<Releaser> LockAsync()
+    public ValueTask<AsyncLockReleaser> LockAsync()
         => LockAsync(CancellationToken.None);
 
     /// <summary>
@@ -123,31 +123,35 @@ public sealed class PooledAsyncLock
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token. Cancellation is observed before queuing.</param>
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.  Dispose the returned releaser to release the lock.</returns>
-    public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken)
+    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken)
     {
+        if (Interlocked.Exchange(ref _taken, 1) == 0)
+        {
+            return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
+        }
+
         lock (_waiters)
         {
-            if (!_taken)
+            if (Interlocked.Exchange(ref _taken, 1) == 0)
             {
-                _taken = true;
-                return new ValueTask<Releaser>(new Releaser(this));
+                return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
             }
 
             if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask<Releaser>(Task.FromException<Releaser>(new OperationCanceledException(cancellationToken)));
+                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
             }
 
             if (_localWaiter.TryGetValueTaskSource())
             {
                 _waiters.Enqueue(_localWaiter);
-                return new ValueTask<Releaser>(_localWaiter, _localWaiter.Version);
+                return new ValueTask<AsyncLockReleaser>(_localWaiter, _localWaiter.Version);
             }
 
-            PooledManualResetValueTaskSource<Releaser> waiter = _pool.Get();
+            PooledManualResetValueTaskSource<AsyncLockReleaser> waiter = _pool.Get();
             waiter.SetOwnerPool(_pool);
             _waiters.Enqueue(waiter);
-            return new ValueTask<Releaser>(waiter, waiter.Version);
+            return new ValueTask<AsyncLockReleaser>(waiter, waiter.Version);
         }
     }
 
@@ -156,27 +160,24 @@ public sealed class PooledAsyncLock
     /// </summary>
     internal void ReleaseLock()
     {
-        ManualResetValueTaskSource<Releaser> toRelease;
+        ManualResetValueTaskSource<AsyncLockReleaser> toRelease;
 
         lock (_waiters)
         {
             if (_waiters.Count == 0)
             {
-                _taken = false;
+                Interlocked.Exchange(ref _taken, 0);
                 return;
             }
 
             toRelease = _waiters.Dequeue();
         }
 
-        toRelease.SetResult(new Releaser(this));
+        toRelease.SetResult(new AsyncLockReleaser(this));
     }
 
     /// <summary>
     /// Whether the lock is currently held.
     /// </summary>
-    public bool IsTaken
-    {
-        get { lock (_waiters) return _taken; }
-    }
+    public bool IsTaken => _taken != 0;
 }

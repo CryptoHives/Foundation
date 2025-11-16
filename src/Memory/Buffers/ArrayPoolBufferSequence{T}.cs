@@ -13,7 +13,7 @@ internal sealed class ArrayPoolBufferSequence<T> : IDisposable
 {
     private ArrayPoolBufferSegment<T>? _firstSegment;
     private ReadOnlySequence<T> _sequence;
-    private bool _clearArray;
+    private readonly bool _clearArray;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolBufferSequence{T}"/> class.

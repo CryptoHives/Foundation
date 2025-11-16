@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async;
+namespace CryptoHives.Foundation.Threading.Tests.Async.AsyncAutoResetEvent;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
@@ -13,7 +13,9 @@ using System.Threading.Tasks;
 /// In the benchmark, set the auto reset event and then await the Task.
 /// </summary>
 [TestFixture]
-[MemoryDiagnoser]
+[DisassemblyDiagnoser]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [NonParallelizable]
 public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBenchmarks
 {

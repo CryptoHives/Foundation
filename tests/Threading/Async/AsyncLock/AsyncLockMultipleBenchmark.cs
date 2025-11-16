@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async;
+namespace CryptoHives.Foundation.Threading.Tests.Async.AsyncLock;
 
 using BenchmarkDotNet.Attributes;
 using Nito.AsyncEx;
@@ -11,12 +11,14 @@ using System.Threading.Tasks;
 using static CryptoHives.Foundation.Threading.Async.PooledAsyncLock;
 
 [TestFixture]
-[MemoryDiagnoser]
+[DisassemblyDiagnoser]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [NonParallelizable]
 public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 {
-    private Task[]? _tasks;
-    private ValueTask<Releaser>[]? _lockHandle;
+    private Task<AsyncLockReleaser>[]? _tasks;
+    private ValueTask<AsyncLockReleaser>[]? _lockHandle;
     private AwaitableDisposable<IDisposable>[]? _lockNitoHandle;
 
     [Params(0, 1, 10, 100)]
@@ -32,21 +34,22 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockPooledMultipleAsync))]
     public void PooledGlobalSetup()
     {
-        _lockHandle = new ValueTask<Releaser>[Iterations];
+        _lockHandle = new ValueTask<AsyncLockReleaser>[Iterations];
     }
 
     [Benchmark]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2012:Use ValueTasks correctly", Justification = "Special test case")]
     public async Task LockUnlockPooledMultipleAsync()
     {
-        using (await _lockPooled.LockAsync().ConfigureAwait(false))
+        using (await LockPooled.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockHandle![i] = _lockPooled.LockAsync();
+                _lockHandle![i] = LockPooled.LockAsync();
             }
         }
 
-        foreach (ValueTask<Releaser> handle in _lockHandle!)
+        foreach (ValueTask<AsyncLockReleaser> handle in _lockHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }
@@ -59,26 +62,27 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
         return LockUnlockPooledTaskMultipleAsync();
     }
 
-    [GlobalSetup(Target = nameof(LockUnlockPooledMultipleAsync))]
+    [GlobalSetup(Target = nameof(LockUnlockPooledTaskMultipleAsync))]
     public void PooledTaskGlobalSetup()
     {
-        _tasks = new Task[Iterations];
+        _tasks = new Task<AsyncLockReleaser>[Iterations];
     }
 
     [Benchmark]
     public async Task LockUnlockPooledTaskMultipleAsync()
     {
-        using (await _lockPooled.LockAsync().ConfigureAwait(false))
+        using (await LockPooled.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _tasks![i] = _lockPooled.LockAsync().AsTask();
+                _tasks![i] = LockPooled.LockAsync().AsTask();
             }
         }
 
-        foreach (Task task in _tasks!)
+        // Await and dispose each acquired releaser sequentially to release the lock for the next waiter.
+        foreach (Task<AsyncLockReleaser> t in _tasks!)
         {
-            await task.ConfigureAwait(false);
+            using (await t.ConfigureAwait(false)) { }
         }
     }
 
@@ -98,11 +102,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockNitoMultipleAsync()
     {
-        using (await _lockNitoAsync.LockAsync().ConfigureAwait(false))
+        using (await LockNitoAsync.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockNitoHandle![i] = _lockNitoAsync.LockAsync();
+                _lockNitoHandle![i] = LockNitoAsync.LockAsync();
             }
         }
 

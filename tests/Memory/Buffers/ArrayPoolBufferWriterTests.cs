@@ -138,7 +138,7 @@ public class ArrayPoolBufferWriterTests
     /// <param name="random">A random object to supply to vary buffer allocations.</param>
     /// <param name="chunkSize">The size of each chunk in the buffer.</param>
     /// <param name="maxChunkSize">The maximum chunk size used to get span or memory to write to if > 0.</param>
-    private void BuildChunkBuffer(IBufferWriter<byte> writer, Random random, int chunkSize, int maxChunkSize)
+    private static void BuildChunkBuffer(IBufferWriter<byte> writer, Random random, int chunkSize, int maxChunkSize)
     {
         for (int i = 0; i <= byte.MaxValue; i++)
         {

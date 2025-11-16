@@ -19,6 +19,7 @@ using System.Threading.Tasks.Sources;
 /// </summary>
 public class PooledAsyncAutoResetEvent
 {
+    private readonly object _mutex = new();
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter = new();
     private int _signaled;
@@ -77,9 +78,9 @@ public class PooledAsyncAutoResetEvent
             return default;
         }
 
-        lock (_waiters)
+        lock (_mutex)
         {
-            // due to race conditions, _signalled may have changed
+            // due to race conditions, _signalled may have changed until the lock is taken
             if (Interlocked.Exchange(ref _signaled, 0) != 0)
             {
                 return default;
@@ -90,7 +91,6 @@ public class PooledAsyncAutoResetEvent
                 _waiters.Enqueue(_localWaiter);
                 return new ValueTask(_localWaiter, _localWaiter.Version);
             }
-
             PooledManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
@@ -118,7 +118,7 @@ public class PooledAsyncAutoResetEvent
     {
         ManualResetValueTaskSource<bool>? toRelease;
 
-        lock (_waiters)
+        lock (_mutex)
         {
             if (_waiters.Count == 0)
             {
@@ -140,7 +140,7 @@ public class PooledAsyncAutoResetEvent
         int count;
         ManualResetValueTaskSource<bool>[]? toRelease;
 
-        lock (_waiters)
+        lock (_mutex)
         {
             count = _waiters.Count;
             if (count == 0)
