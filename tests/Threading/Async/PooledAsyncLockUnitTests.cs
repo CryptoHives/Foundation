@@ -5,9 +5,8 @@ namespace CryptoHives.Foundation.Threading.Tests.Async;
 
 using NUnit.Framework;
 using System;
-using System.Threading.Tasks;
 using System.Threading;
-using CryptoHives.Foundation.Threading.Async.Pooled;
+using System.Threading.Tasks;
 
 [TestFixture]
 public class AsyncLockUnitTests

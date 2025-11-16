@@ -10,9 +10,9 @@ using NUnit.Framework;
 /// Set the auto reset event.
 /// </summary>
 [TestFixture]
-[DisassemblyDiagnoser]
+[ThreadingDiagnoser]
 [MemoryDiagnoser(displayGenColumns: false)]
-[HideColumns("Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 public class AsyncAutoResetEventSetBenchmarks : AsyncAutoResetEventBaseBenchmarks
 {
     [Test]

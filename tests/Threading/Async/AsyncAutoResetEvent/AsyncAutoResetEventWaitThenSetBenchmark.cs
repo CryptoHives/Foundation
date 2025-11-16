@@ -9,21 +9,54 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// As precondition get a Task for the event waiter.
-/// In the benchmark, set the auto reset event and then await the Task.
+/// Benchmarks measuring Wait-then-Set performance with multiple queued waiters on AutoResetEvent implementations.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This benchmark suite evaluates the performance of signaling an auto-reset event
+/// when multiple threads/tasks are already waiting. It measures contention handling
+/// and the overhead of releasing queued waiters.
+/// </para>
+/// <para>
+/// <b>Test scenario:</b> Queue multiple waiters, then signal the event and measure how quickly
+/// the first queued waiter is released.
+/// </para>
+/// <para>
+/// <b>Compared implementations:</b>
+/// </para>
+/// <list type="bullet">
+/// <item><description><b>Standard:</b> Synchronous System.Threading.AutoResetEvent with blocking thread waits.</description></item>
+/// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource with FIFO waiter queue.</description></item>
+/// <item><description><b>Nito.AsyncEx:</b> Third-party async library using Task-based primitives and internal queuing.</description></item>
+/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource with FIFO waiter queue.</description></item>
+/// </list>
+/// <para>
+/// <b>Key metrics:</b> Signaling overhead under contention and memory allocations per operation.
+/// The number of concurrent waiters is controlled by the <see cref="Iterations"/> parameter.
+/// </para>
+/// </remarks>
 [TestFixture]
-[DisassemblyDiagnoser]
+[TestFixtureSource(nameof(FixtureArgs))]
 [MemoryDiagnoser(displayGenColumns: false)]
-[HideColumns("Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [NonParallelizable]
-public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBenchmarks
+public class AsyncAutoResetEventWaitThenSetBenchmarks : AsyncAutoResetEventBaseBenchmarks
 {
     private Task? _task;
     private volatile int _activeThreads;
 
+    public static object[] FixtureArgs = {
+        new object[] { 1 },
+        new object[] { 10 }
+    };
+
     [Params(1, 10)]
     public int Iterations = 10;
+
+    public AsyncAutoResetEventWaitThenSetBenchmarks(int iterations)
+    {
+        Iterations = iterations;
+    }
 
     [Test]
     public void AutoResetEvent()
@@ -56,6 +89,13 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         }
     }
 
+    /// <summary>
+    /// Benchmark for standard synchronous AutoResetEvent with multiple queued thread waiters.
+    /// </summary>
+    /// <remarks>
+    /// Measures the cost of signaling a blocking thread-based auto-reset event
+    /// when multiple threads are queued. This is the synchronous baseline.
+    /// </remarks>
     [Benchmark]
     [BenchmarkCategory("WaitSet", "Standard")]
     public void AutoResetEventWaitSet()
@@ -113,6 +153,14 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         Interlocked.Decrement(ref _activeThreads);
     }
 
+    /// <summary>
+    /// Benchmark for pooled async auto-reset event with multiple queued async waiters.
+    /// </summary>
+    /// <remarks>
+    /// Measures the cost of signaling a pooled auto-reset event when multiple
+    /// async waiters are queued. The pooled implementation uses a FIFO queue
+    /// of reusable IValueTaskSource instances to minimize allocations.
+    /// </remarks>
     [Benchmark]
     [BenchmarkCategory("WaitSet", "Pooled")]
     public async Task PooledAsyncAutoResetEventWaitSetAsync()
@@ -164,6 +212,14 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         Interlocked.Decrement(ref _activeThreads);
     }
 
+    /// <summary>
+    /// Benchmark for Nito.AsyncEx async auto-reset event with multiple queued async waiters.
+    /// </summary>
+    /// <remarks>
+    /// Measures the cost of signaling the Nito.AsyncEx auto-reset event when multiple
+    /// async waiters are queued. This implementation uses Task-based primitives
+    /// with internal queuing.
+    /// </remarks>
     [Benchmark]
     [BenchmarkCategory("WaitSet", "Nito")]
     public async Task NitoAsyncAutoResetEventWaitSetAsync()
@@ -215,6 +271,14 @@ public class AsyncAutoResetEventWaitSetBenchmarks : AsyncAutoResetEventBaseBench
         Interlocked.Decrement(ref _activeThreads);
     }
 
+    /// <summary>
+    /// Benchmark for reference implementation async auto-reset event with multiple queued async waiters (baseline).
+    /// </summary>
+    /// <remarks>
+    /// Measures the cost of signaling a TaskCompletionSource-based auto-reset event
+    /// when multiple async waiters are queued. This serves as the baseline for
+    /// comparing allocation-free pooled patterns under contention.
+    /// </remarks>
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("WaitSet", "RefImpl")]
     public async Task RefImplAsyncAutoResetEventWaitSetAsync()

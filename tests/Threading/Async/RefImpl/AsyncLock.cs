@@ -30,8 +30,7 @@ public class AsyncLock
 
         public void Dispose()
         {
-            if (_toRelease != null)
-            { _toRelease._semaphore.Release(); }
+            _toRelease?._semaphore.Release();
         }
     }
 

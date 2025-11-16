@@ -8,14 +8,41 @@ using NUnit.Framework;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Set the auto reset event and then wait for the triggered event.
+/// Benchmarks measuring async wait performance on AutoResetEvent implementations.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This benchmark suite evaluates the performance of waiting on an auto-reset event
+/// across different implementations when the event is signaled after the wait begins.
+/// </para>
+/// <para>
+/// <b>Test scenario:</b> Start waiting on the event, then immediately signal it and await completion.
+/// </para>
+/// <para>
+/// <b>Compared implementations:</b>
+/// </para>
+/// <list type="bullet">
+/// <item><description><b>Pooled (ValueTask):</b> Allocation-free implementation using pooled IValueTaskSource and ValueTask.</description></item>
+/// <item><description><b>Pooled (Task):</b> Same pooled implementation but converted to Task via AsTask().</description></item>
+/// <item><description><b>Nito.AsyncEx:</b> Third-party async library using Task-based primitives.</description></item>
+/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource.</description></item>
+/// </list>
+/// <para>
+/// <b>Key metrics:</b> Execution time and memory allocations per operation.
+/// </para>
+/// </remarks>
 [TestFixture]
-[DisassemblyDiagnoser]
 [MemoryDiagnoser(displayGenColumns: false)]
-[HideColumns("Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmarks
 {
+    /// <summary>
+    /// Benchmark for pooled async auto-reset event using Task (converted from ValueTask).
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance when ValueTask is converted to Task via AsTask(),
+    /// which incurs allocation overhead compared to awaiting ValueTask directly.
+    /// </remarks>
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Pooled")]
@@ -26,6 +53,13 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
         await t.ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Benchmark for pooled async auto-reset event using ValueTask directly.
+    /// </summary>
+    /// <remarks>
+    /// Measures the allocation-free hot path using pooled IValueTaskSource.
+    /// This is the optimal usage pattern for the pooled implementation.
+    /// </remarks>
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Pooled")]
@@ -36,6 +70,13 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
         await vt.ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Benchmark for Nito.AsyncEx async auto-reset event.
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of the third-party Nito.AsyncEx library,
+    /// which uses Task-based async primitives and allocates per waiter.
+    /// </remarks>
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Nito")]
@@ -46,6 +87,13 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
         await t.ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Benchmark for reference implementation async auto-reset event (baseline).
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of a TaskCompletionSource-based reference implementation.
+    /// This serves as the baseline for comparing allocation-free pooled patterns.
+    /// </remarks>
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Wait", "RefImpl")]

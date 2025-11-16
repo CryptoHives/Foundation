@@ -13,5 +13,5 @@ set filter=*
 cd %build_root%
 
 cd tests\Threading\
-dotnet run -v n --configuration Release  --framework %framework% -- --filter %filter% --runtimes %runtimes% --logBuildOutput
+dotnet run -v n --configuration Release  --framework %framework% -- --filter %filter% --runtimes %runtimes%
 cd ..
