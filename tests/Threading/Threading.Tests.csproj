@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <PackageReference Condition="'$(SignAssembly)' != 'true'" Include="Nito.AsyncEx" />
+    <PackageReference Include="AsyncKeyedLock"/>    
   </ItemGroup>
   
   <ItemGroup>

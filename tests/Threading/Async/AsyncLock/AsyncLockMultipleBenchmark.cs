@@ -8,7 +8,7 @@ using Nito.AsyncEx;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
-using static CryptoHives.Foundation.Threading.Async.PooledAsyncLock;
+using static CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock;
 
 [TestFixture]
 [DisassemblyDiagnoser]

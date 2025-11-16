@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Async;
+namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
@@ -28,9 +28,9 @@ using System.Threading.Tasks;
 /// }
 /// </code>
 /// <para>If we want to replace the blocking operation <c>Thread.Sleep</c> with an asynchronous equivalent, it's not directly possible because of the <c>lock</c> block. We cannot <c>await</c> inside of a <c>lock</c>.</para>
-/// <para>So, we use the <c>async</c>-compatible <see cref="PooledAsyncLock"/> instead:</para>
+/// <para>So, we use the <c>async</c>-compatible <see cref="AsyncLock"/> instead:</para>
 /// <code>
-/// private readonly var _mutex = new PooledAsyncLock();
+/// private readonly var _mutex = new AsyncLock();
 /// public async Task DoStuffAsync()
 /// {
 ///     using (await _mutex.LockAsync())
@@ -41,11 +41,12 @@ using System.Threading.Tasks;
 /// </code>
 /// </example>
 /// </remarks>
-public sealed class PooledAsyncLock
+public sealed class AsyncLock
 {
     private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter = new();
-    private int _taken;
+    private readonly object _mutex = new();
+    private volatile int _taken;
 
     // Pool for AsyncLockReleaser-typed value task sources.
     private static readonly ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>> _pool = new DefaultObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>>(new PooledValueTaskSourceObjectPolicy<AsyncLockReleaser>());
@@ -55,9 +56,9 @@ public sealed class PooledAsyncLock
     /// </summary>
     public readonly struct AsyncLockReleaser : IDisposable, IAsyncDisposable
     {
-        private readonly PooledAsyncLock _owner;
+        private readonly AsyncLock _owner;
 
-        internal AsyncLockReleaser(PooledAsyncLock owner)
+        internal AsyncLockReleaser(AsyncLock owner)
         {
             _owner = owner;
         }
@@ -89,7 +90,7 @@ public sealed class PooledAsyncLock
     /// and can only be awaited one single time.
     /// Use the following pattern to synchronize async Tasks.
     /// <code>
-    /// private readonly var _lock = new PooledAsyncLock();
+    /// private readonly var _lock = new AsyncLock();
     /// public async Task DoStuffAsync()
     /// {
     ///     using (await _lock.LockAsync())
@@ -111,7 +112,7 @@ public sealed class PooledAsyncLock
     /// The returned ValueTask must be disposed to release the lock.
     /// Use the following pattern to synchronize async Tasks.
     /// <code>
-    /// private readonly var _lock = new PooledAsyncLock();
+    /// private readonly var _lock = new AsyncLock();
     /// public async Task DoStuffAsync(CancellationToken ct)
     /// {
     ///     using (await _lock.LockAsync(ct))
@@ -126,21 +127,15 @@ public sealed class PooledAsyncLock
     public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
-        {
             return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
-        }
 
-        lock (_waiters)
+        lock (_mutex)
         {
             if (Interlocked.Exchange(ref _taken, 1) == 0)
-            {
                 return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
-            }
 
             if (cancellationToken.IsCancellationRequested)
-            {
                 return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
-            }
 
             if (_localWaiter.TryGetValueTaskSource())
             {
@@ -162,7 +157,7 @@ public sealed class PooledAsyncLock
     {
         ManualResetValueTaskSource<AsyncLockReleaser> toRelease;
 
-        lock (_waiters)
+        lock (_mutex)
         {
             if (_waiters.Count == 0)
             {

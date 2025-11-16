@@ -3,11 +3,11 @@
 
 namespace CryptoHives.Foundation.Threading.Tests.Async;
 
-using CryptoHives.Foundation.Threading.Async;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
 using System.Threading;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 
 [TestFixture]
 public class AsyncLockUnitTests
@@ -15,9 +15,9 @@ public class AsyncLockUnitTests
     [Test]
     public async Task LockUnlockSingleAwaiterAsync()
     {
-        var al = new PooledAsyncLock();
+        var al = new Threading.Async.Pooled.AsyncLock();
 
-        ValueTask<PooledAsyncLock.AsyncLockReleaser> vt = al.LockAsync();
+        ValueTask<Threading.Async.Pooled.AsyncLock.AsyncLockReleaser> vt = al.LockAsync();
         Assert.That(vt.IsCompleted);
 
         using (await vt.ConfigureAwait(false))
@@ -31,7 +31,7 @@ public class AsyncLockUnitTests
     [Test]
     public async Task MultipleWaitersAreServedSequentiallyAsync()
     {
-        var al = new PooledAsyncLock();
+        var al = new Threading.Async.Pooled.AsyncLock();
 
         using (await al.LockAsync().ConfigureAwait(false))
         {
@@ -50,7 +50,7 @@ public class AsyncLockUnitTests
     [Test]
     public async Task CancellationBeforeQueueingThrowsAsync()
     {
-        var al = new PooledAsyncLock();
+        var al = new Threading.Async.Pooled.AsyncLock();
 
         using (await al.LockAsync().ConfigureAwait(false))
         {

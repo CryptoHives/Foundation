@@ -3,7 +3,7 @@
 
 namespace CryptoHives.Foundation.Threading.Tests.Async;
 
-using CryptoHives.Foundation.Threading.Async;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -15,7 +15,7 @@ public class PooledAsyncAutoResetEventUnitTests
     [Test]
     public void WaitAsyncWhenNotSignaledReturnsNonCompletedValueTask()
     {
-        var ev = new PooledAsyncAutoResetEvent();
+        var ev = new Threading.Async.Pooled.AsyncAutoResetEvent();
 
         ValueTask vt = ev.WaitAsync();
 
@@ -25,7 +25,7 @@ public class PooledAsyncAutoResetEventUnitTests
     [Test]
     public async Task WaitAsyncWhenNotSignaledTaskNeverCompletesAsync()
     {
-        var ev = new PooledAsyncAutoResetEvent();
+        var ev = new Threading.Async.Pooled.AsyncAutoResetEvent();
 
         Task t = ev.WaitAsync().AsTask();
 
@@ -37,7 +37,7 @@ public class PooledAsyncAutoResetEventUnitTests
     [Test]
     public async Task WaitAsyncWhenInitiallySignaledReturnsCompletedAndResetsAsync()
     {
-        var ev = new PooledAsyncAutoResetEvent(initialState: true);
+        var ev = new Threading.Async.Pooled.AsyncAutoResetEvent(initialState: true);
 
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.True, "Expected WaitAsync to return a completed ValueTask when initially signaled");
@@ -60,7 +60,7 @@ public class PooledAsyncAutoResetEventUnitTests
     [Test]
     public async Task SetWithNoWaitersSetsSignaledForNextWaiterAsync()
     {
-        var ev = new PooledAsyncAutoResetEvent();
+        var ev = new Threading.Async.Pooled.AsyncAutoResetEvent();
 
         ev.Set(); // no waiters, should set internal signaled flag
 
@@ -80,7 +80,7 @@ public class PooledAsyncAutoResetEventUnitTests
     [Test, CancelAfter(5000)]
     public async Task SetReleasesSingleWaiterAsync()
     {
-        var ev = new PooledAsyncAutoResetEvent();
+        var ev = new Threading.Async.Pooled.AsyncAutoResetEvent();
 
         ValueTask waiter = ev.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.False, "Waiter should not be completed before Set()");
@@ -102,7 +102,7 @@ public class PooledAsyncAutoResetEventUnitTests
     [Test]
     public async Task SetAllReleasesAllQueuedWaitersAsync()
     {
-        var ev = new PooledAsyncAutoResetEvent();
+        var ev = new Threading.Async.Pooled.AsyncAutoResetEvent();
 
         ValueTask w1 = ev.WaitAsync();
         ValueTask w2 = ev.WaitAsync();
@@ -156,7 +156,7 @@ public class PooledAsyncAutoResetEventUnitTests
     [Test]
     public async Task SetAllWithNoWaitersSetsSignaledForNextWaiterAsync()
     {
-        var ev = new PooledAsyncAutoResetEvent();
+        var ev = new Threading.Async.Pooled.AsyncAutoResetEvent();
 
         ev.SetAll(); // no waiters => should set signaled flag
 

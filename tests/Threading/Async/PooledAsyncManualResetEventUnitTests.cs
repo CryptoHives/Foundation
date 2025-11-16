@@ -3,7 +3,7 @@
 
 namespace CryptoHives.Foundation.Threading.Tests.Async;
 
-using CryptoHives.Foundation.Threading.Async;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,7 +14,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public async Task WaitAsyncUnsetIsNotCompletedAsync()
     {
-        var mre = new PooledAsyncManualResetEvent();
+        var mre = new AsyncManualResetEvent();
 
         Task task = mre.WaitAsync().AsTask();
 
@@ -24,7 +24,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public void WaitAsyncValueTaskAfterSetCompletesSynchronously()
     {
-        var mre = new PooledAsyncManualResetEvent();
+        var mre = new AsyncManualResetEvent();
 
         mre.Set();
         ValueTask task = mre.WaitAsync();
@@ -35,7 +35,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public void WaitAsyncTaskAfterSetCompletesSynchronously()
     {
-        var mre = new PooledAsyncManualResetEvent();
+        var mre = new AsyncManualResetEvent();
 
         mre.Set();
         Task task = mre.WaitAsync().AsTask();
@@ -46,7 +46,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public void WaitAsyncSetCompletesSynchronously()
     {
-        var mre = new PooledAsyncManualResetEvent(true);
+        var mre = new AsyncManualResetEvent(true);
 
         ValueTask task = mre.WaitAsync();
 
@@ -56,7 +56,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public async Task MultipleWaitersAfterSetAllCompleteAsync()
     {
-        var mre = new PooledAsyncManualResetEvent();
+        var mre = new AsyncManualResetEvent();
 
         Task t1 = mre.WaitAsync().AsTask();
         Task t2 = mre.WaitAsync().AsTask();
@@ -73,7 +73,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public async Task MultipleWaitersValueTaskAndTaskCompleteAfterSetAsync()
     {
-        var mre = new PooledAsyncManualResetEvent();
+        var mre = new AsyncManualResetEvent();
 
         // create several waiters using ValueTask and Task forms
         Task[] taskWaiters = Enumerable.Range(0,5).Select(_ => mre.WaitAsync().AsTask()).ToArray();
@@ -95,7 +95,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public async Task ResetUnsetsEventAsync()
     {
-        var mre = new PooledAsyncManualResetEvent(true);
+        var mre = new AsyncManualResetEvent(true);
 
         Assert.That(mre.IsSet);
 
@@ -110,7 +110,7 @@ public class PooledAsyncManualResetEventUnitTests
     [Test]
     public async Task ResetWhenAlreadyResetDoesNothingAsync()
     {
-        var mre = new PooledAsyncManualResetEvent(false);
+        var mre = new AsyncManualResetEvent(false);
 
         // Should not throw and should remain unset
         mre.Reset();

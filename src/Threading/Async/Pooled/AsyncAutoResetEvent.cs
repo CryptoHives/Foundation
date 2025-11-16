@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Async;
+namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using System;
@@ -13,58 +13,38 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 
 /// <summary>
-/// An async version of <see cref="ManualResetEvent"/> which uses a
+/// An async version of <see cref="AutoResetEvent"/> which uses a
 /// poolable <see cref="PooledManualResetValueTaskSource{Boolean}"/> to avoid allocations
 /// of <see cref="TaskCompletionSource{Boolean}"/> and <see cref="Task"/>.
 /// </summary>
-public sealed class PooledAsyncManualResetEvent
+public class AsyncAutoResetEvent
 {
-    /// <summary>
-    /// The queue of waiting ValueTasks to wake up on Set.
-    /// </summary>
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter = new();
+    private readonly object _mutex = new();
+    private volatile int _signaled;
 
     /// <summary>
-    /// Whether the event is currently signaled.
+    /// Initializes a new instance of the <see cref="AsyncAutoResetEvent"/>
+    /// class with the specified initial state.
     /// </summary>
-    private bool _signaled;
-
-    /// <summary>
-    /// Creates an async ValueTask compatible ManualResetEvent.
-    /// </summary>
-    /// <param name="set">The initial state of the ManualResetEvent</param>
-    public PooledAsyncManualResetEvent(bool set)
+    /// <param name="initialState">A boolean value indicating the initial state of the event. <see langword="true"/> if the event is initially
+    /// signaled; otherwise, <see langword="false"/>.</param>
+    public AsyncAutoResetEvent(bool initialState = false)
     {
-        _signaled = set;
+        _signaled = initialState ? 1 : 0;
     }
 
     /// <summary>
-    /// Creates an async ValueTask compatible ManualResetEvent which is not set.
-    /// </summary>
-    public PooledAsyncManualResetEvent()
-        : this(false)
-    {
-    }
-
-    /// <summary>
-    /// Whether this event is currently set.
-    /// </summary>
-    public bool IsSet
-    {
-        get { lock (_waiters) return _signaled; }
-    }
-
-    /// <summary>
-    /// Asynchronously waits for this event to be set.
+    /// Asynchronously waits for a signal to be received.
     /// </summary>
     /// <remarks>
-    /// If the event is already signalled, the method returns a completed <see cref="ValueTask"/>.
+    /// If the signal has already been received, the method returns a completed <see cref="ValueTask"/>.
     /// Otherwise, it enqueues a waiter and returns a task that completes when the signal is received.
     /// The ValueTask is a struct that can only be awaited or transformed with AsTask() ONE time, then
     /// it is returned to the pool and every subsequent access throws an <see cref="InvalidOperationException"/>.
     /// <code>
-    ///     var event = new PooledAsyncManualResetEvent();
+    ///     var event = new AsyncAutoResetEvent();
     ///     
     ///     // GOOD: single await
     ///     await _event.WaitAsync().ConfigureAwait(false);
@@ -92,12 +72,15 @@ public sealed class PooledAsyncManualResetEvent
     /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
     public ValueTask WaitAsync()
     {
-        lock (_waiters)
+        // fast path without lock
+        if (Interlocked.Exchange(ref _signaled, 0) != 0)
+            return default;
+
+        lock (_mutex)
         {
-            if (_signaled)
-            {
+            // due to race conditions, _signalled may have changed until the lock is taken
+            if (Interlocked.Exchange(ref _signaled, 0) != 0)
                 return default;
-            }
 
             if (_localWaiter.TryGetValueTaskSource())
             {
@@ -105,7 +88,7 @@ public sealed class PooledAsyncManualResetEvent
                 return new ValueTask(_localWaiter, _localWaiter.Version);
             }
 
-            ManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
+            PooledManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
@@ -122,24 +105,44 @@ public sealed class PooledAsyncManualResetEvent
 #endif
 
     /// <summary>
-    /// Sets the event, completes every waiting ValueTask.
+    /// Signals the event, releasing a single waiting thread if any are queued.
     /// </summary>
+    /// <remarks>
+    /// If no threads are waiting, the event is set to a signaled state, allowing any subsequent
+    /// threads to proceed without blocking. This method is thread-safe.
+    /// </remarks>
     public void Set()
     {
-        int count;
-        ManualResetValueTaskSource<bool>[] toRelease;
+        ManualResetValueTaskSource<bool>? toRelease;
 
-        lock (_waiters)
+        lock (_mutex)
         {
-            if (_signaled)
+            if (_waiters.Count == 0)
             {
+                _ = Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
-            _signaled = true;
 
+            toRelease = _waiters.Dequeue();
+        }
+
+        toRelease.SetResult(true);
+    }
+
+    /// <summary>
+    /// Signals all waiting tasks to complete successfully.
+    /// </summary>
+    public void SetAll()
+    {
+        int count;
+        ManualResetValueTaskSource<bool>[]? toRelease;
+
+        lock (_mutex)
+        {
             count = _waiters.Count;
             if (count == 0)
             {
+                _ = Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
 
@@ -164,19 +167,6 @@ public sealed class PooledAsyncManualResetEvent
         finally
         {
             ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
-        }
-    }
-
-    /// <summary>
-    /// Resets the event.
-    /// If the event is already reset, this method does nothing.
-    /// </summary>
-    public void Reset()
-    {
-        lock (_waiters)
-        {
-            Debug.Assert(_waiters.Count == 0, "There should be no waiters when resetting the event.");
-            _signaled = false;
         }
     }
 }

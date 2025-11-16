@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Threading.Tests.Async.AsyncAutoResetEvent;
 
 using BenchmarkDotNet.Attributes;
-using CryptoHives.Foundation.Threading.Async;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System.Threading;
 
@@ -16,7 +16,7 @@ using NitoAsyncEx = Nito.AsyncEx;
 
 public abstract class AsyncAutoResetEventBaseBenchmarks
 {
-    protected PooledAsyncAutoResetEvent? _eventPooled;
+    protected AsyncAutoResetEvent? _eventPooled;
     protected NitoAsyncEx.AsyncAutoResetEvent? _eventNitoAsync;
     protected RefImpl.AsyncAutoResetEvent? _eventRefImpl;
     protected AutoResetEvent? _eventStandard;
@@ -28,7 +28,7 @@ public abstract class AsyncAutoResetEventBaseBenchmarks
     [GlobalSetup]
     public void GlobalSetup()
     {
-        _eventPooled = new PooledAsyncAutoResetEvent();
+        _eventPooled = new AsyncAutoResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
         _eventRefImpl = new RefImpl.AsyncAutoResetEvent();
         _eventStandard = new AutoResetEvent(false);
