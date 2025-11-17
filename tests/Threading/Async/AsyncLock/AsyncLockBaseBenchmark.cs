@@ -8,7 +8,10 @@ using NUnit.Framework;
 
 public abstract class AsyncLockBaseBenchmark
 {
-    protected readonly object Lock = new();
+#if NET9_0_OR_GREATER
+    protected readonly System.Threading.Lock Lock = new();
+#endif
+    protected readonly object ObjectLock = new();
     protected readonly Threading.Async.Pooled.AsyncLock LockPooled = new();
     protected readonly Nito.AsyncEx.AsyncLock LockNitoAsync = new();
     protected readonly AsyncKeyedLock.AsyncNonKeyedLocker LockNonKeyed = new();

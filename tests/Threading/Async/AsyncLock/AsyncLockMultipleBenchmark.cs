@@ -51,7 +51,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     private ValueTask<AsyncKeyedLock.AsyncNonKeyedLockReleaser>[]? _lockNonKeyedHandle;
 
     public static object[] FixtureArgs = {
-        new object[] { 1 },
+        new object[] { 0 },
         new object[] { 1 },
         new object[] { 10 },
         new object[] { 100 }
@@ -59,6 +59,8 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 
     [Params(0, 1, 10, 100)]
     public int Iterations = 10;
+
+    public AsyncLockMultipleBenchmark() { }
 
     public AsyncLockMultipleBenchmark(int iterations)
     {

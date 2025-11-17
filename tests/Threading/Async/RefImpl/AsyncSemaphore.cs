@@ -17,8 +17,8 @@ using System.Threading.Tasks;
 /// </remarks>
 public class AsyncSemaphore
 {
-    private readonly static Task _completed = Task.FromResult(true);
-    private readonly Queue<TaskCompletionSource<bool>> _waiters = new Queue<TaskCompletionSource<bool>>();
+    private static readonly Task _completed = Task.FromResult(true);
+    private readonly Queue<TaskCompletionSource<bool>> _waiters = new();
     private int _currentCount;
 
     public AsyncSemaphore(int initialCount)

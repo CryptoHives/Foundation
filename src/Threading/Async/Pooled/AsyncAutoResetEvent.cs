@@ -21,7 +21,11 @@ public class AsyncAutoResetEvent
 {
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter = new();
+#if NET9_0_OR_GREATER
+    private readonly Lock _mutex = new();
+#else
     private readonly object _mutex = new();
+#endif
     private volatile int _signaled;
 
     /// <summary>
@@ -74,21 +78,25 @@ public class AsyncAutoResetEvent
     {
         // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
+        {
             return default;
+        }
 
         lock (_mutex)
         {
             // due to race conditions, _signalled may have changed until the lock is taken
             if (Interlocked.Exchange(ref _signaled, 0) != 0)
-                return default;
-
-            if (_localWaiter.TryGetValueTaskSource())
             {
-                _waiters.Enqueue(_localWaiter);
-                return new ValueTask(_localWaiter, _localWaiter.Version);
+                return default;
             }
 
-            PooledManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
+            ManualResetValueTaskSource<bool> waiter;
+            if (!_localWaiter.TryGetValueTaskSource(out waiter))
+            {
+                waiter = PooledEventsCommon.GetPooledValueTaskSource();
+            }
+
+            waiter.RunContinuationsAsynchronously = true;
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
@@ -127,6 +135,14 @@ public class AsyncAutoResetEvent
         }
 
         toRelease.SetResult(true);
+    }
+
+    /// <summary>
+    /// Reset the signaled state for test purposes.
+    /// </summary>
+    internal void Reset()
+    {
+        Interlocked.Exchange(ref _signaled, 0);
     }
 
     /// <summary>

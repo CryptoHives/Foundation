@@ -26,6 +26,15 @@ internal abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IVa
     public abstract short Version { get; }
 
     /// <summary>
+    /// Gets or sets whether to force continuations to run asynchronously.
+    /// </summary>
+    /// <remarks>
+    /// Continuations may run asynchronously if this is false, but they'll
+    /// never run synchronously if this is true.
+    /// </remarks>
+    public abstract bool RunContinuationsAsynchronously { get; set; }
+
+    /// <summary>
     /// Signals the completion of an operation, setting the result to T.
     /// </summary>
     /// <remarks>

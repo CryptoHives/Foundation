@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Threading.Tests.Async.RefImpl;
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -62,6 +63,17 @@ public class AsyncAutoResetEvent
             }
         }
         toRelease.SetResult(true);
+    }
+
+    /// <summary>
+    /// Resets the signaled state for benchmark purposes.
+    /// </summary>
+    internal void Reset()
+    {
+        lock (_waits)
+        {
+            _signaled = false;
+        }
     }
 
     /// <summary>

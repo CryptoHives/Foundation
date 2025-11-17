@@ -43,9 +43,4 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <Folder Include="BenchmarkDotNet.Artifacts\" />
-  </ItemGroup>
-
 </Project>

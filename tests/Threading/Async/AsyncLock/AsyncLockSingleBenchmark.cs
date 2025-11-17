@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Threading.Tests.Async.AsyncLock;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -43,11 +44,12 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
 {
     private volatile int _counter;
 
+#if NET9_0_OR_GREATER
     /// <summary>
-    /// Benchmark for standard synchronous C# lock statement.
+    /// Benchmark for .NET 9.0 C# Lock statement.
     /// </summary>
     /// <remarks>
-    /// Measures the baseline performance of the synchronous Monitor-based lock mechanism.
+    /// Measures the baseline performance of the .NET 9 Lock mechanism.
     /// This is the fastest synchronous option but blocks threads and cannot be used with await.
     /// </remarks>
     [Test]
@@ -57,7 +59,44 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         lock (Lock)
         {
             // simulate work
-            _counter++;
+            unchecked { _counter++; }
+        }
+    }
+
+    /// <summary>
+    /// Benchmark for .NET 9.0 C# Lock statement with EnterScope().
+    /// </summary>
+    /// <remarks>
+    /// Measures the baseline performance of the .NET 9 Lock mechanism with EnterScope().
+    /// This is the fastest synchronous option but blocks threads and cannot be used with await.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    public void LockEnterScopeSingle()
+    {
+        using (Lock.EnterScope())
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+    }
+#endif
+
+    /// <summary>
+    /// Benchmark for standard synchronous C# lock statement.
+    /// </summary>
+    /// <remarks>
+    /// Measures the baseline performance of the synchronous Monitor-based lock mechanism.
+    /// This option blocks threads and cannot be used with await.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    public void ObjectLockUnlockSingle()
+    {
+        lock (ObjectLock)
+        {
+            // simulate work
+            unchecked { _counter++; }
         }
     }
 
@@ -75,7 +114,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         using (await LockPooled.LockAsync().ConfigureAwait(false))
         {
             // simulate work
-            _counter++;
+            unchecked { _counter++; }
         }
     }
 
@@ -93,7 +132,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         using (await LockNitoAsync.LockAsync().ConfigureAwait(false))
         {
             // simulate work
-            _counter++;
+            unchecked { _counter++; }
         }
     }
 
@@ -111,7 +150,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         using (await LockNonKeyed.LockAsync().ConfigureAwait(false))
         {
             // simulate work
-            _counter++;
+            unchecked { _counter++; }
         }
     }
 
@@ -129,8 +168,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         using (await LockRefImpl.LockAsync().ConfigureAwait(false))
         {
             // simulate work
-            _counter++;
+            unchecked { _counter++; }
         }
     }
-
 }

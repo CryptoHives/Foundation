@@ -15,19 +15,19 @@ using System.Threading.Tasks;
 /// </remarks>
 public class AsyncManualResetEvent
 {
-    private volatile TaskCompletionSource<bool> m_tcs = new TaskCompletionSource<bool>();
+    private volatile TaskCompletionSource<bool> _tcs = new();
 
-    public Task WaitAsync() => m_tcs.Task;
+    public Task WaitAsync() => _tcs.Task;
 
-    public void Set() => m_tcs.TrySetResult(true);
+    public void Set() => _tcs.TrySetResult(true);
 
     public void Reset()
     {
         while (true)
         {
-            var tcs = m_tcs;
+            var tcs = _tcs;
             if (!tcs.Task.IsCompleted ||
-                Interlocked.CompareExchange(ref m_tcs, new TaskCompletionSource<bool>(), tcs) == tcs)
+                Interlocked.CompareExchange(ref _tcs, new TaskCompletionSource<bool>(), tcs) == tcs)
             {
                 return;
             }

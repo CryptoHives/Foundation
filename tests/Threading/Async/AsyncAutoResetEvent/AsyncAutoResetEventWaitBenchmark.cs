@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 [TestFixture]
 [MemoryDiagnoser(displayGenColumns: false)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmarks
 {
     /// <summary>
@@ -79,7 +80,7 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Wait", "Nito")]
+    [BenchmarkCategory("Wait", "Nito.AsyncEx")]
     public async Task NitoAsyncAutoResetEventTaskWaitAsync()
     {
         Task t = _eventNitoAsync!.WaitAsync();

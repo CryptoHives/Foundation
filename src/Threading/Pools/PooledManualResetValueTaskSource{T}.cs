@@ -35,6 +35,13 @@ internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTask
     public override short Version => _core.Version;
 
     /// <inheritdoc/>
+    public override bool RunContinuationsAsynchronously
+    {
+        get => _core.RunContinuationsAsynchronously;
+        set => _core.RunContinuationsAsynchronously = value;
+    }
+
+    /// <inheritdoc/>
     public override void SetResult(T result)
         => _core.SetResult(result);
 

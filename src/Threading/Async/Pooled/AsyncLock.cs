@@ -45,7 +45,11 @@ public sealed class AsyncLock
 {
     private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter = new();
+#if NET9_0_OR_GREATER
+    private readonly Lock _mutex = new();
+#else
     private readonly object _mutex = new();
+#endif
     private volatile int _taken;
 
     // Pool for AsyncLockReleaser-typed value task sources.
@@ -127,24 +131,31 @@ public sealed class AsyncLock
     public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
+        {
             return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
+        }
 
         lock (_mutex)
         {
             if (Interlocked.Exchange(ref _taken, 1) == 0)
-                return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
-
-            if (cancellationToken.IsCancellationRequested)
-                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
-
-            if (_localWaiter.TryGetValueTaskSource())
             {
-                _waiters.Enqueue(_localWaiter);
-                return new ValueTask<AsyncLockReleaser>(_localWaiter, _localWaiter.Version);
+                return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
             }
 
-            PooledManualResetValueTaskSource<AsyncLockReleaser> waiter = _pool.Get();
-            waiter.SetOwnerPool(_pool);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
+            }
+
+            ManualResetValueTaskSource<AsyncLockReleaser> waiter;
+            if (!_localWaiter.TryGetValueTaskSource(out waiter))
+            {
+                var pooledWaiter = _pool.Get();
+                pooledWaiter.SetOwnerPool(_pool);
+                waiter = pooledWaiter;
+            }
+
+            waiter.RunContinuationsAsynchronously = true;
             _waiters.Enqueue(waiter);
             return new ValueTask<AsyncLockReleaser>(waiter, waiter.Version);
         }

@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 [TestFixture]
 [MemoryDiagnoser(displayGenColumns: false)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventSetThenWaitBenchmarks : AsyncAutoResetEventBaseBenchmarks
 {
     /// <summary>
@@ -44,8 +45,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmarks : AsyncAutoResetEventBaseB
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetWait", "Standard")]
-    public void AutoResetEventSetWait()
+    [BenchmarkCategory("SetThenWait", "Standard")]
+    public void AutoResetEventSetThenWait()
     {
         _eventStandard!.Set();
         _ = _eventStandard!.WaitOne();
@@ -60,11 +61,28 @@ public class AsyncAutoResetEventSetThenWaitBenchmarks : AsyncAutoResetEventBaseB
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SetWait", "Pooled")]
-    public async Task PooledAsyncAutoResetEventSetWaitAsync()
+    [BenchmarkCategory("SetThenWait", "Pooled")]
+    public async Task PooledAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventPooled!.Set();
         await _eventPooled!.WaitAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Benchmark for pooled async auto-reset event Set-then-Wait using AsTask().
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path async completion when the event is pre-signaled.
+    /// The pooled implementation should return a completed ValueTask immediately
+    /// which is then converted to a Task.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetThenWait", "PooledAsTask")]
+    public async Task PooledAsTaskAsyncAutoResetEventSetThenWaitAsync()
+    {
+        _eventPooled!.Set();
+        await _eventPooled!.WaitAsync().AsTask().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -76,8 +94,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmarks : AsyncAutoResetEventBaseB
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SetWait", "Nito")]
-    public async Task NitoAsyncAutoResetEventSetWaitAsync()
+    [BenchmarkCategory("SetThenWait", "Nito.AsyncEx")]
+    public async Task NitoAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventNitoAsync!.Set();
         await _eventNitoAsync!.WaitAsync().ConfigureAwait(false);
@@ -92,8 +110,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmarks : AsyncAutoResetEventBaseB
     /// </remarks>
     [Test]
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("SetWait", "RefImpl")]
-    public async Task RefImplAsyncAutoResetEventSetWaitAsync()
+    [BenchmarkCategory("SetThenWait", "RefImpl")]
+    public async Task RefImplAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventRefImpl!.Set();
         await _eventRefImpl!.WaitAsync().ConfigureAwait(false);

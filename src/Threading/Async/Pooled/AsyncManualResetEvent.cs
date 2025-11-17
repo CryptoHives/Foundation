@@ -21,7 +21,11 @@ public sealed class AsyncManualResetEvent
 {
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter = new();
+#if NET9_0_OR_GREATER
+    private readonly Lock _mutex = new();
+#else
     private readonly object _mutex = new();
+#endif
     private volatile bool _signaled;
 
     /// <summary>
@@ -93,13 +97,13 @@ public sealed class AsyncManualResetEvent
                 return default;
             }
 
-            if (_localWaiter.TryGetValueTaskSource())
+            ManualResetValueTaskSource<bool> waiter;
+            if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
-                _waiters.Enqueue(_localWaiter);
-                return new ValueTask(_localWaiter, _localWaiter.Version);
+                waiter = PooledEventsCommon.GetPooledValueTaskSource();
             }
 
-            ManualResetValueTaskSource<bool> waiter = PooledEventsCommon.GetPooledValueTaskSource();
+            waiter.RunContinuationsAsynchronously = true;
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }

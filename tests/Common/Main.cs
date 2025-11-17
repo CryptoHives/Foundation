@@ -13,6 +13,7 @@ static class Program
             // need this option because of reference to nunit.framework
             .WithOptions(ConfigOptions.DisableOptimizationsValidator)
             .WithOptions(ConfigOptions.DisableLogFile)
+            .WithOptions(ConfigOptions.DisableParallelBuild)
         ;
         BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
     }

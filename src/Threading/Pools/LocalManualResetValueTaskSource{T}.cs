@@ -28,13 +28,21 @@ internal sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskS
     /// Tries to get ownership of the local value task source.
     /// </summary>
     /// <returns>Returns <c>true</c> if ownership was acquired; otherwise, <c>false</c>.</returns>
-    public bool TryGetValueTaskSource()
+    public bool TryGetValueTaskSource(out ManualResetValueTaskSource<T> waiter)
     {
+        waiter = this;
         return Interlocked.Exchange(ref _inUse, 1) == 0;
     }
 
     /// <inheritdoc/>
     public override short Version { get => _core.Version; }
+
+    /// <inheritdoc/>
+    public override bool RunContinuationsAsynchronously
+    {
+        get => _core.RunContinuationsAsynchronously;
+        set => _core.RunContinuationsAsynchronously = value;
+    }
 
     /// <inheritdoc/>
     public override void SetResult(T result)
