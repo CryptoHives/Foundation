@@ -34,8 +34,8 @@ public class AsyncLockUnitTests
 
         using (await al.LockAsync().ConfigureAwait(false))
         {
-            var t1 = Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
-            var t2 = Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
+            Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
+            Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
 
             await Task.Delay(10).ConfigureAwait(false);
             Assert.That(al.IsTaken);
