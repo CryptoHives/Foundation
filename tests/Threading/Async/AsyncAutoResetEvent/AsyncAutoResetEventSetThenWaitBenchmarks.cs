@@ -48,7 +48,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmarks : AsyncAutoResetEventBaseB
     [BenchmarkCategory("SetThenWait", "Standard")]
     public void AutoResetEventSetThenWait()
     {
-        _eventStandard!.Set();
+        _ = _eventStandard!.Set();
         _ = _eventStandard!.WaitOne();
     }
 

@@ -25,7 +25,7 @@ public abstract class AsyncAutoResetEventBaseBenchmarks
     /// </summary>
     [OneTimeSetUp]
     [GlobalSetup]
-    public void GlobalSetup()
+    public virtual void GlobalSetup()
     {
         _eventPooled = new Threading.Async.Pooled.AsyncAutoResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
@@ -38,7 +38,7 @@ public abstract class AsyncAutoResetEventBaseBenchmarks
     /// </summary>
     [OneTimeTearDown]
     [GlobalCleanup]
-    public void GlobalCleanup()
+    public virtual void GlobalCleanup()
     {
         _eventStandard?.Dispose();
     }

@@ -39,7 +39,7 @@ using NUnit.Framework;
 public class AsyncAutoResetEventSetBenchmarks : AsyncAutoResetEventBaseBenchmarks
 {
     /// <summary>
-    /// Benchmark for standard synchronous AutoResetEvent Set operation.
+    /// Benchmark for standard synchronous <see cref="AutoResetEvent"/> Set operation.
     /// </summary>
     /// <remarks>
     /// Measures the baseline performance of the OS-level synchronous AutoResetEvent.Set() call.

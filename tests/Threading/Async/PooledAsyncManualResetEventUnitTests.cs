@@ -65,9 +65,12 @@ public class PooledAsyncManualResetEventUnitTests
 
         // both should complete because ManualResetEvent stays signaled
         await Task.WhenAll(t1, t2).ConfigureAwait(false);
-        Assert.That(t1.IsCompleted);
-        Assert.That(t2.IsCompleted);
-        Assert.That(mre.IsSet);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(t1.IsCompleted);
+            Assert.That(t2.IsCompleted);
+            Assert.That(mre.IsSet);
+        }
     }
 
     [Test]
@@ -87,9 +90,12 @@ public class PooledAsyncManualResetEventUnitTests
         // await waiters
         await Task.WhenAll(taskWaiters).ConfigureAwait(false);
 
-        // verify all completed and event remains set
-        Assert.That(taskWaiters.All(t => t.IsCompleted));
-        Assert.That(mre.IsSet);
+        using (Assert.EnterMultipleScope())
+        {
+            // verify all completed and event remains set
+            Assert.That(taskWaiters.All(t => t.IsCompleted));
+            Assert.That(mre.IsSet);
+        }
     }
 
     [Test]

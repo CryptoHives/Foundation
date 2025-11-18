@@ -27,14 +27,17 @@ public sealed class AsyncManualResetEvent
     private readonly object _mutex = new();
 #endif
     private volatile bool _signaled;
+    private bool _runContinuationAsynchronously;
 
     /// <summary>
     /// Creates an async ValueTask compatible ManualResetEvent.
     /// </summary>
-    /// <param name="set">The initial state of the ManualResetEvent</param>
-    public AsyncManualResetEvent(bool set)
+    /// <param name="set">The initial state of the event.</param>
+    /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
+    public AsyncManualResetEvent(bool set, bool runContinuationAsynchronously = true)
     {
         _signaled = set;
+        _runContinuationAsynchronously = runContinuationAsynchronously;
     }
 
     /// <summary>
@@ -51,6 +54,15 @@ public sealed class AsyncManualResetEvent
     public bool IsSet
     {
         get { lock (_mutex) return _signaled; }
+    }
+
+    /// <summary>
+    /// Gets or sets whether to force continuations to run asynchronously.
+    /// </summary>
+    public bool RunContinuationAsynchronously
+    {
+        get { return _runContinuationAsynchronously; }
+        set { _runContinuationAsynchronously = value; }
     }
 
     /// <summary>
@@ -103,7 +115,7 @@ public sealed class AsyncManualResetEvent
                 waiter = PooledEventsCommon.GetPooledValueTaskSource();
             }
 
-            waiter.RunContinuationsAsynchronously = true;
+            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }

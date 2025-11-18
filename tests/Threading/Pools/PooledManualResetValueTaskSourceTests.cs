@@ -92,7 +92,6 @@ public class PooledManualResetValueTaskSourceTests
         short token = vts.Version;
         var tcs = new TaskCompletionSource<bool>();
 
-
         // register continuation
         vts.OnCompleted(state => ((TaskCompletionSource<bool>)state!).SetResult(true), tcs, token, ValueTaskSourceOnCompletedFlags.None);
 
@@ -103,10 +102,11 @@ public class PooledManualResetValueTaskSourceTests
         vts.SetResult(true);
 
         // continuation should run
-        await tcs.Task.ConfigureAwait(false);
+        bool success = await tcs.Task.ConfigureAwait(false);
 
         // status becomes succeeded
         Assert.That(vts.GetStatus(token), Is.EqualTo(ValueTaskSourceStatus.Succeeded));
+        Assert.That(success, Is.True);
     }
 
     [Test]

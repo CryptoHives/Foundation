@@ -27,16 +27,35 @@ public class AsyncAutoResetEvent
     private readonly object _mutex = new();
 #endif
     private volatile int _signaled;
+    private bool _runContinuationAsynchronously;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AsyncAutoResetEvent"/>
     /// class with the specified initial state.
     /// </summary>
-    /// <param name="initialState">A boolean value indicating the initial state of the event. <see langword="true"/> if the event is initially
-    /// signaled; otherwise, <see langword="false"/>.</param>
-    public AsyncAutoResetEvent(bool initialState = false)
+    /// <param name="initialState">The initial state of the event.</param>
+    /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
+    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true)
     {
         _signaled = initialState ? 1 : 0;
+        _runContinuationAsynchronously = runContinuationAsynchronously;
+    }
+
+    /// <summary>
+    /// Whether this event is currently set.
+    /// </summary>
+    public bool IsSet
+    {
+        get { lock (_mutex) return _signaled != 0; }
+    }
+
+    /// <summary>
+    /// Gets or sets whether to force continuations to run asynchronously.
+    /// </summary>
+    public bool RunContinuationAsynchronously
+    {
+        get { return _runContinuationAsynchronously; }
+        set { _runContinuationAsynchronously = value; }
     }
 
     /// <summary>
@@ -96,7 +115,7 @@ public class AsyncAutoResetEvent
                 waiter = PooledEventsCommon.GetPooledValueTaskSource();
             }
 
-            waiter.RunContinuationsAsynchronously = true;
+            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }

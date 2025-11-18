@@ -46,12 +46,12 @@ public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmar
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Wait", "Pooled")]
+    [BenchmarkCategory("Wait", "PooledAsTask")]
     public async Task PooledAsyncAutoResetEventTaskWaitAsync()
     {
-        Task t = _eventPooled!.WaitAsync().AsTask();
+        ValueTask vt = _eventPooled!.WaitAsync();
         _eventPooled!.Set();
-        await t.ConfigureAwait(false);
+        await vt.AsTask().ConfigureAwait(false);
     }
 
     /// <summary>
