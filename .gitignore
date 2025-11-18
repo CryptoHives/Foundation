@@ -421,3 +421,7 @@ FodyWeavers.xsd
 
 # Project code coverage results
 /CodeCoverage
+
+# DocFX generated documentation
+docfx/_site/
+docfx/api/
