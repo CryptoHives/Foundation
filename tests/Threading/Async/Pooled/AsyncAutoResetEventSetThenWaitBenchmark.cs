@@ -3,7 +3,6 @@
 
 namespace Threading.Tests.Async.Pooled;
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading.Tasks;

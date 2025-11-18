@@ -3,7 +3,8 @@
 
 namespace Threading.Tests.Async.Pooled;
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
+#pragma warning disable CA2012 // Use ValueTasks correctly
+
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System;

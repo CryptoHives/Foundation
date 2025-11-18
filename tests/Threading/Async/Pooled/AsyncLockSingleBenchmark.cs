@@ -5,7 +5,6 @@ namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 /// <summary>
