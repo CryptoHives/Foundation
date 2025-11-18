@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.Pooled.AsyncAutoResetEvent;
+namespace Threading.Tests.Async.Pooled;
 
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading;
@@ -13,9 +14,9 @@ using NitoAsyncEx = RefImpl;
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
-public abstract class AsyncAutoResetEventBaseBenchmarks
+public abstract class AsyncAutoResetEventBaseBenchmark
 {
-    protected Threading.Async.Pooled.AsyncAutoResetEvent? _eventPooled;
+    protected AsyncAutoResetEvent? _eventPooled;
     protected NitoAsyncEx.AsyncAutoResetEvent? _eventNitoAsync;
     protected RefImpl.AsyncAutoResetEvent? _eventRefImpl;
     protected AutoResetEvent? _eventStandard;
@@ -27,7 +28,7 @@ public abstract class AsyncAutoResetEventBaseBenchmarks
     [GlobalSetup]
     public virtual void GlobalSetup()
     {
-        _eventPooled = new Threading.Async.Pooled.AsyncAutoResetEvent();
+        _eventPooled = new AsyncAutoResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
         _eventRefImpl = new RefImpl.AsyncAutoResetEvent();
         _eventStandard = new AutoResetEvent(false);

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.RefImpl;
+namespace Threading.Tests.Async.RefImpl;
 
 using System.Collections.Generic;
 using System.Threading;

@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.Pooled.AsyncAutoResetEvent;
+namespace Threading.Tests.Async.Pooled;
 
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System;
@@ -42,7 +43,7 @@ using System.Threading.Tasks;
 /// </para>
 /// <para>
 /// <b>Continuation behavior:</b> The pooled implementation supports configurable continuation scheduling via
-/// <see cref="Threading.Async.Pooled.AsyncAutoResetEvent.RunContinuationAsynchronously"/>.
+/// <see cref="Threading.Async.Pooled.RunContinuationAsynchronously"/>.
 /// When set to false, continuations execute synchronously on the signaling thread, reducing context switching
 /// overhead but potentially blocking the caller longer.
 /// </para>
@@ -60,7 +61,7 @@ using System.Threading.Tasks;
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 [NonParallelizable]
-public class AsyncAutoResetEventWaitThenSetBenchmarks : AsyncAutoResetEventBaseBenchmarks
+public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBenchmark
 {
     private Task?[] _task;
     private ValueTask[] _valueTask;
@@ -75,13 +76,13 @@ public class AsyncAutoResetEventWaitThenSetBenchmarks : AsyncAutoResetEventBaseB
     [Params(1, 2, 10, 100)]
     public int Iterations = 10;
 
-    public AsyncAutoResetEventWaitThenSetBenchmarks()
+    public AsyncAutoResetEventWaitThenSetBenchmark()
     {
         _task = Array.Empty<Task>();
         _valueTask = Array.Empty<ValueTask>();
     }
 
-    public AsyncAutoResetEventWaitThenSetBenchmarks(int iterations)
+    public AsyncAutoResetEventWaitThenSetBenchmark(int iterations)
     {
         _task = Array.Empty<Task>();
         _valueTask = Array.Empty<ValueTask>();

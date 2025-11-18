@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.Pooled;
+namespace Threading.Tests.Async.Pooled;
 
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
 using System.Threading;
@@ -14,9 +15,9 @@ public class AsyncLockUnitTests
     [Test]
     public async Task LockUnlockSingleAwaiterAsync()
     {
-        var al = new Threading.Async.Pooled.AsyncLock();
+        var al = new AsyncLock();
 
-        ValueTask<Threading.Async.Pooled.AsyncLock.AsyncLockReleaser> vt = al.LockAsync();
+        ValueTask<AsyncLock.AsyncLockReleaser> vt = al.LockAsync();
         Assert.That(vt.IsCompleted);
 
         using (await vt.ConfigureAwait(false))
@@ -30,7 +31,7 @@ public class AsyncLockUnitTests
     [Test]
     public async Task MultipleWaitersAreServedSequentiallyAsync()
     {
-        var al = new Threading.Async.Pooled.AsyncLock();
+        var al = new AsyncLock();
 
         Task t1, t2;
         using (await al.LockAsync().ConfigureAwait(false))
@@ -51,7 +52,7 @@ public class AsyncLockUnitTests
     [Test]
     public async Task CancellationBeforeQueueingThrowsAsync()
     {
-        var al = new Threading.Async.Pooled.AsyncLock();
+        var al = new AsyncLock();
 
         using (await al.LockAsync().ConfigureAwait(false))
         {

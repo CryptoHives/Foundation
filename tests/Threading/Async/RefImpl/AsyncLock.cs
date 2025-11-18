@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.RefImpl;
-
+namespace Threading.Tests.Async.RefImpl;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,7 +18,7 @@ public class AsyncLock
     private readonly AsyncSemaphore _semaphore;
     private readonly Task<AsyncLockReleaser> _releaser;
 
-    public struct AsyncLockReleaser : IDisposable
+    public readonly struct AsyncLockReleaser : IDisposable
     {
         private readonly AsyncLock _toRelease;
 

@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.Pooled.AsyncAutoResetEvent;
+namespace Threading.Tests.Async.Pooled;
 
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading.Tasks;
@@ -35,7 +36,7 @@ using System.Threading.Tasks;
 [MemoryDiagnoser(displayGenColumns: false)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
-public class AsyncAutoResetEventWaitBenchmarks : AsyncAutoResetEventBaseBenchmarks
+public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
 {
     /// <summary>
     /// Benchmark for pooled async auto-reset event using Task (converted from ValueTask).

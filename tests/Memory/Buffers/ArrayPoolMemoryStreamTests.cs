@@ -5,7 +5,7 @@
 #define STREAM_WITH_READEXACTLY_SUPPORT
 #endif
 
-namespace CryptoHives.Foundation.Memory.Tests.Buffers;
+namespace Memory.Tests.Buffers;
 
 using CryptoHives.Foundation.Memory.Buffers;
 using NUnit.Framework;

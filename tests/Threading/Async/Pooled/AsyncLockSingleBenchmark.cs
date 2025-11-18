@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.Pooled.AsyncLock;
+namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
