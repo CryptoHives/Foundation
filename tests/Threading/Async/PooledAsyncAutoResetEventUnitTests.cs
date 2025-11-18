@@ -3,7 +3,6 @@
 
 namespace CryptoHives.Foundation.Threading.Tests.Async;
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;

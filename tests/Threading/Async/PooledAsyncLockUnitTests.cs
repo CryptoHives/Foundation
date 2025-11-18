@@ -32,10 +32,11 @@ public class AsyncLockUnitTests
     {
         var al = new Threading.Async.Pooled.AsyncLock();
 
+        Task t1, t2;
         using (await al.LockAsync().ConfigureAwait(false))
         {
-            Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
-            Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
+            t1 = Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
+            t2 = Task.Run(async () => { using (await al.LockAsync().ConfigureAwait(false)) { await Task.Delay(10).ConfigureAwait(false); } });
 
             await Task.Delay(10).ConfigureAwait(false);
             Assert.That(al.IsTaken);
@@ -43,6 +44,7 @@ public class AsyncLockUnitTests
             // release outer lock and wait for tasks to complete
         }
 
+        await Task.WhenAll(t1, t2).ConfigureAwait(false);
         await Task.Delay(50).ConfigureAwait(false);
     }
 
