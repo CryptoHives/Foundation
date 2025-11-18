@@ -56,10 +56,12 @@ public class AsyncLockUnitTests
 
         using (await al.LockAsync().ConfigureAwait(false))
         {
-            var cts = new CancellationTokenSource();
-            cts.Cancel();
-            var exVt = al.LockAsync(cts.Token);
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await exVt.ConfigureAwait(false));
+            using (var cts = new CancellationTokenSource())
+            {
+                cts.Cancel();
+                var exVt = al.LockAsync(cts.Token);
+                Assert.ThrowsAsync<OperationCanceledException>(async () => await exVt.ConfigureAwait(false));
+            }
         }
     }
 }
