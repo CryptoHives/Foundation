@@ -9,7 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 [TestFixture]
-public class PooledAsyncManualResetEventUnitTests
+public class AsyncManualResetEventUnitTests
 {
     [Test]
     public async Task WaitAsyncUnsetIsNotCompletedAsync()
