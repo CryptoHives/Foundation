@@ -4,7 +4,6 @@
 namespace CryptoHives.Foundation.Threading.Tests.Async.RefImpl;
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 

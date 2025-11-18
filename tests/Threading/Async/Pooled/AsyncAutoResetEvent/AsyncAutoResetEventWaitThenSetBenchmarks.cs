@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async.AsyncAutoResetEvent;
+namespace CryptoHives.Foundation.Threading.Tests.Async.Pooled.AsyncAutoResetEvent;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
@@ -42,7 +42,7 @@ using System.Threading.Tasks;
 /// </para>
 /// <para>
 /// <b>Continuation behavior:</b> The pooled implementation supports configurable continuation scheduling via
-/// <see cref="CryptoHives.Foundation.Threading.Async.Pooled.AsyncAutoResetEvent.RunContinuationAsynchronously"/>.
+/// <see cref="Threading.Async.Pooled.AsyncAutoResetEvent.RunContinuationAsynchronously"/>.
 /// When set to false, continuations execute synchronously on the signaling thread, reducing context switching
 /// overhead but potentially blocking the caller longer.
 /// </para>

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Threading.Tests.Async;
+namespace CryptoHives.Foundation.Threading.Tests.Async.Pooled;
 
 using NUnit.Framework;
 using System;
@@ -178,9 +178,7 @@ public class PooledAsyncAutoResetEventUnitTests
         {
             Task completed = await Task.WhenAny(task, Task.Delay(timeoutMs)).ConfigureAwait(false);
             if (completed == task)
-            {
                 Assert.Fail("Expected task to never complete.");
-            }
         }
     }
 }
