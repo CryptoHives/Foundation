@@ -16,7 +16,8 @@ using System.Threading.Tasks;
 /// </summary>
 /// <remarks>
 /// <example>
-/// <para>The vast majority of use cases are to just replace a <c>lock</c> statement. That is, with the original code looking like this:</para>
+/// <para>The vast majority of use cases are to just replace a <c>lock</c> statement. 
+/// That is, with the original code looking like this:</para>
 /// <code>
 /// private readonly object _mutex = new object();
 /// public void DoStuff()
@@ -110,6 +111,8 @@ public sealed class AsyncLock
 
     /// <summary>
     /// Asynchronously acquires the lock, with a cancellation token.
+    /// At this time the cancellation token is only observed before 
+    /// queuing if the lock is already acquired.
     /// </summary>
     /// <remarks>
     /// Note that this lock is <b>not</b> recursive!
@@ -126,9 +129,9 @@ public sealed class AsyncLock
     /// }
     /// </code>
     /// </remarks>
-    /// <param name="cancellationToken">The cancellation token. Cancellation is observed before queuing.</param>
+    /// <param name="ct">The cancellation token. Cancellation is only observed before queuing.</param>
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.  Dispose the returned releaser to release the lock.</returns>
-    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken)
+    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken ct)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
         {
@@ -142,9 +145,10 @@ public sealed class AsyncLock
                 return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
             }
 
-            if (cancellationToken.IsCancellationRequested)
+            // TODO: Consider observing cancellation while queued.
+            if (ct.IsCancellationRequested)
             {
-                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
+                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(ct)));
             }
 
             ManualResetValueTaskSource<AsyncLockReleaser> waiter;
