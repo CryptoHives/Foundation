@@ -20,8 +20,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github ci", "github ci", "{
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\buildandtest.yml = .github\workflows\buildandtest.yml
 		.github\workflows\codeql-analysis.yml = .github\workflows\codeql-analysis.yml
+		.github\dependabot.yml = .github\dependabot.yml
 		.github\workflows\devskim.yml = .github\workflows\devskim.yml
 		.github\workflows\docfx.yml = .github\workflows\docfx.yml
+		.github\in-solidarity.yml = .github\in-solidarity.yml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memory", "src\Memory\Memory.csproj", "{8F353D5E-D8D8-58B2-82A6-933750A0A2D0}"

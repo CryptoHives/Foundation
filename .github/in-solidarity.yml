@@ -1,0 +1,19 @@
+# This file is a configuration for the In Solidarity GitHub Action
+# (https://github.com/apps/in-solidarity) which checks for inclusive language.
+
+rules:
+  master:
+    level: notice
+  masterdata:
+    level: warning
+    regex:
+      - /\b(?!masterdata|masterdata\w+\b)master/gi
+    alternatives:
+      - primary
+      - main
+      - leader
+      - active
+      - writer
+ignore:
+  - ".github/in-solidarity.yml"  # default
+  - "**/*.yml"

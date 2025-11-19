@@ -26,3 +26,9 @@ updates:
     directory: "./"
     schedule:
       interval: "daily"
+    groups:
+      actions:
+        applies-to: version-updates
+        patterns:
+        - "actions/*"
+
