@@ -26,10 +26,8 @@ jobs:
     value: '/p:Version=$(NBGV_Version) /p:AssemblyVersion=$(NBGV_SimpleVersion) /p:FileVersion=$(NBGV_AssemblyFileVersion)'
   - name: msbuildsign
     value: '/p:AssemblyOriginatorKeyFile=$(strongnamefile.secureFilePath) /p:SignAssembly=true'
-  - name: nugetpreviewversion
+  - name: nugetversion
     value: '$(NBGV_NuGetPackageVersion)'
-  - name: nugetpublicversion
-    value: '$(NBGV_Version)$(NBGV_PrereleaseVersion)'
   - name: signinglist
     value: '.azurepipelines/signlist${{parameters.config}}.txt'
   steps:
@@ -99,6 +97,8 @@ jobs:
       packagesToPack:  'CryptoHives .NET Foundation.sln'
       configuration: ${{parameters.config}}
       configurationToPack: ${{parameters.config}}
+      versioningScheme: 'byEnvVar'
+      versionEnvVar: 'nugetversion'
       nobuild: true
   - task: CmdLine@2
     displayName: 'List of nuget packages to sign'
