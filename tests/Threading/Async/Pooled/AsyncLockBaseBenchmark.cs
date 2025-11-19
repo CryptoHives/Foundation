@@ -7,6 +7,12 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 
+#if SIGNASSEMBLY
+using NitoAsyncEx = RefImpl;
+#else
+using NitoAsyncEx = Nito.AsyncEx;
+#endif
+
 public abstract class AsyncLockBaseBenchmark
 {
 #if NET9_0_OR_GREATER
@@ -14,7 +20,7 @@ public abstract class AsyncLockBaseBenchmark
 #endif
     protected readonly object ObjectLock = new();
     protected readonly AsyncLock LockPooled = new();
-    protected readonly Nito.AsyncEx.AsyncLock LockNitoAsync = new();
+    protected readonly NitoAsyncEx.AsyncLock LockNitoAsync = new();
     protected readonly AsyncKeyedLock.AsyncNonKeyedLocker LockNonKeyed = new();
     protected readonly RefImpl.AsyncLock LockRefImpl = new();
 
