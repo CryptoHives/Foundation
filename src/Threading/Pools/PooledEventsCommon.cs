@@ -4,12 +4,10 @@
 namespace CryptoHives.Foundation.Threading.Pools;
 
 using Microsoft.Extensions.ObjectPool;
-using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Provides common constants, static variables and pools for efficient memory usage in async events.
 /// </summary>
-[ExcludeFromCodeCoverage]
 internal static class PooledEventsCommon
 {
     /// <summary>

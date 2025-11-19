@@ -5,13 +5,11 @@ namespace CryptoHives.Foundation.Memory.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 /// <summary>
 /// Provides ObjectPools for efficient memory usage.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public static class ObjectPools
 {
     /// <summary>
@@ -39,8 +37,7 @@ public static class ObjectPools
 /// This class makes it easy to create efficient object pools used to improve
 /// performance by reducing strain on the garbage collector.
 /// </remarks>
-[ExcludeFromCodeCoverage]
-public static class PoolFactory
+internal static class PoolFactory
 {
     /// <summary>
     /// The capacity of the StringBuilder objects to keep in the pool.
