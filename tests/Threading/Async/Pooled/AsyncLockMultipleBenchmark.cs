@@ -11,12 +11,6 @@ using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
-using NitoAsyncEx = Nito.AsyncEx;
-#endif
-
 /// <summary>
 /// Benchmarks measuring lock/unlock performance with multiple queued waiters on AsyncLock implementations.
 /// </summary>
@@ -55,7 +49,9 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 {
     private Task<AsyncLock.AsyncLockReleaser>[]? _tasks;
     private ValueTask<AsyncLock.AsyncLockReleaser>[]? _lockHandle;
-    private NitoAsyncEx.AwaitableDisposable<IDisposable>[]? _lockNitoHandle;
+#if !SIGNASSEMBLY
+    private Nito.AsyncEx.AwaitableDisposable<IDisposable>[]? _lockNitoHandle;
+#endif
     private Task<RefImpl.AsyncLock.AsyncLockReleaser>[]? _lockRefImplHandle;
     private ValueTask<AsyncKeyedLock.AsyncNonKeyedLockReleaser>[]? _lockNonKeyedHandle;
 
@@ -151,6 +147,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
         }
     }
 
+#if !SIGNASSEMBLY
     [Test]
     public Task LockUnlockNitoMultipleTestAsync()
     {
@@ -187,6 +184,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             using (await handle.ConfigureAwait(false)) { }
         }
     }
+#endif
 
     [Test]
     public Task LockUnlockRefImplMultipleTestAsync()
