@@ -11,7 +11,6 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
   
-  <!-- NBGV_ variables are only available in cloud build 
   <PropertyGroup Condition="'$(NBGV_PublicRelease)' == 'True'">
     <Version>$(NBGV_Version)$(NBGV_PrereleaseVersion)</Version>
     <VersionPrefix>$(NBGV_SimpleVersion)</VersionPrefix>
@@ -20,7 +19,6 @@
     <FileVersion>$(NBGV_Version)</FileVersion>
     <PackageVersion>$(NBGV_Version)$(NBGV_PrereleaseVersion)</PackageVersion>
   </PropertyGroup>
-  -->
   
   <PropertyGroup>
     <GitVersionBaseDirectory>$(MSBuildThisFileDirectory)</GitVersionBaseDirectory>
