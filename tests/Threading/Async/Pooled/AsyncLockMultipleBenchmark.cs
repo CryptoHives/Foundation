@@ -158,7 +158,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockNitoMultipleAsync))]
     public void NitoGlobalSetup()
     {
-        _lockNitoHandle = new NitoAsyncEx.AwaitableDisposable<IDisposable>[Iterations];
+        _lockNitoHandle = new Nito.AsyncEx.AwaitableDisposable<IDisposable>[Iterations];
     }
 
     /// <summary>
@@ -179,7 +179,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             }
         }
 
-        foreach (NitoAsyncEx.AwaitableDisposable<IDisposable> handle in _lockNitoHandle!)
+        foreach (Nito.AsyncEx.AwaitableDisposable<IDisposable> handle in _lockNitoHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }
