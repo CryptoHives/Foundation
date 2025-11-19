@@ -1,5 +1,7 @@
 # Your GitHub workflow for DocFX documentation deployment
 
+name: DocFX Deployment
+
 # Trigger the action on push to main
 on:
   push:
