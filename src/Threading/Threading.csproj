@@ -13,6 +13,7 @@
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
+    <PackageTags>$(PackageTags) Threading Async ValueTask</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 

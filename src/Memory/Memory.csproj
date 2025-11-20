@@ -12,6 +12,7 @@
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
+    <PackageTags>$(PackageTags) Memory MemoryStream ArrayPool ReadOnlySequence</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
