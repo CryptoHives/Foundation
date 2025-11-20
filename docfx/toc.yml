@@ -1,4 +1,14 @@
+- name: Home
+  href: index.md
+- name: Getting Started
+  href: getting-started.md
+- name: Packages
+  items:
+    - name: Memory
+      href: packages/memory/index.md
+    - name: Threading
+      href: packages/threading/index.md
+- name: API Documentation
+  href: api/
 - name: Docs
   href: ../docs/
-- name: API
-  href: api/

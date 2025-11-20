@@ -11,12 +11,22 @@ Each package is designed for security, interoperability, and clarity — making 
 
 ---
 
+## 📚 Documentation
+
+📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and code samples
+
+- 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
+- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/memory/index.html)
+- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+
+---
+
 ## 📦 Available Packages
 
-| Package | Description | NuGet |
-|----------|--------------|--------|
-| `CryptoHives.Foundation.Memory` | Memory library | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) |
-| `CryptoHives.Foundation.Threading` | Threading library | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) |
+| Package | Description | NuGet | Documentation |
+|----------|--------------|--------|---------------|
+| `CryptoHives.Foundation.Memory` | High-performance pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
+| `CryptoHives.Foundation.Threading` | Pooled async synchronization primitives | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
 
 More packages will be published under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages?q=CryptoHives) for details.
 
@@ -31,7 +41,7 @@ More packages will be published under the `CryptoHives.*` namespace — see the 
 
 ## 🧬 Features
 
-### API Overview and documentation
+### 📚 API Overview and documentation
 The API reference with samples is available at the [CryptoHives .NET Foundation Docs](https://cryptohives.github.io/Foundation/).
 
 ### 🔐 Clean-Room Cryptography (planned)
@@ -49,7 +59,7 @@ The API reference with samples is available at the [CryptoHives .NET Foundation 
 - Primitives to handle ownership of pooled buffers using `ReadOnlySequence<T>` with `ArrayPool<T>`
 - Zero-copy, zero-allocation design for high-frequency cryptographic workloads and transformation pipelines
 
-### 🛠️ Concurrency Tools
+### 🚀 Concurrency Tools
 - Lightweight Async-compatible synchronization primitives based on `ObjectPool` and `ValueTask<T>`
 - High-performance threading helpers designed to reduce allocations of `Task` and `TaskCompletionSource<T>`
 
@@ -89,11 +99,10 @@ using System;
 
 public class Example
 {
-    public const int defaultBufferSize = 4096;
     public string WritePooledChunk(ReadOnlySpan<byte> chunk)
     {
         // Use a MemoryStream backed by ArrayPool<byte> buffers
-        using var writer = new ArrayPoolMemoryStream(defaultBufferSize);
+        using var writer = new ArrayPoolMemoryStream();
         writer.Write(chunk);
         ReadOnlySequence<byte> sequence = writer.GetReadOnlySequence();
         return Encoding.UTF8.GetString(sequence);
@@ -106,7 +115,7 @@ public class Example
 Here’s a minimal example using the `CryptoHives.Foundation.Threading` package:
 
 ```csharp
-using CryptoHives.Foundation.Threading.Pooled;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using System;
 
 public class Example
@@ -119,7 +128,7 @@ public class Example
         // this mutex is very fast and allocation-efficient
         // Acquire the lock asynchronously
         using await _lock.ConfigureAwait(false);
-        // Access shared resource here
+        // Access shared async resource here
     }
 }
 ```

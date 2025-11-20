@@ -1,0 +1,14 @@
+- name: Memory Package
+  href: index.md
+- name: Classes
+  items:
+    - name: ArrayPoolMemoryStream
+      href: arraypoolmemorystream.md
+    - name: ArrayPoolBufferWriter<T>
+      href: arraypoolbufferwriter.md
+    - name: ReadOnlySequenceMemoryStream
+      href: readonlysequencememorystream.md
+    - name: ObjectOwner<T>
+      href: objectowner.md
+    - name: ObjectPools
+      href: objectpools.md

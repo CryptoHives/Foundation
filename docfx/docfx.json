@@ -10,7 +10,13 @@
           ]
         }
       ],
-      "dest": "api"
+      "dest": "api",
+      "includePrivateMembers": false,
+      "disableGitFeatures": false,
+      "disableDefaultFilter": false,
+      "properties": {
+        "TargetFramework": "net9.0"
+      }
     }
   ],
   "build": {
@@ -20,7 +26,8 @@
           "**/*.{md,yml}"
         ],
         "exclude": [
-          "_site/**"
+          "_site/**",
+          "obj/**"
         ]
       }
     ],
@@ -39,8 +46,18 @@
     "globalMetadata": {
       "_appName": "CryptoHives.Foundation",
       "_appTitle": "CryptoHives .NET Foundation",
+      "_appFooter": "© 2025 The Keepers of the CryptoHives",
       "_enableSearch": true,
+      "_enableNewTab": true,
       "pdf": false
-    }
+    },
+    "fileMetadata": {
+      "_appLogoPath": {
+        "**/*": "images/logo.png"
+      }
+    },
+    "xref": [
+      "https://xref.docs.microsoft.com/query?uid={uid}"
+    ]
   }
 }

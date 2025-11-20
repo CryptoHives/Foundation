@@ -423,5 +423,6 @@ FodyWeavers.xsd
 /CodeCoverage
 
 # DocFX generated documentation
+!docfx/packages/*
 docfx/_site/
 docfx/api/
