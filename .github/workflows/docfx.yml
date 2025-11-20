@@ -27,6 +27,5 @@ jobs:
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.x
-    - run: dotnet restore "CryptoHives .NET Foundation.sln"
     - run: dotnet tool update -g docfx
     - run: docfx docfx/docfx.json
