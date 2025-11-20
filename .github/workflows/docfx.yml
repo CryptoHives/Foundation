@@ -2,12 +2,9 @@
 
 name: DocFX Deployment
 
-# Trigger the action on push to main and pull requests
+# Trigger the action on push to main
 on:
   push:
-    branches:
-      - main
-  pull_request:
     branches:
       - main
 
@@ -39,11 +36,9 @@ jobs:
     - run: dotnet tool update -g docfx
     - run: docfx docfx/docfx.json
     - name: Upload artifact
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: actions/upload-pages-artifact@v4
       with:
         path: 'docfx/_site'
     - name: Deploy to GitHub Pages
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       id: deployment
       uses: actions/deploy-pages@v4
