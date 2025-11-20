@@ -1,4 +1,4 @@
-# ArrayPoolBufferWriter&lt;T&gt; Class
+﻿# ArrayPoolBufferWriter&lt;T&gt; Class
 
 A high-performance implementation of `IBufferWriter<T>` that uses pooled memory segments from `ArrayPool<T>`.
 
@@ -34,9 +34,12 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable
 ## Benefits
 
 - **Pooled Memory**: Uses `ArrayPool<T>.Shared` to minimize allocations
+- **ArrayPool Backed**: Efficient recycling of arrays for high-performance scenarios
+- **Buffer Clear Option**: Optionally clears arrays before returning to pool for privacy
 - **Progressive Growth**: Chunks grow exponentially up to a maximum size
 - **Zero-Copy Access**: `GetReadOnlySequence()` provides direct access without copying
 - **IBufferWriter Support**: Works with `System.Text.Json`, Protocol Buffers, and other modern serializers
+- **Disposable**: Returns arrays to the pool on disposal
 - **Configurable**: Customizable chunk sizes and clearing behavior
 
 ## Constructors
@@ -113,11 +116,12 @@ using var writer = new ArrayPoolBufferWriter<byte>();
 using var jsonWriter = new Utf8JsonWriter(writer);
 
 jsonWriter.WriteStartObject();
-jsonWriter.WriteString("name", "value");
+jsonWriter.WriteString("name"u8, "value"u8);
 jsonWriter.WriteEndObject();
 await jsonWriter.FlushAsync();
 
 ReadOnlySequence<byte> jsonBytes = writer.GetReadOnlySequence();
+mqttClient.Publish("topic", jsonBytes);
 ```
 
 ### Building Protocol Messages
@@ -139,10 +143,12 @@ ReadOnlySequence<byte> message = writer.GetReadOnlySequence();
 
 ## Performance Characteristics
 
-- **Memory Allocation**: O(log n) array allocations as chunks grow exponentially
+- **Memory Allocation**: array allocations as chunks overflow, but size grows exponentially to upper limit
 - **Write Operations**: O(1) amortized for sequential writes
-- **Sequence Access**: O(1) to get `ReadOnlySequence<T>`
-- **Disposal**: O(n) where n is number of chunks (returns arrays to pool)
+- **Sequence Access**: O(n) to get `ReadOnlySequence<T>`
+- **Disposal**: O(n) (returns arrays to pool)
+
+(where n is number of memory chunks)
 
 ## Configuration
 
@@ -172,7 +178,7 @@ using var writer = new ArrayPoolBufferWriter<byte>(
 
 ## Thread Safety
 
-?? **Not thread-safe**. External synchronization required for concurrent access.
+⚠️ **Not thread-safe**. External synchronization required for concurrent access.
 
 ## Best Practices
 
@@ -195,7 +201,7 @@ Span<byte> span = writer.GetSpan(sizeHint: 1024);
 
 ```csharp
 var sequence1 = writer.GetReadOnlySequence();
-writer.GetSpan(100); // This may invalidate sequence1!
+writer.GetSpan(100); // This invalidates sequence1!
 ```
 
 ### DO: Get Sequence Once at the End
@@ -225,4 +231,4 @@ ReadOnlySequence<byte> finalSequence = writer.GetReadOnlySequence();
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

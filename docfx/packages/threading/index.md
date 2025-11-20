@@ -1,4 +1,4 @@
-# CryptoHives.Foundation.Threading Package
+﻿# CryptoHives.Foundation.Threading Package
 
 The Threading package provides high-performance, pooled async synchronization primitives for .NET applications.
 
@@ -39,10 +39,18 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 
 | Class | Description |
 |-------|-------------|
-| ManualResetValueTaskSource&lt;T&gt; | Base for pooled task sources |
+| ManualResetValueTaskSource&lt;T&gt; | Abstract base for pooled task sources |
 | PooledManualResetValueTaskSource&lt;T&gt; | Pooled IValueTaskSource implementation |
-| LocalManualResetValueTaskSource&lt;T&gt; | Thread-local task source |
+| LocalManualResetValueTaskSource&lt;T&gt; | Object-local task source |
 | PooledValueTaskSourceObjectPolicy&lt;T&gt; | Object pool policy for task sources |
+
+## ⚠️ Known Issues and Caveats
+
+1. Strictly only **await a ValueTask once**. An additional await or AsTask() may throw an InvalidOperationException.
+2. Strictly only **use AsTask() once**, and only if you have to. An additional await or AsTask() may throw an InvalidOperationException.
+1. RunContinuationsAsynchronously is by default true. In rare cases perf degradation may occur if the ValueTask is not immediately awaited (see benchmarks).
+3. **Pool Exhaustion**: In extreme high-throughput scenarios with many waiters, the pool may exhaust. Monitor and adjust usage patterns accordingly.
+4. Always await a ValueTask or AsTask() waiter primitive, or the ValueTaskSource is not returned to the pool.
 
 ## Quick Examples
 
@@ -69,7 +77,7 @@ private readonly AsyncAutoResetEvent _event = new AsyncAutoResetEvent(false);
 // Producer
 public async Task ProduceAsync()
 {
-await ProduceItemAsync();
+    await ProduceItemAsync();
     _event.Set(); // Signal one waiter
 }
 
@@ -77,7 +85,7 @@ await ProduceItemAsync();
 public async Task ConsumeAsync()
 {
     await _event.WaitAsync(); // Wait for signal
-  await ProcessItemAsync();
+    await ProcessItemAsync();
 }
 ```
 
@@ -124,7 +132,7 @@ public async Task WaitForReadyAsync()
 
 - **AsyncLock**: O(1) acquire when uncontended, FIFO queue for waiters
 - **AsyncAutoResetEvent**: O(1) Set/Wait, single waiter release
-- **AsyncManualResetEvent**: O(n) Set, O(1) Reset, broadcast to all waiters
+- **AsyncManualResetEvent**: O(n) Set, O(1) Reset, broadcast to all n waiters
 
 ## Best Practices
 
@@ -180,7 +188,7 @@ private readonly AsyncLock _rateLimiter = new AsyncLock();
 
 public async Task<T> RateLimitedOperationAsync<T>(Func<Task<T>> operation)
 {
- using (await _rateLimiter.LockAsync())
+    using (await _rateLimiter.LockAsync())
     {
         await Task.Delay(100); // Rate limit
         return await operation();
@@ -204,4 +212,4 @@ public async Task<T> RateLimitedOperationAsync<T>(Func<Task<T>> operation)
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

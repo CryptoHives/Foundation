@@ -32,17 +32,6 @@ Or via Package Manager Console:
 Install-Package CryptoHives.Foundation.Threading
 ```
 
-## Platform Support
-
-Both packages support the following target frameworks:
-
-- .NET 9.0
-- .NET 8.0
-- .NET Framework 4.8
-- .NET Framework 4.6.2
-- .NET Standard 2.1
-- .NET Standard 2.0
-
 ## Quick Start
 
 ### Memory Package
@@ -88,10 +77,10 @@ using (await lockInstance.LockAsync())
 
 For issues and questions:
 - [GitHub Issues](https://github.com/CryptoHives/Foundation/issues)
-- [Security Policy](../SECURITY.md)
+- [Security Policy](https://github.com/CryptoHives/Foundation/SECURITY.md)
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](../LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/CryptoHives/Foundation/LICENSE) file for details.
 
 © 2025 The Keepers of the CryptoHives

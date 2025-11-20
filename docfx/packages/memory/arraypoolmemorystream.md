@@ -1,4 +1,4 @@
-# ArrayPoolMemoryStream Class
+﻿# ArrayPoolMemoryStream Class
 
 A memory-backed stream implementation that rents fixed-size buffers from `ArrayPool<byte>.Shared` and stores data in multiple segments.
 
@@ -174,7 +174,7 @@ using var stream = new ArrayPoolMemoryStream(bufferSize: 8192);
 // Create stream with custom buffer list capacity
 using var stream2 = new ArrayPoolMemoryStream(
     bufferListSize: 16,  // Initial capacity for buffer list
- bufferSize: 4096     // Size of each buffer
+    bufferSize: 4096     // Size of each buffer
 );
 ```
 
@@ -225,16 +225,16 @@ await source.CopyToAsync(destination);
 
 ### When to Use
 
-- ? High-throughput scenarios with many temporary streams
-- ? Large data sets that might trigger LOH allocations
-- ? When you need zero-copy access to the data
-- ? Building data pipelines with `ReadOnlySequence<byte>`
+- High-throughput transformation pipelines with many temporary streams and unknown, varying final sizes
+- Large data sets that might trigger LOH allocations
+- When you need zero-copy access to the data
+- Building tranformation pipelines with lifetime managed `ReadOnlySequence<byte>`
 
 ### When NOT to Use
 
-- ? Very small buffers (< 1KB) - overhead might outweigh benefits
-- ? Long-lived streams - pooled buffers are meant for temporary use
-- ? When you need the data as a contiguous array anyway
+- Very small buffers (< 1KB) - overhead might outweigh benefits
+- Long-lived streams - pooled buffers are meant for temporary use
+- When you need the data as a contiguous array anyway
 
 ### Buffer Size Guidelines
 
@@ -244,7 +244,7 @@ await source.CopyToAsync(destination);
 
 ## Thread Safety
 
-?? **Not thread-safe**. External synchronization required for concurrent access.
+⚠️ **Not thread-safe**. External synchronization required for concurrent access.
 
 ## Disposal
 
@@ -252,7 +252,13 @@ Always dispose `ArrayPoolMemoryStream` to return rented buffers to the pool:
 
 ```csharp
 using var stream = new ArrayPoolMemoryStream();
+
 // Use stream...
+stream.Write(data);
+
+// Process final sequence
+var sequence = stream.GetReadOnlySequence();
+
 // Automatically disposed and buffers returned
 ```
 
@@ -264,4 +270,4 @@ using var stream = new ArrayPoolMemoryStream();
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

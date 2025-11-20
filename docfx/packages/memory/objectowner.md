@@ -1,4 +1,4 @@
-# ObjectOwner&lt;T&gt; Struct
+﻿# ObjectOwner&lt;T&gt; Struct
 
 A RAII (Resource Acquisition Is Initialization) wrapper for objects obtained from `ObjectPool<T>`.
 
@@ -30,7 +30,7 @@ public readonly struct ObjectOwner<T> : IDisposable where T : class
 
 `ObjectOwner<T>` provides automatic return of pooled objects to their pool using the RAII pattern. When disposed, it automatically returns the object to the pool. This struct should be used with the `using` statement to ensure proper disposal.
 
-## ?? Important Warnings
+## ⚠️ Important Warnings
 
 - **This is a struct** - Avoid boxing by not casting to `IDisposable`
 - **Use with `using`** - Always use in a `using` statement or block
@@ -114,7 +114,7 @@ public List<int> ProcessData(IEnumerable<int> items)
     {
         if (item > 0)
         {
-      list.Add(item);
+            list.Add(item);
         }
     }
     
@@ -124,11 +124,11 @@ public List<int> ProcessData(IEnumerable<int> items)
 
 ## Thread Safety
 
-? **Thread-safe** when used correctly (one owner per thread). The pool itself handles thread-safety.
+**Thread-safe** when used correctly (one owner per instance). The pool itself handles thread-safety.
 
 ## Best Practices
 
-### ? DO: Use with `using` Statement
+### DO: Use with `using` Statement
 
 ```csharp
 using var owner = new ObjectOwner<StringBuilder>(pool);
@@ -137,7 +137,7 @@ StringBuilder sb = owner.Object;
 // Automatically returned to pool
 ```
 
-### ? DO: Keep Scope Minimal
+### DO: Keep Scope Minimal
 
 ```csharp
 string result;
@@ -152,7 +152,7 @@ using (var owner = new ObjectOwner<StringBuilder>(pool))
 return result;
 ```
 
-### ? DON'T: Store in Fields
+### ⚠️ DON'T: Store in Fields
 
 ```csharp
 // Wrong!
@@ -162,7 +162,7 @@ public class BadExample
 }
 ```
 
-### ? DON'T: Return the Pooled Object
+### ⚠️ DON'T: Return the Pooled Object
 
 ```csharp
 // Wrong!
@@ -179,7 +179,8 @@ public string GetString()
     return owner.Object.ToString();
 }
 ```
-### ? DON'T: Box the Struct
+
+### ⚠️ DON'T: Box the Struct
 
 ```csharp
 // Wrong!
@@ -188,7 +189,8 @@ IDisposable disposable = new ObjectOwner<StringBuilder>(pool); // Boxing!
 // Correct:
 using var owner = new ObjectOwner<StringBuilder>(pool);
 ```
-### ? DON'T: Copy the Struct
+
+### ⚠️ DON'T: Copy the Struct
 
 ```csharp
 // Wrong!
@@ -214,7 +216,7 @@ public string FormatData(params object[] values)
     foreach (var value in values)
     {
         sb.Append(value);
-      sb.Append(' ');
+        sb.Append(' ');
     }
     
     return sb.ToString().TrimEnd();
@@ -230,7 +232,7 @@ public int[] FilterPositive(int[] values)
     List<int> list = owner.Object;
     
     foreach (int value in values)
-  {
+    {
         if (value > 0)
         {
             list.Add(value);
@@ -250,9 +252,9 @@ public byte[] ProcessData(byte[] input)
     MemoryStream stream = owner.Object;
     
     stream.Write(input, 0, input.Length);
+
     // Process stream...
-    
- return stream.ToArray();
+    return stream.ToArray();
 }
 ```
 
@@ -296,4 +298,4 @@ T obj = owner.Object;
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

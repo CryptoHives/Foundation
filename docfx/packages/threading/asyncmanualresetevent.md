@@ -72,6 +72,7 @@ public ValueTask WaitAsync(CancellationToken cancellationToken = default)
 ```
 
 Asynchronously waits for the event to be signaled. Completes immediately if already signaled.
+Due to the implementation of ValueTask, every waiter needs a pooled ValueTaskSource. Hence all O(n) objects need to be signaled on Set() compared to a Task based implementation which only signals a single Task shared with all waiters.
 
 **Parameters**:
 - `cancellationToken` - Optional cancellation token
@@ -97,9 +98,9 @@ Releases all resources used by the event.
 private readonly AsyncManualResetEvent _ready = new(false);
 
 // Multiple waiters
-var task1 = _ready.WaitAsync();
-var task2 = _ready.WaitAsync();
-var task3 = _ready.WaitAsync();
+var task1 = _ready.WaitAsync().AsTask();
+var task2 = _ready.WaitAsync().AsTask();
+var task3 = _ready.WaitAsync().AsTask();
 
 // Signal all at once
 _ready.Set();
@@ -117,13 +118,13 @@ private MyService? _service;
 public async Task<MyService> GetServiceAsync()
 {
     if (_service == null)
-  {
-      _service = await InitializeServiceAsync();
+    {
+        _service = await InitializeServiceAsync();
         _initialized.Set(); // Signal all waiters
     }
     else
     {
-     await _initialized.WaitAsync(); // Wait if initialization in progress
+        await _initialized.WaitAsync(); // Wait if initialization in progress
     }
   
     return _service;
@@ -138,8 +139,8 @@ private readonly AsyncManualResetEvent _allServicesReady = new(false);
 public async Task InitializeAsync()
 {
     await Task.WhenAll(
-  InitializeDatabaseAsync(),
-   InitializeCacheAsync(),
+        InitializeDatabaseAsync(),
+        InitializeCacheAsync(),
         InitializeApiAsync()
     );
     
@@ -189,7 +190,7 @@ await evt.WaitAsync(); // Blocks until next Set()
 
 ## Best Practices
 
-### ? DO: Use for Broadcasting
+### DO: Use for Broadcasting
 
 ```csharp
 // Good: Signal multiple waiters
@@ -208,7 +209,7 @@ public async Task SubscribeAsync()
 }
 ```
 
-### ? DO: Use for Initialization
+### DO: Use for Initialization
 
 ```csharp
 // Good: Coordinate service startup
@@ -223,11 +224,11 @@ public async Task StartAsync()
 public async Task HandleRequestAsync()
 {
     await _started.WaitAsync(); // Wait for startup
-// Process request...
+    // Process request...
 }
 ```
 
-### ? DO: Reset After Broadcasting
+### DO: Reset After Broadcasting
 
 ```csharp
 // Good: Reset for next batch
@@ -237,18 +238,18 @@ public async Task ProcessBatchAsync()
 {
     while (true)
     {
-  await _batchReady.WaitAsync();
+        await _batchReady.WaitAsync();
   
- // Process batch
- ProcessCurrentBatch();
+        // Process batch
+        ProcessCurrentBatch();
 
         // Reset for next batch
- _batchReady.Reset();
+        _batchReady.Reset();
     }
 }
 ```
 
-### ? DON'T: Use for One-at-a-Time
+### DON'T: Use for One-at-a-Time
 
 ```csharp
 // Bad: All waiters get released
@@ -264,7 +265,7 @@ evt.Set(); // Releases ALL 10 tasks at once
 // Better: Use AsyncAutoResetEvent for one-at-a-time
 ```
 
-### ? DON'T: Forget to Reset
+### DON'T: Forget to Reset
 
 ```csharp
 // Bad: Event stays signaled forever
@@ -279,7 +280,7 @@ public async Task SignalAndResetAsync()
 {
     _completionEvent.Set();
     await Task.Delay(100); // Let waiters proceed
-  _completionEvent.Reset(); // Reset for next operation
+    _completionEvent.Reset(); // Reset for next operation
 }
 ```
 
@@ -296,24 +297,24 @@ public class AsyncBarrier
     
     public AsyncBarrier(int participantCount)
     {
- _participantCount = participantCount;
+        _participantCount = participantCount;
     }
     
-public async Task SignalAndWaitAsync()
-  {
+    public async Task SignalAndWaitAsync()
+    {
         int arrived = Interlocked.Increment(ref _arrivedCount);
         
- if (arrived == _participantCount)
- {
-     _barrierReached.Set(); // Release all
+        if (arrived == _participantCount)
+        {
+            _barrierReached.Set(); // Release all
         }
         else
         {
-await _barrierReached.WaitAsync();
-   }
+            await _barrierReached.WaitAsync();
+        }
         
- // Reset when all have passed
-   if (Interlocked.Decrement(ref _arrivedCount) == 0)
+        // Reset when all have passed
+        if (Interlocked.Decrement(ref _arrivedCount) == 0)
         {
             _barrierReached.Reset();
         }
@@ -335,7 +336,7 @@ public class AsyncGate
     public async Task WaitForOpenAsync()
     {
         await _open.WaitAsync();
-}
+    }
 }
 
 // Usage
@@ -386,22 +387,22 @@ public class AsyncCountdownEvent
     private int _count;
     
     public AsyncCountdownEvent(int initialCount)
-  {
+    {
         _count = initialCount;
         if (_count == 0) _completed.Set();
     }
     
     public void Signal(int signalCount = 1)
-{
+    {
         if (Interlocked.Add(ref _count, -signalCount) == 0)
-{
-  _completed.Set();
+        {
+            _completed.Set();
         }
     }
     
     public async Task WaitAsync()
     {
-await _completed.WaitAsync();
+        await _completed.WaitAsync();
     }
 }
 ```
@@ -428,7 +429,7 @@ public class MyService : IDisposable
     
     public void Dispose()
     {
-   _event?.Dispose();
+        _event?.Dispose();
     }
 }
 ```

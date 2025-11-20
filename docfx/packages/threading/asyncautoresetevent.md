@@ -115,12 +115,12 @@ public async Task<T> ExecuteSequentiallyAsync<T>(Func<Task<T>> operation)
   await _canProceed.WaitAsync();
     
     try
-  {
-      return await operation();
-}
+    {
+        return await operation();
+    }
     finally
     {
-  _canProceed.Set(); // Allow next task
+        _canProceed.Set(); // Allow next task
     }
 }
 ```
@@ -176,13 +176,13 @@ public class WorkQueue<T>
     public async Task<T> DequeueAsync(CancellationToken ct = default)
     {
         await _itemReady.WaitAsync(ct);
-   _items.TryDequeue(out var item);
+        _items.TryDequeue(out var item);
         return item;
     }
 }
 ```
 
-### ? DO: Use for Sequential Execution
+### DO: Use for Sequential Execution
 
 ```csharp
 // Good: Ensure sequential execution
@@ -193,7 +193,7 @@ public async Task ProcessAsync(Data data)
     await _gate.WaitAsync();
     try
     {
-    await ProcessDataAsync(data);
+        await ProcessDataAsync(data);
     }
     finally
     {
@@ -202,7 +202,7 @@ public async Task ProcessAsync(Data data)
 }
 ```
 
-### ? ? Use for Broadcasting
+### DON'T: Use for Broadcasting
 
 ```csharp
 // Bad: Only one waiter gets signaled
@@ -218,7 +218,7 @@ evt.Set(); // Only ONE task completes!
 // Better: Use AsyncManualResetEvent for broadcasting
 ```
 
-### ? DON'T: Signal More Times Than Needed
+### DON'T: Signal More Times Than Needed
 
 ```csharp
 // Bad: Extra signals are wasted if no waiters
@@ -244,7 +244,7 @@ public class Throttler
     private readonly AsyncAutoResetEvent _throttle = new(true);
     private readonly Timer _timer;
     
- public Throttler(TimeSpan interval)
+    public Throttler(TimeSpan interval)
     {
         _timer = new Timer(_ => _throttle.Set(), null, interval, interval);
     }
@@ -267,7 +267,7 @@ public async Task PingAsync()
 {
     await _ping.WaitAsync();
     Console.WriteLine("Ping");
- _pong.Set();
+    _pong.Set();
 }
 
 public async Task PongAsync()
@@ -283,20 +283,20 @@ public async Task PongAsync()
 ```csharp
 public class BatchProcessor<T>
 {
-  private readonly List<T> _batch = new();
+    private readonly List<T> _batch = new();
     private readonly AsyncAutoResetEvent _batchReady = new(false);
     private readonly int _batchSize;
     
     public void Add(T item)
     {
         lock (_batch)
-      {
-         _batch.Add(item);
+        {
+            _batch.Add(item);
             if (_batch.Count >= _batchSize)
-    {
-       _batchReady.Set();
-   }
-  }
+            {
+                _batchReady.Set();
+            }
+        }
     }
     
     public async Task<List<T>> GetBatchAsync()
@@ -305,7 +305,7 @@ public class BatchProcessor<T>
         
         lock (_batch)
         {
-    var result = new List<T>(_batch);
+            var result = new List<T>(_batch);
             _batch.Clear();
             return result;
         }

@@ -20,12 +20,12 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 
 ## Overview
 
-`ReadOnlySequenceMemoryStream` provides a `Stream` interface over a `ReadOnlySequence<byte>`, enabling zero-copy integration with APIs that require streams for reading. This is particularly useful when you have data in a `ReadOnlySequence<byte>` (from `ArrayPoolMemoryStream`, `ArrayPoolBufferWriter<T>`, or `PipeReader`) and need to pass it to deserializers, compression libraries, or other stream-based APIs.
+`ReadOnlySequenceMemoryStream` provides a `MemoryStream` interface over a `ReadOnlySequence<byte>`, enabling zero-copy integration with APIs that require streams for reading. This is particularly useful when you have data in a `ReadOnlySequence<byte>` (from `ArrayPoolMemoryStream`, `ArrayPoolBufferWriter<T>`, or `PipeReader`) and need to pass it to deserializers, compression libraries, or other stream-based APIs that have not yet native ReadOnlySequence support.
 
 ## Benefits
 
 - **Zero-Copy**: No data copying when wrapping a `ReadOnlySequence<byte>`
-- **Stream Compatibility**: Works with any API expecting a `Stream`
+- **Stream Compatibility**: Works with any API expecting a readable `Stream`
 - **Efficient Seeking**: Supports seeking within the sequence
 - **Multi-Segment Support**: Handles sequences spanning multiple memory segments
 - **Read-Only Safety**: Prevents accidental modifications
@@ -198,9 +198,9 @@ using var image = Image.FromStream(stream);
 - **Seeking**: O(m) where m is number of segments to seek position
 - **Memory**: O(1) - no additional allocations (except for `ToArray()`)
 
-## Thread Safety
+## Lifetime management
 
-?? **Not thread-safe**. External synchronization required for concurrent access.
+ReadOnlySequence is a struct whose lifetime is determined by the provider of the sequence. Ensure that the sequence is not modified while the stream is in use.
 
 ## Best Practices
 
@@ -248,7 +248,7 @@ var stream = new ReadOnlySequenceMemoryStream(sequence);
 
 - **Read-Only**: Write operations throw `NotSupportedException`
 - **Sequence Lifetime**: Stream is only valid as long as the underlying `ReadOnlySequence<byte>` remains valid
-- **No Resize**: Cannot modify the sequence length
+- **No Resize**: Cannot modify the sequence length or content
 
 ## Comparison with MemoryStream
 

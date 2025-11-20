@@ -70,57 +70,6 @@ public string FormatMessage(string name, string email)
 }
 ```
 
-### URL Building
-
-```csharp
-public string BuildUrl(string baseUrl, Dictionary<string, string> parameters)
-{
-    using var owner = ObjectPools.GetStringBuilder();
-    StringBuilder sb = owner.Object;
-    
-    sb.Append(baseUrl);
-    
- if (parameters.Count > 0)
-    {
-        sb.Append('?');
-        bool first = true;
-        
-        foreach (var param in parameters)
-        {
-         if (!first) sb.Append('&');
-            
-  sb.Append(Uri.EscapeDataString(param.Key));
-    sb.Append('=');
-    sb.Append(Uri.EscapeDataString(param.Value));
-            
- first = false;
-   }
-    }
-    
-    return sb.ToString();
-}
-```
-
-### Logging
-
-```csharp
-public void LogMessage(string category, LogLevel level, string message)
-{
-    using var owner = ObjectPools.GetStringBuilder();
-    StringBuilder sb = owner.Object;
-    
-    sb.Append('[');
-    sb.Append(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
-    sb.Append("] ");
-    sb.Append(level.ToString());
-  sb.Append(" [");
-    sb.Append(category);
-    sb.Append("]: ");
-    sb.Append(message);
-    
-    Console.WriteLine(sb.ToString());
-}
-```
 
 ## Configuration
 
@@ -138,7 +87,7 @@ Instances that exceed the maximum retained capacity are not returned to the pool
 
 ## Best Practices
 
-### ? DO: Use for Temporary String Building
+### DO: Use for Temporary String Building
 
 ```csharp
 // Good: Temporary string construction
@@ -148,7 +97,7 @@ sb.Append("Temporary data");
 return sb.ToString();
 ```
 
-### ? DO: Use in Loops
+### DO: Use in Loops
 
 ```csharp
 // Good: Reusing pool across iterations
@@ -164,7 +113,7 @@ for (int i = 0; i < 1000; i++)
 }
 ```
 
-### ? DON'T: Use for Single Concatenation
+### DON'T: Use for Single Concatenation
 
 ```csharp
 // Bad: Overhead not worth it
@@ -175,7 +124,7 @@ string result = owner.Object.Append("Hello").ToString();
 string result = "Hello";
 ```
 
-### ? DON'T: Use for Long-Lived Instances
+### DON'T: Use for Long-Lived Instances
 
 ```csharp
 // Bad: Holding pooled object too long
@@ -207,90 +156,15 @@ for (int i = 0; i < 1000; i++)
 for (int i = 0; i < 1000; i++)
 {
     using var owner = ObjectPools.GetStringBuilder(); // Reuses instances
-  StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.Object;
     sb.Append("Item ");
     sb.Append(i);
     Process(sb.ToString());
 }
 ```
 
-### vs. Direct Pool Usage
 
-```csharp
-// Direct pool usage (manual)
-var pool = new DefaultObjectPool<StringBuilder>(policy);
-var sb = pool.Get();
-try
-{
-    sb.Append("Data");
-    return sb.ToString();
-}
-finally
-{
-    pool.Return(sb);
-}
 
-// ObjectPools helper (automatic)
-using var owner = ObjectPools.GetStringBuilder();
-StringBuilder sb = owner.Object;
-sb.Append("Data");
-return sb.ToString();
-```
-
-## Integration Examples
-
-### ASP.NET Core
-
-```csharp
-public class MyController : ControllerBase
-{
-    [HttpGet]
-    public IActionResult FormatResponse(string[] items)
-    {
-        using var owner = ObjectPools.GetStringBuilder();
-        StringBuilder sb = owner.Object;
-        
-    foreach (var item in items)
- {
-      sb.Append(item);
-            sb.Append(';');
-        }
-    
-        return Ok(sb.ToString().TrimEnd(';'));
-    }
-}
-```
-
-### Logging Provider
-
-```csharp
-public class PooledLogger : ILogger
-{
-    public void Log<TState>(
-        LogLevel logLevel,
-        EventId eventId,
-        TState state,
-        Exception exception,
-        Func<TState, Exception, string> formatter)
-    {
-        using var owner = ObjectPools.GetStringBuilder();
-      StringBuilder sb = owner.Object;
-        
-        sb.Append('[');
-        sb.Append(logLevel.ToString());
-        sb.Append("] ");
-        sb.Append(formatter(state, exception));
-   
-      if (exception != null)
-        {
- sb.AppendLine();
-      sb.Append(exception);
-        }
-  
-        Console.WriteLine(sb.ToString());
-    }
-}
-```
 
 ## Extension Points
 

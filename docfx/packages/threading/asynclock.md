@@ -78,7 +78,7 @@ public async Task AccessSharedResourceAsync()
     using (await _lock.LockAsync())
     {
         // Critical section - only one task at a time
-  await ModifySharedStateAsync();
+        await ModifySharedStateAsync();
     }
 }
 ```
@@ -91,13 +91,13 @@ private readonly AsyncLock _lock = new();
 public async Task AccessWithTimeoutAsync(CancellationToken ct)
 {
     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-  cts.CancelAfter(TimeSpan.FromSeconds(5));
+    cts.CancelAfter(TimeSpan.FromSeconds(5));
   
-try
+    try
     {
-using (await _lock.LockAsync(cts.Token))
+        using (await _lock.LockAsync(cts.Token))
         {
-   await DoWorkAsync(ct);
+            await DoWorkAsync(ct);
         }
     }
     catch (OperationCanceledException)
@@ -117,19 +117,19 @@ public class SafeCounter
     
     public async Task<int> IncrementAsync()
     {
-    using (await _lock.LockAsync())
-   {
-    await Task.Delay(10); // Simulate async work
-         return ++_value;
-      }
+        using (await _lock.LockAsync())
+        {
+            await Task.Delay(10); // Simulate async work
+            return ++_value;
+        }
     }
  
- public async Task<int> GetValueAsync()
+    public async Task<int> GetValueAsync()
     {
-using (await _lock.LockAsync())
+        using (await _lock.LockAsync())
         {
-return _value;
-  }
+            return _value;
+        }
     }
 }
 ```
@@ -158,17 +158,17 @@ public class MyService
     public async Task Operation1Async()
     {
         using (await _lock.LockAsync())
-  {
-      // Work...
+        {
+            // Work...
         }
     }
     
     public async Task Operation2Async()
     {
-   using (await _lock.LockAsync())
+        using (await _lock.LockAsync())
         {
-         // Work...
-      }
+            // Work...
+        }
     }
 }
 ```
@@ -181,7 +181,7 @@ public async Task ProcessAsync(CancellationToken ct)
 {
     using (await _lock.LockAsync(ct))
     {
-      await DoWorkAsync(ct);
+        await DoWorkAsync(ct);
     }
 }
 ```
@@ -196,14 +196,14 @@ public async Task UpdateAsync(Data newData)
     var processed = await PrepareDataAsync(newData);
     
     // Only critical update inside lock
-  using (await _lock.LockAsync())
+    using (await _lock.LockAsync())
     {
         _data = processed;
     }
 }
 ```
 
-### ? DON'T: Create New Locks Repeatedly
+### DON'T: Create New Locks Repeatedly
 
 ```csharp
 // Bad: Creating new lock each time
@@ -212,12 +212,12 @@ public async Task OperationAsync()
     using var lock = new AsyncLock(); // Don't do this!
     using (await lock.LockAsync())
     {
-// Work...
+        // Work...
     }
 }
 ```
 
-### ? DON'T: Hold Lock During Long Operations
+### DON'T: Hold Lock During Long Operations
 
 ```csharp
 // Bad: Holding lock during slow operation
@@ -226,25 +226,25 @@ public async Task ProcessAsync()
     using (await _lock.LockAsync())
     {
         await SlowDatabaseQueryAsync(); // Don't hold lock!
- await SlowApiCallAsync(); // Don't hold lock!
-  }
+        await SlowApiCallAsync(); // Don't hold lock!
+    }
 }
 
 // Good: Minimize lock duration
 public async Task ProcessAsync()
 {
     var data = await SlowDatabaseQueryAsync();
- var result = await SlowApiCallAsync();
+    var result = SlowApiCallAsync();
     
     using (await _lock.LockAsync())
     {
- // Only critical update
-        _cache = result;
+        // Only critical update
+        _cache = await result;
     }
 }
 ```
 
-### ? DON'T: Nest Locks (Deadlock Risk)
+### DON'T: Nest Locks (deadlock risk)
 
 ```csharp
 // Bad: Risk of deadlock
@@ -252,7 +252,7 @@ using (await _lock1.LockAsync())
 {
     using (await _lock2.LockAsync()) // Deadlock risk!
     {
-    // Work...
+        // Work...
     }
 }
 
@@ -267,23 +267,23 @@ using (await _lock1.LockAsync())
 public class SafeDictionary<TKey, TValue> where TKey : notnull
 {
     private readonly AsyncLock _lock = new();
- private readonly Dictionary<TKey, TValue> _dict = new();
+    private readonly Dictionary<TKey, TValue> _dict = new();
   
     public async Task<TValue?> GetAsync(TKey key, CancellationToken ct = default)
     {
-      using (await _lock.LockAsync(ct))
+        using (await _lock.LockAsync(ct))
         {
             return _dict.TryGetValue(key, out var value) ? value : default;
- }
+        }
     }
     
     public async Task SetAsync(TKey key, TValue value, CancellationToken ct = default)
     {
-  using (await _lock.LockAsync(ct))
+        using (await _lock.LockAsync(ct))
         {
             _dict[key] = value;
         }
- }
+    }
 }
 ```
 
@@ -304,13 +304,13 @@ public class LazyAsync<T>
         if (_initialized) return _value!;
         
         using (await _lock.LockAsync(ct))
-{
+        {
             if (!_initialized)
-      {
-    _value = await _factory();
-             _initialized = true;
-         }
-     }
+            {
+                _value = await _factory();
+                _initialized = true;
+            }
+        }
         
         return _value!;
     }

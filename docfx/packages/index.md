@@ -1,22 +1,22 @@
-# CryptoHives.Foundation Packages
+﻿# CryptoHives .NET Foundation Packages
 
-Welcome to the CryptoHives.Foundation package documentation. This collection provides high-performance, allocation-efficient utilities for .NET applications.
+Welcome to the CryptoHives .NET Foundation package documentation. 
 
 ## Available Packages
 
 ### Memory Package
 
-**CryptoHives.Foundation.Memory** - High-performance pooled buffers and memory management
+**CryptoHives.Foundation.Memory** - Pooled buffers and memory management
 
-The Memory package provides allocation-efficient buffer management utilities that leverage `ArrayPool<T>` and modern .NET memory APIs to minimize garbage collection pressure.
+High-performance buffer management and memory streams backed by `ArrayPool<T>.Shared` for reduced allocations and GC pressure.
 
 **Key Features:**
-- Pooled memory streams backed by `ArrayPool<byte>.Shared`
-- Zero-copy APIs with `ReadOnlySequence<T>` and `Span<T>`
-- `IBufferWriter<T>` implementations with pooled storage
-- RAII pattern for safe object pool resource management
+- `ArrayPoolMemoryStream` - Memory stream using pooled buffers (read/write)
+- `ArrayPoolBufferWriter<T>` - IBufferWriter implementation with pooled buffers
+- `ReadOnlySequenceMemoryStream` - Stream wrapper to read from ReadOnlySequence
+- `ObjectOwner<T>` - RAII pattern for object pool management
 
-**[?? Memory Package Documentation](memory/index.md)**
+**[Memory Package Documentation](memory/index.md)**
 
 **Installation:**
 ```bash
@@ -39,15 +39,14 @@ ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
 
 **CryptoHives.Foundation.Threading** - Pooled async synchronization primitives
 
-The Threading package provides high-performance async synchronization primitives optimized for low allocation and high throughput scenarios.
+Pooled async synchronization primitives that reduce allocations in high-throughput scenarios.
 
 **Key Features:**
-- Pooled `ValueTask`-based synchronization primitives
-- Async mutual exclusion with `AsyncLock`
-- Auto-reset and manual-reset async events
-- Minimal allocation design for hot-path code
+- `AsyncLock` - Pooled async mutual exclusion
+- `AsyncAutoResetEvent` - Pooled async auto-reset event
+- `AsyncManualResetEvent` - Pooled async manual-reset event
 
-**[?? Threading Package Documentation](threading/index.md)**
+**[Threading Package Documentation](threading/index.md)**
 
 **Installation:**
 ```bash
@@ -64,25 +63,17 @@ public async Task AccessResourceAsync()
 {
     using (await _lock.LockAsync())
     {
-        // Thread-safe access to shared resource
+        // Thread-safe async access to shared resource
     }
 }
 ```
 
 ---
 
-## Package Comparison
-
-| Feature | Memory | Threading |
-|---------|--------|-----------|
-| **Focus** | Buffer management | Async coordination |
-| **Key Benefit** | Reduced allocations | Low-latency synchronization |
-| **Primary Use Case** | I/O, serialization, data processing | Concurrent async operations |
-| **Pooling Strategy** | `ArrayPool<T>` | `ObjectPool<T>` with `ValueTask` |
-
 ## Target Frameworks
 
 Both packages support:
+- .NET 10.0 (planned)
 - .NET 9.0
 - .NET 8.0
 - .NET Framework 4.8
@@ -141,11 +132,11 @@ public class Pipeline<T>
 
 ## Getting Help
 
-- ?? [Full Documentation](https://cryptohives.github.io/Foundation/)
-- ?? [Getting Started Guide](../getting-started.md)
-- ?? [API Reference](../api/index.md)
-- ?? [Report Issues](https://github.com/CryptoHives/Foundation/issues)
-- ?? [Discussions](https://github.com/CryptoHives/Foundation/discussions)
+- 📖 [Full Documentation](https://cryptohives.github.io/Foundation/)
+- 🚀 [Getting Started Guide](../getting-started.md)
+- 📚 [API Reference](../api/index.md)
+- 🐛 [Report Issues](https://github.com/CryptoHives/Foundation/issues)
+- 💬 [Discussions](https://github.com/CryptoHives/Foundation/discussions)
 
 ## Package Links
 
@@ -156,4 +147,4 @@ public class Pipeline<T>
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives
