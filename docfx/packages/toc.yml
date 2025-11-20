@@ -1,6 +1,6 @@
-- name: Packages
-  items:
-    - name: Memory
-      href: memory/index.md
-    - name: Threading
-      href: threading/index.md
+- name: Packages Overview
+  href: index.md
+- name: Memory
+  href: memory/index.md
+- name: Threading
+  href: threading/index.md

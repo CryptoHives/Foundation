@@ -179,7 +179,6 @@ public string GetString()
     return owner.Object.ToString();
 }
 ```
-
 ### ? DON'T: Box the Struct
 
 ```csharp
@@ -189,7 +188,6 @@ IDisposable disposable = new ObjectOwner<StringBuilder>(pool); // Boxing!
 // Correct:
 using var owner = new ObjectOwner<StringBuilder>(pool);
 ```
-
 ### ? DON'T: Copy the Struct
 
 ```csharp

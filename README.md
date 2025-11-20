@@ -13,10 +13,10 @@ Each package is designed for security, interoperability, and clarity — making 
 
 ## 📚 Documentation
 
-📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and code samples
+📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and examples
 
 - 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
-- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/memory/index.html)
+- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
 - 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
 
 ---
@@ -178,10 +178,7 @@ By default, packages use the following license tags:
 ```
 
 Some inherited components may use alternative MIT license headers, according to their origin and specific requirements those headers are retained.
-<!--
----
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_large)
--->
+
 ---
 
 ## 🐝 About The Keepers of the CryptoHives

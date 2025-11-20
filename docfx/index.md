@@ -87,11 +87,10 @@ public async Task DoWorkAsync()
 ## Resources
 
 - ?? [Getting Started Guide](getting-started.md)
-- ?? [Package Documentation](packages/memory/index.md)
-- ?? [Code Samples](samples/memory/index.md)
+- ?? [Package Documentation](packages/index.md)
 - ?? [API Reference](api/index.md)
 - ?? [Report Issues](https://github.com/CryptoHives/Foundation/issues)
-- ?? [Security Policy](../SECURITY.md)
+- ?? [Security Policy](https://github.com/CryptoHives/.github/blob/main/SECURITY.md)
 
 ## License
 
