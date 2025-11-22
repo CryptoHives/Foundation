@@ -42,7 +42,7 @@
         <PackageReference Include="System.Memory" />
       </ItemGroup>
     </When>
-    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
+    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net48'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
