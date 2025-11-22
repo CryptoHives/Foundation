@@ -54,7 +54,7 @@ stages:
     parameters:
       configuration: Release
       framework: net48
-      agents: '@{ windows = "windows-2019" }'
+      agents: '@{ windows = "windows-2022" }'
       jobnamesuffix: net48  
   - template: .azurepipelines/test.yml
     parameters:
@@ -148,7 +148,7 @@ stages:
       framework: net8.0
       configuration: Release
       jobnamesuffix: netstandard20
-      agents: '@{ windows = "windows-2019"; linux="ubuntu-22.04"}'
+      agents: '@{ windows = "windows-2022"; linux="ubuntu-22.04"}'
       customtestarget: netstandard2.0
 - stage: testnetstandard21
   dependsOn: [build]
