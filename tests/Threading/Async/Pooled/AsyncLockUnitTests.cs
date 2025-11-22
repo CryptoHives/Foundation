@@ -23,6 +23,7 @@ public class AsyncLockUnitTests
         using (await vt.ConfigureAwait(false))
         {
             Assert.That(al.IsTaken);
+            Assert.That(vt.IsCompleted);
         }
 
         Assert.That(al.IsTaken, Is.False);

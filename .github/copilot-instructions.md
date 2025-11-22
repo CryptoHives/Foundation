@@ -32,6 +32,7 @@ The CryptoHives Open Source Initiative develops secure high-performance .NET lib
 - Use XML `<param>` and `<returns>` tags for public methods.
 - Use XML `<exception>` tags for public methods which may throw exceptions.
 - Use XML `<code>` snippets for code examples.
+- Add only XML `<inheritdoc/>` tags when overriding or implementing interface members.
 - Keep methods short and focused. Prefer small helper methods when needed.
 - Prefer `ValueTask` over `Task` for low-allocation hot-path async primitives when the project already uses `ValueTask` (see `Pooled.Async*` types).
 - Use `Microsoft.Extensions.ObjectPool` and the existing pool policy types when adding pooled objects.
@@ -50,7 +51,9 @@ The CryptoHives Open Source Initiative develops secure high-performance .NET lib
 - Use `[TestFixture]` on classes and `[Test]` or `[Theory]` on methods. Async tests should return `Task` and use `async/await`.
 - Follow existing test helpers and patterns (for example `AsyncAssert` helper used in other tests). Use `ConfigureAwait(false)` in library code where appropriate; tests often call it when awaiting.
 - Name tests clearly to describe behavior (example: `WaitAsyncUnsetIsNotCompleted`).
+- Do not use underscores in test method names.
 - Prefer adding new tests to existing test files when possible.
+- Do not add comments in test code that with Act/Arrange/Assert sections unless necessary for clarity.
 
 ## Safety checks before committing
 
