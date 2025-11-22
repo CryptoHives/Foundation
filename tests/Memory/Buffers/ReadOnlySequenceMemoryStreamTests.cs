@@ -301,7 +301,9 @@ public class ReadOnlySequenceMemoryStreamTests
     private static ReadOnlySequence<byte> CreateSequence(params byte[][] parts)
     {
         if (parts == null || parts.Length == 0)
+        {
             return ReadOnlySequence<byte>.Empty;
+        }
 
         var first = new TestSegment(parts[0]);
         TestSegment last = first;

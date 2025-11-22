@@ -70,7 +70,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public void LockUnlockSingle()
     {
-        lock (Lock)
+        lock (_lock)
         {
             // simulate work
             unchecked { _counter++; }
@@ -88,7 +88,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public void LockEnterScopeSingle()
     {
-        using (Lock.EnterScope())
+        using (_lock.EnterScope())
         {
             // simulate work
             unchecked { _counter++; }
@@ -107,7 +107,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public void ObjectLockUnlockSingle()
     {
-        lock (ObjectLock)
+        lock (_objectLock)
         {
             // simulate work
             unchecked { _counter++; }
@@ -131,7 +131,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockSemaphoreSlimSingleAsync()
     {
-        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             // simulate work
@@ -139,7 +139,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         }
         finally
         {
-            SemaphoreSlim.Release();
+            _semaphoreSlim.Release();
         }
     }
 
@@ -154,7 +154,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockPooledSingleAsync()
     {
-        using (await LockPooled.LockAsync().ConfigureAwait(false))
+        using (await _lockPooled.LockAsync().ConfigureAwait(false))
         {
             // simulate work
             unchecked { _counter++; }
@@ -172,7 +172,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockNitoSingleAsync()
     {
-        using (await LockNitoAsync.LockAsync().ConfigureAwait(false))
+        using (await _lockNitoAsync.LockAsync().ConfigureAwait(false))
         {
             // simulate work
             unchecked { _counter++; }
@@ -190,7 +190,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockNonKeyedSingleAsync()
     {
-        using (await LockNonKeyed.LockAsync().ConfigureAwait(false))
+        using (await _lockNonKeyed.LockAsync().ConfigureAwait(false))
         {
             // simulate work
             unchecked { _counter++; }
@@ -208,7 +208,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockNeoSmartSingleAsync()
     {
-        using (await LockNeoSmart.LockAsync().ConfigureAwait(false))
+        using (await _lockNeoSmart.LockAsync().ConfigureAwait(false))
         {
             // simulate work
             unchecked { _counter++; }
@@ -227,7 +227,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Benchmark(Baseline = true)]
     public async Task LockUnlockRefImplSingleAsync()
     {
-        using (await LockRefImpl.LockAsync().ConfigureAwait(false))
+        using (await _lockRefImp.LockAsync().ConfigureAwait(false))
         {
             // simulate work
             unchecked { _counter++; }

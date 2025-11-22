@@ -402,12 +402,12 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     {
         for (int i = 0; i < Iterations; i++)
         {
-            _task[i] = _eventRefImpl!.WaitAsync();
+            _task[i] = _eventRefImp!.WaitAsync();
         }
 
         for (int i = 0; i < Iterations; i++)
         {
-            _eventRefImpl!.Set();
+            _eventRefImp!.Set();
         }
 
         for (int i = 0; i < Iterations; i++)

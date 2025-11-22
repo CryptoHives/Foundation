@@ -3,6 +3,7 @@
 
 #pragma warning disable CA1034 // Nested types should not be visible
 #pragma warning disable CA1815 // Override equals and operator equals on value types
+#pragma warning disable CA1724 // 
 
 namespace Threading.Tests.Async.RefImpl;
 
@@ -45,7 +46,7 @@ public class AsyncLock
 
     public Task<AsyncLockReleaser> LockAsync()
     {
-        var wait = _semaphore.WaitAsync();
+        Task wait = _semaphore.WaitAsync();
         return wait.IsCompleted
             ? _releaser
             : wait.ContinueWith((_, state) => new AsyncLockReleaser((AsyncLock)state!), this, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);

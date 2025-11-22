@@ -100,8 +100,8 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [BenchmarkCategory("Wait", "RefImpl")]
     public async Task RefImplAsyncAutoResetEventTaskWaitAsync()
     {
-        Task t = _eventRefImpl!.WaitAsync();
-        _eventRefImpl!.Set();
+        Task t = _eventRefImp!.WaitAsync();
+        _eventRefImp!.Set();
         await t.ConfigureAwait(false);
     }
 }

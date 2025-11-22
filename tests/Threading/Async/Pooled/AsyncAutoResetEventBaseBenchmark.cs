@@ -20,7 +20,7 @@ public abstract class AsyncAutoResetEventBaseBenchmark
 {
     protected AsyncAutoResetEvent? _eventPooled;
     protected NitoAsyncEx.AsyncAutoResetEvent? _eventNitoAsync;
-    protected RefImpl.AsyncAutoResetEvent? _eventRefImpl;
+    protected RefImpl.AsyncAutoResetEvent? _eventRefImp;
     protected AutoResetEvent? _eventStandard;
 
     /// <summary>
@@ -32,7 +32,7 @@ public abstract class AsyncAutoResetEventBaseBenchmark
     {
         _eventPooled = new AsyncAutoResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
-        _eventRefImpl = new RefImpl.AsyncAutoResetEvent();
+        _eventRefImp = new RefImpl.AsyncAutoResetEvent();
         _eventStandard = new AutoResetEvent(false);
     }
 

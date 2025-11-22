@@ -75,16 +75,28 @@ public class ArrayPoolMemoryStreamTests
 
         Assert.That(stream.Seek(-3, SeekOrigin.Current), Is.Zero);
         Assert.That(stream.ReadByte(), Is.EqualTo(0xaa));
-        Assert.That(stream.Length, Is.EqualTo(3));
-        Assert.That(stream.Position, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(stream.Position, Is.EqualTo(1));
+            Assert.That(stream.Length, Is.EqualTo(3));
+        }
+
         Assert.That(stream.Read(buffer, 0, 1), Is.EqualTo(1));
-        Assert.That(stream.Position, Is.EqualTo(2));
-        Assert.That(stream.Length, Is.EqualTo(3));
-        Assert.That(buffer[0], Is.EqualTo(0x55));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(buffer[0], Is.EqualTo(0x55));
+            Assert.That(stream.Position, Is.EqualTo(2));
+            Assert.That(stream.Length, Is.EqualTo(3));
+        }
+
         Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.EqualTo(1));
-        Assert.That(stream.Position, Is.EqualTo(3));
-        Assert.That(stream.Length, Is.EqualTo(3));
-        Assert.That(buffer[0], Is.EqualTo(0x55));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(buffer[0], Is.EqualTo(0x55));
+            Assert.That(stream.Position, Is.EqualTo(3));
+            Assert.That(stream.Length, Is.EqualTo(3));
+        }
+
         Assert.That(stream.ReadByte(), Is.EqualTo(-1));
         Assert.That(stream.Read(buffer, 0, 1), Is.Zero);
         Assert.That(stream.Read(buffer.AsSpan(0, 1)), Is.Zero);

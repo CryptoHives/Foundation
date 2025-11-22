@@ -95,23 +95,23 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockSemaphoreSlimMultipleAsync()
     {
-        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _tasks![i] = SemaphoreSlim.WaitAsync();
+                _tasks![i] = _semaphoreSlim.WaitAsync();
             }
         }
         finally
         {
-            SemaphoreSlim.Release();
+            _semaphoreSlim.Release();
         }
 
-        foreach (var handle in _tasks!)
+        foreach (Task handle in _tasks!)
         {
             await handle.ConfigureAwait(false);
-            SemaphoreSlim.Release();
+            _semaphoreSlim.Release();
         }
     }
 
@@ -139,11 +139,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockPooledMultipleAsync()
     {
-        using (await LockPooled.LockAsync().ConfigureAwait(false))
+        using (await _lockPooled.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockHandle![i] = LockPooled.LockAsync();
+                _lockHandle![i] = _lockPooled.LockAsync();
             }
         }
 
@@ -176,11 +176,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockPooledTaskMultipleAsync()
     {
-        using (await LockPooled.LockAsync().ConfigureAwait(false))
+        using (await _lockPooled.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _tasksReleaser![i] = LockPooled.LockAsync().AsTask();
+                _tasksReleaser![i] = _lockPooled.LockAsync().AsTask();
             }
         }
 
@@ -214,11 +214,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockNitoMultipleAsync()
     {
-        using (await LockNitoAsync.LockAsync().ConfigureAwait(false))
+        using (await _lockNitoAsync.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockNitoHandle![i] = LockNitoAsync.LockAsync();
+                _lockNitoHandle![i] = _lockNitoAsync.LockAsync();
             }
         }
 
@@ -255,15 +255,15 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockNeoSmartMultipleAsync()
     {
-        using (await LockNeoSmart.LockAsync().ConfigureAwait(false))
+        using (await _lockNeoSmart.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockNeoSmartHandle![i] = LockNeoSmart.LockAsync();
+                _lockNeoSmartHandle![i] = _lockNeoSmart.LockAsync();
             }
         }
 
-        foreach (var handle in _lockNeoSmartHandle!)
+        foreach (Task<IDisposable> handle in _lockNeoSmartHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }
@@ -295,15 +295,15 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark(Baseline = true)]
     public async Task LockUnlockRefImplMultipleAsync()
     {
-        using (await LockRefImpl.LockAsync().ConfigureAwait(false))
+        using (await _lockRefImp.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockRefImplHandle![i] = LockRefImpl.LockAsync();
+                _lockRefImplHandle![i] = _lockRefImp.LockAsync();
             }
         }
 
-        foreach (var handle in _lockRefImplHandle!)
+        foreach (Task<RefImpl.AsyncLock.AsyncLockReleaser> handle in _lockRefImplHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }
@@ -332,11 +332,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [Benchmark]
     public async Task LockUnlockNonKeyedMultipleAsync()
     {
-        using (await LockNonKeyed.LockAsync().ConfigureAwait(false))
+        using (await _lockNonKeyed.LockAsync().ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockNonKeyedHandle![i] = LockNonKeyed.LockAsync();
+                _lockNonKeyedHandle![i] = _lockNonKeyed.LockAsync();
             }
         }
 

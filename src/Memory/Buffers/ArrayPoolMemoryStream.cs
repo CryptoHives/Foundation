@@ -123,8 +123,8 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// <inheritdoc/>
     public override long Position
     {
-        get { return GetAbsolutePosition(); }
-        set { Seek(value, SeekOrigin.Begin); }
+        get => GetAbsolutePosition();
+        set => Seek(value, SeekOrigin.Begin);
     }
 
     /// <inheritdoc/>

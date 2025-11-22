@@ -28,8 +28,7 @@ public readonly struct ObjectOwner<T> : IDisposable, IEquatable<ObjectOwner<T>> 
     /// <param name="objectPool"></param>
     public ObjectOwner(ObjectPool<T> objectPool)
     {
-        if (objectPool == null) throw new ArgumentNullException(nameof(objectPool));
-        ObjectPool = objectPool;
+        ObjectPool = objectPool ?? throw new ArgumentNullException(nameof(objectPool));
         Object = objectPool.Get();
     }
 

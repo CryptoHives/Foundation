@@ -97,7 +97,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     [BenchmarkCategory("Set", "RefImpl")]
     public void RefImplAsyncAutoResetEventSet()
     {
-        _eventRefImpl!.Set();
+        _eventRefImp!.Set();
     }
 }
 

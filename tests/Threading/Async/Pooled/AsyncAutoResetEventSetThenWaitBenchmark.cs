@@ -113,8 +113,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("SetThenWait", "RefImpl")]
     public async Task RefImplAsyncAutoResetEventSetThenWaitAsync()
     {
-        _eventRefImpl!.Set();
-        await _eventRefImpl!.WaitAsync().ConfigureAwait(false);
+        _eventRefImp!.Set();
+        await _eventRefImp!.WaitAsync().ConfigureAwait(false);
     }
 }
 
