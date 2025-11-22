@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Memory.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// Owner of object shared from <see cref="ObjectPool{T}"/> who
@@ -19,7 +20,7 @@ using System;
 /// </code>
 /// Note: do not cast to IDisposable to avoid a boxing allocation.
 /// </remarks>
-public readonly struct ObjectOwner<T> : IDisposable where T : class
+public readonly struct ObjectOwner<T> : IDisposable, IEquatable<ObjectOwner<T>> where T : class
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="ObjectOwner{T}"/> struct.
@@ -27,6 +28,7 @@ public readonly struct ObjectOwner<T> : IDisposable where T : class
     /// <param name="objectPool"></param>
     public ObjectOwner(ObjectPool<T> objectPool)
     {
+        if (objectPool == null) throw new ArgumentNullException(nameof(objectPool));
         ObjectPool = objectPool;
         Object = objectPool.Get();
     }
@@ -45,5 +47,24 @@ public readonly struct ObjectOwner<T> : IDisposable where T : class
     public void Dispose()
     {
         ObjectPool.Return(Object);
+    }
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj)
+    {
+        return obj is ObjectOwner<T> owner && Equals(owner);
+    }
+
+    /// <inheritdoc/>
+    public bool Equals(ObjectOwner<T> other)
+    {
+        return EqualityComparer<ObjectPool<T>>.Default.Equals(ObjectPool, other.ObjectPool) &&
+               EqualityComparer<T>.Default.Equals(Object, other.Object);
+    }
+
+    /// <inheritdoc/>
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(ObjectPool, Object);
     }
 }

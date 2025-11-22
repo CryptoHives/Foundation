@@ -49,6 +49,10 @@ stages:
     parameters:
       poolImage: 'windows-2022'
       jobnamesuffix: win2022
+  - template: .azurepipelines/sln.yml
+    parameters:
+      poolImage: 'windows-2026'
+      jobnamesuffix: win2026
 - stage: testrelease
   dependsOn: [build]
   displayName: 'Test Core and SDK Release'
@@ -108,6 +112,16 @@ stages:
       framework: net9.0
       configuration: Release
       jobnamesuffix: net90
+- stage: testnet100
+  dependsOn: [build]
+  displayName: 'Test .NET 10.0'
+  condition: and(succeeded(), ne(variables.ScheduledBuild, 'False'))
+  jobs:
+  - template: .azurepipelines/test.yml
+    parameters:
+      framework: net10.0
+      configuration: Release
+      jobnamesuffix: net100
 - stage: testnet462
   dependsOn: [build]
   displayName: 'Test .NET 4.6.2'
@@ -163,7 +177,7 @@ stages:
   - template: .azurepipelines/testcc.yml
     parameters:
       configuration: Release
-      poolImage: 'ubuntu-24.04'
-      framework: net8.0
-      jobnamesuffix: net80cc
+      poolImage: 'ubuntu-latest'
+      framework: net10.0
+      jobnamesuffix: net100cc
 

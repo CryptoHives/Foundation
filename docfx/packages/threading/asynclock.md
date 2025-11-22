@@ -1,4 +1,4 @@
-# AsyncLock Class
+﻿# AsyncLock Class
 
 A pooled async mutual exclusion lock for coordinating access to shared resources.
 
@@ -352,4 +352,4 @@ public class MyService : IDisposable
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

@@ -5,6 +5,7 @@ namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -42,6 +43,20 @@ using System.Threading.Tasks;
 public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
 {
     private volatile int _counter;
+
+
+    /// <summary>
+    /// Benchmark for unchecked increment.
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of the increment operation.
+    /// </remarks>
+    [Benchmark]
+    public void IncrementSingle()
+    {
+        // simulate work
+        unchecked { _counter++; }
+    }
 
 #if NET9_0_OR_GREATER
     /// <summary>
@@ -100,6 +115,35 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     }
 
     /// <summary>
+    /// Benchmark for Interlocked.Increment vs C# lock statements.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    public void InterlockedIncrementSingle()
+    {
+        Interlocked.Increment(ref _counter);
+    }
+
+    /// <summary>
+    /// Benchmark for SemaphoreSlim used as a lock.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    public async Task LockUnlockSemaphoreSlimSingleAsync()
+    {
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+    }
+
+    /// <summary>
     /// Benchmark for pooled async lock (single uncontended acquisition).
     /// </summary>
     /// <remarks>
@@ -152,6 +196,25 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
             unchecked { _counter++; }
         }
     }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Benchmark for the NeoSmart AsyncLock implementation.
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path performance of the third party NeoSmart implementation.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    public async Task LockUnlockNeoSmartSingleAsync()
+    {
+        using (await LockNeoSmart.LockAsync().ConfigureAwait(false))
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+    }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async lock (single uncontended acquisition, baseline).

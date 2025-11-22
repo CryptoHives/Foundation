@@ -68,17 +68,13 @@ public sealed class AsyncLock
             _owner = owner;
         }
 
-        /// <summary>
-        /// Releases the lock.
-        /// </summary>
+        /// <inheritdoc/>
         public void Dispose()
         {
             _owner.ReleaseLock();
         }
 
-        /// <summary>
-        /// Asynchronously releases the lock (synchronous for this implementation).
-        /// </summary>
+        /// <inheritdoc/>
         public ValueTask DisposeAsync()
         {
             _owner.ReleaseLock();

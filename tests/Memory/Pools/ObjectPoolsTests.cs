@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Memory.Pools;
 using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,7 +58,7 @@ public class ObjectPoolsTests
         int index = 0;
         int GetUniqueIndex() => Interlocked.Increment(ref index);
 
-        Parallel.For(0, concurrency, _ => {
+        _ = Parallel.For(0, concurrency, _ => {
             try
             {
                 int myIndex = GetUniqueIndex();
@@ -65,7 +66,7 @@ public class ObjectPoolsTests
                 {
                     using ObjectOwner<StringBuilder> owner = ObjectPools.GetStringBuilder();
                     StringBuilder sb = owner.Object;
-                    sb.AppendFormat("{0}:{1}", myIndex, i);
+                    sb.AppendFormat(CultureInfo.InvariantCulture, "{0}:{1}", myIndex, i);
                     Assert.That(sb.ToString(), Is.EqualTo($"{myIndex}:{i}"));
                 }
             }

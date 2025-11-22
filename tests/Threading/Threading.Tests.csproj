@@ -6,7 +6,7 @@
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <NoWarn>$(NoWarn);NUnit1028</NoWarn>
+    <NoWarn>$(NoWarn);NUnit1028;CA1515</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,7 +38,8 @@
 
   <ItemGroup>
     <PackageReference Condition="'$(SignAssembly)' != 'true'" Include="Nito.AsyncEx" />
-    <PackageReference Include="AsyncKeyedLock" />    
+    <PackageReference Include="AsyncKeyedLock" />
+    <PackageReference Condition="'$(TargetFramework)' != 'net462' AND '$(TargetFramework)' != 'net48'" Include="NeoSmart.AsyncLock" />
   </ItemGroup>
   
   <ItemGroup>

@@ -1,4 +1,4 @@
-# AsyncManualResetEvent Class
+﻿# AsyncManualResetEvent Class
 
 A pooled async manual-reset event for coordinating tasks where all waiters are released per signal.
 
@@ -442,4 +442,4 @@ public class MyService : IDisposable
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1034 // Nested types should not be visible
+
 namespace Threading.Tests.Async.RefImpl;
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;

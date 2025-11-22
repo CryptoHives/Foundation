@@ -47,13 +47,17 @@ using System.Threading.Tasks;
 [BenchmarkCategory("AsyncLock")]
 public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 {
-    private Task<AsyncLock.AsyncLockReleaser>[]? _tasks;
+    private Task[]? _tasks;
+    private Task<AsyncLock.AsyncLockReleaser>[]? _tasksReleaser;
     private ValueTask<AsyncLock.AsyncLockReleaser>[]? _lockHandle;
 #if !SIGNASSEMBLY
     private Nito.AsyncEx.AwaitableDisposable<IDisposable>[]? _lockNitoHandle;
 #endif
-    private Task<RefImpl.AsyncLock.AsyncLockReleaser>[]? _lockRefImplHandle;
     private ValueTask<AsyncKeyedLock.AsyncNonKeyedLockReleaser>[]? _lockNonKeyedHandle;
+#if !NETFRAMEWORK
+    private Task<IDisposable>[]? _lockNeoSmartHandle;
+#endif
+    private Task<RefImpl.AsyncLock.AsyncLockReleaser>[]? _lockRefImplHandle;
 
     public static object[] FixtureArgs = {
         new object[] { 0 },
@@ -70,6 +74,45 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     public AsyncLockMultipleBenchmark(int iterations)
     {
         Iterations = iterations;
+    }
+
+    [Test]
+    public Task LockUnlockSemaphoreSlimMultipleTestAsync()
+    {
+        SemaphoreSlimGlobalSetup();
+        return LockUnlockSemaphoreSlimMultipleAsync();
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockSemaphoreSlimMultipleAsync))]
+    public void SemaphoreSlimGlobalSetup()
+    {
+        _tasks = new Task[Iterations];
+    }
+
+    /// <summary>
+    /// Benchmark for SemaphoreSlim used as async lock with multiple queued waiters.
+    /// </summary>
+    [Benchmark]
+    public async Task LockUnlockSemaphoreSlimMultipleAsync()
+    {
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _tasks![i] = SemaphoreSlim.WaitAsync();
+            }
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+
+        foreach (var handle in _tasks!)
+        {
+            await handle.ConfigureAwait(false);
+            SemaphoreSlim.Release();
+        }
     }
 
     [Test]
@@ -120,7 +163,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockPooledTaskMultipleAsync))]
     public void PooledTaskGlobalSetup()
     {
-        _tasks = new Task<AsyncLock.AsyncLockReleaser>[Iterations];
+        _tasksReleaser = new Task<AsyncLock.AsyncLockReleaser>[Iterations];
     }
 
     /// <summary>
@@ -137,11 +180,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _tasks![i] = LockPooled.LockAsync().AsTask();
+                _tasksReleaser![i] = LockPooled.LockAsync().AsTask();
             }
         }
 
-        foreach (Task<AsyncLock.AsyncLockReleaser> task in _tasks!)
+        foreach (Task<AsyncLock.AsyncLockReleaser> task in _tasksReleaser!)
         {
             using (await task.ConfigureAwait(false)) { }
         }
@@ -185,6 +228,48 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
         }
     }
 #endif
+
+#if !NETFRAMEWORK
+    [Test]
+    public Task LockUnlockNeoSmartMultipleTestAsync()
+    {
+        NeoSmartGlobalSetup();
+        return LockUnlockNeoSmartMultipleAsync();
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockNeoSmartMultipleAsync))]
+    public void NeoSmartGlobalSetup()
+    {
+        _lockNeoSmartHandle = new Task<IDisposable>[Iterations];
+    }
+
+    /// <summary>
+    /// <b>Out of contest:</b> Benchmark for NeoSmart.AsyncLock with multiple queued waiters.
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of the third-party NeoSmart.AsyncLock library under contention.
+    /// This implementation uses Task-based disposable primitives.
+    /// Since NeoSmart has a means of detecting that the lock is a nested acquisition by the same
+    /// Task, the behavior differs here as it can directly pass a completed task for nested waits.
+    /// </remarks>
+    [Benchmark]
+    public async Task LockUnlockNeoSmartMultipleAsync()
+    {
+        using (await LockNeoSmart.LockAsync().ConfigureAwait(false))
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _lockNeoSmartHandle![i] = LockNeoSmart.LockAsync();
+            }
+        }
+
+        foreach (var handle in _lockNeoSmartHandle!)
+        {
+            using (await handle.ConfigureAwait(false)) { }
+        }
+    }
+#endif
+
 
     [Test]
     public Task LockUnlockRefImplMultipleTestAsync()

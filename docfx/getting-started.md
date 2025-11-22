@@ -1,4 +1,4 @@
-# Getting Started with CryptoHives.Foundation
+﻿# Getting Started with CryptoHives.Foundation
 
 Welcome to the CryptoHives .NET Foundation libraries! This guide will help you get started with the Memory and Threading packages.
 
@@ -83,4 +83,4 @@ For issues and questions:
 
 This project is licensed under the MIT License. See the [LICENSE](https://github.com/CryptoHives/Foundation/LICENSE) file for details.
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

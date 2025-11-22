@@ -13,24 +13,23 @@ Each package is designed for security, interoperability, and clarity — making 
 
 ## 📚 Documentation
 
-📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and examples
-
+- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and examples
 - 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
 - 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
 - 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
 
 ---
 
-## 📦 Available Packages
+## 🐝 Available CryptoHives
 
 | Package | Description | NuGet | Documentation |
 |----------|--------------|--------|---------------|
-| `CryptoHives.Foundation.Memory` | High-performance pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
-| `CryptoHives.Foundation.Threading` | Pooled async synchronization primitives | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `CryptoHives.Foundation.Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
+| `CryptoHives.Foundation.Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
 
 More packages will be published under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages?q=CryptoHives) for details.
 
-### 🐝 CryptoHives Health
+### 🍯 CryptoHives Health
 
 [![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
@@ -39,24 +38,22 @@ More packages will be published under the `CryptoHives.*` namespace — see the 
 
 ---
 
-## 🧬 Features
+## 🧬 Features and Design Principles
 
-### 📚 API Overview and documentation
-The API reference with samples is available at the [CryptoHives .NET Foundation Docs](https://cryptohives.github.io/Foundation/).
+### 🧱 Orthogonal Design
+- All development is done on free and open-source tools, e.g. .NET SDK, Visual Studio Community Edition, Visual Studio Code, GitHub, Azure DevOps, etc.
+- Each package is designed to be orthogonal and composable with other CryptoHives packages to avoid deep cross dependencies
+- Dependencies on other packages are kept to a minimum and shall only include widely adopted, well-maintained libraries, e.g. the Microsoft.Extensions
+- OS and hardware dependencies are avoided wherever possible to ensure deterministic behavior across all platforms and runtimes, specifically for security implementations
+- There is no intention to replace or shadow existing .NET class libraries; instead, CryptoHives packages are designed to complement and extend existing functionality
 
-### 🔐 Clean-Room Cryptography (planned)
-- Fully managed implementations of symmetric and asymmetric algorithms
-- No dependency on OS or hardware cryptographic APIs
-- Deterministic behavior across all platforms and runtimes
-- Support for both classical and modern primitives (AES, ChaCha20, SHA-2/3, etc.)
- 
 ### ⚡ High-Performance Primitives
 - CryptoHives provides a growing set of utilities designed to optimize high performance transformation pipelines and cryptography workloads.
 
 ### 🛠️ Memory Efficiency
 - **ArrayPool-based allocators** for common crypto and serialization scenarios
 - Pooled implementations of `MemoryStream` and `IBufferWriter<T>` for transformation pipelines
-- Primitives to handle ownership of pooled buffers using `ReadOnlySequence<T>` with `ArrayPool<T>`
+- Primitives to handle ownership of pooled buffers using `ReadOnlySequence<T>` and `ArrayPool<T>`
 - Zero-copy, zero-allocation design for high-frequency cryptographic workloads and transformation pipelines
 
 ### 🚀 Concurrency Tools
@@ -66,12 +63,18 @@ The API reference with samples is available at the [CryptoHives .NET Foundation 
 ### 🧪 Tests and Benchmarks
 - Comprehensive tests and benchmarks are available to evaluate performance across various scenarios.
 
-### 🔒 Fuzzing
-- All libraries and public-facing APIs are planned to be fuzzed (wip)
+### 🔐 Clean-Room Cryptography (planned)
+- Fully managed implementations of symmetric and asymmetric algorithms
+- No dependency on OS or hardware cryptographic APIs
+- Deterministic behavior across all platforms and runtimes
+- Support for both classical and modern primitives (AES, ChaCha20, SHA-2/3, etc.)
+
+### 🔒 Fuzzed APIs (planned)
+- All libraries and public-facing APIs are planned to be fuzzed 
 
 ---
 
-## 🚀 Installation
+## 🧩 Installation
 
 Install via NuGet CLI:
 
@@ -97,12 +100,13 @@ Here’s a minimal example using the `CryptoHives.Foundation.Memory` package:
 using CryptoHives.Foundation.Memory;
 using System;
 
-public class Example
+public class ExampleWriter
 {
     public string WritePooledChunk(ReadOnlySpan<byte> chunk)
     {
         // Use a MemoryStream backed by ArrayPool<byte> buffers
         using var writer = new ArrayPoolMemoryStream();
+
         writer.Write(chunk);
         ReadOnlySequence<byte> sequence = writer.GetReadOnlySequence();
         return Encoding.UTF8.GetString(sequence);
@@ -125,7 +129,7 @@ public class Example
     public async Task AccessSharedResourceAsync()
     {
         // Due to the use of ValueTask and ObjectPools, 
-        // this mutex is very fast and allocation-efficient
+        // this mutex is very fast and allocation free
         // Acquire the lock asynchronously
         using await _lock.ConfigureAwait(false);
         // Access shared async resource here

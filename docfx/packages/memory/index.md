@@ -1,4 +1,4 @@
-# CryptoHives.Foundation.Memory Package
+﻿# CryptoHives.Foundation.Memory Package
 
 The Memory package provides high-performance, allocation-efficient buffer management utilities for .NET applications.
 
@@ -133,4 +133,4 @@ MyClass obj = owner.Object;
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

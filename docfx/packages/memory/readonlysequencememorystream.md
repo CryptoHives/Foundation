@@ -1,4 +1,4 @@
-# ReadOnlySequenceMemoryStream Class
+﻿# ReadOnlySequenceMemoryStream Class
 
 A read-only stream wrapper around `ReadOnlySequence<byte>` for zero-copy stream operations.
 
@@ -270,4 +270,4 @@ var stream = new ReadOnlySequenceMemoryStream(sequence);
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

@@ -1,4 +1,4 @@
-# ObjectPools Class
+﻿# ObjectPools Class
 
 Static helper class for obtaining pooled objects with automatic return to pool.
 
@@ -191,4 +191,4 @@ public static class MyObjectPools
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives

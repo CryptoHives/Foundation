@@ -1,4 +1,4 @@
-# AsyncAutoResetEvent Class
+﻿# AsyncAutoResetEvent Class
 
 A pooled async auto-reset event for coordinating tasks where only one waiter is released per signal.
 
@@ -347,4 +347,4 @@ public class MyService : IDisposable
 
 ---
 
-� 2025 The Keepers of the CryptoHives
+© 2025 The Keepers of the CryptoHives
