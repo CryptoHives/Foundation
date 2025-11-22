@@ -55,6 +55,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{69C6A38B
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "devops ci", "devops ci", "{509454EF-E537-4120-81D8-8C2DAA768D31}"
 	ProjectSection(SolutionItems) = preProject
+		azure-pipelines-nuget.yml = azure-pipelines-nuget.yml
+		azure-pipelines.yml = azure-pipelines.yml
 		.azurepipelines\ci.yml = .azurepipelines\ci.yml
 		.azurepipelines\get-matrix.ps1 = .azurepipelines\get-matrix.ps1
 		.azurepipelines\get-root.ps1 = .azurepipelines\get-root.ps1

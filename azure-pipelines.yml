@@ -51,8 +51,8 @@ stages:
       jobnamesuffix: win2022
   - template: .azurepipelines/sln.yml
     parameters:
-      poolImage: 'windows-2026'
-      jobnamesuffix: win2026
+      poolImage: 'windows-2025'
+      jobnamesuffix: win2025
 - stage: testrelease
   dependsOn: [build]
   displayName: 'Test Core and SDK Release'
