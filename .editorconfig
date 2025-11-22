@@ -37,6 +37,10 @@ indent_size = 2
 [*.{yml,yaml}]
 indent_size = 2
 
+# MarkDown files
+[*.md]
+charset = utf-8
+
 ###############################
 # .NET Coding Conventions     #
 ###############################

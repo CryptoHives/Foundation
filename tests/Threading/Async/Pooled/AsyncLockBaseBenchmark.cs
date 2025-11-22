@@ -18,16 +18,16 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncLockBaseBenchmark
 {
 #if NET9_0_OR_GREATER
-    protected readonly System.Threading.Lock Lock = new();
+    protected System.Threading.Lock Lock;
 #endif
-    protected readonly object ObjectLock = new();
-    protected readonly AsyncLock LockPooled = new();
-    protected readonly System.Threading.SemaphoreSlim SemaphoreSlim = new(1, 1);
-    protected readonly NitoAsyncEx.AsyncLock LockNitoAsync = new();
-    protected readonly AsyncKeyedLock.AsyncNonKeyedLocker LockNonKeyed = new();
-    protected readonly RefImpl.AsyncLock LockRefImpl = new();
+    protected object ObjectLock;
+    protected AsyncLock LockPooled;
+    protected System.Threading.SemaphoreSlim SemaphoreSlim;
+    protected NitoAsyncEx.AsyncLock LockNitoAsync;
+    protected AsyncKeyedLock.AsyncNonKeyedLocker LockNonKeyed;
+    protected RefImpl.AsyncLock LockRefImpl;
 #if !NETFRAMEWORK
-    protected readonly NeoSmart.AsyncLock.AsyncLock LockNeoSmart = new();
+    protected NeoSmart.AsyncLock.AsyncLock LockNeoSmart;
 #endif
 
     /// <summary>
@@ -37,6 +37,18 @@ public abstract class AsyncLockBaseBenchmark
     [GlobalSetup]
     public void GlobalSetup()
     {
+#if NET9_0_OR_GREATER
+        Lock = new();
+#endif
+        ObjectLock = new();
+        LockPooled = new();
+        SemaphoreSlim = new(1, 1);
+        LockNitoAsync = new();
+        LockNonKeyed = new();
+        LockRefImpl = new();
+#if !NETFRAMEWORK
+        LockNeoSmart = new();
+#endif
     }
 
     /// <summary>

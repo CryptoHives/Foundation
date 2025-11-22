@@ -7,7 +7,7 @@
     <AssemblyPrefix>CryptoHives.Foundation</AssemblyPrefix>
     <Company>CryptoHives Open Source Initiative</Company>
     <Authors>The Keepers of the CryptoHives</Authors>
-    <NoWarn>NU5125;CA2254;CA1307;CA1512;CA1513</NoWarn>
+    <NoWarn>NU5125;CA2254;CA1307;CA1510;CA1512;CA1513</NoWarn>
     <NeutralLanguage>en-US</NeutralLanguage>
     <HighEntropyVA>true</HighEntropyVA>
     <IsPackable>false</IsPackable>

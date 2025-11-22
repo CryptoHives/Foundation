@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Memory.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 /// <summary>
@@ -24,6 +25,7 @@ public static class ObjectPools
     ///     ...
     /// </code>
     /// </remarks>
+    [SuppressMessage("Design", "CA1024:Use properties where appropriate", Justification = "By Design")]
     public static ObjectOwner<StringBuilder> GetStringBuilder()
     {
         return new ObjectOwner<StringBuilder>(PoolFactory.SharedStringBuilderPool);

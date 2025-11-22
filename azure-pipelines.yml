@@ -11,7 +11,8 @@ trigger:
     include:
     - '*' 
     exclude:
-    - 'doc/*' 
+    - 'docs/*' 
+    - 'docfx/*' 
     - '*.md' 
 
 pr: 
@@ -29,21 +30,12 @@ variables:
 
 stages:
 - stage: build
-  displayName: 'Build .NET Core Samples'
+  displayName: 'Build .NET Foundation'
   jobs:
   - template: .azurepipelines/ci.yml
-#- stage: buildnohttps
-#  dependsOn: []
-#  displayName: 'Build NoHttps .NET Core Samples'
-#  condition: ne(variables.FullBuild, 'False')
-#  jobs:
-#  - template: .azurepipelines/ci.yml
-#    parameters:
-#      buildoption: '-p:NoHttps=true'
-#      agents: '@{ linux = "ubuntu-24.04" }'
 - stage: solutions
   dependsOn: []
-  displayName: 'Build Solutions'
+  displayName: 'Build Solution'
   jobs:
   - template: .azurepipelines/sln.yml
     parameters:
@@ -55,7 +47,7 @@ stages:
       jobnamesuffix: win2025
 - stage: testrelease
   dependsOn: [build]
-  displayName: 'Test Core and SDK Release'
+  displayName: 'Test .NET Foundation'
   condition: and(succeeded(), ne(variables.FullBuild, 'False'))
   jobs:
   - template: .azurepipelines/test.yml
@@ -132,7 +124,7 @@ stages:
       framework: net462
       configuration: Release
       jobnamesuffix: net462
-      agents: '@{ windows = "windows-latest" }'
+      agents: '@{ windows = "windows-2022" }'
       customtestarget: net462
 - stage: testnet472
   dependsOn: [build]

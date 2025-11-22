@@ -6,7 +6,7 @@
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <NoWarn>$(NoWarn);NUnit1028;CA1515</NoWarn>
+    <NoWarn>$(NoWarn);NUnit1028;CA1515;AD0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
