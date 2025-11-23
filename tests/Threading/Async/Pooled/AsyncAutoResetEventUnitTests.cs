@@ -172,15 +172,5 @@ public class AsyncAutoResetEventUnitTests
         Task t = ev.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
     }
-
-    private static class AsyncAssert
-    {
-        public static async Task NeverCompletesAsync(Task task, int timeoutMs = 1000)
-        {
-            Task completed = await Task.WhenAny(task, Task.Delay(timeoutMs)).ConfigureAwait(false);
-            if (completed == task)
-                Assert.Fail("Expected task to never complete.");
-        }
-    }
 }
 

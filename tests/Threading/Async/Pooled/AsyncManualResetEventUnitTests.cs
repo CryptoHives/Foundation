@@ -124,14 +124,4 @@ public class AsyncManualResetEventUnitTests
         Task wait = mre.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
     }
-
-    private static class AsyncAssert
-    {
-        public static async Task NeverCompletesAsync(Task task, int timeoutMs =500)
-        {
-            Task completed = await Task.WhenAny(task, Task.Delay(timeoutMs)).ConfigureAwait(false);
-            if (completed == task)
-                Assert.Fail("Expected task to never complete.");
-        }
-    }
 }

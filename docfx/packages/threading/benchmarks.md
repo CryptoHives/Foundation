@@ -18,24 +18,6 @@ The included benchmarks try uncontestested and contested scenarios:
 - `tests/Threading/Async/Pooled/AsyncLock*Benchmark.cs` — single and multiple queued waiters for various `AsyncLock` implementations (Pooled, Nito, AsyncKeyedLock, reference implementation, NeoSmart).  
 - `tests/Threading/Async/Pooled/AsyncAutoResetEvent*Benchmark.cs` — set/wait and contention scenarios for `AsyncAutoResetEvent` implementations (Pooled, Nito, reference implementation).
 
-### Where results appear
-
-When run locally in `Release` mode, BenchmarkDotNet writes results and artifacts to:
-- `tests/Threading/BenchmarkDotNet.Artifacts/results/`
-
-Precomputed Markdown reports for some runs are available in the repository under:
-- `tests/Threading/BenchmarkDotNet.Artifacts/results/Threading.Tests.Async.Pooled.AsyncLockSingleBenchmark-report-github.md`  
-- `tests/Threading/BenchmarkDotNet.Artifacts/results/Threading.Tests.Async.Pooled.AsyncAutoResetEventSetBenchmark-report-github.md`  
-- `tests/Threading/BenchmarkDotNet.Artifacts/results/Threading.Tests.Async.Pooled.AsyncLockMultipleBenchmark-report-github.md`  
-(There are additional per-benchmark reports in the same folder.)
-
-### Discussion of results
-
-The benchmarks show that the pooled implementations generally have lower allocations and better performance under contention compared to popular existing libraries like Nito.AsyncEx and NeoSmart's AsyncLock.
-However there can be usage patterns where the overhead of pooling and specific implementation details in the underlying ManualResetValueTaskSource lead to higher latency or allocations in low contention scenarios.
-ValueTask/IValueTaskSource management may not yield benefits, especially in low contention scenarios.
-When considering using these primitives in a production system, it's important to evaluate the specific workload characteristics and contention patterns to determine if the pooled implementations provide a net benefit.
-
 ### Run benchmarks locally
 
 From repository root:
@@ -52,14 +34,26 @@ Notes:
 - The test runner disables some BenchmarkDotNet validators because the test assembly references NUnit; keep the provided `ManualConfig` in `tests/Common/Main.cs`.
 - Benchmarks are non-parallelizable; run them on an otherwise idle machine for stable output.
 
+### Where results appear
+
+When run locally in `Release` mode, BenchmarkDotNet writes results and artifacts to:
+- `tests/Threading/BenchmarkDotNet.Artifacts/results/`
+
 ### Adding a new benchmark
 
 1. Add a new `Benchmark` class under `tests/` following existing patterns in `tests/Threading/Async/Pooled/`.
 2. Include `[Benchmark]` methods and `[GlobalSetup]` where needed.
 3. Add a `[Params]` or `FixtureArgs` entry if parameterized runs are required.
 4. Run locally and inspect generated artifacts in `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
+ 
+## Discussion of benchmark results
 
-## Benchmark discussions
+The benchmarks show that the pooled implementations generally have lower allocations and better performance under contention compared to popular existing libraries like Nito.AsyncEx and NeoSmart's AsyncLock.
+However there can be usage patterns where the overhead of pooling and specific implementation details in the underlying ManualResetValueTaskSource lead to higher latency or allocations in low contention scenarios.
+ValueTask/IValueTaskSource management may not yield benefits, especially in low contention scenarios.
+When considering using these primitives in a production system, it's important to evaluate the specific workload characteristics and contention patterns to determine if the pooled implementations provide a net benefit.
+
+### Benchmark results
 
 Benchmarks were run on a machine with the following specifications:
 
