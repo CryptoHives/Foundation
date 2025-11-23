@@ -60,7 +60,7 @@ public class AsyncLockUnitTests
         var task2HasLock = new TaskCompletionSource<bool>();
         var task2Continue = new TaskCompletionSource<bool>();
 
-        var task1 = Task.Run(async () =>
+        Task.Run(async () =>
         {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
