@@ -81,10 +81,8 @@ public async Task DoWorkAsync()
 
 ## Platform Support
 
-- .NET 10.0 (planned)
-- .NET 9.0
+- .NET 10.0
 - .NET 8.0
-- .NET Framework 4.8
 - .NET Framework 4.6.2
 - .NET Standard 2.1
 - .NET Standard 2.0
