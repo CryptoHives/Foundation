@@ -75,7 +75,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     };
 
     [Params(1, 2, 10, 100)]
-    public int Iterations = 10;
+    public int Iterations { get; set; } = 10;
 
     public AsyncAutoResetEventWaitThenSetBenchmark()
     {
@@ -83,10 +83,8 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
         _valueTask = Array.Empty<ValueTask>();
     }
 
-    public AsyncAutoResetEventWaitThenSetBenchmark(int iterations)
+    public AsyncAutoResetEventWaitThenSetBenchmark(int iterations) : this()
     {
-        _task = Array.Empty<Task>();
-        _valueTask = Array.Empty<ValueTask>();
         Iterations = iterations;
     }
 

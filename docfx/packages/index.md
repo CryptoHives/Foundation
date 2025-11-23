@@ -1,4 +1,4 @@
-﻿# CryptoHives .NET Foundation Packages
+# CryptoHives .NET Foundation Packages
 
 Welcome to the CryptoHives .NET Foundation package documentation. 
 
@@ -73,10 +73,8 @@ public async Task AccessResourceAsync()
 ## Target Frameworks
 
 Both packages support:
-- .NET 10.0 (planned)
-- .NET 9.0
+- .NET 10.0
 - .NET 8.0
-- .NET Framework 4.8
 - .NET Framework 4.6.2
 - .NET Standard 2.1
 - .NET Standard 2.0
@@ -94,7 +92,7 @@ public class DataProcessor
 {
     private readonly AsyncLock _lock = new();
     
-  public async Task<byte[]> ProcessAsync(Stream input)
+    public async Task<byte[]> ProcessAsync(Stream input)
     {
         using (await _lock.LockAsync())
         {
@@ -119,7 +117,7 @@ public class Pipeline<T>
     public void Produce(T item)
     {
         _queue.Enqueue(item);
-     _itemAvailable.Set();
+        _itemAvailable.Set();
     }
     
     public async Task<T> ConsumeAsync()

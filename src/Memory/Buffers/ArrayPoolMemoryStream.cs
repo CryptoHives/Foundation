@@ -358,13 +358,13 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
 
 #if MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
-    public override void Write(ReadOnlySpan<byte> buffer)
+    public override void Write(ReadOnlySpan<byte> destination)
 #else
     /// <inheritdoc/>
-    public void Write(ReadOnlySpan<byte> buffer)
+    public void Write(ReadOnlySpan<byte> destination)
 #endif
     {
-        int count = buffer.Length;
+        int count = destination.Length;
         int offset = 0;
         while (count > 0)
         {
@@ -376,7 +376,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
             // copy the bytes requested.
             if (bytesLeft >= count)
             {
-                buffer.Slice(offset, count).CopyTo(_currentBuffer.AsSpan(_currentPosition));
+                destination.Slice(offset, count).CopyTo(_currentBuffer.AsSpan(_currentPosition));
 
                 UpdateCurrentPosition(count);
 
@@ -384,7 +384,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
             }
 
             // copy the bytes available and move to next buffer.
-            buffer.Slice(offset, bytesLeft).CopyTo(_currentBuffer.AsSpan(_currentPosition));
+            destination.Slice(offset, bytesLeft).CopyTo(_currentBuffer.AsSpan(_currentPosition));
 
             offset += bytesLeft;
             count -= bytesLeft;

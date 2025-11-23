@@ -59,7 +59,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 #endif
     private Task<RefImpl.AsyncLock.AsyncLockReleaser>[]? _lockRefImplHandle;
 
-    public static object[] FixtureArgs = {
+    public static readonly object[] FixtureArgs = {
         new object[] { 0 },
         new object[] { 1 },
         new object[] { 10 },
@@ -67,7 +67,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     };
 
     [Params(0, 1, 10, 100)]
-    public int Iterations = 10;
+    public int Iterations { get; set; } = 10;
 
     public AsyncLockMultipleBenchmark() { }
 
@@ -86,6 +86,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockSemaphoreSlimMultipleAsync))]
     public void SemaphoreSlimGlobalSetup()
     {
+        base.GlobalSetup();
         _tasks = new Task[Iterations];
     }
 
@@ -125,6 +126,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockPooledMultipleAsync))]
     public void PooledGlobalSetup()
     {
+        base.GlobalSetup();
         _lockHandle = new ValueTask<AsyncLock.AsyncLockReleaser>[Iterations];
     }
 
@@ -163,6 +165,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockPooledTaskMultipleAsync))]
     public void PooledTaskGlobalSetup()
     {
+        base.GlobalSetup();
         _tasksReleaser = new Task<AsyncLock.AsyncLockReleaser>[Iterations];
     }
 
@@ -201,6 +204,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockNitoMultipleAsync))]
     public void NitoGlobalSetup()
     {
+        base.GlobalSetup();
         _lockNitoHandle = new Nito.AsyncEx.AwaitableDisposable<IDisposable>[Iterations];
     }
 
@@ -240,6 +244,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockNeoSmartMultipleAsync))]
     public void NeoSmartGlobalSetup()
     {
+        base.GlobalSetup();
         _lockNeoSmartHandle = new Task<IDisposable>[Iterations];
     }
 
@@ -281,6 +286,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockRefImplMultipleAsync))]
     public void RefImplGlobalSetup()
     {
+        base.GlobalSetup();
         _lockRefImplHandle = new Task<RefImpl.AsyncLock.AsyncLockReleaser>[Iterations];
     }
 
@@ -319,6 +325,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [GlobalSetup(Target = nameof(LockUnlockNonKeyedMultipleAsync))]
     public void NonKeyedGlobalSetup()
     {
+        base.GlobalSetup();
         _lockNonKeyedHandle = new ValueTask<AsyncKeyedLock.AsyncNonKeyedLockReleaser>[Iterations];
     }
 

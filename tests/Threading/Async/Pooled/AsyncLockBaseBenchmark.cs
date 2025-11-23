@@ -1,13 +1,12 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#pragma warning disable CA1051  // Do not declare visible instance fields, benchmarks require fastest access
-
 namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using System.Diagnostics.CodeAnalysis;
 
 #if SIGNASSEMBLY
 using NitoAsyncEx = RefImpl;
@@ -15,6 +14,10 @@ using NitoAsyncEx = RefImpl;
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
+/// <summary>
+/// Base class for benchmarking and testing different implementations of AsyncAutoResetEvent.
+/// </summary>
+[SuppressMessage("Design", "CA1051:Do not declare visible instance fields", Justification = "Benchmarks require fastest access")]
 public abstract class AsyncLockBaseBenchmark
 {
 #if NET9_0_OR_GREATER

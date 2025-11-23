@@ -68,7 +68,7 @@ using System.Threading.Tasks.Sources;
 /// await t.ConfigureAwait(false);  // 10x-100x slower due to forced async scheduling AFTER Set()
 /// </code>
 /// </remarks>
-public class AsyncAutoResetEvent
+public sealed class AsyncAutoResetEvent
 {
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter = new();
