@@ -92,7 +92,7 @@ public class DataProcessor
 {
     private readonly AsyncLock _lock = new();
     
-  public async Task<byte[]> ProcessAsync(Stream input)
+    public async Task<byte[]> ProcessAsync(Stream input)
     {
         using (await _lock.LockAsync())
         {
@@ -117,7 +117,7 @@ public class Pipeline<T>
     public void Produce(T item)
     {
         _queue.Enqueue(item);
-     _itemAvailable.Set();
+        _itemAvailable.Set();
     }
     
     public async Task<T> ConsumeAsync()
