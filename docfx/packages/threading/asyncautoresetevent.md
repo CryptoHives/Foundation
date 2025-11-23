@@ -1,4 +1,4 @@
-﻿# AsyncAutoResetEvent Class
+# AsyncAutoResetEvent Class
 
 A pooled async auto-reset event for coordinating tasks where only one waiter is released per signal.
 
@@ -12,14 +12,10 @@ CryptoHives.Foundation.Threading.Async.Pooled
 
 `Object` ? **`AsyncAutoResetEvent`**
 
-## Implements
-
-- `IDisposable`
-
 ## Syntax
 
 ```csharp
-public sealed class AsyncAutoResetEvent : IDisposable
+public sealed class AsyncAutoResetEvent
 ```
 
 ## Overview
@@ -30,8 +26,8 @@ public sealed class AsyncAutoResetEvent : IDisposable
 
 - **One-at-a-Time**: Each `Set()` releases exactly ONE waiter
 - **Pooled Task Sources**: Minimal allocations through object pooling
-- **ValueTask-Based**: Returns `ValueTask` for efficient async operations
-- **Cancellation Support**: Supports `CancellationToken` for timeout and cancellation
+- **ValueTask-Based**: Returns `ValueTask` for efficient no allocation async operations
+- **Cancellation Support**: (planned) Supports `CancellationToken` for timeout and cancellation
 - **High Performance**: Optimized for high-frequency signaling
 
 ## Constructors
@@ -309,32 +305,6 @@ public class BatchProcessor<T>
             _batch.Clear();
             return result;
         }
-    }
-}
-```
-
-## Comparison with Alternatives
-
-| Feature | AsyncAutoResetEvent | AsyncManualResetEvent | SemaphoreSlim(1) |
-|---------|--------------------|-----------------------|------------------|
-| Waiters per signal | One | All | One |
-| Auto-reset | ? Yes | ? No | ? Yes |
-| Pooled allocations | ? Yes | ? Yes | ? No |
-| ValueTask support | ? Yes | ? Yes | ? No |
-| Use case | Producer-consumer | Broadcasting | Limiting concurrency |
-
-## Disposal
-
-Always dispose when done:
-
-```csharp
-public class MyService : IDisposable
-{
-    private readonly AsyncAutoResetEvent _event = new(false);
-    
-    public void Dispose()
-    {
-        _event?.Dispose();
     }
 }
 ```

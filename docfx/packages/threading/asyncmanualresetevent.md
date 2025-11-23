@@ -1,4 +1,4 @@
-﻿# AsyncManualResetEvent Class
+# AsyncManualResetEvent Class
 
 A pooled async manual-reset event for coordinating tasks where all waiters are released per signal.
 
@@ -12,10 +12,6 @@ CryptoHives.Foundation.Threading.Async.Pooled
 
 `Object` ? **`AsyncManualResetEvent`**
 
-## Implements
-
-- `IDisposable`
-
 ## Syntax
 
 ```csharp
@@ -24,7 +20,7 @@ public sealed class AsyncManualResetEvent : IDisposable
 
 ## Overview
 
-`AsyncManualResetEvent` is the async equivalent of `ManualResetEvent`. When signaled via `Set()`, it releases **all** waiting tasks and remains signaled until explicitly reset via `Reset()`. It uses pooled `IValueTaskSource` instances to minimize allocations, making it ideal for broadcast notifications and initialization scenarios.
+`AsyncManualResetEvent` is the async equivalent of `ManualResetEvent`. When signaled via `Set()`, it releases **all** waiting tasks and remains signaled until explicitly reset via `Reset()`. It uses pooled `IValueTaskSource` instances to minimize allocations, making it ideal for broadcast notifications and initialization scenarios. Due to the implementation of the underlying `IValueTaskSource` a traditional implementation using `Task` maybe more efficient, despite the additional memory allocations. 
 
 ## Benefits
 
@@ -32,7 +28,8 @@ public sealed class AsyncManualResetEvent : IDisposable
 - **Persistent State**: Remains signaled until explicitly reset
 - **Pooled Task Sources**: Minimal allocations through object pooling
 - **ValueTask-Based**: Returns `ValueTask` for efficient async operations
-- **Cancellation Support**: Supports `CancellationToken` for timeout and cancellation
+- **Trade Off**: Every waiter needs a pooled IValueTaskSource, hence O(n) signaling on Set()
+- **Cancellation Support**: (Planned) Supports `CancellationToken` for timeout and cancellation
 - **State Query**: `IsSet` property to check current state
 
 ## Constructors
@@ -81,14 +78,6 @@ Due to the implementation of ValueTask, every waiter needs a pooled ValueTaskSou
 
 **Throws**:
 - `OperationCanceledException` - If the operation is canceled
-
-### Dispose
-
-```csharp
-public void Dispose()
-```
-
-Releases all resources used by the event.
 
 ## Usage Examples
 
@@ -155,7 +144,7 @@ public async Task WaitForStartupAsync()
 
 ## Thread Safety
 
-? **Thread-safe**. All public methods are thread-safe and can be called concurrently.
+**Thread-safe**. All public methods are thread-safe and can be called concurrently.
 
 ## Performance Characteristics
 
@@ -403,33 +392,6 @@ public class AsyncCountdownEvent
     public async Task WaitAsync()
     {
         await _completed.WaitAsync();
-    }
-}
-```
-
-## Comparison with Alternatives
-
-| Feature | AsyncManualResetEvent | AsyncAutoResetEvent | ManualResetEventSlim |
-|---------|----------------------|---------------------|---------------------|
-| Waiters per signal | All | One | All |
-| Auto-reset | ? No | ? Yes | ? No |
-| Async support | ? Yes | ? Yes | ? No |
-| Pooled allocations | ? Yes | ? Yes | N/A |
-| ValueTask support | ? Yes | ? Yes | N/A |
-| Use case | Broadcasting | Producer-consumer | Sync code only |
-
-## Disposal
-
-Always dispose when done:
-
-```csharp
-public class MyService : IDisposable
-{
-    private readonly AsyncManualResetEvent _event = new(false);
-    
-    public void Dispose()
-    {
-        _event?.Dispose();
     }
 }
 ```
