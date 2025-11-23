@@ -11,7 +11,7 @@ using System.Threading.Tasks.Sources;
 /// An implementation of <see cref="IValueTaskSource{T}"/>.
 /// </summary>
 /// <remarks>
-/// This class is a sealed implementation of <see cref="IValueTaskSource{T}"/> and provides methods to
+/// This class is a sealed implementation of <see cref="IValueTaskSource{T}"/> which provides methods to
 /// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
 /// and supports querying the status and retrieving the result. In addition, the owner pool can be set to return
 /// the instance to the pool when it is no longer needed.

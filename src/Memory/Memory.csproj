@@ -3,7 +3,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <DefineConstants>$(DefineConstants)</DefineConstants>
     <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
     <AssemblyName>$(AssemblyPrefix).Memory</AssemblyName>
     <PackageId>$(PackagePrefix).Memory</PackageId>

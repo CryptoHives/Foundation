@@ -86,13 +86,13 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
 
 #if MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
-    public override int Read(Span<byte> buffer)
+    public override int Read(Span<byte> destination)
 #else
     /// <inheritdoc/>
-    public int Read(Span<byte> buffer)
+    public int Read(Span<byte> destination)
 #endif
     {
-        int count = buffer.Length;
+        int count = destination.Length;
         int offset = 0;
         int bytesRead = 0;
 
@@ -113,7 +113,7 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
             }
 
             // copy the bytes requested.
-            _currentBuffer.Span.Slice(_currentOffset, bytesToCopy).CopyTo(buffer.Slice(offset));
+            _currentBuffer.Span.Slice(_currentOffset, bytesToCopy).CopyTo(destination.Slice(offset));
             _currentOffset += bytesToCopy;
             bytesRead += bytesToCopy;
             offset += bytesToCopy;

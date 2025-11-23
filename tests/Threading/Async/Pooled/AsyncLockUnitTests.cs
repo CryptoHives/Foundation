@@ -51,6 +51,52 @@ public class AsyncLockUnitTests
     }
 
     [Test]
+    public async Task AsyncLockLockedOnlyPermitsOneLockerAtATime()
+    {
+        var mutex = new AsyncLock();
+        var task1HasLock = new TaskCompletionSource<bool>();
+        var task1Continue = new TaskCompletionSource<bool>();
+        var task2Ready = new TaskCompletionSource<bool>();
+        var task2HasLock = new TaskCompletionSource<bool>();
+        var task2Continue = new TaskCompletionSource<bool>();
+
+        var task1 = Task.Run(async () =>
+        {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                task1HasLock.SetResult(true);
+                await task1Continue.Task.ConfigureAwait(false);
+            }
+        });
+        await task1HasLock.Task.ConfigureAwait(false);
+
+        var task2 = Task.Run(async () =>
+        {
+            var key = mutex.LockAsync();
+            task2Ready.SetResult(true);
+            using (await key.ConfigureAwait(false))
+            {
+                task2HasLock.SetResult(true);
+                await task2Continue.Task.ConfigureAwait(false);
+            }
+        });
+        await task2Ready.Task.ConfigureAwait(false);
+
+        var task3 = Task.Run(async () =>
+        {
+            await mutex.LockAsync().ConfigureAwait(false);
+        });
+
+        task1Continue.SetResult(true);
+        await task2HasLock.Task.ConfigureAwait(false);
+
+        Assert.That(task3.IsCompleted, Is.False);
+        task2Continue.SetResult(false);
+        await task2.ConfigureAwait(false);
+        await task3.ConfigureAwait(false);
+    }
+
+    [Test]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1849:Call async methods when in an async method", Justification = "Not available in legacy platforms")]
     public async Task CancellationBeforeQueueingThrowsAsync()
     {

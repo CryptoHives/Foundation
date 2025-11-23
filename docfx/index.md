@@ -1,4 +1,4 @@
-﻿---
+---
 _layout: landing
 ---
 
@@ -35,6 +35,7 @@ The Threading package provides high-performance async synchronization primitives
 - `AsyncAutoResetEvent` and `AsyncManualResetEvent` complementing existing implementations which are `Task` based
 - Minimal allocation design for hot-path code
 - Fast path optimizations for uncontended scenarios
+- Benchmarks comparing performance against existing .NET synchronization primitives and various popular implementations
 
 [Explore Threading Package](packages/threading/index.md)
 
@@ -100,4 +101,4 @@ public async Task DoWorkAsync()
 
 MIT License - © 2025 The Keepers of the CryptoHives
 
-[View License](https://github.com/CryptoHives/Foundation/LICENSE)
+[View License](https://github.com/CryptoHives/Foundation/blob/main/LICENSE)

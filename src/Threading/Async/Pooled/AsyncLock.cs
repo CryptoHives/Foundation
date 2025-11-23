@@ -28,7 +28,7 @@ using System.Threading.Tasks;
 ///     }
 /// }
 /// </code>
-/// <para>If we want to replace the blocking operation <c>Thread.Sleep</c> with an asynchronous equivalent, it's not directly possible because of the <c>lock</c> block. We cannot <c>await</c> inside of a <c>lock</c>.</para>
+/// <para>To replace the blocking operation <c>Thread.Sleep</c> with an asynchronous equivalent, it's not directly possible because of the <c>lock</c> block. We cannot <c>await</c> inside of a <c>lock</c>.</para>
 /// <para>So, we use the <c>async</c>-compatible <see cref="AsyncLock"/> instead:</para>
 /// <code>
 /// private readonly var _mutex = new AsyncLock();
@@ -59,7 +59,8 @@ public sealed class AsyncLock
     /// <summary>
     /// A small value type returned by awaiting a lock acquisition. Disposing the releaser releases the lock.
     /// </summary>
-    public readonly struct AsyncLockReleaser : IDisposable, IAsyncDisposable
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1034:Nested types should not be visible", Justification = "By Design")]
+    public readonly struct AsyncLockReleaser : IDisposable, IAsyncDisposable, IEquatable<AsyncLockReleaser>
     {
         private readonly AsyncLock _owner;
 
@@ -80,6 +81,36 @@ public sealed class AsyncLock
             _owner.ReleaseLock();
             return default;
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj)
+            => obj is AsyncLockReleaser other && Equals(other);
+
+        /// <inheritdoc/>
+        public bool Equals(AsyncLockReleaser other)
+            => ReferenceEquals(_owner, other._owner);
+
+        /// <inheritdoc/>
+        public override int GetHashCode()
+            => _owner is null ? 0 : _owner.GetHashCode();
+
+        /// <summary>
+        /// Determines whether two AsyncLockReleaser instances are equal.
+        /// </summary>
+        /// <param name="left">The first AsyncLockReleaser to compare.</param>
+        /// <param name="right">The second AsyncLockReleaser to compare.</param>
+        /// <returns>true if the specified AsyncLockReleaser instances are equal; otherwise, false.</returns>
+        public static bool operator ==(AsyncLockReleaser left, AsyncLockReleaser right)
+            => left.Equals(right);
+
+        /// <summary>
+        /// Determines whether two AsyncLockReleaser instances are not equal.
+        /// </summary>
+        /// <param name="left">The first AsyncLockReleaser to compare.</param>
+        /// <param name="right">The second AsyncLockReleaser to compare.</param>
+        /// <returns>false if the specified AsyncLockReleaser instances are equal; otherwise, true.</returns>
+        public static bool operator !=(AsyncLockReleaser left, AsyncLockReleaser right)
+            => !left.Equals(right);
     }
 
     /// <summary>

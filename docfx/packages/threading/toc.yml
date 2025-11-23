@@ -1,5 +1,7 @@
 - name: Threading Package
   href: index.md
+- name: Benchmarks
+  href: benchmarks.md
 - name: Classes
   items:
     - name: AsyncLock
@@ -7,4 +9,4 @@
     - name: AsyncAutoResetEvent
       href: asyncautoresetevent.md
     - name: AsyncManualResetEvent
-  href: asyncmanualresetevent.md
+      href: asyncmanualresetevent.md
