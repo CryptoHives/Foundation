@@ -5,6 +5,7 @@ namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -33,7 +34,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [MemoryDiagnoser(displayGenColumns: false)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[HideColumns("Namespace", "cancellationToken", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
 {
@@ -47,9 +48,11 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "PooledAsTask")]
-    public async Task PooledAsyncAutoResetEventTaskWaitAsync()
+    [TestCaseSource(nameof(CancelParams))]
+    [ArgumentsSource(nameof(CancelParams))]
+    public async Task PooledAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
     {
-        ValueTask vt = _eventPooled!.WaitAsync();
+        ValueTask vt = _eventPooled!.WaitAsync(cancellationToken);
         _eventPooled!.Set();
         await vt.AsTask().ConfigureAwait(false);
     }
@@ -64,9 +67,11 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Pooled")]
-    public async Task PooledAsyncAutoResetEventValueTaskWaitAsync()
+    [TestCaseSource(nameof(CancelParams))]
+    [ArgumentsSource(nameof(CancelParams))]
+    public async Task PooledAsyncAutoResetEventValueTaskWaitAsync(string ct, CancellationToken cancellationToken)
     {
-        ValueTask vt = _eventPooled!.WaitAsync();
+        ValueTask vt = _eventPooled!.WaitAsync(cancellationToken);
         _eventPooled!.Set();
         await vt.ConfigureAwait(false);
     }
@@ -81,9 +86,11 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Nito.AsyncEx")]
-    public async Task NitoAsyncAutoResetEventTaskWaitAsync()
+    [TestCaseSource(nameof(CancelParams))]
+    [ArgumentsSource(nameof(CancelParams))]
+    public async Task NitoAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
     {
-        Task t = _eventNitoAsync!.WaitAsync();
+        Task t = _eventNitoAsync!.WaitAsync(cancellationToken);
         _eventNitoAsync!.Set();
         await t.ConfigureAwait(false);
     }
