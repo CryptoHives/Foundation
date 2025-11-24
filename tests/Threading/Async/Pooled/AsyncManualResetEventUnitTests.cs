@@ -5,7 +5,9 @@ namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
+using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 [TestFixture]
@@ -123,5 +125,51 @@ public class AsyncManualResetEventUnitTests
 
         Task wait = mre.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenCancelsBeforeQueueingAsync()
+    {
+        var ev = new AsyncManualResetEvent();
+        using var cts = new CancellationTokenSource();
+
+#if NET8_0_OR_GREATER
+        await cts.CancelAsync().ConfigureAwait(false);
+#else
+        cts.Cancel();
+#endif
+        var vt = ev.WaitAsync(cts.Token);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenCancelsWhileQueuedAsync()
+    {
+        var ev = new AsyncManualResetEvent(false);
+        using var cts = new CancellationTokenSource();
+
+        ValueTask vt = ev.WaitAsync(cts.Token);
+
+#if NET8_0_OR_GREATER
+        await cts.CancelAsync().ConfigureAwait(false);
+#else
+        cts.Cancel();
+#endif
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelledAsync()
+    {
+        var ev = new AsyncManualResetEvent();
+        using var cts = new CancellationTokenSource();
+
+        var vt = ev.WaitAsync(cts.Token);
+
+        _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
+
+        await vt.ConfigureAwait(false);
     }
 }

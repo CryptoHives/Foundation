@@ -135,12 +135,12 @@ public sealed class AsyncLock
     /// }
     /// </code>
     /// </remarks>
-    /// <param name="ct">The cancellation token.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>
     /// A <see cref="ValueTask{AsyncLockReleaser}"/> that completes when the lock is acquired.
     /// Dispose the returned releaser to release the lock.
     /// </returns>
-    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken ct = default)
+    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
         {
@@ -154,12 +154,12 @@ public sealed class AsyncLock
                 return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
             }
 
-            if (ct.IsCancellationRequested)
+            if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(ct)));
+                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
             }
 
-            return QueueWaiter(ct);
+            return QueueWaiter(cancellationToken);
         }
     }
 

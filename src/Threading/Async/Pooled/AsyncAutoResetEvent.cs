@@ -175,6 +175,11 @@ public sealed class AsyncAutoResetEvent
                 return default;
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask(Task.FromException(new OperationCanceledException(cancellationToken)));
+            }
+
             return QueueWaiter(cancellationToken);
         }
     }

@@ -107,7 +107,9 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Wait", "RefImpl")]
-    public async Task RefImplAsyncAutoResetEventTaskWaitAsync()
+    [TestCaseSource(nameof(CancelNoneParams))]
+    [ArgumentsSource(nameof(CancelNoneParams))]
+    public async Task RefImplAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
     {
         Task t = _eventRefImp!.WaitAsync();
         _eventRefImp.Set();
