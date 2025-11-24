@@ -4,6 +4,7 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,6 +35,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [MemoryDiagnoser(displayGenColumns: false)]
+[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "cancellationToken", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
@@ -53,7 +55,7 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     public async Task PooledAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
     {
         ValueTask vt = _eventPooled!.WaitAsync(cancellationToken);
-        _eventPooled!.Set();
+        _eventPooled.Set();
         await vt.AsTask().ConfigureAwait(false);
     }
 
@@ -72,7 +74,7 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     public async Task PooledAsyncAutoResetEventValueTaskWaitAsync(string ct, CancellationToken cancellationToken)
     {
         ValueTask vt = _eventPooled!.WaitAsync(cancellationToken);
-        _eventPooled!.Set();
+        _eventPooled.Set();
         await vt.ConfigureAwait(false);
     }
 
@@ -91,7 +93,7 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     public async Task NitoAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
     {
         Task t = _eventNitoAsync!.WaitAsync(cancellationToken);
-        _eventNitoAsync!.Set();
+        _eventNitoAsync.Set();
         await t.ConfigureAwait(false);
     }
 
@@ -108,7 +110,7 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     public async Task RefImplAsyncAutoResetEventTaskWaitAsync()
     {
         Task t = _eventRefImp!.WaitAsync();
-        _eventRefImp!.Set();
+        _eventRefImp.Set();
         await t.ConfigureAwait(false);
     }
 }

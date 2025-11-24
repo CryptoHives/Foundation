@@ -4,6 +4,7 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
@@ -33,6 +34,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [MemoryDiagnoser(displayGenColumns: false)]
+[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBenchmark
@@ -48,8 +50,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("SetThenWait", "Standard")]
     public void AutoResetEventSetThenWait()
     {
-        _ = _eventStandard!.Set();
-        _ = _eventStandard!.WaitOne();
+        _ = _eventStandard.Set();
+        _ = _eventStandard.WaitOne();
     }
 
     /// <summary>
@@ -64,8 +66,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("SetThenWait", "Pooled")]
     public async Task PooledAsyncAutoResetEventSetThenWaitAsync()
     {
-        _eventPooled!.Set();
-        await _eventPooled!.WaitAsync(_cancellationToken).ConfigureAwait(false);
+        _eventPooled.Set();
+        await _eventPooled.WaitAsync(_cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -81,8 +83,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("SetThenWait", "PooledAsTask")]
     public async Task PooledAsTaskAsyncAutoResetEventSetThenWaitAsync()
     {
-        _eventPooled!.Set();
-        await _eventPooled!.WaitAsync(_cancellationToken).AsTask().ConfigureAwait(false);
+        _eventPooled.Set();
+        await _eventPooled.WaitAsync(_cancellationToken).AsTask().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -97,8 +99,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("SetThenWait", "Nito.AsyncEx")]
     public async Task NitoAsyncAutoResetEventSetThenWaitAsync()
     {
-        _eventNitoAsync!.Set();
-        await _eventNitoAsync!.WaitAsync(_cancellationToken).ConfigureAwait(false);
+        _eventNitoAsync.Set();
+        await _eventNitoAsync.WaitAsync(_cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -113,8 +115,8 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("SetThenWait", "RefImpl")]
     public async Task RefImplAsyncAutoResetEventSetThenWaitAsync()
     {
-        _eventRefImp!.Set();
-        await _eventRefImp!.WaitAsync().ConfigureAwait(false);
+        _eventRefImp.Set();
+        await _eventRefImp.WaitAsync().ConfigureAwait(false);
     }
 }
 

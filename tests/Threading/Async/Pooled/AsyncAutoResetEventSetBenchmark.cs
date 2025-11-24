@@ -4,6 +4,7 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Order;
 using NUnit.Framework;
 
 /// <summary>
@@ -34,6 +35,7 @@ using NUnit.Framework;
 /// </remarks>
 [TestFixture]
 [MemoryDiagnoser(displayGenColumns: false)]
+[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
@@ -50,7 +52,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     [BenchmarkCategory("Set", "Standard")]
     public void AutoResetEventSet()
     {
-        _eventStandard!.Set();
+        _eventStandard.Set();
     }
 
     /// <summary>
@@ -66,7 +68,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     [BenchmarkCategory("Set", "Pooled")]
     public void PooledAsyncAutoResetEventSet()
     {
-        _eventPooled!.Set();
+        _eventPooled.Set();
     }
 
     /// <summary>
@@ -81,7 +83,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     [BenchmarkCategory("Set", "Nito.AsyncEx")]
     public void NitoAsyncAutoResetEventSet()
     {
-        _eventNitoAsync!.Set();
+        _eventNitoAsync.Set();
     }
 
     /// <summary>
@@ -97,7 +99,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     [BenchmarkCategory("Set", "RefImpl")]
     public void RefImplAsyncAutoResetEventSet()
     {
-        _eventRefImp!.Set();
+        _eventRefImp.Set();
     }
 }
 

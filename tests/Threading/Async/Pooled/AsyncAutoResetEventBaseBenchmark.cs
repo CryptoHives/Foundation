@@ -22,10 +22,10 @@ using NitoAsyncEx = Nito.AsyncEx;
 [SuppressMessage("Design", "CA1051:Do not declare visible instance fields", Justification = "Benchmarks require fastest access")]
 public abstract class AsyncAutoResetEventBaseBenchmark
 {
-    protected AsyncAutoResetEvent? _eventPooled;
-    protected NitoAsyncEx.AsyncAutoResetEvent? _eventNitoAsync;
-    protected RefImpl.AsyncAutoResetEvent? _eventRefImp;
-    protected AutoResetEvent? _eventStandard;
+    protected AsyncAutoResetEvent _eventPooled;
+    protected NitoAsyncEx.AsyncAutoResetEvent _eventNitoAsync;
+    protected RefImpl.AsyncAutoResetEvent _eventRefImp;
+    protected AutoResetEvent _eventStandard;
     protected CancellationTokenSource _cancellationTokenSource;
     protected CancellationToken _cancellationToken;
 
@@ -36,6 +36,14 @@ public abstract class AsyncAutoResetEventBaseBenchmark
     {
         yield return new object[] { "None", CancellationToken.None };
         yield return new object[] { "Token", new CancellationTokenSource().Token };
+    }
+
+    /// <summary>
+    /// The cancellation tokens for test and benchmark runs.
+    /// </summary>
+    public static IEnumerable<object[]> CancelNoneParams()
+    {
+        yield return new object[] { "None", CancellationToken.None };
     }
 
     /// <summary>

@@ -5,8 +5,9 @@ namespace Threading.Tests.Async.Pooled;
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Order;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -42,6 +43,7 @@ using System.Threading.Tasks;
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
 [MemoryDiagnoser(displayGenColumns: false)]
+[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [NonParallelizable]
 [BenchmarkCategory("AsyncLock")]

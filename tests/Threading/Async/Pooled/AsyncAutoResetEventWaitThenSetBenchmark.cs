@@ -6,6 +6,7 @@ namespace Threading.Tests.Async.Pooled;
 #pragma warning disable CA2012 // Use ValueTasks correctly
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System;
 using System.Threading;
@@ -60,6 +61,7 @@ using System.Threading.Tasks;
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
 [MemoryDiagnoser(displayGenColumns: false)]
+[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "cancellationToken", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 [NonParallelizable]
@@ -124,7 +126,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     public void GlobalSetupSynchronousContinuation()
     {
         GlobalSetup();
-        _eventPooled!.RunContinuationAsynchronously = false;
+        _eventPooled.RunContinuationAsynchronously = false;
     }
 
     /// <summary>
@@ -156,7 +158,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     public Task PooledAsyncAutoResetEventContSyncWaitThenSetTestAsync()
     {
-        _eventPooled!.RunContinuationAsynchronously = false;
+        _eventPooled.RunContinuationAsynchronously = false;
         return PooledAsyncAutoResetEventWaitThenSetAsync("Token", _cancellationToken);
     }
 
@@ -187,7 +189,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     public Task PooledAsTaskAsyncAutoResetEventContSyncWaitThenSetTestAsync()
     {
-        _eventPooled!.RunContinuationAsynchronously = false;
+        _eventPooled.RunContinuationAsynchronously = false;
         return PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync("Token", _cancellationToken);
     }
 
@@ -221,7 +223,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     public Task PooledAsTaskRunSyncAutoResetEventContSyncWaitThenSetTestAsync()
     {
-        _eventPooled!.RunContinuationAsynchronously = false;
+        _eventPooled.RunContinuationAsynchronously = false;
         return PooledAsTaskAutoResetEventWaitThenSetAsync("Token", _cancellationToken);
     }
 
@@ -252,12 +254,12 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     {
         for (int i = 0; i < Iterations; i++)
         {
-            _valueTask[i] = _eventPooled!.WaitAsync(cancellationToken);
+            _valueTask[i] = _eventPooled.WaitAsync(cancellationToken);
         }
 
         for (int i = 0; i < Iterations; i++)
         {
-            _eventPooled!.Set();
+            _eventPooled.Set();
         }
 
         for (int i = 0; i < Iterations; i++)
@@ -298,12 +300,12 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 
         for (int i = 0; i < Iterations; i++)
         {
-            _eventPooled!.Set();
+            _eventPooled.Set();
         }
 
         for (int i = 0; i < Iterations; i++)
         {
-            await _valueTask[i]!.AsTask().ConfigureAwait(false);
+            await _valueTask[i].AsTask().ConfigureAwait(false);
         }
     }
 
@@ -344,7 +346,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 
         for (int i = 0; i < Iterations; i++)
         {
-            _eventPooled!.Set();
+            _eventPooled.Set();
         }
 
         for (int i = 0; i < Iterations; i++)
@@ -382,7 +384,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 
         for (int i = 0; i < Iterations; i++)
         {
-            _eventNitoAsync!.Set();
+            _eventNitoAsync.Set();
         }
 
         for (int i = 0; i < Iterations; i++)
@@ -411,7 +413,9 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("WaitThenSet", "RefImpl")]
-    public async Task RefImplAsyncAutoResetEventWaitThenSetAsync()
+    [TestCaseSource(nameof(CancelNoneParams))]
+    [ArgumentsSource(nameof(CancelNoneParams))]
+    public async Task RefImplAsyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
     {
         for (int i = 0; i < Iterations; i++)
         {
@@ -420,7 +424,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 
         for (int i = 0; i < Iterations; i++)
         {
-            _eventRefImp!.Set();
+            _eventRefImp.Set();
         }
 
         for (int i = 0; i < Iterations; i++)
