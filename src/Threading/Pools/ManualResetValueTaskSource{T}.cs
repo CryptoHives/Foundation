@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Threading.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
+using System.Threading;
 using System.Threading.Tasks.Sources;
 
 /// <summary>
@@ -33,6 +34,22 @@ internal abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IVa
     /// never run synchronously if this is true.
     /// </remarks>
     public abstract bool RunContinuationsAsynchronously { get; set; }
+
+    /// <summary>
+    /// Gets the <see cref="CancellationToken"/> associated with the current operation.
+    /// </summary>
+    /// <remarks>
+    /// This token may be cancelled during long-running operations.
+    /// </remarks>
+    public abstract CancellationToken CancellationToken { get; set; }
+
+    /// <summary>
+    /// Gets the <see cref="CancellationTokenRegistration"/> associated with the current operation.
+    /// </summary>
+    /// <remarks>
+    /// Use this token to unregister from cancellation requests.
+    /// </remarks>
+    public abstract CancellationTokenRegistration CancellationTokenRegistration { get; set; }
 
     /// <summary>
     /// Signals the completion of an operation, setting the result to T.

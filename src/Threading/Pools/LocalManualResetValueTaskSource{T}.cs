@@ -3,7 +3,6 @@
 
 namespace CryptoHives.Foundation.Threading.Pools;
 
-using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Threading;
 using System.Threading.Tasks.Sources;
@@ -14,14 +13,14 @@ using System.Threading.Tasks.Sources;
 /// <remarks>
 /// This class is a sealed implementation of <see cref="IValueTaskSource{T}"/> and provides methods to
 /// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
-/// and supports querying the status and retrieving the result. In addition, the owner pool can be set to return
-/// the instance to the pool when it is no longer needed.
-/// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
-/// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
+/// and supports querying the status and retrieving the result. It is used as a local reusable value task source to
+/// minimize allocations.
 /// </remarks>
 internal sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
 {
     private ManualResetValueTaskSourceCore<T> _core;
+    private CancellationToken _cancellationToken;
+    private CancellationTokenRegistration _cancellationTokenRegistration;
     private int _inUse;
 
     /// <summary>
@@ -36,6 +35,20 @@ internal sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskS
 
     /// <inheritdoc/>
     public override short Version { get => _core.Version; }
+
+    /// <inheritdoc/>
+    public override CancellationToken CancellationToken
+    {
+        get => _cancellationToken;
+        set => _cancellationToken = value;
+    }
+
+    /// <inheritdoc/>
+    public override CancellationTokenRegistration CancellationTokenRegistration
+    {
+        get => _cancellationTokenRegistration;
+        set => _cancellationTokenRegistration = value;
+    }
 
     /// <inheritdoc/>
     public override bool RunContinuationsAsynchronously
@@ -63,6 +76,7 @@ internal sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskS
     public override T GetResult(short token)
     {
         T result = _core.GetResult(token);
+        _cancellationTokenRegistration.Dispose();
         TryReset();
         return result;
     }

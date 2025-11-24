@@ -8,6 +8,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -164,27 +165,59 @@ public sealed class AsyncManualResetEvent
                 return default;
             }
 
-            ManualResetValueTaskSource<bool> waiter;
-            if (!_localWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = PooledEventsCommon.GetPooledValueTaskSource();
-            }
-
-            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            _waiters.Enqueue(waiter);
-            return new ValueTask(waiter, waiter.Version);
+            return QueueWaiter(CancellationToken.None);
         }
     }
 
-#if TODO // implement wait with cancel
     /// <summary>
-    /// Asynchronously waits for this event to be set or for the wait to be canceled.
+    /// Asynchronously waits for this event to be set.
     /// </summary>
+    /// <remarks>
+    /// If the event is already signalled, the method returns a completed <see cref="ValueTask"/>.
+    /// Otherwise, it enqueues a waiter and returns a task that completes when the signal is received.
+    /// The ValueTask is a struct that can only be awaited or transformed with AsTask() ONE time, then
+    /// it is returned to the pool and every subsequent access throws an <see cref="InvalidOperationException"/>.
+    /// <code>
+    ///     var ct = new CancellationTokenSource(1000).Token;
+    ///     var event = new AsyncManualResetEvent();
+    ///     
+    ///     // GOOD: single await with cancellation token
+    ///     await _event.WaitAsync(ct).ConfigureAwait(false);
+    ///     
+    ///     // GOOD: single await after calling WaitAsync()
+    ///     ValueTask vt = _event.WaitAsync(ct);
+    ///     _event.Set();
+    ///     await vt.ConfigureAwait(false);
+    ///
+    ///     // FAIL: multiple awaits on ValueTask - throws InvalidOperationException on second await
+    ///     await vt.ConfigureAwait(false);
+    /// 
+    ///     // GOOD: single AsTask() usage, multiple await on Task
+    ///     Task t = _event.WaitAsync(ct).AsTask();
+    ///     _event.Set();
+    ///     await t.ConfigureAwait(false);
+    ///     await t.ConfigureAwait(false);
+    ///     
+    ///     // FAIL: single await with GetAwaiter().GetResult() - may throw InvalidOperationException
+    ///     await _event.WaitAsync(ct).GetAwaiter().GetResult();
+    /// </code>
+    /// Be aware that the underlying pooled implementation of <see cref="IValueTaskSource"/>
+    /// may leak if the returned ValueTask is never awaited or transformed to a <see cref="Task"/>.
+    /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
+    /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
     public ValueTask WaitAsync(CancellationToken cancellationToken)
     {
+        lock (_mutex)
+        {
+            if (_signaled)
+            {
+                return default;
+            }
+
+            return QueueWaiter(cancellationToken);
+        }
     }
-#endif
 
     /// <summary>
     /// Signals the event, releasing all waiting threads if any are queued.
@@ -248,5 +281,55 @@ public sealed class AsyncManualResetEvent
             Debug.Assert(_waiters.Count == 0, "There should be no waiters when resetting the event.");
             _signaled = false;
         }
+    }
+
+    /// <summary>
+    /// Queue a waiter for the lock. Expects the caller to hold the mutex.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ValueTask QueueWaiter(CancellationToken ct = default)
+    {
+        ManualResetValueTaskSource<bool> waiter;
+        if (!_localWaiter.TryGetValueTaskSource(out waiter))
+        {
+            waiter = PooledEventsCommon.GetPooledValueTaskSource();
+        }
+
+        waiter.CancellationToken = ct;
+        waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+
+        if (ct.CanBeCanceled)
+        {
+            waiter.CancellationTokenRegistration = ct.Register((state) => {
+                var waiter = state as ManualResetValueTaskSource<bool>;
+                if (waiter != null)
+                {
+                    ManualResetValueTaskSource<bool>? toCancel = null;
+                    lock (_mutex)
+                    {
+                        int count = _waiters.Count;
+                        while (count-- > 0)
+                        {
+                            var dequeued = _waiters.Dequeue();
+                            if (ReferenceEquals(dequeued, waiter))
+                            {
+                                toCancel = waiter;
+                                break;
+                            }
+                            _waiters.Enqueue(dequeued);
+                        }
+                    }
+
+                    toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+                }
+            }, state: waiter, useSynchronizationContext: false);
+        }
+        else
+        {
+            waiter.CancellationTokenRegistration = default;
+        }
+
+        _waiters.Enqueue(waiter);
+        return new ValueTask(waiter, waiter.Version);
     }
 }

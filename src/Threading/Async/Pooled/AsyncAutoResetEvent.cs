@@ -8,6 +8,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -157,6 +158,13 @@ public sealed class AsyncAutoResetEvent
     /// </remarks>
     /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
     public ValueTask WaitAsync()
+        => WaitAsync(CancellationToken.None);
+
+    /// <summary>
+    /// Asynchronously waits for this event to be set or for the wait to be canceled.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
+    public ValueTask WaitAsync(CancellationToken cancellationToken)
     {
         // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
@@ -172,27 +180,9 @@ public sealed class AsyncAutoResetEvent
                 return default;
             }
 
-            ManualResetValueTaskSource<bool> waiter;
-            if (!_localWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = PooledEventsCommon.GetPooledValueTaskSource();
-            }
-
-            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            _waiters.Enqueue(waiter);
-            return new ValueTask(waiter, waiter.Version);
+            return QueueWaiter(cancellationToken);
         }
     }
-
-#if TODO // implement wait with cancel
-    /// <summary>
-    /// Asynchronously waits for this event to be set or for the wait to be canceled.
-    /// </summary>
-    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
-    public ValueTask WaitAsync(CancellationToken cancellationToken)
-    {
-    }
-#endif
 
     /// <summary>
     /// Signals the event, releasing a single waiting thread if any are queued.
@@ -266,5 +256,55 @@ public sealed class AsyncAutoResetEvent
         {
             ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
         }
+    }
+
+    /// <summary>
+    /// Queue a waiter for the lock. Expects the caller to hold the mutex.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ValueTask QueueWaiter(CancellationToken ct = default)
+    {
+        ManualResetValueTaskSource<bool> waiter;
+        if (!_localWaiter.TryGetValueTaskSource(out waiter))
+        {
+            waiter = PooledEventsCommon.GetPooledValueTaskSource();
+        }
+
+        waiter.CancellationToken = ct;
+        waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+
+        if (ct.CanBeCanceled)
+        {
+            waiter.CancellationTokenRegistration = ct.Register((state) => {
+                var waiter = state as ManualResetValueTaskSource<bool>;
+                if (waiter != null)
+                {
+                    ManualResetValueTaskSource<bool>? toCancel = null;
+                    lock (_mutex)
+                    {
+                        int count = _waiters.Count;
+                        while (count-- > 0)
+                        {
+                            var dequeued = _waiters.Dequeue();
+                            if (ReferenceEquals(dequeued, waiter))
+                            {
+                                toCancel = waiter;
+                                break;
+                            }
+                            _waiters.Enqueue(dequeued);
+                        }
+                    }
+
+                    toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+                }
+            }, state: waiter, useSynchronizationContext: false);
+        }
+        else
+        {
+            waiter.CancellationTokenRegistration = default;
+        }
+
+        _waiters.Enqueue(waiter);
+        return new ValueTask(waiter, waiter.Version);
     }
 }

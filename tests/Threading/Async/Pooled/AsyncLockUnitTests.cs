@@ -100,7 +100,6 @@ public class AsyncLockUnitTests
     }
 
     [Test]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1849:Call async methods when in an async method", Justification = "Not available in legacy platforms")]
     public async Task CancellationBeforeQueueingThrowsAsync()
     {
         var al = new AsyncLock();
@@ -108,9 +107,111 @@ public class AsyncLockUnitTests
         using (await al.LockAsync().ConfigureAwait(false))
         {
             using var cts = new CancellationTokenSource();
+
+#if NET8_0_OR_GREATER
+            await cts.CancelAsync().ConfigureAwait(false);
+#else
             cts.Cancel();
+#endif
+
             var exVt = al.LockAsync(cts.Token);
             Assert.ThrowsAsync<OperationCanceledException>(async () => await exVt.ConfigureAwait(false));
+        }
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenCancelsBeforeQueueingAsync()
+    {
+        var al = new AsyncLock();
+
+        using (await al.LockAsync().ConfigureAwait(false))
+        {
+            using var cts = new CancellationTokenSource();
+
+            // Cancel before queueing
+#if NET8_0_OR_GREATER
+            await cts.CancelAsync().ConfigureAwait(false);
+#else
+            cts.Cancel();
+#endif
+
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
+        }
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenCancelsWhileQueuedAsync()
+    {
+        var al = new AsyncLock();
+
+        using var cts = new CancellationTokenSource();
+
+        // Take the lock so subsequent waiters are queued
+        using (await al.LockAsync().ConfigureAwait(false))
+        {
+            var vt = al.LockAsync(cts.Token);
+
+            // Cancel after queuing
+#if NET8_0_OR_GREATER
+            await cts.CancelAsync().ConfigureAwait(false);
+#else
+            cts.Cancel();
+#endif
+
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+        }
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelledAsync()
+    {
+        var al = new AsyncLock();
+
+        using var cts = new CancellationTokenSource();
+
+        var vt = al.LockAsync(cts.Token);
+
+        using (await vt.ConfigureAwait(false))
+        {
+            Assert.That(al.IsTaken);
+        }
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenCancelAfterLockAsync()
+    {
+        var al = new AsyncLock();
+
+        using var cts = new CancellationTokenSource();
+
+        var vt = al.LockAsync(cts.Token);
+
+        using (await vt.ConfigureAwait(false))
+        {
+            Assert.That(al.IsTaken);
+        }
+
+        // Cancel after lock is released, should not throw
+#if NET8_0_OR_GREATER
+        await cts.CancelAsync().ConfigureAwait(false);
+#else
+        cts.Cancel();
+#endif
+    }
+
+    [Test, CancelAfter(1000)]
+    public async Task WaitAsyncWithCancellationTokenCancelAfterTimeoutAsync()
+    {
+        var al = new AsyncLock();
+
+        using var cts = new CancellationTokenSource(100);
+
+        var vt = al.LockAsync(cts.Token);
+
+        using (await vt.ConfigureAwait(false))
+        {
+            Assert.That(al.IsTaken);
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
         }
     }
 }
