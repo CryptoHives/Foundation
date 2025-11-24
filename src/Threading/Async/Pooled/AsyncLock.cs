@@ -116,32 +116,9 @@ public sealed class AsyncLock
     }
 
     /// <summary>
-    /// Asynchronously acquires the lock.
-    /// </summary>
-    /// <remarks>
-    /// Note that this lock is <b>not</b> recursive!
-    /// The returned ValueTask must be disposed to release the lock
-    /// and can only be awaited one single time.
-    /// Use the following pattern to synchronize async Tasks.
-    /// <code>
-    /// private readonly var _lock = new AsyncLock();
-    /// public async Task DoStuffAsync()
-    /// {
-    ///     using (await _lock.LockAsync())
-    ///     {
-    ///         await Task.Delay(TimeSpan.FromSeconds(1));
-    ///     }
-    /// }
-    /// </code>
-    /// </remarks>
-    /// <returns>A <see cref="ValueTask{AsyncLockReleaser}"/> that completes when the lock is acquired.  Dispose the returned releaser to release the lock.</returns>
-    public ValueTask<AsyncLockReleaser> LockAsync()
-        => LockAsync(CancellationToken.None);
-
-    /// <summary>
     /// Asynchronously acquires the lock, with a cancellation token.
-    /// At this time the cancellation token is only observed before 
-    /// queuing if the lock is already acquired.
+    /// The cancellation token is only observed if the lock can not
+    /// be acquired immediately.
     /// </summary>
     /// <remarks>
     /// Note that this lock is <b>not</b> recursive!
@@ -158,9 +135,12 @@ public sealed class AsyncLock
     /// }
     /// </code>
     /// </remarks>
-    /// <param name="ct">The cancellation token. Cancellation is only observed before queuing.</param>
-    /// <returns>A <see cref="ValueTask{AsyncLockReleaser}"/> that completes when the lock is acquired.  Dispose the returned releaser to release the lock.</returns>
-    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken ct)
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>
+    /// A <see cref="ValueTask{AsyncLockReleaser}"/> that completes when the lock is acquired.
+    /// Dispose the returned releaser to release the lock.
+    /// </returns>
+    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken ct = default)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
         {
@@ -208,7 +188,7 @@ public sealed class AsyncLock
     /// Queue a waiter for the lock. Expects the caller to hold the mutex.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask<AsyncLockReleaser> QueueWaiter(CancellationToken ct)
+    private ValueTask<AsyncLockReleaser> QueueWaiter(CancellationToken cancellationToken)
     {
         ManualResetValueTaskSource<AsyncLockReleaser> waiter;
         if (!_localWaiter.TryGetValueTaskSource(out waiter))
@@ -218,12 +198,12 @@ public sealed class AsyncLock
             waiter = pooledWaiter;
         }
 
-        waiter.CancellationToken = ct;
+        waiter.CancellationToken = cancellationToken;
         waiter.RunContinuationsAsynchronously = true;
 
-        if (ct.CanBeCanceled)
+        if (cancellationToken.CanBeCanceled)
         {
-            waiter.CancellationTokenRegistration = ct.Register((state) => {
+            waiter.CancellationTokenRegistration = cancellationToken.Register((state) => {
                 var waiter = state as ManualResetValueTaskSource<AsyncLockReleaser>;
                 if (waiter != null)
                 {

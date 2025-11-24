@@ -150,21 +150,16 @@ public sealed class AsyncAutoResetEvent
     ///     await t.ConfigureAwait(false);
     ///     await t.ConfigureAwait(false);
     ///     
-    ///     // FAIL: single await with GetAwaiter().GetResult() - may throw InvalidOperationException
+    ///     // FAIL: single await with GetAwaiter().GetResult() - is undefined behavior and
+    ///     // may throw InvalidOperationException. Convert to Task first.
     ///     await _event.WaitAsync().GetAwaiter().GetResult();
     /// </code>
     /// Be aware that the underlying pooled implementation of <see cref="IValueTaskSource"/>
     /// may leak if the returned ValueTask is never awaited or transformed to a <see cref="Task"/>.
     /// </remarks>
-    /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
-    public ValueTask WaitAsync()
-        => WaitAsync(CancellationToken.None);
-
-    /// <summary>
-    /// Asynchronously waits for this event to be set or for the wait to be canceled.
-    /// </summary>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
-    public ValueTask WaitAsync(CancellationToken cancellationToken)
+    /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
+    public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
         // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
@@ -262,7 +257,7 @@ public sealed class AsyncAutoResetEvent
     /// Queue a waiter for the lock. Expects the caller to hold the mutex.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask QueueWaiter(CancellationToken ct = default)
+    private ValueTask QueueWaiter(CancellationToken cancellationToken = default)
     {
         ManualResetValueTaskSource<bool> waiter;
         if (!_localWaiter.TryGetValueTaskSource(out waiter))
@@ -270,12 +265,12 @@ public sealed class AsyncAutoResetEvent
             waiter = PooledEventsCommon.GetPooledValueTaskSource();
         }
 
-        waiter.CancellationToken = ct;
+        waiter.CancellationToken = cancellationToken;
         waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
 
-        if (ct.CanBeCanceled)
+        if (cancellationToken.CanBeCanceled)
         {
-            waiter.CancellationTokenRegistration = ct.Register((state) => {
+            waiter.CancellationTokenRegistration = cancellationToken.Register((state) => {
                 var waiter = state as ManualResetValueTaskSource<bool>;
                 if (waiter != null)
                 {

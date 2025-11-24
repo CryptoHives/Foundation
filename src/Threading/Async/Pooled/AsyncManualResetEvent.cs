@@ -130,54 +130,6 @@ public sealed class AsyncManualResetEvent
     /// The ValueTask is a struct that can only be awaited or transformed with AsTask() ONE time, then
     /// it is returned to the pool and every subsequent access throws an <see cref="InvalidOperationException"/>.
     /// <code>
-    ///     var event = new AsyncManualResetEvent();
-    ///     
-    ///     // GOOD: single await
-    ///     await _event.WaitAsync().ConfigureAwait(false);
-    ///     
-    ///     // GOOD: single await after calling WaitAsync()
-    ///     ValueTask vt = _event.WaitAsync();
-    ///     _event.Set();
-    ///     await vt.ConfigureAwait(false);
-    ///
-    ///     // FAIL: multiple awaits on ValueTask - throws InvalidOperationException on second await
-    ///     await vt.ConfigureAwait(false);
-    /// 
-    ///     // GOOD: single AsTask() usage, multiple await on Task
-    ///     Task t = _event.WaitAsync().AsTask();
-    ///     _event.Set();
-    ///     await t.ConfigureAwait(false);
-    ///     await t.ConfigureAwait(false);
-    ///     
-    ///     // FAIL: single await with GetAwaiter().GetResult() - may throw InvalidOperationException
-    ///     await _event.WaitAsync().GetAwaiter().GetResult();
-    /// </code>
-    /// Be aware that the underlying pooled implementation of <see cref="IValueTaskSource"/>
-    /// may leak if the returned ValueTask is never awaited or transformed to a <see cref="Task"/>.
-    /// </remarks>
-    /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
-    public ValueTask WaitAsync()
-    {
-        lock (_mutex)
-        {
-            if (_signaled)
-            {
-                return default;
-            }
-
-            return QueueWaiter(CancellationToken.None);
-        }
-    }
-
-    /// <summary>
-    /// Asynchronously waits for this event to be set.
-    /// </summary>
-    /// <remarks>
-    /// If the event is already signalled, the method returns a completed <see cref="ValueTask"/>.
-    /// Otherwise, it enqueues a waiter and returns a task that completes when the signal is received.
-    /// The ValueTask is a struct that can only be awaited or transformed with AsTask() ONE time, then
-    /// it is returned to the pool and every subsequent access throws an <see cref="InvalidOperationException"/>.
-    /// <code>
     ///     var ct = new CancellationTokenSource(1000).Token;
     ///     var event = new AsyncManualResetEvent();
     ///     
@@ -206,7 +158,7 @@ public sealed class AsyncManualResetEvent
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
-    public ValueTask WaitAsync(CancellationToken cancellationToken)
+    public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
         lock (_mutex)
         {
@@ -287,7 +239,7 @@ public sealed class AsyncManualResetEvent
     /// Queue a waiter for the lock. Expects the caller to hold the mutex.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask QueueWaiter(CancellationToken ct = default)
+    private ValueTask QueueWaiter(CancellationToken cancellationToken)
     {
         ManualResetValueTaskSource<bool> waiter;
         if (!_localWaiter.TryGetValueTaskSource(out waiter))
@@ -295,12 +247,12 @@ public sealed class AsyncManualResetEvent
             waiter = PooledEventsCommon.GetPooledValueTaskSource();
         }
 
-        waiter.CancellationToken = ct;
+        waiter.CancellationToken = cancellationToken;
         waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
 
-        if (ct.CanBeCanceled)
+        if (cancellationToken.CanBeCanceled)
         {
-            waiter.CancellationTokenRegistration = ct.Register((state) => {
+            waiter.CancellationTokenRegistration = cancellationToken.Register((state) => {
                 var waiter = state as ManualResetValueTaskSource<bool>;
                 if (waiter != null)
                 {
