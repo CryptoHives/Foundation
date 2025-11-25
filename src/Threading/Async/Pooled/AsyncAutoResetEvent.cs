@@ -8,7 +8,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -180,7 +179,26 @@ public sealed class AsyncAutoResetEvent
                 return new ValueTask(Task.FromException(new OperationCanceledException(cancellationToken)));
             }
 
-            return QueueWaiter(cancellationToken);
+            ManualResetValueTaskSource<bool> waiter;
+            if (!_localWaiter.TryGetValueTaskSource(out waiter))
+            {
+                waiter = PooledEventsCommon.GetPooledValueTaskSource();
+            }
+
+            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+            waiter.CancellationToken = cancellationToken;
+
+            if (cancellationToken.CanBeCanceled)
+            {
+                waiter.CancellationTokenRegistration = cancellationToken.Register(CancellationCallback, state: waiter, useSynchronizationContext: false);
+            }
+            else
+            {
+                waiter.CancellationTokenRegistration = default;
+            }
+
+            _waiters.Enqueue(waiter);
+            return new ValueTask(waiter, waiter.Version);
         }
     }
 
@@ -258,53 +276,28 @@ public sealed class AsyncAutoResetEvent
         }
     }
 
-    /// <summary>
-    /// Queue a waiter for the lock. Expects the caller to hold the mutex.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask QueueWaiter(CancellationToken cancellationToken = default)
+    private void CancellationCallback(object? state)
     {
-        ManualResetValueTaskSource<bool> waiter;
-        if (!_localWaiter.TryGetValueTaskSource(out waiter))
+        var waiter = state as ManualResetValueTaskSource<bool>;
+        if (waiter != null)
         {
-            waiter = PooledEventsCommon.GetPooledValueTaskSource();
-        }
-
-        waiter.CancellationToken = cancellationToken;
-        waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-
-        if (cancellationToken.CanBeCanceled)
-        {
-            waiter.CancellationTokenRegistration = cancellationToken.Register((state) => {
-                var waiter = state as ManualResetValueTaskSource<bool>;
-                if (waiter != null)
+            ManualResetValueTaskSource<bool>? toCancel = null;
+            lock (_mutex)
+            {
+                int count = _waiters.Count;
+                while (count-- > 0)
                 {
-                    ManualResetValueTaskSource<bool>? toCancel = null;
-                    lock (_mutex)
+                    var dequeued = _waiters.Dequeue();
+                    if (ReferenceEquals(dequeued, waiter))
                     {
-                        int count = _waiters.Count;
-                        while (count-- > 0)
-                        {
-                            var dequeued = _waiters.Dequeue();
-                            if (ReferenceEquals(dequeued, waiter))
-                            {
-                                toCancel = waiter;
-                                break;
-                            }
-                            _waiters.Enqueue(dequeued);
-                        }
+                        toCancel = waiter;
+                        break;
                     }
-
-                    toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+                    _waiters.Enqueue(dequeued);
                 }
-            }, state: waiter, useSynchronizationContext: false);
-        }
-        else
-        {
-            waiter.CancellationTokenRegistration = default;
-        }
+            }
 
-        _waiters.Enqueue(waiter);
-        return new ValueTask(waiter, waiter.Version);
+            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+        }
     }
 }
