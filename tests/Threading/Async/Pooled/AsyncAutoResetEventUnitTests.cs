@@ -180,11 +180,7 @@ public class AsyncAutoResetEventUnitTests
         var ev = new AsyncAutoResetEvent();
         using var cts = new CancellationTokenSource();
 
-#if NET8_0_OR_GREATER
-        await cts.CancelAsync().ConfigureAwait(false);
-#else
-        cts.Cancel();
-#endif
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
     }
@@ -197,11 +193,7 @@ public class AsyncAutoResetEventUnitTests
 
         ValueTask vt = ev.WaitAsync(cts.Token);
 
-#if NET8_0_OR_GREATER
-        await cts.CancelAsync().ConfigureAwait(false);
-#else
-        cts.Cancel();
-#endif
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
     }

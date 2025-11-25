@@ -133,11 +133,8 @@ public class AsyncManualResetEventUnitTests
         var ev = new AsyncManualResetEvent();
         using var cts = new CancellationTokenSource();
 
-#if NET8_0_OR_GREATER
-        await cts.CancelAsync().ConfigureAwait(false);
-#else
-        cts.Cancel();
-#endif
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+
         var vt = ev.WaitAsync(cts.Token);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
@@ -151,11 +148,7 @@ public class AsyncManualResetEventUnitTests
 
         ValueTask vt = ev.WaitAsync(cts.Token);
 
-#if NET8_0_OR_GREATER
-        await cts.CancelAsync().ConfigureAwait(false);
-#else
-        cts.Cancel();
-#endif
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
     }

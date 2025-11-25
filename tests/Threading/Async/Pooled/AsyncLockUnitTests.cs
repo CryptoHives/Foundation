@@ -108,11 +108,7 @@ public class AsyncLockUnitTests
         {
             using var cts = new CancellationTokenSource();
 
-#if NET8_0_OR_GREATER
-            await cts.CancelAsync().ConfigureAwait(false);
-#else
-            cts.Cancel();
-#endif
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
             var exVt = al.LockAsync(cts.Token);
             Assert.ThrowsAsync<OperationCanceledException>(async () => await exVt.ConfigureAwait(false));
@@ -129,11 +125,7 @@ public class AsyncLockUnitTests
             using var cts = new CancellationTokenSource();
 
             // Cancel before queueing
-#if NET8_0_OR_GREATER
-            await cts.CancelAsync().ConfigureAwait(false);
-#else
-            cts.Cancel();
-#endif
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
             Assert.ThrowsAsync<OperationCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
         }
@@ -152,11 +144,7 @@ public class AsyncLockUnitTests
             var vt = al.LockAsync(cts.Token);
 
             // Cancel after queuing
-#if NET8_0_OR_GREATER
-            await cts.CancelAsync().ConfigureAwait(false);
-#else
-            cts.Cancel();
-#endif
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
             Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
         }
@@ -192,11 +180,7 @@ public class AsyncLockUnitTests
         }
 
         // Cancel after lock is released, should not throw
-#if NET8_0_OR_GREATER
-        await cts.CancelAsync().ConfigureAwait(false);
-#else
-        cts.Cancel();
-#endif
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(1000)]
@@ -204,7 +188,7 @@ public class AsyncLockUnitTests
     {
         var al = new AsyncLock();
 
-        using var cts = new CancellationTokenSource(100);
+        using var cts = new CancellationTokenSource(250);
 
         var vt = al.LockAsync(cts.Token);
 

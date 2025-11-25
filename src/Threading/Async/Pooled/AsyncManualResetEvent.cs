@@ -261,8 +261,7 @@ public sealed class AsyncManualResetEvent
 
     private void CancellationCallback(object? state)
     {
-        var waiter = state as ManualResetValueTaskSource<bool>;
-        if (waiter != null)
+        if (state is ManualResetValueTaskSource<bool> waiter)
         {
             ManualResetValueTaskSource<bool>? toCancel = null;
             lock (_mutex)

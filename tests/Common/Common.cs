@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 using NUnit.Framework;
+using System.Threading;
 using System.Threading.Tasks;
 
 static class AsyncAssert
@@ -13,5 +14,14 @@ static class AsyncAssert
         {
             Assert.Fail("Expected task to never complete.");
         }
+    }
+
+    public static async Task CancelAsync(CancellationTokenSource cts)
+    {
+#if NET8_0_OR_GREATER
+        await cts.CancelAsync().ConfigureAwait(false);
+#else
+        await Task.Run(() => cts.Cancel()).ConfigureAwait(false);
+#endif
     }
 }

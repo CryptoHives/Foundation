@@ -210,64 +210,11 @@ public sealed class AsyncLock
         toRelease.SetResult(new AsyncLockReleaser(this));
     }
 
-    /// <summary>
-    /// Queue a waiter for the lock. Expects the caller to hold the mutex.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask<AsyncLockReleaser> QueueWaiter(CancellationToken cancellationToken)
-    {
-        ManualResetValueTaskSource<AsyncLockReleaser> waiter;
-        if (!_localWaiter.TryGetValueTaskSource(out waiter))
-        {
-            var pooledWaiter = _pool.Get();
-            pooledWaiter.SetOwnerPool(_pool);
-            waiter = pooledWaiter;
-        }
-
-        waiter.CancellationToken = cancellationToken;
-        waiter.RunContinuationsAsynchronously = true;
-
-        if (cancellationToken.CanBeCanceled)
-        {
-            waiter.CancellationTokenRegistration = cancellationToken.Register((state) => {
-                var waiter = state as ManualResetValueTaskSource<AsyncLockReleaser>;
-                if (waiter != null)
-                {
-                    ManualResetValueTaskSource<AsyncLockReleaser>? toCancel = null;
-                    lock (_mutex)
-                    {
-                        int count = _waiters.Count;
-                        while (count-- > 0)
-                        {
-                            var dequeued = _waiters.Dequeue();
-                            if (ReferenceEquals(dequeued, waiter))
-                            {
-                                toCancel = waiter;
-                                break;
-                            }
-                            _waiters.Enqueue(dequeued);
-                        }
-                    }
-
-                    toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-                }
-            }, state: waiter, useSynchronizationContext: false);
-        }
-        else
-        {
-            waiter.CancellationTokenRegistration = default;
-        }
-
-        _waiters.Enqueue(waiter);
-        return new ValueTask<AsyncLockReleaser>(waiter, waiter.Version);
-    }
-
     private void CancellationCallback(object? state)
     {
-        var waiter = state as ManualResetValueTaskSource<bool>;
-        if (waiter != null)
+        if (state is ManualResetValueTaskSource<AsyncLockReleaser> waiter)
         {
-            ManualResetValueTaskSource<bool>? toCancel = null;
+            ManualResetValueTaskSource<AsyncLockReleaser>? toCancel = null;
             lock (_mutex)
             {
                 int count = _waiters.Count;
