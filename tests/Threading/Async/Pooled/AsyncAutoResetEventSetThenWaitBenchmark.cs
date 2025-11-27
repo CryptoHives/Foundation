@@ -87,6 +87,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
         await _eventPooled.WaitAsync(_cancellationToken).AsTask().ConfigureAwait(false);
     }
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for Nito.AsyncEx async auto-reset event Set-then-Wait.
     /// </summary>
@@ -102,6 +103,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
         _eventNitoAsync.Set();
         await _eventNitoAsync.WaitAsync(_cancellationToken).ConfigureAwait(false);
     }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async auto-reset event Set-then-Wait (baseline).
