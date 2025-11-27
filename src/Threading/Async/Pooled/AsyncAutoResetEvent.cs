@@ -149,14 +149,16 @@ public sealed class AsyncAutoResetEvent
     ///     await t.ConfigureAwait(false);
     ///     await t.ConfigureAwait(false);
     ///     
-    ///     // FAIL: single await with GetAwaiter().GetResult() - may throw InvalidOperationException
+    ///     // FAIL: single await with GetAwaiter().GetResult() - is undefined behavior and
+    ///     // may throw InvalidOperationException. Convert to Task first.
     ///     await _event.WaitAsync().GetAwaiter().GetResult();
     /// </code>
     /// Be aware that the underlying pooled implementation of <see cref="IValueTaskSource"/>
     /// may leak if the returned ValueTask is never awaited or transformed to a <see cref="Task"/>.
     /// </remarks>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
-    public ValueTask WaitAsync()
+    public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
         // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
@@ -172,6 +174,11 @@ public sealed class AsyncAutoResetEvent
                 return default;
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask(Task.FromException(new OperationCanceledException(cancellationToken)));
+            }
+
             ManualResetValueTaskSource<bool> waiter;
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
@@ -179,20 +186,21 @@ public sealed class AsyncAutoResetEvent
             }
 
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+            waiter.CancellationToken = cancellationToken;
+
+            if (cancellationToken.CanBeCanceled)
+            {
+                waiter.CancellationTokenRegistration = cancellationToken.Register(CancellationCallback, state: waiter, useSynchronizationContext: false);
+            }
+            else
+            {
+                waiter.CancellationTokenRegistration = default;
+            }
+
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
     }
-
-#if TODO // implement wait with cancel
-    /// <summary>
-    /// Asynchronously waits for this event to be set or for the wait to be canceled.
-    /// </summary>
-    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
-    public ValueTask WaitAsync(CancellationToken cancellationToken)
-    {
-    }
-#endif
 
     /// <summary>
     /// Signals the event, releasing a single waiting thread if any are queued.
@@ -265,6 +273,30 @@ public sealed class AsyncAutoResetEvent
         finally
         {
             ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
+        }
+    }
+
+    private void CancellationCallback(object? state)
+    {
+        if (state is ManualResetValueTaskSource<bool> waiter)
+        {
+            ManualResetValueTaskSource<bool>? toCancel = null;
+            lock (_mutex)
+            {
+                int count = _waiters.Count;
+                while (count-- > 0)
+                {
+                    var dequeued = _waiters.Dequeue();
+                    if (ReferenceEquals(dequeued, waiter))
+                    {
+                        toCancel = waiter;
+                        break;
+                    }
+                    _waiters.Enqueue(dequeued);
+                }
+            }
+
+            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
         }
     }
 }

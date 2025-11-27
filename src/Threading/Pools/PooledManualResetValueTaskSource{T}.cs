@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Threading.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
+using System.Threading;
 using System.Threading.Tasks.Sources;
 
 /// <summary>
@@ -21,6 +22,8 @@ using System.Threading.Tasks.Sources;
 internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
 {
     private ManualResetValueTaskSourceCore<T> _core;
+    private CancellationToken _cancellationToken;
+    private CancellationTokenRegistration _cancellationTokenRegistration;
     private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
 
     /// <summary>
@@ -33,6 +36,20 @@ internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTask
 
     /// <inheritdoc/>
     public override short Version => _core.Version;
+
+    /// <inheritdoc/>
+    public override CancellationToken CancellationToken
+    {
+        get => _cancellationToken;
+        set => _cancellationToken = value;
+    }
+
+    /// <inheritdoc/>
+    public override CancellationTokenRegistration CancellationTokenRegistration
+    {
+        get => _cancellationTokenRegistration;
+        set => _cancellationTokenRegistration = value;
+    }
 
     /// <inheritdoc/>
     public override bool RunContinuationsAsynchronously
@@ -64,6 +81,7 @@ internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTask
     public override T GetResult(short token)
     {
         T result = _core.GetResult(token);
+        _cancellationTokenRegistration.Dispose();
         _ownerPool?.Return(this);
         return result;
     }

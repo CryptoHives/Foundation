@@ -66,4 +66,20 @@ public readonly struct ObjectOwner<T> : IDisposable, IEquatable<ObjectOwner<T>> 
     {
         return HashCode.Combine(ObjectPool, Object);
     }
+
+    /// <summary>
+    /// Determines whether two ObjectOwner instances are equal.
+    /// </summary>
+    public static bool operator ==(ObjectOwner<T> left, ObjectOwner<T> right)
+    {
+        return left.Equals(right);
+    }
+
+    /// <summary>
+    /// Determines whether two ObjectOwner instances are not equal.
+    /// </summary>
+    public static bool operator !=(ObjectOwner<T> left, ObjectOwner<T> right)
+    {
+        return !left.Equals(right);
+    }
 }

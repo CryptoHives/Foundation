@@ -1,12 +1,15 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1034 // Nested types should not be visible
+
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -59,7 +62,6 @@ public sealed class AsyncLock
     /// <summary>
     /// A small value type returned by awaiting a lock acquisition. Disposing the releaser releases the lock.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1034:Nested types should not be visible", Justification = "By Design")]
     public readonly struct AsyncLockReleaser : IDisposable, IAsyncDisposable, IEquatable<AsyncLockReleaser>
     {
         private readonly AsyncLock _owner;
@@ -114,32 +116,9 @@ public sealed class AsyncLock
     }
 
     /// <summary>
-    /// Asynchronously acquires the lock.
-    /// </summary>
-    /// <remarks>
-    /// Note that this lock is <b>not</b> recursive!
-    /// The returned ValueTask must be disposed to release the lock
-    /// and can only be awaited one single time.
-    /// Use the following pattern to synchronize async Tasks.
-    /// <code>
-    /// private readonly var _lock = new AsyncLock();
-    /// public async Task DoStuffAsync()
-    /// {
-    ///     using (await _lock.LockAsync())
-    ///     {
-    ///         await Task.Delay(TimeSpan.FromSeconds(1));
-    ///     }
-    /// }
-    /// </code>
-    /// </remarks>
-    /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.  Dispose the returned releaser to release the lock.</returns>
-    public ValueTask<AsyncLockReleaser> LockAsync()
-        => LockAsync(CancellationToken.None);
-
-    /// <summary>
     /// Asynchronously acquires the lock, with a cancellation token.
-    /// At this time the cancellation token is only observed before 
-    /// queuing if the lock is already acquired.
+    /// The cancellation token is only observed if the lock can not
+    /// be acquired immediately.
     /// </summary>
     /// <remarks>
     /// Note that this lock is <b>not</b> recursive!
@@ -156,9 +135,12 @@ public sealed class AsyncLock
     /// }
     /// </code>
     /// </remarks>
-    /// <param name="ct">The cancellation token. Cancellation is only observed before queuing.</param>
-    /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.  Dispose the returned releaser to release the lock.</returns>
-    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken ct)
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// A <see cref="ValueTask{AsyncLockReleaser}"/> that completes when the lock is acquired.
+    /// Dispose the returned releaser to release the lock.
+    /// </returns>
+    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
         {
@@ -172,10 +154,9 @@ public sealed class AsyncLock
                 return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
             }
 
-            // TODO: Consider observing cancellation while queued.
-            if (ct.IsCancellationRequested)
+            if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(ct)));
+                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
             }
 
             ManualResetValueTaskSource<AsyncLockReleaser> waiter;
@@ -187,10 +168,26 @@ public sealed class AsyncLock
             }
 
             waiter.RunContinuationsAsynchronously = true;
+            waiter.CancellationToken = cancellationToken;
+
+            if (cancellationToken.CanBeCanceled)
+            {
+                waiter.CancellationTokenRegistration = cancellationToken.Register(CancellationCallback, state: waiter, useSynchronizationContext: false);
+            }
+            else
+            {
+                waiter.CancellationTokenRegistration = default;
+            }
+
             _waiters.Enqueue(waiter);
             return new ValueTask<AsyncLockReleaser>(waiter, waiter.Version);
         }
     }
+
+    /// <summary>
+    /// Whether the lock is currently held.
+    /// </summary>
+    public bool IsTaken => _taken != 0;
 
     /// <summary>
     /// Releases the lock. If any waiters are queued, the next waiter acquires the lock.
@@ -213,8 +210,27 @@ public sealed class AsyncLock
         toRelease.SetResult(new AsyncLockReleaser(this));
     }
 
-    /// <summary>
-    /// Whether the lock is currently held.
-    /// </summary>
-    public bool IsTaken => _taken != 0;
+    private void CancellationCallback(object? state)
+    {
+        if (state is ManualResetValueTaskSource<AsyncLockReleaser> waiter)
+        {
+            ManualResetValueTaskSource<AsyncLockReleaser>? toCancel = null;
+            lock (_mutex)
+            {
+                int count = _waiters.Count;
+                while (count-- > 0)
+                {
+                    var dequeued = _waiters.Dequeue();
+                    if (ReferenceEquals(dequeued, waiter))
+                    {
+                        toCancel = waiter;
+                        break;
+                    }
+                    _waiters.Enqueue(dequeued);
+                }
+            }
+
+            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+        }
+    }
 }
