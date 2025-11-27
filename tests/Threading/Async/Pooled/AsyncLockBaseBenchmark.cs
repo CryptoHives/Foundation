@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 
 #if SIGNASSEMBLY
 using NitoAsyncEx = RefImpl;
@@ -21,17 +22,19 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncLockBaseBenchmark
 {
 #if NET9_0_OR_GREATER
-    protected System.Threading.Lock _lock;
+    protected Lock _lock;
 #endif
     protected object _objectLock;
     protected AsyncLock _lockPooled;
-    protected System.Threading.SemaphoreSlim _semaphoreSlim;
+    protected SemaphoreSlim _semaphoreSlim;
     protected NitoAsyncEx.AsyncLock _lockNitoAsync;
     protected AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
     protected RefImpl.AsyncLock _lockRefImp;
 #if !NETFRAMEWORK
     protected NeoSmart.AsyncLock.AsyncLock _lockNeoSmart;
 #endif
+    protected CancellationTokenSource _cancellationTokenSource;
+    protected CancellationToken _cancellationToken;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -52,6 +55,8 @@ public abstract class AsyncLockBaseBenchmark
 #if !NETFRAMEWORK
         _lockNeoSmart = new();
 #endif
+        _cancellationTokenSource = new CancellationTokenSource();
+        _cancellationToken = _cancellationTokenSource.Token;
     }
 
     /// <summary>
@@ -61,5 +66,7 @@ public abstract class AsyncLockBaseBenchmark
     [GlobalCleanup]
     public void GlobalCleanup()
     {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
     }
 }

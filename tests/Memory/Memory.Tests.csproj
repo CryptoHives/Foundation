@@ -36,6 +36,7 @@
 
   <ItemGroup>
     <Compile Include="..\Common\Main.cs" />
+    <Compile Include="..\Common\Common.cs" />
   </ItemGroup>
 
   <ItemGroup>

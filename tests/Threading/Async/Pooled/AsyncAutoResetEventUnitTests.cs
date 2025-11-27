@@ -6,6 +6,7 @@ namespace Threading.Tests.Async.Pooled;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 [TestFixture]
@@ -173,14 +174,41 @@ public class AsyncAutoResetEventUnitTests
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
     }
 
-    private static class AsyncAssert
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenCancelsBeforeQueueingAsync()
     {
-        public static async Task NeverCompletesAsync(Task task, int timeoutMs = 1000)
-        {
-            Task completed = await Task.WhenAny(task, Task.Delay(timeoutMs)).ConfigureAwait(false);
-            if (completed == task)
-                Assert.Fail("Expected task to never complete.");
-        }
+        var ev = new AsyncAutoResetEvent();
+        using var cts = new CancellationTokenSource();
+
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenCancelsWhileQueuedAsync()
+    {
+        var ev = new AsyncAutoResetEvent(false);
+        using var cts = new CancellationTokenSource();
+
+        ValueTask vt = ev.WaitAsync(cts.Token);
+
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelledAsync()
+    {
+        var ev = new AsyncAutoResetEvent();
+        using var cts = new CancellationTokenSource();
+
+        var vt = ev.WaitAsync(cts.Token);
+
+        _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
+
+        await vt.ConfigureAwait(false);
     }
 }
 
