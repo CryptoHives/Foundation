@@ -161,6 +161,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         }
     }
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for Nito.AsyncEx async lock (single uncontended acquisition).
     /// </summary>
@@ -178,6 +179,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
             unchecked { _counter++; }
         }
     }
+#endif
 
     /// <summary>
     /// Benchmark for AsyncKeyedLock (NonKeyed) async lock (single uncontended acquisition).

@@ -71,6 +71,7 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
         await vt.ConfigureAwait(false);
     }
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for Nito.AsyncEx async auto-reset event.
     /// </summary>
@@ -87,6 +88,7 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
         _eventNitoAsync!.Set();
         await t.ConfigureAwait(false);
     }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async auto-reset event (baseline).

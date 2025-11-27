@@ -340,6 +340,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
         }
     }
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for Nito.AsyncEx async auto-reset event with batched queued async waiters.
     /// </summary>
@@ -375,6 +376,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
             await _task[i]!.ConfigureAwait(false);
         }
     }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async auto-reset event with batched queued async waiters (baseline).
