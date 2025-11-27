@@ -8,6 +8,7 @@ using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
+using System.Collections.Generic;
 
 #if SIGNASSEMBLY
 using NitoAsyncEx = RefImpl;
@@ -21,10 +22,29 @@ using NitoAsyncEx = Nito.AsyncEx;
 [SuppressMessage("Design", "CA1051:Do not declare visible instance fields", Justification = "Benchmarks require fastest access")]
 public abstract class AsyncAutoResetEventBaseBenchmark
 {
-    protected AsyncAutoResetEvent? _eventPooled;
-    protected NitoAsyncEx.AsyncAutoResetEvent? _eventNitoAsync;
-    protected RefImpl.AsyncAutoResetEvent? _eventRefImp;
-    protected AutoResetEvent? _eventStandard;
+    protected AsyncAutoResetEvent _eventPooled;
+    protected NitoAsyncEx.AsyncAutoResetEvent _eventNitoAsync;
+    protected RefImpl.AsyncAutoResetEvent _eventRefImp;
+    protected AutoResetEvent _eventStandard;
+    protected CancellationTokenSource _cancellationTokenSource;
+    protected CancellationToken _cancellationToken;
+
+    /// <summary>
+    /// The cancellation tokens for test and benchmark runs.
+    /// </summary>
+    public static IEnumerable<object[]> CancelParams()
+    {
+        yield return new object[] { "None", CancellationToken.None };
+        yield return new object[] { "Token", new CancellationTokenSource().Token };
+    }
+
+    /// <summary>
+    /// The cancellation tokens for test and benchmark runs.
+    /// </summary>
+    public static IEnumerable<object[]> CancelNoneParams()
+    {
+        yield return new object[] { "None", CancellationToken.None };
+    }
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -37,6 +57,8 @@ public abstract class AsyncAutoResetEventBaseBenchmark
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
         _eventRefImp = new RefImpl.AsyncAutoResetEvent();
         _eventStandard = new AutoResetEvent(false);
+        _cancellationTokenSource = new CancellationTokenSource();
+        _cancellationToken = _cancellationTokenSource.Token;
     }
 
     /// <summary>
@@ -46,6 +68,8 @@ public abstract class AsyncAutoResetEventBaseBenchmark
     [GlobalCleanup]
     public virtual void GlobalCleanup()
     {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
         _eventStandard?.Dispose();
     }
 }

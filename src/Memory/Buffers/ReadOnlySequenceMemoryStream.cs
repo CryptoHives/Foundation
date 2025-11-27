@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1725 // Change names of parameters to match base declaration
+
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
 #define MEMORYSTREAM_WITH_SPAN_SUPPORT
 #endif
