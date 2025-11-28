@@ -22,8 +22,8 @@ using System.Threading.Tasks.Sources;
 internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
 {
     private ManualResetValueTaskSourceCore<T> _core;
-    private CancellationToken _cancellationToken;
     private CancellationTokenRegistration _cancellationTokenRegistration;
+    private CancellationToken _cancellationToken;
     private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
 
     /// <summary>

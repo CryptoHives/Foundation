@@ -117,8 +117,8 @@ public sealed class AsyncAutoResetEvent
     /// </remarks>
     public bool RunContinuationAsynchronously
     {
-        get { return _runContinuationAsynchronously; }
-        set { _runContinuationAsynchronously = value; }
+        get => _runContinuationAsynchronously;
+        set => _runContinuationAsynchronously = value;
     }
 
     /// <summary>
@@ -286,7 +286,7 @@ public sealed class AsyncAutoResetEvent
                 int count = _waiters.Count;
                 while (count-- > 0)
                 {
-                    var dequeued = _waiters.Dequeue();
+                    ManualResetValueTaskSource<bool> dequeued = _waiters.Dequeue();
                     if (ReferenceEquals(dequeued, waiter))
                     {
                         toCancel = waiter;
