@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable IDE0060 // Remove unused parameter
+
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;

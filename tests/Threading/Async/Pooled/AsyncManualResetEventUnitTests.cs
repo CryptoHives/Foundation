@@ -84,7 +84,10 @@ public class AsyncManualResetEventUnitTests
         Task[] taskWaiters = Enumerable.Range(0,5).Select(_ => mre.WaitAsync().AsTask()).ToArray();
 
         // ensure none completed yet
-        foreach (Task? t in taskWaiters) Assert.That(t.IsCompleted, Is.False);
+        foreach (Task? t in taskWaiters)
+        {
+            Assert.That(t.IsCompleted, Is.False);
+        }
 
         // signal the event
         mre.Set();
@@ -135,7 +138,7 @@ public class AsyncManualResetEventUnitTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        var vt = ev.WaitAsync(cts.Token);
+        ValueTask vt = ev.WaitAsync(cts.Token);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
     }
@@ -159,7 +162,7 @@ public class AsyncManualResetEventUnitTests
         var ev = new AsyncManualResetEvent();
         using var cts = new CancellationTokenSource();
 
-        var vt = ev.WaitAsync(cts.Token);
+        ValueTask vt = ev.WaitAsync(cts.Token);
 
         _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
 

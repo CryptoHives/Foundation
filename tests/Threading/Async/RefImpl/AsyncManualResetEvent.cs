@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 /// </remarks>
 public class AsyncManualResetEvent
 {
-    private volatile TaskCompletionSource<bool> _tcs = new();
+    private volatile TaskCompletionSource<bool> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public Task WaitAsync() => _tcs.Task;
 
@@ -25,9 +25,9 @@ public class AsyncManualResetEvent
     {
         while (true)
         {
-            var tcs = _tcs;
+            TaskCompletionSource<bool> tcs = _tcs;
             if (!tcs.Task.IsCompleted ||
-                Interlocked.CompareExchange(ref _tcs, new TaskCompletionSource<bool>(), tcs) == tcs)
+                Interlocked.CompareExchange(ref _tcs, new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously), tcs) == tcs)
             {
                 return;
             }

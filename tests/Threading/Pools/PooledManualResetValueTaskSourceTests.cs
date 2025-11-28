@@ -104,9 +104,12 @@ public class PooledManualResetValueTaskSourceTests
         // continuation should run
         bool success = await tcs.Task.ConfigureAwait(false);
 
-        // status becomes succeeded
-        Assert.That(vts.GetStatus(token), Is.EqualTo(ValueTaskSourceStatus.Succeeded));
-        Assert.That(success, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            // status becomes succeeded
+            Assert.That(vts.GetStatus(token), Is.EqualTo(ValueTaskSourceStatus.Succeeded));
+            Assert.That(success, Is.True);
+        }
     }
 
     [Test]
