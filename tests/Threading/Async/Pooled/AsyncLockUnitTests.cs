@@ -22,8 +22,11 @@ public class AsyncLockUnitTests
 
         using (await vt.ConfigureAwait(false))
         {
-            Assert.That(al.IsTaken);
-            Assert.That(vt.IsCompleted);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(al.IsTaken);
+                Assert.That(vt.IsCompleted);
+            }
         }
 
         Assert.That(al.IsTaken, Is.False);
@@ -51,7 +54,7 @@ public class AsyncLockUnitTests
     }
 
     [Test]
-    public async Task AsyncLockLockedOnlyPermitsOneLockerAtATime()
+    public async Task AsyncLockLockedOnlyPermitsOneLockerAtATimeAsync()
     {
         var mutex = new AsyncLock();
         var task1HasLock = new TaskCompletionSource<bool>();
@@ -72,7 +75,7 @@ public class AsyncLockUnitTests
 
         var task2 = Task.Run(async () =>
         {
-            var key = mutex.LockAsync();
+            ValueTask<AsyncLock.AsyncLockReleaser> key = mutex.LockAsync();
             task2Ready.SetResult(true);
             using (await key.ConfigureAwait(false))
             {
@@ -110,7 +113,7 @@ public class AsyncLockUnitTests
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            var exVt = al.LockAsync(cts.Token);
+            ValueTask<AsyncLock.AsyncLockReleaser> exVt = al.LockAsync(cts.Token);
             Assert.ThrowsAsync<OperationCanceledException>(async () => await exVt.ConfigureAwait(false));
         }
     }
@@ -141,7 +144,7 @@ public class AsyncLockUnitTests
         // Take the lock so subsequent waiters are queued
         using (await al.LockAsync().ConfigureAwait(false))
         {
-            var vt = al.LockAsync(cts.Token);
+            ValueTask<AsyncLock.AsyncLockReleaser> vt = al.LockAsync(cts.Token);
 
             // Cancel after queuing
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -157,7 +160,7 @@ public class AsyncLockUnitTests
 
         using var cts = new CancellationTokenSource();
 
-        var vt = al.LockAsync(cts.Token);
+        ValueTask<AsyncLock.AsyncLockReleaser> vt = al.LockAsync(cts.Token);
 
         using (await vt.ConfigureAwait(false))
         {
@@ -172,7 +175,7 @@ public class AsyncLockUnitTests
 
         using var cts = new CancellationTokenSource();
 
-        var vt = al.LockAsync(cts.Token);
+        ValueTask<AsyncLock.AsyncLockReleaser> vt = al.LockAsync(cts.Token);
 
         using (await vt.ConfigureAwait(false))
         {
@@ -190,7 +193,7 @@ public class AsyncLockUnitTests
 
         using var cts = new CancellationTokenSource(250);
 
-        var vt = al.LockAsync(cts.Token);
+        ValueTask<AsyncLock.AsyncLockReleaser> vt = al.LockAsync(cts.Token);
 
         using (await vt.ConfigureAwait(false))
         {

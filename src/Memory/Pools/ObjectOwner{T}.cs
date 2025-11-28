@@ -29,7 +29,7 @@ public readonly struct ObjectOwner<T> : IDisposable, IEquatable<ObjectOwner<T>> 
     public ObjectOwner(ObjectPool<T> objectPool)
     {
         ObjectPool = objectPool ?? throw new ArgumentNullException(nameof(objectPool));
-        Object = objectPool.Get();
+        PooledObject = objectPool.Get();
     }
 
     /// <summary>
@@ -38,14 +38,14 @@ public readonly struct ObjectOwner<T> : IDisposable, IEquatable<ObjectOwner<T>> 
     private ObjectPool<T> ObjectPool { get; }
 
     /// <summary>
-    /// The Object obtained from the pool.
+    /// The pooled Object obtained from the pool.
     /// </summary>
-    public T Object { get; }
+    public T PooledObject { get; }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        ObjectPool.Return(Object);
+        ObjectPool.Return(PooledObject);
     }
 
     /// <inheritdoc/>
@@ -58,13 +58,13 @@ public readonly struct ObjectOwner<T> : IDisposable, IEquatable<ObjectOwner<T>> 
     public bool Equals(ObjectOwner<T> other)
     {
         return EqualityComparer<ObjectPool<T>>.Default.Equals(ObjectPool, other.ObjectPool) &&
-               EqualityComparer<T>.Default.Equals(Object, other.Object);
+               EqualityComparer<T>.Default.Equals(PooledObject, other.PooledObject);
     }
 
     /// <inheritdoc/>
     public override int GetHashCode()
     {
-        return HashCode.Combine(ObjectPool, Object);
+        return HashCode.Combine(ObjectPool, PooledObject);
     }
 
     /// <summary>

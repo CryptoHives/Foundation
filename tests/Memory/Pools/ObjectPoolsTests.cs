@@ -22,8 +22,8 @@ public class ObjectPoolsTests
         using ObjectOwner<StringBuilder> owner = ObjectPools.GetStringBuilder();
 
         // Assert
-        Assert.That(owner.Object, Is.Not.Null, "ObjectOwner.Object should not be null");
-        Assert.That(owner.Object, Is.InstanceOf<StringBuilder>(), "ObjectOwner.Object should be a StringBuilder");
+        Assert.That(owner.PooledObject, Is.Not.Null, "ObjectOwner.PooledObject should not be null");
+        Assert.That(owner.PooledObject, Is.InstanceOf<StringBuilder>(), "ObjectOwner.PooledObject should be a StringBuilder");
     }
 
     [Test]
@@ -32,7 +32,7 @@ public class ObjectPoolsTests
         StringBuilder sb1;
         using (ObjectOwner<StringBuilder> owner = ObjectPools.GetStringBuilder())
         {
-            sb1 = owner.Object;
+            sb1 = owner.PooledObject;
             sb1.Append("test");
             Assert.That(sb1.ToString(), Is.EqualTo("test"));
         }
@@ -43,7 +43,7 @@ public class ObjectPoolsTests
         // After dispose, the StringBuilder should be returned to the pool and cleared
         StringBuilder sb2;
         using ObjectOwner<StringBuilder> owner2 = ObjectPools.GetStringBuilder();
-        sb2 = owner2.Object;
+        sb2 = owner2.PooledObject;
 
         // The pool should clear the StringBuilder before reusing
         Assert.That(sb2.ToString(), Is.EqualTo(string.Empty));
@@ -65,7 +65,7 @@ public class ObjectPoolsTests
                 for (int i = 0; i < iterations; i++)
                 {
                     using ObjectOwner<StringBuilder> owner = ObjectPools.GetStringBuilder();
-                    StringBuilder sb = owner.Object;
+                    StringBuilder sb = owner.PooledObject;
                     sb.AppendFormat(CultureInfo.InvariantCulture, "{0}:{1}", myIndex, i);
                     Assert.That(sb.ToString(), Is.EqualTo($"{myIndex}:{i}"));
                 }

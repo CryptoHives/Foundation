@@ -3,6 +3,7 @@
 
 namespace Threading.Tests.Async.Pooled;
 
+#pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable CA2012 // Use ValueTasks correctly
 
 using BenchmarkDotNet.Attributes;

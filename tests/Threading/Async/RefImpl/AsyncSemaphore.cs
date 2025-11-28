@@ -38,7 +38,7 @@ public class AsyncSemaphore
             }
             else
             {
-                var waiter = new TaskCompletionSource<bool>();
+                var waiter = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _waiters.Enqueue(waiter);
                 return waiter.Task;
             }
