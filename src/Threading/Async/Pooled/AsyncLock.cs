@@ -47,17 +47,29 @@ using System.Threading.Tasks;
 /// </remarks>
 public sealed class AsyncLock
 {
-    private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
-    private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter = new();
+    private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters;
+    private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter;
+    private readonly ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser> _pool;
 #if NET9_0_OR_GREATER
-    private readonly Lock _mutex = new();
+    private readonly Lock _mutex;
 #else
-    private readonly object _mutex = new();
+    private readonly object _mutex;
 #endif
     private volatile int _taken;
 
-    // Pool for AsyncLockReleaser-typed value task sources.
-    private static readonly ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>> _pool = new DefaultObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>>(new PooledValueTaskSourceObjectPolicy<AsyncLockReleaser>());
+    /// <summary>
+    /// Constructs a new AsyncLock instance with optional custom pool and custom default queue size.
+    /// </summary>
+    /// <param name="pool">Custom pool for this instance.</param>
+    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
+    public AsyncLock(int defaultEventQueueSize = 0, ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser>? pool = null)
+    {
+        _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
+        _localWaiter = new();
+        _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
+        _mutex = new();
+        _taken = 0;
+    }
 
     /// <summary>
     /// A small value type returned by awaiting a lock acquisition. Disposing the releaser releases the lock.

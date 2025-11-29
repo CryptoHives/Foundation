@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1024 // Use properties where appropriate
+
 namespace CryptoHives.Foundation.Memory.Pools;
 
 using Microsoft.Extensions.ObjectPool;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 /// <summary>
@@ -21,11 +22,10 @@ public static class ObjectPools
     /// appropriately dispose the object and return it to the pool.
     /// <code>
     ///     using var owner = ObjectPools.GetStringBuilder();
-    ///     StringBuilder sb = owner.Object;
+    ///     StringBuilder sb = owner.PooledObject;
     ///     ...
     /// </code>
     /// </remarks>
-    [SuppressMessage("Design", "CA1024:Use properties where appropriate", Justification = "By Design")]
     public static ObjectOwner<StringBuilder> GetStringBuilder()
     {
         return new ObjectOwner<StringBuilder>(PoolFactory.SharedStringBuilderPool);

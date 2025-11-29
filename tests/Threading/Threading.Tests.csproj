@@ -33,6 +33,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\AssemblyInfo.cs" Link="Properties\AssemblyInfo.cs" />
     <Compile Include="..\Common\Main.cs" />
     <Compile Include="..\Common\Common.cs" />
   </ItemGroup>
@@ -45,5 +46,9 @@
   
   <ItemGroup>
     <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 </Project>

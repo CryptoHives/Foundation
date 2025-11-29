@@ -70,26 +70,32 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncAutoResetEvent
 {
-    private readonly Queue<ManualResetValueTaskSource<bool>> _waiters = new(PooledEventsCommon.DefaultEventQueueSize);
-    private readonly LocalManualResetValueTaskSource<bool> _localWaiter = new();
+    private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
+    private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
+    private readonly ValueTaskSourceObjectPool<bool> _pool;
 #if NET9_0_OR_GREATER
-    private readonly Lock _mutex = new();
+    private readonly Lock _mutex;
 #else
-    private readonly object _mutex = new();
+    private readonly object _mutex;
 #endif
     private volatile int _signaled;
     private bool _runContinuationAsynchronously;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AsyncAutoResetEvent"/>
-    /// class with the specified initial state.
+    /// Constructs a new AsyncLock instance with optional custom pool and custom default queue size.
     /// </summary>
     /// <param name="initialState">The initial state of the event.</param>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true)
+    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
+    /// <param name="pool">Custom pool for this instance.</param>
+    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, ValueTaskSourceObjectPool<bool>? pool = null)
     {
         _signaled = initialState ? 1 : 0;
         _runContinuationAsynchronously = runContinuationAsynchronously;
+        _localWaiter = new();
+        _mutex = new();
+        _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
+        _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
 
     /// <summary>
@@ -117,8 +123,8 @@ public sealed class AsyncAutoResetEvent
     /// </remarks>
     public bool RunContinuationAsynchronously
     {
-        get { return _runContinuationAsynchronously; }
-        set { _runContinuationAsynchronously = value; }
+        get => _runContinuationAsynchronously;
+        set => _runContinuationAsynchronously = value;
     }
 
     /// <summary>
@@ -182,7 +188,7 @@ public sealed class AsyncAutoResetEvent
             ManualResetValueTaskSource<bool> waiter;
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
-                waiter = PooledEventsCommon.GetPooledValueTaskSource();
+                waiter = _pool.Get();
             }
 
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
@@ -286,7 +292,7 @@ public sealed class AsyncAutoResetEvent
                 int count = _waiters.Count;
                 while (count-- > 0)
                 {
-                    var dequeued = _waiters.Dequeue();
+                    ManualResetValueTaskSource<bool> dequeued = _waiters.Dequeue();
                     if (ReferenceEquals(dequeued, waiter))
                     {
                         toCancel = waiter;

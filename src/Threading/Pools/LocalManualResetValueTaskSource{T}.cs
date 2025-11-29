@@ -16,7 +16,7 @@ using System.Threading.Tasks.Sources;
 /// and supports querying the status and retrieving the result. It is used as a local reusable value task source to
 /// minimize allocations.
 /// </remarks>
-internal sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
+public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
 {
     private ManualResetValueTaskSourceCore<T> _core;
     private CancellationToken _cancellationToken;

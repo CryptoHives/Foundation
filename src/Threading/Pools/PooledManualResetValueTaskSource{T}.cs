@@ -19,11 +19,11 @@ using System.Threading.Tasks.Sources;
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
 /// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
-internal sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
+public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
 {
     private ManualResetValueTaskSourceCore<T> _core;
-    private CancellationToken _cancellationToken;
     private CancellationTokenRegistration _cancellationTokenRegistration;
+    private CancellationToken _cancellationToken;
     private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
 
     /// <summary>
