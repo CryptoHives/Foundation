@@ -48,8 +48,7 @@ using System.Threading.Tasks;
 public sealed class AsyncLock
 {
     private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters;
-    private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter;
-    private readonly ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser> _pool;
+    private readonly ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
 #else
@@ -62,10 +61,9 @@ public sealed class AsyncLock
     /// </summary>
     /// <param name="pool">Custom pool for this instance.</param>
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
-    public AsyncLock(int defaultEventQueueSize = 0, ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser>? pool = null)
+    public AsyncLock(int defaultEventQueueSize = 0, ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>>? pool = null)
     {
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
-        _localWaiter = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _mutex = new();
         _taken = 0;
@@ -171,14 +169,7 @@ public sealed class AsyncLock
                 return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
             }
 
-            ManualResetValueTaskSource<AsyncLockReleaser> waiter;
-            if (!_localWaiter.TryGetValueTaskSource(out waiter))
-            {
-                var pooledWaiter = _pool.Get();
-                pooledWaiter.SetOwnerPool(_pool);
-                waiter = pooledWaiter;
-            }
-
+            var waiter = _pool.Get();
             waiter.RunContinuationsAsynchronously = true;
             waiter.CancellationToken = cancellationToken;
 

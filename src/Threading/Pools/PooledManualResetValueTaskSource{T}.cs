@@ -80,10 +80,15 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     /// <inheritdoc/>
     public override T GetResult(short token)
     {
-        T result = _core.GetResult(token);
-        _cancellationTokenRegistration.Dispose();
-        _ownerPool?.Return(this);
-        return result;
+        try
+        {
+            return _core.GetResult(token);
+        }
+        finally
+        {
+            _cancellationTokenRegistration.Dispose();
+            _ownerPool?.Return(this);
+        }
     }
 
     /// <inheritdoc/>

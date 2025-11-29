@@ -17,7 +17,7 @@ public class PooledManualResetValueTaskSourceTests
     public async Task ValueTaskCompletesWhenSetResultCalledAsync()
     {
         TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
 
         var vt = new ValueTask<bool>(vts, vts.Version);
         short version = vts.Version;
@@ -55,7 +55,7 @@ public class PooledManualResetValueTaskSourceTests
     public async Task ValueTaskAsTaskCompletesWhenSetResultCalledAsync()
     {
         TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
 
         var vt = new ValueTask<bool>(vts, vts.Version);
         short version = vts.Version;
@@ -95,7 +95,7 @@ public class PooledManualResetValueTaskSourceTests
     public async Task OnCompletedInvokesContinuationWhenSignaledAsync()
     {
         TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
 
         short token = vts.Version;
         var tcs = new TaskCompletionSource<bool>();
@@ -139,7 +139,7 @@ public class PooledManualResetValueTaskSourceTests
     public void TryResetIncrementsVersion()
     {
         TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
         short version = vts.Version;
 
         // version matches
