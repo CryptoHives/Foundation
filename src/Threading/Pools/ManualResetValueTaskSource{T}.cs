@@ -19,7 +19,7 @@ using System.Threading.Tasks.Sources;
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
 /// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
-internal abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
+public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
     /// <summary>
     /// Gets the version number of the current instance.

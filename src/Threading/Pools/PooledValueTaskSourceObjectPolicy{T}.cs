@@ -8,7 +8,7 @@ using Microsoft.Extensions.ObjectPool;
 /// <summary>
 /// A policy for pooling <see cref="PooledManualResetValueTaskSource{T}"/> instances.
 /// </summary>
-internal class PooledValueTaskSourceObjectPolicy<T> : PooledObjectPolicy<PooledManualResetValueTaskSource<T>>
+public class PooledValueTaskSourceObjectPolicy<T> : PooledObjectPolicy<PooledManualResetValueTaskSource<T>>
 {
     /// <inheritdoc />
     public override PooledManualResetValueTaskSource<T> Create()
@@ -19,6 +19,6 @@ internal class PooledValueTaskSourceObjectPolicy<T> : PooledObjectPolicy<PooledM
     /// <inheritdoc />
     public override bool Return(PooledManualResetValueTaskSource<T> obj)
     {
-        return obj.TryReset();
+        return obj?.TryReset() ?? false;
     }
 }
