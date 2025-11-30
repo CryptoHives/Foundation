@@ -1,50 +1,69 @@
-# AsyncAutoResetEvent Class
+# AsyncAutoResetEvent
 
-A pooled async auto-reset event for coordinating tasks where only one waiter is released per signal.
+## Overview
+
+`AsyncAutoResetEvent` is a pooled async version of `AutoResetEvent` that uses `ValueTask` to minimize memory allocations in high-throughput scenarios. It provides allocation-free async signaling by reusing pooled `IValueTaskSource` instances.
 
 ## Namespace
 
 ```csharp
-CryptoHives.Foundation.Threading.Async.Pooled
+using CryptoHives.Foundation.Threading.Async.Pooled;
 ```
 
-## Inheritance
-
-`Object` ? **`AsyncAutoResetEvent`**
-
-## Syntax
+## Class Declaration
 
 ```csharp
 public sealed class AsyncAutoResetEvent
 ```
 
-## Overview
+## Key Features
 
-`AsyncAutoResetEvent` is the async equivalent of `AutoResetEvent`. Each call to `Set()` releases exactly one waiting task. It uses pooled `IValueTaskSource` instances to minimize allocations, making it ideal for producer-consumer patterns and task coordination scenarios.
+- **Zero-allocation waits**: Uses pooled `IValueTaskSource<bool>` instances
+- **ValueTask-based API**: Low-allocation async operations
+- **Cancellation support**: Full `CancellationToken` support
+- **Thread-safe**: All operations are thread-safe
+- **FIFO queue**: Waiters are released in first-in-first-out order
 
-## Benefits
-
-- **One-at-a-Time**: Each `Set()` releases exactly ONE waiter
-- **Pooled Task Sources**: Minimal allocations through object pooling
-- **ValueTask-Based**: Returns `ValueTask` for efficient no allocation async operations
-- **Cancellation Support**: (planned) Supports `CancellationToken` for timeout and cancellation
-- **High Performance**: Optimized for high-frequency signaling
-
-## Constructors
-
-| Constructor | Description |
-|-------------|-------------|
-| `AsyncAutoResetEvent(bool initialState)` | Creates an event in the specified initial state (true = signaled, false = non-signaled) |
-
-## Methods
-
-### Set
+## Constructor
 
 ```csharp
-public void Set()
+public AsyncAutoResetEvent(
+    bool initialState = false, 
+    bool runContinuationAsynchronously = true, 
+    int defaultEventQueueSize = 0, 
+    ObjectPool<PooledManualResetValueTaskSource<bool>>? pool = null)
 ```
 
-Signals the event, releasing **one** waiting task. If no tasks are waiting, the next task to call `WaitAsync()` will complete immediately.
+### Parameters
+
+- `initialState`: The initial state of the event (default: `false`)
+- `runContinuationAsynchronously`: Controls whether continuations are forced to run asynchronously (default: `true`)
+- `defaultEventQueueSize`: The default waiter queue capacity (default: `8`)
+- `pool`: Optional custom object pool for `IValueTaskSource` instances
+
+## Properties
+
+### IsSet
+
+```csharp
+public bool IsSet { get; }
+```
+
+Gets whether this event is currently in the signaled state.
+
+### RunContinuationAsynchronously
+
+```csharp
+public bool RunContinuationAsynchronously { get; set; }
+```
+
+Controls how continuations are executed when the event is signaled:
+- `true` (default): Continuations queue to the thread pool, preventing the signaling thread from being blocked
+- `false`: Continuations may execute synchronously on the signaling thread
+
+**Performance Warning**: When `true`, storing `AsTask()` results before signaling causes severe performance degradation (10x-100x slower).
+
+## Methods
 
 ### WaitAsync
 
@@ -62,13 +81,49 @@ Asynchronously waits for the event to be signaled.
 **Throws**:
 - `OperationCanceledException` - If the operation is canceled
 
-### Dispose
+**Important**: The returned `ValueTask` can only be awaited or converted to `Task` **once**. Additional attempts throw `InvalidOperationException`.
+
+**Examples**:
 
 ```csharp
-public void Dispose()
+private readonly AsyncAutoResetEvent _event = new();
+
+// GOOD: Direct await
+await _event.WaitAsync(cancellationToken);
+
+// GOOD: Single AsTask() with multiple awaits
+Task t = _event.WaitAsync().AsTask();
+await t;
+await t;  // OK - awaiting Task multiple times is fine
+
+// BAD: Multiple ValueTask awaits
+ValueTask vt = _event.WaitAsync();
+await vt;
+await vt;  // Throws InvalidOperationException!
+
+// BAD: Storing AsTask() before Set() when RunContinuationAsynchronously=true
+Task slow = _event.WaitAsync().AsTask();  // Stored before Set()
+_event.Set();
+await slow;  // 10x-100x slower!
 ```
 
-Releases all resources used by the event.
+### Set
+
+```csharp
+public void Set()
+```
+
+Signals the event, releasing **one** waiting thread. If no threads are waiting, the event enters the signaled state, allowing the next `WaitAsync()` call to complete immediately.
+
+### SetAll
+
+```csharp
+public void SetAll()
+```
+
+Signals all currently waiting threads. If no threads are waiting, the event enters the signaled state.
+
+**Note**: Unlike `Set()`, this releases all queued waiters instead of just one.
 
 ## Usage Examples
 
@@ -76,29 +131,49 @@ Releases all resources used by the event.
 
 ```csharp
 private readonly AsyncAutoResetEvent _itemAvailable = new(false);
-private readonly Queue<string> _queue = new();
+private readonly Queue<WorkItem> _queue = new();
+private readonly object _queueLock = new();
 
-public void Produce(string item)
+// Producer
+public void Produce(WorkItem item)
 {
-    _queue.Enqueue(item);
+    lock (_queueLock)
+    {
+        _queue.Enqueue(item);
+    }
     _itemAvailable.Set(); // Release one consumer
 }
 
-public async Task<string> ConsumeAsync(CancellationToken ct = default)
+// Consumer
+public async Task<WorkItem> ConsumeAsync(CancellationToken ct)
 {
     await _itemAvailable.WaitAsync(ct);
-  return _queue.Dequeue();
+    
+    lock (_queueLock)
+    {
+        return _queue.Dequeue();
+    }
 }
 ```
 
-### With Initial State
+### Task Coordination
 
 ```csharp
-// Start in signaled state - first waiter proceeds immediately
-var readyEvent = new AsyncAutoResetEvent(initialState: true);
+private readonly AsyncAutoResetEvent _signal = new();
 
-// Start in non-signaled state - waiters must wait for Set()
-var workEvent = new AsyncAutoResetEvent(initialState: false);
+// Worker 1
+public async Task Worker1Async()
+{
+    await DoWork1();
+    _signal.Set();  // Signal Worker 2
+}
+
+// Worker 2
+public async Task Worker2Async(CancellationToken ct)
+{
+    await _signal.WaitAsync(ct);  // Wait for Worker 1
+    await DoWork2();
+}
 ```
 
 ### Sequential Task Execution
@@ -108,7 +183,7 @@ private readonly AsyncAutoResetEvent _canProceed = new(true);
 
 public async Task<T> ExecuteSequentiallyAsync<T>(Func<Task<T>> operation)
 {
-  await _canProceed.WaitAsync();
+    await _canProceed.WaitAsync();
     
     try
     {
@@ -121,19 +196,39 @@ public async Task<T> ExecuteSequentiallyAsync<T>(Func<Task<T>> operation)
 }
 ```
 
+### Throttled Processing
+
+```csharp
+private readonly AsyncAutoResetEvent _throttle = new(initialState: true);
+
+public async Task ProcessAsync(CancellationToken ct)
+{
+    await _throttle.WaitAsync(ct);
+    
+    try
+    {
+        await PerformOperationAsync();
+    }
+    finally
+    {
+        await Task.Delay(100);  // Throttle delay
+        _throttle.Set();
+    }
+}
+```
+
 ## Thread Safety
 
-? **Thread-safe**. All public methods are thread-safe and can be called concurrently.
+✓ **Thread-safe**. All public methods are thread-safe and can be called concurrently.
 
 ## Performance Characteristics
 
-- **Set()**: O(1) to signal one waiter
+- **Set()**: O(1) operation
+- **SetAll()**: O(n) for n waiters
 - **WaitAsync()**: O(1) when signaled, otherwise enqueues waiter
-- **Memory**: Minimal allocations due to pooled task sources
+- **Memory**: Zero allocations when waiters can be satisfied from pool
 
-## Behavior
-
-### Auto-Reset Behavior
+## Auto-Reset Behavior
 
 After each `Set()` call:
 1. If waiters exist: Release **one** waiter, event returns to non-signaled state
@@ -154,7 +249,7 @@ await evt.WaitAsync(); // Blocks until next Set()
 
 ## Best Practices
 
-### ? DO: Use for Producer-Consumer
+### ✓ DO: Use for Producer-Consumer
 
 ```csharp
 // Good: One item per signal
@@ -178,27 +273,24 @@ public class WorkQueue<T>
 }
 ```
 
-### DO: Use for Sequential Execution
+### ✓ DO: Always Await ValueTask
 
 ```csharp
-// Good: Ensure sequential execution
-private readonly AsyncAutoResetEvent _gate = new(true);
+// Good: Direct await
+await _event.WaitAsync();
 
-public async Task ProcessAsync(Data data)
-{
-    await _gate.WaitAsync();
-    try
-    {
-        await ProcessDataAsync(data);
-    }
-    finally
-    {
-        _gate.Set();
-}
-}
+// Good: Immediate AsTask()
+await _event.WaitAsync().AsTask();
 ```
 
-### DON'T: Use for Broadcasting
+### ✓ DO: Use Cancellation Tokens
+
+```csharp
+// Good: Support cancellation
+await _event.WaitAsync(cancellationToken);
+```
+
+### ✗ DON'T: Use for Broadcasting
 
 ```csharp
 // Bad: Only one waiter gets signaled
@@ -211,23 +303,36 @@ var task3 = evt.WaitAsync();
 
 evt.Set(); // Only ONE task completes!
 
-// Better: Use AsyncManualResetEvent for broadcasting
+// Better: Use SetAll() to release all waiters
+evt.SetAll(); // All tasks complete
+
+// Or use AsyncManualResetEvent for broadcasting
 ```
 
-### DON'T: Signal More Times Than Needed
+### ✗ DON'T: Store AsTask() Before Signaling
 
 ```csharp
-// Bad: Extra signals are wasted if no waiters
-for (int i = 0; i < 100; i++)
-{
-    evt.Set(); // If no waiters, this is wasted
-}
+// Bad: Causes 10x-100x performance degradation
+Task t = _event.WaitAsync().AsTask();
+_event.Set();
+await t;  // Much slower!
 
-// Better: Signal only when needed
-if (hasWaiters)
-{
-    evt.Set();
-}
+// Good: Await directly or AsTask() after Set()
+await _event.WaitAsync();
+```
+
+### ✗ DON'T: Await ValueTask Multiple Times
+
+```csharp
+// Bad: Throws InvalidOperationException
+ValueTask vt = _event.WaitAsync();
+await vt;
+await vt;  // Exception!
+
+// Good: Convert to Task for multiple awaits
+Task t = _event.WaitAsync().AsTask();
+await t;
+await t;  // OK
 ```
 
 ## Common Patterns
@@ -245,9 +350,9 @@ public class Throttler
         _timer = new Timer(_ => _throttle.Set(), null, interval, interval);
     }
     
-    public async Task<T> ExecuteAsync<T>(Func<Task<T>> operation)
+    public async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, CancellationToken ct = default)
     {
-        await _throttle.WaitAsync();
+        await _throttle.WaitAsync(ct);
         return await operation();
     }
 }
@@ -295,9 +400,9 @@ public class BatchProcessor<T>
         }
     }
     
-    public async Task<List<T>> GetBatchAsync()
+    public async Task<List<T>> GetBatchAsync(CancellationToken ct = default)
     {
-        await _batchReady.WaitAsync();
+        await _batchReady.WaitAsync(ct);
         
         lock (_batch)
         {
@@ -309,11 +414,22 @@ public class BatchProcessor<T>
 }
 ```
 
+## Benchmarks
+
+See [Benchmarks](benchmarks.md#asyncautoresetevent-benchmarks) for detailed performance comparisons.
+
+### Quick Summary (on .NET 10.0)
+
+- **Set**: ~4 ns (no allocations)
+- **WaitAsync (signaled)**: ~11 ns (no allocations)
+- **WaitAsync (not signaled, no contention)**: ~25-31 ns (no allocations without cancellation token)
+- **Under contention (100 iterations)**: ~3,300 ns vs ~2,900 ns (RefImpl) with ~6KB vs ~9.6KB allocations
+
 ## See Also
 
-- [AsyncManualResetEvent](asyncmanualresetevent.md)
-- [AsyncLock](asynclock.md)
-- [Threading Package Overview](index.md)
+- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [Benchmarks](benchmarks.md) - Detailed performance comparisons
 
 ---
 
