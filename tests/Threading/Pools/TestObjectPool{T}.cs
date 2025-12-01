@@ -12,7 +12,7 @@ using System.Threading;
 /// A counter tracks get object instances. Allows to check active objects in use.
 /// </summary>
 
-internal class TestObjectPool<T>
+internal class TestObjectPool<T> : ObjectPool<PooledManualResetValueTaskSource<T>> where T : notnull
 {
     private readonly ObjectPool<PooledManualResetValueTaskSource<T>> _valueTaskSourcePool;
     private readonly TestPooledValueTaskSourceObjectPolicy<T> _valueTaskSourcePoolPolicy;
@@ -29,15 +29,19 @@ internal class TestObjectPool<T>
     /// </summary>
     public int ActiveCount => _getCount - _valueTaskSourcePoolPolicy.ReturnedCount;
 
-    /// <summary>
-    /// Gets a ValueTaskSource from the pool.
-    /// </summary>
-    public PooledManualResetValueTaskSource<T> GetPooledValueTaskSource()
+    /// <inheritdoc/>
+    public override PooledManualResetValueTaskSource<T> Get()
     {
         PooledManualResetValueTaskSource<T> vts = _valueTaskSourcePool.Get();
         vts.SetOwnerPool(_valueTaskSourcePool);
         Interlocked.Increment(ref _getCount);
         return vts;
+    }
+
+    /// <inheritdoc/>
+    public override void Return(PooledManualResetValueTaskSource<T> obj)
+    {
+        _valueTaskSourcePool.Return(obj);
     }
 }
 

@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
+using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -71,8 +72,7 @@ using System.Threading.Tasks.Sources;
 public sealed class AsyncAutoResetEvent
 {
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
-    private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
-    private readonly ValueTaskSourceObjectPool<bool> _pool;
+    private readonly ObjectPool<PooledManualResetValueTaskSource<bool>> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
 #else
@@ -88,11 +88,10 @@ public sealed class AsyncAutoResetEvent
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for this instance.</param>
-    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, ValueTaskSourceObjectPool<bool>? pool = null)
+    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, ObjectPool<PooledManualResetValueTaskSource<bool>>? pool = null)
     {
         _signaled = initialState ? 1 : 0;
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _localWaiter = new();
         _mutex = new();
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
@@ -185,12 +184,7 @@ public sealed class AsyncAutoResetEvent
                 return new ValueTask(Task.FromException(new OperationCanceledException(cancellationToken)));
             }
 
-            ManualResetValueTaskSource<bool> waiter;
-            if (!_localWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.Get();
-            }
-
+            var waiter = _pool.Get();
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 

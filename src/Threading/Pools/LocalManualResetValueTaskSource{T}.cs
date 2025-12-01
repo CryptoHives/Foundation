@@ -75,10 +75,15 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     /// <inheritdoc/>
     public override T GetResult(short token)
     {
-        T result = _core.GetResult(token);
-        _cancellationTokenRegistration.Dispose();
-        TryReset();
-        return result;
+        try
+        {
+            return _core.GetResult(token);
+        }
+        finally
+        {
+            _cancellationTokenRegistration.Dispose();
+            TryReset();
+        }
     }
 
     /// <inheritdoc/>

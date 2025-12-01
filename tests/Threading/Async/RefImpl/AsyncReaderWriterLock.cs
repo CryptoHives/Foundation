@@ -9,7 +9,6 @@ namespace Threading.Tests.Async.RefImpl;
 
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -64,7 +63,7 @@ public class AsyncReaderWriterLock
     public AsyncReaderWriterLock()
     {
         _waitingWriters = new Queue<TaskCompletionSource<Releaser>>();
-        _waitingReader = new TaskCompletionSource<Releaser>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _waitingReader = new TaskCompletionSource<Releaser>();
         _readerReleaser = Task.FromResult(new Releaser(this, false));
         _writerReleaser = Task.FromResult(new Releaser(this, true));
     }
@@ -97,7 +96,7 @@ public class AsyncReaderWriterLock
             }
             else
             {
-                var waiter = new TaskCompletionSource<Releaser>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var waiter = new TaskCompletionSource<Releaser>();
                 _waitingWriters.Enqueue(waiter);
                 return waiter.Task;
             }
@@ -138,7 +137,7 @@ public class AsyncReaderWriterLock
                 toWake = _waitingReader;
                 _status = _readersWaiting;
                 _readersWaiting = 0;
-                _waitingReader = new TaskCompletionSource<Releaser>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _waitingReader = new TaskCompletionSource<Releaser>();
             }
             else
             {

@@ -5,12 +5,12 @@ namespace Threading.Tests.Async.Pooled;
 
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable CA2012 // Use ValueTasks correctly
+#pragma warning disable CA1062 // Validate arguments of public methods
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -63,7 +63,7 @@ using System.Threading.Tasks;
 [TestFixtureSource(nameof(FixtureArgs))]
 [MemoryDiagnoser(displayGenColumns: false)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "cancellationToken", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 [NonParallelizable]
 public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBenchmark
@@ -149,18 +149,19 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Pooled")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public Task PooledContSyncAsyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType),nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task PooledContSyncAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
-        return PooledAsyncAutoResetEventWaitThenSetAsync(ct, cancellationToken);
+        return PooledAsyncAutoResetEventWaitThenSetAsync(cancellationType);
     }
 
     [Test]
-    public Task PooledAsyncAutoResetEventContSyncWaitThenSetTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task PooledAsyncAutoResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
     {
         _eventPooled.RunContinuationAsynchronously = false;
-        return PooledAsyncAutoResetEventWaitThenSetAsync("Token", _cancellationToken);
+        return PooledAsyncAutoResetEventWaitThenSetAsync(cancellationType);
     }
 
     /// <summary>
@@ -180,18 +181,19 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "PooledAsValueTask")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public Task PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
-        return PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(ct, cancellationToken);
+        return PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(cancellationType);
     }
 
     [Test]
-    public Task PooledAsTaskAsyncAutoResetEventContSyncWaitThenSetTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task PooledAsTaskAsyncAutoResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
     {
         _eventPooled.RunContinuationAsynchronously = false;
-        return PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync("Token", _cancellationToken);
+        return PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(cancellationType);
     }
 
     /// <summary>
@@ -214,18 +216,19 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Benchmark(Description = "PooledAsTaskContSync")]
     [BenchmarkCategory("WaitThenSet", "PooledAsTask")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public Task PooledAsTaskContSyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task PooledAsTaskContSyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
-        return PooledAsTaskAutoResetEventWaitThenSetAsync(ct, cancellationToken);
+        return PooledAsTaskAutoResetEventWaitThenSetAsync(cancellationType);
     }
 
     [Test]
-    public Task PooledAsTaskRunSyncAutoResetEventContSyncWaitThenSetTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task PooledAsTaskRunSyncAutoResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
     {
         _eventPooled.RunContinuationAsynchronously = false;
-        return PooledAsTaskAutoResetEventWaitThenSetAsync("Token", _cancellationToken);
+        return PooledAsTaskAutoResetEventWaitThenSetAsync(cancellationType);
     }
 
     /// <summary>
@@ -249,13 +252,13 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Pooled")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public async Task PooledAsyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task PooledAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
         for (int i = 0; i < Iterations; i++)
         {
-            _valueTask[i] = _eventPooled.WaitAsync(cancellationToken);
+            _valueTask[i] = _eventPooled.WaitAsync(cancellationType.CancellationToken);
         }
 
         for (int i = 0; i < Iterations; i++)
@@ -290,13 +293,13 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "PooledAsValueTask")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public async Task PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
         for (int i = 0; i < Iterations; i++)
         {
-            _valueTask[i] = _eventPooled!.WaitAsync(cancellationToken);
+            _valueTask[i] = _eventPooled!.WaitAsync(cancellationType.CancellationToken);
         }
 
         for (int i = 0; i < Iterations; i++)
@@ -336,13 +339,13 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "PooledAsTask")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public async Task PooledAsTaskAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task PooledAsTaskAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
         for (int i = 0; i < Iterations; i++)
         {
-            _task[i] = _eventPooled!.WaitAsync(cancellationToken).AsTask();
+            _task[i] = _eventPooled!.WaitAsync(cancellationType.CancellationToken).AsTask();
         }
 
         for (int i = 0; i < Iterations; i++)
@@ -375,13 +378,13 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Nito.AsyncEx")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public async Task NitoAsyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task NitoAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
         for (int i = 0; i < Iterations; i++)
         {
-            _task[i] = _eventNitoAsync!.WaitAsync(cancellationToken);
+            _task[i] = _eventNitoAsync!.WaitAsync(cancellationType.CancellationToken);
         }
 
         for (int i = 0; i < Iterations; i++)
@@ -416,9 +419,9 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("WaitThenSet", "RefImpl")]
-    [TestCaseSource(nameof(CancelNoneParams))]
-    [ArgumentsSource(nameof(CancelNoneParams))]
-    public async Task RefImplAsyncAutoResetEventWaitThenSetAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
+    public async Task RefImplAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
         for (int i = 0; i < Iterations; i++)
         {

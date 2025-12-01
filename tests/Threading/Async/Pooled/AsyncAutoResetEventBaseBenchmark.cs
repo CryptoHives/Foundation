@@ -19,32 +19,14 @@ using NitoAsyncEx = Nito.AsyncEx;
 /// <summary>
 /// Base class for benchmarking and testing different implementations of AsyncAutoResetEvent.
 /// </summary>
-[SuppressMessage("Design", "CA1051:Do not declare visible instance fields", Justification = "Benchmarks require fastest access")]
 public abstract class AsyncAutoResetEventBaseBenchmark
 {
-    protected AsyncAutoResetEvent _eventPooled;
-    protected NitoAsyncEx.AsyncAutoResetEvent _eventNitoAsync;
-    protected RefImpl.AsyncAutoResetEvent _eventRefImp;
-    protected AutoResetEvent _eventStandard;
-    protected CancellationTokenSource _cancellationTokenSource;
-    protected CancellationToken _cancellationToken;
-
-    /// <summary>
-    /// The cancellation tokens for test and benchmark runs.
-    /// </summary>
-    public static IEnumerable<object[]> CancelParams()
-    {
-        yield return new object[] { "None", CancellationToken.None };
-        yield return new object[] { "Token", new CancellationTokenSource().Token };
-    }
-
-    /// <summary>
-    /// The cancellation tokens for test and benchmark runs.
-    /// </summary>
-    public static IEnumerable<object[]> CancelNoneParams()
-    {
-        yield return new object[] { "None", CancellationToken.None };
-    }
+    private protected AsyncAutoResetEvent _eventPooled;
+    private protected NitoAsyncEx.AsyncAutoResetEvent _eventNitoAsync;
+    private protected RefImpl.AsyncAutoResetEvent _eventRefImp;
+    private protected AutoResetEvent _eventStandard;
+    private protected CancellationTokenSource _cancellationTokenSource;
+    private protected CancellationToken _cancellationToken;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.

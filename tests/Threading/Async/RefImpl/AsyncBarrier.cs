@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 /// https://devblogs.microsoft.com/dotnet/building-async-coordination-primitives-part-4-asyncbarrier/.
 /// </summary>
 /// <remarks>
-/// A reference implementation that uses <see cref="ConcurrentStack{TaskCompletionSource}"/> and Task.
+/// A lock free reference implementation that uses <see cref="ConcurrentStack{TaskCompletionSource}"/> and Task.
 /// </remarks>
 public class AsyncBarrier
 {
@@ -32,9 +32,9 @@ public class AsyncBarrier
         _waiters = new ConcurrentStack<TaskCompletionSource<bool>>();
     }
 
-    public Task SignalAndWait()
+    public Task SignalAndWaitAsync()
     {
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tcs = new TaskCompletionSource<bool>();
         _waiters.Push(tcs);
         if (Interlocked.Decrement(ref _remainingParticipants) == 0)
         {

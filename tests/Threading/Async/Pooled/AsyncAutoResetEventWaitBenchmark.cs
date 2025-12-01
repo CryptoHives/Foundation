@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE0060 // Remove unused parameter
+#pragma warning disable CA1062 // Validate arguments of public methods
 
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NUnit.Framework;
-using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -38,7 +38,7 @@ using System.Threading.Tasks;
 [TestFixture]
 [MemoryDiagnoser(displayGenColumns: false)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "cancellationToken", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
 {
@@ -52,11 +52,11 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "PooledAsTask")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public async Task PooledAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task PooledAsyncAutoResetEventTaskWaitAsync(CancellationType cancellationType)
     {
-        ValueTask vt = _eventPooled!.WaitAsync(cancellationToken);
+        ValueTask vt = _eventPooled!.WaitAsync(cancellationType.CancellationToken);
         _eventPooled.Set();
         await vt.AsTask().ConfigureAwait(false);
     }
@@ -71,11 +71,11 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Pooled")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public async Task PooledAsyncAutoResetEventValueTaskWaitAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task PooledAsyncAutoResetEventValueTaskWaitAsync(CancellationType cancellationType)
     {
-        ValueTask vt = _eventPooled!.WaitAsync(cancellationToken);
+        ValueTask vt = _eventPooled!.WaitAsync(cancellationType.CancellationToken);
         _eventPooled.Set();
         await vt.ConfigureAwait(false);
     }
@@ -91,11 +91,11 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("Wait", "Nito.AsyncEx")]
-    [TestCaseSource(nameof(CancelParams))]
-    [ArgumentsSource(nameof(CancelParams))]
-    public async Task NitoAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task NitoAsyncAutoResetEventTaskWaitAsync(CancellationType cancellationType)
     {
-        Task t = _eventNitoAsync!.WaitAsync(cancellationToken);
+        Task t = _eventNitoAsync!.WaitAsync(cancellationType.CancellationToken);
         _eventNitoAsync.Set();
         await t.ConfigureAwait(false);
     }
@@ -111,9 +111,9 @@ public class AsyncAutoResetEventWaitBenchmark : AsyncAutoResetEventBaseBenchmark
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Wait", "RefImpl")]
-    [TestCaseSource(nameof(CancelNoneParams))]
-    [ArgumentsSource(nameof(CancelNoneParams))]
-    public async Task RefImplAsyncAutoResetEventTaskWaitAsync(string ct, CancellationToken cancellationToken)
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
+    public async Task RefImplAsyncAutoResetEventTaskWaitAsync(CancellationType cancellationType)
     {
         Task t = _eventRefImp!.WaitAsync();
         _eventRefImp.Set();

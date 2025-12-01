@@ -16,8 +16,8 @@ public class PooledManualResetValueTaskSourceTests
     [Test, CancelAfter(1000)]
     public async Task ValueTaskCompletesWhenSetResultCalledAsync()
     {
-        TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        var tpvts = new TestObjectPool<bool>();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
 
         var vt = new ValueTask<bool>(vts, vts.Version);
         short version = vts.Version;
@@ -48,14 +48,14 @@ public class PooledManualResetValueTaskSourceTests
         _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
         _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test, CancelAfter(1000)]
     public async Task ValueTaskAsTaskCompletesWhenSetResultCalledAsync()
     {
-        TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        var tpvts = new TestObjectPool<bool>();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
 
         var vt = new ValueTask<bool>(vts, vts.Version);
         short version = vts.Version;
@@ -88,14 +88,14 @@ public class PooledManualResetValueTaskSourceTests
         _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
         _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
     public async Task OnCompletedInvokesContinuationWhenSignaledAsync()
     {
-        TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        var tpvts = new TestObjectPool<bool>();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
 
         short token = vts.Version;
         var tcs = new TaskCompletionSource<bool>();
@@ -132,14 +132,14 @@ public class PooledManualResetValueTaskSourceTests
             Assert.That(after, Is.Not.EqualTo(token));
         }
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
     public void TryResetIncrementsVersion()
     {
-        TestObjectPool<bool> tpvts = new TestObjectPool<bool>();
-        PooledManualResetValueTaskSource<bool> vts = tpvts.GetPooledValueTaskSource();
+        var tpvts = new TestObjectPool<bool>();
+        PooledManualResetValueTaskSource<bool> vts = tpvts.Get();
         short version = vts.Version;
 
         // version matches
@@ -161,6 +161,6 @@ public class PooledManualResetValueTaskSourceTests
             Assert.That(after, Is.Not.EqualTo(version));
         }
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 }

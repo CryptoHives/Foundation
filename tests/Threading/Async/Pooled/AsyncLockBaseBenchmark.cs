@@ -6,7 +6,6 @@ namespace Threading.Tests.Async.Pooled;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 #if SIGNASSEMBLY
@@ -18,23 +17,22 @@ using NitoAsyncEx = Nito.AsyncEx;
 /// <summary>
 /// Base class for benchmarking and testing different implementations of AsyncAutoResetEvent.
 /// </summary>
-[SuppressMessage("Design", "CA1051:Do not declare visible instance fields", Justification = "Benchmarks require fastest access")]
 public abstract class AsyncLockBaseBenchmark
 {
 #if NET9_0_OR_GREATER
-    protected Lock _lock;
+    private protected Lock _lock;
 #endif
-    protected object _objectLock;
-    protected AsyncLock _lockPooled;
-    protected SemaphoreSlim _semaphoreSlim;
-    protected NitoAsyncEx.AsyncLock _lockNitoAsync;
-    protected AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
-    protected RefImpl.AsyncLock _lockRefImp;
+    private protected object _objectLock;
+    private protected AsyncLock _lockPooled;
+    private protected SemaphoreSlim _semaphoreSlim;
+    private protected NitoAsyncEx.AsyncLock _lockNitoAsync;
+    private protected AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
+    private protected RefImpl.AsyncLock _lockRefImp;
 #if !NETFRAMEWORK
-    protected NeoSmart.AsyncLock.AsyncLock _lockNeoSmart;
+    private protected NeoSmart.AsyncLock.AsyncLock _lockNeoSmart;
 #endif
-    protected CancellationTokenSource _cancellationTokenSource;
-    protected CancellationToken _cancellationToken;
+    private protected CancellationTokenSource _cancellationTokenSource;
+    private protected CancellationToken _cancellationToken;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.

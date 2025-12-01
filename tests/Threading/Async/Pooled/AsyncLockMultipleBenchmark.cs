@@ -5,6 +5,7 @@ namespace Threading.Tests.Async.Pooled;
 
 #pragma warning disable IDE0058 // Expression value is never used
 #pragma warning disable CA2012 // Use ValueTasks correctly
+#pragma warning disable CA1062 // Validate arguments of public methods
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
@@ -80,10 +81,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     }
 
     [Test]
-    public Task LockUnlockSemaphoreSlimMultipleTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockSemaphoreSlimMultipleTestAsync(CancellationType cancellationType)
     {
         SemaphoreSlimGlobalSetup();
-        return LockUnlockSemaphoreSlimMultipleAsync();
+        return LockUnlockSemaphoreSlimMultipleAsync(cancellationType);
     }
 
     [GlobalSetup(Target = nameof(LockUnlockSemaphoreSlimMultipleAsync))]
@@ -97,14 +99,16 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Benchmark for SemaphoreSlim used as async lock with multiple queued waiters.
     /// </summary>
     [Benchmark]
-    public async Task LockUnlockSemaphoreSlimMultipleAsync()
+    [BenchmarkCategory("Multiple", "SemaphoreSlim")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockSemaphoreSlimMultipleAsync(CancellationType cancellationType)
     {
-        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        await _semaphoreSlim.WaitAsync(cancellationType.CancellationToken).ConfigureAwait(false);
         try
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _tasks![i] = _semaphoreSlim.WaitAsync();
+                _tasks![i] = _semaphoreSlim.WaitAsync(cancellationType.CancellationToken);
             }
         }
         finally
@@ -120,10 +124,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     }
 
     [Test]
-    public Task LockUnlockPooledMultipleTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockPooledMultipleTestAsync(CancellationType cancellationType)
     {
         PooledGlobalSetup();
-        return LockUnlockPooledMultipleAsync();
+        return LockUnlockPooledMultipleAsync(cancellationType);
     }
 
     [GlobalSetup(Target = nameof(LockUnlockPooledMultipleAsync))]
@@ -142,13 +147,15 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// by reusing pooled IValueTaskSource instances for queued waiters.
     /// </remarks>
     [Benchmark]
-    public async Task LockUnlockPooledMultipleAsync()
+    [BenchmarkCategory("Multiple", "Pooled")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockPooledMultipleAsync(CancellationType cancellationType)
     {
-        using (await _lockPooled.LockAsync().ConfigureAwait(false))
+        using (await _lockPooled.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockHandle![i] = _lockPooled.LockAsync();
+                _lockHandle![i] = _lockPooled.LockAsync(cancellationType.CancellationToken);
             }
         }
 
@@ -159,10 +166,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     }
 
     [Test]
-    public Task LockUnlockPooledTaskMultipleTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockPooledTaskMultipleTestAsync(CancellationType cancellationType)
     {
         PooledTaskGlobalSetup();
-        return LockUnlockPooledTaskMultipleAsync();
+        return LockUnlockPooledTaskMultipleAsync(cancellationType);
     }
 
     [GlobalSetup(Target = nameof(LockUnlockPooledTaskMultipleAsync))]
@@ -180,13 +188,15 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// This pattern incurs Task allocation overhead compared to awaiting ValueTask directly.
     /// </remarks>
     [Benchmark]
-    public async Task LockUnlockPooledTaskMultipleAsync()
+    [BenchmarkCategory("Multiple", "PooledTask")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockPooledTaskMultipleAsync(CancellationType cancellationType)
     {
-        using (await _lockPooled.LockAsync().ConfigureAwait(false))
+        using (await _lockPooled.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _tasksReleaser![i] = _lockPooled.LockAsync().AsTask();
+                _tasksReleaser![i] = _lockPooled.LockAsync(cancellationType.CancellationToken).AsTask();
             }
         }
 
@@ -198,10 +208,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 
 #if !SIGNASSEMBLY
     [Test]
-    public Task LockUnlockNitoMultipleTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockNitoMultipleTestAsync(CancellationType cancellationType)
     {
         NitoGlobalSetup();
-        return LockUnlockNitoMultipleAsync();
+        return LockUnlockNitoMultipleAsync(cancellationType);
     }
 
     [GlobalSetup(Target = nameof(LockUnlockNitoMultipleAsync))]
@@ -219,13 +230,15 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// This implementation uses Task-based primitives and allocates per queued waiter.
     /// </remarks>
     [Benchmark]
-    public async Task LockUnlockNitoMultipleAsync()
+    [BenchmarkCategory("Multiple", "Nito")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockNitoMultipleAsync(CancellationType cancellationType)
     {
-        using (await _lockNitoAsync.LockAsync().ConfigureAwait(false))
+        using (await _lockNitoAsync.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockNitoHandle![i] = _lockNitoAsync.LockAsync();
+                _lockNitoHandle![i] = _lockNitoAsync.LockAsync(cancellationType.CancellationToken);
             }
         }
 
@@ -238,10 +251,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 
 #if !NETFRAMEWORK
     [Test]
-    public Task LockUnlockNeoSmartMultipleTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockNeoSmartMultipleTestAsync(CancellationType cancellationType)
     {
         NeoSmartGlobalSetup();
-        return LockUnlockNeoSmartMultipleAsync();
+        return LockUnlockNeoSmartMultipleAsync(cancellationType);
     }
 
     [GlobalSetup(Target = nameof(LockUnlockNeoSmartMultipleAsync))]
@@ -261,13 +275,15 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Task, the behavior differs here as it can directly pass a completed task for nested waits.
     /// </remarks>
     [Benchmark]
-    public async Task LockUnlockNeoSmartMultipleAsync()
+    [BenchmarkCategory("Multiple", "NeoSmart")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockNeoSmartMultipleAsync(CancellationType cancellationType)
     {
-        using (await _lockNeoSmart.LockAsync().ConfigureAwait(false))
+        using (await _lockNeoSmart.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockNeoSmartHandle![i] = _lockNeoSmart.LockAsync();
+                _lockNeoSmartHandle![i] = _lockNeoSmart.LockAsync(cancellationType.CancellationToken);
             }
         }
 
@@ -280,10 +296,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 
 
     [Test]
-    public Task LockUnlockRefImplMultipleTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
+    public Task LockUnlockRefImplMultipleTestAsync(CancellationType cancellationType)
     {
         RefImplGlobalSetup();
-        return LockUnlockRefImplMultipleAsync();
+        return LockUnlockRefImplMultipleAsync(cancellationType);
     }
 
     [GlobalSetup(Target = nameof(LockUnlockRefImplMultipleAsync))]
@@ -302,7 +319,9 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Allocates a new TaskCompletionSource per queued waiter.
     /// </remarks>
     [Benchmark(Baseline = true)]
-    public async Task LockUnlockRefImplMultipleAsync()
+    [BenchmarkCategory("Multiple", "RefImpl")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
+    public async Task LockUnlockRefImplMultipleAsync(CancellationType cancellationType)
     {
         using (await _lockRefImp.LockAsync().ConfigureAwait(false))
         {
@@ -319,10 +338,11 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     }
 
     [Test]
-    public Task LockUnlockNonKeyedMultipleTestAsync()
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockNonKeyedMultipleTestAsync(CancellationType cancellationType)
     {
         NonKeyedGlobalSetup();
-        return LockUnlockNonKeyedMultipleAsync();
+        return LockUnlockNonKeyedMultipleAsync(cancellationType);
     }
 
     [GlobalSetup(Target = nameof(LockUnlockNonKeyedMultipleAsync))]
@@ -340,13 +360,15 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// This high-performance library uses ValueTask-based primitives and optimized pooling strategies.
     /// </remarks>
     [Benchmark]
-    public async Task LockUnlockNonKeyedMultipleAsync()
+    [BenchmarkCategory("Multiple", "NonKeyed")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockNonKeyedMultipleAsync(CancellationType cancellationType)
     {
-        using (await _lockNonKeyed.LockAsync().ConfigureAwait(false))
+        using (await _lockNonKeyed.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockNonKeyedHandle![i] = _lockNonKeyed.LockAsync();
+                _lockNonKeyedHandle![i] = _lockNonKeyed.LockAsync(cancellationType.CancellationToken);
             }
         }
 

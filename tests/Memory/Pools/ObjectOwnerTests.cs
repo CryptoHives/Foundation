@@ -15,7 +15,7 @@ public class ObjectOwnerTests
     public void EqualsWhenStructIsCopiedEqualsAndHashCodeMatch()
     {
         var pool = new DefaultObjectPool<StringBuilder>(new StringBuilderPooledObjectPolicy());
-        ObjectOwner<StringBuilder> owner1 = new ObjectOwner<StringBuilder>(pool);
+        var owner1 = new ObjectOwner<StringBuilder>(pool);
 
         try
         {
@@ -39,8 +39,8 @@ public class ObjectOwnerTests
     {
         var pool = new DefaultObjectPool<StringBuilder>(new StringBuilderPooledObjectPolicy());
 
-        using ObjectOwner<StringBuilder> owner1 = new ObjectOwner<StringBuilder>(pool);
-        using ObjectOwner<StringBuilder> owner2 = new ObjectOwner<StringBuilder>(pool);
+        using var owner1 = new ObjectOwner<StringBuilder>(pool);
+        using var owner2 = new ObjectOwner<StringBuilder>(pool);
 
         Assert.That(owner1, Is.Not.EqualTo(owner2), "Distinct pooled objects should not be equal even if from same pool");
         Assert.That(((object)owner1), Is.Not.EqualTo(owner2), "Equals(object) should return false for a different ObjectOwner");
@@ -52,8 +52,8 @@ public class ObjectOwnerTests
         var poolA = new DefaultObjectPool<StringBuilder>(new StringBuilderPooledObjectPolicy());
         var poolB = new DefaultObjectPool<StringBuilder>(new StringBuilderPooledObjectPolicy());
 
-        using ObjectOwner<StringBuilder> ownerA = new ObjectOwner<StringBuilder>(poolA);
-        using ObjectOwner<StringBuilder> ownerB = new ObjectOwner<StringBuilder>(poolB);
+        using var ownerA = new ObjectOwner<StringBuilder>(poolA);
+        using var ownerB = new ObjectOwner<StringBuilder>(poolB);
 
         Assert.That(ownerA, Is.Not.EqualTo(ownerB), "Owners from different pools should not be equal");
     }
@@ -62,7 +62,7 @@ public class ObjectOwnerTests
     public void EqualsObjectOfDifferentTypeReturnsFalse()
     {
         var pool = new DefaultObjectPool<StringBuilder>(new StringBuilderPooledObjectPolicy());
-        using ObjectOwner<StringBuilder> owner = new ObjectOwner<StringBuilder>(pool);
+        using var owner = new ObjectOwner<StringBuilder>(pool);
 
         Assert.That((object)owner, Is.Not.EqualTo(new object()), "Equals(object) should return false for unrelated types");
     }
