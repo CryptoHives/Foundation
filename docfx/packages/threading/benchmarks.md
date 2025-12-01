@@ -32,6 +32,7 @@ Notes:
 - Use `Release` builds for meaningful results.
 - All benchmarks are also run as tests in NUnit to validate correctness.
 - The test runner disables some BenchmarkDotNet validators because the test assembly references NUnit; keep the provided `ManualConfig` in `tests/Common/Main.cs`.
+- Switch computer to high-performance mode and close other applications for more stable results.
 - Benchmarks are non-parallelizable; run them on an otherwise idle machine for stable output.
 
 ### Where results appear
@@ -84,10 +85,10 @@ Just the overhead of setting the event without any waiters. There is no contenti
 
 | Method                        | Mean       | Ratio | Allocated | Alloc Ratio |
 |------------------------------ |-----------:|------:|----------:|------------:|
-| PooledAsyncAutoResetEventSet  |   3.920 ns |  0.90 |         - |          NA |
-| RefImplAsyncAutoResetEventSet |   4.340 ns |  1.00 |         - |          NA |
-| NitoAsyncAutoResetEventSet    |   4.574 ns |  1.05 |         - |          NA |
-| AutoResetEventSet             | 230.634 ns | 53.14 |         - |          NA |
+| PooledAsyncAutoResetEventSet  |   3.909 ns |  0.90 |         - |          NA |
+| RefImplAsyncAutoResetEventSet |   4.348 ns |  1.00 |         - |          NA |
+| NitoAsyncAutoResetEventSet    |   4.541 ns |  1.04 |         - |          NA |
+| AutoResetEventSet             | 229.109 ns | 52.69 |         - |          NA |
 
 #### AsyncAutoResetEvent SetThenWait Benchmark
 
@@ -95,25 +96,25 @@ This is the fast path if the event is already Set and an immediate return from W
 
 | Method                                          | Mean     | Ratio | Allocated | Alloc Ratio |
 |------------------------------------------------ |---------:|------:|----------:|------------:|
-| PooledAsyncAutoResetEventSetThenWaitAsync       | 11.01 ns |  0.63 |         - |          NA |
-| PooledAsTaskAsyncAutoResetEventSetThenWaitAsync | 11.12 ns |  0.64 |         - |          NA |
-| NitoAsyncAutoResetEventSetThenWaitAsync         | 17.00 ns |  0.98 |         - |          NA |
-| RefImplAsyncAutoResetEventSetThenWaitAsync      | 17.38 ns |  1.00 |         - |          NA |
+| PooledAsTaskAsyncAutoResetEventSetThenWaitAsync | 11.00 ns |  0.64 |         - |          NA |
+| PooledAsyncAutoResetEventSetThenWaitAsync       | 11.04 ns |  0.64 |         - |          NA |
+| NitoAsyncAutoResetEventSetThenWaitAsync         | 16.28 ns |  0.94 |         - |          NA |
+| RefImplAsyncAutoResetEventSetThenWaitAsync      | 17.28 ns |  1.00 |         - |          NA |
 
 #### AsyncAutoResetEvent Wait Benchmark
 
 The benchmark measures the overhead of waiting on an unset event with no contention. Here the implementations have to start to allocate waiter objects. The pooled implementations can handle the requests without allocation and are almost on parity with the ref implementation. With the cancellation token an allocation is required for all implementations.
 
-| Method                                      | ct    | Mean      | Ratio | Allocated | Alloc Ratio |
-|-------------------------------------------- |------ |----------:|------:|----------:|------------:|
-| RefImplAsyncAutoResetEventTaskWaitAsync     | None  |  25.40 ns |  1.00 |      96 B |        1.00 |
-| PooledAsyncAutoResetEventTaskWaitAsync      | None  |  31.33 ns |  1.23 |         - |        0.00 |
-| NitoAsyncAutoResetEventTaskWaitAsync        | None  |  31.87 ns |  1.25 |     160 B |        1.67 |
-| PooledAsyncAutoResetEventValueTaskWaitAsync | None  |  40.85 ns |  1.61 |         - |        0.00 |
-|                                             |       |           |       |           |             |
-| PooledAsyncAutoResetEventValueTaskWaitAsync | Token |  56.45 ns |     ? |      64 B |           ? |
-| PooledAsyncAutoResetEventTaskWaitAsync      | Token |  62.95 ns |     ? |      64 B |           ? |
-| NitoAsyncAutoResetEventTaskWaitAsync        | Token | 331.26 ns |     ? |     400 B |           ? |
+| Method                                      | cancellationType | Mean      | Ratio | Allocated | Alloc Ratio |
+|-------------------------------------------- |----------------- |----------:|------:|----------:|------------:|
+| RefImplAsyncAutoResetEventTaskWaitAsync     | None             |  24.32 ns |  1.00 |      96 B |        1.00 |
+| PooledAsyncAutoResetEventTaskWaitAsync      | None             |  31.33 ns |  1.29 |         - |        0.00 |
+| NitoAsyncAutoResetEventTaskWaitAsync        | None             |  31.97 ns |  1.31 |     160 B |        1.67 |
+| PooledAsyncAutoResetEventValueTaskWaitAsync | None             |  35.13 ns |  1.44 |         - |        0.00 |
+|                                             |                  |           |       |           |             |
+| PooledAsyncAutoResetEventTaskWaitAsync      | NotCancelled     |  55.28 ns |     ? |      64 B |           ? |
+| PooledAsyncAutoResetEventValueTaskWaitAsync | NotCancelled     |  56.62 ns |     ? |      64 B |           ? |
+| NitoAsyncAutoResetEventTaskWaitAsync        | NotCancelled     | 330.50 ns |     ? |     400 B |           ? |
 
 #### AsyncAutoResetEvent WaitThenSet Benchmark with varying contention (Iterations)
 
@@ -122,89 +123,89 @@ PooledAsTask is allocating a Task for awaiting, hence it adds to memory. ContSyn
 
 With one iteration, the result is similar to the previous Wait benchmark, but the pooled implementations with ValueTask show slightly better performance. It can be seen that awaiting with AsTask adds heavy overhead and extra allocations. This is due to the implementation in ManualResetValueTaskSource when RunContinuationsAsynchronously is enabled.
 
-| Method                                                       | Iterations | ct    | Mean          | Ratio | Allocated | Alloc Ratio |
-|------------------------------------------------------------- |----------- |------ |--------------:|------:|----------:|------------:|
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 1          | None  |      33.96 ns |  0.57 |         - |        0.00 |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 1          | None  |      34.85 ns |  0.58 |         - |        0.00 |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 1          | None  |      37.36 ns |  0.63 |         - |        0.00 |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 1          | None  |      38.10 ns |  0.64 |     160 B |        1.67 |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 1          | None  |      41.50 ns |  0.70 |         - |        0.00 |
-| PooledAsTaskContSync                                         | 1          | None  |      49.95 ns |  0.84 |      80 B |        0.83 |
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 1          | None  |      59.74 ns |  1.00 |      96 B |        1.00 |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 1          | None  |     400.12 ns |  6.70 |     232 B |        2.42 |
-|                                                              |            |       |               |       |           |             |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 1          | Token |      52.16 ns |     ? |      64 B |           ? |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 1          | Token |      53.36 ns |     ? |      64 B |           ? |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 1          | Token |      57.14 ns |     ? |      64 B |           ? |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 1          | Token |      57.22 ns |     ? |      64 B |           ? |
-| PooledAsTaskContSync                                         | 1          | Token |      77.67 ns |     ? |     144 B |           ? |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 1          | Token |     337.78 ns |     ? |     400 B |           ? |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 1          | Token |     468.45 ns |     ? |     296 B |           ? |
+| Method                                                       | Iterations | cancellationType | Mean          | Ratio | Allocated | Alloc Ratio |
+|------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|------------:|
+| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 1          | None             |      31.25 ns |  1.00 |      96 B |        1.00 |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 1          | None             |      34.68 ns |  1.11 |         - |        0.00 |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 1          | None             |      35.05 ns |  1.12 |         - |        0.00 |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 1          | None             |      36.56 ns |  1.17 |         - |        0.00 |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 1          | None             |      36.90 ns |  1.18 |     160 B |        1.67 |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 1          | None             |      37.62 ns |  1.20 |         - |        0.00 |
+| PooledAsTaskContSync                                         | 1          | None             |      50.64 ns |  1.62 |      80 B |        0.83 |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 1          | None             |     464.75 ns | 14.87 |     232 B |        2.42 |
+|                                                              |            |                  |               |       |           |             |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 1          | NotCancelled     |      56.59 ns |     ? |      64 B |           ? |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 1          | NotCancelled     |      56.88 ns |     ? |      64 B |           ? |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 1          | NotCancelled     |      56.97 ns |     ? |      64 B |           ? |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 1          | NotCancelled     |      63.16 ns |     ? |      64 B |           ? |
+| PooledAsTaskContSync                                         | 1          | NotCancelled     |      82.37 ns |     ? |     144 B |           ? |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 1          | NotCancelled     |     346.65 ns |     ? |     400 B |           ? |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 1          | NotCancelled     |     538.74 ns |     ? |     296 B |           ? |
 
 With two iterations, contention starts to increase in a linear fashion. The pooled implementations with ValueTask again show the best performance and no allocations, only outperformed by the reference implementation. The RefImpl and Nito implementations start to allocate more memory due to multiple waiters. The PooledAsTask implementation again shows the highest overhead due to the Task allocations per waiter.
 
-| Method                                                       | Iterations | ct    | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------------------------------- |----------- |------ |-------------:|------:|----------:|------------:|
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 2          | None  |      55.35 ns |  1.00 |     192 B |        1.00 |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 2          | None  |      66.63 ns |  1.20 |         - |        0.00 |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 2          | None  |      69.49 ns |  1.26 |         - |        0.00 |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 2          | None  |      72.72 ns |  1.31 |         - |        0.00 |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 2          | None  |      74.06 ns |  1.34 |         - |        0.00 |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 2          | None  |      74.45 ns |  1.35 |     320 B |        1.67 |
-| PooledAsTaskContSync                                         | 2          | None  |     109.80 ns |  1.98 |     160 B |        0.83 |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 2          | None  |     898.70 ns | 16.24 |     344 B |        1.79 |
-|                                                              |            |       |               |       |           |             |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 2          | Token |     101.11 ns |     ? |     128 B |           ? |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 2          | Token |     102.22 ns |     ? |     128 B |           ? |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 2          | Token |     112.57 ns |     ? |     128 B |           ? |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 2          | Token |     113.01 ns |     ? |     128 B |           ? |
-| PooledAsTaskContSync                                         | 2          | Token |     148.57 ns |     ? |     288 B |           ? |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 2          | Token |     594.21 ns |     ? |     800 B |           ? |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 2          | Token |     981.18 ns |     ? |     472 B |           ? |
+| Method                                                       | Iterations | cancellationType | Mean          | Ratio | Allocated | Alloc Ratio |
+|------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|------------:|
+| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 2          | None             |      55.68 ns |  1.00 |     192 B |        1.00 |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 2          | None             |      66.39 ns |  1.19 |         - |        0.00 |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 2          | None             |      66.88 ns |  1.20 |         - |        0.00 |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 2          | None             |      69.50 ns |  1.25 |     320 B |        1.67 |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 2          | None             |      71.82 ns |  1.29 |         - |        0.00 |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 2          | None             |      74.15 ns |  1.33 |         - |        0.00 |
+| PooledAsTaskContSync                                         | 2          | None             |     105.16 ns |  1.89 |     160 B |        0.83 |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 2          | None             |     883.71 ns | 15.87 |     344 B |        1.79 |
+|                                                              |            |                  |               |       |           |             |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 2          | NotCancelled     |     110.39 ns |     ? |     128 B |           ? |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 2          | NotCancelled     |     110.51 ns |     ? |     128 B |           ? |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 2          | NotCancelled     |     111.60 ns |     ? |     128 B |           ? |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 2          | NotCancelled     |     112.51 ns |     ? |     128 B |           ? |
+| PooledAsTaskContSync                                         | 2          | NotCancelled     |     150.59 ns |     ? |     288 B |           ? |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 2          | NotCancelled     |     617.75 ns |     ? |     800 B |           ? |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 2          | NotCancelled     |     940.93 ns |     ? |     472 B |           ? |
 
 With ten iterations, contention increases further. The pooled implementations with ValueTask continue to show strong performance and zero allocations, only outperformed by the reference implementation that doesn't support cancellation tokens. The RefImpl and Nito implementations allocate even more memory due to the increased number of waiters. The PooledAsTask implementation continues to show the highest overhead due to Task allocations per waiter, but remains as fast as the pooled implementations.
 The only pooled outlier uses AsTask with async continuations, a combination that should really be avoided based on these results. With cancellation token the pooled implementations outperform Nito by at least 5 times.
 
-| Method                                                       | Iterations | ct    | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------------------------------- |----------- |------ |-------------:|------:|----------:|------------:|
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 10         | None  |     289.66 ns |  1.00 |     960 B |        1.00 |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 10         | None  |     311.52 ns |  1.08 |         - |        0.00 |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 10         | None  |     321.24 ns |  1.11 |         - |        0.00 |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 10         | None  |     337.32 ns |  1.16 |         - |        0.00 |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 10         | None  |     340.43 ns |  1.18 |         - |        0.00 |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 10         | None  |     353.50 ns |  1.22 |    1600 B |        1.67 |
-| PooledAsTaskContSync                                         | 10         | None  |     496.50 ns |  1.71 |     800 B |        0.83 |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 10         | None  |   2,380.59 ns |  8.22 |    1240 B |        1.29 |
-|                                                              |            |       |               |       |           |             |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 10         | Token |     512.12 ns |     ? |     640 B |           ? |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 10         | Token |     525.50 ns |     ? |     640 B |           ? |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 10         | Token |     547.90 ns |     ? |     640 B |           ? |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 10         | Token |     556.48 ns |     ? |     640 B |           ? |
-| PooledAsTaskContSync                                         | 10         | Token |     836.04 ns |     ? |    1440 B |           ? |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 10         | Token |   2,833.31 ns |     ? |    4000 B |           ? |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 10         | Token |   3,231.17 ns |     ? |    1880 B |           ? |
+| Method                                                       | Iterations | cancellationType | Mean          | Ratio | Allocated | Alloc Ratio |
+|------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|------------:|
+| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 10         | None             |     284.91 ns |  1.00 |     960 B |        1.00 |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 10         | None             |     319.82 ns |  1.12 |         - |        0.00 |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 10         | None             |     320.75 ns |  1.13 |         - |        0.00 |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 10         | None             |     328.51 ns |  1.15 |         - |        0.00 |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 10         | None             |     345.13 ns |  1.21 |    1600 B |        1.67 |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 10         | None             |     356.90 ns |  1.25 |         - |        0.00 |
+| PooledAsTaskContSync                                         | 10         | None             |     499.48 ns |  1.75 |     800 B |        0.83 |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 10         | None             |   2,449.01 ns |  8.60 |    1240 B |        1.29 |
+|                                                              |            |                  |               |       |           |             |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 10         | NotCancelled     |     535.62 ns |     ? |     640 B |           ? |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 10         | NotCancelled     |     538.50 ns |     ? |     640 B |           ? |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 10         | NotCancelled     |     552.47 ns |     ? |     640 B |           ? |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 10         | NotCancelled     |     571.28 ns |     ? |     640 B |           ? |
+| PooledAsTaskContSync                                         | 10         | NotCancelled     |     787.51 ns |     ? |    1440 B |           ? |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 10         | NotCancelled     |   2,963.21 ns |     ? |    4000 B |           ? |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 10         | NotCancelled     |   3,101.28 ns |     ? |    1880 B |           ? |
 
 With 100 iterations, contention is high. The pooled implementations with ValueTask still show the best performance but get into allocations with the queue and ObjectPool exhaustion. The RefImpl and Nito implementations allocate significant memory due to the large number of waiters. The PooledAsTask version cannot keep up with the other implementations by means of perf and memory.
 With cancellation token the pooled implementations outperform Nito by almost 10 times, if AsTask() is not being used.
 
-| Method                                                       | Iterations | ct    | Mean          | Ratio | Allocated | Alloc Ratio |
-|------------------------------------------------------------- |----------- |------ |--------------:|------:|----------:|------------:|
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 100        | None  |   2,882.22 ns |  1.00 |    9600 B |        1.00 |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 100        | None  |   3,259.85 ns |  1.13 |    5984 B |        0.62 |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 100        | None  |   3,349.00 ns |  1.16 |    5984 B |        0.62 |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 100        | None  |   3,373.86 ns |  1.17 |    5984 B |        0.62 |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 100        | None  |   3,463.55 ns |  1.20 |    5984 B |        0.62 |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 100        | None  |   3,555.03 ns |  1.23 |   16000 B |        1.67 |
-| PooledAsTaskContSync                                         | 100        | None  |   4,998.23 ns |  1.73 |   13984 B |        1.46 |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 100        | None  |  14,524.21 ns |  5.04 |   17303 B |        1.80 |
-|                                                              |            |       |               |       |           |             |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 100        | Token |   5,418.03 ns |     ? |   12384 B |           ? |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 100        | Token |   5,426.49 ns |     ? |   12384 B |           ? |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 100        | Token |   5,588.02 ns |     ? |   12384 B |           ? |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 100        | Token |   5,617.25 ns |     ? |   12384 B |           ? |
-| PooledAsTaskContSync                                         | 100        | Token |   7,359.18 ns |     ? |   20384 B |           ? |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 100        | Token |  35,352.35 ns |     ? |   40000 B |           ? |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 100        | Token | 131,102.34 ns |     ? |   23733 B |           ? |
+| Method                                                       | Iterations | cancellationType | Mean          | Ratio | Allocated | Alloc Ratio |
+|------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|------------:|
+| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 100        | None             |   2,923.69 ns |  1.00 |    9600 B |        1.00 |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 100        | None             |   3,033.15 ns |  1.04 |         - |        0.00 |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 100        | None             |   3,171.93 ns |  1.09 |         - |        0.00 |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 100        | None             |   3,261.67 ns |  1.12 |         - |        0.00 |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 100        | None             |   3,288.53 ns |  1.12 |         - |        0.00 |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 100        | None             |   3,556.17 ns |  1.22 |   16000 B |        1.67 |
+| PooledAsTaskContSync                                         | 100        | None             |   4,718.91 ns |  1.61 |    8000 B |        0.83 |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 100        | None             |  14,972.57 ns |  5.12 |   11320 B |        1.18 |
+|                                                              |            |                  |               |       |           |             |
+| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 100        | NotCancelled     |   5,444.12 ns |     ? |    6400 B |           ? |
+| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 100        | NotCancelled     |   5,544.22 ns |     ? |    6400 B |           ? |
+| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 100        | NotCancelled     |   5,572.22 ns |     ? |    6400 B |           ? |
+| PooledAsyncAutoResetEventWaitThenSetAsync                    | 100        | NotCancelled     |   5,787.41 ns |     ? |    6400 B |           ? |
+| PooledAsTaskContSync                                         | 100        | NotCancelled     |   7,446.64 ns |     ? |   14400 B |           ? |
+| NitoAsyncAutoResetEventWaitThenSetAsync                      | 100        | NotCancelled     |  54,244.57 ns |     ? |   40000 B |           ? |
+| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 100        | NotCancelled     | 258,460.14 ns |     ? |   17737 B |           ? |
 
 ### AsyncLock Benchmarks
 
@@ -225,79 +226,109 @@ First the classic synchronization methods, increment and Interlocked.Increment a
 
 | Method                             | Mean       | Ratio | Allocated | Alloc Ratio |
 |----------------------------------- |-----------:|------:|----------:|------------:|
-| IncrementSingle                    |  0.0020 ns | 0.000 |         - |          NA |
-| InterlockedIncrementSingle         |  0.2070 ns | 0.010 |         - |          NA |
-| LockEnterScopeSingle               |  3.3850 ns | 0.166 |         - |          NA |
-| LockUnlockSingle                   |  3.4422 ns | 0.169 |         - |          NA |
-| ObjectLockUnlockSingle             |  4.3128 ns | 0.212 |         - |          NA |
+| IncrementSingle                    |  0.0037 ns | 0.000 |         - |          NA |
+| InterlockedIncrementSingle         |  0.2005 ns | 0.010 |         - |          NA |
+| LockEnterScopeSingle               |  3.3892 ns | 0.167 |         - |          NA |
+| LockUnlockSingle                   |  3.4177 ns | 0.168 |         - |          NA |
+| ObjectLockUnlockSingle             |  4.3104 ns | 0.212 |         - |          NA |
 
 The new .NET 9 `Lock` and `LockEnterScope` methods are slightly faster than a classic lock statement. Apparently it's interesting to see here that an Interlocked operation is still significantly faster than any locking mechanism with an increment.
 
-Next, various AsyncLock implementations without contention:
+Next, various AsyncLock implementations without contention and without cancellation token:
 
 | Method                             | Mean       | Ratio | Allocated | Alloc Ratio |
 |----------------------------------- |-----------:|------:|----------:|------------:|
-| LockUnlockPooledSingleAsync        | 12.6773 ns | 0.623 |         - |          NA |
-| LockUnlockSemaphoreSlimSingleAsync | 19.0709 ns | 0.937 |         - |          NA |
-| LockUnlockRefImplSingleAsync       | 20.3435 ns | 1.000 |         - |          NA |
-| LockUnlockNonKeyedSingleAsync      | 23.3824 ns | 1.149 |         - |          NA |
-| LockUnlockNitoSingleAsync          | 41.5297 ns | 2.041 |     320 B |          NA |
-| LockUnlockNeoSmartSingleAsync      | 60.6365 ns | 2.981 |     208 B |          NA |
+| LockUnlockPooledSingleAsync        | 13.2511 ns | 0.652 |         - |          NA |
+| LockUnlockSemaphoreSlimSingleAsync | 19.0860 ns | 0.940 |         - |          NA |
+| LockUnlockRefImplSingleAsync       | 20.3133 ns | 1.000 |         - |          NA |
+| LockUnlockNonKeyedSingleAsync      | 22.7757 ns | 1.121 |         - |          NA |
+| LockUnlockNitoSingleAsync          | 40.4106 ns | 1.989 |     320 B |          NA |
+| LockUnlockNeoSmartSingleAsync      | 62.8990 ns | 3.096 |     208 B |          NA |
 
 The pooled implementation is the fastest AsyncLock implementation, followed by the reference implementation.
 SemaphoreSlim and NonKeyedAsyncLock have moderate overhead, while Nito.AsyncEx and NeoSmart's AsyncLock have the highest overhead and they need allocations.
 
 #### AsyncLock Multiple Benchmark with varying contention (Iterations)
 
-The case with 0 iterations measures the uncontested lock/unlock overhead with multiple concurrent waiters.
+The case with 0 iterations measures the uncontested lock/unlock overhead with multiple concurrent waiters and with a cancellation token.
 Benchmarks with 1, 10, and 100 iterations measure the behavior under contention with increasing number of concurrent waiters.
 In addition to the previous uncontested benchmark, the pooled implementation with AsTask() is included to show the overhead of ValueTask/IValueTaskSource management with conversion to Task.
+All implementations happen to deal efficiently with an uncostested lock even with cancellation token.
 
-| Method                               | Iterations | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |-------------:|------:|----------:|------------:|
-| LockUnlockPooledTaskMultipleAsync    | 0          |     13.82 ns |  0.67 |         - |          NA |
-| LockUnlockPooledMultipleAsync        | 0          |     15.31 ns |  0.74 |         - |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 0          |     19.79 ns |  0.96 |         - |          NA |
-| LockUnlockRefImplMultipleAsync       | 0          |     20.55 ns |  1.00 |         - |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 0          |     24.30 ns |  1.18 |         - |          NA |
-| LockUnlockNitoMultipleAsync          | 0          |     44.96 ns |  2.19 |     320 B |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 0          |     62.02 ns |  3.02 |     208 B |          NA |
+| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| LockUnlockPooledMultipleAsync        | 0          | None             |     14.17 ns |  0.68 |         - |          NA |
+| LockUnlockPooledTaskMultipleAsync    | 0          | None             |     15.88 ns |  0.76 |         - |          NA |
+| LockUnlockRefImplMultipleAsync       | 0          | None             |     20.88 ns |  1.00 |         - |          NA |
+| LockUnlockSemaphoreSlimMultipleAsync | 0          | None             |     23.63 ns |  1.13 |         - |          NA |
+| LockUnlockNonKeyedMultipleAsync      | 0          | None             |     24.24 ns |  1.16 |         - |          NA |
+| LockUnlockNitoMultipleAsync          | 0          | None             |     42.49 ns |  2.04 |     320 B |          NA |
+| LockUnlockNeoSmartMultipleAsync      | 0          | None             |     62.23 ns |  2.98 |     208 B |          NA |
+|                                      |            |                  |              |       |           |             |
+| LockUnlockPooledMultipleAsync        | 0          | NotCancelled     |     14.41 ns |     ? |         - |           ? |
+| LockUnlockPooledTaskMultipleAsync    | 0          | NotCancelled     |     15.30 ns |     ? |         - |           ? |
+| LockUnlockSemaphoreSlimMultipleAsync | 0          | NotCancelled     |     20.32 ns |     ? |         - |           ? |
+| LockUnlockNonKeyedMultipleAsync      | 0          | NotCancelled     |     24.88 ns |     ? |         - |           ? |
+| LockUnlockNitoMultipleAsync          | 0          | NotCancelled     |     42.92 ns |     ? |     320 B |           ? |
+| LockUnlockNeoSmartMultipleAsync      | 0          | NotCancelled     |     65.11 ns |     ? |     208 B |           ? |
 
-The case with 1 iteration measures the overhead of a single waiter for the contested lock. Noticeable the pooled implementation is still the fastest here, followed by SemaphoreSlim and the reference implementation.
-But the pooled implementation with an AsTask() conversion, due to the RunContinuationsAsynchronously=true causes a nightmare performance degradation and a moderate allocation in the underlying IValueTaskSource implementation.
-However only because the Task is awaited outside the lock, which causes to hit that less efficient code path in the IValueTaskSource.
+The case with 1 iteration measures the overhead of a single waiter for the contested lock. Noticeable the SemaphoreSlim implementation is the fastest here, pooled almost on parity and the reference implementation a lot slower.
+The pooled implementation with an AsTask() conversion, due to the RunContinuationsAsynchronously=true causes a high performance degradation and a moderate allocation in the underlying IValueTaskSource implementation.
+However only because in the benchmark the Task is awaited outside the lock, which causes to hit that inefficient code path in the IValueTaskSource.
 
-| Method                               | Iterations | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |-------------:|------:|----------:|------------:|
-| LockUnlockPooledMultipleAsync        | 1          |     45.01 ns |  0.10 |         - |        0.00 |
-| LockUnlockSemaphoreSlimMultipleAsync | 1          |     48.16 ns |  0.10 |      88 B |        0.26 |
-| LockUnlockNitoMultipleAsync          | 1          |    111.64 ns |  0.24 |     728 B |        2.17 |
-| LockUnlockNeoSmartMultipleAsync      | 1          |    128.92 ns |  0.28 |     416 B |        1.24 |
-| LockUnlockRefImplMultipleAsync       | 1          |    467.48 ns |  1.00 |     336 B |        1.00 |
-| LockUnlockPooledTaskMultipleAsync    | 1          |    475.77 ns |  1.02 |     264 B |        0.79 |
-| LockUnlockNonKeyedMultipleAsync      | 1          |    500.57 ns |  1.07 |     336 B |        1.00 |
+| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| LockUnlockSemaphoreSlimMultipleAsync | 1          | None             |     46.28 ns |  0.55 |      88 B |        0.41 |
+| LockUnlockPooledMultipleAsync        | 1          | None             |     48.70 ns |  0.58 |         - |        0.00 |
+| LockUnlockRefImplMultipleAsync       | 1          | None             |     83.45 ns |  1.00 |     216 B |        1.00 |
+| LockUnlockNitoMultipleAsync          | 1          | None             |    106.15 ns |  1.27 |     728 B |        3.37 |
+| LockUnlockNeoSmartMultipleAsync      | 1          | None             |    147.60 ns |  1.77 |     416 B |        1.93 |
+| LockUnlockPooledTaskMultipleAsync    | 1          | None             |    468.97 ns |  5.62 |     272 B |        1.26 |
+| LockUnlockNonKeyedMultipleAsync      | 1          | None             |    529.00 ns |  6.34 |     352 B |        1.63 |
+|                                      |            |                  |              |       |           |             |
+| LockUnlockPooledMultipleAsync        | 1          | NotCancelled     |     70.61 ns |     ? |      64 B |           ? |
+| LockUnlockNeoSmartMultipleAsync      | 1          | NotCancelled     |    125.96 ns |     ? |     416 B |           ? |
+| LockUnlockNitoMultipleAsync          | 1          | NotCancelled     |    409.55 ns |     ? |     968 B |           ? |
+| LockUnlockPooledTaskMultipleAsync    | 1          | NotCancelled     |    555.56 ns |     ? |     336 B |           ? |
+| LockUnlockSemaphoreSlimMultipleAsync | 1          | NotCancelled     |    562.10 ns |     ? |     504 B |           ? |
+| LockUnlockNonKeyedMultipleAsync      | 1          | NotCancelled     |    682.40 ns |     ? |     640 B |           ? |
 
 The case with 10 iterations manifests the same behavior with moderate contention, as the ObjectPool is not exhausted. But SemaphoreSlim is now the fastest implementation, although using moderate allocations, followed by the pooled implementation.
+With cancellation token the pooled implementations outperform others except NeoSmart by at least 5 times.
 
-| Method                               | Iterations | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |-------------:|------:|----------:|------------:|
-| LockUnlockSemaphoreSlimMultipleAsync | 10         |    305.27 ns |  0.10 |     880 B |        0.39 |
-| LockUnlockPooledMultipleAsync        | 10         |    375.00 ns |  0.12 |         - |        0.00 |
-| LockUnlockNitoMultipleAsync          | 10         |    598.06 ns |  0.19 |    4400 B |        1.93 |
-| LockUnlockNeoSmartMultipleAsync      | 10         |    725.40 ns |  0.23 |    2288 B |        1.00 |
-| LockUnlockPooledTaskMultipleAsync    | 10         |  3,016.88 ns |  0.97 |    1344 B |        0.59 |
-| LockUnlockRefImplMultipleAsync       | 10         |  3,121.51 ns |  1.00 |    2280 B |        1.00 |
-| LockUnlockNonKeyedMultipleAsync      | 10         |  3,195.60 ns |  1.02 |    2208 B |        0.97 |
+| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| LockUnlockSemaphoreSlimMultipleAsync | 10         | None             |    297.34 ns |  0.44 |     880 B |        0.41 |
+| LockUnlockPooledMultipleAsync        | 10         | None             |    338.51 ns |  0.50 |         - |        0.00 |
+| LockUnlockNitoMultipleAsync          | 10         | None             |    635.05 ns |  0.93 |    4400 B |        2.04 |
+| LockUnlockRefImplMultipleAsync       | 10         | None             |    681.88 ns |  1.00 |    2160 B |        1.00 |
+| LockUnlockNeoSmartMultipleAsync      | 10         | None             |    692.90 ns |  1.02 |    2288 B |        1.06 |
+| LockUnlockPooledTaskMultipleAsync    | 10         | None             |  3,035.87 ns |  4.45 |    1352 B |        0.63 |
+| LockUnlockNonKeyedMultipleAsync      | 10         | None             |  3,259.92 ns |  4.78 |    2296 B |        1.06 |
+|                                      |            |                  |              |       |           |             |
+| LockUnlockPooledMultipleAsync        | 10         | NotCancelled     |    574.55 ns |     ? |     640 B |           ? |
+| LockUnlockNeoSmartMultipleAsync      | 10         | NotCancelled     |    688.91 ns |     ? |    2288 B |           ? |
+| LockUnlockNitoMultipleAsync          | 10         | NotCancelled     |  2,892.20 ns |     ? |    6800 B |           ? |
+| LockUnlockPooledTaskMultipleAsync    | 10         | NotCancelled     |  3,581.86 ns |     ? |    1992 B |           ? |
+| LockUnlockSemaphoreSlimMultipleAsync | 10         | NotCancelled     |  4,259.71 ns |     ? |    3888 B |           ? |
+| LockUnlockNonKeyedMultipleAsync      | 10         | NotCancelled     |  5,137.07 ns |     ? |    5176 B |           ? |
 
-On the case with 100 iterations the pooled implementation is again slower than the semaphore slim implementation but still allocates less memory, likely due to the exhaustion on the ObjectPool or allocations on the internal queue. Still the pooled implementation has significantly lower allocations than the other implementations.
+On the case with 100 iterations the pooled implementation is again slower than the semaphore slim implementation but still allocates no memory, because the ObjectPool defaults to 128 items. For the cancellable case, the pooled implementation has significantly lower allocations than the other implementations. Every registration needs 64 bytes. 
 
-| Method                               | Iterations | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |-------------:|------:|----------:|------------:|
-| LockUnlockSemaphoreSlimMultipleAsync | 100        |  2,779.92 ns |  0.09 |    8800 B |        0.40 |
-| LockUnlockPooledMultipleAsync        | 100        |  3,314.03 ns |  0.10 |    6528 B |        0.30 |
-| LockUnlockNeoSmartMultipleAsync      | 100        |  6,437.42 ns |  0.20 |   21008 B |        0.96 |
-| LockUnlockNitoMultipleAsync          | 100        |  6,829.20 ns |  0.21 |   41120 B |        1.89 |
-| LockUnlockPooledTaskMultipleAsync    | 100        | 31,072.52 ns |  0.95 |   18736 B |        0.86 |
-| LockUnlockRefImplMultipleAsync       | 100        | 32,582.67 ns |  1.00 |   21784 B |        1.00 |
-| LockUnlockNonKeyedMultipleAsync      | 100        | 35,925.37 ns |  1.10 |   20992 B |        0.96 |
+| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| LockUnlockSemaphoreSlimMultipleAsync | 100        | None             |  2,676.41 ns |  0.42 |    8800 B |        0.41 |
+| LockUnlockPooledMultipleAsync        | 100        | None             |  3,182.88 ns |  0.50 |         - |        0.00 |
+| LockUnlockNitoMultipleAsync          | 100        | None             |  5,777.34 ns |  0.90 |   41120 B |        1.90 |
+| LockUnlockRefImplMultipleAsync       | 100        | None             |  6,385.51 ns |  1.00 |   21600 B |        1.00 |
+| LockUnlockNeoSmartMultipleAsync      | 100        | None             |  6,423.83 ns |  1.01 |   21008 B |        0.97 |
+| LockUnlockPooledTaskMultipleAsync    | 100        | None             | 33,070.77 ns |  5.18 |   12216 B |        0.57 |
+| LockUnlockNonKeyedMultipleAsync      | 100        | None             | 34,922.75 ns |  5.47 |   21800 B |        1.01 |
+|                                      |            |                  |              |       |           |             |
+| LockUnlockPooledMultipleAsync        | 100        | NotCancelled     |  5,662.61 ns |     ? |    6400 B |           ? |
+| LockUnlockNeoSmartMultipleAsync      | 100        | NotCancelled     |  6,497.43 ns |     ? |   21008 B |           ? |
+| LockUnlockNitoMultipleAsync          | 100        | NotCancelled     | 30,746.66 ns |     ? |   65120 B |           ? |
+| LockUnlockPooledTaskMultipleAsync    | 100        | NotCancelled     | 36,769.07 ns |     ? |   18616 B |           ? |
+| LockUnlockSemaphoreSlimMultipleAsync | 100        | NotCancelled     | 42,587.26 ns |     ? |   37792 B |           ? |
+| LockUnlockNonKeyedMultipleAsync      | 100        | NotCancelled     | 51,507.86 ns |     ? |   50600 B |           ? |
 

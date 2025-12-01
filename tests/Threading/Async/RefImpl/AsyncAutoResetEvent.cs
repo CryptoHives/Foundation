@@ -34,7 +34,7 @@ public class AsyncAutoResetEvent
             }
             else
             {
-                // TaskCreationOptions.RunContinuationsAsynchronously is needed to avoid deadlocks
+                // TaskCreationOptions.RunContinuationsAsynchronously is needed to avoid deadlocks when set is called
                 var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _waits.Enqueue(tcs);
                 return tcs.Task;

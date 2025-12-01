@@ -122,8 +122,8 @@ public sealed class AsyncManualResetEvent
     /// </remarks>
     public bool RunContinuationAsynchronously
     {
-        get { return _runContinuationAsynchronously; }
-        set { _runContinuationAsynchronously = value; }
+        get => _runContinuationAsynchronously;
+        set => _runContinuationAsynchronously = value;
     }
 
     /// <summary>

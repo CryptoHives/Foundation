@@ -63,7 +63,7 @@ public class AsyncAutoResetEventUnitTests
         ev.Set();
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -94,7 +94,7 @@ public class AsyncAutoResetEventUnitTests
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test, CancelAfter(5000)]
@@ -127,7 +127,7 @@ public class AsyncAutoResetEventUnitTests
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -192,7 +192,7 @@ public class AsyncAutoResetEventUnitTests
         await vt.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -223,7 +223,7 @@ public class AsyncAutoResetEventUnitTests
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -236,7 +236,7 @@ public class AsyncAutoResetEventUnitTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -251,7 +251,7 @@ public class AsyncAutoResetEventUnitTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -266,7 +266,7 @@ public class AsyncAutoResetEventUnitTests
         _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
 
         await vt.ConfigureAwait(false);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -285,7 +285,7 @@ public class AsyncAutoResetEventUnitTests
 #else
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t.ConfigureAwait(false));
 #endif
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 
     [Test]
@@ -300,7 +300,7 @@ public class AsyncAutoResetEventUnitTests
         _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
 
         await t.ConfigureAwait(false);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0), "Instance count should be 0 after reuse.");
+        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
 }
 

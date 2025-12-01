@@ -29,23 +29,6 @@ public abstract class AsyncAutoResetEventBaseBenchmark
     private protected CancellationToken _cancellationToken;
 
     /// <summary>
-    /// The cancellation tokens for test and benchmark runs.
-    /// </summary>
-    public static IEnumerable<object[]> CancelParams()
-    {
-        yield return new object[] { "None", CancellationToken.None };
-        yield return new object[] { "Token", new CancellationTokenSource().Token };
-    }
-
-    /// <summary>
-    /// The cancellation tokens for test and benchmark runs.
-    /// </summary>
-    public static IEnumerable<object[]> CancelNoneParams()
-    {
-        yield return new object[] { "None", CancellationToken.None };
-    }
-
-    /// <summary>
     /// Global Setup for benchmarks and tests.
     /// </summary>
     [OneTimeSetUp]

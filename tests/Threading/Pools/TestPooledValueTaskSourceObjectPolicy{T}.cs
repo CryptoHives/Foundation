@@ -8,7 +8,7 @@ using System.Threading;
 
 /// <summary>
 /// A test policy for pooling <see cref="PooledManualResetValueTaskSource{T}"/> instances.
-/// A counter tracks returned object instances.
+/// A counter tracks returned object instances for verification in tests
 /// </summary>
 internal class TestPooledValueTaskSourceObjectPolicy<T> : PooledValueTaskSourceObjectPolicy<T>
 {
@@ -20,11 +20,7 @@ internal class TestPooledValueTaskSourceObjectPolicy<T> : PooledValueTaskSourceO
     public int ReturnedCount => _returnedCount;
 
     /// <inheritdoc />
-    public override PooledManualResetValueTaskSource<T> Create()
-    {
-        var obj = base.Create();
-        return obj;
-    }
+    public override PooledManualResetValueTaskSource<T> Create() => base.Create();
 
     /// <inheritdoc />
     public override bool Return(PooledManualResetValueTaskSource<T> obj)

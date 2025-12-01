@@ -18,15 +18,15 @@ public static class ValueTaskSourceObjectPools
     /// <summary>
     /// The default maximum number of retained object pool items.
     /// </summary>
-    public const int DefaultMaxRetainedItems = 32;
+    public const int DefaultMaxRetainedItems = 128;
 
     /// <summary>
     /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="bool"/>.
     /// </summary>
-    public static readonly ValueTaskSourceObjectPool<bool> ValueTaskSourcePoolBoolean = new ValueTaskSourceObjectPool<bool>(new PooledValueTaskSourceObjectPolicy<bool>(), DefaultMaxRetainedItems);
+    public static readonly ValueTaskSourceObjectPool<bool> ValueTaskSourcePoolBoolean = new(new PooledValueTaskSourceObjectPolicy<bool>(), DefaultMaxRetainedItems);
 
     /// <summary>
     /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncLock.AsyncLockReleaser"/>.
     /// </summary>
-    public static readonly ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser> ValueTaskSourcePoolAsyncLockReleaser = new ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser>(new PooledValueTaskSourceObjectPolicy<AsyncLock.AsyncLockReleaser>(), DefaultMaxRetainedItems);
+    public static readonly ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser> ValueTaskSourcePoolAsyncLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncLock.AsyncLockReleaser>(), DefaultMaxRetainedItems);
 }
