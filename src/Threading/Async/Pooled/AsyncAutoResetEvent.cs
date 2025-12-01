@@ -72,6 +72,7 @@ using System.Threading.Tasks.Sources;
 public sealed class AsyncAutoResetEvent
 {
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
+    private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly ObjectPool<PooledManualResetValueTaskSource<bool>> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
@@ -94,6 +95,7 @@ public sealed class AsyncAutoResetEvent
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _mutex = new();
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
+        _localWaiter = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
 
@@ -184,7 +186,10 @@ public sealed class AsyncAutoResetEvent
                 return new ValueTask(Task.FromException(new OperationCanceledException(cancellationToken)));
             }
 
-            var waiter = _pool.Get();
+            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
+            {
+                waiter = _pool.Get();
+            }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 

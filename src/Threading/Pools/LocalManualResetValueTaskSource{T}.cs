@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Threading.Pools;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks.Sources;
 
@@ -27,6 +28,7 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     /// Tries to get ownership of the local value task source.
     /// </summary>
     /// <returns>Returns <c>true</c> if ownership was acquired; otherwise, <c>false</c>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValueTaskSource(out ManualResetValueTaskSource<T> waiter)
     {
         waiter = this;

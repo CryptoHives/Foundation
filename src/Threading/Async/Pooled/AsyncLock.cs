@@ -9,7 +9,6 @@ using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -48,6 +47,7 @@ using System.Threading.Tasks;
 public sealed class AsyncLock
 {
     private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters;
+    private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter;
     private readonly ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
@@ -64,6 +64,7 @@ public sealed class AsyncLock
     public AsyncLock(int defaultEventQueueSize = 0, ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>>? pool = null)
     {
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
+        _localWaiter = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _mutex = new();
         _taken = 0;
@@ -169,7 +170,10 @@ public sealed class AsyncLock
                 return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
             }
 
-            var waiter = _pool.Get();
+            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<AsyncLockReleaser> waiter))
+            {
+                waiter = _pool.Get();
+            }
             waiter.RunContinuationsAsynchronously = true;
             waiter.CancellationToken = cancellationToken;
 
