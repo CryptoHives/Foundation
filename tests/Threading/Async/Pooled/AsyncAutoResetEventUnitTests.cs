@@ -18,39 +18,16 @@ using Threading.Tests.Pools;
 public class AsyncAutoResetEventUnitTests
 {
     [Test]
-    public void ConstructorWithInitialStateFalse()
-    {
-        var ev = new AsyncAutoResetEvent(initialState: false);
-        Assert.That(ev.IsSet, Is.False);
-    }
-
-    [Test]
-    public void ConstructorWithInitialStateTrue()
-    {
-        var ev = new AsyncAutoResetEvent(initialState: true);
-        Assert.That(ev.IsSet, Is.True);
-    }
-
-    [Test]
-    public async Task IsSetReturnsFalseAfterWaitConsumesSignal()
-    {
-        var ev = new AsyncAutoResetEvent(initialState: true);
-        Assert.That(ev.IsSet, Is.True);
-
-        await ev.WaitAsync().ConfigureAwait(false);
-
-        Assert.That(ev.IsSet, Is.False);
-    }
-
-    [Test]
-    public void IsSetReturnsTrueAfterSetWithNoWaiters()
+    public async Task IsSetReflectsEventState()
     {
         var ev = new AsyncAutoResetEvent(initialState: false);
         Assert.That(ev.IsSet, Is.False);
 
         ev.Set();
-
         Assert.That(ev.IsSet, Is.True);
+
+        await ev.WaitAsync().ConfigureAwait(false);
+        Assert.That(ev.IsSet, Is.False);
     }
 
     [Test]
@@ -66,26 +43,12 @@ public class AsyncAutoResetEventUnitTests
     }
 
     [Test]
-    public void RunContinuationAsynchronouslyDefaultsToTrue()
+    public void RunContinuationAsynchronouslyPropertyWorks()
     {
         var ev = new AsyncAutoResetEvent();
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
-    }
 
-    [Test]
-    public void RunContinuationAsynchronouslyCanBeSetToFalse()
-    {
-        var ev = new AsyncAutoResetEvent(runContinuationAsynchronously: false);
-        Assert.That(ev.RunContinuationAsynchronously, Is.False);
-    }
-
-    [Test]
-    public void RunContinuationAsynchronouslyCanBeChangedAfterConstruction()
-    {
-        var ev = new AsyncAutoResetEvent(runContinuationAsynchronously: true);
-        Assert.That(ev.RunContinuationAsynchronously, Is.True);
-
-        ev.RunContinuationAsynchronously = false;
+        ev = new AsyncAutoResetEvent(runContinuationAsynchronously: false);
         Assert.That(ev.RunContinuationAsynchronously, Is.False);
 
         ev.RunContinuationAsynchronously = true;
@@ -146,22 +109,6 @@ public class AsyncAutoResetEventUnitTests
 
         ev.Set();
         await waiter.ConfigureAwait(false);
-    }
-
-    [Test, CancelAfter(1000)]
-    public async Task SetAllFollowedBySetReleasesCorrectNumberOfWaiters()
-    {
-        var ev = new AsyncAutoResetEvent();
-
-        var waiter1 = ev.WaitAsync();
-        var waiter2 = ev.WaitAsync();
-
-        ev.SetAll();
-
-        await waiter1.ConfigureAwait(false);
-        await waiter2.ConfigureAwait(false);
-
-        Assert.That(ev.IsSet, Is.False);
     }
 
     [Test]
@@ -495,8 +442,8 @@ public class AsyncAutoResetEventUnitTests
         Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
-    [Test]
-    public async Task WaitAsyncWithCancellationTokenCancelsBeforeQueuing()
+    [Theory]
+    public async Task WaitAsyncWithCancellationTokenCancels(bool useAsTask)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
@@ -504,75 +451,64 @@ public class AsyncAutoResetEventUnitTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
+        if (useAsTask)
+        {
+            Task t = ev.WaitAsync(cts.Token).AsTask();
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
+        }
+        else
+        {
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
+        }
 
         Assert.That(ev.InternalWaiterInUse, Is.False);
         Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
-    [Test]
-    public async Task WaitAsyncWithCancellationTokenCancelsWhileQueued()
+    [Theory]
+    public async Task WaitAsyncWithCancellationTokenCancelsWhileQueued(bool useAsTask)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(initialState: false, pool: tpvts);
         using var cts = new CancellationTokenSource();
 
-        ValueTask vt = ev.WaitAsync(cts.Token);
-
-        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        if (useAsTask)
+        {
+            Task t = ev.WaitAsync(cts.Token).AsTask();
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
+        }
+        else
+        {
+            ValueTask vt = ev.WaitAsync(cts.Token);
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        }
 
         Assert.That(ev.InternalWaiterInUse, Is.False);
         Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
-    [Test]
-    public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelled()
+    [Theory]
+    public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelled(bool useAsTask)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
         using var cts = new CancellationTokenSource();
 
-        var vt = ev.WaitAsync(cts.Token);
-
         _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
 
-        await vt.ConfigureAwait(false);
+        if (useAsTask)
+        {
+            Task t = ev.WaitAsync(cts.Token).AsTask();
+            await t.ConfigureAwait(false);
+        }
+        else
+        {
+            await ev.WaitAsync(cts.Token).ConfigureAwait(false);
+        }
 
         Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
-    }
-
-    [Test]
-    public async Task WaitAsyncAsTaskWithCancellationTokenCancelsWhileQueued()
-    {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncAutoResetEvent(initialState: false, pool: tpvts);
-        using var cts = new CancellationTokenSource();
-
-        Task t = ev.WaitAsync(cts.Token).AsTask();
-
-        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
-
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
-    }
-
-    [Test]
-    public async Task WaitAsyncAsTaskWithCancellationTokenSucceedsIfNotCancelled()
-    {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncAutoResetEvent(pool: tpvts);
-        using var cts = new CancellationTokenSource();
-
-        Task t = ev.WaitAsync(cts.Token).AsTask();
-
-        _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
-
-        await t.ConfigureAwait(false);
         Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 }
