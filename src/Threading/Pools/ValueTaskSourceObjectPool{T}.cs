@@ -7,6 +7,7 @@ using Microsoft.Extensions.ObjectPool;
 
 /// <summary>
 /// A <see cref="DefaultObjectPool{T}"/> for pooling <see cref="PooledManualResetValueTaskSource{T}"/> instances.
+/// It sets the owner pool when an instance is retrieved from the pool, so it gets automatically returned.
 /// </summary>
 public class ValueTaskSourceObjectPool<T> : DefaultObjectPool<PooledManualResetValueTaskSource<T>>
 {
@@ -21,6 +22,9 @@ public class ValueTaskSourceObjectPool<T> : DefaultObjectPool<PooledManualResetV
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// In addition to the base behavior, this method sets the owner pool of the retrieved instance.
+    /// </remarks>
     public override PooledManualResetValueTaskSource<T> Get()
     {
         var result = base.Get();

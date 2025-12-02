@@ -176,7 +176,7 @@ public sealed class AsyncManualResetEvent
 
             if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask(Task.FromException(new OperationCanceledException(cancellationToken)));
+                return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
             if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
@@ -264,6 +264,11 @@ public sealed class AsyncManualResetEvent
         }
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the local waiter is currently in use.
+    /// </summary>
+    internal bool InternalWaiterInUse => _localWaiter.InUse;
+
     private void CancellationCallback(object? state)
     {
         if (state is ManualResetValueTaskSource<bool> waiter)
@@ -278,13 +283,13 @@ public sealed class AsyncManualResetEvent
                     if (ReferenceEquals(dequeued, waiter))
                     {
                         toCancel = waiter;
-                        break;
+                        continue;
                     }
                     _waiters.Enqueue(dequeued);
                 }
             }
 
-            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+            toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
         }
     }
 }

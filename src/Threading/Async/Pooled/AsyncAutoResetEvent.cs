@@ -183,7 +183,7 @@ public sealed class AsyncAutoResetEvent
 
             if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask(Task.FromException(new OperationCanceledException(cancellationToken)));
+                return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
             if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
@@ -233,6 +233,11 @@ public sealed class AsyncAutoResetEvent
     }
 
     /// <summary>
+    /// Gets a value indicating whether the local waiter is currently in use.
+    /// </summary>
+    internal bool InternalWaiterInUse => _localWaiter.InUse;
+
+    /// <summary>
     /// Reset the signaled state for test purposes.
     /// </summary>
     internal void Reset()
@@ -268,11 +273,9 @@ public sealed class AsyncAutoResetEvent
 
         try
         {
-            ManualResetValueTaskSource<bool> waiter;
             for (int i = 0; i < count; i++)
             {
-                waiter = toRelease[i];
-                waiter.SetResult(true);
+                toRelease[i]?.SetResult(true);
             }
         }
         finally
@@ -295,13 +298,13 @@ public sealed class AsyncAutoResetEvent
                     if (ReferenceEquals(dequeued, waiter))
                     {
                         toCancel = waiter;
-                        break;
+                        continue;
                     }
                     _waiters.Enqueue(dequeued);
                 }
             }
 
-            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+            toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
         }
     }
 }

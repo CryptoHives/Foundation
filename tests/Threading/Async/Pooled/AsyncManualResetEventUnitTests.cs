@@ -140,7 +140,7 @@ public class AsyncManualResetEventUnitTests
 
         ValueTask vt = ev.WaitAsync(cts.Token);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
     }
 
     [Test]
@@ -153,7 +153,7 @@ public class AsyncManualResetEventUnitTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
     }
 
     [Test]

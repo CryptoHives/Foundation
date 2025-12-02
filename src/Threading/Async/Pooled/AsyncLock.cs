@@ -167,7 +167,7 @@ public sealed class AsyncLock
 
             if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
+                return new ValueTask<AsyncLockReleaser>(Task.FromCanceled<AsyncLockReleaser>(cancellationToken));
             }
 
             if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<AsyncLockReleaser> waiter))
@@ -195,6 +195,11 @@ public sealed class AsyncLock
     /// Whether the lock is currently held.
     /// </summary>
     public bool IsTaken => _taken != 0;
+
+    /// <summary>
+    /// Gets a value indicating whether the local waiter is currently in use.
+    /// </summary>
+    internal bool InternalWaiterInUse => _localWaiter.InUse;
 
     /// <summary>
     /// Releases the lock. If any waiters are queued, the next waiter acquires the lock.
@@ -231,13 +236,13 @@ public sealed class AsyncLock
                     if (ReferenceEquals(dequeued, waiter))
                     {
                         toCancel = waiter;
-                        break;
+                        continue;
                     }
                     _waiters.Enqueue(dequeued);
                 }
             }
 
-            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+            toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<AsyncLockReleaser>(waiter.CancellationToken)));
         }
     }
 }

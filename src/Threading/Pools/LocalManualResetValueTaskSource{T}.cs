@@ -95,4 +95,9 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     /// <inheritdoc/>
     public override void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags)
         => _core.OnCompleted(continuation, state, token, flags);
+
+    /// <summary>
+    /// Gets whether the value task source is currently in use.
+    /// </summary>
+    public bool InUse => _inUse == 1;
 }
