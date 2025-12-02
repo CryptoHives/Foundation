@@ -34,8 +34,7 @@ public class AsyncLockUnitTests
         var task1HasLock = CreateAsyncTaskSource<object?>();
         var task1Continue = CreateAsyncTaskSource<object?>();
 
-        var task1 = Task.Run(async () =>
-        {
+        var task1 = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
                 task1HasLock.SetResult(null);
@@ -44,8 +43,7 @@ public class AsyncLockUnitTests
         });
         await task1HasLock.Task.ConfigureAwait(false);
 
-        var task2 = Task.Run(async () =>
-        {
+        var task2 = Task.Run(async () => {
             await mutex.LockAsync().ConfigureAwait(false);
         });
 
@@ -66,8 +64,7 @@ public class AsyncLockUnitTests
         var task2HasLock = new TaskCompletionSource<bool>();
         var task2Continue = new TaskCompletionSource<bool>();
 
-        var task1 = Task.Run(async () =>
-        {
+        var task1 = Task.Run(async () => {
             using (await al.LockAsync().ConfigureAwait(false))
             {
                 task1HasLock.SetResult(true);
@@ -76,8 +73,7 @@ public class AsyncLockUnitTests
         });
         await task1HasLock.Task.ConfigureAwait(false);
 
-        var task2 = Task.Run(async () =>
-        {
+        var task2 = Task.Run(async () => {
             ValueTask<AsyncLock.AsyncLockReleaser> key = al.LockAsync();
             task2Ready.SetResult(true);
             using (await key.ConfigureAwait(false))
@@ -88,8 +84,7 @@ public class AsyncLockUnitTests
         });
         await task2Ready.Task.ConfigureAwait(false);
 
-        var task3 = Task.Run(async () =>
-        {
+        var task3 = Task.Run(async () => {
             await al.LockAsync().ConfigureAwait(false);
         });
 
@@ -153,8 +148,7 @@ public class AsyncLockUnitTests
         var taskReady = CreateAsyncTaskSource<object?>();
 
         var unlock = await mutex.LockAsync().ConfigureAwait(false);
-        var task = Task.Run(async () =>
-        {
+        var task = Task.Run(async () => {
             var lockTask = mutex.LockAsync(cts.Token);
             taskReady.SetResult(null);
             await lockTask.ConfigureAwait(false);
@@ -195,10 +189,9 @@ public class AsyncLockUnitTests
     [Test]
     public async Task AsyncLockSupportsMultipleAsynchronousLocks()
     {
-        await Task.Run(() =>
-        {
+        await Task.Run(() => {
             var asyncLock = new AsyncLock();
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var task1 = Task.Run(
                 async () => {

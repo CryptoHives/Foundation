@@ -46,7 +46,7 @@ public class AsyncManualResetEventUnitTests
     public void ConstructorWithCustomPool()
     {
         var customPool = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(pool: customPool);
+        _ = new AsyncManualResetEvent(pool: customPool);
 
         Assert.That(customPool.ActiveCount, Is.Zero);
     }
