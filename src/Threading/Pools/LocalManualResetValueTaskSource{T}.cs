@@ -25,6 +25,17 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     private int _inUse;
 
     /// <summary>
+    /// Initializes a new instance of the LocalManualResetValueTaskSource class and
+    /// associates it with the specified owner class.
+    /// The owner is typically the class which contains the reference to this ValueTaskSource.
+    /// </summary>
+    /// <param name="owner">The object to associate with this instance.</param>
+    public LocalManualResetValueTaskSource(object owner)
+    {
+        Owner = owner;
+    }
+
+    /// <summary>
     /// Tries to get ownership of the local value task source.
     /// </summary>
     /// <returns>Returns <c>true</c> if ownership was acquired; otherwise, <c>false</c>.</returns>
@@ -37,6 +48,9 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
 
     /// <inheritdoc/>
     public override short Version { get => _core.Version; }
+
+    /// <inheritdoc/>
+    public override object Owner { get; }
 
     /// <inheritdoc/>
     public override CancellationToken CancellationToken
@@ -71,6 +85,7 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     public override bool TryReset()
     {
         _core.Reset();
+        _cancellationTokenRegistration = default;
         return Interlocked.Exchange(ref _inUse, 0) == 1;
     }
 
