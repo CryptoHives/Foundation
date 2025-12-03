@@ -20,8 +20,9 @@ public class AsyncAutoResetEventUnitTests
     [Test]
     public async Task IsSetReflectsEventState()
     {
-        var ev = new AsyncAutoResetEvent(initialState: false);
+        var ev = new AsyncAutoResetEvent(initialState: false, defaultEventQueueSize: 8);
         Assert.That(ev.IsSet, Is.False);
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
 
         ev.Set();
         Assert.That(ev.IsSet, Is.True);
@@ -33,7 +34,9 @@ public class AsyncAutoResetEventUnitTests
     [Test]
     public async Task IsSetReturnsFalseAfterSetReleasesWaiter()
     {
-        var ev = new AsyncAutoResetEvent(initialState: false);
+        var ev = new AsyncAutoResetEvent(initialState: false, runContinuationAsynchronously: false, defaultEventQueueSize: 8);
+        Assert.That(ev.RunContinuationAsynchronously, Is.False);
+
         var waiter = ev.WaitAsync();
 
         ev.Set();

@@ -21,6 +21,7 @@ public class AsyncManualResetEventUnitTests
     {
         var mre = new AsyncManualResetEvent(set: false);
         Assert.That(mre.IsSet, Is.False);
+        Assert.That(mre.RunContinuationAsynchronously, Is.True);
 
         mre.Set();
         Assert.That(mre.IsSet, Is.True);
@@ -32,7 +33,7 @@ public class AsyncManualResetEventUnitTests
     [Test]
     public void RunContinuationAsynchronouslyPropertyWorks()
     {
-        var mre = new AsyncManualResetEvent();
+        var mre = new AsyncManualResetEvent(defaultEventQueueSize: 8);
         Assert.That(mre.RunContinuationAsynchronously, Is.True);
 
         mre = new AsyncManualResetEvent(runContinuationAsynchronously: false);
@@ -40,6 +41,9 @@ public class AsyncManualResetEventUnitTests
 
         mre.RunContinuationAsynchronously = true;
         Assert.That(mre.RunContinuationAsynchronously, Is.True);
+
+        mre.RunContinuationAsynchronously = false;
+        Assert.That(mre.RunContinuationAsynchronously, Is.False);
     }
 
     [Test]

@@ -18,7 +18,7 @@ public class AsyncLockUnitTests
     [Test]
     public void AsyncLockUnlockedSynchronouslyPermitsLock()
     {
-        var mutex = new AsyncLock();
+        var mutex = new AsyncLock(defaultEventQueueSize: 8);
 
         var lockTask = mutex.LockAsync().AsTask();
 
@@ -30,7 +30,7 @@ public class AsyncLockUnitTests
     [Test]
     public async Task AsyncLockLockedPreventsLockUntilUnlocked()
     {
-        var mutex = new AsyncLock();
+        var mutex = new AsyncLock(defaultEventQueueSize: 8);
         var task1HasLock = CreateAsyncTaskSource<object?>();
         var task1Continue = CreateAsyncTaskSource<object?>();
 
