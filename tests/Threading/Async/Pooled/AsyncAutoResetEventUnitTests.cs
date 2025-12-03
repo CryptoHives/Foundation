@@ -56,7 +56,7 @@ public class AsyncAutoResetEventUnitTests
     }
 
     [Theory, CancelAfter(1000)]
-    public async Task RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
+    public void RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
     {
         var ev = new AsyncAutoResetEvent(runContinuationAsynchronously: runContinuationAsynchronously);
         var continuationThreadId = 0;
@@ -189,7 +189,7 @@ public class AsyncAutoResetEventUnitTests
     }
 
     [Test]
-    public async Task WaitAsyncUnsetReturnsNonCompletedValueTask()
+    public void WaitAsyncUnsetReturnsNonCompletedValueTask()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
@@ -202,7 +202,7 @@ public class AsyncAutoResetEventUnitTests
     }
 
     [Test]
-    public async Task WaitAsyncUnsetUsesInternalAndPooledValueTaskSource()
+    public void WaitAsyncUnsetUsesInternalAndPooledValueTaskSource()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
