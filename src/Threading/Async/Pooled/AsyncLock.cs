@@ -48,7 +48,7 @@ public sealed class AsyncLock
 {
     private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters;
     private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter;
-    private readonly IPooledManualResetValueTaskSource<AsyncLockReleaser> _pool;
+    private readonly IGetPooledManualResetValueTaskSource<AsyncLockReleaser> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
 #else
@@ -61,7 +61,7 @@ public sealed class AsyncLock
     /// </summary>
     /// <param name="pool">Custom pool for this instance.</param>
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
-    public AsyncLock(int defaultEventQueueSize = 0, IPooledManualResetValueTaskSource<AsyncLockReleaser>? pool = null)
+    public AsyncLock(int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<AsyncLockReleaser>? pool = null)
     {
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;

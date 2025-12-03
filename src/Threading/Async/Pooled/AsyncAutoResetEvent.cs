@@ -72,7 +72,7 @@ public sealed class AsyncAutoResetEvent
 {
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
-    private readonly IPooledManualResetValueTaskSource<bool> _pool;
+    private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
 #else
@@ -88,7 +88,7 @@ public sealed class AsyncAutoResetEvent
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for this instance.</param>
-    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, IPooledManualResetValueTaskSource<bool>? pool = null)
+    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<bool>? pool = null)
     {
         _signaled = initialState ? 1 : 0;
         _runContinuationAsynchronously = runContinuationAsynchronously;

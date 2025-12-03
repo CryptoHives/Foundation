@@ -15,7 +15,7 @@ using System.Threading;
 /// A counter tracks get object instances. Allows to check active objects in use.
 /// </summary>
 
-internal class TestObjectPool<T> : ObjectPool<PooledManualResetValueTaskSource<T>>, IPooledManualResetValueTaskSource<T> where T : notnull
+internal class TestObjectPool<T> : ObjectPool<PooledManualResetValueTaskSource<T>>, IGetPooledManualResetValueTaskSource<T> where T : notnull
 {
     private readonly ObjectPool<PooledManualResetValueTaskSource<T>> _valueTaskSourcePool;
     private readonly TestPooledValueTaskSourceObjectPolicy<T> _valueTaskSourcePoolPolicy;

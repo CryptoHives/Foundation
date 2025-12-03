@@ -12,7 +12,7 @@ using System;
 /// A <see cref="DefaultObjectPool{T}"/> for pooling <see cref="PooledManualResetValueTaskSource{T}"/> instances.
 /// It sets the owner pool when an instance is retrieved from the pool, so it gets automatically returned.
 /// </summary>
-public class ValueTaskSourceObjectPool<T> : DefaultObjectPool<PooledManualResetValueTaskSource<T>>, IPooledManualResetValueTaskSource<T>
+public class ValueTaskSourceObjectPool<T> : DefaultObjectPool<PooledManualResetValueTaskSource<T>>, IGetPooledManualResetValueTaskSource<T>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="ValueTaskSourceObjectPool{T}"/> class.
