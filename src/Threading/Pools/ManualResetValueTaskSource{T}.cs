@@ -27,6 +27,11 @@ public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValu
     public abstract short Version { get; }
 
     /// <summary>
+    /// Gets or sets the owner associated with this instance.
+    /// </summary>
+    public abstract object? Owner { get; }
+
+    /// <summary>
     /// Gets or sets whether to force continuations to run asynchronously.
     /// </summary>
     /// <remarks>

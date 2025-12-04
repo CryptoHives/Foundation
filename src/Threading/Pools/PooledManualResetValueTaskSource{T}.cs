@@ -25,17 +25,23 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     private CancellationTokenRegistration _cancellationTokenRegistration;
     private CancellationToken _cancellationToken;
     private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
+    private object? _owner;
 
     /// <summary>
     /// Sets the pool to which the object is returned after it was awaited.
+    /// Sets the owner of the pooled instance.
     /// </summary>
-    public void SetOwnerPool(ObjectPool<PooledManualResetValueTaskSource<T>>? ownerPool)
+    public void SetOwnerPool(ObjectPool<PooledManualResetValueTaskSource<T>> ownerPool, object? owner)
     {
         _ownerPool = ownerPool;
+        _owner = owner;
     }
 
     /// <inheritdoc/>
     public override short Version => _core.Version;
+
+    /// <inheritdoc/>
+    public override object Owner => _owner!;
 
     /// <inheritdoc/>
     public override CancellationToken CancellationToken
@@ -74,6 +80,7 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     {
         _ownerPool = null;
         _core.Reset();
+        _cancellationTokenRegistration = default;
         return true;
     }
 
