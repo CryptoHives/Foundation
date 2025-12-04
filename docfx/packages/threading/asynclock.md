@@ -8,10 +8,6 @@ A pooled async mutual exclusion lock for coordinating access to shared resources
 CryptoHives.Foundation.Threading.Async.Pooled
 ```
 
-## Inheritance
-
-`Object` ? **`AsyncLock`**
-
 ## Syntax
 
 ```csharp
@@ -20,15 +16,16 @@ public sealed class AsyncLock
 
 ## Overview
 
-`AsyncLock` provides async mutual exclusion, similar to `SemaphoreSlim(1,1)` but optimized for the common async locking pattern. Takes advantage of `IDisposable` implemented in the `AsyncLockReleaser` to release the lock after use. It uses pooled `IValueTaskSource` instances to minimize allocations in high-throughput scenarios, making it suitable for hot-path code that requires thread-safe access to shared resources.
+`AsyncLock` provides async mutual exclusion, similar to `SemaphoreSlim(1,1)` but optimized for the common async locking pattern. It returns a small value-type releaser that implements `IDisposable`/`IAsyncDisposable` so the lock can be released with a `using` pattern. The implementation uses pooled `IValueTaskSource` instances to minimize allocations in high-throughput scenarios and a local reusable waiter to avoid allocations for the first queued waiter.
 
 ## Benefits
 
-- **Pooled Task Sources**: Reuses `IValueTaskSource<AsyncLockReleaser>` instances from object pool
-- **ValueTask-Based**: Returns `ValueTask<AsyncLockReleaser>` for minimal allocation when lock is available
-- **RAII Pattern**: Uses disposable lock handles for automatic release
-- **Cancellation Support**: (planned) Supports `CancellationToken` for timeout and cancellation
-- **High Performance**: Optimized for high and low contention scenarios
+- **Zero-allocation fast path**: When the lock is uncontended the operation completes synchronously without heap allocations.
+- **Pooled Task Sources**: Reuses `IValueTaskSource<AsyncLockReleaser>` instances from an object pool when waiters are queued.
+- **ValueTask-Based**: Returns `ValueTask<AsyncLockReleaser>` for minimal allocation when the lock is available.
+- **RAII Pattern**: Uses disposable lock handles for automatic release.
+- **Cancellation Support (optimized)**: Supports `CancellationToken` for queued waiters; on .NET 6+ registration uses `UnsafeRegister` with a static delegate to reduce execution-context capture and per-registration overhead.
+- **High Performance**: Optimized for both uncontended and contended scenarios while keeping allocations low.
 
 ## Constructors
 
@@ -47,12 +44,17 @@ public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToke
 Asynchronously acquires the lock. Returns a disposable that releases the lock when disposed.
 
 **Parameters**:
-- `cancellationToken` - Optional cancellation token
+- `cancellationToken` - Optional cancellation token; only observed if the lock cannot be acquired immediately.
 
 **Returns**: A `ValueTask<AsyncLockReleaser>` that completes when the lock is acquired. Dispose the result to release the lock.
 
+**Notes on allocations and cancellation**:
+- The **fast path** (uncontended) completes synchronously and performs no heap allocations.
+- The implementation maintains a **local waiter** instance that serves the first queued waiter without allocating. Subsequent waiters use instances obtained from the configured object pool; if the pool is exhausted a new instance is allocated.
+- Passing a `CancellationToken` will register a callback when the waiter is queued. On .NET 6+ the code uses `UnsafeRegister` together with a static delegate and a small struct context to minimize capture and reduce allocation/ExecutionContext overhead. Even so, cancellation registrations and creating `Task` objects for pre-cancelled tokens may allocate; prefer avoiding cancellation tokens unless necessary for the scenario.
+
 **Throws**:
-- `OperationCanceledException` - If the operation is canceled via the cancellation token
+- `OperationCanceledException` - If the operation is canceled via the cancellation token.
 
 ## Thread Safety
 
@@ -61,13 +63,13 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 ## Performance Characteristics
 
 - **Uncontended Lock**: O(1), synchronous completion (no allocation)
-- **Contended Lock**: O(1) to enqueue waiter allocated from the ObjectPool, allocation only if ObjectPool is exhausted
+- **Contended Lock**: O(1) to enqueue waiter; waiter instances are reused from the object pool (allocation only if pool is exhausted)
 - **Lock Release**: O(1) to signal next waiter
-- **Memory**: Minimal allocations due to pooled task sources
+- **Memory**: Minimal allocations due to pooled task sources and local waiter reuse
 
 ## Best Practices
 
-### DO: Use using pattern to ensure lock release, await result directly
+### DO: Use the using pattern to ensure lock release and await the result directly
 
 ```csharp
 // Good: Minimal time holding lock
@@ -75,7 +77,7 @@ public async Task UpdateAsync(Data newData)
 {
     // Prepare outside lock
     var processed = await PrepareDataAsync(newData);
-    
+
     // using ensures lock is released
     using (await _lock.LockAsync())
     {
@@ -84,24 +86,25 @@ public async Task UpdateAsync(Data newData)
 }
 ```
 
-### DO: Keep Critical Sections Short
+### DO: Keep critical sections short
 
 ```csharp
 // Good: Minimal time holding lock
-public async Task UpdateAsync(Data newData)
+using (await _lock.LockAsync())
 {
-    // Prepare outside lock
-    var processed = await PrepareDataAsync(newData);
-    
-    // Only critical update inside lock
-    using (await _lock.LockAsync())
-    {
-        _data = processed;
-    }
+    _data = processed;
 }
 ```
 
-### DON'T: Create New Locks Repeatedly
+### DO: Prefer avoiding CancellationToken for hot-path locks
+
+Cancellation registrations allocate a small control structure. For hot-path code, omit the token when possible, or perform an early `cancellationToken.IsCancellationRequested` check before calling `LockAsync` to avoid allocations from `Task.FromCanceled`.
+
+### DO: Configure a larger pool under high contention
+
+If you expect many concurrent waiters, provide a custom object pool with a larger retention size so allocations are avoided when the pool can satisfy requests.
+
+### DON'T: Create new locks repeatedly
 
 ```csharp
 // Bad: Creating new lock each time
@@ -115,34 +118,17 @@ public async Task OperationAsync()
 }
 ```
 
-### DON'T: Hold Lock During Long Operations
+### DON'T: Hold the lock during long-running operations
 
 ```csharp
 // Bad: Holding lock during slow operation
-public async Task ProcessAsync()
+using (await _lock.LockAsync())
 {
-    using (await _lock.LockAsync())
-    {
-        await SlowDatabaseQueryAsync(); // Don't hold lock!
-        await SlowApiCallAsync(); // Don't hold lock!
-    }
-}
-
-// Good: Minimize lock duration
-public async Task ProcessAsync()
-{
-    var data = await SlowDatabaseQueryAsync();
-    var result = SlowApiCallAsync();
-    
-    using (await _lock.LockAsync())
-    {
-        // Only critical update
-        _cache = await result;
-    }
+    await SlowDatabaseQueryAsync(); // Don't hold lock!
 }
 ```
 
-### DON'T: Nest Locks (may deadlock)
+### DON'T: Nest locks (may deadlock)
 
 ```csharp
 // Bad: Risk of deadlock
@@ -153,8 +139,6 @@ using (await _lock1.LockAsync())
         // Work...
     }
 }
-
-// Better: Use single lock or careful ordering
 ```
 
 ## See Also

@@ -4,10 +4,10 @@
 
 The Threading package provides high-performance, pooled async synchronization primitives for .NET applications with high throughput workloads, where many small memory allocations matter. All synchronization primitives leverage `ValueTask` and pooled `IValueTaskSource` for efficient async operations. They are not meant to replace but to complement existing popular async libraries.
 
-There are already a number of popular async synchronization libraries available for .NET, but many of these incur significant memory allocations under high contention due to per-waiter `Task` and `TaskCompletionSource` allocations.
+There are already a number of popular async synchronization libraries available for .NET, but many of these incur significant memory allocations under high contention due to per-waiter `Task` and `TaskCompletionSource` allocations or cancellation handling.
 In recent years, the introduction of `ValueTask` and `IValueTaskSource` has enabled the creation of low-allocation async primitives that can be pooled and reused to minimize allocations in high-throughput scenarios.
-This library is the result of the research done by the Keepers of the CryptoHives into building efficient, pooled async synchronization primitives that leverage these modern .NET features.
-By demand, more might be added in the future.
+This library is the result of the research done by the *Keepers of the CryptoHives* into building efficient, pooled async synchronization primitives that leverage these modern .NET features.
+By demand, more primitives might be added in the future.
 
 ## Key Features
 
@@ -54,19 +54,20 @@ using CryptoHives.Foundation.Threading.Pools;
 
 | Class | Description | Namespace |
 |-------|-------------|-----------|
+| `IGetPooledManualResetValueTaskSource<T>` | Interface to get pooled `IValueTaskSource<T>` implementations (providers return `PooledManualResetValueTaskSource<T>` instances) | `CryptoHives.Foundation.Threading.Pools` |
 | `ManualResetValueTaskSource<T>` | Abstract base for pooled `IValueTaskSource<T>` implementations | `CryptoHives.Foundation.Threading.Pools` |
 | `PooledManualResetValueTaskSource<T>` | Pooled `IValueTaskSource<T>` implementation with automatic pool return | `CryptoHives.Foundation.Threading.Pools` |
 | `LocalManualResetValueTaskSource<T>` | Object-local `IValueTaskSource<T>` without pool integration | `CryptoHives.Foundation.Threading.Pools` |
 | `PooledValueTaskSourceObjectPolicy<T>` | Object pool policy for `PooledManualResetValueTaskSource<T>` | `CryptoHives.Foundation.Threading.Pools` |
-| `ValueTaskSourceObjectPool<T>` | Specialized `ObjectPool` for pooled task sources | `CryptoHives.Foundation.Threading.Pools` |
+| `ValueTaskSourceObjectPool<T>` | Specialized provider that implements `IGetPooledManualResetValueTaskSource<T>` and returns pooled task sources | `CryptoHives.Foundation.Threading.Pools` |
 | `ValueTaskSourceObjectPools` | Static helper with shared pool instances and constants | `CryptoHives.Foundation.Threading.Pools` |
 
 ## ⚠️ Known Issues and Caveats
 
 1. Strictly only **await a ValueTask once**. An additional await or AsTask() may throw an `InvalidOperationException`.
-2. Strictly only **use AsTask() once**, and only if you have to. An additional await or AsTask() may throw an `InvalidOperationException`.
+2. Strictly only **use AsTask() once**, and only if you have to. An additional await or AsTask() may throw an `InvalidOperationException`. Adds also a Task allocation on contention.
 3. **RunContinuationsAsynchronously** is by default enabled. In rare cases perf degradation may occur if the Task derived from a ValueTask is not immediately awaited (see benchmarks).
-4. **Pool Exhaustion**: In extreme high-throughput scenarios with many waiters, the pool may exhaust. Monitor and adjust usage patterns accordingly.
+4. **Pool Exhaustion**: In extreme high-throughput scenarios with many waiters, the pool may exhaust. Monitor and adjust usage patterns accordingly. Use a custom pool if necessary.
 5. Always await a ValueTask or AsTask() waiter primitive, or the `IValueTaskSource` is not returned to the pool.
 6. **AsTask() Performance Warning**: When `RunContinuationAsynchronously=true` (default), storing the result of `AsTask()` before signaling causes severe performance degradation (10x-100x slower). Always await `ValueTask` directly when possible.
 
@@ -74,14 +75,15 @@ using CryptoHives.Foundation.Threading.Pools;
 
 Microbenchmarks and contention tests with a discussion of the performance characteristics are available to validate performance and allocation characteristics.
 
-Please be aware that not all new replacement classes behave better than existing popular implementations in all scenarios; 
+Please be aware that not all new replacement classes behave better than existing popular implementations in all scenarios; But most of the time they do.
+
 For example the `AsyncManualResetEvent` implementation has an overhead of a `IValueTaskSource` per waiter, because `ValueTask` cannot be awaited by multiple instances. In contrast to a Task-based implementation all waiters can share the same wake-up Task and `TaskCompletionSource`.
 
 See the Benchmarks overview:
 
 - [Benchmarks Overview](benchmarks.md)
 
-Run reports are available under:
+Run reports are stored under:
 - `tests/Threading/BenchmarkDotNet.Artifacts/results/`
 
 ## Quick Examples
@@ -147,6 +149,7 @@ public async Task WaitForReadyAsync(CancellationToken ct)
 - Reuses `IValueTaskSource` instances from object pools
 - ValueTask-based APIs avoid Task allocations when operations complete synchronously
 - Best case: zero allocation overhead for async state machines
+- On latest .NET versions cancellation token registration is allocation free
 
 ### High Throughput
 
@@ -156,6 +159,7 @@ public async Task WaitForReadyAsync(CancellationToken ct)
 
 ### Compatibility
 
+- Drop in replacement of existing libraries by changing namespace
 - Works with async/await patterns
 - Cancellation token support
 - ConfigureAwait support
@@ -243,22 +247,22 @@ public async Task<T> RateLimitedOperationAsync<T>(Func<Task<T>> operation, Cance
 
 ## Advanced: Custom Pooling
 
-You can provide custom object pools for fine-grained control over pool behavior:
+You can provide a custom provider that implements `IGetPooledManualResetValueTaskSource<T>` for fine-grained control over pool behavior. The built-in `ValueTaskSourceObjectPool<T>` implements this interface and can be used directly.
 
 ```csharp
 using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 
-// Create custom pool with larger capacity
+// Create a custom pool provider (ValueTaskSourceObjectPool implements IGetPooledManualResetValueTaskSource<T>)
 var customPolicy = new PooledValueTaskSourceObjectPolicy<bool>();
 var customPool = new ValueTaskSourceObjectPool<bool>(customPolicy, maximumRetained: 64);
 
-// Use custom pool with event
+// Use custom provider with event
 var evt = new AsyncAutoResetEvent(
     initialState: false,
     runContinuationAsynchronously: true,
     defaultEventQueueSize: 16,
-    pool: customPool);
+    pool: customPool); // accepts any IGetPooledManualResetValueTaskSource<bool>
 ```
 
 ## ValueTaskSource Details

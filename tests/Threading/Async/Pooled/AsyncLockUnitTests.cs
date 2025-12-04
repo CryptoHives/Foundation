@@ -7,12 +7,12 @@ namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
 
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class AsyncLockUnitTests
 {
     [Test]
