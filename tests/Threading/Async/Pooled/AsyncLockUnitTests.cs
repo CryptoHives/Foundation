@@ -189,7 +189,7 @@ public class AsyncLockUnitTests
     [Test]
     public async Task AsyncLockSupportsMultipleAsynchronousLocks()
     {
-        await Task.Run(() => {
+        await Task.Run(async () => {
             var asyncLock = new AsyncLock();
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
@@ -204,16 +204,16 @@ public class AsyncLockUnitTests
                     }
                 });
             var task2 = Task.Run(
-                () => {
-                    using (asyncLock.LockAsync().GetAwaiter().GetResult())
+                async () => {
+                    using (await asyncLock.LockAsync().ConfigureAwait(false))
                     {
-                        Thread.Sleep(1000);
+                        await Task.Delay(10).ConfigureAwait(false);
                     }
                 });
 
-            task2.Wait();
-            cancellationTokenSource.Cancel();
-            task1.Wait();
+            await task2.ConfigureAwait(false);
+            await AsyncAssert.CancelAsync(cancellationTokenSource).ConfigureAwait(false);
+            await task1.ConfigureAwait(false);
         }).ConfigureAwait(false);
     }
 
