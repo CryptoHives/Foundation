@@ -6,10 +6,9 @@
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
-using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -48,7 +47,8 @@ using System.Threading.Tasks;
 public sealed class AsyncLock
 {
     private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters;
-    private readonly ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>> _pool;
+    private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter;
+    private readonly IGetPooledManualResetValueTaskSource<AsyncLockReleaser> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
 #else
@@ -61,12 +61,14 @@ public sealed class AsyncLock
     /// </summary>
     /// <param name="pool">Custom pool for this instance.</param>
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
-    public AsyncLock(int defaultEventQueueSize = 0, ObjectPool<PooledManualResetValueTaskSource<AsyncLockReleaser>>? pool = null)
+    public AsyncLock(int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<AsyncLockReleaser>? pool = null)
     {
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _mutex = new();
         _taken = 0;
+        _localWaiter = new(this);
+        _localWaiter.RunContinuationsAsynchronously = true;
     }
 
     /// <summary>
@@ -166,20 +168,31 @@ public sealed class AsyncLock
 
             if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask<AsyncLockReleaser>(Task.FromException<AsyncLockReleaser>(new OperationCanceledException(cancellationToken)));
+                return new ValueTask<AsyncLockReleaser>(Task.FromCanceled<AsyncLockReleaser>(cancellationToken));
             }
 
-            var waiter = _pool.Get();
-            waiter.RunContinuationsAsynchronously = true;
+            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<AsyncLockReleaser> waiter))
+            {
+                waiter = _pool.GetPooledWaiter(this);
+                waiter.RunContinuationsAsynchronously = true;
+            }
+
             waiter.CancellationToken = cancellationToken;
 
+            // Use UnsafeRegister on .NET 6+ for performance
             if (cancellationToken.CanBeCanceled)
             {
-                waiter.CancellationTokenRegistration = cancellationToken.Register(CancellationCallback, state: waiter, useSynchronizationContext: false);
+#if NET6_0_OR_GREATER
+                // Use UnsafeRegister on .NET 6+ for allocation free registration
+                waiter.CancellationTokenRegistration = cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+                waiter.CancellationTokenRegistration = cancellationToken.Register(
+                    CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
             }
             else
             {
-                waiter.CancellationTokenRegistration = default;
+                Debug.Assert(waiter.CancellationTokenRegistration == default);
             }
 
             _waiters.Enqueue(waiter);
@@ -191,6 +204,11 @@ public sealed class AsyncLock
     /// Whether the lock is currently held.
     /// </summary>
     public bool IsTaken => _taken != 0;
+
+    /// <summary>
+    /// Gets a value indicating whether the local waiter is currently in use.
+    /// </summary>
+    internal bool InternalWaiterInUse => _localWaiter.InUse;
 
     /// <summary>
     /// Releases the lock. If any waiters are queued, the next waiter acquires the lock.
@@ -213,27 +231,40 @@ public sealed class AsyncLock
         toRelease.SetResult(new AsyncLockReleaser(this));
     }
 
+#if NET6_0_OR_GREATER
+    private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
+        var waiter = (ManualResetValueTaskSource<AsyncLockReleaser>)state!;
+        var context = (AsyncLock)waiter.Owner!;
+        context.CancellationCallback(waiter);
+    };
+
+    private void CancellationCallback(ManualResetValueTaskSource<AsyncLockReleaser> waiter)
+    {
+#else
     private void CancellationCallback(object? state)
     {
-        if (state is ManualResetValueTaskSource<AsyncLockReleaser> waiter)
+        if (state is not ManualResetValueTaskSource<AsyncLockReleaser> waiter)
         {
-            ManualResetValueTaskSource<AsyncLockReleaser>? toCancel = null;
-            lock (_mutex)
-            {
-                int count = _waiters.Count;
-                while (count-- > 0)
-                {
-                    var dequeued = _waiters.Dequeue();
-                    if (ReferenceEquals(dequeued, waiter))
-                    {
-                        toCancel = waiter;
-                        break;
-                    }
-                    _waiters.Enqueue(dequeued);
-                }
-            }
-
-            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+            return;
         }
+#endif
+
+        ManualResetValueTaskSource<AsyncLockReleaser>? toCancel = null;
+        lock (_mutex)
+        {
+            int count = _waiters.Count;
+            while (count-- > 0)
+            {
+                var dequeued = _waiters.Dequeue();
+                if (ReferenceEquals(dequeued, waiter))
+                {
+                    toCancel = waiter;
+                    continue;
+                }
+                _waiters.Enqueue(dequeued);
+            }
+        }
+
+        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<AsyncLockReleaser>(waiter.CancellationToken)));
     }
 }

@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA2012 // Use ValueTasks correctly
+#pragma warning disable CA1849 // Call async methods when in an async method
+
 namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
@@ -15,45 +18,264 @@ using Threading.Tests.Pools;
 public class AsyncAutoResetEventUnitTests
 {
     [Test]
-    public void WaitAsyncWhenNotSignaledReturnsNonCompletedValueTask()
+    public async Task IsSetReflectsEventState()
+    {
+        var ev = new AsyncAutoResetEvent(initialState: false, defaultEventQueueSize: 8);
+        Assert.That(ev.IsSet, Is.False);
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+
+        ev.Set();
+        Assert.That(ev.IsSet, Is.True);
+
+        await ev.WaitAsync().ConfigureAwait(false);
+        Assert.That(ev.IsSet, Is.False);
+    }
+
+    [Test]
+    public async Task IsSetReturnsFalseAfterSetReleasesWaiter()
+    {
+        var ev = new AsyncAutoResetEvent(initialState: false, runContinuationAsynchronously: false, defaultEventQueueSize: 8);
+        Assert.That(ev.RunContinuationAsynchronously, Is.False);
+
+        var waiter = ev.WaitAsync();
+
+        ev.Set();
+        await waiter.ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.False);
+    }
+
+    [Test]
+    public void RunContinuationAsynchronouslyPropertyWorks()
+    {
+        var ev = new AsyncAutoResetEvent();
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+
+        ev = new AsyncAutoResetEvent(runContinuationAsynchronously: false);
+        Assert.That(ev.RunContinuationAsynchronously, Is.False);
+
+        ev.RunContinuationAsynchronously = true;
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+    }
+
+    [Theory, CancelAfter(1000)]
+    public void RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
+    {
+        var ev = new AsyncAutoResetEvent(runContinuationAsynchronously: runContinuationAsynchronously);
+        var continuationThreadId = 0;
+        var signalingThreadId = 0;
+
+        var waiter = Task.Run(async () =>
+        {
+            await ev.WaitAsync().ConfigureAwait(false);
+            continuationThreadId = Environment.CurrentManagedThreadId;
+        });
+
+        var setter = Task.Run(async () => {
+            await Task.Delay(100).ConfigureAwait(false);
+            signalingThreadId = Environment.CurrentManagedThreadId;
+            ev.Set();
+            Thread.Sleep(1000);
+        });
+
+        Task.WaitAll(waiter, setter);
+
+        Assert.That(continuationThreadId, runContinuationAsynchronously ? Is.Not.EqualTo(signalingThreadId) : Is.EqualTo(signalingThreadId));
+    }
+
+    [Test]
+    public void ConstructorWithCustomPool()
+    {
+        var customPool = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: customPool);
+
+        Assert.That(customPool.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public async Task MultipleConsecutiveSetCallsOnlySignalOnce()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+        ev.Set();
+        ev.Set();
+        ev.Set();
+
+        Assert.That(ev.IsSet, Is.True);
+
+        await ev.WaitAsync().ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.False);
+
+        var waiter = ev.WaitAsync();
+        Assert.That(waiter.IsCompleted, Is.False);
+
+        ev.Set();
+        await waiter.ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncAfterSetAllWithNoWaitersCompletesImmediately()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+        ev.SetAll();
+
+        var waiter = ev.WaitAsync();
+        Assert.That(waiter.IsCompleted, Is.True);
+
+        await waiter.ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CancellationOfMiddleWaiterInQueue()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: tpvts);
+
+        var waiter1 = ev.WaitAsync();
+        using var cts = new CancellationTokenSource();
+        var waiter2 = ev.WaitAsync(cts.Token);
+        var waiter3 = ev.WaitAsync();
+
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+
+        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter2.ConfigureAwait(false));
+
+        ev.Set();
+        await waiter1.ConfigureAwait(false);
+
+        ev.Set();
+        await waiter3.ConfigureAwait(false);
+
+        Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public async Task MultipleCancellationsOfDifferentWaiters()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: tpvts);
+
+        using var cts1 = new CancellationTokenSource();
+        using var cts2 = new CancellationTokenSource();
+        using var cts3 = new CancellationTokenSource();
+
+        var waiter1 = ev.WaitAsync(cts1.Token);
+        var waiter2 = ev.WaitAsync(cts2.Token);
+        var waiter3 = ev.WaitAsync(cts3.Token);
+
+        await AsyncAssert.CancelAsync(cts1).ConfigureAwait(false);
+        await AsyncAssert.CancelAsync(cts3).ConfigureAwait(false);
+
+        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter1.ConfigureAwait(false));
+        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter3.ConfigureAwait(false));
+
+        ev.Set();
+        await waiter2.ConfigureAwait(false);
+
+        Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public async Task CancellationAfterSetButBeforeAwaitDoesNotThrow()
+    {
+        var ev = new AsyncAutoResetEvent();
+        using var cts = new CancellationTokenSource();
+
+        var waiter = ev.WaitAsync(cts.Token);
+        ev.Set();
+
+        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+
+        await waiter.ConfigureAwait(false);
+    }
+
+    [Test]
+    public void WaitAsyncUnsetReturnsNonCompletedValueTask()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
         ValueTask vt = ev.WaitAsync();
+        Assert.That(vt.IsCompleted, Is.False);
 
-        Assert.That(vt.IsCompleted, Is.False, "Expected WaitAsync to return a non-completed ValueTask when not signaled");
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1), "Instance count should be 1 without await.");
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+        Assert.That(tpvts.ActiveCount, Is.EqualTo(0));
     }
 
     [Test]
-    public async Task WaitAsyncWhenNotSignaledTaskNeverCompletesAsync()
+    public void WaitAsyncUnsetUsesInternalAndPooledValueTaskSource()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: tpvts);
+
+        ValueTask vt = ev.WaitAsync();
+        Assert.That(vt.IsCompleted, Is.False);
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+
+        ValueTask vt2 = ev.WaitAsync();
+        Assert.That(vt2.IsCompleted, Is.False);
+
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task WaitAsyncSetCompletesValueTask()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: tpvts);
+
+        ValueTask vt = ev.WaitAsync();
+        Assert.That(vt.IsCompleted, Is.False);
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+
+        ValueTask vt2 = ev.WaitAsync();
+        Assert.That(vt2.IsCompleted, Is.False);
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+
+        ev.Set();
+        await vt.ConfigureAwait(false);
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+
+        ev.Set();
+        await vt2.ConfigureAwait(false);
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public async Task WaitAsyncUnsetNeverCompletesAsync()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
         Task t = ev.WaitAsync().AsTask();
 
-        Assert.That(t.IsCompleted, Is.False, "Expected WaitAsync to return a non-completed Task when not signaled");
+        Assert.That(t.IsCompleted, Is.False);
 
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1), "Instance count should be 1 without await.");
+
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]
-    public async Task WaitAsyncWhenInitiallySignaledReturnsCompletedAndResetsAsync()
+    public async Task WaitAsyncSetCompletesImmediatelyAndResets()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(initialState: true, pool: tpvts);
 
         ValueTask vt = ev.WaitAsync();
-        Assert.That(vt.IsCompleted, Is.True, "Expected WaitAsync to return a completed ValueTask when initially signaled");
+        Assert.That(vt.IsCompleted, Is.True);
 
-        await vt.ConfigureAwait(false); // should complete immediately
+        await vt.ConfigureAwait(false);
 
-        // Subsequent waiter should not be completed because the signal is auto-reset
         ValueTask vt2 = ev.WaitAsync();
-        Assert.That(vt2.IsCompleted, Is.False, "Expected subsequent WaitAsync to return a non-completed ValueTask after reset");
+        Assert.That(vt2.IsCompleted, Is.False);
         ev.Set();
         await vt2.ConfigureAwait(false);
 
@@ -63,48 +285,47 @@ public class AsyncAutoResetEventUnitTests
         ev.Set();
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]
-    public async Task SetWithNoWaitersSetsSignaledForNextWaiterAsync()
+    public async Task SetWithNoWaitersSetsSignalForNextWaiter()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
-        ev.Set(); // no waiters, should set internal signaled flag
+        ev.Set();
 
         ValueTask vt = ev.WaitAsync();
-        Assert.That(vt.IsCompleted, Is.True, "Expected WaitAsync to return a completed ValueTask after Set() with no waiters");
+        Assert.That(vt.IsCompleted, Is.True);
 
         await vt.ConfigureAwait(false);
 
-        // After consuming the signaled state it should reset again
         ValueTask vt2 = ev.WaitAsync();
-        Assert.That(vt2.IsCompleted, Is.False, "Expected subsequent WaitAsync to be non-completed after consuming signaled state");
+        Assert.That(vt2.IsCompleted, Is.False);
 
         Task t = ev.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
 
-        // set twice to release both waiters
         ev.Set();
         ev.Set();
 
-        // consume both
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(5000)]
-    public async Task SetReleasesSingleWaiterAsync()
+    public async Task SetReleasesQueuedWaiter()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
         ValueTask waiter = ev.WaitAsync();
-        Assert.That(waiter.IsCompleted, Is.False, "Waiter should not be completed before Set()");
+        Assert.That(waiter.IsCompleted, Is.False);
 
         _ = Task.Run(async () => { await Task.Delay(1000).ConfigureAwait(false); ev.Set(); });
 
@@ -112,122 +333,120 @@ public class AsyncAutoResetEventUnitTests
 
         Assert.Throws<InvalidOperationException>(() => _ = waiter.IsCompleted);
 
-        // Ensure no leftover signaled state
         ValueTask vt2 = ev.WaitAsync();
-        Assert.That(vt2.IsCompleted, Is.False, "Expected no leftover signaled state after releasing a queued waiter");
+        Assert.That(vt2.IsCompleted, Is.False);
 
         Task t = ev.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
 
-        // set twice to release both waiters
         ev.Set();
         ev.Set();
 
-        // consume both
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]
-    public async Task SetAllReleasesAllQueuedWaitersAsync()
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(5)]
+    public async Task SetAllReleasesAllQueuedWaiters(int numberOfWaiters)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
-        ValueTask w1 = ev.WaitAsync();
-        ValueTask w2 = ev.WaitAsync();
-        ValueTask w3 = ev.WaitAsync();
+        var valueTasks = new ValueTask[numberOfWaiters];
+        var tasks = new Task[numberOfWaiters];
 
-        using (Assert.EnterMultipleScope())
+        for (int i = 0; i < numberOfWaiters; i++)
         {
-            Assert.That(w1.IsCompleted, Is.False, "w1 should not be completed before SetAll()");
-            Assert.That(w2.IsCompleted, Is.False, "w2 should not be completed before SetAll()");
-            Assert.That(w3.IsCompleted, Is.False, "w3 should not be completed before SetAll()");
+            valueTasks[i] = ev.WaitAsync();
         }
 
-        Task aw1 = ev.WaitAsync().AsTask();
-        Task aw2 = ev.WaitAsync().AsTask();
-        Task aw3 = ev.WaitAsync().AsTask();
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+        Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+
+        for (int i = 0; i < numberOfWaiters; i++)
+        {
+            Assert.That(valueTasks[i].IsCompleted, Is.False);
+        }
+
+        for (int i = 0; i < numberOfWaiters; i++)
+        {
+            tasks[i] = ev.WaitAsync().AsTask();
+        }
+
+        Assert.That(ev.InternalWaiterInUse, Is.True);
+        Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters * 2 - 1));
 
         ev.SetAll();
 
-        // ValueTask can be awaited one time
-        await w1.ConfigureAwait(false);
-        await w2.ConfigureAwait(false);
-        await w3.ConfigureAwait(false);
-
-        // ValueTask throws on the second await
-        using (Assert.EnterMultipleScope())
+        for (int i = 0; i < numberOfWaiters; i++)
         {
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await w1.ConfigureAwait(false));
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await w2.ConfigureAwait(false));
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await w3.ConfigureAwait(false));
+            await valueTasks[i].ConfigureAwait(false);
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await valueTasks[i].ConfigureAwait(false));
         }
 
-        // Task can be awaited multiple times
-        await aw1.ConfigureAwait(false);
-        await aw2.ConfigureAwait(false);
-        await aw3.ConfigureAwait(false);
+        for (int i = 0; i < numberOfWaiters; i++)
+        {
+            await tasks[i].ConfigureAwait(false);
+        }
 
-        // Task can be awaited multiple times
-        await aw1.ConfigureAwait(false);
-        await aw2.ConfigureAwait(false);
-        await aw3.ConfigureAwait(false);
+        for (int i = 0; i < numberOfWaiters; i++)
+        {
+            await tasks[i].ConfigureAwait(false);
+        }
 
-        // After SetAll consumed, no lingering signaled state (auto-reset behavior)
         ValueTask vt = ev.WaitAsync();
-        Assert.That(vt.IsCompleted, Is.False, "Expected subsequent WaitAsync to be non-completed after SetAll() released queued waiters");
+        Assert.That(vt.IsCompleted, Is.False);
 
-        // The task is not signalled
         Task t = ev.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
 
-        // set twice to release both waiters
         ev.Set();
         ev.Set();
 
-        // consume both
         await vt.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]
-    public async Task SetAllWithNoWaitersSetsSignaledForNextWaiterAsync()
+    public async Task SetAllWithNoWaitersSetsSignalForNextWaiter()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
-        ev.SetAll(); // no waiters => should set signaled flag
+        ev.SetAll();
 
         ValueTask vt = ev.WaitAsync();
-        Assert.That(vt.IsCompleted, Is.True, "Expected WaitAsync to return a completed ValueTask after SetAll() with no waiters");
+        Assert.That(vt.IsCompleted, Is.True);
 
         await vt.ConfigureAwait(false);
 
-        // Consumed, next waiter should be non-completed
         ValueTask vt2 = ev.WaitAsync();
-        Assert.That(vt2.IsCompleted, Is.False, "Expected subsequent WaitAsync to be non-completed after consuming signaled state");
+        Assert.That(vt2.IsCompleted, Is.False);
 
         Task t = ev.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
 
-        // set twice to release both waiters
         ev.Set();
         ev.Set();
 
-        // consume both
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
-    [Test]
-    public async Task WaitAsyncWithCancellationTokenCancelsBeforeQueueingAsync()
+    [Theory]
+    public async Task WaitAsyncWithCancellationTokenCancels(bool useAsTask)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
@@ -235,72 +454,65 @@ public class AsyncAutoResetEventUnitTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        if (useAsTask)
+        {
+            Task t = ev.WaitAsync(cts.Token).AsTask();
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
+        }
+        else
+        {
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
+        }
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
-    [Test]
-    public async Task WaitAsyncWithCancellationTokenCancelsWhileQueuedAsync()
+    [Theory]
+    public async Task WaitAsyncWithCancellationTokenCancelsWhileQueued(bool useAsTask)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(initialState: false, pool: tpvts);
         using var cts = new CancellationTokenSource();
 
-        ValueTask vt = ev.WaitAsync(cts.Token);
+        if (useAsTask)
+        {
+            Task t = ev.WaitAsync(cts.Token).AsTask();
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
+        }
+        else
+        {
+            ValueTask vt = ev.WaitAsync(cts.Token);
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        }
 
-        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
-    [Test]
-    public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelledAsync()
+    [Theory]
+    public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelled(bool useAsTask)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
         using var cts = new CancellationTokenSource();
 
-        var vt = ev.WaitAsync(cts.Token);
-
         _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
 
-        await vt.ConfigureAwait(false);
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
-    }
+        if (useAsTask)
+        {
+            Task t = ev.WaitAsync(cts.Token).AsTask();
+            await t.ConfigureAwait(false);
+        }
+        else
+        {
+            await ev.WaitAsync(cts.Token).ConfigureAwait(false);
+        }
 
-    [Test]
-    public async Task WaitAsyncAsTaskWithCancellationTokenCancelsWhileQueuedAsync()
-    {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncAutoResetEvent(initialState: false, pool: tpvts);
-        using var cts = new CancellationTokenSource();
-
-        Task t = ev.WaitAsync(cts.Token).AsTask();
-
-        await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-
-#if NETFRAMEWORK
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
-#else
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await t.ConfigureAwait(false));
-#endif
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
-    }
-
-    [Test]
-    public async Task WaitAsyncAsTaskWithCancellationTokenSucceedsIfNotCancelledAsync()
-    {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncAutoResetEvent(pool: tpvts);
-        using var cts = new CancellationTokenSource();
-
-        Task t = ev.WaitAsync(cts.Token).AsTask();
-
-        _ = Task.Run(async () => { await Task.Delay(100).ConfigureAwait(false); ev.Set(); });
-
-        await t.ConfigureAwait(false);
-        Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 }
 

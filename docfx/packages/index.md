@@ -14,7 +14,7 @@ High-performance buffer management and memory streams backed by `ArrayPool<T>.Sh
 - `ArrayPoolMemoryStream` - Memory stream using pooled buffers (read/write)
 - `ArrayPoolBufferWriter<T>` - IBufferWriter implementation with pooled buffers
 - `ReadOnlySequenceMemoryStream` - Stream wrapper to read from ReadOnlySequence
-- `ObjectOwner<T>` - RAII pattern for object pool management
+- `ObjectOwner<T>` - [RAII](https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization) pattern for object pool management
 
 **[Memory Package Documentation](memory/index.md)**
 
@@ -27,9 +27,11 @@ dotnet add package CryptoHives.Foundation.Memory
 ```csharp
 using CryptoHives.Foundation.Memory.Buffers;
 
-// Use pooled memory stream
+// Use lifetime managed pooled memory stream
 using var stream = new ArrayPoolMemoryStream();
 stream.Write(data);
+
+// sequence becomes invalid when stream is disposed
 ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
 ```
 
@@ -59,9 +61,9 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 
 private readonly AsyncLock _lock = new();
 
-public async Task AccessResourceAsync()
+public async Task AccessResourceAsync(CancellationToken ct)
 {
-    using (await _lock.LockAsync())
+    using (await _lock.LockAsync(ct))
     {
         // Thread-safe async access to shared resource
     }
@@ -78,55 +80,6 @@ Both packages support:
 - .NET Framework 4.6.2
 - .NET Standard 2.1
 - .NET Standard 2.0
-
-## Common Use Cases
-
-### High-Throughput Data Processing
-Combine **Memory** for buffer management with **Threading** for coordinating concurrent processing:
-
-```csharp
-using CryptoHives.Foundation.Memory.Buffers;
-using CryptoHives.Foundation.Threading.Async.Pooled;
-
-public class DataProcessor
-{
-    private readonly AsyncLock _lock = new();
-    
-    public async Task<byte[]> ProcessAsync(Stream input)
-    {
-        using (await _lock.LockAsync())
-        {
-            using var buffer = new ArrayPoolMemoryStream();
-            await input.CopyToAsync(buffer);
-            return buffer.ToArray();
-        }
-    }
-}
-```
-
-### Producer-Consumer Pipeline
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-
-public class Pipeline<T>
-{
-    private readonly AsyncAutoResetEvent _itemAvailable = new(false);
-    private readonly Queue<T> _queue = new();
-    
-    public void Produce(T item)
-    {
-        _queue.Enqueue(item);
-        _itemAvailable.Set();
-    }
-    
-    public async Task<T> ConsumeAsync()
-    {
-        await _itemAvailable.WaitAsync();
-        return _queue.Dequeue();
-    }
-}
-```
 
 ## Getting Help
 

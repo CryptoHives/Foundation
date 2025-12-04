@@ -8,7 +8,7 @@ Welcome to the **CryptoHives .NET Foundation** documentation!
 
 ## Overview
 
-The CryptoHives .NET Foundation provides libraries for .NET applications focusing on memory management and threading primitives.
+The CryptoHives .NET Foundation provides libraries for .NET applications focusing on high performance memory management and threading primitives.
 
 ## Available Packages
 
@@ -20,7 +20,7 @@ The Memory package provides allocation-efficient buffer management utilities tha
 - `ArrayPoolMemoryStream` and `ArrayPoolBufferWriter<T>` classes backed by `ArrayPool<byte>.Shared`
 - Lifetime managed `ReadOnlySequence<byte>` support with pooled storage
 - `ReadOnlySequenceMemoryStream` to stream from `ReadOnlySequence<byte>`
-- `ObjectPool` backed resource management helpers
+- `ObjectPool` backed resource management helpers, e.g. for `StringBuilder`
 
 [Explore Memory Package](packages/memory/index.md)
 
@@ -29,13 +29,14 @@ The Memory package provides allocation-efficient buffer management utilities tha
 The Threading package provides high-performance async synchronization primitives optimized for low allocation and high throughput scenarios.
 
 **Key Features:**
-- All waiters implemented as `ValueTask`-based synchronization primitives with zero memory allocation design
+- All waiters implemented as `ValueTask`-based synchronization primitives with low memory allocation design
+- Full `CancellationToken` support in all Wait/Lock primitives
 - Implementations use `IValueTaskSource<T>` based classes backed by `ObjectPool<T>` to avoid allocations by recycling waiter objects
 - Async mutual exclusion with `AsyncLock` and scoped locking via `IDisposable` pattern
 - `AsyncAutoResetEvent` and `AsyncManualResetEvent` complementing existing implementations which are `Task` based
-- Minimal allocation design for hot-path code
+- No allocation design for hot-path code (see [Benchmarks](packages/threading/benchmarks.md))
 - Fast path optimizations for uncontended scenarios
-- Benchmarks comparing performance against existing .NET synchronization primitives and various popular implementations
+- [Benchmarks](packages/threading/benchmarks.md) comparing performance against existing .NET synchronization primitives and various popular implementations
 
 [Explore Threading Package](packages/threading/index.md)
 
@@ -70,9 +71,9 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 // Pooled async lock reduces allocations
 private readonly AsyncLock _lock = new AsyncLock();
 
-public async Task DoWorkAsync()
+public async Task DoWorkAsync(CancelationToken ct)
 {
-    using (await _lock.LockAsync())
+    using (await _lock.LockAsync(ct))
     {
         // Protected critical section
     }
@@ -97,6 +98,6 @@ public async Task DoWorkAsync()
 
 ## License
 
-MIT License - © 2025 The Keepers of the CryptoHives
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
 
-[View License](https://github.com/CryptoHives/Foundation/blob/main/LICENSE)
+© 2025 The Keepers of the CryptoHives

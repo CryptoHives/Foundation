@@ -1,4 +1,4 @@
-﻿# Getting Started with CryptoHives.Foundation
+## Getting Started with CryptoHives.Foundation libraries
 
 Welcome to the CryptoHives .NET Foundation libraries! This guide will help you get started with the Memory and Threading packages.
 
@@ -36,7 +36,7 @@ Install-Package CryptoHives.Foundation.Threading
 
 ### Memory Package
 
-The Memory package provides high-performance, low-allocation buffer management utilities:
+The Memory package provides high-performance, pool based buffer management utilities:
 
 ```csharp
 using CryptoHives.Foundation.Memory.Buffers;
@@ -79,8 +79,6 @@ For issues and questions:
 - [GitHub Issues](https://github.com/CryptoHives/Foundation/issues)
 - [Security Policy](https://github.com/CryptoHives/Foundation/SECURITY.md)
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/CryptoHives/Foundation/LICENSE) file for details.
+---
 
 © 2025 The Keepers of the CryptoHives
