@@ -29,6 +29,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
