@@ -193,6 +193,7 @@ public class AsyncLockUnitTests
             var asyncLock = new AsyncLock();
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
+
             var task1 = Task.Run(
                 async () => {
                     while (!cancellationToken.IsCancellationRequested)
@@ -203,15 +204,25 @@ public class AsyncLockUnitTests
                         }
                     }
                 });
+
             var task2 = Task.Run(
                 async () => {
                     using (await asyncLock.LockAsync().ConfigureAwait(false))
                     {
-                        await Task.Delay(10).ConfigureAwait(false);
+                        await Task.Delay(1000).ConfigureAwait(false);
+                    }
+                });
+
+            var task3 = Task.Run(
+                () => {
+                    using (asyncLock.LockAsync().AsTask().GetAwaiter().GetResult())
+                    {
+                        Thread.Sleep(100);
                     }
                 });
 
             await task2.ConfigureAwait(false);
+            await task3.ConfigureAwait(false);
             await AsyncAssert.CancelAsync(cancellationTokenSource).ConfigureAwait(false);
             await task1.ConfigureAwait(false);
         }).ConfigureAwait(false);
