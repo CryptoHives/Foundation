@@ -1,0 +1,123 @@
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
+
+namespace Threading.Tests.Async.Pooled;
+
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Order;
+using NUnit.Framework;
+using System.Threading.Tasks;
+
+/// <summary>
+/// Benchmarks measuring Set-then-Wait performance on ManualResetEvent implementations.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This benchmark suite evaluates the fast-path performance when a manual-reset event
+/// is signaled before a wait operation begins, allowing immediate completion without queuing.
+/// </para>
+/// <para>
+/// <b>Test scenario:</b> Signal the event first, then immediately wait (should complete synchronously).
+/// </para>
+/// <para>
+/// <b>Compared implementations:</b>
+/// </para>
+/// <list type="bullet">
+/// <item><description><b>Standard:</b> Synchronous System.Threading.ManualResetEvent (blocking wait).</description></item>
+/// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
+/// <item><description><b>Nito.AsyncEx:</b> Third-party async library using Task-based primitives.</description></item>
+/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource.</description></item>
+/// </list>
+/// <para>
+/// <b>Key metrics:</b> Fast-path overhead and memory allocations when event is pre-signaled.
+/// </para>
+/// </remarks>
+[TestFixture]
+[MemoryDiagnoser(displayGenColumns: false)]
+[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
+[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[BenchmarkCategory("AsyncManualResetEvent")]
+public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBaseBenchmark
+{
+    /// <summary>
+    /// Benchmark for standard synchronous ManualResetEvent Set-then-Wait.
+    /// </summary>
+    /// <remarks>
+    /// Measures the synchronous blocking wait after signaling.
+    /// This is a pure synchronous baseline with no async overhead.
+    /// </remarks>
+    [Test]
+    [BenchmarkCategory("SetThenWait", "Standard")]
+    public void ManualResetEventSetThenWait()
+    {
+        _ = _eventStandard.Set();
+        _ = _eventStandard.WaitOne();
+    }
+
+    /// <summary>
+    /// Benchmark for pooled async manual-reset event Set-then-Wait.
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path async completion when the event is pre-signaled.
+    /// The pooled implementation should return a completed ValueTask immediately.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetThenWait", "Pooled")]
+    public async Task PooledAsyncManualResetEventSetThenWaitAsync()
+    {
+        _eventPooled.Set();
+        await _eventPooled.WaitAsync(_cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Benchmark for pooled async manual-reset event Set-then-Wait using AsTask().
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path async completion when the event is pre-signaled.
+    /// The pooled implementation should return a completed ValueTask immediately
+    /// which is then converted to a Task.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetThenWait", "PooledAsTask")]
+    public async Task PooledAsTaskAsyncManualResetEventSetThenWaitAsync()
+    {
+        _eventPooled.Set();
+        await _eventPooled.WaitAsync(_cancellationToken).AsTask().ConfigureAwait(false);
+    }
+
+#if !SIGNASSEMBLY
+    /// <summary>
+    /// Benchmark for Nito.AsyncEx async manual-reset event Set-then-Wait.
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path async completion for the Nito.AsyncEx library.
+    /// This implementation uses Task-based primitives.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetThenWait", "Nito.AsyncEx")]
+    public async Task NitoAsyncManualResetEventSetThenWaitAsync()
+    {
+        _eventNitoAsync.Set();
+        await _eventNitoAsync.WaitAsync(_cancellationToken).ConfigureAwait(false);
+    }
+#endif
+
+    /// <summary>
+    /// Benchmark for reference implementation async manual-reset event Set-then-Wait (baseline).
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path performance of the TaskCompletionSource-based reference implementation.
+    /// This serves as the baseline for comparing allocation-free patterns.
+    /// </remarks>
+    [Test]
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SetThenWait", "RefImpl")]
+    public async Task RefImplAsyncManualResetEventSetThenWaitAsync()
+    {
+        _eventRefImp.Set();
+        await _eventRefImp.WaitAsync().ConfigureAwait(false);
+    }
+}
