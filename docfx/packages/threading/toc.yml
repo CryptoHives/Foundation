@@ -10,3 +10,11 @@
       href: asyncautoresetevent.md
     - name: AsyncManualResetEvent
       href: asyncmanualresetevent.md
+    - name: AsyncSemaphore
+      href: asyncsemaphore.md
+    - name: AsyncCountdownEvent
+      href: asynccountdownevent.md
+    - name: AsyncBarrier
+      href: asyncbarrier.md
+    - name: AsyncReaderWriterLock
+      href: asyncreaderwriterlock.md
