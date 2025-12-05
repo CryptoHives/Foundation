@@ -158,6 +158,12 @@ Instead, please follow the guidelines on the [CryptoHives Open Source Initiative
 
 ---
 
+## 🔏 Nuget Package Assembly Code Signing
+
+Assemblies in our Nuget packages are currently not code signed. Once there is sufficient demand and funding available, the Keepers plan to implement code signing for all released packages.
+
+---
+
 ## 📝 No-Nonsense Matters
 
 This project is released under the MIT License because open collaboration matters.  

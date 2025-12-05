@@ -100,4 +100,8 @@ public async Task DoWorkAsync(CancelationToken ct)
 
 This project is licensed under the MIT License. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
 
+---
+
+[Impressum (Legal Notice)](impressum.md)
+
 © 2025 The Keepers of the CryptoHives
