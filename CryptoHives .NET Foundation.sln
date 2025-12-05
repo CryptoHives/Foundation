@@ -70,6 +70,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "devops ci", "devops ci", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{01ED31D9-948B-49CA-8329-A7C4CB2C930C}"
 	ProjectSection(SolutionItems) = preProject
+		tests\benchmarks.cmd = tests\benchmarks.cmd
 		tests\coverlet.runsettings.xml = tests\coverlet.runsettings.xml
 	EndProjectSection
 EndProject
