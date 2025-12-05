@@ -14,27 +14,28 @@ using System;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Benchmarks measuring Wait-then-Set performance with batched queued waiters on AutoResetEvent implementations.
+/// Benchmarks measuring Wait-then-Set performance with batched queued waiters on ManualResetEvent implementations.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This benchmark suite evaluates the performance and memory overhead of batched signaling scenarios
-/// where multiple wait operations are queued first, then all are signaled sequentially, and finally
+/// where multiple wait operations are queued first, then signaled once, and finally
 /// all completions are awaited. This pattern tests bulk waiter queue management and batch completion efficiency.
+/// Unlike AutoResetEvent which releases one waiter per Set(), ManualResetEvent releases all waiters at once.
 /// </para>
 /// <para>
-/// <b>Test scenario:</b> Queue N waiters, then signal N times, then await all N completions.
+/// <b>Test scenario:</b> Reset event, then Queue N waiters, then signal once, then await all N completions.
 /// This differs from WaitSet benchmarks by batching operations rather than interleaving them.
 /// </para>
 /// <para>
 /// <b>Compared implementations:</b>
 /// </para>
 /// <list type="bullet">
-/// <item><description><b>Pooled (ValueTask):</b> Allocation-free implementation using pooled IValueTaskSource with FIFO waiter queue.</description></item>
+/// <item><description><b>Pooled (ValueTask, baseline):</b> Allocation-free implementation using pooled IValueTaskSource with FIFO waiter queue.</description></item>
 /// <item><description><b>Pooled (AsTask):</b> Same pooled implementation converted to Task via AsTask() (incurs allocation overhead).</description></item>
 /// <item><description><b>Pooled (ContSync):</b> Pooled implementation with synchronous continuation execution (RunContinuationAsynchronously=false).</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based primitives and internal FIFO queue.</description></item>
-/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource with FIFO waiter queue.</description></item>
+/// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource with FIFO waiter queue.</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Batch signaling throughput, memory allocations, and queue management overhead
@@ -48,8 +49,8 @@ using System.Threading.Tasks;
 /// <para>
 /// <b>Continuation behavior:</b> The pooled implementation supports configurable continuation scheduling via
 /// <see cref="Threading.Async.Pooled.RunContinuationAsynchronously"/>.
-/// When set to false, continuations execute synchronously on the signaling thread, reducing context switching
-/// overhead but potentially blocking the caller longer.
+/// When set to false, continuations may execute synchronously on the signaling thread, reducing context switching
+/// overhead but potentially blocking the caller longer with a risk of deadlocks.
 /// </para>
 /// <para>
 /// <b>AsTask() storage warning:</b> Converting ValueTask to Task via AsTask() and storing the result
@@ -64,9 +65,9 @@ using System.Threading.Tasks;
 [MemoryDiagnoser(displayGenColumns: false)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
-[BenchmarkCategory("AsyncAutoResetEvent")]
+[BenchmarkCategory("AsyncManualResetEvent")]
 [NonParallelizable]
-public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBenchmark
+public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBaseBenchmark
 {
     private Task?[] _task;
     private ValueTask[] _valueTask;
@@ -81,13 +82,13 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [Params(1, 2, 10, 100)]
     public int Iterations { get; set; } = 10;
 
-    public AsyncAutoResetEventWaitThenSetBenchmark()
+    public AsyncManualResetEventWaitThenSetBenchmark()
     {
         _task = Array.Empty<Task>();
         _valueTask = Array.Empty<ValueTask>();
     }
 
-    public AsyncAutoResetEventWaitThenSetBenchmark(int iterations) : this()
+    public AsyncManualResetEventWaitThenSetBenchmark(int iterations) : this()
     {
         Iterations = iterations;
     }
@@ -117,12 +118,12 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// <remarks>
     /// Configures the pooled event to run continuations synchronously (on the signaling thread)
     /// instead of queuing them to the thread pool. This reduces context switching overhead
-    /// but may increase Set() call duration.
+    /// but may increase Set() call duration. Faster at the risk of deadlocks.
     /// </remarks>
     [GlobalSetup(Targets = new[] {
-        nameof(PooledContSyncAsyncAutoResetEventWaitThenSetAsync),
-        nameof(PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync),
-        nameof(PooledAsTaskContSyncAutoResetEventWaitThenSetAsync)
+        nameof(PooledContSyncAsyncManualResetEventWaitThenSetAsync),
+        nameof(PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync),
+        nameof(PooledAsTaskContSyncManualResetEventWaitThenSetAsync)
     })]
     public void GlobalSetupSynchronousContinuation()
     {
@@ -131,7 +132,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     }
 
     /// <summary>
-    /// Benchmark for pooled async auto-reset event with synchronous continuations using ValueTask.
+    /// Benchmark for pooled async manual-reset event with synchronous continuations using ValueTask.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -140,7 +141,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// eliminating thread pool queuing overhead at the cost of potentially blocking Set() longer.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Queue all waiters → Signal all (sync continuations) → Await all completions.
+    /// <b>Pattern:</b> Queue all waiters → Signal once (sync continuations) → Await all completions.
     /// </para>
     /// <para>
     /// This demonstrates the performance trade-off between reduced context switching and
@@ -149,23 +150,23 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Pooled")]
-    [TestCaseSource(typeof(CancellationType),nameof(CancellationType.NoneNotCancelledGroup))]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task PooledContSyncAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public Task PooledContSyncAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
-        return PooledAsyncAutoResetEventWaitThenSetAsync(cancellationType);
+        return PooledAsyncManualResetEventWaitThenSetAsync(cancellationType);
     }
 
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task PooledAsyncAutoResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
+    public Task PooledAsyncManualResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
     {
         _eventPooled.RunContinuationAsynchronously = false;
-        return PooledAsyncAutoResetEventWaitThenSetAsync(cancellationType);
+        return PooledAsyncManualResetEventWaitThenSetAsync(cancellationType);
     }
 
     /// <summary>
-    /// Benchmark for pooled async auto-reset event with synchronous continuations using AsTask() conversion.
+    /// Benchmark for pooled async manual-reset event with synchronous continuations using AsTask() conversion.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -173,7 +174,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// Combines the allocation cost of AsTask() with synchronous continuation behavior.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Queue all waiters → await AsTask() immediately → Signal all (sync continuations).
+    /// <b>Pattern:</b> Queue all waiters → await AsTask() immediately → Signal once (sync continuations).
     /// </para>
     /// <para>
     /// This pattern demonstrates lower overhead than storing Task references before signaling.
@@ -183,21 +184,21 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("WaitThenSet", "PooledAsValueTask")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public Task PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
-        return PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(cancellationType);
+        return PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync(cancellationType);
     }
 
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task PooledAsTaskAsyncAutoResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
+    public Task PooledAsTaskAsyncManualResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
     {
         _eventPooled.RunContinuationAsynchronously = false;
-        return PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(cancellationType);
+        return PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync(cancellationType);
     }
 
     /// <summary>
-    /// Benchmark for pooled async auto-reset event with synchronous continuations and pre-stored Task references.
+    /// Benchmark for pooled async manual-reset event with synchronous continuations and pre-stored Task references.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -206,7 +207,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// even when events are signaled, negating the benefits of synchronous continuations.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Store all Task references via AsTask() → Signal all → Await stored Tasks.
+    /// <b>Pattern:</b> Store all Task references via AsTask() → Signal once → Await stored Tasks.
     /// </para>
     /// <para>
     /// <b>Performance warning:</b> This is an anti-pattern. Storing Task references prevents
@@ -218,21 +219,21 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("WaitThenSet", "PooledAsTask")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task PooledAsTaskContSyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public Task PooledAsTaskContSyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
-        return PooledAsTaskAutoResetEventWaitThenSetAsync(cancellationType);
+        return PooledAsTaskManualResetEventWaitThenSetAsync(cancellationType);
     }
 
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task PooledAsTaskRunSyncAutoResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
+    public Task PooledAsTaskRunSyncManualResetEventContSyncWaitThenSetTestAsync(CancellationType cancellationType)
     {
         _eventPooled.RunContinuationAsynchronously = false;
-        return PooledAsTaskAutoResetEventWaitThenSetAsync(cancellationType);
+        return PooledAsTaskManualResetEventWaitThenSetAsync(cancellationType);
     }
 
     /// <summary>
-    /// Benchmark for pooled async auto-reset event with batched queued async waiters using ValueTask.
+    /// Benchmark for pooled async manual-reset event with batched queued async waiters using ValueTask.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -242,7 +243,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// to minimize allocations during batch processing.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Queue all waiters → Signal all → Await all completions.
+    /// <b>Pattern:</b> Queue all waiters → Signal once → Await all completions.
     /// </para>
     /// <para>
     /// This is the optimal usage pattern for the pooled implementation, demonstrating
@@ -254,17 +255,17 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("WaitThenSet", "Pooled")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public async Task PooledAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public async Task PooledAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+
+        _eventPooled.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _valueTask[i] = _eventPooled.WaitAsync(cancellationType.CancellationToken);
         }
 
-        for (int i = 0; i < Iterations; i++)
-        {
-            _eventPooled.Set();
-        }
+        _eventPooled.Set();
 
         for (int i = 0; i < Iterations; i++)
         {
@@ -273,7 +274,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     }
 
     /// <summary>
-    /// Benchmark for pooled async auto-reset event with immediate AsTask() conversion and await.
+    /// Benchmark for pooled async manual-reset event with immediate AsTask() conversion and await.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -282,7 +283,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// of storing Task references before signaling.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Queue all waiters → Signal all → Immediately convert and await via AsTask().
+    /// <b>Pattern:</b> Queue all waiters → Signal once → Immediately convert and await via AsTask().
     /// </para>
     /// <para>
     /// <b>Performance note:</b> This pattern is acceptable when Task is required (e.g., Task.WhenAll),
@@ -295,17 +296,16 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("WaitThenSet", "PooledAsValueTask")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public async Task PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public async Task PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventPooled.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _valueTask[i] = _eventPooled!.WaitAsync(cancellationType.CancellationToken);
         }
 
-        for (int i = 0; i < Iterations; i++)
-        {
-            _eventPooled.Set();
-        }
+        _eventPooled.Set();
 
         for (int i = 0; i < Iterations; i++)
         {
@@ -314,7 +314,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     }
 
     /// <summary>
-    /// Benchmark for pooled async auto-reset event with pre-stored Task references (anti-pattern).
+    /// Benchmark for pooled async manual-reset event with pre-stored Task references (anti-pattern).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -323,7 +323,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// even when the event is already signaled, causing significant overhead.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Store all Task references via AsTask() → Signal all → Await stored Tasks.
+    /// <b>Pattern:</b> Store all Task references via AsTask() → Signal once → Await stored Tasks.
     /// </para>
     /// <para>
     /// <b>Performance warning:</b> This is an anti-pattern and should be avoided. When Task references
@@ -341,17 +341,16 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("WaitThenSet", "PooledAsTask")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public async Task PooledAsTaskAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public async Task PooledAsTaskManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventPooled.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _task[i] = _eventPooled!.WaitAsync(cancellationType.CancellationToken).AsTask();
         }
 
-        for (int i = 0; i < Iterations; i++)
-        {
-            _eventPooled.Set();
-        }
+        _eventPooled.Set();
 
         for (int i = 0; i < Iterations; i++)
         {
@@ -361,7 +360,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 
 #if !SIGNASSEMBLY
     /// <summary>
-    /// Benchmark for Nito.AsyncEx async auto-reset event with batched queued async waiters.
+    /// Benchmark for Nito.AsyncEx async manual-reset event with batched queued async waiters.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -369,7 +368,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// This implementation uses Task-based primitives and allocates per queued waiter.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Queue all waiters as Task → Signal all → Await all completions.
+    /// <b>Pattern:</b> Queue all waiters as Task → Signal once → Await all completions.
     /// </para>
     /// <para>
     /// Serves as a Task-based reference for comparing against pooled ValueTask implementations.
@@ -380,17 +379,16 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("WaitThenSet", "Nito.AsyncEx")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public async Task NitoAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public async Task NitoAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventNitoAsync.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _task[i] = _eventNitoAsync!.WaitAsync(cancellationType.CancellationToken);
         }
 
-        for (int i = 0; i < Iterations; i++)
-        {
-            _eventNitoAsync.Set();
-        }
+        _eventNitoAsync.Set();
 
         for (int i = 0; i < Iterations; i++)
         {
@@ -400,7 +398,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 #endif
 
     /// <summary>
-    /// Benchmark for reference implementation async auto-reset event with batched queued async waiters (baseline).
+    /// Benchmark for reference implementation async manual-reset event with batched queued async waiters (baseline).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -409,7 +407,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// Allocates a new TaskCompletionSource per queued waiter.
     /// </para>
     /// <para>
-    /// <b>Pattern:</b> Queue all waiters as Task → Signal all → Await all completions.
+    /// <b>Pattern:</b> Queue all waiters as Task → Signal once → Await all completions.
     /// </para>
     /// <para>
     /// This baseline demonstrates typical Task-based async event performance and allocation
@@ -421,17 +419,16 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     [BenchmarkCategory("WaitThenSet", "RefImpl")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
-    public async Task RefImplAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    public async Task RefImplAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventRefImp.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _task[i] = _eventRefImp!.WaitAsync();
         }
 
-        for (int i = 0; i < Iterations; i++)
-        {
-            _eventRefImp.Set();
-        }
+        _eventRefImp.Set();
 
         for (int i = 0; i < Iterations; i++)
         {
@@ -439,4 +436,3 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
         }
     }
 }
-

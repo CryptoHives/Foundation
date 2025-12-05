@@ -17,6 +17,7 @@ The included benchmarks try uncontested and contested scenarios:
 
 - `tests/Threading/Async/Pooled/AsyncLock*Benchmark.cs` — single and multiple queued waiters for various `AsyncLock` implementations (Pooled, Nito, AsyncKeyedLock, reference implementation, NeoSmart).  
 - `tests/Threading/Async/Pooled/AsyncAutoResetEvent*Benchmark.cs` — set/wait and contention scenarios for `AsyncAutoResetEvent` implementations (Pooled, Nito, reference implementation).
+- `tests/Threading/Async/Pooled/AsyncManualResetEvent*Benchmark.cs` — set/wait and contention scenarios for `AsyncManualResetEvent` implementations (Pooled, Nito, reference implementation).
 
 ### Run benchmarks locally
 
@@ -101,20 +102,6 @@ This is the fast path if the event is already Set and an immediate return from W
 | NitoAsyncAutoResetEventSetThenWaitAsync         | 16.39 ns |  0.93 |         - |          NA |
 | RefImplAsyncAutoResetEventSetThenWaitAsync      | 17.53 ns |  1.00 |         - |          NA |
 
-#### AsyncAutoResetEvent Wait Benchmark
-
-The benchmark measures the overhead of waiting on an unset event with no contention. Here the implementations have to start to allocate waiter objects. The pooled implementations can handle the requests without allocation and are almost on parity with the ref implementation. With the cancellation token an allocation is required for all implementations except the pooled one if compiled for .NET6+.
-
-| Method                                      | cancellationType | Mean      | Ratio | Allocated | Alloc Ratio |
-|-------------------------------------------- |----------------- |----------:|------:|----------:|------------:|
-| RefImplAsyncAutoResetEventTaskWaitAsync     | None             |  24.48 ns |  1.00 |      96 B |        1.00 |
-| **PooledAsyncAutoResetEventTaskWaitAsync**      | None             |  26.01 ns |  1.06 |         - |        0.00 |
-| PooledAsyncAutoResetEventValueTaskWaitAsync | None             |  29.89 ns |  1.22 |         - |        0.00 |
-| NitoAsyncAutoResetEventTaskWaitAsync        | None             |  33.01 ns |  1.35 |     160 B |        1.67 |
-|                                             |                  |           |       |           |             |
-| **PooledAsyncAutoResetEventValueTaskWaitAsync** | NotCancelled     |  43.84 ns |     ? |         - |           ? |
-| PooledAsyncAutoResetEventTaskWaitAsync      | NotCancelled     |  46.69 ns |     ? |         - |           ? |
-| NitoAsyncAutoResetEventTaskWaitAsync        | NotCancelled     | 341.37 ns |     ? |     400 B |           ? |
 
 #### AsyncAutoResetEvent WaitThenSet Benchmark with varying contention (Iterations)
 
@@ -206,6 +193,130 @@ With cancellation token the pooled implementations outperform Nito by almost 10 
 | PooledAsTaskContSync                                         | 100        | NotCancelled     |   7,189.91 ns |     ? |    8000 B |           ? |
 | NitoAsyncAutoResetEventWaitThenSetAsync                      | 100        | NotCancelled     |  41,873.17 ns |     ? |   40000 B |           ? |
 | PooledAsTaskAutoResetEventWaitThenSetAsync                   | 100        | NotCancelled     | 247,247.20 ns |     ? |   11347 B |           ? |
+
+### AsyncManualResetEvent Benchmarks
+
+The benchmarks compare various `AsyncManualResetEvent` implementations:
+
+- PooledAsyncManualResetEvent: The pooled implementation from this library
+- RefImplAsyncManualResetEvent: The reference implementation from Stephen Toub's blog, which does not support cancellation tokens
+- NitoAsyncManualResetEvent: The implementation from Nito.AsyncEx library
+
+Unlike `AsyncAutoResetEvent` which releases one waiter per signal, `AsyncManualResetEvent` releases **all waiters** when signaled and remains signaled until explicitly reset. This creates different performance characteristics and allocation patterns.
+
+#### AsyncManualResetEvent Set/Reset Benchmark
+
+Measures the overhead of setting and resetting the event without any waiters. The pooled implementation shows the best performance with zero allocations.
+
+| Method                               | Mean       | Ratio | Allocated | Alloc Ratio |
+|------------------------------------- |-----------:|------:|----------:|------------:|
+| **PooledAsyncManualResetEventSetReset**  |   8.616 ns |  0.80 |         - |        0.00 |
+| RefImplAsyncManualResetEventSetReset |  10.787 ns |  1.00 |      96 B |        1.00 |
+| NitoAsyncManualResetEventSetReset    |  21.765 ns |  2.02 |      96 B |        1.00 |
+| ManualResetEventSet                  | 459.853 ns | 42.64 |         - |        0.00 |
+
+#### AsyncManualResetEvent SetThenWait Benchmark
+
+This is the fast path when the event is already set before waiting. All async implementations complete synchronously with minimal overhead. The reference implementation is fastest, but the pooled implementation is competitive with zero allocations.
+
+| Method                                            | Mean      | Ratio | Allocated | Alloc Ratio |
+|-------------------------------------------------- |----------:|------:|----------:|------------:|
+| RefImplAsyncManualResetEventSetThenWaitAsync      |  6.676 ns |  1.00 |         - |          NA |
+| **PooledAsyncManualResetEventSetThenWaitAsync**       | 14.065 ns |  2.11 |         - |          NA |
+| PooledAsTaskAsyncManualResetEventSetThenWaitAsync | 14.328 ns |  2.15 |         - |          NA |
+| NitoAsyncManualResetEventSetThenWaitAsync         | 23.025 ns |  3.45 |         - |          NA |
+
+#### AsyncManualResetEvent WaitThenSet Benchmark with varying contention (Iterations)
+
+This benchmark measures signaling behavior when multiple waiters are queued. Unlike `AsyncAutoResetEvent`, all waiters are released simultaneously when the event is set. This creates more overhead as the number of waiters increases, but the pooled implementation maintains zero allocations even under high contention.
+
+**Key Insight:** The pooled implementation's overhead increases with waiter count because each waiter needs its own `IValueTaskSource`. In contrast, Task-based implementations can share a single `Task` for all waiters. Despite this, the pooled version still provides better memory characteristics under sustained load. Also when a cancellable token is used, the pooled version outperforms all other versions.
+
+With **1 iteration** (single waiter), the pooled implementations show competitive performance with zero allocations:
+
+| Method                                                         | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|--------------------------------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| RefImplAsyncManualResetEventWaitThenSetAsync                   | 1          | None             |     20.29 ns |  1.00 |      96 B |        1.00 |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 1          | None             |     31.36 ns |  1.55 |      96 B |        1.00 |
+| **PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync**         | 1          | None             |     42.88 ns |  2.12 |         - |        0.00 |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 1          | None             |     43.58 ns |  2.15 |         - |        0.00 |
+| PooledAsyncManualResetEventWaitThenSetAsync                    | 1          | None             |     43.68 ns |  2.15 |         - |        0.00 |
+| PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync | 1          | None             |     43.76 ns |  2.16 |         - |        0.00 |
+| PooledAsTaskContSync                                           | 1          | None             |     59.86 ns |  2.95 |      80 B |        0.83 |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 1          | None             |    377.14 ns | 18.60 |     232 B |        2.42 |
+|                                                                |            |                  |              |       |           |             |
+| **PooledAsyncManualResetEventWaitThenSetAsync**                    | 1          | NotCancelled     |     57.39 ns |     ? |         - |           ? |
+| PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync         | 1          | NotCancelled     |     59.38 ns |     ? |         - |           ? |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 1          | NotCancelled     |     60.11 ns |     ? |         - |           ? |
+| PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync | 1          | NotCancelled     |     61.87 ns |     ? |         - |           ? |
+| PooledAsTaskContSync                                           | 1          | NotCancelled     |     83.01 ns |     ? |      80 B |           ? |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 1          | NotCancelled     |    467.26 ns |     ? |     232 B |           ? |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 1          | NotCancelled     |    702.69 ns |     ? |     808 B |           ? |
+
+With **2 iterations** (two waiters), overhead starts to show as all waiters must be released simultaneously. Pooled implementations maintain zero allocations:
+
+| Method                                                         | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|--------------------------------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| RefImplAsyncManualResetEventWaitThenSetAsync                   | 2          | None             |     26.78 ns |  1.00 |      96 B |        1.00 |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 2          | None             |     48.21 ns |  1.80 |      96 B |        1.00 |
+| **PooledAsyncManualResetEventWaitThenSetAsync**                    | 2          | None             |     78.87 ns |  2.94 |         - |        0.00 |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 2          | None             |     80.28 ns |  3.00 |         - |        0.00 |
+| PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync | 2          | None             |     82.12 ns |  3.07 |         - |        0.00 |
+| PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync         | 2          | None             |     85.81 ns |  3.20 |         - |        0.00 |
+| PooledAsTaskContSync                                           | 2          | None             |    118.24 ns |  4.41 |     160 B |        1.67 |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 2          | None             |    821.80 ns | 30.68 |     344 B |        3.58 |
+|                                                                |            |                  |              |       |           |             |
+| **PooledAsyncManualResetEventWaitThenSetAsync**                    | 2          | NotCancelled     |    106.60 ns |     ? |         - |           ? |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 2          | NotCancelled     |    107.65 ns |     ? |         - |           ? |
+| PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync | 2          | NotCancelled     |    120.10 ns |     ? |         - |           ? |
+| PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync         | 2          | NotCancelled     |    121.45 ns |     ? |         - |           ? |
+| PooledAsTaskContSync                                           | 2          | NotCancelled     |    169.77 ns |     ? |     160 B |           ? |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 2          | NotCancelled     |    928.79 ns |     ? |     344 B |           ? |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 2          | NotCancelled     |  1,232.19 ns |     ? |    1488 B |           ? |
+
+With **10 iterations** (ten waiters), the cost of releasing all waiters becomes more apparent. The pooled implementation is slower than the reference implementation but maintains zero allocations:
+
+| Method                                                         | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|--------------------------------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| RefImplAsyncManualResetEventWaitThenSetAsync                   | 10         | None             |    568.25 ns |  1.00 |      96 B |        1.00 |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 10         | None             |  1,008.70 ns |  1.78 |      96 B |        1.00 |
+| **PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync**         | 10         | None             |    360.97 ns |  5.10 |         - |        0.00 |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 10         | None             |    368.02 ns |  5.20 |         - |        0.00 |
+| PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync | 10         | None             |    382.85 ns |  5.41 |         - |        0.00 |
+| PooledAsyncManualResetEventWaitThenSetAsync                    | 10         | None             |    390.19 ns |  5.51 |         - |        0.00 |
+| PooledAsTaskContSync                                           | 10         | None             |    565.94 ns |  7.99 |     800 B |        8.33 |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 10         | None             |  2,425.78 ns | 34.25 |    1240 B |       12.92 |
+|                                                                |            |                  |              |       |           |             |
+| **PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync** | 10         | NotCancelled     |    518.46 ns |     ? |         - |           ? |
+| PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync         | 10         | NotCancelled     |    520.64 ns |     ? |         - |           ? |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 10         | NotCancelled     |    533.18 ns |     ? |         - |           ? |
+| PooledAsyncManualResetEventWaitThenSetAsync                    | 10         | NotCancelled     |    553.67 ns |     ? |         - |           ? |
+| PooledAsTaskContSync                                           | 10         | NotCancelled     |    778.84 ns |     ? |     800 B |           ? |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 10         | NotCancelled     |  3,141.91 ns |     ? |    1240 B |           ? |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 10         | NotCancelled     |  4,231.36 ns |     ? |    6464 B |           ? |
+
+With **100 iterations** (hundred waiters), the overhead of releasing all waiters is substantial, but the pooled implementation still provides zero allocations. The reference implementation is fastest but allocates per waiter. With cancellation tokens, the pooled implementation significantly outperforms Nito.AsyncEx:
+
+| Method                                                         | Iterations | cancellationType | Mean          | Ratio | Allocated | Alloc Ratio |
+|--------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|------------:|
+| RefImplAsyncManualResetEventWaitThenSetAsync                   | 100        | None             |    568.25 ns |  1.00 |      96 B |        1.00 |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 100        | None             |  1,008.70 ns |  1.78 |      96 B |        1.00 |
+| **PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync** | 100        | None             |  3,216.88 ns |  5.66 |         - |        0.00 |
+| PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync         | 100        | None             |  3,220.85 ns |  5.67 |         - |        0.00 |
+| PooledAsyncManualResetEventWaitThenSetAsync                    | 100        | None             |  3,437.26 ns |  6.05 |         - |        0.00 |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 100        | None             |  3,444.67 ns |  6.06 |         - |        0.00 |
+| PooledAsTaskContSync                                           | 100        | None             |  5,138.45 ns |  9.04 |    8000 B |       83.33 |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 100        | None             | 16,021.67 ns | 28.20 |   11321 B |      117.93 |
+|                                                                |            |                  |              |       |           |             |
+| **PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync**         | 100        | NotCancelled     |  4,840.71 ns |     ? |         - |           ? |
+| PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync | 100        | NotCancelled     |  4,844.07 ns |     ? |         - |           ? |
+| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 100        | NotCancelled     |  4,965.78 ns |     ? |         - |           ? |
+| PooledAsyncManualResetEventWaitThenSetAsync                    | 100        | NotCancelled     |  5,245.90 ns |     ? |         - |           ? |
+| PooledAsTaskContSync                                           | 100        | NotCancelled     |  7,508.13 ns |     ? |    8000 B |           ? |
+| NitoAsyncManualResetEventWaitThenSetAsync                      | 100        | NotCancelled     | 37,276.17 ns |     ? |   61650 B |           ? |
+| PooledAsTaskManualResetEventWaitThenSetAsync                   | 100        | NotCancelled     | 77,166.22 ns |     ? |   11361 B |           ? |
+
+**Summary:** `AsyncManualResetEvent` pooled implementations trade latency for memory efficiency. When you have many waiters that need to be released simultaneously, the reference implementation is faster but allocates per-waiter. The pooled implementation maintains zero allocations regardless of contention level, making it ideal for sustained high-throughput scenarios where memory pressure matters more than absolute latency. Avoid `AsTask()` conversion with `RunContinuationAsynchronously=true` for best performance.
 
 ### AsyncLock Benchmarks
 

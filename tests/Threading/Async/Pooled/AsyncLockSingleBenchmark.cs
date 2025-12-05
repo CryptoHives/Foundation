@@ -153,7 +153,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// In the uncontended case, the lock returns a completed ValueTask immediately with no allocations.
     /// </remarks>
     [Test]
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public async Task LockUnlockPooledSingleAsync()
     {
         using (await _lockPooled.LockAsync().ConfigureAwait(false))
@@ -228,7 +228,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// This serves as the baseline for comparing allocation-free patterns in uncontended scenarios.
     /// </remarks>
     [Test]
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     public async Task LockUnlockRefImplSingleAsync()
     {
         using (await _lockRefImp.LockAsync().ConfigureAwait(false))

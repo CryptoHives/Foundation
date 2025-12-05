@@ -146,7 +146,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Demonstrates the pooled implementation's ability to minimize allocations
     /// by reusing pooled IValueTaskSource instances for queued waiters.
     /// </remarks>
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("Multiple", "Pooled")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockPooledMultipleAsync(CancellationType cancellationType)
@@ -318,7 +318,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// This serves as the baseline for comparing allocation-free pooled patterns with multiple waiters.
     /// Allocates a new TaskCompletionSource per queued waiter.
     /// </remarks>
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     [BenchmarkCategory("Multiple", "RefImpl")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
     public async Task LockUnlockRefImplMultipleAsync(CancellationType cancellationType)
