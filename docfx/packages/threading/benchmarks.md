@@ -102,20 +102,6 @@ This is the fast path if the event is already Set and an immediate return from W
 | NitoAsyncAutoResetEventSetThenWaitAsync         | 16.39 ns |  0.93 |         - |          NA |
 | RefImplAsyncAutoResetEventSetThenWaitAsync      | 17.53 ns |  1.00 |         - |          NA |
 
-#### AsyncAutoResetEvent Wait Benchmark
-
-The benchmark measures the overhead of waiting on an unset event with no contention. Here the implementations have to start to allocate waiter objects. The pooled implementations can handle the requests without allocation and are almost on parity with the ref implementation. With the cancellation token an allocation is required for all implementations except the pooled one if compiled for .NET6+.
-
-| Method                                      | cancellationType | Mean      | Ratio | Allocated | Alloc Ratio |
-|-------------------------------------------- |----------------- |----------:|------:|----------:|------------:|
-| RefImplAsyncAutoResetEventTaskWaitAsync     | None             |  24.48 ns |  1.00 |      96 B |        1.00 |
-| **PooledAsyncAutoResetEventTaskWaitAsync**      | None             |  26.01 ns |  1.06 |         - |        0.00 |
-| PooledAsyncAutoResetEventValueTaskWaitAsync | None             |  29.89 ns |  1.22 |         - |        0.00 |
-| NitoAsyncAutoResetEventTaskWaitAsync        | None             |  33.01 ns |  1.35 |     160 B |        1.67 |
-|                                             |                  |           |       |           |             |
-| **PooledAsyncAutoResetEventValueTaskWaitAsync** | NotCancelled     |  43.84 ns |     ? |         - |           ? |
-| PooledAsyncAutoResetEventTaskWaitAsync      | NotCancelled     |  46.69 ns |     ? |         - |           ? |
-| NitoAsyncAutoResetEventTaskWaitAsync        | NotCancelled     | 341.37 ns |     ? |     400 B |           ? |
 
 #### AsyncAutoResetEvent WaitThenSet Benchmark with varying contention (Iterations)
 
