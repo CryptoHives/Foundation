@@ -250,7 +250,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// </para>
     /// </remarks>
     [Test]
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("WaitThenSet", "Pooled")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
@@ -417,7 +417,7 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
     /// </para>
     /// </remarks>
     [Test]
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     [BenchmarkCategory("WaitThenSet", "RefImpl")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]

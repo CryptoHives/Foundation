@@ -62,7 +62,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// The pooled implementation should return a completed ValueTask immediately.
     /// </remarks>
     [Test]
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("SetThenWait", "Pooled")]
     public async Task PooledAsyncAutoResetEventSetThenWaitAsync()
     {
@@ -113,7 +113,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// This serves as the baseline for comparing allocation-free patterns.
     /// </remarks>
     [Test]
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     [BenchmarkCategory("SetThenWait", "RefImpl")]
     public async Task RefImplAsyncAutoResetEventSetThenWaitAsync()
     {

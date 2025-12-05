@@ -64,7 +64,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     /// This is a pure managed operation with minimal overhead.
     /// </remarks>
     [Test]
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("Set", "Pooled")]
     public void PooledAsyncAutoResetEventSet()
     {
@@ -95,7 +95,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     /// Uses locking and queue management for state synchronization.
     /// </remarks>
     [Test]
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     [BenchmarkCategory("Set", "RefImpl")]
     public void RefImplAsyncAutoResetEventSet()
     {

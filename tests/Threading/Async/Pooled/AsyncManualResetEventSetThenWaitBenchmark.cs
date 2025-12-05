@@ -52,6 +52,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     {
         _ = _eventStandard.Set();
         _ = _eventStandard.WaitOne();
+        _ = _eventStandard.Reset();
     }
 
     /// <summary>
@@ -62,12 +63,13 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// The pooled implementation should return a completed ValueTask immediately.
     /// </remarks>
     [Test]
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("SetThenWait", "Pooled")]
     public async Task PooledAsyncManualResetEventSetThenWaitAsync()
     {
         _eventPooled.Set();
         await _eventPooled.WaitAsync(_cancellationToken).ConfigureAwait(false);
+        _eventPooled.Reset();
     }
 
     /// <summary>
@@ -85,6 +87,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     {
         _eventPooled.Set();
         await _eventPooled.WaitAsync(_cancellationToken).AsTask().ConfigureAwait(false);
+        _eventPooled.Reset();    
     }
 
 #if !SIGNASSEMBLY
@@ -102,6 +105,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     {
         _eventNitoAsync.Set();
         await _eventNitoAsync.WaitAsync(_cancellationToken).ConfigureAwait(false);
+        _eventNitoAsync.Reset();
     }
 #endif
 
@@ -113,11 +117,12 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// This serves as the baseline for comparing allocation-free patterns.
     /// </remarks>
     [Test]
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     [BenchmarkCategory("SetThenWait", "RefImpl")]
     public async Task RefImplAsyncManualResetEventSetThenWaitAsync()
     {
         _eventRefImp.Set();
         await _eventRefImp.WaitAsync().ConfigureAwait(false);
+        _eventRefImp.Reset();
     }
 }

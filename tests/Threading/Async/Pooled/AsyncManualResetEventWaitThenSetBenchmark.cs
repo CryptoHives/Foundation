@@ -24,18 +24,18 @@ using System.Threading.Tasks;
 /// Unlike AutoResetEvent which releases one waiter per Set(), ManualResetEvent releases all waiters at once.
 /// </para>
 /// <para>
-/// <b>Test scenario:</b> Queue N waiters, then signal once, then await all N completions.
+/// <b>Test scenario:</b> Reset event, then Queue N waiters, then signal once, then await all N completions.
 /// This differs from WaitSet benchmarks by batching operations rather than interleaving them.
 /// </para>
 /// <para>
 /// <b>Compared implementations:</b>
 /// </para>
 /// <list type="bullet">
-/// <item><description><b>Pooled (ValueTask):</b> Allocation-free implementation using pooled IValueTaskSource with FIFO waiter queue.</description></item>
+/// <item><description><b>Pooled (ValueTask, baseline):</b> Allocation-free implementation using pooled IValueTaskSource with FIFO waiter queue.</description></item>
 /// <item><description><b>Pooled (AsTask):</b> Same pooled implementation converted to Task via AsTask() (incurs allocation overhead).</description></item>
 /// <item><description><b>Pooled (ContSync):</b> Pooled implementation with synchronous continuation execution (RunContinuationAsynchronously=false).</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based primitives and internal FIFO queue.</description></item>
-/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource with FIFO waiter queue.</description></item>
+/// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource with FIFO waiter queue.</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Batch signaling throughput, memory allocations, and queue management overhead
@@ -49,8 +49,8 @@ using System.Threading.Tasks;
 /// <para>
 /// <b>Continuation behavior:</b> The pooled implementation supports configurable continuation scheduling via
 /// <see cref="Threading.Async.Pooled.RunContinuationAsynchronously"/>.
-/// When set to false, continuations execute synchronously on the signaling thread, reducing context switching
-/// overhead but potentially blocking the caller longer.
+/// When set to false, continuations may execute synchronously on the signaling thread, reducing context switching
+/// overhead but potentially blocking the caller longer with a risk of deadlocks.
 /// </para>
 /// <para>
 /// <b>AsTask() storage warning:</b> Converting ValueTask to Task via AsTask() and storing the result
@@ -118,7 +118,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// <remarks>
     /// Configures the pooled event to run continuations synchronously (on the signaling thread)
     /// instead of queuing them to the thread pool. This reduces context switching overhead
-    /// but may increase Set() call duration.
+    /// but may increase Set() call duration. Faster at the risk of deadlocks.
     /// </remarks>
     [GlobalSetup(Targets = new[] {
         nameof(PooledContSyncAsyncManualResetEventWaitThenSetAsync),
@@ -150,7 +150,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </remarks>
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Pooled")]
-    [TestCaseSource(typeof(CancellationType),nameof(CancellationType.NoneNotCancelledGroup))]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public Task PooledContSyncAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
@@ -251,12 +251,15 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </para>
     /// </remarks>
     [Test]
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("WaitThenSet", "Pooled")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task PooledAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+
+        _eventPooled.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _valueTask[i] = _eventPooled.WaitAsync(cancellationType.CancellationToken);
@@ -295,6 +298,8 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventPooled.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _valueTask[i] = _eventPooled!.WaitAsync(cancellationType.CancellationToken);
@@ -338,6 +343,8 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task PooledAsTaskManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventPooled.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _task[i] = _eventPooled!.WaitAsync(cancellationType.CancellationToken).AsTask();
@@ -374,6 +381,8 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task NitoAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventNitoAsync.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _task[i] = _eventNitoAsync!.WaitAsync(cancellationType.CancellationToken);
@@ -406,12 +415,14 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </para>
     /// </remarks>
     [Test]
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     [BenchmarkCategory("WaitThenSet", "RefImpl")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
     public async Task RefImplAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
+        _eventRefImp.Reset();
+
         for (int i = 0; i < Iterations; i++)
         {
             _task[i] = _eventRefImp!.WaitAsync();

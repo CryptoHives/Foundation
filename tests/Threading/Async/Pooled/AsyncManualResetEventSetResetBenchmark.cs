@@ -8,16 +8,16 @@ using BenchmarkDotNet.Order;
 using NUnit.Framework;
 
 /// <summary>
-/// Benchmarks measuring Set operation overhead on ManualResetEvent implementations.
+/// Benchmarks measuring Set the Reset operation overhead on ManualResetEvent implementations.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This benchmark suite evaluates the raw performance overhead of signaling a manual-reset event
-/// when no waiters are queued. It measures the cost of the Set() operation itself without
-/// the complication of waiter completion or queue management.
+/// when no waiters are queued. It measures the cost of the Set() and Reset() operations themselves
+/// without the complication of waiter completion or queue management.
 /// </para>
 /// <para>
-/// <b>Test scenario:</b> Repeatedly call Set() on an event with no queued waiters.
+/// <b>Test scenario:</b> Repeatedly call Set()/Reset() on an event with no queued waiters.
 /// </para>
 /// <para>
 /// <b>Compared implementations:</b>
@@ -38,10 +38,10 @@ using NUnit.Framework;
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
 [BenchmarkCategory("AsyncManualResetEvent")]
-public class AsyncManualResetEventSetBenchmark : AsyncManualResetEventBaseBenchmark
+public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseBenchmark
 {
     /// <summary>
-    /// Benchmark for standard synchronous <see cref="ManualResetEvent"/> Set operation.
+    /// Benchmark for standard synchronous <see cref="ManualResetEvent"/> Set then Reset operation.
     /// </summary>
     /// <remarks>
     /// Measures the baseline performance of the OS-level synchronous ManualResetEvent.Set() call.
@@ -49,14 +49,15 @@ public class AsyncManualResetEventSetBenchmark : AsyncManualResetEventBaseBenchm
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Set", "Standard")]
+    [BenchmarkCategory("SetReset", "Standard")]
     public void ManualResetEventSet()
     {
         _eventStandard.Set();
+        _eventStandard.Reset();
     }
 
     /// <summary>
-    /// Benchmark for pooled async manual-reset event Set operation.
+    /// Benchmark for pooled async manual-reset event Set then Reset operation.
     /// </summary>
     /// <remarks>
     /// Measures the performance of the allocation-free async implementation's Set() method.
@@ -64,15 +65,16 @@ public class AsyncManualResetEventSetBenchmark : AsyncManualResetEventBaseBenchm
     /// This is a pure managed operation with minimal overhead.
     /// </remarks>
     [Test]
-    [Benchmark]
-    [BenchmarkCategory("Set", "Pooled")]
-    public void PooledAsyncManualResetEventSet()
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SetReset", "Pooled")]
+    public void PooledAsyncManualResetEventSetReset()
     {
         _eventPooled.Set();
+        _eventPooled.Reset();
     }
 
     /// <summary>
-    /// Benchmark for Nito.AsyncEx async manual-reset event Set operation.
+    /// Benchmark for Nito.AsyncEx async manual-reset event Set then Reset operation.
     /// </summary>
     /// <remarks>
     /// Measures the performance of the third-party Nito.AsyncEx library's Set() method.
@@ -80,14 +82,15 @@ public class AsyncManualResetEventSetBenchmark : AsyncManualResetEventBaseBenchm
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Set", "Nito.AsyncEx")]
-    public void NitoAsyncManualResetEventSet()
+    [BenchmarkCategory("SetReset", "Nito.AsyncEx")]
+    public void NitoAsyncManualResetEventSetReset()
     {
         _eventNitoAsync.Set();
+        _eventNitoAsync.Reset();
     }
 
     /// <summary>
-    /// Benchmark for reference implementation async manual-reset event Set operation (baseline).
+    /// Benchmark for reference implementation async manual-reset event Set then Reset operation (baseline).
     /// </summary>
     /// <remarks>
     /// Measures the performance of the TaskCompletionSource-based reference implementation's Set() method.
@@ -95,10 +98,11 @@ public class AsyncManualResetEventSetBenchmark : AsyncManualResetEventBaseBenchm
     /// Uses locking and queue management for state synchronization.
     /// </remarks>
     [Test]
-    [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Set", "RefImpl")]
-    public void RefImplAsyncManualResetEventSet()
+    [Benchmark]
+    [BenchmarkCategory("SetReset", "RefImpl")]
+    public void RefImplAsyncManualResetEventSetReset()
     {
         _eventRefImp.Set();
+        _eventRefImp.Reset();
     }
 }
