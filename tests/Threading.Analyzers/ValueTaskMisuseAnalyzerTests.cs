@@ -22,7 +22,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             await vt;
             """);
 
-        await VerifyNoDiagnosticsAsync(code);
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
 
     [Test]
@@ -33,7 +33,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             await vt.ConfigureAwait(false);
             """);
 
-        await VerifyNoDiagnosticsAsync(code);
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
 
     [Test]
@@ -49,7 +49,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             .WithLocation(12, 19)
             .WithArguments("vt");
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]
@@ -64,7 +64,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             .WithLocation(11, 13)
             .WithArguments("vt");
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]
@@ -79,7 +79,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             .WithLocation(11, 26)
             .WithArguments("vt");
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]
@@ -93,7 +93,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             .WithLocation(9, 31)
             .WithArguments("_valueTask");
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]
@@ -107,7 +107,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             .WithLocation(9, 36)
             .WithArguments("_valueTask");
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]
@@ -122,7 +122,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             .WithLocation(11, 26)
             .WithArguments("vt");
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]
@@ -141,7 +141,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             .WithLocation(12, 13)
             .WithArguments("GetValueTask()");
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]
@@ -153,7 +153,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             ValueTask GetValueTask() => default;
             """);
 
-        await VerifyNoDiagnosticsAsync(code);
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
 
     [Test]
@@ -166,7 +166,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             ValueTask GetValueTask() => default;
             """);
 
-        await VerifyNoDiagnosticsAsync(code);
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
 
     [Test]
@@ -177,7 +177,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             await vt.AsTask();
             """);
 
-        await VerifyNoDiagnosticsAsync(code);
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
 
     [Test]
@@ -187,7 +187,7 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
             private Task _task;
             """);
 
-        await VerifyNoDiagnosticsAsync(code);
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
 
     [Test]
@@ -202,6 +202,6 @@ public class ValueTaskMisuseAnalyzerTests : AnalyzerTestBase<ValueTaskMisuseAnal
         var expected = Diagnostic(DiagnosticDescriptors.AsTaskStoredBeforeSignal)
             .WithLocation(11, 13);
 
-        await VerifyAnalyzerAsync(code, expected);
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 }

@@ -32,12 +32,12 @@ public abstract class AnalyzerTestBase<TAnalyzer>
         };
 
         test.ExpectedDiagnostics.AddRange(expected);
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     protected static async Task VerifyNoDiagnosticsAsync(string source)
     {
-        await VerifyAnalyzerAsync(source);
+        await VerifyAnalyzerAsync(source).ConfigureAwait(false);
     }
 
     protected static string WrapInClass(string code) => $$"""
