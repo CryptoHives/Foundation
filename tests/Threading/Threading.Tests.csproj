@@ -44,15 +44,10 @@
     <PackageReference Include="AsyncKeyedLock" />
     <PackageReference Condition="'$(TargetFramework)' != 'net462' AND '$(TargetFramework)' != 'net48'" Include="NeoSmart.AsyncLock" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
-  </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj"
-        OutputItemType="Analyzer"
-        ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
+    <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
