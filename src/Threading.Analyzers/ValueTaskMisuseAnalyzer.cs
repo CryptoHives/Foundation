@@ -50,7 +50,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var semanticModel = context.SemanticModel;
+        SemanticModel semanticModel = context.SemanticModel;
         var tracker = new ValueTaskUsageTracker(context, semanticModel);
 
         if (methodDeclaration.Body is not null)
@@ -71,7 +71,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var semanticModel = context.SemanticModel;
+        SemanticModel semanticModel = context.SemanticModel;
         var tracker = new ValueTaskUsageTracker(context, semanticModel);
 
         if (localFunction.Body is not null)
@@ -117,7 +117,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var semanticModel = context.SemanticModel;
+        SemanticModel semanticModel = context.SemanticModel;
         var tracker = new ValueTaskUsageTracker(context, semanticModel);
 
         if (block is not null)
@@ -133,11 +133,13 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeFieldDeclaration(SyntaxNodeAnalysisContext context)
     {
         var fieldDeclaration = (FieldDeclarationSyntax)context.Node;
-        var semanticModel = context.SemanticModel;
+        SemanticModel semanticModel = context.SemanticModel;
 
-        foreach (var variable in fieldDeclaration.Declaration.Variables)
+        foreach (VariableDeclaratorSyntax variable in fieldDeclaration.Declaration.Variables)
         {
-            var typeInfo = semanticModel.GetTypeInfo(fieldDeclaration.Declaration.Type, context.CancellationToken);
+            TypeInfo typeInfo = semanticModel.GetTypeInfo(fieldDeclaration.Declaration.Type, context.CancellationToken);
+            
+            // Use IsValueTaskType which already excludes arrays
             if (IsValueTaskType(typeInfo.Type))
             {
                 var diagnostic = Diagnostic.Create(
@@ -152,7 +154,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
     private static void AnalyzePropertyDeclaration(SyntaxNodeAnalysisContext context)
     {
         var propertyDeclaration = (PropertyDeclarationSyntax)context.Node;
-        var semanticModel = context.SemanticModel;
+        SemanticModel semanticModel = context.SemanticModel;
 
         // Only check auto-properties with backing fields
         if (propertyDeclaration.AccessorList is null)
@@ -162,7 +164,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         bool hasGetter = false;
         bool hasSetter = false;
-        foreach (var accessor in propertyDeclaration.AccessorList.Accessors)
+        foreach (AccessorDeclarationSyntax accessor in propertyDeclaration.AccessorList.Accessors)
         {
             if (accessor.Kind() == SyntaxKind.GetAccessorDeclaration && accessor.Body is null && accessor.ExpressionBody is null)
             {
@@ -176,7 +178,9 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         if (hasGetter && hasSetter)
         {
-            var typeInfo = semanticModel.GetTypeInfo(propertyDeclaration.Type, context.CancellationToken);
+            TypeInfo typeInfo = semanticModel.GetTypeInfo(propertyDeclaration.Type, context.CancellationToken);
+            
+            // Use IsValueTaskType which already excludes arrays
             if (IsValueTaskType(typeInfo.Type))
             {
                 var diagnostic = Diagnostic.Create(
@@ -195,7 +199,14 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        var typeName = type.ToDisplayString();
+        // Arrays of ValueTask are allowed - they are used to collect multiple pending operations
+        // before awaiting them sequentially (e.g., in benchmarks or batch processing scenarios)
+        if (type is IArrayTypeSymbol)
+        {
+            return false;
+        }
+
+        string typeName = type.ToDisplayString();
         return typeName == "System.Threading.Tasks.ValueTask" ||
                typeName.StartsWith("System.Threading.Tasks.ValueTask<", StringComparison.Ordinal);
     }
@@ -208,17 +219,19 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         private readonly SyntaxNodeAnalysisContext _context;
         private readonly SemanticModel _semanticModel;
         private readonly Dictionary<ISymbol, ValueTaskUsage> _usages;
+        private readonly HashSet<ISymbol> _preservedVariables;
 
         public ValueTaskUsageTracker(SyntaxNodeAnalysisContext context, SemanticModel semanticModel)
         {
             _context = context;
             _semanticModel = semanticModel;
             _usages = new Dictionary<ISymbol, ValueTaskUsage>(SymbolEqualityComparer.Default);
+            _preservedVariables = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
         }
 
         public void AnalyzeBlock(BlockSyntax block)
         {
-            foreach (var statement in block.Statements)
+            foreach (StatementSyntax statement in block.Statements)
             {
                 AnalyzeStatement(statement);
             }
@@ -259,7 +272,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                 case UsingStatementSyntax usingStatement:
                     if (usingStatement.Declaration is not null)
                     {
-                        foreach (var variable in usingStatement.Declaration.Variables)
+                        foreach (VariableDeclaratorSyntax variable in usingStatement.Declaration.Variables)
                         {
                             if (variable.Initializer is not null)
                             {
@@ -278,7 +291,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     break;
                 case TryStatementSyntax tryStatement:
                     AnalyzeBlock(tryStatement.Block);
-                    foreach (var catchClause in tryStatement.Catches)
+                    foreach (CatchClauseSyntax catchClause in tryStatement.Catches)
                     {
                         AnalyzeBlock(catchClause.Block);
                     }
@@ -292,22 +305,35 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private void AnalyzeLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
         {
-            foreach (var variable in localDeclaration.Declaration.Variables)
+            foreach (VariableDeclaratorSyntax variable in localDeclaration.Declaration.Variables)
             {
                 if (variable.Initializer is null)
                 {
                     continue;
                 }
 
-                var typeInfo = _semanticModel.GetTypeInfo(variable.Initializer.Value, _context.CancellationToken);
+                TypeInfo typeInfo = _semanticModel.GetTypeInfo(variable.Initializer.Value, _context.CancellationToken);
                 
                 // Track ValueTask variables for multiple consumption detection
                 if (IsValueTaskType(typeInfo.Type))
                 {
-                    var symbol = _semanticModel.GetDeclaredSymbol(variable, _context.CancellationToken);
+                    ISymbol? symbol = _semanticModel.GetDeclaredSymbol(variable, _context.CancellationToken);
                     if (symbol is not null)
                     {
-                        _usages[symbol] = new ValueTaskUsage(variable.GetLocation());
+                        // Check if this variable is initialized with Preserve() call
+                        // If so, it's safe to await multiple times
+                        if (IsPreserveCall(variable.Initializer.Value))
+                        {
+                            _preservedVariables.Add(symbol);
+                            // Track the source ValueTask as consumed by Preserve()
+                            TrackPreserveSourceUsage(variable.Initializer.Value);
+                            // Don't analyze the initializer further to avoid double-counting
+                            continue;
+                        }
+                        else
+                        {
+                            _usages[symbol] = new ValueTaskUsage(variable.GetLocation());
+                        }
                     }
 
                     // Check if initialized with AsTask() call pattern that's stored
@@ -328,12 +354,12 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private void AnalyzeExpressionStatement(ExpressionStatementSyntax expressionStatement)
         {
-            var expression = expressionStatement.Expression;
+            ExpressionSyntax expression = expressionStatement.Expression;
 
             // Check for discarded ValueTask
             if (expression is InvocationExpressionSyntax invocation)
             {
-                var typeInfo = _semanticModel.GetTypeInfo(invocation, _context.CancellationToken);
+                TypeInfo typeInfo = _semanticModel.GetTypeInfo(invocation, _context.CancellationToken);
                 if (IsValueTaskType(typeInfo.Type))
                 {
                     // ValueTask returned but not awaited or stored
@@ -386,10 +412,10 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     // Check if assigning ValueTask to field
                     if (assignment.Left is MemberAccessExpressionSyntax fieldAccess)
                     {
-                        var symbolInfo = _semanticModel.GetSymbolInfo(fieldAccess, _context.CancellationToken);
+                        SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(fieldAccess, _context.CancellationToken);
                         if (symbolInfo.Symbol is IFieldSymbol fieldSymbol)
                         {
-                            var rightTypeInfo = _semanticModel.GetTypeInfo(assignment.Right, _context.CancellationToken);
+                            TypeInfo rightTypeInfo = _semanticModel.GetTypeInfo(assignment.Right, _context.CancellationToken);
                             if (IsValueTaskType(rightTypeInfo.Type))
                             {
                                 var diagnostic = Diagnostic.Create(
@@ -416,7 +442,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private void AnalyzeAwaitExpression(AwaitExpressionSyntax awaitExpression)
         {
-            var operand = awaitExpression.Expression;
+            ExpressionSyntax operand = awaitExpression.Expression;
 
             // Track direct await of variable
             if (operand is IdentifierNameSyntax identifier)
@@ -454,14 +480,19 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     getAwaiterAccess.Name.Identifier.Text == "GetAwaiter")
                 {
                     // Check if the base expression is a ValueTask
-                    var typeInfo = _semanticModel.GetTypeInfo(getAwaiterAccess.Expression, _context.CancellationToken);
+                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(getAwaiterAccess.Expression, _context.CancellationToken);
                     if (IsValueTaskType(typeInfo.Type))
                     {
-                        var diagnostic = Diagnostic.Create(
-                            DiagnosticDescriptors.BlockingGetResult,
-                            invocation.GetLocation(),
-                            GetExpressionName(getAwaiterAccess.Expression));
-                        _context.ReportDiagnostic(diagnostic);
+                        // Don't warn if the ValueTask was preserved (safe to call GetResult on preserved ValueTask)
+                        // This includes both stored preserved variables and inline Preserve() calls
+                        if (!IsPreservedVariable(getAwaiterAccess.Expression) && !IsPreserveCall(getAwaiterAccess.Expression))
+                        {
+                            var diagnostic = Diagnostic.Create(
+                                DiagnosticDescriptors.BlockingGetResult,
+                                invocation.GetLocation(),
+                                GetExpressionName(getAwaiterAccess.Expression));
+                            _context.ReportDiagnostic(diagnostic);
+                        }
 
                         TrackUsageFromExpression(getAwaiterAccess.Expression);
                     }
@@ -470,8 +501,19 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                 // Check for AsTask() call
                 if (IsAsTaskCall(invocation))
                 {
-                    var baseExpression = memberAccess.Expression;
-                    var typeInfo = _semanticModel.GetTypeInfo(baseExpression, _context.CancellationToken);
+                    ExpressionSyntax baseExpression = memberAccess.Expression;
+                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(baseExpression, _context.CancellationToken);
+                    if (IsValueTaskType(typeInfo.Type))
+                    {
+                        TrackUsageFromExpression(baseExpression);
+                    }
+                }
+
+                // Check for Preserve() call - track source usage
+                if (IsPreserveCall(invocation))
+                {
+                    ExpressionSyntax baseExpression = memberAccess.Expression;
+                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(baseExpression, _context.CancellationToken);
                     if (IsValueTaskType(typeInfo.Type))
                     {
                         TrackUsageFromExpression(baseExpression);
@@ -483,7 +525,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             CheckUnsafeMethodArguments(invocation);
 
             // Recursively analyze arguments
-            foreach (var argument in invocation.ArgumentList.Arguments)
+            foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments)
             {
                 AnalyzeExpressionRecursive(argument.Expression, isConsumed: false);
             }
@@ -491,14 +533,14 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private void CheckUnsafeMethodArguments(InvocationExpressionSyntax invocation)
         {
-            var symbolInfo = _semanticModel.GetSymbolInfo(invocation, _context.CancellationToken);
+            SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(invocation, _context.CancellationToken);
             if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
             {
                 return;
             }
 
-            var methodName = methodSymbol.Name;
-            var containingType = methodSymbol.ContainingType?.ToDisplayString();
+            string methodName = methodSymbol.Name;
+            string? containingType = methodSymbol.ContainingType?.ToDisplayString();
 
             // Check for Task.WhenAll, Task.WhenAny, etc.
             bool isUnsafeMethod = (containingType == "System.Threading.Tasks.Task" &&
@@ -508,9 +550,9 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
             if (isUnsafeMethod)
             {
-                foreach (var argument in invocation.ArgumentList.Arguments)
+                foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments)
                 {
-                    var typeInfo = _semanticModel.GetTypeInfo(argument.Expression, _context.CancellationToken);
+                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(argument.Expression, _context.CancellationToken);
                     if (IsValueTaskType(typeInfo.Type))
                     {
                         var diagnostic = Diagnostic.Create(
@@ -528,7 +570,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             // Check for direct .Result access
             if (memberAccess.Name.Identifier.Text == "Result")
             {
-                var typeInfo = _semanticModel.GetTypeInfo(memberAccess.Expression, _context.CancellationToken);
+                TypeInfo typeInfo = _semanticModel.GetTypeInfo(memberAccess.Expression, _context.CancellationToken);
                 if (IsValueTaskType(typeInfo.Type))
                 {
                     var diagnostic = Diagnostic.Create(
@@ -546,19 +588,25 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private void TrackUsage(IdentifierNameSyntax identifier)
         {
-            var symbolInfo = _semanticModel.GetSymbolInfo(identifier, _context.CancellationToken);
+            SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(identifier, _context.CancellationToken);
             if (symbolInfo.Symbol is null)
             {
                 return;
             }
 
-            var typeInfo = _semanticModel.GetTypeInfo(identifier, _context.CancellationToken);
+            TypeInfo typeInfo = _semanticModel.GetTypeInfo(identifier, _context.CancellationToken);
             if (!IsValueTaskType(typeInfo.Type))
             {
                 return;
             }
 
-            if (_usages.TryGetValue(symbolInfo.Symbol, out var usage))
+            // If this variable holds a preserved ValueTask, it's safe to use multiple times
+            if (_preservedVariables.Contains(symbolInfo.Symbol))
+            {
+                return;
+            }
+
+            if (_usages.TryGetValue(symbolInfo.Symbol, out ValueTaskUsage? usage))
             {
                 usage.UsageCount++;
                 if (usage.UsageCount > 1)
@@ -580,10 +628,41 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        private void TrackPreserveSourceUsage(ExpressionSyntax preserveCall)
+        {
+            // preserveCall is the Preserve() invocation, we need to find the source ValueTask
+            if (preserveCall is InvocationExpressionSyntax invocation &&
+                invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                TrackUsageFromExpression(memberAccess.Expression);
+            }
+        }
+
+        private bool IsPreservedVariable(ExpressionSyntax expression)
+        {
+            if (expression is IdentifierNameSyntax identifier)
+            {
+                SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(identifier, _context.CancellationToken);
+                if (symbolInfo.Symbol is not null)
+                {
+                    return _preservedVariables.Contains(symbolInfo.Symbol);
+                }
+            }
+            return false;
+        }
+
         private static bool IsAsTaskCall(InvocationExpressionSyntax invocation)
         {
             return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
                    memberAccess.Name.Identifier.Text == "AsTask" &&
+                   invocation.ArgumentList.Arguments.Count == 0;
+        }
+
+        private static bool IsPreserveCall(ExpressionSyntax expression)
+        {
+            return expression is InvocationExpressionSyntax invocation &&
+                   invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                   memberAccess.Name.Identifier.Text == "Preserve" &&
                    invocation.ArgumentList.Arguments.Count == 0;
         }
 

@@ -201,7 +201,7 @@ public class AsyncAutoResetEventUnitTests
         Assert.That(vt.IsCompleted, Is.False);
 
         Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(0));
+        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]

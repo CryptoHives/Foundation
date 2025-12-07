@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#pragma warning disable CA2012 // Use ValueTasks correctly
-
 namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
@@ -20,7 +18,7 @@ public class AsyncLockUnitTests
     {
         var mutex = new AsyncLock(defaultEventQueueSize: 8);
 
-        var lockTask = mutex.LockAsync().AsTask();
+        Task<AsyncLock.AsyncLockReleaser> lockTask = mutex.LockAsync().AsTask();
 
         Assert.That(lockTask.IsCompleted, Is.True);
         Assert.That(lockTask.IsFaulted, Is.False);
@@ -31,8 +29,8 @@ public class AsyncLockUnitTests
     public async Task AsyncLockLockedPreventsLockUntilUnlocked()
     {
         var mutex = new AsyncLock(defaultEventQueueSize: 8);
-        var task1HasLock = CreateAsyncTaskSource<object?>();
-        var task1Continue = CreateAsyncTaskSource<object?>();
+        TaskCompletionSource<object?> task1HasLock = CreateAsyncTaskSource<object?>();
+        TaskCompletionSource<object?> task1Continue = CreateAsyncTaskSource<object?>();
 
         var task1 = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
@@ -99,7 +97,7 @@ public class AsyncLockUnitTests
         await task3.ConfigureAwait(false);
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -108,7 +106,7 @@ public class AsyncLockUnitTests
         var mutex = new AsyncLock();
         var token = new CancellationToken(true);
 
-        var task = mutex.LockAsync(token).AsTask();
+        Task<AsyncLock.AsyncLockReleaser> task = mutex.LockAsync(token).AsTask();
 
         Assert.That(task.IsCompleted, Is.True);
         Assert.That(task.IsCanceled, Is.False);
@@ -118,26 +116,28 @@ public class AsyncLockUnitTests
     [Test]
     [TestCase(true)]
     [TestCase(false)]
-    public void AsyncLockPreCancelledLockedSynchronouslyCancels(bool useAsTask)
+    public async Task AsyncLockPreCancelledLockedSynchronouslyCancels(bool useAsTask)
     {
         var mutex = new AsyncLock();
-        var lockTask = mutex.LockAsync();
+        ValueTask<AsyncLock.AsyncLockReleaser> lockTask = mutex.LockAsync();
         var token = new CancellationToken(true);
 
         if (useAsTask)
         {
-            var task = mutex.LockAsync(token).AsTask();
+            Task<AsyncLock.AsyncLockReleaser> task = mutex.LockAsync(token).AsTask();
             Assert.That(task.IsCompleted, Is.True);
             Assert.That(task.IsCanceled, Is.True);
             Assert.That(task.IsFaulted, Is.False);
         }
         else
         {
-            var valueTask = mutex.LockAsync(token);
+            ValueTask<AsyncLock.AsyncLockReleaser> valueTask = mutex.LockAsync(token);
             Assert.That(valueTask.IsCompleted, Is.True);
             Assert.That(valueTask.IsCanceled, Is.True);
             Assert.That(valueTask.IsFaulted, Is.False);
         }
+
+        await lockTask.ConfigureAwait(false);
     }
 
     [Test]
@@ -145,11 +145,11 @@ public class AsyncLockUnitTests
     {
         var mutex = new AsyncLock();
         using var cts = new CancellationTokenSource();
-        var taskReady = CreateAsyncTaskSource<object?>();
+        TaskCompletionSource<object?> taskReady = CreateAsyncTaskSource<object?>();
 
-        var unlock = await mutex.LockAsync().ConfigureAwait(false);
+        AsyncLock.AsyncLockReleaser unlock = await mutex.LockAsync().ConfigureAwait(false);
         var task = Task.Run(async () => {
-            var lockTask = mutex.LockAsync(cts.Token);
+            ValueTask<AsyncLock.AsyncLockReleaser> lockTask = mutex.LockAsync(cts.Token);
             taskReady.SetResult(null);
             await lockTask.ConfigureAwait(false);
         });
@@ -160,7 +160,7 @@ public class AsyncLockUnitTests
         Assert.That(task.IsCanceled, Is.True);
         await unlock.DisposeAsync().ConfigureAwait(false);
 
-        var finalLockTask = mutex.LockAsync();
+        ValueTask<AsyncLock.AsyncLockReleaser> finalLockTask = mutex.LockAsync();
         await finalLockTask.ConfigureAwait(false);
     }
 
@@ -176,10 +176,10 @@ public class AsyncLockUnitTests
             cancelableLockTask = mutex.LockAsync(cts.Token);
         }
 
-        var key = await cancelableLockTask.ConfigureAwait(false);
+        AsyncLock.AsyncLockReleaser key = await cancelableLockTask.ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        var nextLocker = mutex.LockAsync().AsTask();
+        Task<AsyncLock.AsyncLockReleaser> nextLocker = mutex.LockAsync().AsTask();
         Assert.That(nextLocker.IsCompleted, Is.False);
 
         await key.DisposeAsync().ConfigureAwait(false);
@@ -192,7 +192,7 @@ public class AsyncLockUnitTests
         await Task.Run(async () => {
             var asyncLock = new AsyncLock();
             using var cancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = cancellationTokenSource.Token;
+            CancellationToken cancellationToken = cancellationTokenSource.Token;
 
             var task1 = Task.Run(
                 async () => {
@@ -249,7 +249,7 @@ public class AsyncLockUnitTests
         Assert.That(al.IsTaken, Is.False);
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -274,7 +274,7 @@ public class AsyncLockUnitTests
         await Task.Delay(50).ConfigureAwait(false);
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -294,7 +294,7 @@ public class AsyncLockUnitTests
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -317,7 +317,7 @@ public class AsyncLockUnitTests
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -336,7 +336,7 @@ public class AsyncLockUnitTests
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -358,7 +358,7 @@ public class AsyncLockUnitTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(1000)]
@@ -378,7 +378,7 @@ public class AsyncLockUnitTests
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Theory]
@@ -400,7 +400,7 @@ public class AsyncLockUnitTests
         }
         else
         {
-            using (vt.GetAwaiter().GetResult())
+            using (vt.Preserve().GetAwaiter().GetResult())
             {
                 Assert.That(al.IsTaken);
             }
@@ -410,7 +410,7 @@ public class AsyncLockUnitTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()
