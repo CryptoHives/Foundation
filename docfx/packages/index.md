@@ -72,13 +72,52 @@ public async Task AccessResourceAsync(CancellationToken ct)
 
 ---
 
+### Threading Analyzers Package
+
+**CryptoHives.Foundation.Threading.Analyzers** - Roslyn analyzers for ValueTask misuse detection
+
+Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time. These analyzers help developers avoid subtle bugs and performance issues when working with `ValueTask` and the pooled async primitives.
+
+**Key Features:**
+- Detects multiple awaits on the same `ValueTask`
+- Warns about blocking calls like `GetAwaiter().GetResult()`
+- Identifies unsafe field storage of `ValueTask`
+- Includes automatic code fixes
+
+**[Threading Analyzers Documentation](threading.analyzers/index.md)**
+
+**Installation:**
+```bash
+dotnet add package CryptoHives.Foundation.Threading.Analyzers
+```
+
+**Quick Example:**
+```csharp
+// ❌ CHT001: ValueTask awaited multiple times
+ValueTask vt = GetValueTask();
+await vt;
+await vt; // Error!
+
+// ✅ Correct: Use Preserve() for multiple awaits
+ValueTask vt = GetValueTask();
+ValueTask preserved = vt.Preserve();
+await preserved;
+await preserved; // Safe!
+```
+
+---
+
 ## Target Frameworks
 
-Both packages support:
+All packages support:
 - .NET 10.0
 - .NET 8.0
 - .NET Framework 4.6.2
+- .NET Framework 4.8
 - .NET Standard 2.1
+- .NET Standard 2.0
+
+Analyzers only support: 
 - .NET Standard 2.0
 
 ## Getting Help
@@ -95,6 +134,7 @@ Both packages support:
 |---------|-------|---------------|
 | CryptoHives.Foundation.Memory | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](memory/index.md) |
 | CryptoHives.Foundation.Threading | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](threading/index.md) |
+| CryptoHives.Foundation.Threading.Analyzers | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](threading.analyzers/index.md) |
 
 ---
 
