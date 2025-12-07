@@ -193,6 +193,9 @@ public class ValueTaskPreserveTests
         // Set exception
         source.SetException(new InvalidOperationException("Test exception"));
 
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+        Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
+
         // should throw the same exception each time
         var ex1 = Assert.ThrowsAsync<InvalidOperationException>(async () => await preserved.ConfigureAwait(false));
         var ex2 = Assert.ThrowsAsync<InvalidOperationException>(async () => await preserved.ConfigureAwait(false));
@@ -247,6 +250,9 @@ public class ValueTaskPreserveTests
         await preserved.ConfigureAwait(false);
         await preserved.ConfigureAwait(false);
         await preserved.ConfigureAwait(false);
+
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+        Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         Assert.That(pool.ActiveCount, Is.Zero);
     }
