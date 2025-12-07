@@ -1,0 +1,20 @@
+- name: Threading Analyzers
+  href: index.md
+- name: Diagnostic Rules
+  items:
+    - name: CHT001 - Multiple Await
+      href: CHT001.md
+    - name: CHT002 - Blocking GetResult
+      href: CHT002.md
+    - name: CHT003 - Stored in Field
+      href: CHT003.md
+    - name: CHT004 - Multiple AsTask
+      href: CHT004.md
+    - name: CHT005 - Direct Result Access
+      href: CHT005.md
+    - name: CHT006 - Unsafe Method
+      href: CHT006.md
+    - name: CHT007 - AsTask Before Signal
+      href: CHT007.md
+    - name: CHT008 - Not Consumed
+      href: CHT008.md
