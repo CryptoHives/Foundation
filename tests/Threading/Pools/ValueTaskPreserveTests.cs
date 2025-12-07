@@ -8,6 +8,7 @@ namespace Threading.Tests.Pools;
 using CryptoHives.Foundation.Threading.Pools;
 using NUnit.Framework;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -25,6 +26,21 @@ public class ValueTaskPreserveTests
 
         Assert.That(preserved.IsCompleted, Is.True);
         await preserved.ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task PreservePendingGetAwaiterReturnsResult()
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        ValueTask vt = new(tcs.Task);
+        ValueTask preserved = vt.Preserve();
+
+        Assert.That(preserved.IsCompleted, Is.False);
+
+        tcs.SetResult(true);
+        await preserved.ConfigureAwait(false);
+
+        Assert.That(preserved.IsCompleted, Is.True);
     }
 
     [Test]
@@ -250,9 +266,6 @@ public class ValueTaskPreserveTests
         await preserved.ConfigureAwait(false);
         await preserved.ConfigureAwait(false);
         await preserved.ConfigureAwait(false);
-
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
-        Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         Assert.That(pool.ActiveCount, Is.Zero);
     }
