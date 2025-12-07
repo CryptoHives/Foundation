@@ -300,27 +300,28 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                 }
 
                 var typeInfo = _semanticModel.GetTypeInfo(variable.Initializer.Value, _context.CancellationToken);
-                if (!IsValueTaskType(typeInfo.Type))
+                
+                // Track ValueTask variables for multiple consumption detection
+                if (IsValueTaskType(typeInfo.Type))
                 {
-                    continue;
+                    var symbol = _semanticModel.GetDeclaredSymbol(variable, _context.CancellationToken);
+                    if (symbol is not null)
+                    {
+                        _usages[symbol] = new ValueTaskUsage(variable.GetLocation());
+                    }
+
+                    // Check if initialized with AsTask() call pattern that's stored
+                    if (variable.Initializer.Value is InvocationExpressionSyntax invocation &&
+                        IsAsTaskCall(invocation))
+                    {
+                        var diagnostic = Diagnostic.Create(
+                            DiagnosticDescriptors.AsTaskStoredBeforeSignal,
+                            variable.GetLocation());
+                        _context.ReportDiagnostic(diagnostic);
+                    }
                 }
 
-                var symbol = _semanticModel.GetDeclaredSymbol(variable, _context.CancellationToken);
-                if (symbol is not null)
-                {
-                    _usages[symbol] = new ValueTaskUsage(variable.GetLocation());
-                }
-
-                // Check if initialized with AsTask() call pattern that's stored
-                if (variable.Initializer.Value is InvocationExpressionSyntax invocation &&
-                    IsAsTaskCall(invocation))
-                {
-                    var diagnostic = Diagnostic.Create(
-                        DiagnosticDescriptors.AsTaskStoredBeforeSignal,
-                        variable.GetLocation());
-                    _context.ReportDiagnostic(diagnostic);
-                }
-
+                // Always analyze the initializer expression for other patterns
                 AnalyzeExpressionRecursive(variable.Initializer.Value, isConsumed: false);
             }
         }
