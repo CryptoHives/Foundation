@@ -171,7 +171,7 @@ public class AsyncLockUnitTests
         using var cts = new CancellationTokenSource();
 
         ValueTask<AsyncLock.AsyncLockReleaser> cancelableLockTask;
-        using (await mutex.LockAsync().ConfigureAwait(false))
+        using (await mutex.LockAsync().Preserve().ConfigureAwait(false))
         {
             cancelableLockTask = mutex.LockAsync(cts.Token);
         }
