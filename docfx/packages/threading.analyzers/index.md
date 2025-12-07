@@ -114,12 +114,9 @@ The analyzer package includes automatic code fixes for most diagnostics:
 
 ## The Preserve() Method
 
-### Built-in Preserve() (Most Platforms)
+### Built-in Preserve()
 
-The `ValueTask.Preserve()` method is built-in on:
-- .NET Core 2.1, 2.2, 3.0, 3.1
-- .NET 5, 6, 7, 8, 9, 10
-- .NET Standard 2.1
+The `ValueTask.Preserve()` is available on all platforms.
 
 ```csharp
 ValueTask vt = GetValueTask();
@@ -129,29 +126,6 @@ await preserved;
 await preserved; // Safe!
 ```
 
-### Extension Method Polyfill (.NET Framework / .NET Standard 2.0)
-
-For platforms without the built-in method, CryptoHives.Foundation.Threading provides a polyfill extension method that converts to `Task`:
-
-```csharp
-using CryptoHives.Foundation.Threading;
-
-ValueTask vt = GetValueTask();
-Task t = vt.Preserve(); // Returns Task (not ValueTask) on .NET Framework / .NET Standard 2.0
-
-await t;
-await t; // Safe!
-```
-
-> **Note:** The extension method returns `Task` while the built-in method returns `ValueTask`. This is because the polyfill implementation converts via `AsTask()` internally.
-
-| Platform | Preserve() Available | Returns |
-|----------|---------------------|---------|
-| .NET Core 2.1+ | Built-in | `ValueTask` |
-| .NET 5+ | Built-in | `ValueTask` |
-| .NET Standard 2.1 | Built-in | `ValueTask` |
-| .NET Standard 2.0 | Extension method | `Task` |
-| .NET Framework | Extension method | `Task` |
 
 ## Configuration
 

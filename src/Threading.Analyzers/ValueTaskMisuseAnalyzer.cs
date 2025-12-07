@@ -620,6 +620,13 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             // Check if this is a captured variable (not declared in the current scope)
             if (_isClosure && !_usages.ContainsKey(symbolInfo.Symbol))
             {
+                // Check if the captured variable was initialized with Preserve() in the outer scope
+                // by examining its declaration
+                if (IsCapturedPreservedVariable(symbolInfo.Symbol))
+                {
+                    return;
+                }
+
                 // This is a captured variable from outer scope - flag it as potential misuse
                 var diagnostic = Diagnostic.Create(
                     DiagnosticDescriptors.MultipleAwait,
@@ -641,6 +648,29 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     _context.ReportDiagnostic(diagnostic);
                 }
             }
+        }
+
+        private bool IsCapturedPreservedVariable(ISymbol symbol)
+        {
+            // Check if the symbol is a local variable that was initialized with Preserve()
+            if (symbol is ILocalSymbol localSymbol)
+            {
+                // Get the declaring syntax reference
+                foreach (var syntaxReference in localSymbol.DeclaringSyntaxReferences)
+                {
+                    var syntax = syntaxReference.GetSyntax(_context.CancellationToken);
+                    if (syntax is VariableDeclaratorSyntax variableDeclarator &&
+                        variableDeclarator.Initializer is not null)
+                    {
+                        // Check if the initializer is a Preserve() call
+                        if (IsPreserveCall(variableDeclarator.Initializer.Value))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
         }
 
         private void TrackUsageFromExpression(ExpressionSyntax expression)
