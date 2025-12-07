@@ -3,6 +3,8 @@
 
 namespace Threading.Tests.Pools;
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing misuse behavior
+
 using CryptoHives.Foundation.Threading.Pools;
 using NUnit.Framework;
 using System;
@@ -165,6 +167,9 @@ public class ValueTaskPreserveTests
         // subsequent awaits should still work because Preserve() captured the result
         string r2 = await preserved.ConfigureAwait(false);
         string r3 = await preserved.ConfigureAwait(false);
+
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+        Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         using (Assert.EnterMultipleScope())
         {

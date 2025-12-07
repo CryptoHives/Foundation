@@ -118,7 +118,12 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         }
 
         SemanticModel semanticModel = context.SemanticModel;
-        var tracker = new ValueTaskUsageTracker(context, semanticModel);
+        
+        // For lambdas, we need to detect captured ValueTask variables from outer scopes
+        // Any usage of such captured variables is potentially unsafe since:
+        // 1. The lambda could be invoked multiple times
+        // 2. The variable may have been consumed before the lambda executes
+        var tracker = new ValueTaskUsageTracker(context, semanticModel, isClosure: true);
 
         if (block is not null)
         {
@@ -220,13 +225,15 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         private readonly SemanticModel _semanticModel;
         private readonly Dictionary<ISymbol, ValueTaskUsage> _usages;
         private readonly HashSet<ISymbol> _preservedVariables;
+        private readonly bool _isClosure;
 
-        public ValueTaskUsageTracker(SyntaxNodeAnalysisContext context, SemanticModel semanticModel)
+        public ValueTaskUsageTracker(SyntaxNodeAnalysisContext context, SemanticModel semanticModel, bool isClosure = false)
         {
             _context = context;
             _semanticModel = semanticModel;
             _usages = new Dictionary<ISymbol, ValueTaskUsage>(SymbolEqualityComparer.Default);
             _preservedVariables = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+            _isClosure = isClosure;
         }
 
         public void AnalyzeBlock(BlockSyntax block)
@@ -603,6 +610,22 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             // If this variable holds a preserved ValueTask, it's safe to use multiple times
             if (_preservedVariables.Contains(symbolInfo.Symbol))
             {
+                return;
+            }
+
+            // In a closure (lambda/local function), any usage of a captured ValueTask variable
+            // from an outer scope is potentially unsafe because:
+            // 1. The closure might be invoked multiple times
+            // 2. The ValueTask may have been consumed before the closure executes
+            // Check if this is a captured variable (not declared in the current scope)
+            if (_isClosure && !_usages.ContainsKey(symbolInfo.Symbol))
+            {
+                // This is a captured variable from outer scope - flag it as potential misuse
+                var diagnostic = Diagnostic.Create(
+                    DiagnosticDescriptors.MultipleAwait,
+                    identifier.GetLocation(),
+                    identifier.Identifier.Text);
+                _context.ReportDiagnostic(diagnostic);
                 return;
             }
 

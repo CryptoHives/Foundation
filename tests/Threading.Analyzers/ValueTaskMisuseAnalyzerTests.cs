@@ -504,4 +504,75 @@ public class TestClass
 }";
         await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
+
+    [Test]
+    public async Task CapturedValueTaskInLambdaReportsError()
+    {
+        // A ValueTask captured and awaited in a lambda is potentially unsafe
+        // because the lambda could execute after the ValueTask is already consumed
+        // or could be invoked multiple times
+        var code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        Func<Task> lambda = async () => await {|#0:vt|};
+        await lambda();
+    }
+}";
+        var expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CapturedValueTaskWithConfigureAwaitInLambdaReportsError()
+    {
+        var code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        Func<Task> lambda = async () => await {|#0:vt|}.ConfigureAwait(false);
+        await lambda();
+    }
+}";
+        var expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CapturedPreservedValueTaskInLambdaNoDiagnostic()
+    {
+        // If the preserved ValueTask is captured, it's safe to await in the lambda
+        var code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        ValueTask preserved = vt.Preserve();
+        Func<Task> lambda = async () => await preserved;
+        await lambda();
+        await lambda();
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
 }
