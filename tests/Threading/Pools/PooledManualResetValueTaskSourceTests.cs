@@ -3,6 +3,8 @@
 
 namespace Threading.Tests.Pools;
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing misuse behavior
+
 using CryptoHives.Foundation.Threading.Pools;
 using NUnit.Framework;
 using System;
