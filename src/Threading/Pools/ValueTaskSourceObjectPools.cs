@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Threading.Pools;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
+using System;
 
 /// <summary>
 /// Provides common constants and shared pools used in async events.
@@ -20,13 +21,19 @@ public static class ValueTaskSourceObjectPools
     /// </summary>
     public const int DefaultMaxRetainedItems = 128;
 
-    /// <summary>
-    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="bool"/>.
-    /// </summary>
-    public static readonly ValueTaskSourceObjectPool<bool> ValueTaskSourcePoolBoolean = new(new PooledValueTaskSourceObjectPolicy<bool>(), DefaultMaxRetainedItems);
+    private static readonly Lazy<ValueTaskSourceObjectPool<bool>> _valueTaskSourcePoolBoolean =
+        new(() => new ValueTaskSourceObjectPool<bool>(new PooledValueTaskSourceObjectPolicy<bool>(), DefaultMaxRetainedItems));
+
+    private static readonly Lazy<ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser>> _valueTaskSourcePoolAsyncLockReleaser =
+        new(() => new ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser>(new PooledValueTaskSourceObjectPolicy<AsyncLock.AsyncLockReleaser>(), DefaultMaxRetainedItems));
 
     /// <summary>
-    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncLock.AsyncLockReleaser"/>.
+    /// Gets the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="bool"/>.
     /// </summary>
-    public static readonly ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser> ValueTaskSourcePoolAsyncLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncLock.AsyncLockReleaser>(), DefaultMaxRetainedItems);
+    public static ValueTaskSourceObjectPool<bool> ValueTaskSourcePoolBoolean => _valueTaskSourcePoolBoolean.Value;
+
+    /// <summary>
+    /// Gets the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncLock.AsyncLockReleaser"/>.
+    /// </summary>
+    public static ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser> ValueTaskSourcePoolAsyncLockReleaser => _valueTaskSourcePoolAsyncLockReleaser.Value;
 }
