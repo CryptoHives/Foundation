@@ -45,6 +45,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj"
+        OutputItemType="Analyzer"
+        ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>
   

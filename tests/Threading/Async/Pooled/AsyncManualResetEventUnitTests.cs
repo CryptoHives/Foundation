@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
+#pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing cancellation behavior
 
 namespace Threading.Tests.Async.Pooled;
 
