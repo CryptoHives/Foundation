@@ -76,18 +76,7 @@ public class ValueTaskPreserveTests
     }
 
     [Test]
-    public async Task BuiltInPreserveCanBeAwaitedMultipleTimes()
-    {
-        ValueTask vt = default;
-        ValueTask preserved = vt.Preserve();
-
-        await preserved.ConfigureAwait(false);
-        await preserved.ConfigureAwait(false);
-        await preserved.ConfigureAwait(false);
-    }
-
-    [Test]
-    public async Task BuiltInPreserveGenericCanBeAwaitedMultipleTimes()
+    public async Task PreserveGenericCanBeAwaitedMultipleTimes()
     {
         ValueTask<int> vt = new(99);
         ValueTask<int> preserved = vt.Preserve();
@@ -103,8 +92,6 @@ public class ValueTaskPreserveTests
             Assert.That(r3, Is.EqualTo(99));
         }
     }
-
-    #region PooledManualResetValueTaskSource Tests
 
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourceCompletedCanBeAwaitedMultipleTimes()
@@ -127,6 +114,8 @@ public class ValueTaskPreserveTests
             Assert.That(r2, Is.EqualTo(42));
             Assert.That(r3, Is.EqualTo(42));
         }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(1000)]
@@ -154,6 +143,8 @@ public class ValueTaskPreserveTests
             Assert.That(r2, Is.EqualTo(99));
             Assert.That(r3, Is.EqualTo(99));
         }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(1000)]
@@ -181,6 +172,8 @@ public class ValueTaskPreserveTests
             Assert.That(r2, Is.EqualTo("hello"));
             Assert.That(r3, Is.EqualTo("hello"));
         }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(1000)]
@@ -206,6 +199,8 @@ public class ValueTaskPreserveTests
             Assert.That(ex2!.Message, Is.EqualTo("Test exception"));
             Assert.That(ex3!.Message, Is.EqualTo("Test exception"));
         }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(1000)]
@@ -223,6 +218,8 @@ public class ValueTaskPreserveTests
 
         // second await throws because the source was consumed and returned to pool
         _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(1000)]
@@ -245,7 +242,7 @@ public class ValueTaskPreserveTests
         await preserved.ConfigureAwait(false);
         await preserved.ConfigureAwait(false);
         await preserved.ConfigureAwait(false);
-    }
 
-    #endregion
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
 }
