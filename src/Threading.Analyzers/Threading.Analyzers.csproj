@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 
 <Project Sdk="Microsoft.NET.Sdk">
@@ -18,12 +18,13 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <DevelopmentDependency>true</DevelopmentDependency>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <!-- Don't include build output in lib folder - we'll add it manually to analyzers -->
-    <IncludeBuildOutput>false</IncludeBuildOutput>
     <!-- Disable package validation for analyzer packages (no public API surface) -->
     <EnablePackageValidation>false</EnablePackageValidation>
-    <!-- Suppress the no-content warning since we're adding content via None items -->
-    <NoPackageAnalysis>true</NoPackageAnalysis>
+    <!-- Include build output in analyzers folder -->
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <BuildOutputTargetFolder>analyzers/dotnet/cs</BuildOutputTargetFolder>
+    <!-- Disable symbol packages for analyzer -->
+    <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -44,15 +45,5 @@
     <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
-
-  <!-- Include the analyzer DLL in the correct location for NuGet -->
-  <ItemGroup>
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-  </ItemGroup>
-
-  <!-- Ensure the build output exists before packing -->
-  <Target Name="EnsureBuildOutputForPack" BeforeTargets="GenerateNuspec" Condition="!Exists('$(OutputPath)\$(AssemblyName).dll')">
-    <Error Text="Build output not found at $(OutputPath)\$(AssemblyName).dll. Run build before pack." />
-  </Target>
 
 </Project>
