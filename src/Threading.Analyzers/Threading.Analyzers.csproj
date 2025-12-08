@@ -18,9 +18,12 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <DevelopmentDependency>true</DevelopmentDependency>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <!-- Include build output but redirect it to analyzers folder instead of lib -->
-    <IncludeBuildOutput>true</IncludeBuildOutput>
-    <BuildOutputTargetFolder>analyzers/dotnet/cs</BuildOutputTargetFolder>
+    <!-- Don't include build output in lib folder - we'll add it manually to analyzers -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- Disable package validation for analyzer packages (no public API surface) -->
+    <EnablePackageValidation>false</EnablePackageValidation>
+    <!-- Suppress the no-content warning since we're adding content via None items -->
+    <NoPackageAnalysis>true</NoPackageAnalysis>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -42,6 +45,14 @@
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
 
-  <Target Name="GetPackagingOutputs" />
+  <!-- Include the analyzer DLL in the correct location for NuGet -->
+  <ItemGroup>
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+
+  <!-- Ensure the build output exists before packing -->
+  <Target Name="EnsureBuildOutputForPack" BeforeTargets="GenerateNuspec" Condition="!Exists('$(OutputPath)\$(AssemblyName).dll')">
+    <Error Text="Build output not found at $(OutputPath)\$(AssemblyName).dll. Run build before pack." />
+  </Target>
 
 </Project>
