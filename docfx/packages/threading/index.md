@@ -19,12 +19,15 @@ By demand, more primitives might be added in the future.
 - **Cancellation support**: Full `CancellationToken` support across all primitives
 - **Configurable continuations**: Control synchronous vs asynchronous continuation execution
 - **Custom ObjectPools**: Supply your own object pools for fine-grained control
+- **Included Analyzers**: Roslyn analyzers automatically detect common ValueTask misuse patterns
 
 ## Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
 ```
+
+> **Note:** This package includes [Threading Analyzers](../threading.analyzers/index.md) automatically. The analyzers are transitive, so any project that references a project using this package will also benefit from the ValueTask misuse detection at compile time.
 
 ## Namespaces
 

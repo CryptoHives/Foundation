@@ -60,6 +60,22 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" />
   </ItemGroup>
 
+  <!-- Include the Threading.Analyzers in this package for transitive analyzer support -->
+  <ItemGroup>
+    <ProjectReference Include="..\Threading.Analyzers\Threading.Analyzers.csproj" 
+                      PrivateAssets="all" 
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Pack the analyzer DLL into the analyzers folder - this makes it transitive to consumers -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\Threading.Analyzers\bin\$(Configuration)\netstandard2.0\$(AssemblyPrefix).Threading.Analyzers.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Visible="false" 
+          Condition="Exists('$(MSBuildThisFileDirectory)..\Threading.Analyzers\bin\$(Configuration)\netstandard2.0\$(AssemblyPrefix).Threading.Analyzers.dll')" />
+  </ItemGroup>
+
   <Target Name="GetPackagingOutputs" />
 
 </Project>
