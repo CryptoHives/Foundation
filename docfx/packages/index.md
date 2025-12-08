@@ -47,6 +47,7 @@ Pooled async synchronization primitives that reduce allocations in high-throughp
 - `AsyncLock` - Pooled async mutual exclusion
 - `AsyncAutoResetEvent` - Pooled async auto-reset event
 - `AsyncManualResetEvent` - Pooled async manual-reset event
+- **Includes ValueTask analyzers** - Automatically detects common misuse patterns
 
 **[Threading Package Documentation](threading/index.md)**
 
@@ -70,11 +71,15 @@ public async Task AccessResourceAsync(CancellationToken ct)
 }
 ```
 
+> **Note:** This package includes the Threading Analyzers automatically. The analyzers are transitive, so any project that references a project using this package will also benefit from the ValueTask misuse detection.
+
 ---
 
-### Threading Analyzers Package
+### Threading Analyzers Package (Standalone)
 
 **CryptoHives.Foundation.Threading.Analyzers** - Roslyn analyzers for ValueTask misuse detection
+
+> **Note:** If you're using `CryptoHives.Foundation.Threading`, the analyzers are already included. This standalone package is for projects that want the analyzers without the Threading library.
 
 Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time. These analyzers help developers avoid subtle bugs and performance issues when working with `ValueTask` and the pooled async primitives.
 
@@ -117,8 +122,7 @@ All packages support:
 - .NET Standard 2.1
 - .NET Standard 2.0
 
-Analyzers only support: 
-- .NET Standard 2.0
+Analyzers target .NET Standard 2.0 for maximum compatibility with all IDE and build scenarios.
 
 ## Getting Help
 
@@ -130,11 +134,11 @@ Analyzers only support:
 
 ## Package Links
 
-| Package | NuGet | Documentation |
-|---------|-------|---------------|
-| CryptoHives.Foundation.Memory | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](memory/index.md) |
-| CryptoHives.Foundation.Threading | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](threading/index.md) |
-| CryptoHives.Foundation.Threading.Analyzers | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](threading.analyzers/index.md) |
+| Package | NuGet | Documentation | Notes |
+|---------|-------|---------------|-------|
+| CryptoHives.Foundation.Memory | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](memory/index.md) | |
+| CryptoHives.Foundation.Threading | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](threading/index.md) | Includes analyzers |
+| CryptoHives.Foundation.Threading.Analyzers | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](threading.analyzers/index.md) | Standalone |
 
 ---
 
