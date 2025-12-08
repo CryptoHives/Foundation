@@ -112,6 +112,41 @@ await preserved; // Safe!
 
 ---
 
+### Threading Analyzers Package
+
+**CryptoHives.Foundation.Threading.Analyzers** - Roslyn analyzers for ValueTask misuse detection
+
+Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time. These analyzers help developers avoid subtle bugs and performance issues when working with `ValueTask` and the pooled async primitives.
+
+**Key Features:**
+- Detects multiple awaits on the same `ValueTask`
+- Warns about blocking calls like `GetAwaiter().GetResult()`
+- Identifies unsafe field storage of `ValueTask`
+- Includes automatic code fixes
+
+**[Threading Analyzers Documentation](threading.analyzers/index.md)**
+
+**Installation:**
+```bash
+dotnet add package CryptoHives.Foundation.Threading.Analyzers
+```
+
+**Quick Example:**
+```csharp
+// ❌ CHT001: ValueTask awaited multiple times
+ValueTask vt = GetValueTask();
+await vt;
+await vt; // Error!
+
+// ✅ Correct: Use Preserve() for multiple awaits
+ValueTask vt = GetValueTask();
+ValueTask preserved = vt.Preserve();
+await preserved;
+await preserved; // Safe!
+```
+
+---
+
 ## Target Frameworks
 
 All packages support:
