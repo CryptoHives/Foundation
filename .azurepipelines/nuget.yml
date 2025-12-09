@@ -30,6 +30,8 @@ jobs:
     value: '$(NBGV_NuGetPackageVersion)'
   - name: signinglist
     value: '.azurepipelines/signlist${{parameters.config}}.txt'
+  - name: NUGET_PACKAGES
+    value: '$(Pipeline.Workspace)\.nuget\packages'
   steps:
   - checkout: self
     fetchDepth: 0  # fetch all commits for versioning
@@ -59,6 +61,13 @@ jobs:
   - task: NuGetToolInstaller@1
     inputs:
       versionSpec: '>=5.8.x'
+  - task: Cache@2
+    displayName: 'Cache NuGet packages'
+    inputs:
+      key: 'nuget | $(Agent.OS) | $(Build.SourceBranch)' 
+      restoreKeys: |
+        nuget | $(Agent.OS)
+      path: '$(NUGET_PACKAGES)'
   - task: PowerShell@2
     displayName: Versioning
     inputs:
