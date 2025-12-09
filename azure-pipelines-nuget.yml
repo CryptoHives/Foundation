@@ -16,6 +16,8 @@ parameters:
 - name: RunDebugNuGet
   type: boolean
   default: false
+  displayName: 'Create Debug and Release Nuget packages (default: only Release)'
+  description: Set to true to create also the Debug configuration NuGet artifacts
 
 stages:
 - stage: nugetartifacts
@@ -25,8 +27,8 @@ stages:
     parameters:
       upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
       config: 'Release'
+  ${{ if eq(parameters.RunDebugNuGet, true) }}:
   - template: .azurepipelines/nuget.yml
-    condition: eq(parameters.RunDebugNuGet, true)
     parameters:
       upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
       config: 'Debug'
