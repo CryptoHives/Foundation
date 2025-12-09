@@ -12,9 +12,10 @@ trigger:
     include:
     - 'src/'
 
-variables:
-  # Set to 'true' (e.g., via pipeline variables UI) to enable the Debug NuGet build
-  BuildDebugNuGet: 'false'
+parameters:
+- name: RunDebugNuGet
+  type: boolean
+  default: false
 
 stages:
 - stage: nugetartifacts
@@ -25,7 +26,7 @@ stages:
       upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
       config: 'Release'
   - template: .azurepipelines/nuget.yml
+    condition: eq(parameters.RunDebugNuGet, true)
     parameters:
       upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
       config: 'Debug'
-    condition: eq(variables['BuildDebugNuGet'], 'true')
