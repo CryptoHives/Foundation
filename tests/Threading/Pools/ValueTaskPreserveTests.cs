@@ -8,7 +8,6 @@ namespace Threading.Tests.Pools;
 using CryptoHives.Foundation.Threading.Pools;
 using NUnit.Framework;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
