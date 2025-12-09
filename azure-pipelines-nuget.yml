@@ -17,7 +17,6 @@ parameters:
   type: boolean
   default: false
   displayName: 'Create Debug and Release Nuget packages (default: only Release)'
-  description: Set to true to create also the Debug configuration NuGet artifacts
 
 stages:
 - stage: nugetartifacts
