@@ -13,7 +13,7 @@ trigger:
     - 'src/'
 
 parameters:
-- name: RunDebugNuGet
+- name: debugbuild
   type: boolean
   default: false
   displayName: 'Create Debug and Release Nuget packages (default: only Release)'
@@ -26,8 +26,8 @@ stages:
     parameters:
       upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
       config: 'Release'
-  ${{ if eq(parameters.RunDebugNuGet, true) }}:
-  - template: .azurepipelines/nuget.yml
-    parameters:
-      upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
-      config: 'Debug'
+  - ${{ if eq(parameters.debugbuild, true) }}:
+    - template: .azurepipelines/nuget.yml
+      parameters:
+        upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
+        config: 'Debug'
