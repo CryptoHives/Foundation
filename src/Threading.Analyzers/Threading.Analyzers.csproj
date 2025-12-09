@@ -25,6 +25,11 @@
     <BuildOutputTargetFolder>analyzers/dotnet/cs</BuildOutputTargetFolder>
     <!-- Disable symbol packages for analyzer -->
     <IncludeSymbols>false</IncludeSymbols>
+    <!-- Suppress analyzer-specific warnings that don't apply to this project -->
+    <!-- RS1007: Localization not required for this project -->
+    <!-- RS1038: CodeFix requires Workspaces, this is intentional and works in IDE scenarios -->
+    <!-- CA1014: CLS compliance not required for analyzers -->
+    <NoWarn>$(NoWarn);RS1007;RS1038;CA1014</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
