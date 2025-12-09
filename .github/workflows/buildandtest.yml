@@ -13,35 +13,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Fast PR validation - runs on all platforms with latest .NET only
   build-and-test:
-    name: test-${{matrix.os}}-${{matrix.csproj}}-${{matrix.framework}}
+    name: test-${{matrix.os}}-${{matrix.csproj}}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false    
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]    
         csproj: [Threading, Memory]
-        framework: [net10.0]
         include:
-          # Default values for net10.0
-          - framework: net10.0
+          - framework: 'net10.0'
             dotnet-version: '10.0.x'
             configuration: 'Release'
             customtesttarget: net10.0
-          # Add net8.0 on ubuntu for cross-version validation
-          - os: ubuntu-latest
-            csproj: Threading
-            framework: net8.0
-            dotnet-version: '8.0.x'
-            configuration: 'Release'
-            customtesttarget: net8.0
-          - os: ubuntu-latest
-            csproj: Memory
-            framework: net8.0
-            dotnet-version: '8.0.x'
-            configuration: 'Release'
-            customtesttarget: net8.0
     env:
       OS: ${{ matrix.os }}
       DOTNET_VERSION: ${{ matrix.dotnet-version }}
@@ -49,7 +33,6 @@ jobs:
       CSPROJ: ${{ matrix.csproj }}
       CSPROJECT: "./tests/${{ matrix.csproj }}/${{ matrix.csproj }}.Tests.csproj"
       TESTRESULTS: "TestResults-${{matrix.csproj}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}"
-      NUGET_PACKAGES: ${{ runner.temp }}/.nuget/packages
       
     steps:
     - uses: actions/checkout@v6
@@ -61,23 +44,12 @@ jobs:
       with:
         dotnet-version: ${{ matrix.dotnet-version }}
 
-    - name: Cache NuGet packages
-      uses: actions/cache@v4
-      with:
-        path: ${{ env.NUGET_PACKAGES }}
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
-
     - name: Set Cloud Version
       shell: pwsh
       run: ./.azurepipelines/set-version.ps1
 
-    - name: Restore
-      run: dotnet restore ${{ env.CSPROJECT }} --configuration ${{ matrix.configuration }}
-
     - name: Build
-      run: dotnet build ${{ env.CSPROJECT }} --no-restore --force --framework ${{ matrix.framework }} --configuration ${{ matrix.configuration }} /p:CustomTestTarget=${{ matrix.customtesttarget }}
+      run: dotnet build ${{ env.CSPROJECT }} --force --framework ${{ matrix.framework }} --configuration ${{ matrix.configuration }} /p:CustomTestTarget=${{ matrix.customtesttarget }}
       
     - name: Test
       # note: /p:CollectCoverage=true is only used to disable deterministic builds
@@ -88,6 +60,7 @@ jobs:
       with:
         name: dotnet-results-${{matrix.csproj}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}
         path: ${{ env.TESTRESULTS }}
+      # Use always() to always run this step to publish test results when there are test failures
       if: ${{ always() }}
 
     - name: Upload to Codecov
@@ -98,61 +71,7 @@ jobs:
         directory: ${{ env.TESTRESULTS }}
         env_vars: CSPROJ,OS,DOTNET_VERSION,CONFIGURATION
         fail_ci_if_error: false
+        #path_to_write_report: "./coverage/codecov_report-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}/"
         verbose: true      
-      if: ${{ always() }}
-
-  # Analyzer tests - Windows only (requires full .NET SDK)
-  test-analyzers:
-    name: test-analyzers-${{matrix.framework}}
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        framework: [net10.0, net8.0]
-        include:
-          - framework: net10.0
-            dotnet-version: '10.0.x'
-          - framework: net8.0
-            dotnet-version: '8.0.x'
-    env:
-      CSPROJECT: "./tests/Threading.Analyzers/Threading.Analyzers.Tests.csproj"
-      TESTRESULTS: "TestResults-Analyzers-${{matrix.framework}}"
-      NUGET_PACKAGES: ${{ runner.temp }}/.nuget/packages
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-    
-    - name: Setup .NET ${{ matrix.dotnet-version }}
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: ${{ matrix.dotnet-version }}
-
-    - name: Cache NuGet packages
-      uses: actions/cache@v4
-      with:
-        path: ${{ env.NUGET_PACKAGES }}
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
-
-    - name: Set Cloud Version
-      shell: pwsh
-      run: ./.azurepipelines/set-version.ps1
-
-    - name: Restore
-      run: dotnet restore ${{ env.CSPROJECT }}
-
-    - name: Build
-      run: dotnet build ${{ env.CSPROJECT }} --no-restore --framework ${{ matrix.framework }} --configuration Release
-
-    - name: Test
-      run: dotnet test ${{ env.CSPROJECT }} --no-build --framework ${{ matrix.framework }} --logger trx --configuration Release --results-directory ${{ env.TESTRESULTS }}
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v5
-      with:
-        name: dotnet-results-Analyzers-${{matrix.framework}}
-        path: ${{ env.TESTRESULTS }}
+      # Use always() to always run this step to publish test results when there are test failures
       if: ${{ always() }}
