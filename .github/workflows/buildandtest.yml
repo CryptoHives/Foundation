@@ -19,19 +19,26 @@ jobs:
     strategy:
       fail-fast: false    
       matrix:
+        # Define the matrix of OS and projects, these values can be permutated
         os: [ubuntu-latest, windows-latest, macOS-latest]    
-        csproj: [Threading, Memory]
+        csproj: [Threading, Memory, Cryptography]
+        framework: ['net10.0']
+        configuration: ['Release','Debug']
+        # Default values applied to all combinations, do not permutate
+        dotnet-version: ['10.0.x']
+        customtesttarget: ['net10.0']
+        # Default folder for most projects, add override in include section
+        folder: ['./tests']
         include:
-          - framework: 'net10.0'
-            dotnet-version: '10.0.x'
-            configuration: 'Release'
-            customtesttarget: net10.0
+          # Override folder for Cryptography (under Security/)
+          - csproj: Cryptography
+            folder: './tests/Security'
     env:
       OS: ${{ matrix.os }}
       DOTNET_VERSION: ${{ matrix.dotnet-version }}
-      CONFIGURATION:  ${{ matrix.configuration }}
+      CONFIGURATION: ${{ matrix.configuration }}
       CSPROJ: ${{ matrix.csproj }}
-      CSPROJECT: "./tests/${{ matrix.csproj }}/${{ matrix.csproj }}.Tests.csproj"
+      CSPROJECT: "${{ matrix.folder }}/${{ matrix.csproj }}/${{ matrix.csproj }}.Tests.csproj"
       TESTRESULTS: "TestResults-${{matrix.csproj}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}"
       
     steps:
@@ -71,7 +78,6 @@ jobs:
         directory: ${{ env.TESTRESULTS }}
         env_vars: CSPROJ,OS,DOTNET_VERSION,CONFIGURATION
         fail_ci_if_error: false
-        #path_to_write_report: "./coverage/codecov_report-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}/"
         verbose: true      
       # Use always() to always run this step to publish test results when there are test failures
       if: ${{ always() }}
