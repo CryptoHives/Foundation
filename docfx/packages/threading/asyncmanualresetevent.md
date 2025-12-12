@@ -1,4 +1,4 @@
-# AsyncManualResetEvent
+﻿# AsyncManualResetEvent
 
 ## Overview
 
