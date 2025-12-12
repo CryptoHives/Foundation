@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1050 // Declare types in namespaces
-#pragma warning disable SYSLIB0021 // Derived cryptographic types are obsolete
 
 using Org.BouncyCastle.Crypto.Digests;
 using Security.Cryptography.Tests;

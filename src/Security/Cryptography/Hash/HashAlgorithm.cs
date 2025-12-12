@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2000 // Dispose objects before losing scope, this is handled by the caller
@@ -36,9 +36,7 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="HashAlgorithm"/> class.
     /// </summary>
-    protected HashAlgorithm()
-    {
-    }
+    protected HashAlgorithm() { }
 
     /// <summary>
     /// Creates a new instance of the specified hash algorithm.

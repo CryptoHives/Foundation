@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests;
@@ -70,12 +70,6 @@ public static class Sha1Implementations
                 "SHA1",
                 () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA1.Create());
 #pragma warning restore CS0618
-
-#pragma warning disable SYSLIB0021 // Type or member is obsolete
-            yield return new HashAlgorithmFactory(
-                "SHA1 (.NET)",
-                () => SHA1.Create());
-#pragma warning restore SYSLIB0021 // Type or member is obsolete
 
             yield return new HashAlgorithmFactory(
                 "SHA1 (BouncyCastle)",
