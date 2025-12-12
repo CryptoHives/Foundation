@@ -24,7 +24,7 @@ src/
 ├── Threading/           # Threading utilities (ValueTask pooling, async primitives)
 ├── Threading.Analyzers/ # Roslyn analyzers for ValueTask misuse detection
 ├── Memory/              # Memory utilities (pooling, buffers, streams)
-└── Security.Cryptography/   # Cryptographic algorithms
+└── Security/Cryptography/   # Cryptographic algorithms
     ├── SHA2/            # SHA-2 family implementations
     ├── SHA3/            # SHA-3 family implementations
     ├── SHAKE/           # SHAKE and cSHAKE XOFs
@@ -43,7 +43,7 @@ tests/
 ├── Threading/           # Runtime tests for Threading library
 ├── Threading.Analyzers/ # Analyzer unit tests (Roslyn testing framework)
 ├── Memory/              # Runtime tests for Memory library
-└── Security.Cryptography/ # Runtime tests for Cryptography library
+└── Security/Cryptography/ # Runtime tests for Cryptography library
 ```
 
 ## Cryptography Namespace Structure
@@ -51,32 +51,35 @@ tests/
 The Security.Cryptography library uses a hierarchical namespace structure:
 
 ```
-CryptoHives.Foundation.Security.Cryptography          # Root namespace with type aliases
+CryptoHives.Foundation.Security.Cryptography          # Root namespace
 CryptoHives.Foundation.Security.Cryptography.Hash     # Hash algorithm implementations
 CryptoHives.Foundation.Security.Cryptography.Mac      # MAC algorithm implementations
 ```
 
-### Type Aliases for Drop-in Replacement
+### Namespace Aliases for Drop-in Replacement
 
-The root namespace (`CryptoHives.Foundation.Security.Cryptography`) contains type aliases that derive from the actual implementations in sub-namespaces. This allows drop-in replacement of .NET cryptographic types:
+The hash sub-namspace of the root namespace (`CryptoHives.Foundation.Security.Cryptography.Hash`) contains the sealed implementations of the hash algorithms. This allows drop-in replacement of .NET cryptographic types:
 
 ```csharp
 // Before: using System.Security.Cryptography;
-// After:  using CryptoHives.Foundation.Security.Cryptography;
+// After:  using CryptoHives.Foundation.Security.Cryptography.Hash;
 
-using var sha256 = SHA256Managed.Create();  // Works with both!
+using var sha256 = SHA256.Create();  // Works with both!
 ```
 
 When adding new hash algorithms:
-1. Implement in the appropriate folder under `src/Security.Cryptography/`
+1. Implement in the appropriate folder under `src/Security/Cryptography/`
 2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Hash`
-3. Add a type alias in `TypeAliases.cs` for root namespace compatibility
-4. Ensure the class is NOT sealed to allow the alias to derive from it
+3. Derive the new class from `CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm`
+4. Implement new class and functions
+5. Add new hash algorithm to tests and benchmarks sources
+6. Add third party implementations for verification and benchmarking to tests
+7. Add docfx documentation for package and add test vector description with reference to specs
 
 When adding new MAC algorithms:
-1. Implement in `src/Security.Cryptography/MAC/`
+1. Implement in `src/Security/Cryptography/MAC/`
 2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Mac`
-3. Add a type alias in `MacTypeAliases.cs` for root namespace compatibility
+3. ... etc
 
 ## General rules
 
@@ -86,9 +89,10 @@ When adding new MAC algorithms:
 - Never change package.json or package-lock.json files unless explicitly asked to.
 - Never change NuGet.Config files unless explicitly asked to.
 - Always trim trailing whitespace, and do not have whitespace on otherwise empty lines.
+- Always save files as UTF8 with BOM.
 - Always preserve the SPDX file header found at the top of source files. Example: `// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives` followed by `// SPDX-License-Identifier: MIT`.
 - Follow the existing file layout: preprocessor directives (e.g. `#if ...`) come first, then the `namespace` declaration, then `using` directives. Keep a single blank line between these regions as in existing files.
-- Use `namespace` declarations that match the file path. For example, files under `src/Threading/Async` use `namespace CryptoHives.Foundation.Threading.Async;`.
+- Try to use `namespace` declarations that match the file path, unless a package works otherwise described. For example, files under `src/Threading/Async` use `namespace CryptoHives.Foundation.Threading.Async;`.
 - Use PascalCase for public types and members, camelCase for local variables, and `_underscore` prefix for private fields (example: `_mutex`).
 - Add XML documentation (`/// <summary>...`) for public types and public members following existing style and punctuation.
 - Use XML remarks for properties and methods which may need explanation.
@@ -97,6 +101,8 @@ When adding new MAC algorithms:
 - Use XML `<code>` snippets for code examples.
 - Add only XML `<inheritdoc/>` tags when overriding or implementing interface members.
 - Keep methods short and focused. Prefer small helper methods when needed.
+- Prefer predefined primitives in `BinaryPrimitives` and `BitOperations`.
+- Implement byte accessing algorithms with endian invariance in mind.
 - Prefer `ValueTask` over `Task` for low-allocation hot-path async primitives when the project already uses `ValueTask` (see `Pooled.Async*` types).
 - Use `Microsoft.Extensions.ObjectPool` and the existing pool policy types when adding pooled objects.
 - Follow the project pattern for multi-targeting: code may include `#if` guards for framework-specific APIs (see `ReadOnlySequenceMemoryStream` for `NET8_0_OR_GREATER` checks).
@@ -120,11 +126,13 @@ When working with the `*.Analyzers` projects:
 - Keep `using` directives after the `namespace` (this repository places them inside the namespace block). Use one blank line between `using` groups and top-level members.
 - Keep `private readonly` fields declared at the top of the type, before constructors.
 - Place public constructors and properties before private helpers when possible.
+- As an exception, for function argument checks use one line `if (condition) throw` statements, in contrary to the .editorconfig definition.
 
 ## Testing conventions
 
 - Tests use NUnit. Test classes live under `tests/*` with corresponding project names which end in `.Tests`. File names end in `UnitTests.cs` or `Benchmark.cs`.
 - Use `[TestFixture]` on classes and `[Test]` or `[Theory]` on methods. Async tests should return `Task` and use `async/await`.
+- Try to use `[TestCaseSource]` and `[TestFixtureSource]` to increase the number of tests with a smaller code base.
 - Prefer `[Parallelizable(ParallelScope.All)]` on test fixtures for parallel execution.
 - Prefer `[CancelAfter(milliseconds)]` for async tests with timeouts instead of manual CancellationTokenSource.
 - Follow existing test helpers and patterns (for example `AsyncAssert` helper used in other tests). Use `ConfigureAwait(false)` in library code where appropriate; tests often call it when awaiting.
@@ -132,6 +140,7 @@ When working with the `*.Analyzers` projects:
 - Do not use underscores in test method names.
 - Prefer adding new tests to existing test files when possible.
 - Do not add comments in test code with Act/Arrange/Assert sections unless necessary for clarity.
+- Do not add the `Async` suffix to the method names of async tests.
 
 ## CI/CD Architecture
 
@@ -144,7 +153,6 @@ When working with the `*.Analyzers` projects:
 
 When modifying CI pipelines:
 - Check for overlap between Azure DevOps and GitHub Actions to avoid redundancy
-- Use NuGet caching (`Cache@2` or `actions/cache`) for faster builds
 - The main `azure-pipelines.yml` already provides comprehensive coverage
 
 ## Safety checks before committing
@@ -152,13 +160,12 @@ When modifying CI pipelines:
 - Run a build: `dotnet build` or use existing CI commands. Ensure no compilation warnings or errors were introduced.
 - Run unit tests locally if appropriate: `dotnet test` for the relevant test project.
 - Run docfx locally if documentation changes were made: `docfx docfx.json --serve`
-- Keep changes minimal and follow the repository patterns. If introducing an API surface change, add or update unit tests to cover the behavior.
+- Keep changes minimal and follow the repository patterns. If introducing an API surface change, add or update unit tests to cover the behavior. Check docfx and readme for inconsistencies and fix them.
 
 ## When in doubt
 
 - Search for a similar implementation in the repository and copy the style and structure used there (e.g., `AsyncAutoResetEvent`, `ReadOnlySequenceMemoryStream`).
 - Prefer consistency with existing code over personal preference.
-- Check the existing analyzer tests in `ValueTaskMisuseAnalyzerTests.cs` for patterns.
 
 ## Contact
 
