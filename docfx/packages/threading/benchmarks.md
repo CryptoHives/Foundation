@@ -1,4 +1,4 @@
-## Threading Benchmarks
+﻿## Threading Benchmarks
 
 This page documents the benchmarks included in the Threading library.
 

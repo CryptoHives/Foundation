@@ -1,4 +1,4 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+﻿## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven cryptography and performance library collection for the .NET ecosystem.
 
