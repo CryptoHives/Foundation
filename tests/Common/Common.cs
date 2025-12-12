@@ -1,8 +1,9 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 using NUnit.Framework;
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -84,7 +85,7 @@ static class TestHelpers
         var sb = new System.Text.StringBuilder(bytes.Length * 2);
         foreach (byte b in bytes)
         {
-            sb.Append(b.ToString("x2"));
+            sb.Append(b.ToString("x2", CultureInfo.InvariantCulture));
         }
 
         return sb.ToString();
