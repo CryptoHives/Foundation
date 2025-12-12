@@ -1,17 +1,15 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1050 // Declare types in namespaces
 #pragma warning disable SYSLIB0021 // Derived cryptographic types are obsolete
 
+using Org.BouncyCastle.Crypto.Digests;
+using Security.Cryptography.Tests;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
-using Org.BouncyCastle.Crypto.Digests;
-using Org.BouncyCastle.Crypto.Macs;
-using Org.BouncyCastle.Crypto.Parameters;
-using Security.Cryptography.Tests;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
 
@@ -21,19 +19,60 @@ using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
 public sealed class HashAlgorithmType : IFormattable
 {
     private readonly Func<HashAlgorithm> _factory;
+    private readonly Func<bool>? _isSupported;
 
-    public HashAlgorithmType(string name, string category, Func<HashAlgorithm> factory)
+    public HashAlgorithmType(string name, string category, Func<HashAlgorithm> factory, Func<bool>? isSupported = null)
     {
         Name = name;
         Category = category;
         _factory = factory;
+        _isSupported = isSupported;
     }
 
     public string Name { get; }
 
     public string Category { get; }
 
-    public HashAlgorithm Create() => _factory();
+    public bool IsSupported => _isSupported?.Invoke() ?? true;
+
+    /// <summary>
+    /// Creates an instance of the hash algorithm.
+    /// </summary>
+    /// <returns>The hash algorithm instance, or null if not supported.</returns>
+    /// <exception cref="PlatformNotSupportedException">Thrown if the algorithm is not supported on this platform.</exception>
+    public HashAlgorithm Create()
+    {
+        if (!IsSupported)
+        {
+            throw new PlatformNotSupportedException($"Hash algorithm '{Name}' is not supported on this platform.");
+        }
+        return _factory();
+    }
+
+    /// <summary>
+    /// Tries to create an instance of the hash algorithm.
+    /// </summary>
+    /// <param name="algorithm">The created algorithm, or null if not supported.</param>
+    /// <returns>True if the algorithm was created successfully.</returns>
+    public bool TryCreate(out HashAlgorithm? algorithm)
+    {
+        if (!IsSupported)
+        {
+            algorithm = null;
+            return false;
+        }
+
+        try
+        {
+            algorithm = _factory();
+            return true;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            algorithm = null;
+            return false;
+        }
+    }
 
     public string ToString(string? format, IFormatProvider? formatProvider) => Name;
 
@@ -42,17 +81,14 @@ public sealed class HashAlgorithmType : IFormattable
     #region SHA-2 Family
 
     public static readonly HashAlgorithmType SHA256_OS = new("SHA256_OS", "SHA-256", SHA256.Create);
-    public static readonly HashAlgorithmType SHA256_OSManaged = new("SHA256_OSManaged", "SHA-256", SHA256.Create);
     public static readonly HashAlgorithmType SHA256_Managed = new("SHA256_Managed", "SHA-256", CH.SHA256.Create);
     public static readonly HashAlgorithmType SHA256_Bouncy = new("SHA256_Bouncy", "SHA-256", () => new BouncyCastleHashAdapter(new Sha256Digest()));
 
     public static readonly HashAlgorithmType SHA384_OS = new("SHA384_OS", "SHA-384", SHA384.Create);
-    public static readonly HashAlgorithmType SHA384_OSManaged = new("SHA384_OSManaged", "SHA-384", SHA384.Create);
     public static readonly HashAlgorithmType SHA384_Managed = new("SHA384_Managed", "SHA-384", CH.SHA384.Create);
     public static readonly HashAlgorithmType SHA384_Bouncy = new("SHA384_Bouncy", "SHA-384", () => new BouncyCastleHashAdapter(new Sha384Digest()));
 
     public static readonly HashAlgorithmType SHA512_OS = new("SHA512_OS", "SHA-512", SHA512.Create);
-    public static readonly HashAlgorithmType SHA512_OSManaged = new("SHA512_OSManaged", "SHA-512", SHA512.Create);
     public static readonly HashAlgorithmType SHA512_Managed = new("SHA512_Managed", "SHA-512", CH.SHA512.Create);
     public static readonly HashAlgorithmType SHA512_Bouncy = new("SHA512_Bouncy", "SHA-512", () => new BouncyCastleHashAdapter(new Sha512Digest()));
 
@@ -71,11 +107,11 @@ public sealed class HashAlgorithmType : IFormattable
 
 #if NET8_0_OR_GREATER
     // .NET 8+ OS-supported SHA-3 (requires OS support - Windows 11+, modern Linux)
-    public static readonly HashAlgorithmType SHA3_256_OS = new("SHA3_256_OS", "SHA3-256", () => SHA3_256.Create());
-    public static readonly HashAlgorithmType SHA3_384_OS = new("SHA3_384_OS", "SHA3-384", () => SHA3_384.Create());
-    public static readonly HashAlgorithmType SHA3_512_OS = new("SHA3_512_OS", "SHA3-512", () => SHA3_512.Create());
-    public static readonly HashAlgorithmType Shake128_OS = new("Shake128_OS", "SHAKE128", () => new Shake128HashAdapter(32));
-    public static readonly HashAlgorithmType Shake256_OS = new("Shake256_OS", "SHAKE256", () => new Shake256HashAdapter(64));
+    public static readonly HashAlgorithmType SHA3_256_OS = new("SHA3_256_OS", "SHA3-256", () => SHA3_256.Create(), () => SHA3_256.IsSupported);
+    public static readonly HashAlgorithmType SHA3_384_OS = new("SHA3_384_OS", "SHA3-384", () => SHA3_384.Create(), () => SHA3_384.IsSupported);
+    public static readonly HashAlgorithmType SHA3_512_OS = new("SHA3_512_OS", "SHA3-512", () => SHA3_512.Create(), () => SHA3_512.IsSupported);
+    public static readonly HashAlgorithmType Shake128_OS = new("Shake128_OS", "SHAKE128", () => new Shake128HashAdapter(32), () => Shake128.IsSupported);
+    public static readonly HashAlgorithmType Shake256_OS = new("Shake256_OS", "SHAKE256", () => new Shake256HashAdapter(64), () => Shake256.IsSupported);
 #endif
 
     public static readonly HashAlgorithmType SHA3_224_Managed = new("SHA3_224_Managed", "SHA3-224", CH.SHA3_224.Create);
@@ -182,10 +218,12 @@ public sealed class HashAlgorithmType : IFormattable
 
 #if NET9_0_OR_GREATER
     public static readonly HashAlgorithmType Kmac128_OS = new("Kmac128_OS", "KMAC-128",
-        () => new Kmac128HashAdapter(SharedKmacKey, 32, SharedKmacCustomization));
+        () => new Kmac128HashAdapter(SharedKmacKey, 32, SharedKmacCustomization),
+        () => Kmac128.IsSupported);
 
     public static readonly HashAlgorithmType Kmac256_OS = new("Kmac256_OS", "KMAC-256",
-        () => new Kmac256HashAdapter(SharedKmacKey, 64, SharedKmacCustomization));
+        () => new Kmac256HashAdapter(SharedKmacKey, 64, SharedKmacCustomization),
+        () => Kmac256.IsSupported);
 #endif
 
     #endregion
@@ -236,7 +274,7 @@ public sealed class HashAlgorithmType : IFormattable
         yield return SHA512_Managed;
         yield return SHA512_Bouncy;
 #if NET8_0_OR_GREATER
-        yield return SHA3_256_OS;
+        if (SHA3_256_OS.IsSupported) yield return SHA3_256_OS;
 #endif
         yield return SHA3_256_Managed;
         yield return SHA3_256_Bouncy;
@@ -246,20 +284,17 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Blake3_Bouncy;
     }
 
-    /// <summary>All implementations for full matrix benchmark.</summary>
+    /// <summary>All implementations for full matrix benchmark, filtered to only supported algorithms.</summary>
     public static IEnumerable<HashAlgorithmType> AllHashers()
     {
         // SHA-2
         yield return SHA256_OS;
-        yield return SHA256_OSManaged;
         yield return SHA256_Managed;
         yield return SHA256_Bouncy;
         yield return SHA384_OS;
-        yield return SHA384_OSManaged;
         yield return SHA384_Managed;
         yield return SHA384_Bouncy;
         yield return SHA512_OS;
-        yield return SHA512_OSManaged;
         yield return SHA512_Managed;
         yield return SHA512_Bouncy;
         yield return SHA224_Managed;
@@ -269,13 +304,13 @@ public sealed class HashAlgorithmType : IFormattable
         yield return SHA512_256_Managed;
         yield return SHA512_256_Bouncy;
 
-        // SHA-3
+        // SHA-3 (OS-level - only yield if supported)
 #if NET8_0_OR_GREATER
-        yield return SHA3_256_OS;
-        yield return SHA3_384_OS;
-        yield return SHA3_512_OS;
-        yield return Shake128_OS;
-        yield return Shake256_OS;
+        if (SHA3_256_OS.IsSupported) yield return SHA3_256_OS;
+        if (SHA3_384_OS.IsSupported) yield return SHA3_384_OS;
+        if (SHA3_512_OS.IsSupported) yield return SHA3_512_OS;
+        if (Shake128_OS.IsSupported) yield return Shake128_OS;
+        if (Shake256_OS.IsSupported) yield return Shake256_OS;
 #endif
         yield return SHA3_224_Managed;
         yield return SHA3_224_Bouncy;
@@ -327,10 +362,10 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Streebog512_Managed;
         yield return Streebog512_Bouncy;
 
-        // KMAC
+        // KMAC (OS-level - only yield if supported)
 #if NET9_0_OR_GREATER
-        yield return Kmac128_OS;
-        yield return Kmac256_OS;
+        if (Kmac128_OS.IsSupported) yield return Kmac128_OS;
+        if (Kmac256_OS.IsSupported) yield return Kmac256_OS;
 #endif
         yield return Kmac128_Managed;
         yield return Kmac128_Bouncy;
@@ -338,15 +373,15 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Kmac256_Bouncy;
     }
 
-    /// <summary>All SHA-3 family implementations for comparison.</summary>
+    /// <summary>All SHA-3 family implementations for comparison, filtered to only supported algorithms.</summary>
     public static IEnumerable<HashAlgorithmType> AllSHA3()
     {
 #if NET8_0_OR_GREATER
-        yield return SHA3_256_OS;
-        yield return SHA3_384_OS;
-        yield return SHA3_512_OS;
-        yield return Shake128_OS;
-        yield return Shake256_OS;
+        if (SHA3_256_OS.IsSupported) yield return SHA3_256_OS;
+        if (SHA3_384_OS.IsSupported) yield return SHA3_384_OS;
+        if (SHA3_512_OS.IsSupported) yield return SHA3_512_OS;
+        if (Shake128_OS.IsSupported) yield return Shake128_OS;
+        if (Shake256_OS.IsSupported) yield return Shake256_OS;
 #endif
         yield return SHA3_224_Managed;
         yield return SHA3_224_Bouncy;
@@ -368,12 +403,12 @@ public sealed class HashAlgorithmType : IFormattable
 #endif
     }
 
-    /// <summary>All KMAC implementations for comparison.</summary>
+    /// <summary>All KMAC implementations for comparison, filtered to only supported algorithms.</summary>
     public static IEnumerable<HashAlgorithmType> AllKmac()
     {
 #if NET9_0_OR_GREATER
-        yield return Kmac128_OS;
-        yield return Kmac256_OS;
+        if (Kmac128_OS.IsSupported) yield return Kmac128_OS;
+        if (Kmac256_OS.IsSupported) yield return Kmac256_OS;
 #endif
         yield return Kmac128_Managed;
         yield return Kmac128_Bouncy;
