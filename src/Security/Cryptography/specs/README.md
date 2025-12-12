@@ -1,4 +1,4 @@
-﻿# Cryptographic Test Vectors
+# Cryptographic Test Vectors
 
 This folder contains test vectors for cryptographic hash algorithms from official sources.
 
@@ -8,13 +8,13 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| SHA-1 | 160 bits | ✅ Implemented | `SHA1Managed` |
-| SHA-224 | 224 bits | ✅ Implemented | `SHA224Managed` |
-| SHA-256 | 256 bits | ✅ Implemented | `SHA256Managed` |
-| SHA-384 | 384 bits | ✅ Implemented | `SHA384Managed` |
-| SHA-512 | 512 bits | ✅ Implemented | `SHA512Managed` |
-| SHA-512/224 | 224 bits | ✅ Implemented | `SHA512_224Managed` |
-| SHA-512/256 | 256 bits | ✅ Implemented | `SHA512_256Managed` |
+| SHA-1 | 160 bits | ✅ Implemented | `SHA1` |
+| SHA-224 | 224 bits | ✅ Implemented | `SHA224` |
+| SHA-256 | 256 bits | ✅ Implemented | `SHA256` |
+| SHA-384 | 384 bits | ✅ Implemented | `SHA384` |
+| SHA-512 | 512 bits | ✅ Implemented | `SHA512` |
+| SHA-512/224 | 224 bits | ✅ Implemented | `SHA512_224` |
+| SHA-512/256 | 256 bits | ✅ Implemented | `SHA512_256` |
 
 ### FIPS 202 (SHA-3 Standard)
 
@@ -119,7 +119,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| MD5 | 128 bits | ✅ Implemented (deprecated) | `MD5Managed` |
+| MD5 | 128 bits | ✅ Implemented (deprecated) | `MD5` |
 
 > **Warning:** MD5 is cryptographically broken and should NOT be used for security purposes.
 > It is provided only for legacy compatibility and non-cryptographic uses.

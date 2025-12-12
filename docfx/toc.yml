@@ -8,8 +8,13 @@
       href: packages/memory/index.md
     - name: Threading
       href: packages/threading/index.md
-- name: Specifications
-  href: specs/
+    - name: Security
+      href: packages/security/
+      items:
+        - name: Overview
+          href: packages/security/index.md
+        - name: Cryptography
+          href: packages/security/cryptography/index.md
 - name: API Documentation
   href: api/
 - name: Impressum

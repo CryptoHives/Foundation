@@ -1,0 +1,21 @@
+- name: Overview
+  href: index.md
+- name: Hash Algorithms
+  href: hash-algorithms.md
+- name: MAC Algorithms
+  href: mac-algorithms.md
+- name: Specifications
+  href: specs/README.md
+  items:
+    - name: Implementation Status
+      href: specs/README.md
+    - name: NIST FIPS 180-4 (SHA-1/2)
+      href: specs/NIST-FIPS-180-4.md
+    - name: NIST FIPS 202 (SHA-3)
+      href: specs/NIST-FIPS-202.md
+    - name: NIST SP 800-185 (cSHAKE, KMAC)
+      href: specs/NIST-SP-800-185.md
+    - name: BLAKE2 Vectors
+      href: specs/BLAKE2-vectors.md
+    - name: BLAKE3 Vectors
+      href: specs/BLAKE3-vectors.md

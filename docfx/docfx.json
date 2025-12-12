@@ -32,7 +32,7 @@
         "files": [
           "**/*.md"
         ],
-        "dest": "specs/cryptography"
+        "dest": "packages/security/cryptography/specs"
       }
     ],
     "resource": [
