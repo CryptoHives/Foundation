@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -253,7 +253,9 @@ public sealed class CShake128 : HashAlgorithm
     /// <returns>The encoded byte string.</returns>
     internal static byte[] EncodeString(byte[] s)
     {
-        byte[] lenEncoded = LeftEncode(s.Length * 8); // Length in bits
+        // Length in bits - use long to avoid overflow
+        long lengthInBits = (long)s.Length * 8L;
+        byte[] lenEncoded = LeftEncode(lengthInBits);
         byte[] result = new byte[lenEncoded.Length + s.Length];
         Array.Copy(lenEncoded, 0, result, 0, lenEncoded.Length);
         Array.Copy(s, 0, result, lenEncoded.Length, s.Length);
@@ -263,15 +265,21 @@ public sealed class CShake128 : HashAlgorithm
     /// <summary>
     /// Left-encodes an integer (left_encode from SP 800-185).
     /// </summary>
-    /// <param name="x">The value to encode.</param>
+    /// <param name="x">The value to encode (must be non-negative).</param>
     /// <returns>The encoded bytes.</returns>
     internal static byte[] LeftEncode(long x)
     {
+        if (x < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(x), "Value must be non-negative.");
+        }
+
         if (x == 0)
         {
             return [1, 0];
         }
 
+        // Count how many bytes we need
         int n = 0;
         long temp = x;
         while (temp > 0)
@@ -281,11 +289,12 @@ public sealed class CShake128 : HashAlgorithm
         }
 
         byte[] result = new byte[n + 1];
-        result[0] = (byte)n;
+        result[0] = unchecked((byte)n);
 
+        // Fill bytes in big-endian order
         for (int i = n; i >= 1; i--)
         {
-            result[i] = (byte)x;
+            result[i] = unchecked((byte)x);
             x >>= 8;
         }
 
@@ -295,15 +304,21 @@ public sealed class CShake128 : HashAlgorithm
     /// <summary>
     /// Right-encodes an integer (right_encode from SP 800-185).
     /// </summary>
-    /// <param name="x">The value to encode.</param>
+    /// <param name="x">The value to encode (must be non-negative).</param>
     /// <returns>The encoded bytes.</returns>
     internal static byte[] RightEncode(long x)
     {
+        if (x < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(x), "Value must be non-negative.");
+        }
+
         if (x == 0)
         {
             return [0, 1];
         }
 
+        // Count how many bytes we need
         int n = 0;
         long temp = x;
         while (temp > 0)
@@ -313,11 +328,12 @@ public sealed class CShake128 : HashAlgorithm
         }
 
         byte[] result = new byte[n + 1];
-        result[n] = (byte)n;
+        result[n] = unchecked((byte)n);
 
+        // Fill bytes in big-endian order
         for (int i = n - 1; i >= 0; i--)
         {
-            result[i] = (byte)x;
+            result[i] = unchecked((byte)x);
             x >>= 8;
         }
 
