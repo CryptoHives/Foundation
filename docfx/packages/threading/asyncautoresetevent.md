@@ -1,4 +1,4 @@
-# AsyncAutoResetEvent
+﻿# AsyncAutoResetEvent
 
 ## Overview
 
