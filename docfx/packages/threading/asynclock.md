@@ -1,4 +1,4 @@
-# AsyncLock Class
+﻿# AsyncLock Class
 
 A pooled async mutual exclusion lock for coordinating access to shared resources.
 
