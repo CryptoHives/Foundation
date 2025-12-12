@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
   "metadata": [
     {
@@ -26,6 +26,13 @@
           "_site/**",
           "obj/**"
         ]
+      },
+      {
+        "src": "../src/Security/Cryptography/specs",
+        "files": [
+          "**/*.md"
+        ],
+        "dest": "specs/cryptography"
       }
     ],
     "resource": [

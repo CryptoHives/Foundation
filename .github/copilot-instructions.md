@@ -1,4 +1,4 @@
-# Copilot Instructions for CryptoHives .NET Foundation
+﻿# Copilot Instructions for CryptoHives .NET Foundation
 
 ## Purpose
 
@@ -23,13 +23,60 @@ Use the following structure when adding new projects, tests and analyzers:
 src/
 ├── Threading/           # Threading utilities (ValueTask pooling, async primitives)
 ├── Threading.Analyzers/ # Roslyn analyzers for ValueTask misuse detection
-└── Memory/              # Memory utilities (pooling, buffers, streams)
+├── Memory/              # Memory utilities (pooling, buffers, streams)
+└── Security.Cryptography/   # Cryptographic algorithms
+    ├── SHA2/            # SHA-2 family implementations
+    ├── SHA3/            # SHA-3 family implementations
+    ├── SHAKE/           # SHAKE and cSHAKE XOFs
+    ├── BLAKE2/          # BLAKE2b and BLAKE2s
+    ├── BLAKE3/          # BLAKE3
+    ├── Keccak/          # Keccak-256 (Ethereum)
+    ├── GOST/            # Streebog (GOST R 34.11-2012)
+    ├── RIPEMD/          # RIPEMD-160
+    ├── SM3/             # Chinese SM3
+    ├── Whirlpool/       # ISO Whirlpool
+    ├── MAC/             # Message Authentication Codes (KMAC)
+    ├── Legacy/          # Deprecated algorithms (MD5, SHA-1)
+    └── specs/           # Algorithm specification documents
 
 tests/
 ├── Threading/           # Runtime tests for Threading library
 ├── Threading.Analyzers/ # Analyzer unit tests (Roslyn testing framework)
-└── Memory/              # Runtime tests for Memory library
+├── Memory/              # Runtime tests for Memory library
+└── Security.Cryptography/ # Runtime tests for Cryptography library
 ```
+
+## Cryptography Namespace Structure
+
+The Security.Cryptography library uses a hierarchical namespace structure:
+
+```
+CryptoHives.Foundation.Security.Cryptography          # Root namespace with type aliases
+CryptoHives.Foundation.Security.Cryptography.Hash     # Hash algorithm implementations
+CryptoHives.Foundation.Security.Cryptography.Mac      # MAC algorithm implementations
+```
+
+### Type Aliases for Drop-in Replacement
+
+The root namespace (`CryptoHives.Foundation.Security.Cryptography`) contains type aliases that derive from the actual implementations in sub-namespaces. This allows drop-in replacement of .NET cryptographic types:
+
+```csharp
+// Before: using System.Security.Cryptography;
+// After:  using CryptoHives.Foundation.Security.Cryptography;
+
+using var sha256 = SHA256Managed.Create();  // Works with both!
+```
+
+When adding new hash algorithms:
+1. Implement in the appropriate folder under `src/Security.Cryptography/`
+2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Hash`
+3. Add a type alias in `TypeAliases.cs` for root namespace compatibility
+4. Ensure the class is NOT sealed to allow the alias to derive from it
+
+When adding new MAC algorithms:
+1. Implement in `src/Security.Cryptography/MAC/`
+2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Mac`
+3. Add a type alias in `MacTypeAliases.cs` for root namespace compatibility
 
 ## General rules
 

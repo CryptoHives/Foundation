@@ -8,6 +8,8 @@
       href: packages/memory/index.md
     - name: Threading
       href: packages/threading/index.md
+- name: Specifications
+  href: specs/
 - name: API Documentation
   href: api/
 - name: Impressum

@@ -1,0 +1,63 @@
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Cryptography.Tests</AssemblyName>
+    <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <!-- CS0618: Using obsolete SHA1Managed for testing -->
+    <NoWarn>$(NoWarn);CS0618</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" />
+    <PackageReference Include="HashifyNET" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="NUnit.Console" />
+    <PackageReference Include="NUnit3TestAdapter">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Blake3 NuGet package only supports .NET 8+ -->
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+    <PackageReference Include="Blake3" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
+    <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Common\AssemblyInfo.cs" Link="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\..\Common\Main.cs" />
+    <Compile Include="..\..\Common\Common.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Security\Cryptography\Cryptography.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+</Project>
