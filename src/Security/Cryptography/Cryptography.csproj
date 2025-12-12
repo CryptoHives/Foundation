@@ -8,7 +8,8 @@
     <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <Description>CryptoHives Security Cryptography Library - managed hash algorithm implementations</Description>
-    <IsPackable>true</IsPackable>
+    <!-- set to true when experimental Nuget package is ready to ship-->
+    <IsPackable>false</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
     <PackageTags>$(PackageTags) Cryptography Hash MD5 SHA1 SHA2 SHA3 BLAKE2 BLAKE3 SHAKE CSHAKE SM3 Keccak Streebog Whirlpool Ripemd</PackageTags>
