@@ -26,7 +26,12 @@ public static class ValueTaskSourceObjectPools
     public static readonly ValueTaskSourceObjectPool<bool> ValueTaskSourcePoolBoolean = new(new PooledValueTaskSourceObjectPolicy<bool>(), DefaultMaxRetainedItems);
 
     /// <summary>
-    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncLock.AsyncLockReleaser"/>.
+    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncLock.Releaser"/>.
     /// </summary>
-    public static readonly ValueTaskSourceObjectPool<AsyncLock.AsyncLockReleaser> ValueTaskSourcePoolAsyncLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncLock.AsyncLockReleaser>(), DefaultMaxRetainedItems);
+    public static readonly ValueTaskSourceObjectPool<AsyncLock.Releaser> ValueTaskSourcePoolAsyncLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncLock.Releaser>(), DefaultMaxRetainedItems);
+
+    /// <summary>
+    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncReaderWriterLock.Releaser"/>.
+    /// </summary>
+    public static readonly ValueTaskSourceObjectPool<AsyncReaderWriterLock.Releaser> ValueTaskSourcePoolAsyncReaderWriterLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncReaderWriterLock.Releaser>(), DefaultMaxRetainedItems);
 }
