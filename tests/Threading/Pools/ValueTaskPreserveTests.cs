@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Pools;
@@ -8,7 +8,6 @@ namespace Threading.Tests.Pools;
 using CryptoHives.Foundation.Threading.Pools;
 using NUnit.Framework;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>

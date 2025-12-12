@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 /// <summary>
 /// Analyzer that detects common ValueTask misuse patterns.
@@ -17,6 +18,21 @@ using System.Collections.Immutable;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 {
+#if DEBUG
+    /// <summary>
+    /// Set to true and rebuild to launch debugger when analyzer initializes.
+    /// This allows attaching to the analyzer during Visual Studio or build execution.
+    /// </summary>
+    /// <remarks>
+    /// Debug steps:
+    /// 1. Set this to true
+    /// 2. Rebuild the analyzer
+    /// 3. Open target project in Visual Studio or run dotnet build
+    /// 4. Debugger prompt will appear - attach with the analyzer solution
+    /// </remarks>
+    private const bool LaunchDebuggerOnInitialize = false;
+#endif
+
     /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         DiagnosticDescriptors.MultipleAwait,
@@ -31,6 +47,22 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
+        if (context is null)
+        {
+            throw new ArgumentNullException(nameof(context));
+        }
+
+#if DEBUG
+        // Launch debugger if constant is set to true (for troubleshooting analyzer issues)
+        if (LaunchDebuggerOnInitialize && !Debugger.IsAttached)
+        {
+            Debugger.Launch();
+        }
+
+        // Log analyzer initialization to debug output (visible in Output window with DebugView)
+        Debug.WriteLine($"[ValueTaskMisuseAnalyzer] Initialize called at {DateTime.Now:HH:mm:ss.fff}");
+#endif
+
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 

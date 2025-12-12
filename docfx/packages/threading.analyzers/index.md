@@ -1,4 +1,4 @@
-# CryptoHives.Foundation.Threading.Analyzers
+﻿# CryptoHives.Foundation.Threading.Analyzers
 
 ## Overview
 

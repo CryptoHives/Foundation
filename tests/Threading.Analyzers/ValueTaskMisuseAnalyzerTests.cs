@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Analyzers.Tests;
@@ -571,6 +571,62 @@ public class TestClass
         Func<Task> lambda = async () => await preserved;
         await lambda();
         await lambda();
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ValueTaskPreserveTestsPatternsAreDetected()
+    {
+        // This test verifies that the patterns used in ValueTaskPreserveTests.cs
+        // (which are suppressed with #pragma warning disable CHT001)
+        // would actually be detected by the analyzer.
+        
+        // Pattern: Multiple awaits on original ValueTask (from OriginalPooledSourceThrowsOnMultipleAwaitWithoutPreserve)
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task OriginalPooledSourceThrowsOnMultipleAwaitWithoutPreserve()
+    {
+        ValueTask<int> vt = new ValueTask<int>(42);
+        
+        // first await works
+        int result = await vt;
+        
+        // second await should be flagged
+        await {|#0:vt|};
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ValueTaskPreserveTestsMultipleAwaitOnPreservedIsAllowed()
+    {
+        // This test verifies that Preserve() properly allows multiple awaits
+        // (corresponding to tests like PreserveCanBeAwaitedMultipleTimes)
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task PreserveCanBeAwaitedMultipleTimes()
+    {
+        ValueTask vt = default;
+        ValueTask preserved = vt.Preserve();
+        
+        await preserved;
+        await preserved;
+        await preserved;
     }
 }";
         await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);

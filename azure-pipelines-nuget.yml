@@ -10,17 +10,24 @@ trigger:
     - main
   paths:
     include:
-    - 'src/' 
+    - 'src/'
+
+parameters:
+- name: debugbuild
+  type: boolean
+  default: false
+  displayName: 'Create Debug and Release Nuget packages (default: only Release)'
 
 stages:
-- stage: nugetpreview
-  displayName: 'Push Nuget Preview'
+- stage: nugetartifacts
+  displayName: 'Build Nuget Artifacts'
   jobs:
   - template: .azurepipelines/nuget.yml
     parameters:
       upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
       config: 'Release'
-  - template: .azurepipelines/nuget.yml
-    parameters:
-      upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
-      config: 'Debug'
+  - ${{ if eq(parameters.debugbuild, true) }}:
+    - template: .azurepipelines/nuget.yml
+      parameters:
+        upload: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
+        config: 'Debug'

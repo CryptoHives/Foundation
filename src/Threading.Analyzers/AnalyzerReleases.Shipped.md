@@ -1,1 +1,1 @@
-; No shipped rules yet
+﻿; No shipped rules yet

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
@@ -216,7 +216,13 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        var declaringSyntax = localSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
+        var syntaxReference = localSymbol.DeclaringSyntaxReferences.FirstOrDefault();
+        if (syntaxReference is null)
+        {
+            return document;
+        }
+
+        var declaringSyntax = await syntaxReference.GetSyntaxAsync(cancellationToken).ConfigureAwait(false);
         if (declaringSyntax is not VariableDeclaratorSyntax variableDeclarator ||
             variableDeclarator.Initializer is null)
         {
@@ -293,7 +299,13 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        var declaringSyntax = localSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
+        var syntaxReference = localSymbol.DeclaringSyntaxReferences.FirstOrDefault();
+        if (syntaxReference is null)
+        {
+            return document;
+        }
+
+        var declaringSyntax = await syntaxReference.GetSyntaxAsync(cancellationToken).ConfigureAwait(false);
         if (declaringSyntax is not VariableDeclaratorSyntax variableDeclarator ||
             variableDeclarator.Initializer is null)
         {

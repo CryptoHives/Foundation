@@ -1,4 +1,4 @@
-# CryptoHives.Foundation.Threading Package
+﻿# CryptoHives.Foundation.Threading Package
 
 ## Overview
 
