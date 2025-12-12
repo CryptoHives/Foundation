@@ -14,32 +14,38 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: test-${{matrix.os}}-${{matrix.csproj}}
+    name: test-${{matrix.os}}-${{matrix.csproj.name}}-${{matrix.configuration}}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false    
       matrix:
         # Define the matrix of OS and projects, these values can be permutated
-        os: [ubuntu-latest, windows-latest, macOS-latest]    
-        csproj: [Threading, Memory, Cryptography]
-        framework: ['net10.0']
-        configuration: ['Release','Debug']
-        # Default values applied to all combinations, do not permutate
-        dotnet-version: ['10.0.x']
-        customtesttarget: ['net10.0']
-        # Default folder for most projects, add override in include section
-        folder: ['./tests']
-        include:
-          # Override folder for Cryptography (under Security/)
-          - csproj: Cryptography
+        os: 
+          - ubuntu-latest
+          - windows-latest
+          - macOS-latest    
+        csproj: 
+          - name: Threading
+          - name: Memory
+          - name: Cryptography
             folder: './tests/Security'
+        framework: 
+          - 'net10.0'
+        configuration:
+          - 'Release'
+          - 'Debug'
+        include:
+          - dotnet-version: '10.0.x'
+          - customtesttarget: 'net10.0'
+          - csproj.folder: './tests'
+
     env:
       OS: ${{ matrix.os }}
       DOTNET_VERSION: ${{ matrix.dotnet-version }}
       CONFIGURATION: ${{ matrix.configuration }}
-      CSPROJ: ${{ matrix.csproj }}
-      CSPROJECT: "${{ matrix.folder }}/${{ matrix.csproj }}/${{ matrix.csproj }}.Tests.csproj"
-      TESTRESULTS: "TestResults-${{matrix.csproj}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}"
+      CSPROJ: ${{ matrix.csproj.name }}
+      CSPROJECT: "${{ matrix.csproj.folder }}/${{ matrix.csproj.name }}/${{ matrix.csproj.name }}.Tests.csproj"
+      TESTRESULTS: "TestResults-${{matrix.csproj.name}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}"
       
     steps:
     - uses: actions/checkout@v6
@@ -65,7 +71,7 @@ jobs:
     - name: Upload test results
       uses: actions/upload-artifact@v5
       with:
-        name: dotnet-results-${{matrix.csproj}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}
+        name: dotnet-results-${{matrix.csproj.name}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}
         path: ${{ env.TESTRESULTS }}
       # Use always() to always run this step to publish test results when there are test failures
       if: ${{ always() }}
