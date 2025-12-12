@@ -1,4 +1,4 @@
-## Getting Started with CryptoHives.Foundation libraries
+﻿## Getting Started with CryptoHives.Foundation libraries
 
 Welcome to the CryptoHives .NET Foundation libraries! This guide will help you get started with the Memory and Threading packages.
 

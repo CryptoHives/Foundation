@@ -50,7 +50,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">
-    <None Include="$(MSBuildThisFileDirectory)/licenses/CryptoHives MIT license.txt" Pack="true" PackagePath="$(PackageLicenseFile)"/>
+    <None Include="$(MSBuildThisFileDirectory)/licenses/CryptoHives MIT license.txt" Pack="true" Visible="false" PackagePath="$(PackageLicenseFile)"/>
   </ItemGroup>
   
   <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == ''">
@@ -58,11 +58,11 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
-    <None Include="$(MSBuildThisFileDirectory)/nuget/logo.jpg" Pack="true" PackagePath="$(PackageIcon)"/>
+    <None Include="$(MSBuildThisFileDirectory)/nuget/logo.jpg" Pack="true" Visible="false" PackagePath="$(PackageIcon)"/>
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
-    <None Include="$(MSBuildThisFileDirectory)/README.md" Pack="true" PackagePath="$(PackageReadmeFile)"/>
+    <None Include="$(MSBuildThisFileDirectory)/README.md" Pack="true" Visible="false" PackagePath="$(PackageReadmeFile)"/>
   </ItemGroup>
 
   <ItemGroup Condition="'$(NBGV_PublicRelease)' != ''">

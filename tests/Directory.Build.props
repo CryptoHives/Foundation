@@ -1,0 +1,17 @@
+<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT -->
+<Project>
+  <!-- Import root Directory.Build.props first -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Common test project settings -->
+  <PropertyGroup>
+    <!-- Common warnings to suppress in all test projects -->
+    <NoWarn>$(NoWarn);CA1515;CA5394;CA1707;CA1062</NoWarn>
+  </PropertyGroup>
+
+  <!-- Include shared test files -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Common\GlobalSuppressions.cs" Link="Properties\GlobalSuppressions.cs" />
+  </ItemGroup>
+</Project>

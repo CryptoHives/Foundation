@@ -12,6 +12,11 @@ set filter=*
 
 cd %build_root%
 
+cd tests\Security\Cryptography\
+dotnet run -v n --configuration Release  --framework %framework% -- --filter %filter% --runtimes %runtimes%
+
+cd %build_root%
+
 cd tests\Threading\
 dotnet run -v n --configuration Release  --framework %framework% -- --filter %filter% --runtimes %runtimes%
 cd ..
