@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests.RIPEMD;
@@ -49,7 +49,6 @@ public class Ripemd160Tests
     /// </summary>
     /// <remarks>
     /// Test vectors from: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
-    /// These tests are marked Explicit because the implementation needs verification.
     /// </remarks>
     /// <param name="input">The input string.</param>
     /// <param name="expectedHex">The expected hash in hexadecimal.</param>
@@ -61,7 +60,6 @@ public class Ripemd160Tests
     [TestCase("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", "12a053384a9c0c88e405a06c27dcf49ada62eb2b")]
     [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", "b0e20b6e3116640286ed3a87a5713079b21f5189")]
     [TestCase("12345678901234567890123456789012345678901234567890123456789012345678901234567890", "9b752e45573d4b39f4dbd3323cab82bf63326bfb")]
-    [Explicit("RIPEMD-160 implementation needs verification")]
     public void OfficialTestVectors(string input, string expectedHex)
     {
         byte[] data = Encoding.UTF8.GetBytes(input);
@@ -77,7 +75,6 @@ public class Ripemd160Tests
     /// Test incremental hashing with RIPEMD-160.
     /// </summary>
     [Test]
-    [Explicit("RIPEMD-160 implementation needs verification")]
     public void IncrementalHashingProducesSameResult()
     {
         byte[] input = Encoding.UTF8.GetBytes("Hello, World!");
@@ -98,7 +95,6 @@ public class Ripemd160Tests
     /// </summary>
     /// <param name="factory">The hash algorithm factory.</param>
     [TestCaseSource(typeof(Ripemd160Implementations), nameof(Ripemd160Implementations.All))]
-    [Explicit("RIPEMD-160 implementation needs verification")]
     public void AllImplementationsMatch(HashAlgorithmFactory factory)
     {
         byte[] input = Encoding.UTF8.GetBytes("cross-implementation test");
@@ -113,7 +109,6 @@ public class Ripemd160Tests
     /// Test Bitcoin-style Hash160 (SHA-256 followed by RIPEMD-160).
     /// </summary>
     [Test]
-    [Explicit("RIPEMD-160 implementation needs verification")]
     public void BitcoinHash160Pattern()
     {
         byte[] publicKey = TestHelpers.FromHexString("0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352");

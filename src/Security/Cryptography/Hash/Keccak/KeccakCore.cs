@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -239,12 +239,6 @@ internal static class KeccakCore
         }
     }
 
-    /// <summary>
-    /// Rotates a 64-bit value left by the specified number of bits.
-    /// </summary>
-    /// <param name="x">The value to rotate.</param>
-    /// <param name="n">The number of bits to rotate.</param>
-    /// <returns>The rotated value.</returns>
 #if NET8_0_OR_GREATER
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong RotateLeft(ulong x, int n) => BitOperations.RotateLeft(x, n);

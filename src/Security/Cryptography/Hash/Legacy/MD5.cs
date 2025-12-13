@@ -1,10 +1,13 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+
 
 /// <summary>
 /// Computes the MD5 hash for the input data using a clean-room implementation.
@@ -250,5 +253,10 @@ public sealed class MD5 : HashAlgorithm
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if NET8_0_OR_GREATER
+    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
+#else
     private static uint RotateLeft(uint x, int n) => (x << n) | (x >> (32 - n));
+#endif
 }

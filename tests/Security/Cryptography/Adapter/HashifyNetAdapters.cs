@@ -52,7 +52,7 @@ internal sealed class HashifyNetBlake2bAdapter : HashAlgorithm
             throw new ArgumentOutOfRangeException(nameof(hashSizeBits), "Hash size must be between 8 and 512 bits, and a multiple of 8.");
         }
 
-        var config = new Blake2BConfig { HashSizeInBits = hashSizeBits };
+        using var config = new Blake2BConfig { HashSizeInBits = hashSizeBits };
         _hasher = HashFactory<IBlake2B>.Create(config);
         _hashSizeBytes = hashSizeBits / 8;
         HashSizeValue = hashSizeBits;
@@ -116,7 +116,7 @@ internal sealed class HashifyNetWhirlpoolAdapter : HashAlgorithm
     /// </summary>
     public HashifyNetWhirlpoolAdapter()
     {
-        var config = new WhirlpoolConfig();
+        using var config = new WhirlpoolConfig();
         _hasher = HashFactory<IWhirlpool>.Create(config);
         HashSizeValue = 512;
         _buffer = new MemoryStream();

@@ -1,7 +1,8 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - K and IV are standard cryptographic constant names per FIPS 180-4
+#pragma warning disable CA1707 // Identifiers should not contain underscores
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 

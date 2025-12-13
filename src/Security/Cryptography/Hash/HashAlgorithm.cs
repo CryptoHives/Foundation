@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2000 // Dispose objects before losing scope, this is handled by the caller
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+#pragma warning disable CA5351 // Do Not Use Broken Cryptographic Algorithms
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -40,10 +42,54 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
 
     /// <summary>
     /// Creates a new instance of the specified hash algorithm.
+    /// Optionally uses the OS version (mostly faster) if available.
+    /// </summary>
+    /// <param name="hashName">The name of the hash algorithm to create.</param>
+    /// <param name="osVersion">Set to true to instantiate the OS version of the algorithm, if available.</param>
+    /// <returns>A new hash algorithm instance.</returns>
+    /// <exception cref="ArgumentException">The specified algorithm name is unknown.</exception>
+    /// <exception cref="PlatformNotSupportedException">The specified algorithm is not supported.</exception>
+    public static System.Security.Cryptography.HashAlgorithm Create(string hashName, bool osVersion = false)
+    {
+        if (string.IsNullOrEmpty(hashName)) throw new ArgumentNullException(nameof(hashName));
+
+        if (osVersion)
+        {
+            System.Security.Cryptography.HashAlgorithm? hashAlgorithm = hashName.ToUpperInvariant() switch {
+                // SHA-2 family (FIPS 180-4)
+                "SHA256" or "SHA-256" => System.Security.Cryptography.SHA256.Create(),
+                "SHA384" or "SHA-384" => System.Security.Cryptography.SHA384.Create(),
+                "SHA512" or "SHA-512" => System.Security.Cryptography.SHA512.Create(),
+#if NET8_0_OR_GREATER
+                // SHA-3 family (FIPS 202)
+                "SHA3-256" or "SHA3256" => System.Security.Cryptography.SHA3_256.Create(),
+                "SHA3-384" or "SHA3384" => System.Security.Cryptography.SHA3_384.Create(),
+                "SHA3-512" or "SHA3512" => System.Security.Cryptography.SHA3_512.Create(),
+#endif
+                // Legacy (deprecated)
+#pragma warning disable CS0618 // SHA-1 obsolete warning - intentionally supported for legacy compatibility
+                "SHA1" or "SHA-1" => System.Security.Cryptography.SHA1.Create(),
+                "MD5" => System.Security.Cryptography.MD5.Create(),
+#pragma warning restore CS0618
+                _ => null
+            };
+
+            if (hashAlgorithm != null)
+            {
+                return hashAlgorithm;
+            }
+        }
+
+        return Create(hashName);
+    }
+
+    /// <summary>
+    /// Creates a new instance of the specified hash algorithm.
     /// </summary>
     /// <param name="hashName">The name of the hash algorithm to create.</param>
     /// <returns>A new hash algorithm instance.</returns>
-    /// <exception cref="ArgumentException">The specified algorithm is not supported.</exception>
+    /// <exception cref="ArgumentException">The specified algorithm name is unknown.</exception>
+    /// <exception cref="PlatformNotSupportedException">The specified algorithm is not supported.</exception>
     public static new System.Security.Cryptography.HashAlgorithm Create(string hashName)
     {
         return hashName?.ToUpperInvariant() switch {
@@ -85,12 +131,15 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             "SHA1" or "SHA-1" => SHA1.Create(),
             "MD5" => MD5.Create(),
 #pragma warning restore CS0618
-            _ => throw new ArgumentException($"Hash algorithm '{hashName}' is not supported.", nameof(hashName))
+            _ => throw new ArgumentException($"Hash algorithm '{hashName}' is unknown.", nameof(hashName))
         };
-#pragma warning restore CA2000 // Dispose objects before losing scope
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Overridden to route to the HashCore(ReadOnlySpan{byte} method.
+    /// Implementations should override that method instead.
+    /// </remarks>
     protected sealed override void HashCore(byte[] array, int ibStart, int cbSize)
     {
         HashCore(array.AsSpan(ibStart, cbSize));
@@ -114,7 +163,7 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
 #endif
 
     /// <inheritdoc/>
-    protected override byte[] HashFinal()
+    protected sealed override byte[] HashFinal()
     {
         byte[] hash = new byte[HashSizeValue / 8];
         TryHashFinal(hash, out int bytesWritten);

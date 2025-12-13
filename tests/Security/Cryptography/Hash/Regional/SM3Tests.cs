@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests.SM3;
@@ -49,13 +49,11 @@ public class SM3Tests
     /// </summary>
     /// <remarks>
     /// Test vectors from Chinese national standard GB/T 32905-2016.
-    /// These tests are marked Explicit because the implementation needs verification.
     /// </remarks>
     /// <param name="input">The input string.</param>
     /// <param name="expectedHex">The expected hash in hexadecimal.</param>
     [TestCase("abc", "66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0")]
     [TestCase("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", "debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732")]
-    [Explicit("SM3 implementation needs verification")]
     public void OfficialTestVectors(string input, string expectedHex)
     {
         byte[] data = Encoding.UTF8.GetBytes(input);
@@ -71,7 +69,6 @@ public class SM3Tests
     /// Test SM3 empty string.
     /// </summary>
     [Test]
-    [Explicit("SM3 implementation needs verification")]
     public void EmptyStringHash()
     {
         byte[] data = [];
@@ -87,7 +84,6 @@ public class SM3Tests
     /// Test incremental hashing with SM3.
     /// </summary>
     [Test]
-    [Explicit("SM3 implementation needs verification")]
     public void IncrementalHashingProducesSameResult()
     {
         byte[] input = Encoding.UTF8.GetBytes("Hello, World!");
@@ -108,7 +104,6 @@ public class SM3Tests
     /// </summary>
     /// <param name="factory">The hash algorithm factory.</param>
     [TestCaseSource(typeof(Sm3Implementations), nameof(Sm3Implementations.All))]
-    [Explicit("SM3 implementation needs verification")]
     public void AllImplementationsMatch(HashAlgorithmFactory factory)
     {
         byte[] input = Encoding.UTF8.GetBytes("cross-implementation test");
@@ -123,7 +118,6 @@ public class SM3Tests
     /// Test padding boundary (55 bytes - last byte before padding needs extra block).
     /// </summary>
     [Test]
-    [Explicit("SM3 implementation needs verification")]
     public void PaddingBoundary55Bytes()
     {
         byte[] input = new byte[55];
@@ -142,7 +136,6 @@ public class SM3Tests
     /// Test padding boundary (56 bytes - requires extra block for padding).
     /// </summary>
     [Test]
-    [Explicit("SM3 implementation needs verification")]
     public void PaddingBoundary56Bytes()
     {
         byte[] input = new byte[56];

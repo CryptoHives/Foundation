@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests.Benchmarks;
@@ -66,7 +66,7 @@ public class KmacBenchmark
     }
 
 #if NET9_0_OR_GREATER
-    [Benchmark(Baseline = true, Description = "KMAC128 .NET")]
+    [Benchmark(Description = "KMAC128 .NET")]
     [BenchmarkCategory("KMAC128")]
     public byte[] Kmac128_DotNet()
     {
@@ -99,7 +99,7 @@ public class KmacBenchmark
     }
 
 #if NET9_0_OR_GREATER
-    [Benchmark(Baseline = true, Description = "KMAC256 .NET")]
+    [Benchmark(Description = "KMAC256 .NET")]
     [BenchmarkCategory("KMAC256")]
     public byte[] Kmac256_DotNet()
     {
@@ -161,7 +161,7 @@ public class KmacOutputSizeBenchmark
     }
 
 #if NET9_0_OR_GREATER
-    [Benchmark(Baseline = true, Description = "KMAC128 .NET")]
+    [Benchmark(Description = "KMAC128 .NET")]
     [BenchmarkCategory("KMAC128")]
     public byte[] Kmac128_DotNet()
     {
@@ -190,7 +190,7 @@ public class KmacOutputSizeBenchmark
     }
 
 #if NET9_0_OR_GREATER
-    [Benchmark(Baseline = true, Description = "KMAC256 .NET")]
+    [Benchmark(Description = "KMAC256 .NET")]
     [BenchmarkCategory("KMAC256")]
     public byte[] Kmac256_DotNet()
     {

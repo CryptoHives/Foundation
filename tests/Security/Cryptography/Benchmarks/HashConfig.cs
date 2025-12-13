@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests.Benchmarks;
@@ -57,6 +57,7 @@ public class HashConfig : ManualConfig
             => GetValue(summary, benchmarkCase);
 
         public bool IsDefault(Summary summary, BenchmarkCase benchmarkCase) => false;
+
         public bool IsAvailable(Summary summary) => true;
 
         private static string GetImplementationType(string name)

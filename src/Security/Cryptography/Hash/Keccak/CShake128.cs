@@ -154,14 +154,6 @@ public sealed class CShake128 : HashAlgorithm
     }
 
     /// <inheritdoc/>
-    protected override byte[] HashFinal()
-    {
-        byte[] output = new byte[_outputBytes];
-        Squeeze(output);
-        return output;
-    }
-
-    /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         bytesWritten = _outputBytes;

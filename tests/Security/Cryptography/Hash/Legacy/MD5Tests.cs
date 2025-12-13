@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests.Legacy;
@@ -53,9 +53,6 @@ public class MD5Tests
     /// <summary>
     /// Test MD5 with RFC 1321 test vectors.
     /// </summary>
-    /// <remarks>
-    /// This test is marked Explicit because the implementation needs verification.
-    /// </remarks>
     /// <param name="input">The input string.</param>
     /// <param name="expectedHex">The expected hash in hexadecimal.</param>
     [TestCase("", "d41d8cd98f00b204e9800998ecf8427e")]
@@ -65,7 +62,6 @@ public class MD5Tests
     [TestCase("abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b")]
     [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", "d174ab98d277d9f5a5611c2c9f419d9f")]
     [TestCase("12345678901234567890123456789012345678901234567890123456789012345678901234567890", "57edf4a22be3c955ac49da2e2107b67a")]
-    [Explicit("MD5 implementation needs verification")]
     public void Rfc1321TestVectors(string input, string expectedHex)
     {
         byte[] data = Encoding.UTF8.GetBytes(input);
@@ -83,7 +79,6 @@ public class MD5Tests
     /// Test incremental hashing with MD5.
     /// </summary>
     [Test]
-    [Explicit("MD5 implementation needs verification")]
     public void IncrementalHashingProducesSameResult()
     {
         byte[] input = Encoding.UTF8.GetBytes("Hello, World!");
@@ -106,7 +101,6 @@ public class MD5Tests
     /// </summary>
     /// <param name="factory">The hash algorithm factory.</param>
     [TestCaseSource(typeof(Md5Implementations), nameof(Md5Implementations.All))]
-    [Explicit("MD5 implementation needs verification")]
     public void AllImplementationsMatch(HashAlgorithmFactory factory)
     {
         byte[] input = Encoding.UTF8.GetBytes("cross-implementation test");
