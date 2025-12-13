@@ -234,6 +234,11 @@ public class KmacTests
     [TestCase("The quick brown fox jumps over the lazy dog")]
     public void Kmac128MatchesDotNet9(string message)
     {
+        if (NetKmac128.IsSupported == false)
+        {
+            Assert.Ignore("KMAC128 is not supported on this platform.");
+        }
+
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] input = Encoding.UTF8.GetBytes(message);
         byte[] customization = Encoding.UTF8.GetBytes("My App");
@@ -256,6 +261,11 @@ public class KmacTests
     [TestCase("The quick brown fox jumps over the lazy dog")]
     public void Kmac256MatchesDotNet9(string message)
     {
+        if (NetKmac256.IsSupported == false)
+        {
+            Assert.Ignore("KMAC256 is not supported on this platform.");
+        }
+
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] input = Encoding.UTF8.GetBytes(message);
         byte[] customization = Encoding.UTF8.GetBytes("My App");
@@ -276,6 +286,11 @@ public class KmacTests
     [Test]
     public void Kmac128EmptyCustomizationMatchesDotNet9()
     {
+        if (NetKmac128.IsSupported == false)
+        {
+            Assert.Ignore("KMAC128 is not supported on this platform.");
+        }
+
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] input = TestHelpers.FromHexString("00010203");
 
@@ -295,6 +310,11 @@ public class KmacTests
     [Test]
     public void Kmac256EmptyCustomizationMatchesDotNet9()
     {
+        if (NetKmac256.IsSupported == false)
+        {
+            Assert.Ignore("KMAC256 is not supported on this platform.");
+        }
+
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] input = TestHelpers.FromHexString("00010203");
 
@@ -317,6 +337,11 @@ public class KmacTests
     [TestCase(128)]
     public void Kmac128VariableOutputMatchesDotNet9(int outputBytes)
     {
+        if (NetKmac128.IsSupported == false)
+        {
+            Assert.Ignore("KMAC128 is not supported on this platform.");
+        }
+
         byte[] key = new byte[32];
         byte[] input = Encoding.UTF8.GetBytes("test data");
         byte[] customization = Encoding.UTF8.GetBytes("test");
@@ -340,6 +365,11 @@ public class KmacTests
     [TestCase(256)]
     public void Kmac256VariableOutputMatchesDotNet9(int outputBytes)
     {
+        if (NetKmac256.IsSupported == false)
+        {
+            Assert.Ignore("KMAC256 is not supported on this platform.");
+        }
+
         byte[] key = new byte[32];
         byte[] input = Encoding.UTF8.GetBytes("test data");
         byte[] customization = Encoding.UTF8.GetBytes("test");
@@ -366,6 +396,11 @@ public class KmacTests
     [TestCase(4096)]
     public void Kmac128VariousInputSizesMatchesDotNet9(int inputLength)
     {
+        if (NetKmac128.IsSupported == false)
+        {
+            Assert.Ignore("KMAC128 is not supported on this platform.");
+        }
+
         byte[] key = new byte[32];
         byte[] input = GenerateTestInput(inputLength);
         byte[] customization = Array.Empty<byte>();
@@ -392,6 +427,11 @@ public class KmacTests
     [TestCase(4096)]
     public void Kmac256VariousInputSizesMatchesDotNet9(int inputLength)
     {
+        if (NetKmac256.IsSupported == false)
+        {
+            Assert.Ignore("KMAC256 is not supported on this platform.");
+        }
+
         byte[] key = new byte[32];
         byte[] input = GenerateTestInput(inputLength);
         byte[] customization = Array.Empty<byte>();
@@ -413,6 +453,11 @@ public class KmacTests
     [Test]
     public void Kmac128NistVectorMatchesDotNet9()
     {
+        if (NetKmac128.IsSupported == false)
+        {
+            Assert.Ignore("KMAC128 is not supported on this platform.");
+        }
+
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] data = TestHelpers.FromHexString("00010203");
         byte[] customization = Encoding.UTF8.GetBytes("My Tagged Application");
@@ -434,6 +479,11 @@ public class KmacTests
     [Test]
     public void Kmac256NistVectorMatchesDotNet9()
     {
+        if (NetKmac256.IsSupported == false)
+        {
+            Assert.Ignore("KMAC256 is not supported on this platform.");
+        }
+
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] data = TestHelpers.FromHexString("00010203");
         byte[] customization = Encoding.UTF8.GetBytes("My Tagged Application");
