@@ -786,6 +786,10 @@ public static class Streebog256Implementations
             yield return new HashAlgorithmFactory(
                 "Streebog-256 (BouncyCastle)",
                 () => new BouncyCastleHashAdapter(new Gost3411_2012_256Digest()));
+
+            yield return new HashAlgorithmFactory(
+                "Streebog-256 (OpenGost)",
+                () => OpenGost.Security.Cryptography.Streebog256.Create());
         }
     }
 }
@@ -809,6 +813,10 @@ public static class Streebog512Implementations
             yield return new HashAlgorithmFactory(
                 "Streebog-512 (BouncyCastle)",
                 () => new BouncyCastleHashAdapter(new Gost3411_2012_512Digest()));
+
+            yield return new HashAlgorithmFactory(
+                "Streebog-512 (OpenGost)",
+                () => OpenGost.Security.Cryptography.Streebog512.Create());
         }
     }
 }

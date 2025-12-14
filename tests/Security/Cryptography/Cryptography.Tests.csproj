@@ -31,6 +31,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <!-- OpenGost for Streebog reference implementation testing -->
+    <PackageReference Include="OpenGost.Security.Cryptography" />
   </ItemGroup>
 
   <!-- Blake3 NuGet package only supports .NET 8+ -->
