@@ -3,10 +3,10 @@
 
 namespace Security.Cryptography.Tests.GOST;
 
-using System;
-using System.Text;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
+using System;
+using System.Text;
 
 /// <summary>
 /// Tests for <see cref="Streebog"/> hash algorithm (GOST R 34.11-2012).
@@ -395,6 +395,27 @@ public class StreebogTests
         TestContext.Out.WriteLine($"Our impl:     {TestHelpers.ToHexString(ourHash)}");
 
         Assert.That(ourHash, Is.EqualTo(bcHash), "Empty string hash should match");
+    }
+
+    /// <summary>
+    /// Debug test: Compare our implementation with OpenGost for empty string.
+    /// </summary>
+    [Test]
+    public void CompareWithOpenGostEmpty()
+    {
+        byte[] input = Array.Empty<byte>();
+
+        // OpenGost produces hash in little-endian byte order
+        using var digest = OpenGost.Security.Cryptography.Streebog512.Create();
+        byte[] hash = digest.ComputeHash(TestHelpers.FromHexString(string.Empty));
+
+        using var ourDigest = Streebog.Create(64);
+        byte[] ourHash = ourDigest.ComputeHash(input);
+
+        TestContext.Out.WriteLine($"BouncyCastle: {TestHelpers.ToHexString(hash)}");
+        TestContext.Out.WriteLine($"Our impl:     {TestHelpers.ToHexString(ourHash)}");
+
+        Assert.That(ourHash, Is.EqualTo(hash), "Empty string hash should match");
     }
 }
 
