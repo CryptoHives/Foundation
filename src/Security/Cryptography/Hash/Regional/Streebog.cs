@@ -10,8 +10,11 @@ using System;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Streebog is the Russian national cryptographic hash standard.
+/// Streebog is the Russian national cryptographic hash standard defined in GOST R 34.11-2012.
 /// It supports output sizes of 256 or 512 bits.
+/// </para>
+/// <para>
+/// This implementation follows RFC 6986 which specifies the GOST R 34.11-2012 algorithm.
 /// </para>
 /// </remarks>
 public sealed class Streebog : HashAlgorithm
@@ -21,8 +24,8 @@ public sealed class Streebog : HashAlgorithm
     /// </summary>
     public const int BlockSizeBytes = 64;
 
-    // S-box (Pi substitution)
-    private static readonly byte[] Pi =
+    // S-box (Pi substitution) - from RFC 6986
+    private static readonly byte[] Sbox =
     [
         0xFC, 0xEE, 0xDD, 0x11, 0xCF, 0x6E, 0x31, 0x16, 0xFB, 0xC4, 0xFA, 0xDA, 0x23, 0xC5, 0x04, 0x4D,
         0xE9, 0x77, 0xF0, 0xDB, 0x93, 0x2E, 0x99, 0xBA, 0x17, 0x36, 0xF1, 0xBB, 0x14, 0xCD, 0x5F, 0xC1,
@@ -42,7 +45,7 @@ public sealed class Streebog : HashAlgorithm
         0x59, 0xA6, 0x74, 0xD2, 0xE6, 0xF4, 0xB4, 0xC0, 0xD1, 0x66, 0xAF, 0xC2, 0x39, 0x4B, 0x63, 0xB6
     ];
 
-    // Permutation Tau
+    // Tau permutation - transposes the 8x8 byte matrix
     private static readonly byte[] Tau =
     [
         0, 8, 16, 24, 32, 40, 48, 56,
@@ -55,7 +58,7 @@ public sealed class Streebog : HashAlgorithm
         7, 15, 23, 31, 39, 47, 55, 63
     ];
 
-    // Linear transformation matrix A (as ulong values for efficiency)
+    // Linear transformation matrix A (64 ulongs for the 8x8 byte to 64-bit transformation)
     private static readonly ulong[] A =
     [
         0x8e20faa72ba0b470UL, 0x47107ddd9b505a38UL, 0xad08b0e0c3282d1cUL, 0xd8045870ef14980eUL,
@@ -80,7 +83,7 @@ public sealed class Streebog : HashAlgorithm
     private static readonly byte[][] C;
 
     private readonly int _hashSizeBytes;
-    private readonly byte[] _hash;
+    private readonly byte[] _h;
     private readonly byte[] _n;
     private readonly byte[] _sigma;
     private readonly byte[] _buffer;
@@ -88,24 +91,45 @@ public sealed class Streebog : HashAlgorithm
 
     static Streebog()
     {
-        unchecked
-        {
-            C = new byte[12][];
-            for (int i = 0; i < 12; i++)
-            {
-                C[i] = new byte[64];
-            }
+        C = InitializeCConstants();
+    }
 
-            // Generate C values using LPS transform
-            // In Streebog, iteration constants use little-endian: C[i] = LPS(i || 0...0)
-            byte[] tmp = new byte[64];
-            for (int i = 0; i < 12; i++)
-            {
-                Array.Clear(tmp, 0, 64);
-                tmp[0] = (byte)i;  // Little-endian: LSB at index 0
-                LPS(tmp, C[i]);
-            }
+    private static byte[][] InitializeCConstants()
+    {
+        var constants = new byte[12][];
+
+        string[] hexStrings =
+        [
+            "b1085bda1ecadae9ebcb2f81c0657c1f2f6a76432e45d016714eb88d7585c4fc4b7ce09192676901a2422a08a460d31505767436cc744d23dd806559f2a64507",
+            "6fa3b58aa99d2f1a4fe39d460f70b5d7f3feea720a232b9861d55e0f16b501319ab5176b12d699585cb561c2db0aa7ca55dda21bd7cbcd56e679047021b19bb7",
+            "f574dcac2bce2fc70a39fc286a3d843506f15e5f529c1f8bf2ea7514b1297b7bd3e20fe490359eb1c1c93a376062db09c2b6f443867adb31991e96f50aba0ab2",
+            "ef1fdfb3e81566d2f948e1a05d71e4dd488e857e335c3c7d9d721cad685e353fa9d72c82ed03d675d8b71333935203be3453eaa193e837f1220cbebc84e3d12e",
+            "4bea6bacad4747999a3f410c6ca923637f151c1f1686104a359e35d7800fffbdbfcd1747253af5a3dfff00b723271a167a56a27ea9ea63f5601758fd7c6cfe57",
+            "ae4faeae1d3ad3d96fa4c33b7a3039c02d66c4f95142a46c187f9ab49af08ec6cffaa6b71c9ab7b40af21f66c2bec6b6bf71c57236904f35fa68407a46647d6e",
+            "f4c70e16eeaac5ec51ac86febf240954399ec6c7e6bf87c9d3473e33197a93c90992abc52d822c3706476983284a05043517454ca23c4af38886564d3a14d493",
+            "9b1f5b424d93c9a703e7aa020c6e41414eb7f8719c36de1e89b4443b4ddbc49af4892bcb929b069069d18d2bd1a5c42f36acc2355951a8d9a47f0dd4bf02e71e",
+            "378f5a541631229b944c9ad8ec165fde3a7d3a1b258942243cd955b7e00d0984800a440bdbb2ceb17b2b8a9aa6079c540e38dc92cb1f2a607261445183235adb",
+            "abbedea680056f52382ae548b2e4f3f38941e71cff8a78db1fffe18a1b3361039fe76702af69334b7a1e6c303b7652f43698fad1153bb6c374b4c7fb98459ced",
+            "7bcd9ed0efc889fb3002c6cd635afe94d8fa6bbbebab076120018021148466798a1d71efea48b9caefbacd1d7d476e98dea2594ac06fd85d6bcaa4cd81f32d1b",
+            "378ee767f11631bad21380b00449b17acda43c32bcdf1d77f82012d430219f9b5d80ef9d1891cc86e71da4aa88e12852faf417d5d9b21b9948bc924af11bd720"
+        ];
+
+        for (int i = 0; i < 12; i++)
+        {
+            constants[i] = FromHex(hexStrings[i]);
         }
+
+        return constants;
+    }
+
+    private static byte[] FromHex(string hex)
+    {
+        byte[] bytes = new byte[hex.Length / 2];
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+        }
+        return bytes;
     }
 
     /// <summary>
@@ -128,7 +152,7 @@ public sealed class Streebog : HashAlgorithm
 
         _hashSizeBytes = hashSizeBytes;
         HashSizeValue = hashSizeBytes * 8;
-        _hash = new byte[64];
+        _h = new byte[64];
         _n = new byte[64];
         _sigma = new byte[64];
         _buffer = new byte[BlockSizeBytes];
@@ -161,15 +185,14 @@ public sealed class Streebog : HashAlgorithm
     /// <inheritdoc/>
     public override void Initialize()
     {
-        // IV is 0x00...00 for 512-bit, 0x01...01 for 256-bit
         byte iv = _hashSizeBytes == 32 ? (byte)0x01 : (byte)0x00;
         for (int i = 0; i < 64; i++)
         {
-            _hash[i] = iv;
+            _h[i] = iv;
+            _n[i] = 0;
+            _sigma[i] = 0;
         }
 
-        Array.Clear(_n, 0, 64);
-        Array.Clear(_sigma, 0, 64);
         ClearBuffer(_buffer);
         _bufferLength = 0;
     }
@@ -188,19 +211,19 @@ public sealed class Streebog : HashAlgorithm
 
             if (_bufferLength == BlockSizeBytes)
             {
-                ProcessBlock(_buffer);
-                AddToN(512);
-                AddToSigma(_buffer);
+                GN(_h, _n, _buffer);
+                AddMod512(_n, 512);
+                AddMod512Block(_sigma, _buffer);
                 _bufferLength = 0;
             }
         }
 
         while (offset + BlockSizeBytes <= source.Length)
         {
-            byte[] block = source.Slice(offset, BlockSizeBytes).ToArray();
-            ProcessBlock(block);
-            AddToN(512);
-            AddToSigma(block);
+            byte[] m = source.Slice(offset, BlockSizeBytes).ToArray();
+            GN(_h, _n, m);
+            AddMod512(_n, 512);
+            AddMod512Block(_sigma, m);
             offset += BlockSizeBytes;
         }
 
@@ -214,49 +237,39 @@ public sealed class Streebog : HashAlgorithm
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
-        unchecked
+        if (destination.Length < _hashSizeBytes)
         {
-            if (destination.Length < _hashSizeBytes)
-            {
-                bytesWritten = 0;
-                return false;
-            }
-
-            // Pad the final block
-            byte[] padded = new byte[64];
-            _buffer.AsSpan(0, _bufferLength).CopyTo(padded);
-            padded[_bufferLength] = 0x01;
-
-            // Stage 3: process padded message
-            ProcessBlock(padded);
-            AddToN(_bufferLength * 8);
-            AddToSigma(padded);
-
-            // Final compressions use g0 (with zero counter)
-            byte[] zero = new byte[64];
-            byte[] tmp = new byte[64];
-
-            // h = g0(h, N)
-            GN(_hash, zero, _n, tmp);
-            Array.Copy(tmp, _hash, 64);
-
-            // h = g0(h, Sigma)
-            GN(_hash, zero, _sigma, tmp);
-            Array.Copy(tmp, _hash, 64);
-
-            // Output (possibly truncated)
-            if (_hashSizeBytes == 32)
-            {
-                _hash.AsSpan(32, 32).CopyTo(destination);
-            }
-            else
-            {
-                _hash.AsSpan(0, 64).CopyTo(destination);
-            }
-
-            bytesWritten = _hashSizeBytes;
-            return true;
+            bytesWritten = 0;
+            return false;
         }
+
+        // Pad the final block
+        byte[] m = new byte[64];
+        _buffer.AsSpan(0, _bufferLength).CopyTo(m);
+        m[_bufferLength] = 0x01;
+
+        // Stage 3
+        GN(_h, _n, m);
+        AddMod512(_n, _bufferLength * 8);
+        AddMod512Block(_sigma, m);
+
+        // Final compressions
+        byte[] zero = new byte[64];
+        GN(_h, zero, _n);
+        GN(_h, zero, _sigma);
+
+        // Output (for 256-bit, take bytes 32-63)
+        if (_hashSizeBytes == 32)
+        {
+            _h.AsSpan(32, 32).CopyTo(destination);
+        }
+        else
+        {
+            _h.AsSpan(0, 64).CopyTo(destination);
+        }
+
+        bytesWritten = _hashSizeBytes;
+        return true;
     }
 
     /// <inheritdoc/>
@@ -264,7 +277,7 @@ public sealed class Streebog : HashAlgorithm
     {
         if (disposing)
         {
-            ClearBuffer(_hash);
+            ClearBuffer(_h);
             ClearBuffer(_n);
             ClearBuffer(_sigma);
             ClearBuffer(_buffer);
@@ -272,98 +285,72 @@ public sealed class Streebog : HashAlgorithm
         base.Dispose(disposing);
     }
 
-    private void ProcessBlock(byte[] block)
+    // g_N function: h = h XOR E(h XOR N, m) XOR m
+    private static void GN(byte[] h, byte[] n, byte[] m)
     {
-        unchecked
-        {
-            byte[] tmp = new byte[64];
-            GN(_hash, _n, block, tmp);
-            Array.Copy(tmp, _hash, 64);
-        }
+        byte[] k = new byte[64];
+        byte[] t = new byte[64];
+
+        // k = h XOR n
+        Xor512(h, n, k);
+
+        // t = E(k, m)
+        E(k, m, t);
+
+        // h = h XOR t XOR m
+        Xor512(h, t, h);
+        Xor512(h, m, h);
     }
 
-    private static void GN(byte[] h, byte[] n, byte[] m, byte[] result)
-    {
-        unchecked
-        {
-            byte[] k = new byte[64];
-            byte[] tmp = new byte[64];
-
-            // K = h XOR n
-            for (int i = 0; i < 64; i++)
-            {
-                k[i] = (byte)(h[i] ^ n[i]);
-            }
-
-            // Apply E(K, m) 
-            E(k, m, tmp);
-
-            // result = h XOR tmp XOR m
-            for (int i = 0; i < 64; i++)
-            {
-                result[i] = (byte)(h[i] ^ tmp[i] ^ m[i]);
-            }
-        }
-    }
-
+    // E function: 12 rounds of XK, S, P, L
     private static void E(byte[] k, byte[] m, byte[] result)
     {
         unchecked
         {
-            byte[] state = new byte[64];
-            byte[] tmp = new byte[64];
+            byte[] ki = new byte[64];
+            byte[] s = new byte[64];
 
-            Array.Copy(m, state, 64);
+            Array.Copy(m, s, 64);
+            Array.Copy(k, ki, 64);
 
-            for (int r = 0; r < 12; r++)
+            for (int i = 0; i < 12; i++)
             {
-                // AddRoundKey
-                for (int i = 0; i < 64; i++)
-                {
-                    state[i] ^= k[i];
-                }
+                // XK: s = s XOR ki
+                Xor512(s, ki, s);
 
-                // LPS
-                LPS(state, tmp);
-                Array.Copy(tmp, state, 64);
+                // SPL: combined S, P, L transformation
+                SPL(s);
 
-                // Key schedule: LPS(k XOR C[r])
-                for (int i = 0; i < 64; i++)
-                {
-                    k[i] ^= C[r][i];
-                }
-                LPS(k, tmp);
-                Array.Copy(tmp, k, 64);
+                // Key schedule: ki = SPL(ki XOR C[i])
+                Xor512(ki, C[i], ki);
+                SPL(ki);
             }
 
-            // Final AddRoundKey
-            for (int i = 0; i < 64; i++)
-            {
-                result[i] = (byte)(state[i] ^ k[i]);
-            }
+            // Final XK
+            Xor512(s, ki, result);
         }
     }
 
-    private static void LPS(byte[] input, byte[] output)
+    // Combined S, P, L transformation
+    private static void SPL(byte[] data)
     {
-        byte[] tmp = new byte[64];
-
-        // S (substitution)
-        for (int i = 0; i < 64; i++)
-        {
-            tmp[i] = Pi[input[i]];
-        }
-
-        // P (permutation)
-        byte[] perm = new byte[64];
-        for (int i = 0; i < 64; i++)
-        {
-            perm[Tau[i]] = tmp[i];
-        }
-
-        // L (linear transformation)
         unchecked
         {
+            // S: substitution
+            byte[] tmp = new byte[64];
+            for (int i = 0; i < 64; i++)
+            {
+                tmp[i] = Sbox[data[i]];
+            }
+
+            // P: permutation (transpose 8x8 matrix)
+            byte[] perm = new byte[64];
+            for (int i = 0; i < 64; i++)
+            {
+                perm[Tau[i]] = tmp[i];
+            }
+
+            // L: linear transformation on each row
             for (int i = 0; i < 8; i++)
             {
                 ulong v = 0;
@@ -379,39 +366,50 @@ public sealed class Streebog : HashAlgorithm
                     }
                 }
 
-                for (int j = 0; j < 8; j++)
-                {
-                    output[i * 8 + j] = (byte)(v >> (56 - j * 8));
-                }
+                // Write result in little-endian
+                data[i * 8 + 0] = (byte)(v);
+                data[i * 8 + 1] = (byte)(v >> 8);
+                data[i * 8 + 2] = (byte)(v >> 16);
+                data[i * 8 + 3] = (byte)(v >> 24);
+                data[i * 8 + 4] = (byte)(v >> 32);
+                data[i * 8 + 5] = (byte)(v >> 40);
+                data[i * 8 + 6] = (byte)(v >> 48);
+                data[i * 8 + 7] = (byte)(v >> 56);
             }
         }
     }
 
-    private void AddToN(int bits)
+    private static void Xor512(byte[] a, byte[] b, byte[] result)
+    {
+        for (int i = 0; i < 64; i++)
+        {
+            result[i] = (byte)(a[i] ^ b[i]);
+        }
+    }
+
+    private static void AddMod512(byte[] a, int bits)
     {
         unchecked
         {
-            // Streebog uses little-endian byte order for N
             int carry = bits;
             for (int i = 0; i < 64 && carry > 0; i++)
             {
-                int sum = _n[i] + (carry & 0xFF);
-                _n[i] = (byte)sum;
+                int sum = a[i] + (carry & 0xFF);
+                a[i] = (byte)sum;
                 carry = (carry >> 8) + (sum >> 8);
             }
         }
     }
 
-    private void AddToSigma(byte[] block)
+    private static void AddMod512Block(byte[] a, byte[] b)
     {
         unchecked
         {
-            // Streebog uses little-endian byte order for Sigma
             int carry = 0;
             for (int i = 0; i < 64; i++)
             {
-                int sum = _sigma[i] + block[i] + carry;
-                _sigma[i] = (byte)sum;
+                int sum = a[i] + b[i] + carry;
+                a[i] = (byte)sum;
                 carry = sum >> 8;
             }
         }
