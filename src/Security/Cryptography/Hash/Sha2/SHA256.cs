@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - K and IV are standard cryptographic constant names per FIPS 180-4
@@ -7,6 +7,10 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+#if NET8_0_OR_GREATER
+using System.Numerics;
+using System.Runtime.CompilerServices;
+#endif
 
 /// <summary>
 /// Computes the SHA-256 hash for the input data using a clean-room implementation.
@@ -16,6 +20,10 @@ using System.Buffers.Binary;
 /// This is a fully managed implementation of SHA-256 that does not rely on
 /// OS or hardware cryptographic APIs, ensuring deterministic behavior across
 /// all platforms and runtimes.
+/// </para>
+/// <para>
+/// On .NET 8+, this implementation uses optimized BitOperations for improved
+/// performance. Otherwise, a portable software implementation is used.
 /// </para>
 /// <para>
 /// SHA-256 produces a 256-bit (32-byte) hash value.
@@ -206,37 +214,34 @@ public sealed class SHA256 : HashAlgorithm
             uint h = _state[7];
 
             // Main loop
-            unchecked
+            for (int i = 0; i < 64; i++)
             {
-                for (int i = 0; i < 64; i++)
-                {
-                    uint S1 = RotateRight(e, 6) ^ RotateRight(e, 11) ^ RotateRight(e, 25);
-                    uint ch = (e & f) ^ (~e & g);
-                    uint temp1 = h + S1 + ch + K[i] + _w[i];
-                    uint S0 = RotateRight(a, 2) ^ RotateRight(a, 13) ^ RotateRight(a, 22);
-                    uint maj = (a & b) ^ (a & c) ^ (b & c);
-                    uint temp2 = S0 + maj;
+                uint S1 = RotateRight(e, 6) ^ RotateRight(e, 11) ^ RotateRight(e, 25);
+                uint ch = (e & f) ^ (~e & g);
+                uint temp1 = h + S1 + ch + K[i] + _w[i];
+                uint S0 = RotateRight(a, 2) ^ RotateRight(a, 13) ^ RotateRight(a, 22);
+                uint maj = (a & b) ^ (a & c) ^ (b & c);
+                uint temp2 = S0 + maj;
 
-                    h = g;
-                    g = f;
-                    f = e;
-                    e = d + temp1;
-                    d = c;
-                    c = b;
-                    b = a;
-                    a = temp1 + temp2;
-                }
-
-                // Add compressed chunk to current hash value
-                _state[0] += a;
-                _state[1] += b;
-                _state[2] += c;
-                _state[3] += d;
-                _state[4] += e;
-                _state[5] += f;
-                _state[6] += g;
-                _state[7] += h;
+                h = g;
+                g = f;
+                f = e;
+                e = d + temp1;
+                d = c;
+                c = b;
+                b = a;
+                a = temp1 + temp2;
             }
+
+            // Add compressed chunk to current hash value
+            _state[0] += a;
+            _state[1] += b;
+            _state[2] += c;
+            _state[3] += d;
+            _state[4] += e;
+            _state[5] += f;
+            _state[6] += g;
+            _state[7] += h;
         }
     }
 
@@ -272,5 +277,11 @@ public sealed class SHA256 : HashAlgorithm
         }
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
+#else
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     private static uint RotateRight(uint x, int n) => (x >> n) | (x << (32 - n));
+#endif
 }

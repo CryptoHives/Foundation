@@ -1,10 +1,14 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+#if NET8_0_OR_GREATER
+using System.Numerics;
+using System.Runtime.CompilerServices;
+#endif
 
 /// <summary>
 /// Computes the SHA-1 hash for the input data using a clean-room implementation.
@@ -14,6 +18,10 @@ using System.Buffers.Binary;
 /// This is a fully managed implementation of SHA-1 based on FIPS 180-4.
 /// It does not rely on OS or hardware cryptographic APIs, ensuring
 /// deterministic behavior across all platforms and runtimes.
+/// </para>
+/// <para>
+/// On .NET 8+, this implementation uses optimized BitOperations for improved
+/// performance. Otherwise, a portable software implementation is used.
 /// </para>
 /// <para>
 /// <strong>Security Warning:</strong> SHA-1 is cryptographically weak and should NOT
@@ -260,5 +268,11 @@ public sealed class SHA1 : HashAlgorithm
         }
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
+#else
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     private static uint RotateLeft(uint x, int n) => (x << n) | (x >> (32 - n));
+#endif
 }

@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests.Whirlpool;
@@ -49,7 +49,6 @@ public class WhirlpoolTests
     /// </summary>
     /// <remarks>
     /// Test vectors from ISO standard and NESSIE project.
-    /// These tests are marked Explicit because the implementation needs verification.
     /// </remarks>
     /// <param name="input">The input string.</param>
     /// <param name="expectedHex">The expected hash in hexadecimal (first 64 chars).</param>
@@ -58,7 +57,6 @@ public class WhirlpoolTests
     [TestCase("abc", "4e2448a4c6f486bb16b6562c73b4020bf3043e3a731bce721ae1b303d97e6d4c7181eebdb6c57e277d0e34957114cbd6c797fc9d95d8b582d225292076d4eef5")]
     [TestCase("message digest", "378c84a4126e2dc6e56dcc7458377aac838d00032230f53ce1f5700c0ffb4d3b8421557659ef55c106b4b52ac5a4aaa692ed920052838f3362e86dbd37a8903e")]
     [TestCase("The quick brown fox jumps over the lazy dog", "b97de512e91e3828b40d2b0fdce9ceb3c4a71f9bea8d88e75c4fa854df36725fd2b52eb6544edcacd6f8beddfea403cb55ae31f03ad62a5ef54e42ee82c3fb35")]
-    [Explicit("Whirlpool implementation needs verification")]
     public void OfficialTestVectors(string input, string expectedHex)
     {
         byte[] data = Encoding.UTF8.GetBytes(input);
@@ -74,7 +72,6 @@ public class WhirlpoolTests
     /// Test incremental hashing with Whirlpool.
     /// </summary>
     [Test]
-    [Explicit("Whirlpool implementation needs verification")]
     public void IncrementalHashingProducesSameResult()
     {
         byte[] input = Encoding.UTF8.GetBytes("Hello, World!");
@@ -95,7 +92,6 @@ public class WhirlpoolTests
     /// </summary>
     /// <param name="factory">The hash algorithm factory.</param>
     [TestCaseSource(typeof(WhirlpoolImplementations), nameof(WhirlpoolImplementations.All))]
-    [Explicit("Whirlpool implementation needs verification")]
     public void AllImplementationsMatch(HashAlgorithmFactory factory)
     {
         byte[] input = Encoding.UTF8.GetBytes("cross-implementation test");
@@ -110,7 +106,6 @@ public class WhirlpoolTests
     /// Test with larger input crossing multiple blocks.
     /// </summary>
     [Test]
-    [Explicit("Whirlpool implementation needs verification")]
     public void MultiBlockInput()
     {
         byte[] input = new byte[256];

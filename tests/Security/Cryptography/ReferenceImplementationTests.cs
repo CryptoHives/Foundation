@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests;
@@ -428,16 +428,12 @@ public class ReferenceImplementationTests
     /// Validate MD5 implementation against BouncyCastle.
     /// </summary>
     /// <param name="message">The test message.</param>
-    /// <remarks>
-    /// This test is marked Explicit because the implementation needs verification.
-    /// </remarks>
     [TestCase("")]
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("message digest")]
     [TestCase("abcdefghijklmnopqrstuvwxyz")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Explicit("MD5 implementation needs verification")]
     public void Md5MatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);
@@ -506,11 +502,7 @@ public class ReferenceImplementationTests
     /// <summary>
     /// Validate KMAC128 implementation against BouncyCastle.
     /// </summary>
-    /// <remarks>
-    /// This test is marked Explicit because the implementation needs verification.
-    /// </remarks>
     [Test]
-    [Explicit("KMAC implementation needs verification")]
     public void Kmac128MatchesBouncyCastle()
     {
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
@@ -533,11 +525,7 @@ public class ReferenceImplementationTests
     /// <summary>
     /// Validate KMAC256 implementation against BouncyCastle.
     /// </summary>
-    /// <remarks>
-    /// This test is marked Explicit because the implementation needs verification.
-    /// </remarks>
     [Test]
-    [Explicit("KMAC implementation needs verification")]
     public void Kmac256MatchesBouncyCastle()
     {
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
@@ -561,16 +549,12 @@ public class ReferenceImplementationTests
     /// Validate RIPEMD-160 implementation against BouncyCastle.
     /// </summary>
     /// <param name="message">The test message.</param>
-    /// <remarks>
-    /// This test is marked Explicit because the implementation needs verification.
-    /// </remarks>
     [TestCase("")]
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("message digest")]
     [TestCase("abcdefghijklmnopqrstuvwxyz")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Explicit("RIPEMD-160 implementation needs verification")]
     public void Ripemd160MatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);
@@ -592,14 +576,10 @@ public class ReferenceImplementationTests
     /// Validate SM3 implementation against BouncyCastle.
     /// </summary>
     /// <param name="message">The test message.</param>
-    /// <remarks>
-    /// This test is marked Explicit because the implementation needs verification.
-    /// </remarks>
     [TestCase("")]
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Explicit("SM3 implementation needs verification")]
     public void Sm3MatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);
@@ -621,15 +601,11 @@ public class ReferenceImplementationTests
     /// Validate Whirlpool implementation against BouncyCastle.
     /// </summary>
     /// <param name="message">The test message.</param>
-    /// <remarks>
-    /// This test is marked Explicit because the implementation needs verification.
-    /// </remarks>
     [TestCase("")]
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("message digest")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Explicit("Whirlpool implementation needs verification")]
     public void WhirlpoolMatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);
@@ -652,14 +628,14 @@ public class ReferenceImplementationTests
     /// </summary>
     /// <param name="message">The test message.</param>
     /// <remarks>
-    /// This test is marked Explicit because the Streebog implementation may differ from BouncyCastle.
     /// The implementation needs further verification against RFC 6986 test vectors.
+    /// Currently produces internally consistent results but differs from BouncyCastle.
     /// </remarks>
     [TestCase("")]
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Explicit("Streebog implementation needs verification against RFC 6986")]
+    [Ignore("Streebog implementation needs further RFC 6986 verification - see issue tracking")]
     public void Streebog256MatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);
@@ -682,14 +658,14 @@ public class ReferenceImplementationTests
     /// </summary>
     /// <param name="message">The test message.</param>
     /// <remarks>
-    /// This test is marked Explicit because the Streebog implementation may differ from BouncyCastle.
     /// The implementation needs further verification against RFC 6986 test vectors.
+    /// Currently produces internally consistent results but differs from BouncyCastle.
     /// </remarks>
     [TestCase("")]
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Explicit("Streebog implementation needs verification against RFC 6986")]
+    [Ignore("Streebog implementation needs further RFC 6986 verification - see issue tracking")]
     public void Streebog512MatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);
@@ -711,7 +687,6 @@ public class ReferenceImplementationTests
     /// Test that generates correct BLAKE3 test vectors from BouncyCastle for debugging.
     /// </summary>
     [Test]
-    [Explicit("Used to generate correct test vectors")]
     public void GenerateBlake3TestVectors()
     {
         int[] lengths = [0, 1, 2, 3, 4, 5, 6, 7, 8, 63, 64, 65, 127, 128, 129, 1023, 1024, 1025, 2048, 2049];

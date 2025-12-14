@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -96,12 +96,13 @@ public sealed class Streebog : HashAlgorithm
                 C[i] = new byte[64];
             }
 
-            // Generate actual C values using LPS transform
+            // Generate C values using LPS transform
+            // In Streebog, iteration constants use little-endian: C[i] = LPS(i || 0...0)
             byte[] tmp = new byte[64];
             for (int i = 0; i < 12; i++)
             {
                 Array.Clear(tmp, 0, 64);
-                tmp[63] = (byte)i;
+                tmp[0] = (byte)i;  // Little-endian: LSB at index 0
                 LPS(tmp, C[i]);
             }
         }
@@ -134,10 +135,14 @@ public sealed class Streebog : HashAlgorithm
         Initialize();
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the name of the hash algorithm.
+    /// </summary>
     public override string AlgorithmName => _hashSizeBytes == 32 ? "Streebog-256" : "Streebog-512";
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the block size of the hash algorithm.
+    /// </summary>
     public override int BlockSize => BlockSizeBytes;
 
     /// <summary>
@@ -222,17 +227,21 @@ public sealed class Streebog : HashAlgorithm
             _buffer.AsSpan(0, _bufferLength).CopyTo(padded);
             padded[_bufferLength] = 0x01;
 
-            // Stage 3
+            // Stage 3: process padded message
             ProcessBlock(padded);
             AddToN(_bufferLength * 8);
             AddToSigma(padded);
 
-            // Final compressions
+            // Final compressions use g0 (with zero counter)
+            byte[] zero = new byte[64];
             byte[] tmp = new byte[64];
-            GN(_hash, _n, tmp);
+
+            // h = g0(h, N)
+            GN(_hash, zero, _n, tmp);
             Array.Copy(tmp, _hash, 64);
 
-            GN(_hash, _sigma, tmp);
+            // h = g0(h, Sigma)
+            GN(_hash, zero, _sigma, tmp);
             Array.Copy(tmp, _hash, 64);
 
             // Output (possibly truncated)
@@ -268,28 +277,28 @@ public sealed class Streebog : HashAlgorithm
         unchecked
         {
             byte[] tmp = new byte[64];
-            GN(_hash, block, tmp);
+            GN(_hash, _n, block, tmp);
             Array.Copy(tmp, _hash, 64);
         }
     }
 
-    private static void GN(byte[] h, byte[] m, byte[] result)
+    private static void GN(byte[] h, byte[] n, byte[] m, byte[] result)
     {
         unchecked
         {
-            byte[] tmp = new byte[64];
             byte[] k = new byte[64];
+            byte[] tmp = new byte[64];
 
-            // XOR h and m
+            // K = h XOR n
             for (int i = 0; i < 64; i++)
             {
-                k[i] = (byte)(h[i] ^ m[i]);
+                k[i] = (byte)(h[i] ^ n[i]);
             }
 
-            // Apply E (12 rounds)
+            // Apply E(K, m) 
             E(k, m, tmp);
 
-            // Final XOR
+            // result = h XOR tmp XOR m
             for (int i = 0; i < 64; i++)
             {
                 result[i] = (byte)(h[i] ^ tmp[i] ^ m[i]);
@@ -382,8 +391,9 @@ public sealed class Streebog : HashAlgorithm
     {
         unchecked
         {
+            // Streebog uses little-endian byte order for N
             int carry = bits;
-            for (int i = 63; i >= 0 && carry > 0; i--)
+            for (int i = 0; i < 64 && carry > 0; i++)
             {
                 int sum = _n[i] + (carry & 0xFF);
                 _n[i] = (byte)sum;
@@ -396,8 +406,9 @@ public sealed class Streebog : HashAlgorithm
     {
         unchecked
         {
+            // Streebog uses little-endian byte order for Sigma
             int carry = 0;
-            for (int i = 63; i >= 0; i--)
+            for (int i = 0; i < 64; i++)
             {
                 int sum = _sigma[i] + block[i] + carry;
                 _sigma[i] = (byte)sum;

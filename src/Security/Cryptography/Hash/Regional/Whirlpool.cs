@@ -90,20 +90,24 @@ public sealed class Whirlpool : HashAlgorithm
             for (int x = 0; x < 256; x++)
             {
                 byte s = Sbox[x];
-                byte s1 = s;
-                byte s5 = s;
-                byte s8 = Mul(s, 8);
-                byte s9 = Mul(s, 9);
 
                 // E vector for MDS matrix: [1, 1, 4, 1, 8, 5, 2, 9]
-                C0[x] = PackRow(s1, s1, Mul(s, 4), s1, s8, s5, Mul(s, 2), s9);
-                C1[x] = RotateRight(C0[x], 8);
-                C2[x] = RotateRight(C0[x], 16);
-                C3[x] = RotateRight(C0[x], 24);
-                C4[x] = RotateRight(C0[x], 32);
-                C5[x] = RotateRight(C0[x], 40);
-                C6[x] = RotateRight(C0[x], 48);
-                C7[x] = RotateRight(C0[x], 56);
+                byte v1 = Mul(s, 1);
+                byte v2 = Mul(s, 2);
+                byte v4 = Mul(s, 4);
+                byte v5 = Mul(s, 5);
+                byte v8 = Mul(s, 8);
+                byte v9 = Mul(s, 9);
+
+                // Build C tables using circulant MDS matrix rows
+                C0[x] = PackRow(v1, v1, v4, v1, v8, v5, v2, v9);
+                C1[x] = PackRow(v9, v1, v1, v4, v1, v8, v5, v2);
+                C2[x] = PackRow(v2, v9, v1, v1, v4, v1, v8, v5);
+                C3[x] = PackRow(v5, v2, v9, v1, v1, v4, v1, v8);
+                C4[x] = PackRow(v8, v5, v2, v9, v1, v1, v4, v1);
+                C5[x] = PackRow(v1, v8, v5, v2, v9, v1, v1, v4);
+                C6[x] = PackRow(v4, v1, v8, v5, v2, v9, v1, v1);
+                C7[x] = PackRow(v1, v4, v1, v8, v5, v2, v9, v1);
             }
         }
     }

@@ -1,12 +1,24 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - K and IV are standard cryptographic constant names per FIPS 180-4
+
+// Uncomment the following line to use the AVX2-based implementation for benchmarking
+// #define USE_AVX2_SHA512
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+#if NET8_0_OR_GREATER
+using System.Numerics;
+using System.Runtime.CompilerServices;
+#if USE_AVX2_SHA512
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
+#endif
+#endif
 
 /// <summary>
 /// Computes the SHA-512 hash for the input data using a clean-room implementation.
@@ -16,6 +28,10 @@ using System.Buffers.Binary;
 /// This is a fully managed implementation of SHA-512 that does not rely on
 /// OS or hardware cryptographic APIs, ensuring deterministic behavior across
 /// all platforms and runtimes.
+/// </para>
+/// <para>
+/// On .NET 8+, this implementation uses optimized BitOperations for improved
+/// performance. Otherwise, a portable software implementation is used.
 /// </para>
 /// <para>
 /// SHA-512 produces a 512-bit (64-byte) hash value.
@@ -62,6 +78,20 @@ public sealed class SHA512 : HashAlgorithm
         0x28db77f523047d84, 0x32caab7b40c72493, 0x3c9ebe0a15c9bebc, 0x431d67c49c100d4c,
         0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817
     ];
+
+#if NET8_0_OR_GREATER && USE_AVX2_SHA512
+    /// <summary>
+    /// Gets a value indicating whether hardware-accelerated SHA-512 is available.
+    /// </summary>
+    /// <remarks>
+    /// Unlike SHA-256, there are no dedicated SHA-512 CPU instructions.
+    /// This property indicates whether AVX2 optimizations are available for
+    /// improved message schedule computation.
+    /// </remarks>
+    public static bool IsAccelerated => Avx2.IsSupported;
+
+    private static readonly bool s_useAvx2 = Avx2.IsSupported;
+#endif
 
     private readonly byte[] _buffer;
     private readonly ulong[] _state;
@@ -180,21 +210,42 @@ public sealed class SHA512 : HashAlgorithm
 
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
+#if NET8_0_OR_GREATER && USE_AVX2_SHA512
+        if (s_useAvx2)
+        {
+            ProcessBlockAvx2(block);
+            return;
+        }
+#endif
+        ProcessBlockScalar(block);
+    }
+
+    private void ProcessBlockScalar(ReadOnlySpan<byte> block)
+    {
         unchecked
         {
-            // Prepare message schedule
+            // Prepare message schedule - load first 16 words from block
             for (int i = 0; i < 16; i++)
             {
                 _w[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * 8));
             }
 
+            // Extend message schedule W[16..79]
             for (int i = 16; i < 80; i++)
             {
-                ulong s0 = RotateRight(_w[i - 15], 1) ^ RotateRight(_w[i - 15], 8) ^ (_w[i - 15] >> 7);
-                ulong s1 = RotateRight(_w[i - 2], 19) ^ RotateRight(_w[i - 2], 61) ^ (_w[i - 2] >> 6);
+                ulong w15 = _w[i - 15];
+                ulong w2 = _w[i - 2];
+
+                // σ0(x) = ROTR^1(x) XOR ROTR^8(x) XOR SHR^7(x)
+                ulong s0 = RotateRight(w15, 1) ^ RotateRight(w15, 8) ^ (w15 >> 7);
+
+                // σ1(x) = ROTR^19(x) XOR ROTR^61(x) XOR SHR^6(x)
+                ulong s1 = RotateRight(w2, 19) ^ RotateRight(w2, 61) ^ (w2 >> 6);
+
                 _w[i] = _w[i - 16] + s0 + _w[i - 7] + s1;
             }
 
+            // Initialize working variables
             ulong a = _state[0];
             ulong b = _state[1];
             ulong c = _state[2];
@@ -204,6 +255,21 @@ public sealed class SHA512 : HashAlgorithm
             ulong g = _state[6];
             ulong h = _state[7];
 
+#if NET8_0_OR_GREATER
+            // Unrolled compression rounds for better instruction-level parallelism
+            for (int i = 0; i < 80; i += 8)
+            {
+                Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, K[i + 0], _w[i + 0]);
+                Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, K[i + 1], _w[i + 1]);
+                Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, K[i + 2], _w[i + 2]);
+                Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, K[i + 3], _w[i + 3]);
+                Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, K[i + 4], _w[i + 4]);
+                Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, K[i + 5], _w[i + 5]);
+                Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, K[i + 6], _w[i + 6]);
+                Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, K[i + 7], _w[i + 7]);
+            }
+#else
+            // Standard compression loop
             for (int i = 0; i < 80; i++)
             {
                 ulong S1 = RotateRight(e, 14) ^ RotateRight(e, 18) ^ RotateRight(e, 41);
@@ -222,6 +288,88 @@ public sealed class SHA512 : HashAlgorithm
                 b = a;
                 a = temp1 + temp2;
             }
+#endif
+
+            // Add compressed chunk to current hash value
+            _state[0] += a;
+            _state[1] += b;
+            _state[2] += c;
+            _state[3] += d;
+            _state[4] += e;
+            _state[5] += f;
+            _state[6] += g;
+            _state[7] += h;
+        }
+    }
+
+#if NET8_0_OR_GREATER && USE_AVX2_SHA512
+    /// <summary>
+    /// Process a single 128-byte block using AVX2 optimizations.
+    /// </summary>
+    /// <remarks>
+    /// This implementation uses AVX2 for loading message words and
+    /// BitOperations.RotateRight for efficient rotation (JIT compiles to RORX).
+    /// The compression function uses 8-way unrolling for better ILP.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ProcessBlockAvx2(ReadOnlySpan<byte> block)
+    {
+        unchecked
+        {
+            // Load and byte-swap the first 16 message words using AVX2
+            // AVX2 can process 4 x 64-bit values at once
+            for (int i = 0; i < 16; i += 4)
+            {
+                Vector256<ulong> data = Vector256.Create(
+                    BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * 8)),
+                    BinaryPrimitives.ReadUInt64BigEndian(block.Slice((i + 1) * 8)),
+                    BinaryPrimitives.ReadUInt64BigEndian(block.Slice((i + 2) * 8)),
+                    BinaryPrimitives.ReadUInt64BigEndian(block.Slice((i + 3) * 8))
+                );
+
+                _w[i] = data.GetElement(0);
+                _w[i + 1] = data.GetElement(1);
+                _w[i + 2] = data.GetElement(2);
+                _w[i + 3] = data.GetElement(3);
+            }
+
+            // Compute message schedule W[16..79]
+            for (int i = 16; i < 80; i++)
+            {
+                ulong w15 = _w[i - 15];
+                ulong w2 = _w[i - 2];
+
+                ulong s0 = BitOperations.RotateRight(w15, 1) ^
+                           BitOperations.RotateRight(w15, 8) ^
+                           (w15 >> 7);
+                ulong s1 = BitOperations.RotateRight(w2, 19) ^
+                           BitOperations.RotateRight(w2, 61) ^
+                           (w2 >> 6);
+
+                _w[i] = _w[i - 16] + s0 + _w[i - 7] + s1;
+            }
+
+            // Compression function with 8-way unrolling
+            ulong a = _state[0];
+            ulong b = _state[1];
+            ulong c = _state[2];
+            ulong d = _state[3];
+            ulong e = _state[4];
+            ulong f = _state[5];
+            ulong g = _state[6];
+            ulong h = _state[7];
+
+            for (int i = 0; i < 80; i += 8)
+            {
+                RoundAvx2(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, K[i + 0], _w[i + 0]);
+                RoundAvx2(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, K[i + 1], _w[i + 1]);
+                RoundAvx2(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, K[i + 2], _w[i + 2]);
+                RoundAvx2(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, K[i + 3], _w[i + 3]);
+                RoundAvx2(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, K[i + 4], _w[i + 4]);
+                RoundAvx2(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, K[i + 5], _w[i + 5]);
+                RoundAvx2(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, K[i + 6], _w[i + 6]);
+                RoundAvx2(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, K[i + 7], _w[i + 7]);
+            }
 
             _state[0] += a;
             _state[1] += b;
@@ -233,6 +381,74 @@ public sealed class SHA512 : HashAlgorithm
             _state[7] += h;
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void RoundAvx2(ref ulong a, ref ulong b, ref ulong c, ref ulong d,
+                                   ref ulong e, ref ulong f, ref ulong g, ref ulong h,
+                                   ulong k, ulong w)
+    {
+        unchecked
+        {
+            ulong S1 = BitOperations.RotateRight(e, 14) ^
+                       BitOperations.RotateRight(e, 18) ^
+                       BitOperations.RotateRight(e, 41);
+            ulong ch = (e & f) ^ (~e & g);
+            ulong temp1 = h + S1 + ch + k + w;
+
+            ulong S0 = BitOperations.RotateRight(a, 28) ^
+                       BitOperations.RotateRight(a, 34) ^
+                       BitOperations.RotateRight(a, 39);
+            ulong maj = (a & b) ^ (a & c) ^ (b & c);
+            ulong temp2 = S0 + maj;
+
+            d += temp1;
+            h = temp1 + temp2;
+        }
+    }
+#endif
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Performs a single SHA-512 round with optimized rotation.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void Round(ref ulong a, ref ulong b, ref ulong c, ref ulong d,
+                              ref ulong e, ref ulong f, ref ulong g, ref ulong h,
+                              ulong k, ulong w)
+    {
+        unchecked
+        {
+            // Σ1(e) = ROTR^14(e) XOR ROTR^18(e) XOR ROTR^41(e)
+            ulong S1 = BitOperations.RotateRight(e, 14) ^
+                       BitOperations.RotateRight(e, 18) ^
+                       BitOperations.RotateRight(e, 41);
+
+            // Ch(e,f,g) = (e AND f) XOR (NOT e AND g)
+            ulong ch = (e & f) ^ (~e & g);
+
+            ulong temp1 = h + S1 + ch + k + w;
+
+            // Σ0(a) = ROTR^28(a) XOR ROTR^34(a) XOR ROTR^39(a)
+            ulong S0 = BitOperations.RotateRight(a, 28) ^
+                       BitOperations.RotateRight(a, 34) ^
+                       BitOperations.RotateRight(a, 39);
+
+            // Maj(a,b,c) = (a AND b) XOR (a AND c) XOR (b AND c)
+            ulong maj = (a & b) ^ (a & c) ^ (b & c);
+
+            ulong temp2 = S0 + maj;
+
+            d += temp1;
+            h = temp1 + temp2;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong RotateRight(ulong x, int n) => BitOperations.RotateRight(x, n);
+#else
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static ulong RotateRight(ulong x, int n) => (x >> n) | (x << (64 - n));
+#endif
 
     private void PadAndFinalize()
     {
@@ -267,6 +483,4 @@ public sealed class SHA512 : HashAlgorithm
             ProcessBlock(_buffer);
         }
     }
-
-    private static ulong RotateRight(ulong x, int n) => (x >> n) | (x << (64 - n));
 }

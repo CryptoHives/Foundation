@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Security.Cryptography.Tests.SHAKE;
@@ -65,7 +65,6 @@ public class CShakeTests
     /// Test cSHAKE128 with NIST SP 800-185 test vector (Sample #1 with customization).
     /// </summary>
     [Test]
-    [Explicit("cSHAKE implementation needs verification against NIST SP 800-185")]
     public void CShake128NistTestVector1()
     {
         byte[] data = TestHelpers.FromHexString("00010203");
@@ -82,7 +81,6 @@ public class CShakeTests
     /// Test cSHAKE128 with NIST SP 800-185 test vector (Sample #2 - 200 bytes input).
     /// </summary>
     [Test]
-    [Explicit("cSHAKE implementation needs verification against NIST SP 800-185")]
     public void CShake128NistTestVector2()
     {
         // 200 bytes from 0x00 to 0xC7
@@ -104,7 +102,6 @@ public class CShakeTests
     /// Test cSHAKE256 with NIST SP 800-185 test vector.
     /// </summary>
     [Test]
-    [Explicit("cSHAKE implementation needs verification against NIST SP 800-185")]
     public void CShake256NistTestVector1()
     {
         byte[] data = TestHelpers.FromHexString("00010203");
