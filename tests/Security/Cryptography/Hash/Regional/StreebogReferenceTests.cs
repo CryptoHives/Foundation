@@ -319,6 +319,7 @@ public class StreebogReferenceTests
 
         // Don't assert on our implementation - this is for diagnostic purposes
         Assert.That(ogHash, Is.EqualTo(bcHash), "Reference implementations should match");
+        Assert.That(ogHash, Is.EqualTo(ourHash), "Reference implementations should match");
     }
 
     /// <summary>

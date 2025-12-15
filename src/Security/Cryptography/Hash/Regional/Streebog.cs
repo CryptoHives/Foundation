@@ -16,6 +16,7 @@ using System;
 /// <para>
 /// This implementation follows RFC 6986 which specifies the GOST R 34.11-2012 algorithm.
 /// </para>
+/// TODO: Expose a class Streebog256 and Streebog512 and make Streebog internal.
 /// </remarks>
 public sealed class Streebog : HashAlgorithm
 {
@@ -29,7 +30,7 @@ public sealed class Streebog : HashAlgorithm
     /// </summary>
     private const int Rounds = 12;
 
-    // S-box (Pi substitution) - RFC 6986 Section 5.1.1
+    // S-box (Pi substitution) - RFC 6986 Section 6.2
     // This is a byte substitution table for the nonlinear transformation.
     private static readonly byte[] Pi =
     [
@@ -51,7 +52,7 @@ public sealed class Streebog : HashAlgorithm
         0x59, 0xA6, 0x74, 0xD2, 0xE6, 0xF4, 0xB4, 0xC0, 0xD1, 0x66, 0xAF, 0xC2, 0x39, 0x4B, 0x63, 0xB6
     ];
 
-    // Tau permutation - RFC 6986 Section 5.1.2
+    // Tau permutation - RFC 6986 Section 6.3
     // Transposes the 8x8 byte matrix (column-major to row-major).
     private static readonly byte[] Tau =
     [
@@ -65,29 +66,29 @@ public sealed class Streebog : HashAlgorithm
         7, 15, 23, 31, 39, 47, 55, 63
     ];
 
-    // Linear transformation matrix A - RFC 6986 Section 5.1.3
+    // Linear transformation matrix A - RFC 6986 Section 6.4
     // Each entry represents an element of GF(2^64), applied row-by-row.
     private static readonly ulong[] A =
     [
-        0x8e20faa72ba0b470UL, 0x47107ddd9b505a38UL, 0xad08b0e0c3282d1cUL, 0xd8045870ef14980eUL,
-        0x6c022c38f90a4c07UL, 0x3601161cf205268dUL, 0x1b8e0b0e798c13c8UL, 0x83478b07b2468764UL,
-        0xa011d380818e8f40UL, 0x5086e740ce47c920UL, 0x2843fd2067adea10UL, 0x14aff010bdd87508UL,
-        0x0ad97808d06cb404UL, 0x05e23c0468365a02UL, 0x8c711e02341b2d01UL, 0x46b60f011a83988eUL,
-        0x90dab52a387ae76fUL, 0x486dd4151c3dfdb9UL, 0x24b86a840e90f0d2UL, 0x125c354207f57b69UL,
-        0x092e94218d243cbaUL, 0x8a174a9ec8121e5dUL, 0x4585254f64090fa0UL, 0xaccc9ca9328a8950UL,
-        0x9d4df05d5f661451UL, 0xc0a878a0a1330aa6UL, 0x60543c50de970553UL, 0x302a1e286fc58ca7UL,
-        0x18150f14b9ec46ddUL, 0x0c84890ad27623e0UL, 0x0642ca05693b9f70UL, 0x0321658cba93c138UL,
-        0x86275df09ce8aaa8UL, 0x439da0784e745554UL, 0xafc0503c273aa42aUL, 0xd960281e9d1d5215UL,
-        0xe230140fc0802984UL, 0x71180a8960409a42UL, 0xb60c05ca30204d21UL, 0x5b068c651810a89eUL,
-        0x456c34887a3805b9UL, 0xac361a443d1c8cd2UL, 0x561b0d22900e4669UL, 0x2b838811480723baUL,
-        0x9bcf4486248d9f5dUL, 0xc3e9224312c8c1a0UL, 0xeffa11af0964ee50UL, 0xf97d86d98a327728UL,
-        0xe4fa2054a80b329cUL, 0x727d102a548b194eUL, 0x39b008152acb8227UL, 0x9258048415eb419dUL,
-        0x492c024284fbaec0UL, 0xaa16012142f35760UL, 0x550b8e9e21f7a530UL, 0xa48b474f9ef5dc18UL,
-        0x70a6a56e2440598eUL, 0x3853dc371220a247UL, 0x1ca76e95091051adUL, 0x0edd37c48a08a6d8UL,
-        0x07e095624504536cUL, 0x8d70c431ac02a736UL, 0xc83862965601dd1bUL, 0x641c314b2b8ee083UL
+    0x8e20faa72ba0b470UL, 0x47107ddd9b505a38UL, 0xad08b0e0c3282d1cUL, 0xd8045870ef14980eUL,
+    0x6c022c38f90a4c07UL, 0x3601161cf205268dUL, 0x1b8e0b0e798c13c8UL, 0x83478b07b2468764UL,
+    0xa011d380818e8f40UL, 0x5086e740ce47c920UL, 0x2843fd2067adea10UL, 0x14aff010bdd87508UL,
+    0x0ad97808d06cb404UL, 0x05e23c0468365a02UL, 0x8c711e02341b2d01UL, 0x46b60f011a83988eUL,
+    0x90dab52a387ae76fUL, 0x486dd4151c3dfdb9UL, 0x24b86a840e90f0d2UL, 0x125c354207487869UL,
+    0x092e94218d243cbaUL, 0x8a174a9ec8121e5dUL, 0x4585254f64090fa0UL, 0xaccc9ca9328a8950UL,
+    0x9d4df05d5f661451UL, 0xc0a878a0a1330aa6UL, 0x60543c50de970553UL, 0x302a1e286fc58ca7UL,
+    0x18150f14b9ec46ddUL, 0x0c84890ad27623e0UL, 0x0642ca05693b9f70UL, 0x0321658cba93c138UL,
+    0x86275df09ce8aaa8UL, 0x439da0784e745554UL, 0xafc0503c273aa42aUL, 0xd960281e9d1d5215UL,
+    0xe230140fc0802984UL, 0x71180a8960409a42UL, 0xb60c05ca30204d21UL, 0x5b068c651810a89eUL,
+    0x456c34887a3805b9UL, 0xac361a443d1c8cd2UL, 0x561b0d22900e4669UL, 0x2b838811480723baUL,
+    0x9bcf4486248d9f5dUL, 0xc3e9224312c8c1a0UL, 0xeffa11af0964ee50UL, 0xf97d86d98a327728UL,
+    0xe4fa2054a80b329cUL, 0x727d102a548b194eUL, 0x39b008152acb8227UL, 0x9258048415eb419dUL,
+    0x492c024284fbaec0UL, 0xaa16012142f35760UL, 0x550b8e9e21f7a530UL, 0xa48b474f9ef5dc18UL,
+    0x70a6a56e2440598eUL, 0x3853dc371220a247UL, 0x1ca76e95091051adUL, 0x0edd37c48a08a6d8UL,
+    0x07e095624504536cUL, 0x8d70c431ac02a736UL, 0xc83862965601dd1bUL, 0x641c314b2b8ee083UL
     ];
 
-    // Iteration constants C for the 12 rounds - RFC 6986 Section 5.2
+    // Iteration constants C for the 12 rounds - RFC 6986 Section 6.5
     // These are the exact hex values from the specification.
     private static readonly byte[][] C =
     [
@@ -115,12 +116,15 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Converts a hex string to a byte array.
     /// </summary>
-    private static byte[] FromHex(string hex)
+    /// <remarks>
+    /// This conversion stores the first hex byte value in the string at position 0.
+    /// </remarks>
+    internal static byte[] FromHex(string hex)
     {
         byte[] bytes = new byte[hex.Length / 2];
         for (int i = 0; i < bytes.Length; i++)
         {
-            bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            bytes[bytes.Length - i - 1] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
         }
         return bytes;
     }
@@ -299,6 +303,9 @@ public sealed class Streebog : HashAlgorithm
         // k = h ^ N
         Xor512(h, n, k);
 
+        // k = LPS(k)
+        ApplyLPS(k);
+
         // t = E(k, m)
         E(k, m, t);
 
@@ -341,13 +348,7 @@ public sealed class Streebog : HashAlgorithm
     /// P = Permutation using Tau
     /// L = Linear transformation using matrix A
     /// </summary>
-    /// <remarks>
-    /// TODO: The L transformation byte/bit ordering needs verification against
-    /// reference implementations. Current implementation produces incorrect output.
-    /// The issue is likely in how the A matrix is indexed relative to the byte order
-    /// of the input/output data.
-    /// </remarks>
-    private static void ApplyLPS(byte[] data)
+    internal static void ApplyLPS(byte[] data)
     {
         unchecked
         {
@@ -371,17 +372,17 @@ public sealed class Streebog : HashAlgorithm
             {
                 ulong v = 0;
 
-                // Process 8 bytes per row
+                // Process 8 bytes per row in reverse order
                 for (int j = 0; j < 8; j++)
                 {
-                    byte b = permuted[i * 8 + j];
-                    
-                    // For each bit in the byte, XOR the corresponding A matrix entry
+                    byte b = permuted[i * 8 + (7 - j)];
+
+                    // For each bit in the byte (LSB first), use reversed bit index in A
                     for (int k = 0; k < 8; k++)
                     {
                         if ((b & (1 << k)) != 0)
                         {
-                            v ^= A[j * 8 + k];
+                            v ^= A[j * 8 + (7 - k)];
                         }
                     }
                 }

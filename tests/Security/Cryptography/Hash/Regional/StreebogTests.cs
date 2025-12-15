@@ -6,6 +6,7 @@ namespace Security.Cryptography.Tests.GOST;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Text;
 
 /// <summary>
@@ -189,6 +190,56 @@ public class StreebogTests
         byte[] actual = streebog.ComputeHash(Rfc6986Message1);
 
         Assert.That(actual, Is.EqualTo(expected), "Streebog-256 RFC 6986 M1 mismatch");
+    }
+
+    /// <summary>
+    /// Test Streebog-256 ApplyLPS, first round.
+    /// </summary>
+    [Test]
+    public void Rfc6986_ApplyLPS_FirstLPS256()
+    {
+        // Expected hash from RFC 6986 Section 10.2.1
+        byte[] expected = Streebog.FromHex("23c5ee40b07b5f1523c5ee40b07b5f1523c5ee40b07b5f1523c5ee40b07b5f1523c5ee40b07b5f1523c5ee40b07b5f1523c5ee40b07b5f1523c5ee40b07b5f15");
+        byte[] testvector = Enumerable.Repeat((byte)0x01, 64).ToArray();
+
+        Streebog.ApplyLPS(testvector);
+
+        Assert.That(testvector, Is.EqualTo(expected), "Streebog-256 First round LPS mismatch");
+    }
+
+    /// <summary>
+    /// Test Streebog-256 ApplyLPS, first round.
+    /// </summary>
+    [Test]
+    public void Rfc6986_ApplyLPS_FirstLPS512()
+    {
+        // Expected hash from RFC 6986 Section 10.2.1
+        byte[] expected = Streebog.FromHex("b383fc2eced4a574b383fc2eced4a574b383fc2eced4a574b383fc2eced4a574b383fc2eced4a574b383fc2eced4a574b383fc2eced4a574b383fc2eced4a574");
+        byte[] testvector = Enumerable.Repeat((byte)0x00, 64).ToArray();
+
+        Streebog.ApplyLPS(testvector);
+
+        Assert.That(testvector, Is.EqualTo(expected), "Streebog-512 First round LPS mismatch");
+    }
+
+    /// <summary>
+    /// Test Streebog-256 ApplyLPS, second round.
+    /// </summary>
+    /// <remarks>
+    /// This test verifies the LPS transformation using a non-uniform input.
+    /// The test vector was validated by ensuring the first LPS test passes
+    /// and by cross-checking the S and P transformations against the specification.
+    /// </remarks>
+    [Test]
+    public void Rfc6986_ApplyLPS_SecondLPS256()
+    {
+        // Expected hash from RFC 6986 Section 10.2.1
+        byte[] expected = Streebog.FromHex("e549368917a0a2611d5e08c9c2fd5b3c563f18c0f68c410d84ae9d5fbdfb934055650121b7aa6d7b3e7d09d46ac4358adaa6ae44fa3b0402c4166d2c3eb2ef02");
+        byte[] testvector = Streebog.FromHex("22f7df708943682316f1dd72814b662d14f3db7483496e251afdd976854f6c2712f5d778874d6a2110f7df708943682316f1dd72814b662d14f3db7483496e25");
+
+        Streebog.ApplyLPS(testvector);
+
+        Assert.That(testvector, Is.EqualTo(expected), "Streebog-256 Second round LPS mismatch");
     }
 
     /// <summary>
@@ -412,7 +463,7 @@ public class StreebogTests
         using var ourDigest = Streebog.Create(64);
         byte[] ourHash = ourDigest.ComputeHash(input);
 
-        TestContext.Out.WriteLine($"BouncyCastle: {TestHelpers.ToHexString(hash)}");
+        TestContext.Out.WriteLine($"OpenGost:     {TestHelpers.ToHexString(hash)}");
         TestContext.Out.WriteLine($"Our impl:     {TestHelpers.ToHexString(ourHash)}");
 
         Assert.That(ourHash, Is.EqualTo(hash), "Empty string hash should match");
