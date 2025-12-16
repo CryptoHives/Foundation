@@ -33,6 +33,7 @@
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
         <PackageReference Include="System.Threading.Tasks.Extensions" />
       </ItemGroup>
     </When>
@@ -45,6 +46,7 @@
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
         <PackageReference Include="System.Threading.Tasks.Extensions" />
       </ItemGroup>
     </When>

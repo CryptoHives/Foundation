@@ -52,6 +52,10 @@ using CryptoHives.Foundation.Threading.Pools;
 | [AsyncLock](asynclock.md) | Pooled async mutual exclusion lock | [Details](asynclock.md) |
 | [AsyncAutoResetEvent](asyncautoresetevent.md) | Pooled async auto-reset event (one waiter per signal) | [Details](asyncautoresetevent.md) |
 | [AsyncManualResetEvent](asyncmanualresetevent.md) | Pooled async manual-reset event (all waiters per signal) | [Details](asyncmanualresetevent.md) |
+| [AsyncSemaphore](asyncsemaphore.md) | Pooled async semaphore with configurable permit count | [Details](asyncsemaphore.md) |
+| [AsyncCountdownEvent](asynccountdownevent.md) | Pooled async countdown event (signals when count reaches zero) | [Details](asynccountdownevent.md) |
+| [AsyncBarrier](asyncbarrier.md) | Pooled async barrier (synchronizes multiple participants) | [Details](asyncbarrier.md) |
+| [AsyncReaderWriterLock](asyncreaderwriterlock.md) | Pooled async reader-writer lock (multiple readers or single writer) | [Details](asyncreaderwriterlock.md) |
 
 ### Pooling Support Classes
 
@@ -142,6 +146,86 @@ public async Task WaitForReadyAsync(CancellationToken ct)
 {
     await _event.WaitAsync(ct); // Multiple tasks can wait
     await DoWorkAsync();
+}
+```
+
+### AsyncSemaphore
+
+```csharp
+private readonly AsyncSemaphore _semaphore = new AsyncSemaphore(3);
+
+// Limited concurrent access
+public async Task AccessLimitedResourceAsync(CancellationToken ct)
+{
+    await _semaphore.WaitAsync(ct);
+    try
+    {
+        // Max 3 concurrent tasks can access this section
+        await AccessResourceAsync();
+    }
+    finally
+    {
+        _semaphore.Release();
+    }
+}
+```
+
+### AsyncCountdownEvent
+
+```csharp
+private readonly AsyncCountdownEvent _countdown = new AsyncCountdownEvent(3);
+
+// Coordinator
+public async Task WaitForWorkersAsync(CancellationToken ct)
+{
+    await _countdown.WaitAsync(ct);
+    // All workers have signaled
+}
+
+// Worker
+public void WorkerCompleted()
+{
+    _countdown.Signal();
+}
+```
+
+### AsyncBarrier
+
+```csharp
+private readonly AsyncBarrier _barrier = new AsyncBarrier(3);
+
+// Participant
+public async Task ParticipantWorkAsync(CancellationToken ct)
+{
+    await DoPhase1WorkAsync();
+    await _barrier.SignalAndWaitAsync(ct); // Wait for all participants
+    await DoPhase2WorkAsync();
+}
+```
+
+### AsyncReaderWriterLock
+
+```csharp
+private readonly AsyncReaderWriterLock _rwLock = new AsyncReaderWriterLock();
+
+// Reader
+public async Task ReadAsync(CancellationToken ct)
+{
+    using (await _rwLock.ReaderLockAsync(ct))
+    {
+        // Multiple readers can hold the lock concurrently
+        await ReadDataAsync();
+    }
+}
+
+// Writer
+public async Task WriteAsync(CancellationToken ct)
+{
+    using (await _rwLock.WriterLockAsync(ct))
+    {
+        // Exclusive access
+        await WriteDataAsync();
+    }
 }
 ```
 
