@@ -250,10 +250,10 @@ public sealed class Whirlpool : HashAlgorithm
     {
         unchecked
         {
-            ulong[] state = new ulong[8];
-            ulong[] k = new ulong[8];
-            ulong[] l = new ulong[8];
-            ulong[] blockData = new ulong[8];
+            Span<ulong> state = stackalloc ulong[8];
+            Span<ulong> k = stackalloc ulong[8];
+            Span<ulong> l = stackalloc ulong[8];
+            Span<ulong> blockData = stackalloc ulong[8];
 
             // Convert block to ulong array
             for (int i = 0; i < 8; i++)
@@ -285,7 +285,7 @@ public sealed class Whirlpool : HashAlgorithm
                 }
 
                 l[0] ^= RoundConstants[r];
-                Array.Copy(l, k, 8);
+                l.CopyTo(k);
 
                 // Transform state
                 for (int i = 0; i < 8; i++)
@@ -301,7 +301,7 @@ public sealed class Whirlpool : HashAlgorithm
                            k[i];
                 }
 
-                Array.Copy(l, state, 8);
+                l.CopyTo(state);
             }
 
             // Miyaguchi-Preneel compression
@@ -343,6 +343,4 @@ public sealed class Whirlpool : HashAlgorithm
         return ((ulong)b0 << 56) | ((ulong)b1 << 48) | ((ulong)b2 << 40) | ((ulong)b3 << 32) |
                ((ulong)b4 << 24) | ((ulong)b5 << 16) | ((ulong)b6 << 8) | b7;
     }
-
-    private static ulong RotateRight(ulong x, int n) => (x >> n) | (x << (64 - n));
 }

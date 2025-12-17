@@ -216,11 +216,12 @@ public sealed class Streebog : HashAlgorithm
             }
         }
 
-        // Process complete blocks
+        // Process complete blocks using stack-allocated buffer
+        Span<byte> workBlock = stackalloc byte[64];
         while (offset + BlockSizeBytes <= source.Length)
         {
-            byte[] block = source.Slice(offset, BlockSizeBytes).ToArray();
-            ProcessBlock(block);
+            source.Slice(offset, BlockSizeBytes).CopyTo(workBlock);
+            ProcessBlock(workBlock);
             offset += BlockSizeBytes;
         }
 
@@ -235,7 +236,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Processes a complete 64-byte message block.
     /// </summary>
-    private void ProcessBlock(byte[] m)
+    private void ProcessBlock(ReadOnlySpan<byte> m)
     {
         // g_N(h, m)
         GN(_h, _n, m);
@@ -257,7 +258,8 @@ public sealed class Streebog : HashAlgorithm
         }
 
         // Pad the final block: m || 1 || 0...0
-        byte[] paddedBlock = new byte[64];
+        Span<byte> paddedBlock = stackalloc byte[64];
+        paddedBlock.Clear();
         _buffer.AsSpan(0, _bufferLength).CopyTo(paddedBlock);
         paddedBlock[_bufferLength] = 0x01;
         // Rest is already zeros
@@ -272,7 +274,8 @@ public sealed class Streebog : HashAlgorithm
         AddBlock512(_sigma, paddedBlock);
 
         // Stage 4: Final compressions
-        byte[] zero = new byte[64];
+        Span<byte> zero = stackalloc byte[64];
+        zero.Clear();
         GN(_h, zero, _n);
         GN(_h, zero, _sigma);
 
@@ -295,10 +298,10 @@ public sealed class Streebog : HashAlgorithm
     /// The g_N compression function: h = h ^ E(h ^ N, m) ^ m
     /// Uses Miyaguchi-Preneel construction.
     /// </summary>
-    private static void GN(byte[] h, byte[] n, byte[] m)
+    private static void GN(byte[] h, ReadOnlySpan<byte> n, ReadOnlySpan<byte> m)
     {
-        byte[] k = new byte[64];
-        byte[] t = new byte[64];
+        Span<byte> k = stackalloc byte[64];
+        Span<byte> t = stackalloc byte[64];
 
         // k = h ^ N
         Xor512(h, n, k);
@@ -310,31 +313,31 @@ public sealed class Streebog : HashAlgorithm
         E(k, m, t);
 
         // h = h ^ t ^ m
-        Xor512(h, t, h);
-        Xor512(h, m, h);
+        Xor512InPlace(h, t);
+        Xor512InPlace(h, m);
     }
 
     /// <summary>
     /// The E function: 12-round block cipher with key schedule.
     /// </summary>
-    private static void E(byte[] k, byte[] m, byte[] result)
+    private static void E(ReadOnlySpan<byte> k, ReadOnlySpan<byte> m, Span<byte> result)
     {
-        byte[] state = new byte[64];
-        byte[] key = new byte[64];
+        Span<byte> state = stackalloc byte[64];
+        Span<byte> key = stackalloc byte[64];
 
-        Array.Copy(m, state, 64);
-        Array.Copy(k, key, 64);
+        m.CopyTo(state);
+        k.CopyTo(key);
 
         for (int round = 0; round < Rounds; round++)
         {
             // AddRoundKey: state = state ^ key
-            Xor512(state, key, state);
+            Xor512InPlace(state, key);
 
             // LPS transform on state
             ApplyLPS(state);
 
             // Key schedule: key = LPS(key ^ C[round])
-            Xor512(key, C[round], key);
+            Xor512InPlace(key, C[round]);
             ApplyLPS(key);
         }
 
@@ -348,19 +351,20 @@ public sealed class Streebog : HashAlgorithm
     /// P = Permutation using Tau
     /// L = Linear transformation using matrix A
     /// </summary>
-    internal static void ApplyLPS(byte[] data)
+    internal static void ApplyLPS(Span<byte> data)
     {
         unchecked
         {
+            Span<byte> substituted = stackalloc byte[64];
+            Span<byte> permuted = stackalloc byte[64];
+
             // S-box substitution
-            byte[] substituted = new byte[64];
             for (int i = 0; i < 64; i++)
             {
                 substituted[i] = Pi[data[i]];
             }
 
             // P permutation (transpose)
-            byte[] permuted = new byte[64];
             for (int i = 0; i < 64; i++)
             {
                 permuted[i] = substituted[Tau[i]];
@@ -401,13 +405,24 @@ public sealed class Streebog : HashAlgorithm
     }
 
     /// <summary>
-    /// XOR two 512-bit (64-byte) values.
+    /// XOR two 512-bit (64-byte) values into result.
     /// </summary>
-    private static void Xor512(byte[] a, byte[] b, byte[] result)
+    private static void Xor512(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, Span<byte> result)
     {
         for (int i = 0; i < 64; i++)
         {
             result[i] = (byte)(a[i] ^ b[i]);
+        }
+    }
+
+    /// <summary>
+    /// XOR b into a in-place.
+    /// </summary>
+    private static void Xor512InPlace(Span<byte> a, ReadOnlySpan<byte> b)
+    {
+        for (int i = 0; i < 64; i++)
+        {
+            a[i] ^= b[i];
         }
     }
 
@@ -431,7 +446,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Add two 512-bit blocks as little-endian integers modulo 2^512.
     /// </summary>
-    private static void AddBlock512(byte[] a, byte[] b)
+    private static void AddBlock512(byte[] a, ReadOnlySpan<byte> b)
     {
         unchecked
         {
