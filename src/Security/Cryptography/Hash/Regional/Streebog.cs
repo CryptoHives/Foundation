@@ -1,9 +1,18 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+// Uncomment the following line to enable optimized lookup table implementation
+#define STREEBOG_LOOKUP_TABLES
+
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics;
+#endif
 
 /// <summary>
 /// Computes the Streebog (GOST R 34.11-2012) hash for the input data using a clean-room implementation.
@@ -70,25 +79,41 @@ public sealed class Streebog : HashAlgorithm
     // Each entry represents an element of GF(2^64), applied row-by-row.
     private static readonly ulong[] A =
     [
-    0x8e20faa72ba0b470UL, 0x47107ddd9b505a38UL, 0xad08b0e0c3282d1cUL, 0xd8045870ef14980eUL,
-    0x6c022c38f90a4c07UL, 0x3601161cf205268dUL, 0x1b8e0b0e798c13c8UL, 0x83478b07b2468764UL,
-    0xa011d380818e8f40UL, 0x5086e740ce47c920UL, 0x2843fd2067adea10UL, 0x14aff010bdd87508UL,
-    0x0ad97808d06cb404UL, 0x05e23c0468365a02UL, 0x8c711e02341b2d01UL, 0x46b60f011a83988eUL,
-    0x90dab52a387ae76fUL, 0x486dd4151c3dfdb9UL, 0x24b86a840e90f0d2UL, 0x125c354207487869UL,
-    0x092e94218d243cbaUL, 0x8a174a9ec8121e5dUL, 0x4585254f64090fa0UL, 0xaccc9ca9328a8950UL,
-    0x9d4df05d5f661451UL, 0xc0a878a0a1330aa6UL, 0x60543c50de970553UL, 0x302a1e286fc58ca7UL,
-    0x18150f14b9ec46ddUL, 0x0c84890ad27623e0UL, 0x0642ca05693b9f70UL, 0x0321658cba93c138UL,
-    0x86275df09ce8aaa8UL, 0x439da0784e745554UL, 0xafc0503c273aa42aUL, 0xd960281e9d1d5215UL,
-    0xe230140fc0802984UL, 0x71180a8960409a42UL, 0xb60c05ca30204d21UL, 0x5b068c651810a89eUL,
-    0x456c34887a3805b9UL, 0xac361a443d1c8cd2UL, 0x561b0d22900e4669UL, 0x2b838811480723baUL,
-    0x9bcf4486248d9f5dUL, 0xc3e9224312c8c1a0UL, 0xeffa11af0964ee50UL, 0xf97d86d98a327728UL,
-    0xe4fa2054a80b329cUL, 0x727d102a548b194eUL, 0x39b008152acb8227UL, 0x9258048415eb419dUL,
-    0x492c024284fbaec0UL, 0xaa16012142f35760UL, 0x550b8e9e21f7a530UL, 0xa48b474f9ef5dc18UL,
-    0x70a6a56e2440598eUL, 0x3853dc371220a247UL, 0x1ca76e95091051adUL, 0x0edd37c48a08a6d8UL,
-    0x07e095624504536cUL, 0x8d70c431ac02a736UL, 0xc83862965601dd1bUL, 0x641c314b2b8ee083UL
+        0x8e20faa72ba0b470UL, 0x47107ddd9b505a38UL, 0xad08b0e0c3282d1cUL, 0xd8045870ef14980eUL,
+        0x6c022c38f90a4c07UL, 0x3601161cf205268dUL, 0x1b8e0b0e798c13c8UL, 0x83478b07b2468764UL,
+        0xa011d380818e8f40UL, 0x5086e740ce47c920UL, 0x2843fd2067adea10UL, 0x14aff010bdd87508UL,
+        0x0ad97808d06cb404UL, 0x05e23c0468365a02UL, 0x8c711e02341b2d01UL, 0x46b60f011a83988eUL,
+        0x90dab52a387ae76fUL, 0x486dd4151c3dfdb9UL, 0x24b86a840e90f0d2UL, 0x125c354207487869UL,
+        0x092e94218d243cbaUL, 0x8a174a9ec8121e5dUL, 0x4585254f64090fa0UL, 0xaccc9ca9328a8950UL,
+        0x9d4df05d5f661451UL, 0xc0a878a0a1330aa6UL, 0x60543c50de970553UL, 0x302a1e286fc58ca7UL,
+        0x18150f14b9ec46ddUL, 0x0c84890ad27623e0UL, 0x0642ca05693b9f70UL, 0x0321658cba93c138UL,
+        0x86275df09ce8aaa8UL, 0x439da0784e745554UL, 0xafc0503c273aa42aUL, 0xd960281e9d1d5215UL,
+        0xe230140fc0802984UL, 0x71180a8960409a42UL, 0xb60c05ca30204d21UL, 0x5b068c651810a89eUL,
+        0x456c34887a3805b9UL, 0xac361a443d1c8cd2UL, 0x561b0d22900e4669UL, 0x2b838811480723baUL,
+        0x9bcf4486248d9f5dUL, 0xc3e9224312c8c1a0UL, 0xeffa11af0964ee50UL, 0xf97d86d98a327728UL,
+        0xe4fa2054a80b329cUL, 0x727d102a548b194eUL, 0x39b008152acb8227UL, 0x9258048415eb419dUL,
+        0x492c024284fbaec0UL, 0xaa16012142f35760UL, 0x550b8e9e21f7a530UL, 0xa48b474f9ef5dc18UL,
+        0x70a6a56e2440598eUL, 0x3853dc371220a247UL, 0x1ca76e95091051adUL, 0x0edd37c48a08a6d8UL,
+        0x07e095624504536cUL, 0x8d70c431ac02a736UL, 0xc83862965601dd1bUL, 0x641c314b2b8ee083UL
     ];
 
-    // Iteration constants C for the 12 rounds - RFC 6986 Section 6.5
+#if STREEBOG_LOOKUP_TABLES
+    // Combined LPS lookup tables: T[row][byte_value] -> ulong contribution
+    // These tables precompute S-box substitution, P permutation, and L linear transformation
+    // for each byte position (8 tables × 256 entries × 8 bytes = 16KB total)
+    private static readonly ulong[] T0, T1, T2, T3, T4, T5, T6, T7;
+#endif
+
+    // Iteration constants C for the 12 rounds as ulong[8] - RFC 6986 Section 6.5
+    // Precomputed from the byte arrays for efficient 64-bit XOR operations
+    private static readonly ulong[][] CU;
+
+#if NET8_0_OR_GREATER
+    // Round constants as Vector512 for SIMD operations
+    private static readonly Vector512<ulong>[] CV;
+#endif
+
+    // Iteration constants C for the 12 rounds - RFC 6986 Section 6.5 (kept for ApplyLPS byte[] overload)
     // These are the exact hex values from the specification.
     private static readonly byte[][] C =
     [
@@ -106,11 +131,78 @@ public sealed class Streebog : HashAlgorithm
         FromHex("378ee767f11631bad21380b00449b17acda43c32bcdf1d77f82012d430219f9b5d80ef9d1891cc86e71da4aa88e12852faf417d5d9b21b9948bc924af11bd720")
     ];
 
+    static Streebog()
+    {
+#if STREEBOG_LOOKUP_TABLES
+        // Initialize the 8 combined LPS lookup tables as flat arrays for better cache locality
+        T0 = new ulong[256];
+        T1 = new ulong[256];
+        T2 = new ulong[256];
+        T3 = new ulong[256];
+        T4 = new ulong[256];
+        T5 = new ulong[256];
+        T6 = new ulong[256];
+        T7 = new ulong[256];
+
+        // Compute lookup tables
+        for (int inputByte = 0; inputByte < 256; inputByte++)
+        {
+            byte substituted = Pi[inputByte];
+
+            for (int row = 0; row < 8; row++)
+            {
+                ulong contribution = 0;
+                for (int k = 0; k < 8; k++)
+                {
+                    if ((substituted & (1 << k)) != 0)
+                    {
+                        contribution ^= A[row * 8 + (7 - k)];
+                    }
+                }
+
+                switch (row)
+                {
+                    case 0: T0[inputByte] = contribution; break;
+                    case 1: T1[inputByte] = contribution; break;
+                    case 2: T2[inputByte] = contribution; break;
+                    case 3: T3[inputByte] = contribution; break;
+                    case 4: T4[inputByte] = contribution; break;
+                    case 5: T5[inputByte] = contribution; break;
+                    case 6: T6[inputByte] = contribution; break;
+                    case 7: T7[inputByte] = contribution; break;
+                }
+            }
+        }
+#endif
+
+        // Initialize round constants as ulong arrays
+        CU = new ulong[12][];
+        for (int round = 0; round < 12; round++)
+        {
+            CU[round] = new ulong[8];
+            for (int i = 0; i < 8; i++)
+            {
+                CU[round][i] = BinaryPrimitives.ReadUInt64LittleEndian(C[round].AsSpan(i * 8, 8));
+            }
+        }
+
+#if NET8_0_OR_GREATER
+        // Initialize round constants as Vector512 for SIMD
+        CV = new Vector512<ulong>[12];
+        for (int round = 0; round < 12; round++)
+        {
+            CV[round] = Vector512.Create(
+                CU[round][0], CU[round][1], CU[round][2], CU[round][3],
+                CU[round][4], CU[round][5], CU[round][6], CU[round][7]);
+        }
+#endif
+    }
+
     private readonly int _hashSizeBytes;
-    private readonly byte[] _h;      // Hash state (512-bit)
-    private readonly byte[] _n;      // Bit counter (512-bit)
-    private readonly byte[] _sigma;  // Checksum accumulator (512-bit)
-    private readonly byte[] _buffer; // Message block buffer
+    private readonly ulong[] _h;      // Hash state (512-bit as 8 ulongs)
+    private readonly ulong[] _n;      // Bit counter (512-bit as 8 ulongs)
+    private readonly ulong[] _sigma;  // Checksum accumulator (512-bit as 8 ulongs)
+    private readonly byte[] _buffer;  // Message block buffer
     private int _bufferLength;
 
     /// <summary>
@@ -142,16 +234,13 @@ public sealed class Streebog : HashAlgorithm
     /// <param name="hashSizeBytes">The desired output size in bytes (32 or 64).</param>
     public Streebog(int hashSizeBytes)
     {
-        if (hashSizeBytes != 32 && hashSizeBytes != 64)
-        {
-            throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes));
-        }
+        if (hashSizeBytes != 32 && hashSizeBytes != 64) throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes));
 
         _hashSizeBytes = hashSizeBytes;
         HashSizeValue = hashSizeBytes * 8;
-        _h = new byte[64];
-        _n = new byte[64];
-        _sigma = new byte[64];
+        _h = new ulong[8];
+        _n = new ulong[8];
+        _sigma = new ulong[8];
         _buffer = new byte[BlockSizeBytes];
         Initialize();
     }
@@ -183,14 +272,14 @@ public sealed class Streebog : HashAlgorithm
     public override void Initialize()
     {
         // IV is 0x00 for 512-bit, 0x01 for 256-bit (RFC 6986 Section 6.1)
-        byte iv = _hashSizeBytes == 32 ? (byte)0x01 : (byte)0x00;
+        ulong iv = _hashSizeBytes == 32 ? 0x0101010101010101UL : 0UL;
 
-        for (int i = 0; i < 64; i++)
-        {
-            _h[i] = iv;
-            _n[i] = 0;
-            _sigma[i] = 0;
-        }
+        _h[0] = iv; _h[1] = iv; _h[2] = iv; _h[3] = iv;
+        _h[4] = iv; _h[5] = iv; _h[6] = iv; _h[7] = iv;
+        _n[0] = 0; _n[1] = 0; _n[2] = 0; _n[3] = 0;
+        _n[4] = 0; _n[5] = 0; _n[6] = 0; _n[7] = 0;
+        _sigma[0] = 0; _sigma[1] = 0; _sigma[2] = 0; _sigma[3] = 0;
+        _sigma[4] = 0; _sigma[5] = 0; _sigma[6] = 0; _sigma[7] = 0;
 
         ClearBuffer(_buffer);
         _bufferLength = 0;
@@ -216,12 +305,10 @@ public sealed class Streebog : HashAlgorithm
             }
         }
 
-        // Process complete blocks using stack-allocated buffer
-        Span<byte> workBlock = stackalloc byte[64];
+        // Process complete blocks
         while (offset + BlockSizeBytes <= source.Length)
         {
-            source.Slice(offset, BlockSizeBytes).CopyTo(workBlock);
-            ProcessBlock(workBlock);
+            ProcessBlock(source.Slice(offset, BlockSizeBytes));
             offset += BlockSizeBytes;
         }
 
@@ -236,16 +323,27 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Processes a complete 64-byte message block.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ProcessBlock(ReadOnlySpan<byte> m)
     {
+        // Convert message to ulong array
+        ulong m0 = BinaryPrimitives.ReadUInt64LittleEndian(m);
+        ulong m1 = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(8));
+        ulong m2 = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(16));
+        ulong m3 = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(24));
+        ulong m4 = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(32));
+        ulong m5 = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(40));
+        ulong m6 = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(48));
+        ulong m7 = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(56));
+
         // g_N(h, m)
-        GN(_h, _n, m);
+        GN(_h, _n, m0, m1, m2, m3, m4, m5, m6, m7);
 
         // N = (N + 512) mod 2^512
         AddModulus512(_n, 512);
 
         // Sigma = (Sigma + m) mod 2^512
-        AddBlock512(_sigma, m);
+        AddBlock512(_sigma, m0, m1, m2, m3, m4, m5, m6, m7);
     }
 
     /// <inheritdoc/>
@@ -262,201 +360,362 @@ public sealed class Streebog : HashAlgorithm
         paddedBlock.Clear();
         _buffer.AsSpan(0, _bufferLength).CopyTo(paddedBlock);
         paddedBlock[_bufferLength] = 0x01;
-        // Rest is already zeros
+
+        // Convert padded block to ulongs
+        ulong p0 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock);
+        ulong p1 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(8));
+        ulong p2 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(16));
+        ulong p3 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(24));
+        ulong p4 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(32));
+        ulong p5 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(40));
+        ulong p6 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(48));
+        ulong p7 = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(56));
 
         // Stage 3: Process padded block
-        GN(_h, _n, paddedBlock);
+        GN(_h, _n, p0, p1, p2, p3, p4, p5, p6, p7);
 
         // Update N with the bit count of the final partial block
         AddModulus512(_n, _bufferLength * 8);
 
         // Update Sigma with padded block
-        AddBlock512(_sigma, paddedBlock);
+        AddBlock512(_sigma, p0, p1, p2, p3, p4, p5, p6, p7);
 
-        // Stage 4: Final compressions
-        Span<byte> zero = stackalloc byte[64];
-        zero.Clear();
-        GN(_h, zero, _n);
-        GN(_h, zero, _sigma);
+        // Stage 4: Final compressions with zero
+        GN(_h, [0, 0, 0, 0, 0, 0, 0, 0], _n[0], _n[1], _n[2], _n[3], _n[4], _n[5], _n[6], _n[7]);
+        GN(_h, [0, 0, 0, 0, 0, 0, 0, 0], _sigma[0], _sigma[1], _sigma[2], _sigma[3], _sigma[4], _sigma[5], _sigma[6], _sigma[7]);
 
-        // Output: full hash for 512-bit, upper 256 bits for 256-bit
+        // Output: convert ulong array back to bytes
         if (_hashSizeBytes == 32)
         {
-            // For 256-bit, take the last 32 bytes (h[32..63])
-            _h.AsSpan(32, 32).CopyTo(destination);
+            // For 256-bit, take the last 32 bytes (h[4..7])
+            BinaryPrimitives.WriteUInt64LittleEndian(destination, _h[4]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(8), _h[5]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(16), _h[6]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(24), _h[7]);
         }
         else
         {
-            _h.AsSpan(0, 64).CopyTo(destination);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination, _h[0]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(8), _h[1]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(16), _h[2]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(24), _h[3]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(32), _h[4]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(40), _h[5]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(48), _h[6]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(56), _h[7]);
         }
 
         bytesWritten = _hashSizeBytes;
         return true;
     }
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// The g_N compression function: h = h ^ E(h ^ N, m) ^ m
+    /// Uses Miyaguchi-Preneel construction with SIMD acceleration.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ulong m0, ulong m1, ulong m2, ulong m3, ulong m4, ulong m5, ulong m6, ulong m7)
+    {
+        // Load h, n, m as Vector512
+        Vector512<ulong> hV = Vector512.Create(h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
+        Vector512<ulong> nV = Vector512.Create(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7]);
+        Vector512<ulong> mV = Vector512.Create(m0, m1, m2, m3, m4, m5, m6, m7);
+
+        // k = h ^ N
+        Vector512<ulong> kV = Vector512.Xor(hV, nV);
+
+        // k = LPS(k)
+        Span<ulong> k = stackalloc ulong[8];
+        kV.CopyTo(k);
+        ApplyLPS(k);
+
+        // t = E(k, m)
+        Span<ulong> t = stackalloc ulong[8];
+        E(k, m0, m1, m2, m3, m4, m5, m6, m7, t);
+
+        // h = h ^ t ^ m (using SIMD)
+        Vector512<ulong> tV = Vector512.Create(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
+        Vector512<ulong> resultV = Vector512.Xor(Vector512.Xor(hV, tV), mV);
+
+        // Store result back to h
+        h[0] = resultV.GetElement(0);
+        h[1] = resultV.GetElement(1);
+        h[2] = resultV.GetElement(2);
+        h[3] = resultV.GetElement(3);
+        h[4] = resultV.GetElement(4);
+        h[5] = resultV.GetElement(5);
+        h[6] = resultV.GetElement(6);
+        h[7] = resultV.GetElement(7);
+    }
+
+    /// <summary>
+    /// The E function: 12-round block cipher with key schedule using SIMD.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void E(ReadOnlySpan<ulong> k, ulong m0, ulong m1, ulong m2, ulong m3, ulong m4, ulong m5, ulong m6, ulong m7, Span<ulong> result)
+    {
+        // Initialize state and key as Vector512
+        Vector512<ulong> stateV = Vector512.Create(m0, m1, m2, m3, m4, m5, m6, m7);
+        Vector512<ulong> keyV = Vector512.Create(k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7]);
+
+        Span<ulong> state = stackalloc ulong[8];
+        Span<ulong> key = stackalloc ulong[8];
+
+        for (int round = 0; round < Rounds; round++)
+        {
+            // AddRoundKey: state = state ^ key (SIMD)
+            stateV = Vector512.Xor(stateV, keyV);
+
+            // LPS transform on state (needs scalar for table lookups)
+            stateV.CopyTo(state);
+            ApplyLPS(state);
+            stateV = Vector512.Create(state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
+
+            // Key schedule: key = LPS(key ^ C[round]) (SIMD for XOR)
+            keyV = Vector512.Xor(keyV, CV[round]);
+            keyV.CopyTo(key);
+            ApplyLPS(key);
+            keyV = Vector512.Create(key[0], key[1], key[2], key[3], key[4], key[5], key[6], key[7]);
+        }
+
+        // Final AddRoundKey (SIMD)
+        Vector512<ulong> resultV = Vector512.Xor(stateV, keyV);
+
+        // Store result
+        result[0] = resultV.GetElement(0);
+        result[1] = resultV.GetElement(1);
+        result[2] = resultV.GetElement(2);
+        result[3] = resultV.GetElement(3);
+        result[4] = resultV.GetElement(4);
+        result[5] = resultV.GetElement(5);
+        result[6] = resultV.GetElement(6);
+        result[7] = resultV.GetElement(7);
+    }
+#else
     /// <summary>
     /// The g_N compression function: h = h ^ E(h ^ N, m) ^ m
     /// Uses Miyaguchi-Preneel construction.
     /// </summary>
-    private static void GN(byte[] h, ReadOnlySpan<byte> n, ReadOnlySpan<byte> m)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ulong m0, ulong m1, ulong m2, ulong m3, ulong m4, ulong m5, ulong m6, ulong m7)
     {
-        Span<byte> k = stackalloc byte[64];
-        Span<byte> t = stackalloc byte[64];
+        Span<ulong> k = stackalloc ulong[8];
+        Span<ulong> t = stackalloc ulong[8];
 
         // k = h ^ N
-        Xor512(h, n, k);
+        k[0] = h[0] ^ n[0]; k[1] = h[1] ^ n[1]; k[2] = h[2] ^ n[2]; k[3] = h[3] ^ n[3];
+        k[4] = h[4] ^ n[4]; k[5] = h[5] ^ n[5]; k[6] = h[6] ^ n[6]; k[7] = h[7] ^ n[7];
 
         // k = LPS(k)
         ApplyLPS(k);
 
         // t = E(k, m)
-        E(k, m, t);
+        E(k, m0, m1, m2, m3, m4, m5, m6, m7, t);
 
         // h = h ^ t ^ m
-        Xor512InPlace(h, t);
-        Xor512InPlace(h, m);
+        h[0] ^= t[0] ^ m0; h[1] ^= t[1] ^ m1; h[2] ^= t[2] ^ m2; h[3] ^= t[3] ^ m3;
+        h[4] ^= t[4] ^ m4; h[5] ^= t[5] ^ m5; h[6] ^= t[6] ^ m6; h[7] ^= t[7] ^ m7;
     }
 
     /// <summary>
     /// The E function: 12-round block cipher with key schedule.
     /// </summary>
-    private static void E(ReadOnlySpan<byte> k, ReadOnlySpan<byte> m, Span<byte> result)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void E(ReadOnlySpan<ulong> k, ulong m0, ulong m1, ulong m2, ulong m3, ulong m4, ulong m5, ulong m6, ulong m7, Span<ulong> result)
     {
-        Span<byte> state = stackalloc byte[64];
-        Span<byte> key = stackalloc byte[64];
+        Span<ulong> state = stackalloc ulong[8];
+        Span<ulong> key = stackalloc ulong[8];
 
-        m.CopyTo(state);
+        state[0] = m0; state[1] = m1; state[2] = m2; state[3] = m3;
+        state[4] = m4; state[5] = m5; state[6] = m6; state[7] = m7;
         k.CopyTo(key);
 
         for (int round = 0; round < Rounds; round++)
         {
             // AddRoundKey: state = state ^ key
-            Xor512InPlace(state, key);
+            state[0] ^= key[0]; state[1] ^= key[1]; state[2] ^= key[2]; state[3] ^= key[3];
+            state[4] ^= key[4]; state[5] ^= key[5]; state[6] ^= key[6]; state[7] ^= key[7];
 
             // LPS transform on state
             ApplyLPS(state);
 
             // Key schedule: key = LPS(key ^ C[round])
-            Xor512InPlace(key, C[round]);
+            ulong[] c = CU[round];
+            key[0] ^= c[0]; key[1] ^= c[1]; key[2] ^= c[2]; key[3] ^= c[3];
+            key[4] ^= c[4]; key[5] ^= c[5]; key[6] ^= c[6]; key[7] ^= c[7];
             ApplyLPS(key);
         }
 
         // Final AddRoundKey
-        Xor512(state, key, result);
+        result[0] = state[0] ^ key[0]; result[1] = state[1] ^ key[1];
+        result[2] = state[2] ^ key[2]; result[3] = state[3] ^ key[3];
+        result[4] = state[4] ^ key[4]; result[5] = state[5] ^ key[5];
+        result[6] = state[6] ^ key[6]; result[7] = state[7] ^ key[7];
     }
+#endif
 
+#if STREEBOG_LOOKUP_TABLES
     /// <summary>
     /// Combined LPS transformation: L(P(S(data)))
     /// S = Substitution using Pi S-box
     /// P = Permutation using Tau
     /// L = Linear transformation using matrix A
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplyLPS(Span<ulong> data)
+    {
+        // Convert ulong span to byte span for table lookups
+        Span<byte> d = MemoryMarshal.AsBytes(data);
+
+        // Compute all 8 rows using lookup tables with hardcoded Tau indices
+        // Row 0: Tau indices 0,8,16,24,32,40,48,56
+        ulong r0 = T7[d[0]] ^ T6[d[8]] ^ T5[d[16]] ^ T4[d[24]] ^ T3[d[32]] ^ T2[d[40]] ^ T1[d[48]] ^ T0[d[56]];
+        // Row 1: Tau indices 1,9,17,25,33,41,49,57
+        ulong r1 = T7[d[1]] ^ T6[d[9]] ^ T5[d[17]] ^ T4[d[25]] ^ T3[d[33]] ^ T2[d[41]] ^ T1[d[49]] ^ T0[d[57]];
+        // Row 2: Tau indices 2,10,18,26,34,42,50,58
+        ulong r2 = T7[d[2]] ^ T6[d[10]] ^ T5[d[18]] ^ T4[d[26]] ^ T3[d[34]] ^ T2[d[42]] ^ T1[d[50]] ^ T0[d[58]];
+        // Row 3: Tau indices 3,11,19,27,35,43,51,59
+        ulong r3 = T7[d[3]] ^ T6[d[11]] ^ T5[d[19]] ^ T4[d[27]] ^ T3[d[35]] ^ T2[d[43]] ^ T1[d[51]] ^ T0[d[59]];
+        // Row 4: Tau indices 4,12,20,28,36,44,52,60
+        ulong r4 = T7[d[4]] ^ T6[d[12]] ^ T5[d[20]] ^ T4[d[28]] ^ T3[d[36]] ^ T2[d[44]] ^ T1[d[52]] ^ T0[d[60]];
+        // Row 5: Tau indices 5,13,21,29,37,45,53,61
+        ulong r5 = T7[d[5]] ^ T6[d[13]] ^ T5[d[21]] ^ T4[d[29]] ^ T3[d[37]] ^ T2[d[45]] ^ T1[d[53]] ^ T0[d[61]];
+        // Row 6: Tau indices 6,14,22,30,38,46,54,62
+        ulong r6 = T7[d[6]] ^ T6[d[14]] ^ T5[d[22]] ^ T4[d[30]] ^ T3[d[38]] ^ T2[d[46]] ^ T1[d[54]] ^ T0[d[62]];
+        // Row 7: Tau indices 7,15,23,31,39,47,55,63
+        ulong r7 = T7[d[7]] ^ T6[d[15]] ^ T5[d[23]] ^ T4[d[31]] ^ T3[d[39]] ^ T2[d[47]] ^ T1[d[55]] ^ T0[d[63]];
+
+        data[0] = r0; data[1] = r1; data[2] = r2; data[3] = r3;
+        data[4] = r4; data[5] = r5; data[6] = r6; data[7] = r7;
+    }
+
+    /// <summary>
+    /// Combined LPS transformation for byte spans (used by test compatibility).
+    /// </summary>
     internal static void ApplyLPS(Span<byte> data)
     {
-        unchecked
+        // Row 0: Tau indices 0,8,16,24,32,40,48,56
+        ulong r0 = T7[data[0]] ^ T6[data[8]] ^ T5[data[16]] ^ T4[data[24]] ^ T3[data[32]] ^ T2[data[40]] ^ T1[data[48]] ^ T0[data[56]];
+        // Row 1: Tau indices 1,9,17,25,33,41,49,57
+        ulong r1 = T7[data[1]] ^ T6[data[9]] ^ T5[data[17]] ^ T4[data[25]] ^ T3[data[33]] ^ T2[data[41]] ^ T1[data[49]] ^ T0[data[57]];
+        // Row 2: Tau indices 2,10,18,26,34,42,50,58
+        ulong r2 = T7[data[2]] ^ T6[data[10]] ^ T5[data[18]] ^ T4[data[26]] ^ T3[data[34]] ^ T2[data[42]] ^ T1[data[50]] ^ T0[data[58]];
+        // Row 3: Tau indices 3,11,19,27,35,43,51,59
+        ulong r3 = T7[data[3]] ^ T6[data[11]] ^ T5[data[19]] ^ T4[data[27]] ^ T3[data[35]] ^ T2[data[43]] ^ T1[data[51]] ^ T0[data[59]];
+        // Row 4: Tau indices 4,12,20,28,36,44,52,60
+        ulong r4 = T7[data[4]] ^ T6[data[12]] ^ T5[data[20]] ^ T4[data[28]] ^ T3[data[36]] ^ T2[data[44]] ^ T1[data[52]] ^ T0[data[60]];
+        // Row 5: Tau indices 5,13,21,29,37,45,53,61
+        ulong r5 = T7[data[5]] ^ T6[data[13]] ^ T5[data[21]] ^ T4[data[29]] ^ T3[data[37]] ^ T2[data[45]] ^ T1[data[53]] ^ T0[data[61]];
+        // Row 6: Tau indices 6,14,22,30,38,46,54,62
+        ulong r6 = T7[data[6]] ^ T6[data[14]] ^ T5[data[22]] ^ T4[data[30]] ^ T3[data[38]] ^ T2[data[46]] ^ T1[data[54]] ^ T0[data[62]];
+        // Row 7: Tau indices 7,15,23,31,39,47,55,63
+        ulong r7 = T7[data[7]] ^ T6[data[15]] ^ T5[data[23]] ^ T4[data[31]] ^ T3[data[39]] ^ T2[data[47]] ^ T1[data[55]] ^ T0[data[63]];
+
+        // Write result back to data in little-endian order
+        BinaryPrimitives.WriteUInt64LittleEndian(data, r0);
+        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(8), r1);
+        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(16), r2);
+        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(24), r3);
+        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(32), r4);
+        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(40), r5);
+        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(48), r6);
+        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(56), r7);
+    }
+#else
+    // ...existing non-lookup-table implementations...
+    /// <summary>
+    /// Combined LPS transformation: L(P(S(data)))
+    /// </summary>
+    private static void ApplyLPS(Span<ulong> data)
+    {
+        Span<byte> dataBytes = MemoryMarshal.AsBytes(data);
+        Span<byte> substituted = stackalloc byte[64];
+        Span<byte> permuted = stackalloc byte[64];
+
+        for (int i = 0; i < 64; i++) substituted[i] = Pi[dataBytes[i]];
+        for (int i = 0; i < 64; i++) permuted[i] = substituted[Tau[i]];
+
+        for (int i = 0; i < 8; i++)
         {
-            Span<byte> substituted = stackalloc byte[64];
-            Span<byte> permuted = stackalloc byte[64];
-
-            // S-box substitution
-            for (int i = 0; i < 64; i++)
+            ulong v = 0;
+            for (int j = 0; j < 8; j++)
             {
-                substituted[i] = Pi[data[i]];
+                byte b = permuted[i * 8 + (7 - j)];
+                for (int k = 0; k < 8; k++)
+                    if ((b & (1 << k)) != 0) v ^= A[j * 8 + (7 - k)];
             }
-
-            // P permutation (transpose)
-            for (int i = 0; i < 64; i++)
-            {
-                permuted[i] = substituted[Tau[i]];
-            }
-
-            // L linear transformation
-            // Process state as 8 x 64-bit words
-            for (int i = 0; i < 8; i++)
-            {
-                ulong v = 0;
-
-                // Process 8 bytes per row in reverse order
-                for (int j = 0; j < 8; j++)
-                {
-                    byte b = permuted[i * 8 + (7 - j)];
-
-                    // For each bit in the byte (LSB first), use reversed bit index in A
-                    for (int k = 0; k < 8; k++)
-                    {
-                        if ((b & (1 << k)) != 0)
-                        {
-                            v ^= A[j * 8 + (7 - k)];
-                        }
-                    }
-                }
-
-                // Store result in little-endian byte order
-                data[i * 8 + 0] = (byte)(v);
-                data[i * 8 + 1] = (byte)(v >> 8);
-                data[i * 8 + 2] = (byte)(v >> 16);
-                data[i * 8 + 3] = (byte)(v >> 24);
-                data[i * 8 + 4] = (byte)(v >> 32);
-                data[i * 8 + 5] = (byte)(v >> 40);
-                data[i * 8 + 6] = (byte)(v >> 48);
-                data[i * 8 + 7] = (byte)(v >> 56);
-            }
+            data[i] = v;
         }
     }
 
     /// <summary>
-    /// XOR two 512-bit (64-byte) values into result.
+    /// Combined LPS transformation for byte spans.
     /// </summary>
-    private static void Xor512(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, Span<byte> result)
+    internal static void ApplyLPS(Span<byte> data)
     {
-        for (int i = 0; i < 64; i++)
-        {
-            result[i] = (byte)(a[i] ^ b[i]);
-        }
-    }
+        Span<byte> substituted = stackalloc byte[64];
+        Span<byte> permuted = stackalloc byte[64];
 
-    /// <summary>
-    /// XOR b into a in-place.
-    /// </summary>
-    private static void Xor512InPlace(Span<byte> a, ReadOnlySpan<byte> b)
-    {
-        for (int i = 0; i < 64; i++)
+        for (int i = 0; i < 64; i++) substituted[i] = Pi[data[i]];
+        for (int i = 0; i < 64; i++) permuted[i] = substituted[Tau[i]];
+
+        for (int i = 0; i < 8; i++)
         {
-            a[i] ^= b[i];
+            ulong v = 0;
+            for (int j = 0; j < 8; j++)
+            {
+                byte b = permuted[i * 8 + (7 - j)];
+                for (int k = 0; k < 8; k++)
+                    if ((b & (1 << k)) != 0) v ^= A[j * 8 + (7 - k)];
+            }
+            BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(i * 8), v);
         }
     }
+#endif
 
     /// <summary>
     /// Add a number of bits to the 512-bit counter (little-endian arithmetic).
     /// </summary>
-    private static void AddModulus512(byte[] counter, int bits)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void AddModulus512(ulong[] counter, int bits)
     {
         unchecked
         {
-            int carry = bits;
-            for (int i = 0; i < 64 && carry > 0; i++)
-            {
-                int sum = counter[i] + (carry & 0xFF);
-                counter[i] = (byte)sum;
-                carry = (carry >> 8) + (sum >> 8);
-            }
+            ulong sum = counter[0] + (ulong)bits;
+            ulong carry = sum < counter[0] ? 1UL : 0UL;
+            counter[0] = sum;
+            if (carry == 0) return;
+
+            sum = counter[1] + carry; carry = sum < counter[1] ? 1UL : 0UL; counter[1] = sum; if (carry == 0) return;
+            sum = counter[2] + carry; carry = sum < counter[2] ? 1UL : 0UL; counter[2] = sum; if (carry == 0) return;
+            sum = counter[3] + carry; carry = sum < counter[3] ? 1UL : 0UL; counter[3] = sum; if (carry == 0) return;
+            sum = counter[4] + carry; carry = sum < counter[4] ? 1UL : 0UL; counter[4] = sum; if (carry == 0) return;
+            sum = counter[5] + carry; carry = sum < counter[5] ? 1UL : 0UL; counter[5] = sum; if (carry == 0) return;
+            sum = counter[6] + carry; carry = sum < counter[6] ? 1UL : 0UL; counter[6] = sum; if (carry == 0) return;
+            counter[7] += carry;
         }
     }
 
     /// <summary>
     /// Add two 512-bit blocks as little-endian integers modulo 2^512.
     /// </summary>
-    private static void AddBlock512(byte[] a, ReadOnlySpan<byte> b)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void AddBlock512(ulong[] a, ulong b0, ulong b1, ulong b2, ulong b3, ulong b4, ulong b5, ulong b6, ulong b7)
     {
         unchecked
         {
-            int carry = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                int sum = a[i] + b[i] + carry;
-                a[i] = (byte)sum;
-                carry = sum >> 8;
-            }
+            ulong sum = a[0] + b0;
+            ulong carry = sum < a[0] ? 1UL : 0UL;
+            a[0] = sum;
+
+            sum = a[1] + b1 + carry; carry = (sum < a[1] || (carry == 1 && sum == a[1])) ? 1UL : 0UL; a[1] = sum;
+            sum = a[2] + b2 + carry; carry = (sum < a[2] || (carry == 1 && sum == a[2])) ? 1UL : 0UL; a[2] = sum;
+            sum = a[3] + b3 + carry; carry = (sum < a[3] || (carry == 1 && sum == a[3])) ? 1UL : 0UL; a[3] = sum;
+            sum = a[4] + b4 + carry; carry = (sum < a[4] || (carry == 1 && sum == a[4])) ? 1UL : 0UL; a[4] = sum;
+            sum = a[5] + b5 + carry; carry = (sum < a[5] || (carry == 1 && sum == a[5])) ? 1UL : 0UL; a[5] = sum;
+            sum = a[6] + b6 + carry; carry = (sum < a[6] || (carry == 1 && sum == a[6])) ? 1UL : 0UL; a[6] = sum;
+            a[7] = a[7] + b7 + carry;
         }
     }
 
@@ -465,9 +724,9 @@ public sealed class Streebog : HashAlgorithm
     {
         if (disposing)
         {
-            ClearBuffer(_h);
-            ClearBuffer(_n);
-            ClearBuffer(_sigma);
+            Array.Clear(_h, 0, 8);
+            Array.Clear(_n, 0, 8);
+            Array.Clear(_sigma, 0, 8);
             ClearBuffer(_buffer);
         }
         base.Dispose(disposing);
