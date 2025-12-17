@@ -1,4 +1,4 @@
-﻿# CryptoHives .NET Foundation Packages
+# CryptoHives .NET Foundation Packages
 
 Welcome to the CryptoHives .NET Foundation package documentation. 
 
@@ -75,46 +75,55 @@ public async Task AccessResourceAsync(CancellationToken ct)
 
 ---
 
+### Security Packages
+
+**CryptoHives.Foundation.Security.Cryptography** - Clean-room cryptographic implementations
+
+Comprehensive suite of hash algorithms and MACs implemented as fully managed code without OS dependencies.
+
+**Key Features:**
+- SHA-1, SHA-2, SHA-3 family implementations
+- SHAKE and cSHAKE extendable-output functions
+- KMAC (Keccak Message Authentication Code)
+- BLAKE2 and BLAKE3 high-performance hashing
+- International standards: SM3, Streebog, Whirlpool
+- Legacy algorithms: MD5, RIPEMD-160
+
+**[Security Package Documentation](security/index.md)**
+
+**Installation:**
+```bash
+dotnet add package CryptoHives.Foundation.Security.Cryptography
+```
+
+**Quick Example:**
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+// SHA-256 hash
+using var sha256 = SHA256.Create();
+byte[] hash = sha256.ComputeHash(data);
+
+// BLAKE3 with variable output
+using var blake3 = Blake3.Create(outputBytes: 64);
+byte[] longHash = blake3.ComputeHash(data);
+
+// KMAC256 authentication
+byte[] key = new byte[32];
+using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "MyApp");
+byte[] mac = kmac.ComputeHash(message);
+```
+
+> **Note:** This package is currently in development and not yet published to NuGet.
+
+---
+
 ### Threading Analyzers Package (Standalone)
 
 **CryptoHives.Foundation.Threading.Analyzers** - Roslyn analyzers for ValueTask misuse detection
 
 > **Note:** If you're using `CryptoHives.Foundation.Threading`, the analyzers are already included. This standalone package is for projects that want the analyzers without the Threading library.
-
-Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time. These analyzers help developers avoid subtle bugs and performance issues when working with `ValueTask` and the pooled async primitives.
-
-**Key Features:**
-- Detects multiple awaits on the same `ValueTask`
-- Warns about blocking calls like `GetAwaiter().GetResult()`
-- Identifies unsafe field storage of `ValueTask`
-- Includes automatic code fixes
-
-**[Threading Analyzers Documentation](threading.analyzers/index.md)**
-
-**Installation:**
-```bash
-dotnet add package CryptoHives.Foundation.Threading.Analyzers
-```
-
-**Quick Example:**
-```csharp
-// ❌ CHT001: ValueTask awaited multiple times
-ValueTask vt = GetValueTask();
-await vt;
-await vt; // Error!
-
-// ✅ Correct: Use Preserve() for multiple awaits
-ValueTask vt = GetValueTask();
-ValueTask preserved = vt.Preserve();
-await preserved;
-await preserved; // Safe!
-```
-
----
-
-### Threading Analyzers Package
-
-**CryptoHives.Foundation.Threading.Analyzers** - Roslyn analyzers for ValueTask misuse detection
 
 Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time. These analyzers help developers avoid subtle bugs and performance issues when working with `ValueTask` and the pooled async primitives.
 
@@ -174,6 +183,7 @@ Analyzers target .NET Standard 2.0 for maximum compatibility with all IDE and bu
 | CryptoHives.Foundation.Memory | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](memory/index.md) | |
 | CryptoHives.Foundation.Threading | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](threading/index.md) | Includes analyzers |
 | CryptoHives.Foundation.Threading.Analyzers | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](threading.analyzers/index.md) | Standalone |
+| CryptoHives.Foundation.Security.Cryptography | *In Development* | [Docs](security/cryptography/index.md) | Hash & MAC |
 
 ---
 

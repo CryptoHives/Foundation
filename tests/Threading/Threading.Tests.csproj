@@ -6,7 +6,8 @@
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <NoWarn>$(NoWarn);NUnit1028;CA1515;AD0001</NoWarn>
+    <!-- NUnit1028: The non-test method is public; AD0001: Analyzer exception -->
+    <NoWarn>$(NoWarn);NUnit1028;AD0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
