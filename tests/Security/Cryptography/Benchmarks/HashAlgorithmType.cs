@@ -184,9 +184,11 @@ public sealed class HashAlgorithmType : IFormattable
 
     public static readonly HashAlgorithmType Streebog256_Managed = new("Streebog256_Managed", "Streebog-256", () => CH.Streebog.Create(32));
     public static readonly HashAlgorithmType Streebog256_Bouncy = new("Streebog256_Bouncy", "Streebog-256", () => new BouncyCastleHashAdapter(new Gost3411_2012_256Digest()));
+    public static readonly HashAlgorithmType Streebog256_OpenGost = new("Streebog256_OpenGost", "Streebog-256", () => OpenGost.Security.Cryptography.Streebog256.Create());
 
     public static readonly HashAlgorithmType Streebog512_Managed = new("Streebog512_Managed", "Streebog-512", () => CH.Streebog.Create(64));
     public static readonly HashAlgorithmType Streebog512_Bouncy = new("Streebog512_Bouncy", "Streebog-512", () => new BouncyCastleHashAdapter(new Gost3411_2012_512Digest()));
+    public static readonly HashAlgorithmType Streebog512_OpenGost = new("Streebog512_OpenGost", "Streebog-512", () => OpenGost.Security.Cryptography.Streebog512.Create());
 
     #endregion
 
@@ -358,8 +360,10 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Whirlpool_Bouncy;
         yield return Streebog256_Managed;
         yield return Streebog256_Bouncy;
+        yield return Streebog256_OpenGost;
         yield return Streebog512_Managed;
         yield return Streebog512_Bouncy;
+        yield return Streebog512_OpenGost;
 
         // KMAC (OS-level - only yield if supported)
 #if NET9_0_OR_GREATER

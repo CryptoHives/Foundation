@@ -70,6 +70,8 @@ public class HashConfig : ManualConfig
                 return "CryptoHives";
             if (name.EndsWith("_Bouncy", System.StringComparison.Ordinal))
                 return "BouncyCastle";
+            if (name.EndsWith("_OpenGost", System.StringComparison.Ordinal))
+                return "OpenGost";
             if (name.EndsWith("_Native", System.StringComparison.Ordinal))
                 return "Native";
             return name;
