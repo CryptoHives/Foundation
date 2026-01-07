@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -61,7 +61,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 #if !NETFRAMEWORK
     private Task<IDisposable>[]? _lockNeoSmartHandle;
 #endif
-    private Task<RefImpl.AsyncLock.AsyncLockReleaser>[]? _lockRefImplHandle;
+    private Task<RefImpl.AsyncLock.Releaser>[]? _lockRefImplHandle;
 
     public static readonly object[] FixtureArgs = {
         new object[] { 0 },
@@ -307,7 +307,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     public void RefImplGlobalSetup()
     {
         base.GlobalSetup();
-        _lockRefImplHandle = new Task<RefImpl.AsyncLock.AsyncLockReleaser>[Iterations];
+        _lockRefImplHandle = new Task<RefImpl.AsyncLock.Releaser>[Iterations];
     }
 
     /// <summary>
@@ -331,7 +331,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             }
         }
 
-        foreach (Task<RefImpl.AsyncLock.AsyncLockReleaser> handle in _lockRefImplHandle!)
+        foreach (Task<RefImpl.AsyncLock.Releaser> handle in _lockRefImplHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }

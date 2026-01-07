@@ -168,8 +168,10 @@ public class AsyncSemaphoreUnitTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
+#pragma warning restore CHT001 // ValueTask awaited multiple times
 
         Assert.That(semaphore.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.EqualTo(0));
@@ -183,12 +185,16 @@ public class AsyncSemaphoreUnitTests
         using var cts = new CancellationTokenSource();
 
         var t1 = semaphore.WaitAsync();
+#pragma warning disable CHT001 // ValueTask awaited multiple times
         var t2 = semaphore.WaitAsync(cts.Token);
+#pragma warning restore CHT001 // ValueTask awaited multiple times
         var t3 = semaphore.WaitAsync();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times
         Assert.ThrowsAsync<TaskCanceledException>(async () => await t2.ConfigureAwait(false));
+#pragma warning restore CHT001 // ValueTask awaited multiple times
 
         semaphore.Release(2);
 

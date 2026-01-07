@@ -205,8 +205,10 @@ public class AsyncBarrierUnitTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
+#pragma warning restore CHT001 // ValueTask awaited multiple times
 
         Assert.That(barrier.RemainingParticipants, Is.EqualTo(2));
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
+#pragma warning disable CA1849 // Dispose synchronously blocks
 
 namespace Threading.Tests.Async.Pooled;
 
@@ -209,8 +210,10 @@ public class AsyncReaderWriterLockUnitTests
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times
             Assert.ThrowsAsync<TaskCanceledException>(async () =>
                 await readerTask.ConfigureAwait(false));
+#pragma warning restore CHT001 // ValueTask awaited multiple times
         }
 
         Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
@@ -234,8 +237,11 @@ public class AsyncReaderWriterLockUnitTests
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times
             Assert.ThrowsAsync<TaskCanceledException>(async () =>
                 await writerTask.ConfigureAwait(false));
+#pragma warning restore CHT001 // ValueTask awaited multiple times
+
         }
 
         Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);

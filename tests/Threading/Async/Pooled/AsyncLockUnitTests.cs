@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing cancellation behavior
@@ -20,7 +20,7 @@ public class AsyncLockUnitTests
     {
         var mutex = new AsyncLock(defaultEventQueueSize: 8);
 
-        Task<AsyncLock.AsyncLockReleaser> lockTask = mutex.LockAsync().AsTask();
+        Task<AsyncLock.Releaser> lockTask = mutex.LockAsync().AsTask();
 
         Assert.That(lockTask.IsCompleted, Is.True);
         Assert.That(lockTask.IsFaulted, Is.False);
@@ -108,7 +108,7 @@ public class AsyncLockUnitTests
         var mutex = new AsyncLock();
         var token = new CancellationToken(true);
 
-        Task<AsyncLock.AsyncLockReleaser> task = mutex.LockAsync(token).AsTask();
+        Task<AsyncLock.Releaser> task = mutex.LockAsync(token).AsTask();
 
         Assert.That(task.IsCompleted, Is.True);
         Assert.That(task.IsCanceled, Is.False);
@@ -121,19 +121,19 @@ public class AsyncLockUnitTests
     public async Task AsyncLockPreCancelledLockedSynchronouslyCancels(bool useAsTask)
     {
         var mutex = new AsyncLock();
-        ValueTask<AsyncLock.AsyncLockReleaser> lockTask = mutex.LockAsync();
+        ValueTask<AsyncLock.Releaser> lockTask = mutex.LockAsync();
         var token = new CancellationToken(true);
 
         if (useAsTask)
         {
-            Task<AsyncLock.AsyncLockReleaser> task = mutex.LockAsync(token).AsTask();
+            Task<AsyncLock.Releaser> task = mutex.LockAsync(token).AsTask();
             Assert.That(task.IsCompleted, Is.True);
             Assert.That(task.IsCanceled, Is.True);
             Assert.That(task.IsFaulted, Is.False);
         }
         else
         {
-            ValueTask<AsyncLock.AsyncLockReleaser> valueTask = mutex.LockAsync(token);
+            ValueTask<AsyncLock.Releaser> valueTask = mutex.LockAsync(token);
             Assert.That(valueTask.IsCompleted, Is.True);
             Assert.That(valueTask.IsCanceled, Is.True);
             Assert.That(valueTask.IsFaulted, Is.False);
@@ -149,9 +149,9 @@ public class AsyncLockUnitTests
         using var cts = new CancellationTokenSource();
         TaskCompletionSource<object?> taskReady = CreateAsyncTaskSource<object?>();
 
-        AsyncLock.AsyncLockReleaser unlock = await mutex.LockAsync().ConfigureAwait(false);
+        AsyncLock.Releaser unlock = await mutex.LockAsync().ConfigureAwait(false);
         var task = Task.Run(async () => {
-            ValueTask<AsyncLock.AsyncLockReleaser> lockTask = mutex.LockAsync(cts.Token);
+            ValueTask<AsyncLock.Releaser> lockTask = mutex.LockAsync(cts.Token);
             taskReady.SetResult(null);
             await lockTask.ConfigureAwait(false);
         });
@@ -162,7 +162,7 @@ public class AsyncLockUnitTests
         Assert.That(task.IsCanceled, Is.True);
         await unlock.DisposeAsync().ConfigureAwait(false);
 
-        ValueTask<AsyncLock.AsyncLockReleaser> finalLockTask = mutex.LockAsync();
+        ValueTask<AsyncLock.Releaser> finalLockTask = mutex.LockAsync();
         await finalLockTask.ConfigureAwait(false);
     }
 
@@ -178,10 +178,10 @@ public class AsyncLockUnitTests
             cancelableLockTask = mutex.LockAsync(cts.Token);
         }
 
-        AsyncLock.AsyncLockReleaser key = await cancelableLockTask.ConfigureAwait(false);
+        AsyncLock.Releaser key = await cancelableLockTask.ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Task<AsyncLock.AsyncLockReleaser> nextLocker = mutex.LockAsync().AsTask();
+        Task<AsyncLock.Releaser> nextLocker = mutex.LockAsync().AsTask();
         Assert.That(nextLocker.IsCompleted, Is.False);
 
         await key.DisposeAsync().ConfigureAwait(false);

@@ -252,8 +252,10 @@ public class AsyncCountdownEventUnitTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT001 // ValueTask awaited multiple times
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
+#pragma warning restore CHT001 // ValueTask awaited multiple times
 
         Assert.That(countdown.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.EqualTo(0));
