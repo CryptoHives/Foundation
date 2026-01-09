@@ -68,5 +68,5 @@ to confirm your contributor status within the collective "The Keepers of the Cry
 ---
 
 SPDX header for reference:
-    // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+    // SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
     // SPDX-License-Identifier: MIT
