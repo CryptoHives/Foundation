@@ -18,7 +18,7 @@ public class AsyncCountdownEvent
 {
     private readonly AsyncManualResetEvent _amre = new();
     private int _count;
-    private int _initialCount;
+    private readonly int _initialCount;
 
     public AsyncCountdownEvent(int initialCount)
     {
