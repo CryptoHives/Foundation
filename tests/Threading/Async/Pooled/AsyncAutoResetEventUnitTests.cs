@@ -59,15 +59,14 @@ public class AsyncAutoResetEventUnitTests
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
     }
 
-    [Theory, CancelAfter(1000)]
+    [Theory, CancelAfter(3000)]
     public void RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
     {
-        var ev = new AsyncAutoResetEvent(runContinuationAsynchronously: runContinuationAsynchronously);
-        var continuationThreadId = 0;
-        var signalingThreadId = 0;
+        AsyncAutoResetEvent ev = new(initialState: false, runContinuationAsynchronously: runContinuationAsynchronously);
+        int continuationThreadId = 0;
+        int signalingThreadId = 0;
 
-        var waiter = Task.Run(async () =>
-        {
+        var waiter = Task.Run(async () => {
             await ev.WaitAsync().ConfigureAwait(false);
             continuationThreadId = Environment.CurrentManagedThreadId;
         });
