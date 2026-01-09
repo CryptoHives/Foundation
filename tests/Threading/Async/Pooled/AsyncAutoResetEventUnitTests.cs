@@ -62,7 +62,6 @@ public class AsyncAutoResetEventUnitTests
     [Theory, CancelAfter(3000)]
     public async Task RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
     {
-        object locallock = new();
         AsyncAutoResetEvent ev = new(runContinuationAsynchronously: runContinuationAsynchronously);
         int stage = 0;
 
