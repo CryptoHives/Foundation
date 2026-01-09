@@ -63,24 +63,43 @@ public class AsyncAutoResetEventUnitTests
     public void RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
     {
         AsyncAutoResetEvent ev = new(initialState: false, runContinuationAsynchronously: runContinuationAsynchronously);
-        int continuationThreadId = 0;
-        int signalingThreadId = 0;
+        int continuationRanDuringSet = 0;
+        var continuationStarted = new ManualResetEventSlim(false);
+        var setCompleted = new ManualResetEventSlim(false);
 
         var waiter = Task.Run(async () => {
             await ev.WaitAsync().ConfigureAwait(false);
-            continuationThreadId = Environment.CurrentManagedThreadId;
+            // Signal that continuation has started
+            continuationStarted.Set();
+            // Check if Set() has already completed
+            if (!setCompleted.IsSet)
+            {
+                // Continuation ran during Set() call (synchronous execution)
+                Interlocked.Exchange(ref continuationRanDuringSet, 1);
+            }
         });
 
-        var setter = Task.Run(async () => {
-            await Task.Delay(100).ConfigureAwait(false);
-            signalingThreadId = Environment.CurrentManagedThreadId;
-            ev.Set();
-            Thread.Sleep(1000);
-        });
+        // Give the waiter time to start waiting
+        Thread.Sleep(100);
 
-        Task.WaitAll(waiter, setter);
+        ev.Set();
+        setCompleted.Set();
 
-        Assert.That(continuationThreadId, runContinuationAsynchronously ? Is.Not.EqualTo(signalingThreadId) : Is.EqualTo(signalingThreadId));
+        // Wait for continuation to complete
+        waiter.Wait();
+
+        if (runContinuationAsynchronously)
+        {
+            // When async, continuation should NOT have run during Set()
+            Assert.That(continuationRanDuringSet, Is.EqualTo(0),
+                "Continuation should not execute synchronously during Set() when RunContinuationAsynchronously=true");
+        }
+        else
+        {
+            // When sync, continuation SHOULD have run during Set()
+            Assert.That(continuationRanDuringSet, Is.EqualTo(1),
+                "Continuation should execute synchronously during Set() when RunContinuationAsynchronously=false");
+        }
     }
 
     [Test]
