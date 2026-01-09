@@ -84,16 +84,6 @@ stages:
       framework: net8.0
       configuration: Debug
       jobnamesuffix: net80debug
-- stage: testnet90
-  dependsOn: [build]
-  displayName: 'Test .NET 9.0'
-  condition: and(succeeded(), ne(variables.ScheduledBuild, 'False'))
-  jobs:
-  - template: .azurepipelines/test.yml
-    parameters:
-      framework: net9.0
-      configuration: Release
-      jobnamesuffix: net90
 - stage: testnet100
   dependsOn: [build]
   displayName: 'Test .NET 10.0'

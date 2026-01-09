@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -52,8 +52,8 @@ using System.Threading.Tasks;
 public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 {
     private Task[]? _tasks;
-    private Task<AsyncLock.AsyncLockReleaser>[]? _tasksReleaser;
-    private ValueTask<AsyncLock.AsyncLockReleaser>[]? _lockHandle;
+    private Task<AsyncLock.Releaser>[]? _tasksReleaser;
+    private ValueTask<AsyncLock.Releaser>[]? _lockHandle;
 #if !SIGNASSEMBLY
     private Nito.AsyncEx.AwaitableDisposable<IDisposable>[]? _lockNitoHandle;
 #endif
@@ -61,7 +61,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 #if !NETFRAMEWORK
     private Task<IDisposable>[]? _lockNeoSmartHandle;
 #endif
-    private Task<RefImpl.AsyncLock.AsyncLockReleaser>[]? _lockRefImplHandle;
+    private Task<RefImpl.AsyncLock.Releaser>[]? _lockRefImplHandle;
 
     public static readonly object[] FixtureArgs = {
         new object[] { 0 },
@@ -135,7 +135,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     public void PooledGlobalSetup()
     {
         base.GlobalSetup();
-        _lockHandle = new ValueTask<AsyncLock.AsyncLockReleaser>[Iterations];
+        _lockHandle = new ValueTask<AsyncLock.Releaser>[Iterations];
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             }
         }
 
-        foreach (ValueTask<AsyncLock.AsyncLockReleaser> handle in _lockHandle!)
+        foreach (ValueTask<AsyncLock.Releaser> handle in _lockHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }
@@ -177,7 +177,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     public void PooledTaskGlobalSetup()
     {
         base.GlobalSetup();
-        _tasksReleaser = new Task<AsyncLock.AsyncLockReleaser>[Iterations];
+        _tasksReleaser = new Task<AsyncLock.Releaser>[Iterations];
     }
 
     /// <summary>
@@ -200,7 +200,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             }
         }
 
-        foreach (Task<AsyncLock.AsyncLockReleaser> task in _tasksReleaser!)
+        foreach (Task<AsyncLock.Releaser> task in _tasksReleaser!)
         {
             using (await task.ConfigureAwait(false)) { }
         }
@@ -307,7 +307,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     public void RefImplGlobalSetup()
     {
         base.GlobalSetup();
-        _lockRefImplHandle = new Task<RefImpl.AsyncLock.AsyncLockReleaser>[Iterations];
+        _lockRefImplHandle = new Task<RefImpl.AsyncLock.Releaser>[Iterations];
     }
 
     /// <summary>
@@ -331,7 +331,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             }
         }
 
-        foreach (Task<RefImpl.AsyncLock.AsyncLockReleaser> handle in _lockRefImplHandle!)
+        foreach (Task<RefImpl.AsyncLock.Releaser> handle in _lockRefImplHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }

@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -21,13 +21,13 @@ using System.Threading.Tasks;
 public class AsyncLock
 {
     private readonly AsyncSemaphore _semaphore;
-    private readonly Task<AsyncLockReleaser> _releaser;
+    private readonly Task<Releaser> _releaser;
 
-    public readonly struct AsyncLockReleaser : IDisposable
+    public readonly struct Releaser : IDisposable
     {
         private readonly AsyncLock _toRelease;
 
-        internal AsyncLockReleaser(AsyncLock toRelease)
+        internal Releaser(AsyncLock toRelease)
         {
             _toRelease = toRelease;
         }
@@ -41,15 +41,15 @@ public class AsyncLock
     public AsyncLock()
     {
         _semaphore = new AsyncSemaphore(1);
-        _releaser = Task.FromResult(new AsyncLockReleaser(this));
+        _releaser = Task.FromResult(new Releaser(this));
     }
 
-    public Task<AsyncLockReleaser> LockAsync()
+    public Task<Releaser> LockAsync()
     {
         Task wait = _semaphore.WaitAsync();
         return wait.IsCompleted
             ? _releaser
-            : wait.ContinueWith((_, state) => new AsyncLockReleaser((AsyncLock)state!), this, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            : wait.ContinueWith((_, state) => new Releaser((AsyncLock)state!), this, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 }
 

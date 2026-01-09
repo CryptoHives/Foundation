@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -53,6 +53,22 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
         _ = _eventStandard.Set();
         _ = _eventStandard.WaitOne();
         _ = _eventStandard.Reset();
+    }
+
+    /// <summary>
+    /// Benchmark for ManualResetEventSlim Set-then-Wait.
+    /// </summary>
+    /// <remarks>
+    /// Measures the synchronous blocking wait after signaling.
+    /// This is a pure synchronous baseline with no async overhead.
+    /// </remarks>
+    [Test]
+    [BenchmarkCategory("SetThenWait", "Slim")]
+    public void ManualResetEventSlimSetThenWait()
+    {
+        _eventSlim.Set();
+        _eventSlim.Wait(_cancellationToken);
+        _eventSlim.Reset();
     }
 
     /// <summary>

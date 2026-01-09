@@ -67,6 +67,40 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 - **Lock Release**: O(1) to signal next waiter
 - **Memory**: Minimal allocations due to pooled task sources and local waiter reuse
 
+## Benchmark Results
+
+The following benchmarks compare `AsyncLock` against popular alternatives including `Nito.AsyncEx.AsyncLock` and `SemaphoreSlim`.
+
+### Single Lock Benchmark
+
+This benchmark measures the performance of acquiring and releasing a single lock in an uncontended scenario.
+
+[!INCLUDE[Single Lock Benchmark](benchmarks/asynclock-single.md)]
+
+### Multiple Concurrent Lock Benchmark
+
+This benchmark measures performance under contention with multiple concurrent lock requests.
+
+[!INCLUDE[Multiple Lock Benchmark](benchmarks/asynclock-multiple.md)]
+
+### Benchmark Analysis
+
+**Key Findings:**
+
+1. **Uncontended Performance**: `AsyncLock` performs comparably to or better than `SemaphoreSlim` in uncontended scenarios due to the optimized fast path that avoids allocations entirely.
+
+2. **Memory Efficiency**: The pooled `IValueTaskSource` approach significantly reduces allocations compared to `TaskCompletionSource`-based implementations. This is especially beneficial in high-throughput scenarios.
+
+3. **Contended Scenarios**: Under contention, the local waiter optimization ensures the first queued waiter incurs no allocation, while subsequent waiters benefit from pool reuse.
+
+4. **ValueTask Advantage**: Returning `ValueTask<AsyncLockReleaser>` instead of `Task` allows synchronous completion without allocation when the lock is immediately available.
+
+**When to Choose AsyncLock:**
+
+- High-throughput scenarios where lock acquisition is frequent
+- Memory-sensitive applications where allocation pressure matters
+- Scenarios where locks are typically uncontended but occasional contention occurs
+
 ## Best Practices
 
 ### DO: Use the using pattern to ensure lock release and await the result directly

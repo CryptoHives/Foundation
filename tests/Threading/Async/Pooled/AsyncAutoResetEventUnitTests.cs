@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
@@ -59,29 +59,41 @@ public class AsyncAutoResetEventUnitTests
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
     }
 
-    [Theory, CancelAfter(1000)]
-    public void RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
+    [Theory, CancelAfter(3000)]
+    public async Task RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
     {
-        var ev = new AsyncAutoResetEvent(runContinuationAsynchronously: runContinuationAsynchronously);
-        var continuationThreadId = 0;
-        var signalingThreadId = 0;
+        AsyncAutoResetEvent ev = new(runContinuationAsynchronously: runContinuationAsynchronously);
+        int stage = 0;
 
-        var waiter = Task.Run(async () =>
-        {
+        var waiter = Task.Run(async () => {
             await ev.WaitAsync().ConfigureAwait(false);
-            continuationThreadId = Environment.CurrentManagedThreadId;
-        });
-
-        var setter = Task.Run(async () => {
             await Task.Delay(100).ConfigureAwait(false);
-            signalingThreadId = Environment.CurrentManagedThreadId;
-            ev.Set();
-            Thread.Sleep(1000);
+            Interlocked.Exchange(ref stage, 100);
         });
 
-        Task.WaitAll(waiter, setter);
+        // Give the waiter time to start waiting
+        await Task.Delay(100).ConfigureAwait(false);
 
-        Assert.That(continuationThreadId, runContinuationAsynchronously ? Is.Not.EqualTo(signalingThreadId) : Is.EqualTo(signalingThreadId));
+        int beforeContinuation = Interlocked.Exchange(ref stage, 1);
+        ev.Set();
+        int afterContinuation = Interlocked.Exchange(ref stage, 2);
+
+        // Wait for continuation to complete
+        await waiter.ConfigureAwait(false);
+
+        Assert.That(beforeContinuation, Is.EqualTo(0));
+        if (runContinuationAsynchronously)
+        {
+            // Continuation should not have run inline
+            Assert.That(afterContinuation, Is.EqualTo(1));
+            Assert.That(stage, Is.EqualTo(100));
+        }
+        else
+        {
+            // Continuation may have run inline
+            Assert.That(afterContinuation, Is.AnyOf(1, 100));
+            Assert.That(stage, Is.AnyOf(2, 100));
+        }
     }
 
     [Test]

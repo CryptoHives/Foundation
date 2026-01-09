@@ -1,10 +1,27 @@
-﻿## Threading Benchmarks
+﻿
+## Threading Benchmarks
 
 This page documents the benchmarks included in the Threading library.
 
 ### Overview
 
 BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Threading/Async/Pooled/` and can be executed with the BenchmarkSwitcher entry point at `tests/Common/Main.cs`.
+
+### Updating Benchmark Results
+
+Benchmark results are stored in `docfx/packages/threading/benchmarks/` and can be updated after a local benchmark run using:
+
+```cmd
+scripts\update-benchmark-docs.cmd
+```
+
+Or on PowerShell:
+
+```powershell
+.\scripts\update-benchmark-docs.ps1
+```
+
+See [benchmarks/README.md](benchmarks/README.md) for details.
 
 ### Included benchmark suites
 
@@ -40,6 +57,8 @@ Notes:
 
 When run locally in `Release` mode, BenchmarkDotNet writes results and artifacts to:
 - `tests/Threading/BenchmarkDotNet.Artifacts/results/`
+
+After running benchmarks, use the update scripts to copy results to the documentation folder.
 
 ### Adding a new benchmark
 
@@ -274,7 +293,7 @@ With **2 iterations** (two waiters), overhead starts to show as all waiters must
 | PooledAsTaskManualResetEventWaitThenSetAsync                   | 2          | NotCancelled     |    928.79 ns |     ? |     344 B |           ? |
 | NitoAsyncManualResetEventWaitThenSetAsync                      | 2          | NotCancelled     |  1,232.19 ns |     ? |    1488 B |           ? |
 
-With **10 iterations** (ten waiters), the cost of releasing all waiters becomes more apparent. The pooled implementation is slower than the reference implementation but maintains zero allocations:
+With **10 iterations**, the cost of releasing all waiters becomes more apparent. The pooled implementation is slower than the reference implementation but maintains zero allocations:
 
 | Method                                                         | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
 |--------------------------------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
@@ -286,7 +305,7 @@ With **10 iterations** (ten waiters), the cost of releasing all waiters becomes 
 | PooledAsyncManualResetEventWaitThenSetAsync                    | 10         | None             |    390.19 ns |  5.51 |         - |        0.00 |
 | PooledAsTaskContSync                                           | 10         | None             |    565.94 ns |  7.99 |     800 B |        8.33 |
 | PooledAsTaskManualResetEventWaitThenSetAsync                   | 10         | None             |  2,425.78 ns | 34.25 |    1240 B |       12.92 |
-|                                                                |            |                  |              |       |           |             |
+|                                                              |            |                  |               |       |           |             |
 | **PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync** | 10         | NotCancelled     |    518.46 ns |     ? |         - |           ? |
 | PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync         | 10         | NotCancelled     |    520.64 ns |     ? |         - |           ? |
 | PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 10         | NotCancelled     |    533.18 ns |     ? |         - |           ? |
@@ -295,146 +314,17 @@ With **10 iterations** (ten waiters), the cost of releasing all waiters becomes 
 | PooledAsTaskManualResetEventWaitThenSetAsync                   | 10         | NotCancelled     |  3,141.91 ns |     ? |    1240 B |           ? |
 | NitoAsyncManualResetEventWaitThenSetAsync                      | 10         | NotCancelled     |  4,231.36 ns |     ? |    6464 B |           ? |
 
-With **100 iterations** (hundred waiters), the overhead of releasing all waiters is substantial, but the pooled implementation still provides zero allocations. The reference implementation is fastest but allocates per waiter. With cancellation tokens, the pooled implementation significantly outperforms Nito.AsyncEx:
+On the case with **100 iterations** the pooled implementation is again slower than the semaphore slim implementation but still allocates no memory, because the ObjectPool defaults to 128 items. For the cancellable case, the pooled implementation has still no allocations in contrary to the other implementations.
 
-| Method                                                         | Iterations | cancellationType | Mean          | Ratio | Allocated | Alloc Ratio |
-|--------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|------------:|
-| RefImplAsyncManualResetEventWaitThenSetAsync                   | 100        | None             |    568.25 ns |  1.00 |      96 B |        1.00 |
-| NitoAsyncManualResetEventWaitThenSetAsync                      | 100        | None             |  1,008.70 ns |  1.78 |      96 B |        1.00 |
-| **PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync** | 100        | None             |  3,216.88 ns |  5.66 |         - |        0.00 |
-| PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync         | 100        | None             |  3,220.85 ns |  5.67 |         - |        0.00 |
-| PooledAsyncManualResetEventWaitThenSetAsync                    | 100        | None             |  3,437.26 ns |  6.05 |         - |        0.00 |
-| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 100        | None             |  3,444.67 ns |  6.06 |         - |        0.00 |
-| PooledAsTaskContSync                                           | 100        | None             |  5,138.45 ns |  9.04 |    8000 B |       83.33 |
-| PooledAsTaskManualResetEventWaitThenSetAsync                   | 100        | None             | 16,021.67 ns | 28.20 |   11321 B |      117.93 |
-|                                                                |            |                  |              |       |           |             |
-| **PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync**         | 100        | NotCancelled     |  4,840.71 ns |     ? |         - |           ? |
-| PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync | 100        | NotCancelled     |  4,844.07 ns |     ? |         - |           ? |
-| PooledContSyncAsyncManualResetEventWaitThenSetAsync            | 100        | NotCancelled     |  4,965.78 ns |     ? |         - |           ? |
-| PooledAsyncManualResetEventWaitThenSetAsync                    | 100        | NotCancelled     |  5,245.90 ns |     ? |         - |           ? |
-| PooledAsTaskContSync                                           | 100        | NotCancelled     |  7,508.13 ns |     ? |    8000 B |           ? |
-| NitoAsyncManualResetEventWaitThenSetAsync                      | 100        | NotCancelled     | 37,276.17 ns |     ? |   61650 B |           ? |
-| PooledAsTaskManualResetEventWaitThenSetAsync                   | 100        | NotCancelled     | 77,166.22 ns |     ? |   11361 B |           ? |
-
-**Summary:** `AsyncManualResetEvent` pooled implementations trade latency for memory efficiency. When you have many waiters that need to be released simultaneously, the reference implementation is faster but allocates per-waiter. The pooled implementation maintains zero allocations regardless of contention level, making it ideal for sustained high-throughput scenarios where memory pressure matters more than absolute latency. Avoid `AsTask()` conversion with `RunContinuationAsynchronously=true` for best performance.
-
-### AsyncLock Benchmarks
-
-A research of available AsyncLock implementations was done and the following popular implementations were included in the benchmarks:
-- PooledAsyncLock: The pooled implementation from this library
-- RefImplAsyncLock: The reference implementation from Stephen Toub's blog, which does not support cancellation tokens
-- NonKeyedAsyncLock: The implementation from the AsyncKeyedLock library by Mark Cilia Vincenti, which supports cancellation tokens but is out of competition due to its support of nested async locks
-- NitoAsyncLock: The implementation from Nito.AsyncEx library
-- NeoSmartAsyncLock: The implementation from the NeoSmart.Async library
-- SemaphoreSlim: The classic SemaphoreSlim used as an AsyncLock
-
-#### AsyncLock Single Benchmark
-
-The overhead of various synchronization methods without contention.
-The standard lock patterns including the new .NET 9 `Lock` and `LockEnterScope` method are measured alongside interlocked increment and a simple increment baseline.
-
-First the classic synchronization methods, increment and Interlocked.Increment as reference:
-
-| Method                             | Mean       | Ratio | Allocated | Alloc Ratio |
-|----------------------------------- |-----------:|------:|----------:|------------:|
-| IncrementSingle                    |  0.0054 ns | 0.000 |         - |          NA |
-| InterlockedIncrementSingle         |  0.2067 ns | 0.010 |         - |          NA |
-| LockEnterScopeSingle               |  3.3855 ns | 0.160 |         - |          NA |
-| LockUnlockSingle                   |  3.4291 ns | 0.162 |         - |          NA |
-| ObjectLockUnlockSingle             |  4.3611 ns | 0.207 |         - |          NA |
-
-The new .NET 9 `Lock` and `LockEnterScope` methods are slightly faster than a classic lock statement. Apparently it's interesting to see here that an Interlocked operation is still significantly faster than any locking mechanism with an increment.
-
-Next, various AsyncLock implementations without contention and without cancellation token:
-
-| Method                             | Mean       | Ratio | Allocated | Alloc Ratio |
-|----------------------------------- |-----------:|------:|----------:|------------:|
-| **LockUnlockPooledSingleAsync**        | 13.4359 ns | 0.637 |         - |          NA |
-| LockUnlockSemaphoreSlimSingleAsync | 19.2174 ns | 0.910 |         - |          NA |
-| LockUnlockRefImplSingleAsync       | 21.1066 ns | 1.000 |         - |          NA |
-| LockUnlockNonKeyedSingleAsync      | 22.7554 ns | 1.078 |         - |          NA |
-| LockUnlockNitoSingleAsync          | 41.8696 ns | 1.984 |     320 B |          NA |
-| LockUnlockNeoSmartSingleAsync      | 61.7783 ns | 2.927 |     208 B |          NA |
-
-The pooled implementation is the fastest AsyncLock implementation, followed by the reference implementation.
-SemaphoreSlim and NonKeyedAsyncLock have moderate overhead, while Nito.AsyncEx and NeoSmart's AsyncLock have the highest overhead and they need allocations.
-
-#### AsyncLock Multiple Benchmark with varying contention (Iterations)
-
-The case with 0 iterations measures the uncontested lock/unlock overhead with multiple concurrent waiters and with a cancellation token.
-Benchmarks with 1, 10, and 100 iterations measure the behavior under contention with increasing number of concurrent waiters.
-In addition to the previous uncontested benchmark, the pooled implementation with AsTask() is included to show the overhead of ValueTask/IValueTaskSource management with conversion to Task.
-All implementations happen to deal efficiently with an uncostested lock even with cancellation token.
-
-| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
-| **LockUnlockPooledMultipleAsync**        | 0          | None             |     14.08 ns |  0.67 |         - |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 0          | None             |     15.01 ns |  0.71 |         - |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 0          | None             |     20.42 ns |  0.97 |         - |          NA |
-| LockUnlockRefImplMultipleAsync       | 0          | None             |     21.04 ns |  1.00 |         - |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 0          | None             |     23.78 ns |  1.13 |         - |          NA |
-| LockUnlockNitoMultipleAsync          | 0          | None             |     43.51 ns |  2.07 |     320 B |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 0          | None             |     65.92 ns |  3.13 |     208 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| **LockUnlockPooledMultipleAsync**        | 0          | NotCancelled     |     14.12 ns |     ? |         - |           ? |
-| LockUnlockPooledTaskMultipleAsync    | 0          | NotCancelled     |     15.35 ns |     ? |         - |           ? |
-| LockUnlockSemaphoreSlimMultipleAsync | 0          | NotCancelled     |     19.67 ns |     ? |         - |           ? |
-| LockUnlockNonKeyedMultipleAsync      | 0          | NotCancelled     |     24.43 ns |     ? |         - |           ? |
-| LockUnlockNitoMultipleAsync          | 0          | NotCancelled     |     42.91 ns |     ? |     320 B |           ? |
-| LockUnlockNeoSmartMultipleAsync      | 0          | NotCancelled     |     62.93 ns |     ? |     208 B |           ? |
-
-The case with 1 iteration measures the overhead of a single waiter for the contested lock. Noticeable the pooled implementation is the fastest here because of the local value task source, SemaphoreSlim almost on parity and the reference implementation a lot slower.
-The pooled implementation with an AsTask() conversion, due to the RunContinuationsAsynchronously=true causes a high performance degradation and a moderate allocation in the underlying IValueTaskSource implementation.
-However only because in the benchmark the Task is awaited outside the lock, which causes to hit that inefficient code path in the IValueTaskSource.
-
-| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
-| **LockUnlockPooledMultipleAsync**        | 1          | None             |     41.79 ns |  0.51 |         - |        0.00 |
-| LockUnlockSemaphoreSlimMultipleAsync | 1          | None             |     46.54 ns |  0.57 |      88 B |        0.41 |
-| LockUnlockRefImplMultipleAsync       | 1          | None             |     81.51 ns |  1.00 |     216 B |        1.00 |
-| LockUnlockNitoMultipleAsync          | 1          | None             |    103.40 ns |  1.27 |     728 B |        3.37 |
-| LockUnlockNeoSmartMultipleAsync      | 1          | None             |    129.47 ns |  1.59 |     416 B |        1.93 |
-| LockUnlockPooledTaskMultipleAsync    | 1          | None             |    460.20 ns |  5.65 |     272 B |        1.26 |
-| LockUnlockNonKeyedMultipleAsync      | 1          | None             |    511.72 ns |  6.28 |     352 B |        1.63 |
-|                                      |            |                  |              |       |           |             |
-| **LockUnlockPooledMultipleAsync**        | 1          | NotCancelled     |     60.39 ns |     ? |         - |           ? |
-| LockUnlockNeoSmartMultipleAsync      | 1          | NotCancelled     |    128.10 ns |     ? |     416 B |           ? |
-| LockUnlockNitoMultipleAsync          | 1          | NotCancelled     |    413.92 ns |     ? |     968 B |           ? |
-| LockUnlockPooledTaskMultipleAsync    | 1          | NotCancelled     |    528.06 ns |     ? |     272 B |           ? |
-| LockUnlockSemaphoreSlimMultipleAsync | 1          | NotCancelled     |    579.05 ns |     ? |     504 B |           ? |
-| LockUnlockNonKeyedMultipleAsync      | 1          | NotCancelled     |    705.81 ns |     ? |     640 B |           ? |
-
-The case with 10 iterations manifests the same behavior with moderate contention, as the ObjectPool is not exhausted. But SemaphoreSlim is now the fastest implementation, although using moderate allocations, followed by the pooled implementation.
-With cancellation token the pooled implementations outperform others except NeoSmart by at least 5 times AND doesn't allocate extra memory.
-
-| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
-| LockUnlockSemaphoreSlimMultipleAsync | 10         | None             |    304.43 ns |  0.44 |     880 B |        0.41 |
-| **LockUnlockPooledMultipleAsync**        | 10         | None             |    367.17 ns |  0.53 |         - |        0.00 |
-| LockUnlockNitoMultipleAsync          | 10         | None             |    607.12 ns |  0.87 |    4400 B |        2.04 |
-| LockUnlockRefImplMultipleAsync       | 10         | None             |    695.61 ns |  1.00 |    2160 B |        1.00 |
-| LockUnlockNeoSmartMultipleAsync      | 10         | None             |    699.72 ns |  1.01 |    2288 B |        1.06 |
-| LockUnlockPooledTaskMultipleAsync    | 10         | None             |  3,073.14 ns |  4.42 |    1352 B |        0.63 |
-| LockUnlockNonKeyedMultipleAsync      | 10         | None             |  3,243.04 ns |  4.66 |    2296 B |        1.06 |
-|                                      |            |                  |              |       |           |             |
-| **LockUnlockPooledMultipleAsync**        | 10         | NotCancelled     |    541.77 ns |     ? |         - |           ? |
-| LockUnlockNeoSmartMultipleAsync      | 10         | NotCancelled     |    707.20 ns |     ? |    2288 B |           ? |
-| LockUnlockNitoMultipleAsync          | 10         | NotCancelled     |  2,899.35 ns |     ? |    6800 B |           ? |
-| LockUnlockPooledTaskMultipleAsync    | 10         | NotCancelled     |  3,568.60 ns |     ? |    1352 B |           ? |
-| LockUnlockSemaphoreSlimMultipleAsync | 10         | NotCancelled     |  4,328.64 ns |     ? |    3888 B |           ? |
-| LockUnlockNonKeyedMultipleAsync      | 10         | NotCancelled     |  5,149.05 ns |     ? |    5176 B |           ? |
-
-On the case with 100 iterations the pooled implementation is again slower than the semaphore slim implementation but still allocates no memory, because the ObjectPool defaults to 128 items. For the cancellable case, the pooled implementation has still no allocations in contrary to the other implementations.
-
-| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
+| Method                                                         | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
+|--------------------------------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
 | LockUnlockSemaphoreSlimMultipleAsync | 100        | None             |  2,797.20 ns |  0.42 |    8800 B |        0.41 |
 | **LockUnlockPooledMultipleAsync**        | 100        | None             |  3,481.82 ns |  0.52 |         - |        0.00 |
 | LockUnlockNitoMultipleAsync          | 100        | None             |  5,994.04 ns |  0.90 |   41120 B |        1.90 |
 | LockUnlockNeoSmartMultipleAsync      | 100        | None             |  6,414.68 ns |  0.96 |   21008 B |        0.97 |
 | LockUnlockRefImplMultipleAsync       | 100        | None             |  6,694.16 ns |  1.00 |   21600 B |        1.00 |
 | LockUnlockPooledTaskMultipleAsync    | 100        | None             | 33,296.81 ns |  4.97 |   12216 B |        0.57 |
-| LockUnlockNonKeyedMultipleAsync      | 100        | None             | 34,825.87 ns |  5.20 |   21800 B |        1.01 |
+| LockUnlockNonKeyedMultipleAsync      | 100        | None             | 34,825.87 ns |  5.20 |   21800 B |        1.06 |
 |                                      |            |                  |              |       |           |             |
 | **LockUnlockPooledMultipleAsync**        | 100        | NotCancelled     |  5,149.70 ns |     ? |         - |           ? |
 | LockUnlockNeoSmartMultipleAsync      | 100        | NotCancelled     |  6,522.29 ns |     ? |   21008 B |           ? |
@@ -442,7 +332,3 @@ On the case with 100 iterations the pooled implementation is again slower than t
 | LockUnlockPooledTaskMultipleAsync    | 100        | NotCancelled     | 35,583.80 ns |     ? |   12216 B |           ? |
 | LockUnlockSemaphoreSlimMultipleAsync | 100        | NotCancelled     | 42,677.37 ns |     ? |   37792 B |           ? |
 | LockUnlockNonKeyedMultipleAsync      | 100        | NotCancelled     | 51,308.63 ns |     ? |   50600 B |           ? |
-
----
-
-© 2025 The Keepers of the CryptoHives
