@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing cancellation behavior

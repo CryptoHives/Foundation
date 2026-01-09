@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -251,6 +251,8 @@ public sealed class AsyncLock
         }
 #endif
 
+        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
+        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
         ManualResetValueTaskSource<Releaser>? toCancel = null;
         lock (_mutex)
         {
