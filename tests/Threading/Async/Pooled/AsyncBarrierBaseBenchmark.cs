@@ -13,12 +13,14 @@ using System.Threading;
 /// </summary>
 public abstract class AsyncBarrierBaseBenchmark
 {
-    private protected int _participantCount;
     private protected AsyncBarrier _barrierPooled;
     private protected RefImpl.AsyncBarrier _barrierRefImp;
     private protected Barrier _barrierStandard;
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
+
+    [Params(1, 10)]
+    public int ParticipantCount { get; set; } = 5;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -27,10 +29,9 @@ public abstract class AsyncBarrierBaseBenchmark
     [GlobalSetup]
     public virtual void GlobalSetup()
     {
-        _participantCount = 4;
-        _barrierPooled = new AsyncBarrier(_participantCount);
-        _barrierRefImp = new RefImpl.AsyncBarrier(_participantCount);
-        _barrierStandard = new Barrier(_participantCount);
+        _barrierPooled = new AsyncBarrier(ParticipantCount);
+        _barrierRefImp = new RefImpl.AsyncBarrier(ParticipantCount);
+        _barrierStandard = new Barrier(ParticipantCount);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
     }

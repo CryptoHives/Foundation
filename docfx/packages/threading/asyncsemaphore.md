@@ -1,4 +1,4 @@
-# AsyncSemaphore
+﻿# AsyncSemaphore
 
 A pooled, allocation-free async semaphore that limits concurrent access using ValueTask-based waiters.
 
@@ -98,6 +98,41 @@ Releases one or more permits back to the semaphore.
 - **FIFO** queue for waiters when no permits are available
 - **Zero allocations** on the fast path (uncontended)
 - Pooled ValueTaskSource instances for waiters
+
+## Benchmark Results
+
+The following benchmarks compare `AsyncSemaphore` against `SemaphoreSlim` and `Nito.AsyncEx.AsyncSemaphore`.
+
+### Single Wait/Release Benchmark
+
+Measures the performance of acquiring and releasing a single permit.
+
+[!INCLUDE[Semaphore Benchmark](benchmarks/asyncsemaphore-single.md)]
+
+### Benchmark Analysis
+
+**Key Findings:**
+
+1. **Fast Path Performance**: When permits are available, `AsyncSemaphore` completes synchronously with zero allocations, providing excellent performance for uncontended scenarios.
+
+2. **Contention Handling**: Under contention, the pooled `IValueTaskSource` approach reduces allocation pressure compared to `SemaphoreSlim.WaitAsync()`.
+
+3. **Memory Efficiency**: The local waiter optimization ensures the first queued waiter incurs no allocation, with subsequent waiters benefiting from pool reuse.
+
+4. **ValueTask Advantage**: Returning `ValueTask` instead of `Task` avoids allocations when permits are immediately available.
+
+**When to Choose AsyncSemaphore:**
+
+- Rate limiting scenarios with frequent permit acquisition
+- Connection pooling where semaphore operations are hot paths
+- High-throughput scenarios where allocation pressure matters
+
+**Comparison with SemaphoreSlim:**
+
+`SemaphoreSlim` is a mature, well-tested synchronization primitive in the .NET BCL. Choose `AsyncSemaphore` when:
+- You need lower allocation overhead in high-frequency scenarios
+- Your application is allocation-sensitive
+- You want consistent `ValueTask`-based APIs across your codebase
 
 ## Comparison with SemaphoreSlim
 

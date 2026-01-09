@@ -142,6 +142,46 @@ The implementation provides an internal `Reset()` helper used in tests/benchmark
 - **WaitAsync()**: O(1) when signaled, otherwise enqueues waiter
 - **Memory**: Zero allocations when waiters can be satisfied from the local waiter or the configured pool; allocations happen only when the pool is exhausted or when cancellation registrations/Task wrappers are required.
 
+## Benchmark Results
+
+The following benchmarks compare `AsyncAutoResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncAutoResetEvent` and reference `TaskCompletionSource`-based implementations.
+
+### Set Operation Benchmark
+
+Measures the performance of signaling the event when no waiters are queued.
+
+[!INCLUDE[Set Benchmark](benchmarks/asyncautoresetevent-set.md)]
+
+### Set Then Wait Benchmark
+
+Measures the pattern where the event is set before a waiter arrives (synchronous completion path).
+
+[!INCLUDE[Set Then Wait Benchmark](benchmarks/asyncautoresetevent-setthenw.md)]
+
+### Wait Then Set Benchmark
+
+Measures the pattern where a waiter is queued before the event is signaled (asynchronous completion path).
+
+[!INCLUDE[Wait Then Set Benchmark](benchmarks/asyncautoresetevent-waitthenset.md)]
+
+### Benchmark Analysis
+
+**Key Findings:**
+
+1. **Synchronous Completion**: When the event is already signaled, `WaitAsync()` completes synchronously with zero allocations, matching or exceeding `Nito.AsyncEx` performance.
+
+2. **Pooled Waiter Advantage**: The local waiter optimization ensures the first queued waiter incurs no allocation. Under typical producer-consumer patterns, this covers the common case.
+
+3. **Memory Efficiency**: Compared to `TaskCompletionSource`-based implementations, the pooled approach significantly reduces GC pressure in high-frequency signaling scenarios.
+
+4. **AsTask() Overhead**: When `RunContinuationAsynchronously=true`, calling `AsTask()` before signaling introduces significant overhead. Always await `ValueTask` directly when possible.
+
+**When to Choose AsyncAutoResetEvent:**
+
+- Producer-consumer patterns with frequent signaling
+- Scenarios where memory allocation is a concern
+- High-throughput event-driven architectures
+
 ## Auto-Reset Behavior
 
 After each `Set()` call:

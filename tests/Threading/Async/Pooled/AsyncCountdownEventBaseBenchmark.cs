@@ -19,13 +19,15 @@ using NitoAsyncEx = Nito.AsyncEx;
 /// </summary>
 public abstract class AsyncCountdownEventBaseBenchmark
 {
-    private protected int _participantCount;
     private protected AsyncCountdownEvent _countdownPooled;
     private protected NitoAsyncEx.AsyncCountdownEvent _countdownNitoAsync;
     private protected RefImpl.AsyncCountdownEvent _countdownRefImp;
     private protected CountdownEvent _countdownStandard;
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
+
+    [Params(1, 10)]
+    public int ParticipantCount { get; set; } = 5;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -34,11 +36,10 @@ public abstract class AsyncCountdownEventBaseBenchmark
     [GlobalSetup]
     public virtual void GlobalSetup()
     {
-        _participantCount = 10;
-        _countdownPooled = new AsyncCountdownEvent(_participantCount);
-        _countdownNitoAsync = new NitoAsyncEx.AsyncCountdownEvent(_participantCount);
-        _countdownRefImp = new RefImpl.AsyncCountdownEvent(_participantCount);
-        _countdownStandard = new CountdownEvent(_participantCount);
+        _countdownPooled = new AsyncCountdownEvent(ParticipantCount);
+        _countdownNitoAsync = new NitoAsyncEx.AsyncCountdownEvent(ParticipantCount);
+        _countdownRefImp = new RefImpl.AsyncCountdownEvent(ParticipantCount);
+        _countdownStandard = new CountdownEvent(ParticipantCount);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
     }

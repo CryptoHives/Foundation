@@ -91,7 +91,6 @@ public class AsyncCountdownEventUnitTests
         countdown.Signal();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(countdown.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.EqualTo(0));
     }
 
@@ -126,7 +125,6 @@ public class AsyncCountdownEventUnitTests
         await t2.ConfigureAwait(false);
         await t3.ConfigureAwait(false);
 
-        Assert.That(countdown.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.EqualTo(0));
     }
 
@@ -236,7 +234,6 @@ public class AsyncCountdownEventUnitTests
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await countdown.WaitAsync(cts.Token).ConfigureAwait(false));
 
-        Assert.That(countdown.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.EqualTo(0));
     }
 
@@ -257,7 +254,6 @@ public class AsyncCountdownEventUnitTests
             await waiter.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
-        Assert.That(countdown.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.EqualTo(0));
     }
 

@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -23,6 +23,7 @@ public abstract class AsyncManualResetEventBaseBenchmark
     private protected NitoAsyncEx.AsyncManualResetEvent _eventNitoAsync;
     private protected RefImpl.AsyncManualResetEvent _eventRefImp;
     private protected ManualResetEvent _eventStandard;
+    private protected ManualResetEventSlim _eventSlim;
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
 
@@ -37,6 +38,7 @@ public abstract class AsyncManualResetEventBaseBenchmark
         _eventNitoAsync = new NitoAsyncEx.AsyncManualResetEvent();
         _eventRefImp = new RefImpl.AsyncManualResetEvent();
         _eventStandard = new ManualResetEvent(false);
+        _eventSlim = new ManualResetEventSlim(false);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
     }
@@ -51,5 +53,6 @@ public abstract class AsyncManualResetEventBaseBenchmark
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
         _eventStandard?.Dispose();
+        _eventSlim?.Dispose();
     }
 }

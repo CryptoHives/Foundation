@@ -1,4 +1,4 @@
-# AsyncReaderWriterLock
+﻿# AsyncReaderWriterLock
 
 A pooled, allocation-free async reader-writer lock that supports multiple concurrent readers or a single exclusive writer using ValueTask-based waiters.
 
@@ -139,6 +139,46 @@ using (await _rwLock.ReaderLockAsync())
 - **O(1)** writer acquisition when lock is free
 - **O(n)** reader batch release when writer releases
 - **Zero allocations** on the fast path (uncontended)
+
+## Benchmark Results
+
+The following benchmarks compare `AsyncReaderWriterLock` against `Nito.AsyncEx.AsyncReaderWriterLock` and reference implementations.
+
+### Reader Lock Benchmark
+
+Measures the performance of acquiring and releasing reader locks.
+
+[!INCLUDE[Reader Lock Benchmark](benchmarks/asyncreaderwriterlock-reader.md)]
+
+### Writer Lock Benchmark
+
+Measures the performance of acquiring and releasing writer locks.
+
+[!INCLUDE[Writer Lock Benchmark](benchmarks/asyncreaderwriterlock-writer.md)]
+
+### Benchmark Analysis
+
+**Key Findings:**
+
+1. **Reader Performance**: Uncontended reader lock acquisition is extremely fast with zero allocations. Multiple concurrent readers can proceed without blocking each other.
+
+2. **Writer Priority**: The writer-priority design prevents starvation but may impact reader throughput when writers are frequently waiting.
+
+3. **Memory Efficiency**: Separate pools for readers and writers allow fine-tuned pool sizing based on workload characteristics.
+
+4. **Releaser Struct**: The value-type `Releaser` ensures no allocation for the lock handle itself, only for the `IValueTaskSource` when contention occurs.
+
+**When to Choose AsyncReaderWriterLock:**
+
+- Read-heavy workloads with occasional writes
+- Cache implementations with read/write patterns
+- Document or configuration stores
+
+**Design Trade-offs:**
+
+- Writer priority may reduce reader throughput under write-heavy loads
+- Consider `AsyncLock` for simpler mutex-style locking
+- For read-only scenarios, no lock is needed
 
 ## Comparison with ReaderWriterLockSlim
 

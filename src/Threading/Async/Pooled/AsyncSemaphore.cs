@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -198,7 +199,7 @@ public sealed class AsyncSemaphore
 
             if (waitersToRelease > 0)
             {
-                toRelease = new ManualResetValueTaskSource<bool>[waitersToRelease];
+                toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(waitersToRelease);
                 for (int i = 0; i < waitersToRelease; i++)
                 {
                     toRelease[i] = _waiters.Dequeue();
@@ -211,9 +212,16 @@ public sealed class AsyncSemaphore
 
         if (toRelease is not null)
         {
-            for (int i = 0; i < toReleaseCount; i++)
+            try
             {
-                toRelease[i].SetResult(true);
+                for (int i = 0; i < toReleaseCount; i++)
+                {
+                    toRelease[i].SetResult(true);
+                }
+            }
+            finally
+            {
+                ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
             }
         }
     }
@@ -224,8 +232,7 @@ public sealed class AsyncSemaphore
     internal bool InternalWaiterInUse => _localWaiter.InUse;
 
 #if NET6_0_OR_GREATER
-    private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) =>
-    {
+    private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
         var waiter = (ManualResetValueTaskSource<bool>)state!;
         var context = (AsyncSemaphore)waiter.Owner!;
         context.CancellationCallback(waiter);

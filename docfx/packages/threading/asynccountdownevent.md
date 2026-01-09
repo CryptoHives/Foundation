@@ -1,4 +1,4 @@
-# AsyncCountdownEvent
+﻿# AsyncCountdownEvent
 
 A pooled, allocation-free async countdown event that signals when a count reaches zero using ValueTask-based waiters.
 
@@ -146,6 +146,34 @@ Resets the countdown to the specified count, or to the initial count if not spec
 - **O(n)** broadcast to all waiters when count reaches zero
 - **Zero allocations** when count reaches zero with no waiters
 - Pooled ValueTaskSource instances for waiters
+
+## Benchmark Results
+
+The following benchmarks compare `AsyncCountdownEvent` against `Nito.AsyncEx.AsyncCountdownEvent` and reference implementations.
+
+### Signal Operation Benchmark
+
+Measures the performance of signaling and waiting on the countdown event.
+
+[!INCLUDE[Countdown Event Benchmark](benchmarks/asynccountdownevent-signal.md)]
+
+### Benchmark Analysis
+
+**Key Findings:**
+
+1. **Signal Performance**: The `Signal()` operation is O(1) until the final signal triggers the broadcast to all waiters.
+
+2. **Memory Efficiency**: Pooled `IValueTaskSource` instances reduce allocation pressure in repeated countdown cycles (e.g., using `Reset()` to reuse the countdown).
+
+3. **Broadcast Overhead**: When the count reaches zero, all waiters are signaled individually. For scenarios with many waiters, consider the trade-off compared to shared `Task`-based approaches.
+
+4. **SignalAndWaitAsync**: This combined operation is optimized for the common pattern where a participant signals and then waits for others.
+
+**When to Choose AsyncCountdownEvent:**
+
+- Fan-out/fan-in coordination patterns
+- Batch processing with parallel workers
+- Scenarios where the countdown is frequently reset and reused
 
 ## See Also
 

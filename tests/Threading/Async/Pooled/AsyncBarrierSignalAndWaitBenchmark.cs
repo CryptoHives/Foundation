@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA2012 // Use ValueTasks correctly
+
 namespace Threading.Tests.Async.Pooled;
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NUnit.Framework;
-using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -31,6 +31,7 @@ using System.Threading.Tasks;
 /// </list>
 /// </remarks>
 [TestFixture]
+[TestFixtureSource(nameof(FixtureArgs))]
 [MemoryDiagnoser(displayGenColumns: false)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
@@ -39,27 +40,46 @@ using System.Threading.Tasks;
 [BenchmarkCategory("AsyncBarrier")]
 public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
 {
-    private volatile int _counter;
+    private Task[] _tasks;
+    private ValueTask[] _valueTasks;
+
+    public static readonly object[] FixtureArgs = {
+        new object[] { 1 },
+        new object[] { 10 },
+    };
+
+    public AsyncBarrierSignalAndWaitBenchmark() { }
+
+    public AsyncBarrierSignalAndWaitBenchmark(int participateCount)
+    {
+        ParticipantCount = participateCount;
+    }
 
     /// <summary>
-    /// Benchmark for standard Barrier.
+    /// Override for custom global setup.
+    /// </summary>
+    public override void GlobalSetup()
+    {
+        _tasks = new Task[ParticipantCount];
+        _valueTasks = new ValueTask[ParticipantCount];
+        base.GlobalSetup();
+    }
+
+    /// <summary>
+    /// Benchmark for standard barrier.
     /// </summary>
     [Test]
     [Benchmark]
-    public void SignalAndWaitBarrierStandard()
+    public async Task SignalAndWaitBarrierStandard()
     {
-        var barrier = new Barrier(_participantCount);
-        var tasks = new Task[_participantCount];
-        for (int i = 0; i < _participantCount; i++)
+        for (int i = 0; i < ParticipantCount; i++)
         {
-            tasks[i] = Task.Run(() =>
-            {
-                barrier.SignalAndWait();
-                Interlocked.Increment(ref _counter);
-            });
+            _tasks[i] = Task.Run(_barrierStandard.SignalAndWait);
         }
-        Task.WaitAll(tasks);
-        barrier.Dispose();
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            await _tasks[i].ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -69,17 +89,14 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     [Benchmark(Baseline = true)]
     public async Task SignalAndWaitPooledAsync()
     {
-        var barrier = new AsyncBarrier(_participantCount);
-        var tasks = new Task[_participantCount];
-        for (int i = 0; i < _participantCount; i++)
+        for (int i = 0; i < ParticipantCount; i++)
         {
-            tasks[i] = Task.Run(async () =>
-            {
-                await barrier.SignalAndWaitAsync().ConfigureAwait(false);
-                Interlocked.Increment(ref _counter);
-            });
+            _valueTasks[i] = _barrierPooled.SignalAndWaitAsync();
         }
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            await _valueTasks[i].ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -89,16 +106,13 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     [Benchmark]
     public async Task SignalAndWaitRefImplAsync()
     {
-        var barrier = new RefImpl.AsyncBarrier(_participantCount);
-        var tasks = new Task[_participantCount];
-        for (int i = 0; i < _participantCount; i++)
+        for (int i = 0; i < ParticipantCount; i++)
         {
-            tasks[i] = Task.Run(async () =>
-            {
-                await barrier.SignalAndWaitAsync().ConfigureAwait(false);
-                Interlocked.Increment(ref _counter);
-            });
+            _tasks[i] = _barrierRefImp.SignalAndWaitAsync();
         }
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            await _tasks[i].ConfigureAwait(false);
+        }
     }
 }

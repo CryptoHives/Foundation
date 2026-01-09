@@ -78,9 +78,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Threading.Analyzers", "src\Threading.Analyzers\Threading.Analyzers.csproj", "{49E146C4-D39F-4ED8-909C-409B6D054484}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Threading.Analyzers", "Threading.Analyzers", "{2F2C19B1-8414-983D-1511-A1A8A682664C}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Threading.Analyzers.Tests", "tests\Threading.Analyzers\Threading.Analyzers.Tests.csproj", "{DE9ABC7F-CE1F-4F69-A29B-4B8FCE00CD40}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341}"
+	ProjectSection(SolutionItems) = preProject
+		scripts\update-benchmark-docs.cmd = scripts\update-benchmark-docs.cmd
+		scripts\update-benchmark-docs.ps1 = scripts\update-benchmark-docs.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -180,6 +184,7 @@ Global
 		{01ED31D9-948B-49CA-8329-A7C4CB2C930C} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{49E146C4-D39F-4ED8-909C-409B6D054484} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{DE9ABC7F-CE1F-4F69-A29B-4B8FCE00CD40} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
+		{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F988604C-4BC8-40BB-856F-A1F90C1FF377}

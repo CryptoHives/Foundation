@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.RefImpl;
@@ -18,10 +18,12 @@ public class AsyncCountdownEvent
 {
     private readonly AsyncManualResetEvent _amre = new();
     private int _count;
+    private int _initialCount;
 
     public AsyncCountdownEvent(int initialCount)
     {
         if (initialCount <= 0) throw new ArgumentOutOfRangeException(nameof(initialCount));
+        _initialCount = initialCount;
         _count = initialCount;
     }
 
@@ -39,6 +41,15 @@ public class AsyncCountdownEvent
         else if (newCount < 0)
         {
             throw new InvalidOperationException();
+        }
+    }
+
+    public void Reset()
+    {
+        int oldCount = Interlocked.Exchange(ref _count, _initialCount);
+        if (oldCount == 0)
+        {
+            _amre.Reset();
         }
     }
 

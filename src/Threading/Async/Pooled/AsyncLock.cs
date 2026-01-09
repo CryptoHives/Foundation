@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -30,7 +30,9 @@ using System.Threading.Tasks;
 ///     }
 /// }
 /// </code>
-/// <para>To replace the blocking operation <c>Thread.Sleep</c> with an asynchronous equivalent, it's not directly possible because of the <c>lock</c> block. We cannot <c>await</c> inside of a <c>lock</c>.</para>
+/// <para>To replace the blocking operation <c>Thread.Sleep</c> with an asynchronous equivalent,
+/// it's not directly possible because of the <c>lock</c> block. We cannot <c>await</c> inside
+/// of a <c>lock</c>.</para>
 /// <para>So, we use the <c>async</c>-compatible <see cref="AsyncLock"/> instead:</para>
 /// <code>
 /// private readonly var _mutex = new AsyncLock();
@@ -109,20 +111,20 @@ public sealed class AsyncLock
             => _owner is null ? 0 : _owner.GetHashCode();
 
         /// <summary>
-        /// Determines whether two AsyncLockReleaser instances are equal.
+        /// Determines whether two <see cref="Releaser"/> instances are equal.
         /// </summary>
-        /// <param name="left">The first AsyncLockReleaser to compare.</param>
-        /// <param name="right">The second AsyncLockReleaser to compare.</param>
-        /// <returns>true if the specified AsyncLockReleaser instances are equal; otherwise, false.</returns>
+        /// <param name="left">The first Releaser to compare.</param>
+        /// <param name="right">The second Releaser to compare.</param>
+        /// <returns>true if the specified Releaser instances are equal; otherwise, false.</returns>
         public static bool operator ==(Releaser left, Releaser right)
             => left.Equals(right);
 
         /// <summary>
-        /// Determines whether two AsyncLockReleaser instances are not equal.
+        /// Determines whether two <see cref="Releaser"/> instances are not equal.
         /// </summary>
-        /// <param name="left">The first AsyncLockReleaser to compare.</param>
-        /// <param name="right">The second AsyncLockReleaser to compare.</param>
-        /// <returns>false if the specified AsyncLockReleaser instances are equal; otherwise, true.</returns>
+        /// <param name="left">The first Releaser to compare.</param>
+        /// <param name="right">The second Releaser to compare.</param>
+        /// <returns>false if the specified Releaser instances are equal; otherwise, true.</returns>
         public static bool operator !=(Releaser left, Releaser right)
             => !left.Equals(right);
     }
@@ -149,7 +151,7 @@ public sealed class AsyncLock
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>
-    /// A <see cref="ValueTask{AsyncLockReleaser}"/> that completes when the lock is acquired.
+    /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.
     /// Dispose the returned releaser to release the lock.
     /// </returns>
     public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default)

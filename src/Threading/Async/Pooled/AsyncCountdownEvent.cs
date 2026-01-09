@@ -53,7 +53,6 @@ using System.Threading.Tasks.Sources;
 public sealed class AsyncCountdownEvent
 {
     private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
-    private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
@@ -84,7 +83,6 @@ public sealed class AsyncCountdownEvent
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _mutex = new();
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
-        _localWaiter = new(this);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
 
@@ -144,10 +142,8 @@ public sealed class AsyncCountdownEvent
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
+            PooledManualResetValueTaskSource<bool> waiter;
+            waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
@@ -339,14 +335,8 @@ public sealed class AsyncCountdownEvent
         }
     }
 
-    /// <summary>
-    /// Gets a value indicating whether the local waiter is currently in use.
-    /// </summary>
-    internal bool InternalWaiterInUse => _localWaiter.InUse;
-
 #if NET6_0_OR_GREATER
-    private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) =>
-    {
+    private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
         var waiter = (ManualResetValueTaskSource<bool>)state!;
         var context = (AsyncCountdownEvent)waiter.Owner!;
         context.CancellationCallback(waiter);

@@ -65,13 +65,13 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncReaderWriterLock
 {
+    private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
+
     private readonly Queue<ManualResetValueTaskSource<Releaser>> _waitingWriters;
     private readonly LocalManualResetValueTaskSource<Releaser> _localWriterWaiter;
-    private readonly IGetPooledManualResetValueTaskSource<Releaser> _writerPool;
 
     private readonly Queue<ManualResetValueTaskSource<Releaser>> _waitingReaders;
     private readonly LocalManualResetValueTaskSource<Releaser> _localReaderWaiter;
-    private readonly IGetPooledManualResetValueTaskSource<Releaser> _readerPool;
 
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
@@ -151,13 +151,11 @@ public sealed class AsyncReaderWriterLock
     /// </summary>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
-    /// <param name="readerPool">Custom pool for reader waiters.</param>
-    /// <param name="writerPool">Custom pool for writer waiters.</param>
+    /// <param name="pool">Custom pool for waiters.</param>
     public AsyncReaderWriterLock(
         bool runContinuationAsynchronously = true,
         int defaultEventQueueSize = 0,
-        IGetPooledManualResetValueTaskSource<Releaser>? readerPool = null,
-        IGetPooledManualResetValueTaskSource<Releaser>? writerPool = null)
+        IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _mutex = new();
@@ -166,11 +164,11 @@ public sealed class AsyncReaderWriterLock
 
         _waitingWriters = new(queueSize);
         _localWriterWaiter = new(this);
-        _writerPool = writerPool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncReaderWriterLockReleaser;
 
         _waitingReaders = new(queueSize);
         _localReaderWaiter = new(this);
-        _readerPool = readerPool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncReaderWriterLockReleaser;
+
+        _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncReaderWriterLockReleaser;
 
         _status = 0;
     }
@@ -250,7 +248,7 @@ public sealed class AsyncReaderWriterLock
 
             if (!_localReaderWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
             {
-                waiter = _readerPool.GetPooledWaiter(this);
+                waiter = _pool.GetPooledWaiter(this);
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
@@ -301,7 +299,7 @@ public sealed class AsyncReaderWriterLock
 
             if (!_localWriterWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
             {
-                waiter = _writerPool.GetPooledWaiter(this);
+                waiter = _pool.GetPooledWaiter(this);
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;

@@ -3,11 +3,9 @@
 
 namespace Threading.Tests.Async.Pooled;
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NUnit.Framework;
-using System.Threading;
 using System.Threading.Tasks;
 
 #if SIGNASSEMBLY
@@ -38,6 +36,7 @@ using NitoAsyncEx = Nito.AsyncEx;
 /// </list>
 /// </remarks>
 [TestFixture]
+[TestFixtureSource(nameof(FixtureArgs))]
 [MemoryDiagnoser(displayGenColumns: false)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
 [HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
@@ -46,39 +45,65 @@ using NitoAsyncEx = Nito.AsyncEx;
 [BenchmarkCategory("AsyncCountdownEvent")]
 public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchmark
 {
-    private volatile int _counter;
+    public static readonly object[] FixtureArgs = {
+        new object[] { 1 },
+        new object[] { 10 },
+    };
+
+    public AsyncCountdownEventSignalBenchmark() { }
+
+    public AsyncCountdownEventSignalBenchmark(int participateCount)
+    {
+        ParticipantCount = participateCount;
+    }
 
     /// <summary>
     /// Benchmark for standard CountdownEvent.
     /// </summary>
     [Test]
+    [Repeat(10)]
     [Benchmark]
     public void SignalAndWaitCountdownEventStandard()
     {
-        var countdown = new CountdownEvent(_participantCount);
-        for (int i = 0; i < _participantCount; i++)
+        _countdownStandard.Reset();
+        for (int i = 0; i < ParticipantCount; i++)
         {
-            countdown.Signal();
+            _countdownStandard.Signal();
         }
-        countdown.Wait();
-        unchecked { _counter++; }
-        countdown.Dispose();
+        _countdownStandard.Wait(_cancellationToken);
     }
 
     /// <summary>
     /// Benchmark for pooled async countdown event.
     /// </summary>
     [Test]
+    [Repeat(10)]
     [Benchmark(Baseline = true)]
     public async Task SignalAndWaitPooledAsync()
     {
-        var countdown = new AsyncCountdownEvent(_participantCount);
-        for (int i = 0; i < _participantCount; i++)
+        _countdownPooled.Reset();
+        for (int i = 0; i < ParticipantCount; i++)
         {
-            countdown.Signal();
+            _countdownPooled.Signal();
         }
-        await countdown.WaitAsync().ConfigureAwait(false);
-        unchecked { _counter++; }
+        await _countdownPooled.WaitAsync(_cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Benchmark for pooled async countdown event.
+    /// </summary>
+    [Test]
+    [Repeat(10)]
+    [Benchmark]
+    public async Task WaitAndSignalPooledAsync()
+    {
+        _countdownPooled.Reset();
+        ValueTask valueTask = _countdownPooled.WaitAsync(_cancellationToken);
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            _countdownPooled.Signal();
+        }
+        await valueTask.ConfigureAwait(false);
     }
 
 #if !SIGNASSEMBLY
@@ -86,16 +111,14 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     /// Benchmark for Nito.AsyncEx async countdown event.
     /// </summary>
     [Test]
-    [Benchmark]
     public async Task SignalAndWaitNitoAsync()
     {
-        var countdown = new NitoAsyncEx.AsyncCountdownEvent(_participantCount);
-        for (int i = 0; i < _participantCount; i++)
+        Task task = _countdownNitoAsync.WaitAsync(_cancellationToken);
+        for (int i = 0; i < ParticipantCount; i++)
         {
-            countdown.Signal();
+            _countdownNitoAsync.Signal();
         }
-        await countdown.WaitAsync().ConfigureAwait(false);
-        unchecked { _counter++; }
+        await task.ConfigureAwait(false);
     }
 #endif
 
@@ -103,15 +126,16 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     /// Benchmark for reference implementation async countdown event.
     /// </summary>
     [Test]
+    [Repeat(10)]
     [Benchmark]
     public async Task SignalAndWaitRefImplAsync()
     {
-        var countdown = new RefImpl.AsyncCountdownEvent(_participantCount);
-        for (int i = 0; i < _participantCount; i++)
+        _countdownRefImp.Reset();
+        Task task = _countdownRefImp.WaitAsync();
+        for (int i = 0; i < ParticipantCount; i++)
         {
-            countdown.Signal();
+            _countdownRefImp.Signal();
         }
-        await countdown.WaitAsync().ConfigureAwait(false);
-        unchecked { _counter++; }
+        await task.ConfigureAwait(false);
     }
 }
