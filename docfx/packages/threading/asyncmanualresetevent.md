@@ -148,6 +148,48 @@ Resets the event to the non-signaled state.
 - **WaitAsync()**: O(1) when signaled, otherwise enqueues waiter
 - **Memory**: Allocates one `IValueTaskSource` per waiter (unlike Task-based implementations that share a single `Task`). When a pool is provided, allocations are avoided when the pool can supply instances. The implementation also provides a local reusable waiter to avoid allocations for the first queued waiter.
 
+## Benchmark Results
+
+The following benchmarks compare `AsyncManualResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncManualResetEvent` and reference `TaskCompletionSource`-based implementations.
+
+### Set/Reset Cycle Benchmark
+
+Measures the performance of rapid Set/Reset cycles.
+
+[!INCLUDE[Set Reset Benchmark](benchmarks/asyncmanualresetevent-setreset.md)]
+
+### Set Then Wait Benchmark
+
+Measures the pattern where the event is set before waiters arrive (synchronous completion path).
+
+[!INCLUDE[Set Then Wait Benchmark](benchmarks/asyncmanualresetevent-setthenw.md)]
+
+### Wait Then Set Benchmark
+
+Measures the pattern where waiters are queued before the event is signaled (asynchronous completion path).
+
+[!INCLUDE[Wait Then Set Benchmark](benchmarks/asyncmanualresetevent-waitthenset.md)]
+
+### Benchmark Analysis
+
+**Key Findings:**
+1. **Per-Waiter Overhead**: Unlike `Task`-based implementations where all waiters share a single `TaskCompletionSource`, each waiter in the pooled implementation requires its own `IValueTaskSource`. This is an inherent trade-off of the `ValueTask` model.
+
+2. **Pool Mitigation**: The object pool effectively mitigates allocation overhead. The local waiter optimization ensures the first queued waiter incurs no allocation.
+
+3. **Synchronous Fast Path**: When the event is already signaled, `WaitAsync()` completes synchronously with zero allocations.
+
+4. **Set() Performance**: For broadcasts to many waiters, the overhead of signaling each `IValueTaskSource` individually may be higher than a single shared `Task`. Consider the trade-off based on your use case.
+
+**When to Choose AsyncManualResetEvent:**
+- Initialization patterns where you wait for a one-time signal
+- Scenarios with few concurrent waiters
+- Memory-sensitive applications where the pooling benefits outweigh per-waiter overhead
+
+**When to Consider Alternatives:**
+- Broadcasting to many concurrent waiters where a shared `Task` would be more efficient
+- Scenarios where `ValueTask` restrictions are inconvenient
+
 ## Best Practices
 
 ### ✓ DO: Use for Initialization Signals

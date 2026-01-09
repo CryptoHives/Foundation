@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -50,10 +50,25 @@ public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseB
     [Test]
     [Benchmark]
     [BenchmarkCategory("SetReset", "Standard")]
-    public void ManualResetEventSet()
+    public void ManualResetEventSetReset()
     {
         _eventStandard.Set();
         _eventStandard.Reset();
+    }
+
+    /// <summary>
+    /// Benchmark for standard synchronous <see cref="ManualResetEventSlim"/> Set then Reset operation.
+    /// </summary>
+    /// <remarks>
+    /// Measures the baseline performance of the ManualResetEventSlim.Set() call.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetReset", "Slim")]
+    public void ManualResetEventSlimSetReset()
+    {
+        _eventSlim.Set();
+        _eventSlim.Reset();
     }
 
     /// <summary>

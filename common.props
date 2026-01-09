@@ -18,7 +18,7 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Highest language version supported -->
-    <LangVersion>latest</LangVersion>
+    <LangVersion>14</LangVersion>
     <EnablePackageValidation>true</EnablePackageValidation>
     <!-- to check the package validation on a release build, uncomment here -->
     <!--<PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>-->

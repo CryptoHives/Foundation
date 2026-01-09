@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -30,7 +30,9 @@ using System.Threading.Tasks;
 ///     }
 /// }
 /// </code>
-/// <para>To replace the blocking operation <c>Thread.Sleep</c> with an asynchronous equivalent, it's not directly possible because of the <c>lock</c> block. We cannot <c>await</c> inside of a <c>lock</c>.</para>
+/// <para>To replace the blocking operation <c>Thread.Sleep</c> with an asynchronous equivalent,
+/// it's not directly possible because of the <c>lock</c> block. We cannot <c>await</c> inside
+/// of a <c>lock</c>.</para>
 /// <para>So, we use the <c>async</c>-compatible <see cref="AsyncLock"/> instead:</para>
 /// <code>
 /// private readonly var _mutex = new AsyncLock();
@@ -46,9 +48,9 @@ using System.Threading.Tasks;
 /// </remarks>
 public sealed class AsyncLock
 {
-    private readonly Queue<ManualResetValueTaskSource<AsyncLockReleaser>> _waiters;
-    private readonly LocalManualResetValueTaskSource<AsyncLockReleaser> _localWaiter;
-    private readonly IGetPooledManualResetValueTaskSource<AsyncLockReleaser> _pool;
+    private readonly Queue<ManualResetValueTaskSource<Releaser>> _waiters;
+    private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter;
+    private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
 #else
@@ -61,7 +63,7 @@ public sealed class AsyncLock
     /// </summary>
     /// <param name="pool">Custom pool for this instance.</param>
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
-    public AsyncLock(int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<AsyncLockReleaser>? pool = null)
+    public AsyncLock(int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
         _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
@@ -74,11 +76,11 @@ public sealed class AsyncLock
     /// <summary>
     /// A small value type returned by awaiting a lock acquisition. Disposing the releaser releases the lock.
     /// </summary>
-    public readonly struct AsyncLockReleaser : IDisposable, IAsyncDisposable, IEquatable<AsyncLockReleaser>
+    public readonly struct Releaser : IDisposable, IAsyncDisposable, IEquatable<Releaser>
     {
         private readonly AsyncLock _owner;
 
-        internal AsyncLockReleaser(AsyncLock owner)
+        internal Releaser(AsyncLock owner)
         {
             _owner = owner;
         }
@@ -98,10 +100,10 @@ public sealed class AsyncLock
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)
-            => obj is AsyncLockReleaser other && Equals(other);
+            => obj is Releaser other && Equals(other);
 
         /// <inheritdoc/>
-        public bool Equals(AsyncLockReleaser other)
+        public bool Equals(Releaser other)
             => ReferenceEquals(_owner, other._owner);
 
         /// <inheritdoc/>
@@ -109,21 +111,21 @@ public sealed class AsyncLock
             => _owner is null ? 0 : _owner.GetHashCode();
 
         /// <summary>
-        /// Determines whether two AsyncLockReleaser instances are equal.
+        /// Determines whether two <see cref="Releaser"/> instances are equal.
         /// </summary>
-        /// <param name="left">The first AsyncLockReleaser to compare.</param>
-        /// <param name="right">The second AsyncLockReleaser to compare.</param>
-        /// <returns>true if the specified AsyncLockReleaser instances are equal; otherwise, false.</returns>
-        public static bool operator ==(AsyncLockReleaser left, AsyncLockReleaser right)
+        /// <param name="left">The first Releaser to compare.</param>
+        /// <param name="right">The second Releaser to compare.</param>
+        /// <returns>true if the specified Releaser instances are equal; otherwise, false.</returns>
+        public static bool operator ==(Releaser left, Releaser right)
             => left.Equals(right);
 
         /// <summary>
-        /// Determines whether two AsyncLockReleaser instances are not equal.
+        /// Determines whether two <see cref="Releaser"/> instances are not equal.
         /// </summary>
-        /// <param name="left">The first AsyncLockReleaser to compare.</param>
-        /// <param name="right">The second AsyncLockReleaser to compare.</param>
-        /// <returns>false if the specified AsyncLockReleaser instances are equal; otherwise, true.</returns>
-        public static bool operator !=(AsyncLockReleaser left, AsyncLockReleaser right)
+        /// <param name="left">The first Releaser to compare.</param>
+        /// <param name="right">The second Releaser to compare.</param>
+        /// <returns>false if the specified Releaser instances are equal; otherwise, true.</returns>
+        public static bool operator !=(Releaser left, Releaser right)
             => !left.Equals(right);
     }
 
@@ -149,29 +151,29 @@ public sealed class AsyncLock
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>
-    /// A <see cref="ValueTask{AsyncLockReleaser}"/> that completes when the lock is acquired.
+    /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.
     /// Dispose the returned releaser to release the lock.
     /// </returns>
-    public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken = default)
+    public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
         {
-            return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
+            return new ValueTask<Releaser>(new Releaser(this));
         }
 
         lock (_mutex)
         {
             if (Interlocked.Exchange(ref _taken, 1) == 0)
             {
-                return new ValueTask<AsyncLockReleaser>(new AsyncLockReleaser(this));
+                return new ValueTask<Releaser>(new Releaser(this));
             }
 
             if (cancellationToken.IsCancellationRequested)
             {
-                return new ValueTask<AsyncLockReleaser>(Task.FromCanceled<AsyncLockReleaser>(cancellationToken));
+                return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<AsyncLockReleaser> waiter))
+            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
                 waiter.RunContinuationsAsynchronously = true;
@@ -196,7 +198,7 @@ public sealed class AsyncLock
             }
 
             _waiters.Enqueue(waiter);
-            return new ValueTask<AsyncLockReleaser>(waiter, waiter.Version);
+            return new ValueTask<Releaser>(waiter, waiter.Version);
         }
     }
 
@@ -215,7 +217,7 @@ public sealed class AsyncLock
     /// </summary>
     internal void ReleaseLock()
     {
-        ManualResetValueTaskSource<AsyncLockReleaser> toRelease;
+        ManualResetValueTaskSource<Releaser> toRelease;
 
         lock (_mutex)
         {
@@ -228,28 +230,30 @@ public sealed class AsyncLock
             toRelease = _waiters.Dequeue();
         }
 
-        toRelease.SetResult(new AsyncLockReleaser(this));
+        toRelease.SetResult(new Releaser(this));
     }
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
-        var waiter = (ManualResetValueTaskSource<AsyncLockReleaser>)state!;
+        var waiter = (ManualResetValueTaskSource<Releaser>)state!;
         var context = (AsyncLock)waiter.Owner!;
         context.CancellationCallback(waiter);
     };
 
-    private void CancellationCallback(ManualResetValueTaskSource<AsyncLockReleaser> waiter)
+    private void CancellationCallback(ManualResetValueTaskSource<Releaser> waiter)
     {
 #else
     private void CancellationCallback(object? state)
     {
-        if (state is not ManualResetValueTaskSource<AsyncLockReleaser> waiter)
+        if (state is not ManualResetValueTaskSource<Releaser> waiter)
         {
             return;
         }
 #endif
 
-        ManualResetValueTaskSource<AsyncLockReleaser>? toCancel = null;
+        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
+        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
+        ManualResetValueTaskSource<Releaser>? toCancel = null;
         lock (_mutex)
         {
             int count = _waiters.Count;
@@ -265,6 +269,6 @@ public sealed class AsyncLock
             }
         }
 
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<AsyncLockReleaser>(waiter.CancellationToken)));
+        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
     }
 }

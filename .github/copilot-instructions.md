@@ -89,8 +89,8 @@ When adding new MAC algorithms:
 - Never change package.json or package-lock.json files unless explicitly asked to.
 - Never change NuGet.Config files unless explicitly asked to.
 - Always trim trailing whitespace, and do not have whitespace on otherwise empty lines.
-- Always save files as UTF8 with BOM.
-- Always preserve the SPDX file header found at the top of source files. Example: `// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives` followed by `// SPDX-License-Identifier: MIT`.
+- Always save files as UTF8.
+- Always preserve the SPDX file header found at the top of source files. Example: `// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives` followed by `// SPDX-License-Identifier: MIT`.
 - Follow the existing file layout: preprocessor directives (e.g. `#if ...`) come first, then the `namespace` declaration, then `using` directives. Keep a single blank line between these regions as in existing files.
 - Try to use `namespace` declarations that match the file path, unless a package works otherwise described. For example, files under `src/Threading/Async` use `namespace CryptoHives.Foundation.Threading.Async;`.
 - Use PascalCase for public types and members, camelCase for local variables, and `_underscore` prefix for private fields (example: `_mutex`).

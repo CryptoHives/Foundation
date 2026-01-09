@@ -83,6 +83,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography.Tests", "tests\Security\Cryptography\Cryptography.Tests.csproj", "{BB62C54C-1437-206A-A79B-AFF23405B974}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "src\Security\Cryptography\Cryptography.csproj", "{ED53E1F7-E3C2-5E07-22F5-476CBD125D11}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341}"
+	ProjectSection(SolutionItems) = preProject
+		scripts\update-benchmark-docs.cmd = scripts\update-benchmark-docs.cmd
+		scripts\update-benchmark-docs.ps1 = scripts\update-benchmark-docs.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -208,6 +213,7 @@ Global
 		{DE9ABC7F-CE1F-4F69-A29B-4B8FCE00CD40} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
 		{BB62C54C-1437-206A-A79B-AFF23405B974} = {69C6A38B-5F20-4894-9543-10EFF1AA4203}
 		{ED53E1F7-E3C2-5E07-22F5-476CBD125D11} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F988604C-4BC8-40BB-856F-A1F90C1FF377}
