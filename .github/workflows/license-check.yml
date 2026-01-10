@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+# License Compliance Check
+# Ensures all NuGet dependencies use licenses compatible with MIT
+
+name: License Compliance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  license-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Install dotnet-project-licenses
+        run: dotnet tool install --global dotnet-project-licenses
+
+      - name: Restore dependencies
+        run: dotnet restore "CryptoHives .NET Foundation.sln"
+
+      - name: Check licenses
+        run: |
+          dotnet-project-licenses -i "CryptoHives .NET Foundation.sln" \
+            --allowed-license-types "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;Unlicense;CC0-1.0;0BSD;MS-PL;Zlib;WTFPL" \
+            --output-directory ./license-report \
+            --output-type json
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: ./license-report/
+          retention-days: 30

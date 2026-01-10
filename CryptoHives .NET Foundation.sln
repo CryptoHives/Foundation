@@ -70,7 +70,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "devops ci", "devops ci", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{01ED31D9-948B-49CA-8329-A7C4CB2C930C}"
 	ProjectSection(SolutionItems) = preProject
-		tests\benchmarks.cmd = tests\benchmarks.cmd
 		tests\coverlet.runsettings.xml = tests\coverlet.runsettings.xml
 	EndProjectSection
 EndProject
@@ -82,6 +81,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Threading.Analyzers.Tests",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341}"
 	ProjectSection(SolutionItems) = preProject
+		scripts\run-benchmarks.cmd = scripts\run-benchmarks.cmd
+		scripts\run-benchmarks.ps1 = scripts\run-benchmarks.ps1
+		scripts\run-codecoverage.cmd = scripts\run-codecoverage.cmd
+		scripts\run-codecoverage.ps1 = scripts\run-codecoverage.ps1
+		scripts\run-docfx.cmd = scripts\run-docfx.cmd
+		scripts\run-docfx.ps1 = scripts\run-docfx.ps1
 		scripts\update-benchmark-docs.cmd = scripts\update-benchmark-docs.cmd
 		scripts\update-benchmark-docs.ps1 = scripts\update-benchmark-docs.ps1
 	EndProjectSection

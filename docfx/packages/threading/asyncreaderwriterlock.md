@@ -1,4 +1,4 @@
-﻿# AsyncReaderWriterLock
+# AsyncReaderWriterLock
 
 A pooled, allocation-free async reader-writer lock that supports multiple concurrent readers or a single exclusive writer using ValueTask-based waiters.
 
@@ -75,16 +75,14 @@ public async Task<T> GetOrAddAsync<T>(string key, Func<Task<T>> factory, Cancell
 public AsyncReaderWriterLock(
     bool runContinuationAsynchronously = true,
     int defaultEventQueueSize = 0,
-    IGetPooledManualResetValueTaskSource<Releaser>? readerPool = null,
-    IGetPooledManualResetValueTaskSource<Releaser>? writerPool = null)
+    IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `runContinuationAsynchronously` | If true (default), continuations run on the thread pool. |
 | `defaultEventQueueSize` | Initial capacity for waiter queues. |
-| `readerPool` | Optional custom pool for reader ValueTaskSource instances. |
-| `writerPool` | Optional custom pool for writer ValueTaskSource instances. |
+| `pool` | Optional custom pool for ValueTaskSource instances used by both readers and writers. |
 
 ## Properties
 

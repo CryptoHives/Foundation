@@ -1,4 +1,4 @@
-﻿# AsyncLock Class
+# AsyncLock Class
 
 A pooled async mutual exclusion lock for coordinating access to shared resources.
 
@@ -27,11 +27,20 @@ public sealed class AsyncLock
 - **Cancellation Support (optimized)**: Supports `CancellationToken` for queued waiters; on .NET 6+ registration uses `UnsafeRegister` with a static delegate to reduce execution-context capture and per-registration overhead.
 - **High Performance**: Optimized for both uncontended and contended scenarios while keeping allocations low.
 
-## Constructors
+## Constructor
 
-| Constructor | Description |
-|-------------|-------------|
-| `AsyncLock()` | Creates a new async lock in the unlocked state |
+```csharp
+public AsyncLock(
+    int defaultEventQueueSize = 0,
+    IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `defaultEventQueueSize` | Initial capacity for the waiter queue. Defaults to an internal value when 0. |
+| `pool` | Optional custom pool for ValueTaskSource instances. |
+
+> **Note:** Unlike other primitives in this library, `AsyncLock` always runs continuations asynchronously (hardcoded to `true`). This prevents potential deadlocks in common lock usage patterns.
 
 ## Methods
 
