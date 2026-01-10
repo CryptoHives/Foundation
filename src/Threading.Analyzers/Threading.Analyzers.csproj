@@ -1,4 +1,4 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 
 <Project Sdk="Microsoft.NET.Sdk">
@@ -49,6 +49,12 @@
   <ItemGroup>
     <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <!-- DocFX Documentation -->
+  <ItemGroup>
+    <None Include="..\..\docfx\packages\threading.analyzers\*.md" Link="docfx\%(Filename)%(Extension)" />
+    <None Include="..\..\docfx\packages\threading.analyzers\*.yml" Link="docfx\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
