@@ -582,7 +582,7 @@ public class TestClass
         // This test verifies that the patterns used in ValueTaskPreserveTests.cs
         // (which are suppressed with #pragma warning disable CHT001)
         // would actually be detected by the analyzer.
-        
+
         // Pattern: Multiple awaits on original ValueTask (from OriginalPooledSourceThrowsOnMultipleAwaitWithoutPreserve)
         string code = @"
 using System;
