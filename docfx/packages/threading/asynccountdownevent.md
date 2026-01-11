@@ -75,7 +75,7 @@ public AsyncCountdownEvent(
 | Parameter | Description |
 |-----------|-------------|
 | `initialCount` | The initial count. Must be greater than zero. |
-| `runContinuationAsynchronously` | If true (default), continuations run on the thread pool. |
+| `runContinuationAsynchronously` | If true (default), continuations are forced to run on the thread pool. |
 | `defaultEventQueueSize` | Initial capacity for the waiter queue. |
 | `pool` | Optional custom pool for ValueTaskSource instances. |
 
@@ -154,6 +154,9 @@ The following benchmarks compare `AsyncCountdownEvent` against `Nito.AsyncEx.Asy
 ### Signal Operation Benchmark
 
 Measures the performance of signaling and waiting on the countdown event.
+The standard implementation does not support `Task`-based waiters, while `AsyncCountdownEvent` uses pooled `IValueTaskSource` instances. Hence the tests run only uncontested for standard implementations.
+Only the pooled `AsyncCountdownEvent` is benchmarked in a contested and a uncontested scenario to proof that no memory allocations occur.
+The Nito.Async implementation can not be benchmarked due to its internal design which doesn't allow to Reset the event, a new allocation for the AsyncCountdownEvent were necessary for each run so it was left out of contest.
 
 [!INCLUDE[Countdown Event Benchmark](benchmarks/asynccountdownevent-signal.md)]
 
@@ -163,7 +166,7 @@ Measures the performance of signaling and waiting on the countdown event.
 
 1. **Signal Performance**: The `Signal()` operation is O(1) until the final signal triggers the broadcast to all waiters.
 
-2. **Memory Efficiency**: Pooled `IValueTaskSource` instances reduce allocation pressure in repeated countdown cycles (e.g., using `Reset()` to reuse the countdown).
+2. **Memory Efficiency**: Pooled `IValueTaskSource` instances reduce allocation pressure in repeated countdown cycles (e.g., using `Reset()` to reuse the countdown). CancellationTokens do not add memory allocations.
 
 3. **Broadcast Overhead**: When the count reaches zero, all waiters are signaled individually. For scenarios with many waiters, consider the trade-off compared to shared `Task`-based approaches.
 
@@ -177,10 +180,15 @@ Measures the performance of signaling and waiting on the countdown event.
 
 ## See Also
 
-- [AsyncBarrier](asyncbarrier.md)
-- [AsyncManualResetEvent](asyncmanualresetevent.md)
 - [Threading Package Overview](index.md)
+- [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
+- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
+- [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

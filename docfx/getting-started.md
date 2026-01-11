@@ -32,6 +32,23 @@ Or via Package Manager Console:
 Install-Package CryptoHives.Foundation.Threading
 ```
 
+### CryptoHives.Foundation.Threading.Analyzers
+
+The analyzers standalone package provides Roslyn analyzers to help detect common `ValueTask` misuse patterns at compile time.
+The package is only needed for use cases where the consuming project does not already reference the Threading package.
+
+Install via NuGet Package Manager:
+
+```bash
+dotnet add package CryptoHives.Foundation.Threading.Analyzers
+```
+
+Or via Package Manager Console:
+
+```powershell
+Install-Package CryptoHives.Foundation.Threading.Analyzers
+```
+
 ## Quick Start
 
 ### Memory Package
@@ -81,4 +98,4 @@ For issues and questions:
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

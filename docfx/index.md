@@ -30,13 +30,16 @@ The Threading package provides high-performance async synchronization primitives
 
 **Key Features:**
 - All waiters implemented as `ValueTask`-based synchronization primitives with low memory allocation design
-- Full `CancellationToken` support in all Wait/Lock primitives
+- Built-in Roslyn analyzers to detect common `ValueTask` misuse patterns at compile time
+- Full `CancellationToken` support in all Wait/Lock primitives 
 - Implementations use `IValueTaskSource<T>` based classes backed by `ObjectPool<T>` to avoid allocations by recycling waiter objects
 - Async mutual exclusion with `AsyncLock` and scoped locking via `IDisposable` pattern
 - `AsyncAutoResetEvent` and `AsyncManualResetEvent` complementing existing implementations which are `Task` based
-- No allocation design for hot-path code (see [Benchmarks](packages/threading/benchmarks.md))
+- Replacement for .NET barriers with `AsyncBarrier` supporting async waits
+- Pooled implementations of `AsyncReaderWriterLock`, `AsyncSemaphore` and `AsyncCountdownEvent` with async wait support
 - Fast path optimizations for uncontended scenarios
-- [Benchmarks](packages/threading/benchmarks.md) comparing performance against existing .NET synchronization primitives and various popular implementations
+- No allocation design for hot-path code and cancellation tokens (see [Benchmarks](packages/threading/benchmarks.md))
+- [Benchmarks](packages/threading/benchmarks.md) comparing performance against existing .NET synchronization primitives and various other popular implementations
 
 [Explore Threading Package](packages/threading/index.md)
 

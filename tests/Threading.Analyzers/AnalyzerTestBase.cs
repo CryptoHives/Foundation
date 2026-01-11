@@ -34,8 +34,7 @@ public abstract class AnalyzerTestBase<TAnalyzer>
     /// </summary>
     protected static async Task VerifyNoDiagnosticsAsync(string source)
     {
-        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
-        {
+        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> {
             TestCode = source,
             ReferenceAssemblies = TestReferenceAssemblies
         };
@@ -49,8 +48,7 @@ public abstract class AnalyzerTestBase<TAnalyzer>
     /// </summary>
     protected static async Task VerifyWithMarkupAsync(string sourceWithMarkup)
     {
-        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
-        {
+        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> {
             TestCode = sourceWithMarkup,
             ReferenceAssemblies = TestReferenceAssemblies
         };
@@ -63,8 +61,7 @@ public abstract class AnalyzerTestBase<TAnalyzer>
     /// </summary>
     protected static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
     {
-        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
-        {
+        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> {
             TestCode = source,
             ReferenceAssemblies = TestReferenceAssemblies
         };

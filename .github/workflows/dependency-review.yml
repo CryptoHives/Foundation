@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+# Dependency Review Action
+# Blocks PRs that introduce dependencies with known vulnerabilities or incompatible licenses
+
+name: Dependency Review
+
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          # Fail on moderate or higher severity vulnerabilities
+          fail-on-severity: moderate
+          # Deny copyleft licenses that are incompatible with MIT
+          deny-licenses: GPL-3.0, AGPL-3.0, GPL-2.0, LGPL-2.0, LGPL-2.1, LGPL-3.0
+          # Allow common permissive licenses
+          # allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unlicense, CC0-1.0, 0BSD
+          # Comment on PR with findings
+          comment-summary-in-pr: always

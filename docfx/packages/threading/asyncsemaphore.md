@@ -101,7 +101,8 @@ Releases one or more permits back to the semaphore.
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncSemaphore` against `SemaphoreSlim` and `Nito.AsyncEx.AsyncSemaphore`.
+The following benchmarks compare `AsyncSemaphore` against `SemaphoreSlim`, `Nito.AsyncEx.AsyncSemaphore` and a Task based reference implementation.
+TODO: Currently benchmarks are only available on uncontended scenarios to measure the overhead of a semaphore acquisition and release.
 
 ### Single Wait/Release Benchmark
 
@@ -145,9 +146,15 @@ Measures the performance of acquiring and releasing a single permit.
 
 ## See Also
 
-- [AsyncLock](asynclock.md)
 - [Threading Package Overview](index.md)
+- [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
+- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
+- [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
+- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

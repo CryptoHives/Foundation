@@ -1,10 +1,10 @@
-﻿# AsyncReaderWriterLock
+# AsyncReaderWriterLock
 
-A pooled, allocation-free async reader-writer lock that supports multiple concurrent readers or a single exclusive writer using ValueTask-based waiters.
+A pooled, allocation-free async reader-writer lock that supports multiple concurrent readers or a single exclusive writer using ValueTask-based waiters with cancellation tokens.
 
 ## Overview
 
-`AsyncReaderWriterLock` is an async-compatible reader-writer lock. It allows multiple readers to hold the lock concurrently, but only one writer can hold the lock exclusively. Writers are prioritized over new readers to prevent writer starvation.
+`AsyncReaderWriterLock` is an async-compatible reader-writer lock. It allows multiple readers to enter the lock concurrently, but only one writer can hold the lock exclusively. Writers are prioritized over readers to prevent writer starvation.
 
 ## Usage
 
@@ -75,16 +75,14 @@ public async Task<T> GetOrAddAsync<T>(string key, Func<Task<T>> factory, Cancell
 public AsyncReaderWriterLock(
     bool runContinuationAsynchronously = true,
     int defaultEventQueueSize = 0,
-    IGetPooledManualResetValueTaskSource<Releaser>? readerPool = null,
-    IGetPooledManualResetValueTaskSource<Releaser>? writerPool = null)
+    IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `runContinuationAsynchronously` | If true (default), continuations run on the thread pool. |
 | `defaultEventQueueSize` | Initial capacity for waiter queues. |
-| `readerPool` | Optional custom pool for reader ValueTaskSource instances. |
-| `writerPool` | Optional custom pool for writer ValueTaskSource instances. |
+| `pool` | Optional custom pool for ValueTaskSource instances used by both readers and writers. |
 
 ## Properties
 
@@ -142,7 +140,8 @@ using (await _rwLock.ReaderLockAsync())
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncReaderWriterLock` against `Nito.AsyncEx.AsyncReaderWriterLock` and reference implementations.
+The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLockSlim`, `Nito.AsyncEx.AsyncReaderWriterLock` and a reference implementation.
+TODO: Currently benchmarks are only available on uncontended scenarios to measure the overhead of a single lock acquisition and release.
 
 ### Reader Lock Benchmark
 
@@ -164,7 +163,7 @@ Measures the performance of acquiring and releasing writer locks.
 
 2. **Writer Priority**: The writer-priority design prevents starvation but may impact reader throughput when writers are frequently waiting.
 
-3. **Memory Efficiency**: Separate pools for readers and writers allow fine-tuned pool sizing based on workload characteristics.
+3. **Memory Efficiency**: One pool for readers and writers allow fine-tuned pool sizing based on workload characteristics.
 
 4. **Releaser Struct**: The value-type `Releaser` ensures no allocation for the lock handle itself, only for the `IValueTaskSource` when contention occurs.
 
@@ -191,10 +190,15 @@ Measures the performance of acquiring and releasing writer locks.
 
 ## See Also
 
-- [AsyncLock](asynclock.md)
-- [AsyncSemaphore](asyncsemaphore.md)
 - [Threading Package Overview](index.md)
+- [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
+- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
+- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

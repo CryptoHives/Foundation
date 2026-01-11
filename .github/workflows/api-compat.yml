@@ -1,0 +1,89 @@
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+# API Breaking Change Detection
+# Detects breaking changes in public API surface between PR and main branch
+
+name: API Compatibility
+
+on:
+  pull_request:
+    paths:
+      - 'src/**/*.cs'
+      - 'src/**/*.csproj'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  api-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          path: pr
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Install Microsoft.DotNet.ApiCompat.Tool
+        run: dotnet tool install --global Microsoft.DotNet.ApiCompat.Tool
+
+      - name: Build main branch
+        working-directory: main
+        run: |
+          dotnet restore "CryptoHives .NET Foundation.sln"
+          dotnet build "CryptoHives .NET Foundation.sln" --configuration Release --no-restore -p:TargetFramework=net8.0
+
+      - name: Build PR branch
+        working-directory: pr
+        run: |
+          dotnet restore "CryptoHives .NET Foundation.sln"
+          dotnet build "CryptoHives .NET Foundation.sln" --configuration Release --no-restore -p:TargetFramework=net8.0
+
+      - name: Check API compatibility - Threading
+        continue-on-error: true
+        id: threading-compat
+        run: |
+          echo "## Threading API Compatibility" >> $GITHUB_STEP_SUMMARY
+          if microsoft.dotnet.apicompat.tool \
+            --left-assembly main/src/Threading/bin/Release/net8.0/CryptoHives.Foundation.Threading.dll \
+            --right-assembly pr/src/Threading/bin/Release/net8.0/CryptoHives.Foundation.Threading.dll \
+            --enable-rule-cannot-change-parameter-name false; then
+            echo "? No breaking changes detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "?? Potential breaking changes detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check API compatibility - Memory
+        continue-on-error: true
+        id: memory-compat
+        run: |
+          echo "## Memory API Compatibility" >> $GITHUB_STEP_SUMMARY
+          if microsoft.dotnet.apicompat.tool \
+            --left-assembly main/src/Memory/bin/Release/net8.0/CryptoHives.Foundation.Memory.dll \
+            --right-assembly pr/src/Memory/bin/Release/net8.0/CryptoHives.Foundation.Memory.dll \
+            --enable-rule-cannot-change-parameter-name false; then
+            echo "? No breaking changes detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "?? Potential breaking changes detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** This check identifies potential breaking changes in the public API." >> $GITHUB_STEP_SUMMARY
+          echo "Breaking changes may be intentional for major version updates." >> $GITHUB_STEP_SUMMARY
+          echo "Review the changes carefully before merging." >> $GITHUB_STEP_SUMMARY

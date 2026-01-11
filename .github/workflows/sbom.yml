@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+# Software Bill of Materials (SBOM) Generation
+# Generates SPDX SBOM for supply chain transparency
+
+name: Generate SBOM
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.x
+            10.x
+
+      - name: Restore dependencies
+        run: dotnet restore "CryptoHives .NET Foundation.sln"
+
+      - name: Build
+        run: dotnet build "CryptoHives .NET Foundation.sln" --configuration Release --no-restore
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          artifact-name: sbom-cryptohives-foundation.spdx.json
+          output-file: sbom.spdx.json
+          format: spdx-json
+
+      - name: Upload SBOM to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sbom.spdx.json
