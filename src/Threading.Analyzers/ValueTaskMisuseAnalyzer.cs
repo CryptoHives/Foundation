@@ -150,7 +150,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         }
 
         SemanticModel semanticModel = context.SemanticModel;
-        
+
         // For lambdas, we need to detect captured ValueTask variables from outer scopes
         // Any usage of such captured variables is potentially unsafe since:
         // 1. The lambda could be invoked multiple times
@@ -175,7 +175,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         foreach (VariableDeclaratorSyntax variable in fieldDeclaration.Declaration.Variables)
         {
             TypeInfo typeInfo = semanticModel.GetTypeInfo(fieldDeclaration.Declaration.Type, context.CancellationToken);
-            
+
             // Use IsValueTaskType which already excludes arrays
             if (IsValueTaskType(typeInfo.Type))
             {
@@ -216,7 +216,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         if (hasGetter && hasSetter)
         {
             TypeInfo typeInfo = semanticModel.GetTypeInfo(propertyDeclaration.Type, context.CancellationToken);
-            
+
             // Use IsValueTaskType which already excludes arrays
             if (IsValueTaskType(typeInfo.Type))
             {
@@ -352,7 +352,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                 }
 
                 TypeInfo typeInfo = _semanticModel.GetTypeInfo(variable.Initializer.Value, _context.CancellationToken);
-                
+
                 // Track ValueTask variables for multiple consumption detection
                 if (IsValueTaskType(typeInfo.Type))
                 {
@@ -753,8 +753,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private static string GetExpressionName(ExpressionSyntax expression)
         {
-            return expression switch
-            {
+            return expression switch {
                 IdentifierNameSyntax identifier => identifier.Identifier.Text,
                 InvocationExpressionSyntax invocation => GetInvocationName(invocation),
                 MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
@@ -764,8 +763,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private static string GetInvocationName(InvocationExpressionSyntax invocation)
         {
-            return invocation.Expression switch
-            {
+            return invocation.Expression switch {
                 IdentifierNameSyntax identifier => identifier.Identifier.Text + "()",
                 MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text + "()",
                 _ => invocation.ToString()

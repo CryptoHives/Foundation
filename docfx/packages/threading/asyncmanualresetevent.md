@@ -59,7 +59,7 @@ public bool RunContinuationAsynchronously { get; set; }
 ```
 
 Controls how continuations are executed when the event is signaled:
-- `true` (default): Continuations are queued to the thread pool, preventing the signaling thread from being blocked.
+- `true` (default): Continuations are forced to the thread pool, preventing the signaling thread from being blocked.
 - `false`: Continuations may execute synchronously on the signaling thread.
 
 **Performance Warning**: When `true`, converting returned `ValueTask` instances to `Task` via `AsTask()` before signaling may force asynchronous completion paths and cause severe performance degradation (often 10x-100x slower).
@@ -154,36 +154,37 @@ The following benchmarks compare `AsyncManualResetEvent` against popular alterna
 
 ### Set/Reset Cycle Benchmark
 
-Measures the performance of rapid Set/Reset cycles.
+Measures the performance of rapid uncontended Set/Reset cycles. No surprises here except for Nito and Refimpl which expose some memory allocations, probably for a TaskCompletionSource instance.
 
 [!INCLUDE[Set Reset Benchmark](benchmarks/asyncmanualresetevent-setreset.md)]
 
 ### Set Then Wait Benchmark
 
-Measures the pattern where the event is set before waiters arrive (synchronous completion path).
+Measures the pattern where the event is set before waiters arrive (synchronous completion path). Again no surprises here; all implementations complete synchronously but Nito and Refimpl require allocations.
 
 [!INCLUDE[Set Then Wait Benchmark](benchmarks/asyncmanualresetevent-setthenw.md)]
 
 ### Wait Then Set Benchmark
 
-Measures the pattern where waiters are queued before the event is signaled (asynchronous completion path).
+Measures the pattern where waiters are queued before the event is signaled (asynchronous completion path). The pooled implementation shows strong performance here without allocations, especially when a cancellation token is provided. 
+Nito and Refimpl again show higher allocation counts due to TaskCompletionSource usage. In the tests for non cancellable tokens, Nito is ahead of the pack because it can share a single TaskCompletionSource with all waiters, but falls back when real cancellable tokens are used.
 
 [!INCLUDE[Wait Then Set Benchmark](benchmarks/asyncmanualresetevent-waitthenset.md)]
 
 ### Benchmark Analysis
 
 **Key Findings:**
-1. **Per-Waiter Overhead**: Unlike `Task`-based implementations where all waiters share a single `TaskCompletionSource`, each waiter in the pooled implementation requires its own `IValueTaskSource`. This is an inherent trade-off of the `ValueTask` model.
+1. **Per-Waiter Overhead**: Unlike `Task`-based implementations where all waiters share a single `TaskCompletionSource`, each waiter in the pooled implementation requires its own `IValueTaskSource`. This is an inherent trade-off of the `ValueTask` model, but other implementations only leverage this advantage when non cancellable tokens are used. With cancellable tokens, they also require per-waiter instances and fall back in perf and allocations.
 
 2. **Pool Mitigation**: The object pool effectively mitigates allocation overhead. The local waiter optimization ensures the first queued waiter incurs no allocation.
 
-3. **Synchronous Fast Path**: When the event is already signaled, `WaitAsync()` completes synchronously with zero allocations.
+3. **Synchronous Fast Path**: When the event is already signaled, `WaitAsync()` completes synchronously with zero allocations and without entering the lock.
 
 4. **Set() Performance**: For broadcasts to many waiters, the overhead of signaling each `IValueTaskSource` individually may be higher than a single shared `Task`. Consider the trade-off based on your use case.
 
 **When to Choose AsyncManualResetEvent:**
 - Initialization patterns where you wait for a one-time signal
-- Scenarios with few concurrent waiters
+- Scenarios with few concurrent waiters or where cancellable tokens are widely used
 - Memory-sensitive applications where the pooling benefits outweigh per-waiter overhead
 
 **When to Consider Alternatives:**
@@ -284,10 +285,15 @@ See [Benchmarks](benchmarks.md#asyncmanualresetevent-benchmarks) for detailed pe
 
 ## See Also
 
+- [Threading Package Overview](index.md)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
-- [Benchmarks](benchmarks.md) - Detailed performance comparisons
+- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
+- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System.Threading;
 

@@ -1,4 +1,4 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -56,6 +56,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.ObjectPool" />
+  </ItemGroup>
+
+  <!-- DocFX Documentation -->
+  <ItemGroup>
+    <None Include="..\..\docfx\packages\memory\*.md" Link="docfx\%(Filename)%(Extension)" />
+    <None Include="..\..\docfx\packages\memory\*.yml" Link="docfx\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />

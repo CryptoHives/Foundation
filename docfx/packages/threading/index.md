@@ -371,8 +371,15 @@ The `PooledManualResetValueTaskSource<T>` sealed implementation:
 - [API Reference](../../api/CryptoHives.Foundation.Threading.Async.Pooled.html)
 - [Threading Analyzers](../threading.analyzers/index.md) - Roslyn analyzers for detecting ValueTask misuse
 - [Memory Package](../memory/index.md)
-- [Benchmarks](benchmarks.md)
+- [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
+- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
+- [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
+- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

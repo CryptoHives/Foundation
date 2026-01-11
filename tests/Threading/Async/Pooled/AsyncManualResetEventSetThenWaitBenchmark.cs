@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -103,7 +103,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     {
         _eventPooled.Set();
         await _eventPooled.WaitAsync(_cancellationToken).AsTask().ConfigureAwait(false);
-        _eventPooled.Reset();    
+        _eventPooled.Reset();
     }
 
 #if !SIGNASSEMBLY

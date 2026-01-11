@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+# Code Format Check
+# Enforces .editorconfig and code style rules on pull requests
+
+name: Code Format Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.x
+            10.x
+
+      - name: Restore dependencies
+        run: dotnet restore "CryptoHives .NET Foundation.sln"
+
+      - name: Check code formatting
+        run: |
+          dotnet format "CryptoHives .NET Foundation.sln" \
+            --verify-no-changes \
+            --verbosity diagnostic \
+            --no-restore
+
+      - name: Format check failed
+        if: failure()
+        run: |
+          echo "::error::Code formatting issues detected. Please run 'dotnet format' locally and commit the changes."
+          echo ""
+          echo "To fix formatting issues locally, run:"
+          echo "  dotnet format \"CryptoHives .NET Foundation.sln\""
+          echo ""
+          echo "Then commit and push the formatted code."
+          exit 1
