@@ -163,9 +163,6 @@ for (int i = 0; i < 1000; i++)
 }
 ```
 
-
-
-
 ## Extension Points
 
 While `ObjectPools` currently only provides `GetStringBuilder()`, the pattern can be extended:

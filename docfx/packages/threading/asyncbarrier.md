@@ -112,7 +112,7 @@ public AsyncBarrier(
     IGetPooledManualResetValueTaskSource<bool>? pool = null)
 ```
 
-Creates a barrier with an optional post-phase action.
+Creates a barrier with an optional post-phase action. The post-phase action is invoked inside the barrier lock after all participants have signaled but before they are released. Hence the post phase action shall be brief and non-blocking to avoid delaying other participants and dead locks.
 
 | Parameter | Description |
 |-----------|-------------|
@@ -197,11 +197,11 @@ If the post-phase action throws an exception:
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncBarrier` against `Nito.AsyncEx.AsyncBarrier` and reference implementations.
+The following benchmarks compares the pooled `AsyncBarrier` against the .NET `System.Threading.Barrier` and a reference implementations from Stephen Toub's blog.
 
 ### Signal and Wait Benchmark
 
-Measures the performance of the `SignalAndWaitAsync` operation across multiple participants.
+Measures the performance of the `SignalAndWaitAsync` operation across multiple participants. The .NET implementation uses blocking waits and is out of contest because multiple threads are needed to contest the barrier. Similarly the RefImpl is out of contest because it does not support cancellation tokens. So the run is mainly a proof that there are no memory allocations for the pooled version in contested waits.
 
 [!INCLUDE[Barrier Benchmark](benchmarks/asyncbarrier-signalandwait.md)]
 
@@ -209,7 +209,7 @@ Measures the performance of the `SignalAndWaitAsync` operation across multiple p
 
 **Key Findings:**
 
-1. **Per-Phase Efficiency**: The barrier automatically resets after each phase, allowing efficient multi-phase synchronization without manual reset.
+1. **Per-Phase Efficiency**: The barrier automatically resets after each phase, allowing efficient multi-phase synchronization without manual reset or reallocation of the barrier.
 
 2. **Participant Scaling**: Performance scales linearly with participant count due to the O(n) broadcast when the last participant signals.
 
@@ -249,10 +249,15 @@ When a waiting participant is cancelled:
 
 ## See Also
 
-- [AsyncCountdownEvent](asynccountdownevent.md)
-- [AsyncManualResetEvent](asyncmanualresetevent.md)
 - [Threading Package Overview](index.md)
+- [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
+- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
+- [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
+- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

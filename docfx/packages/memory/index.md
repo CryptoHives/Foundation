@@ -65,6 +65,8 @@ ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
 
 // Process without copying
 ProcessSequence(sequence);
+
+// sequence memory is returned to pool after stream is disposed
 ```
 
 ### ArrayPoolBufferWriter
@@ -79,6 +81,8 @@ writer.Advance(written);
 
 // Get the complete sequence
 ReadOnlySequence<byte> result = writer.GetReadOnlySequence();
+
+// sequence memory is returned to pool after writer is disposed
 ```
 
 ### ObjectOwner
@@ -90,6 +94,7 @@ using var owner = new ObjectOwner<MyClass>(pool);
 MyClass obj = owner.Object;
 
 // Use obj...
+
 // Automatically returned to pool when owner is disposed
 ```
 

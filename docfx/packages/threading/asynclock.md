@@ -78,17 +78,30 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncLock` against popular alternatives including `Nito.AsyncEx.AsyncLock` and `SemaphoreSlim`.
+The benchmarks compare various `AsyncLock` implementations:
+
+- PooledAsyncLock: The pooled implementation from this library
+- RefImplAsyncLock: The reference implementation from Stephen Toub's blog, which does not support cancellation tokens
+- NitoAsyncLock: The implementation from the Nito.AsyncEx library
+- NeoSmartAsyncLock: The implementation from the NeoSmart.AsyncLock library
+- AsyncNonKeyedLocker: An implementation from the AsyncKeyedLock.AsyncNonKeyedLocker library which uses SemaphoreSlim internally
+- SemaphoreSlim: The .NET built-in synchronization primitive
 
 ### Single Lock Benchmark
 
 This benchmark measures the performance of acquiring and releasing a single lock in an uncontended scenario.
+In order to understand the impact of moving from a `lock` or `Interlocked` implementation to an async lock, the `InterlockedIncrement`, `lock` and .NET 9 `Lock` with `EnterScope()` are also measured with a integer increment as workload.
+The benchmark shows both throughput (operations per second) and allocations per operation.
+The new .NET 9 `Lock` primitive shows slighlty better performance than the well known lock on an object, but `AsyncLock` remains competitive due to the fast path implementation with Interlocked variable based state.
 
 [!INCLUDE[Single Lock Benchmark](benchmarks/asynclock-single.md)]
 
 ### Multiple Concurrent Lock Benchmark
 
-This benchmark measures performance under contention with multiple concurrent lock requests.
+This benchmark measures performance under contention with multiple concurrent lock requests (iterations).
+The benchmark shows both throughput (operations per second) and allocations per operation. Zero iterations duplicates the uncontended scenario.
+It is noticable that all implementations except the pooled one require memory allocations on contention, as long as the ValueTask is not converted to Task.
+The only implementation that slightly outperforms the pooled `AsyncLock` with a default cancellation token is the `SemaphoreSlim`, but at the cost of memory allocations on every lock acquisition.
 
 [!INCLUDE[Multiple Lock Benchmark](benchmarks/asynclock-multiple.md)]
 
@@ -100,15 +113,15 @@ This benchmark measures performance under contention with multiple concurrent lo
 
 2. **Memory Efficiency**: The pooled `IValueTaskSource` approach significantly reduces allocations compared to `TaskCompletionSource`-based implementations. This is especially beneficial in high-throughput scenarios.
 
-3. **Contended Scenarios**: Under contention, the local waiter optimization ensures the first queued waiter incurs no allocation, while subsequent waiters benefit from pool reuse.
+3. **Contended Scenarios**: Under contention, the local waiter optimization ensures the first queued waiter incurs no allocation, while subsequent waiters benefit from pool reuse. Only `SemaphoreSlim` slightly outperforms in throughput with a non cancellable token but always at the cost of allocations.
 
-4. **ValueTask Advantage**: Returning `ValueTask<AsyncLockReleaser>` instead of `Task` allows synchronous completion without allocation when the lock is immediately available.
+4. **ValueTask Advantage**: Returning `ValueTask<Releaser>` instead of `Task` allows always allocation free completion.
 
 **When to Choose AsyncLock:**
 
 - High-throughput scenarios where lock acquisition is frequent
 - Memory-sensitive applications where allocation pressure matters
-- Scenarios where locks are typically uncontended but occasional contention occurs
+- Scenarios where locks are typically contended or allocation free cancellation support is needed
 
 ## Best Practices
 
@@ -186,10 +199,15 @@ using (await _lock1.LockAsync())
 
 ## See Also
 
-- [AsyncAutoResetEvent](asyncautoresetevent.md)
-- [AsyncManualResetEvent](asyncmanualresetevent.md)
 - [Threading Package Overview](index.md)
+- [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
+- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
+- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
+- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

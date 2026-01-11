@@ -19,10 +19,16 @@ public sealed class AsyncAutoResetEvent
 ## Key Features
 
 - **Zero-allocation waits**: Uses pooled `IValueTaskSource<bool>` instances
+- **Local waiter optimization**: First queued waiter uses a pre-allocated local waiter to avoid allocations under low contention
 - **ValueTask-based API**: Low-allocation async operations
-- **Cancellation support**: Full `CancellationToken` support for queued waiters
+- **Cancellation support**: Full `CancellationToken` support for queued waiters. Allocation free registration for .NET versions >= 6.0.
 - **Thread-safe**: All operations are thread-safe
 - **FIFO queue**: Waiters are released in first-in-first-out order
+
+## Known Issues
+
+- When `RunContinuationAsynchronously` is `true`, storing the `Task` from `AsTask()` before signaling causes significant performance degradation due to forced asynchronous completion. Always await the `ValueTask` directly when possible.
+- When cancelling tokens, removing the token from the waiter queue requires a full O(n) scan of the queue to preserve order of released waiters.
 
 ## Constructor
 
@@ -129,7 +135,7 @@ The implementation provides an internal `Reset()` helper used in tests/benchmark
 ## Cancellation Notes
 
 - Cancellation is supported for queued waiters. The token is only registered when the waiter is enqueued (fast-path avoids registration). When cancelled, the waiter completes with an `OperationCanceledException` and is removed from the internal queue.
-- Avoid passing cancellation tokens for hot-path uncontended waits to minimize allocation overhead from token registration. If a token is already canceled before calling `WaitAsync`, the method returns a canceled `ValueTask` (which may allocate a `Task` wrapper on some frameworks).
+- Passing cancellation tokens for hot-path contended waits does not add allocation overhead for .NET versions >= 6.0. If a token is already canceled before calling `WaitAsync`, the method returns a canceled `ValueTask` (which may allocate a `Task` wrapper on some frameworks).
 
 ## Thread Safety
 
@@ -144,23 +150,36 @@ The implementation provides an internal `Reset()` helper used in tests/benchmark
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncAutoResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncAutoResetEvent` and reference `TaskCompletionSource`-based implementations.
+The benchmarks compare various `AsyncAutoResetEvent` implementations:
+
+- PooledAsyncAutoResetEvent: The pooled implementation from this library
+- RefImplAsyncAutoResetEvent: The reference `TaskCompletionSource`-based implementation from Stephen Toub's blog, which does not support cancellation tokens
+- NitoAsyncAutoResetEvent: The implementation from Nito.AsyncEx library
+- AutoResetEvent: The .NET built-in `AutoResetEvent` which lacks the async API
+
 
 ### Set Operation Benchmark
 
-Measures the performance of signaling the event when no waiters are queued.
+Measures the performance of signaling the event when no waiters are queued. There is no contention and no allocation cost in all implementations.
 
 [!INCLUDE[Set Benchmark](benchmarks/asyncautoresetevent-set.md)]
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before a waiter arrives (synchronous completion path).
+For the pooled implementation this is the fast path and an immediate return from WaitAsync is possible. There is no contention and no allocation cost in all implementations.
 
 [!INCLUDE[Set Then Wait Benchmark](benchmarks/asyncautoresetevent-setthenw.md)]
 
 ### Wait Then Set Benchmark
 
-Measures the pattern where a waiter is queued before the event is signaled (asynchronous completion path).
+Measures the pattern where a waiter is queued before the event is signaled (asynchronous completion path) with varying contention levels (Iterations).
+Each iteration level is also measured with a default and a cancellable token to show the overhead of cancellation support.
+Due to the different behavior of the pooled implementations with AsTask(), ValueTask and the RunContinuationAsynchronously flag, these variations are measured separately.
+The RefImpl and Nito implementations do not have the RunContinuationAsynchronously option and always complete asynchronously.
+The RefImpl implementation is sometimes the fastest despite a memory allocation per waiter for a TaskCompletionSource. Also it does not support cancellation tokens and is out of contest for cancellable waits.
+The Nito implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
+The pooled implementation starts to allocate memory only when the pool is exhausted (high contention), when the ValueTask is converted to Task by AsTask() or when cancellable tokens are used in legacy .NET versions prior to .NET 6 (due to registration overhead).
 
 [!INCLUDE[Wait Then Set Benchmark](benchmarks/asyncautoresetevent-waitthenset.md)]
 
@@ -172,7 +191,7 @@ Measures the pattern where a waiter is queued before the event is signaled (asyn
 
 2. **Pooled Waiter Advantage**: The local waiter optimization ensures the first queued waiter incurs no allocation. Under typical producer-consumer patterns, this covers the common case.
 
-3. **Memory Efficiency**: Compared to `TaskCompletionSource`-based implementations, the pooled approach significantly reduces GC pressure in high-frequency signaling scenarios.
+3. **Memory Efficiency**: Compared to `TaskCompletionSource`-based implementations, the pooled approach significantly reduces GC pressure in high-frequency signaling scenarios. For fined tuned approaches, the memory allocations can be zeroed out entirely.
 
 4. **AsTask() Overhead**: When `RunContinuationAsynchronously=true`, calling `AsTask()` before signaling introduces significant overhead. Always await `ValueTask` directly when possible.
 
@@ -262,10 +281,15 @@ See [Benchmarks](benchmarks.md#asyncautoresetevent-benchmarks) for detailed perf
 
 ## See Also
 
+- [Threading Package Overview](index.md)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
-- [Benchmarks](benchmarks.md) - Detailed performance comparisons
+- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
+- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [Benchmarks](benchmarks.md) - Benchmark description
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives
