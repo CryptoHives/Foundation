@@ -61,48 +61,6 @@ For details on contributing and the CLA, see [CONTRIBUTING.md](https://github.co
 
 ---
 
-### Funding and Support
-
-This project accepts voluntary community support to cover operational costs (code signing certificates, infrastructure, tools).
-
-**Annual Funding Goal:** €2,000 (covers infrastructure and code signing for 2026)  
-**Current Status:** Not funded
-
-**Support this project:**
-- **OpenCollective:** [opencollective.com/cryptohives-foundation](https://opencollective.com/cryptohives-foundation) - Transparent budget & expenses
-- **GitHub Sponsors:** [github.com/sponsors/mregen](https://github.com/sponsors/mregen)
-
-**How it works:**
-- Funding is capped at yearly operational costs
-- Once the annual goal is reached, new donations are paused until the next year
-- All income and expenses are transparently tracked on OpenCollective
-- 100% of funds go toward project infrastructure (code signing, hosting, domains, tools)
-
-**Purpose of Funding:**  
-Donations are used exclusively for:
-- Code signing certificates (€200-400/year)
-- Domain registration and hosting (€100-200/year)
-- Development tools and resources (€500-800/year)
-- Infrastructure and CI/CD costs (€200-500/year)
-- Community documentation and events (€200-400/year)
-
-**Tax Information:**  
-This project is operated by Martin Regen as a registered Freiberufler (freelance professional) under German tax law.
-
-**Tax Number:** [To be added after Finanzamt registration]  
-**VAT Identification Number:** Not applicable (Kleinunternehmer regulation, §19 UStG)
-
-**Trade Register Entry:**  
-Not applicable - operated as independent professional (Freiberufler)
-
-### Disclaimer Regarding Sponsorships
-
-- Sponsorships and donations are **voluntary** and do not entitle sponsors to any specific services, support, or features
-- The project remains **open source** under the MIT License
-- Funding does not create a contractual relationship for commercial services
-- Contributors and sponsors have no ownership rights beyond the MIT License terms
-- All intellectual property rights are assigned to the CryptoHives Open Source Initiative as per the CLA
-
 ### Copyright and Licensing
 
 This project is licensed under the **MIT License**. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
