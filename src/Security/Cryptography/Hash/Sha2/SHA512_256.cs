@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - K and IV are standard cryptographic constant names per FIPS 180-4
@@ -10,7 +10,7 @@ using System;
 using System.Buffers.Binary;
 
 /// <summary>
-/// Computes the SHA-512/256 hash for the input data using a clean-room implementation.
+/// Computes the SHA-512/256 hash for the input data.
 /// </summary>
 /// <remarks>
 /// <para>

@@ -9,7 +9,7 @@ using System;
 using System.Buffers.Binary;
 
 /// <summary>
-/// Computes the SHA-224 hash for the input data using a clean-room implementation.
+/// Computes the SHA-224 hash for the input data.
 /// </summary>
 /// <remarks>
 /// <para>

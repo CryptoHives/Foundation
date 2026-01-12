@@ -29,7 +29,7 @@ public enum Blake3Mode
 }
 
 /// <summary>
-/// Computes the BLAKE3 hash for the input data using a clean-room implementation.
+/// Computes the BLAKE3 hash for the input data.
 /// </summary>
 /// <remarks>
 /// <para>

@@ -7,7 +7,7 @@ using System;
 using System.Buffers.Binary;
 
 /// <summary>
-/// Computes the SM3 hash for the input data using a clean-room implementation.
+/// Computes the SM3 hash for the input data.
 /// </summary>
 /// <remarks>
 /// <para>

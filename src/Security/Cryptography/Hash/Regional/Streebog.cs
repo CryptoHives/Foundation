@@ -6,7 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 
 /// <summary>
-/// Computes the Streebog (GOST R 34.11-2012) hash for the input data using a clean-room implementation.
+/// Computes the Streebog (GOST R 34.11-2012) hash for the input data.
 /// </summary>
 /// <remarks>
 /// <para>

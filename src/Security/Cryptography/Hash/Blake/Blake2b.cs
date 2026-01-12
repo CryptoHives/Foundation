@@ -10,7 +10,7 @@ using System;
 using System.Buffers.Binary;
 
 /// <summary>
-/// Computes the BLAKE2b hash for the input data using a clean-room implementation.
+/// Computes the BLAKE2b hash for the input data.
 /// </summary>
 /// <remarks>
 /// <para>

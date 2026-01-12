@@ -1,4 +1,4 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -51,6 +51,14 @@
 
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <!-- DocFX Documentation -->
+  <ItemGroup>
+    <None Include="..\..\..\docfx\packages\security\*.md" Link="docfx\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\*.yml" Link="docfx\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\cryptography\*.md" Link="docfx\cryptography\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\cryptography\*.yml" Link="docfx\cryptography\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
