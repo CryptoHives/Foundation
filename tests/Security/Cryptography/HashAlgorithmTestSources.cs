@@ -594,6 +594,52 @@ public static class Keccak256Implementations
     }
 }
 
+/// <summary>
+/// Provides test case sources for Keccak-384 implementations.
+/// </summary>
+public static class Keccak384Implementations
+{
+    /// <summary>
+    /// Gets all available Keccak-384 implementations for testing.
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "Keccak384",
+                () => CryptoHives.Foundation.Security.Cryptography.Hash.Keccak384.Create());
+
+            yield return new HashAlgorithmFactory(
+                "Keccak-384 (BouncyCastle)",
+                () => new BouncyCastleHashAdapter(new KeccakDigest(384)));
+        }
+    }
+}
+
+/// <summary>
+/// Provides test case sources for Keccak-512 implementations.
+/// </summary>
+public static class Keccak512Implementations
+{
+    /// <summary>
+    /// Gets all available Keccak-512 implementations for testing.
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "Keccak512",
+                () => CryptoHives.Foundation.Security.Cryptography.Hash.Keccak512.Create());
+
+            yield return new HashAlgorithmFactory(
+                "Keccak-512 (BouncyCastle)",
+                () => new BouncyCastleHashAdapter(new KeccakDigest(512)));
+        }
+    }
+}
+
 #endregion
 
 #region MD5
@@ -848,6 +894,7 @@ public static class KangarooTwelveImplementations
 }
 
 #endregion
+
 
 
 

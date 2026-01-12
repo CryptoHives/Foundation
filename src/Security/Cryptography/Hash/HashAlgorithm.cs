@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2000 // Dispose objects before losing scope, this is handled by the caller
@@ -111,8 +111,12 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             // cSHAKE (NIST SP 800-185)
             "CSHAKE128" => CShake128.Create(),
             "CSHAKE256" => CShake256.Create(),
+            // KangarooTwelve (K12)
+            "KANGAROOTWELVE" or "K12" => KangarooTwelve.Create(),
             // Keccak (original, used by Ethereum)
             "KECCAK-256" or "KECCAK256" => Keccak256.Create(),
+            "KECCAK-384" or "KECCAK384" => Keccak384.Create(),
+            "KECCAK-512" or "KECCAK512" => Keccak512.Create(),
             // BLAKE family
             "BLAKE2B" or "BLAKE2B-512" => Blake2b.Create(),
             "BLAKE2S" or "BLAKE2S-256" => Blake2s.Create(),
