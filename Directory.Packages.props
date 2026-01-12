@@ -5,7 +5,7 @@
   <ItemGroup>
     <PackageVersion Include="AsyncKeyedLock" Version="8.0.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageVersion Include="Blake3" Version="2.0.0" />
+    <PackageVersion Include="Blake3" Version="2.2.0" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="HashifyNET" Version="7.1.1" />
