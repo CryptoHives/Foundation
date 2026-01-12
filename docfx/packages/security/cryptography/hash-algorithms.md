@@ -346,7 +346,7 @@ byte[] authToken = k12Auth.ComputeHash(masterSecret);
 
 ## Keccak
 
-Original Keccak algorithm (pre-SHA-3 standardization).
+Original Keccak algorithm family (pre-SHA-3 standardization).
 
 ### Keccak256
 
@@ -374,6 +374,44 @@ byte[] publicKey = ...; // 64-byte uncompressed public key (without 0x04 prefix)
 using var keccak = Keccak256.Create();
 byte[] hash = keccak.ComputeHash(publicKey);
 byte[] address = hash[^20..]; // Last 20 bytes
+```
+
+### Keccak384
+
+```csharp
+public sealed class Keccak384 : HashAlgorithm
+```
+
+**Properties:**
+- Hash Size: 384 bits (48 bytes)
+- Block Size: 104 bytes
+- Uses original Keccak padding (0x01)
+
+**Important:** This is NOT the same as SHA3-384. Keccak-384 uses different padding and produces different output.
+
+**Usage:**
+```csharp
+using var keccak = Keccak384.Create();
+byte[] hash = keccak.ComputeHash(data);
+```
+
+### Keccak512
+
+```csharp
+public sealed class Keccak512 : HashAlgorithm
+```
+
+**Properties:**
+- Hash Size: 512 bits (64 bytes)
+- Block Size: 72 bytes
+- Uses original Keccak padding (0x01)
+
+**Important:** This is NOT the same as SHA3-512. Keccak-512 uses different padding and produces different output.
+
+**Usage:**
+```csharp
+using var keccak = Keccak512.Create();
+byte[] hash = keccak.ComputeHash(data);
 ```
 
 ---
@@ -596,7 +634,7 @@ byte[] hash = streebog256.ComputeHash(data);
 
 ## Legacy
 
-⚠️ **Warning:** These algorithms are cryptographically broken and should NOT be used for security purposes.
+?? **Warning:** These algorithms are cryptographically broken and should NOT be used for security purposes.
 
 ### SHA1
 
@@ -655,7 +693,7 @@ Supported names:
 - SHAKE: `SHAKE128`, `SHAKE256`
 - cSHAKE: `CSHAKE128`, `CSHAKE256`
 - K12: `KANGAROOTWELVE`, `K12`
-- Keccak: `KECCAK-256`
+- Keccak: `KECCAK-256`, `KECCAK-384`, `KECCAK-512`
 - BLAKE: `BLAKE2B`, `BLAKE2S`, `BLAKE3`
 - Others: `RIPEMD-160`, `SM3`, `WHIRLPOOL`, `STREEBOG-256`, `STREEBOG-512`, `MD5`
 
@@ -669,4 +707,4 @@ Supported names:
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+� 2025 The Keepers of the CryptoHives
