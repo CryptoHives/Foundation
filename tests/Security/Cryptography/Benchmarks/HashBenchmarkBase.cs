@@ -20,6 +20,7 @@ public abstract class HashBenchmarkBase
     private byte[] _outputData;
 
     protected int Bytes { get; set; } = DataSize.K8.Bytes;
+
     protected HashAlgorithm HashAlgorithm { get; set; }
 
     protected byte[] InputData => _inputData!;

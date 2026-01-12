@@ -7,7 +7,7 @@
     <AssemblyName>$(AssemblyPrefix).Security.Cryptography</AssemblyName>
     <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <Description>CryptoHives Security Cryptography Library - managed hash algorithm implementations</Description>
+    <Description>CryptoHives Security Cryptography Library</Description>
     <!-- set to true when experimental Nuget package is ready to ship-->
     <IsPackable>false</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
