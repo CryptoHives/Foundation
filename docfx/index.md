@@ -48,7 +48,7 @@ The Threading package provides high-performance async synchronization primitives
 Get started in minutes:
 
 1. [Install the packages](getting-started.md#installation)
-3. [Browse the API documentation](api/index.md)
+3. [Browse the API Reference](packages/index.md)
 
 ## Sample Code
 
@@ -95,7 +95,7 @@ public async Task DoWorkAsync(CancelationToken ct)
 
 - 🚀 [Getting Started Guide](getting-started.md)
 - 📦 [Package Documentation](packages/index.md)
-- 📚 [API Reference](api/index.md)
+- 📚 [API Reference](packages/index.md)
 - 🐛 [Report Issues](https://github.com/CryptoHives/Foundation/issues)
 - 💬 [Security Policy](https://github.com/CryptoHives/.github/blob/main/SECURITY.md)
 

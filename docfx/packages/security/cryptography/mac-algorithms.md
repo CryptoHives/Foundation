@@ -388,7 +388,6 @@ public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expir
 - [Hash Algorithms](hash-algorithms.md)
 - [Cryptography Package Overview](index.md)
 - [KMAC Specifications](specs/NIST-SP-800-185.md)
-- [API Reference](../../api/CryptoHives.Foundation.Security.Cryptography.Mac.html)
 
 ---
 

@@ -613,7 +613,6 @@ Supported names:
 - [MAC Algorithms](mac-algorithms.md)
 - [Cryptography Package Overview](index.md)
 - [Specifications](specs/README.md)
-- [API Reference](../../api/CryptoHives.Foundation.Security.Cryptography.Hash.html)
 
 ---
 

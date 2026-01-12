@@ -115,7 +115,6 @@ All Security packages support:
 
 - [Cryptography Package](cryptography/index.md)
 - [Specifications](cryptography/specs/README.md)
-- [API Reference](../api/CryptoHives.Foundation.Security.Cryptography.html)
 
 ---
 

@@ -172,7 +172,6 @@ Analyzers target .NET Standard 2.0 for maximum compatibility with all IDE and bu
 
 - 📖 [Full Documentation](https://cryptohives.github.io/Foundation/)
 - 🚀 [Getting Started Guide](../getting-started.md)
-- 📚 [API Reference](../api/index.md)
 - 🐛 [Report Issues](https://github.com/CryptoHives/Foundation/issues)
 - 💬 [Discussions](https://github.com/CryptoHives/Foundation/discussions)
 

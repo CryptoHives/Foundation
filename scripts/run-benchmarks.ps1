@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: MIT
 
 # run-benchmarks.ps1
-# Runs BenchmarkDotNet benchmarks for the Threading library
-# Usage: .\scripts\run-benchmarks.ps1 [-Filter "*AsyncLock*"] [-Framework net10.0] [-Runtimes net10.0,net8.0]
+# Runs BenchmarkDotNet benchmarks for the Threading or Cryptography libraries
+# Usage: .\scripts\run-benchmarks.ps1 [-Project Threading] [-Filter "*AsyncLock*"] [-Framework net10.0]
 
 [CmdletBinding()]
 param(
-    [Parameter(HelpMessage = "Filter for benchmark names (e.g., '*AsyncLock*', 'AsyncAutoResetEvent*')")]
+    [Parameter(HelpMessage = "Project to benchmark (Threading or Cryptography)")]
+    [ValidateSet("Threading", "Cryptography")]
+    [string]$Project = "Threading",
+
+    [Parameter(HelpMessage = "Filter for benchmark names (e.g., '*AsyncLock*', '*SHA256*')")]
     [string]$Filter = "*",
 
     [Parameter(HelpMessage = "Target framework to build against (e.g., net10.0, net8.0)")]
@@ -40,19 +44,31 @@ $ErrorActionPreference = "Stop"
 # Get repository root
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptPath
-$testProject = Join-Path $repoRoot "tests\Threading"
+
+# Determine test project path based on selection
+switch ($Project) {
+    "Threading" {
+        $testProject = Join-Path $repoRoot "tests\Threading"
+        $projectTitle = "Threading"
+    }
+    "Cryptography" {
+        $testProject = Join-Path $repoRoot "tests\Security\Cryptography"
+        $projectTitle = "Security.Cryptography"
+    }
+}
 
 Write-Host ""
 Write-Host "========================================"
-Write-Host " CryptoHives Threading Benchmarks"
+Write-Host " CryptoHives $projectTitle Benchmarks"
 Write-Host "========================================"
 Write-Host ""
 Write-Host "Configuration:"
+Write-Host "  Project:       $Project"
 Write-Host "  Filter:        $Filter"
 Write-Host "  Framework:     $Framework"
 Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
-Write-Host "  Project:       $testProject"
+Write-Host "  Path:          $testProject"
 Write-Host ""
 
 # Validate project exists
@@ -116,9 +132,11 @@ try {
     Write-Host "Results saved to:"
     Write-Host "  $testProject\BenchmarkDotNet.Artifacts\results\"
     Write-Host ""
-    Write-Host "To update documentation, run:"
-    Write-Host "  .\scripts\update-benchmark-docs.ps1"
-    Write-Host ""
+    if ($Project -eq "Threading") {
+        Write-Host "To update documentation, run:"
+        Write-Host "  .\scripts\update-benchmark-docs.ps1"
+        Write-Host ""
+    }
 }
 finally {
     Pop-Location

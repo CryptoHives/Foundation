@@ -253,7 +253,6 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 - [Hash Algorithms Reference](hash-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
 - [Cryptographic Specifications](specs/README.md)
-- [API Reference](../../api/CryptoHives.Foundation.Security.Cryptography.html)
 - [Security Package Overview](../index.md)
 
 ---

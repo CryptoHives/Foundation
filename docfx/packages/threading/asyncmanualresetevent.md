@@ -279,10 +279,6 @@ await t;  // OK
 
 (See examples in this file and `asyncautoresetevent.md` for additional patterns.)
 
-## Benchmarks
-
-See [Benchmarks](benchmarks.md#asyncmanualresetevent-benchmarks) for detailed performance comparisons.
-
 ## See Also
 
 - [Threading Package Overview](index.md)

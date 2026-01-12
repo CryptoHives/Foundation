@@ -26,13 +26,6 @@
           "_site/**",
           "obj/**"
         ]
-      },
-      {
-        "src": "../src/Security/Cryptography/specs",
-        "files": [
-          "**/*.md"
-        ],
-        "dest": "packages/security/cryptography/specs"
       }
     ],
     "resource": [

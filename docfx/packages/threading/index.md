@@ -368,7 +368,6 @@ The `PooledManualResetValueTaskSource<T>` sealed implementation:
 
 ## See Also
 
-- [API Reference](../../api/CryptoHives.Foundation.Threading.Async.Pooled.html)
 - [Threading Analyzers](../threading.analyzers/index.md) - Roslyn analyzers for detecting ValueTask misuse
 - [Memory Package](../memory/index.md)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
