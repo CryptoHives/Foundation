@@ -292,6 +292,58 @@ byte[] hash = cshake.ComputeHash(data);
 
 ---
 
+## KangarooTwelve
+
+High-performance XOF based on reduced-round Keccak.
+
+### KangarooTwelve
+
+```csharp
+public sealed class KangarooTwelve : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: Variable (default 32 bytes)
+- Security: 128 bits
+- Permutation: Keccak-p[1600,12] (12 rounds)
+- Rate: 168 bytes
+- Supports: Customization string, tree hashing for large inputs
+
+**Key Features:**
+- ~2x faster than SHAKE128 due to reduced rounds
+- Tree hashing for parallel processing of messages > 8KB
+- Optional customization string for domain separation
+
+**Usage:**
+```csharp
+// Standard hash (32 bytes)
+using var k12 = KangarooTwelve.Create();
+byte[] hash = k12.ComputeHash(data);
+
+// Custom output size (64 bytes)
+using var k12 = KangarooTwelve.Create(outputBytes: 64);
+byte[] longHash = k12.ComputeHash(data);
+
+// With customization string
+using var k12 = new KangarooTwelve(
+    outputBytes: 32,
+    customization: "My Application v1.0");
+byte[] hash = k12.ComputeHash(data);
+```
+
+**Customization Example:**
+```csharp
+// Domain separation for different use cases
+using var k12Session = new KangarooTwelve(32, "SessionKey");
+using var k12Auth = new KangarooTwelve(32, "AuthToken");
+
+// Same input produces different outputs
+byte[] sessionKey = k12Session.ComputeHash(masterSecret);
+byte[] authToken = k12Auth.ComputeHash(masterSecret);
+```
+
+---
+
 ## Keccak
 
 Original Keccak algorithm (pre-SHA-3 standardization).
@@ -602,6 +654,7 @@ Supported names:
 - SHA-3: `SHA3-224`, `SHA3-256`, `SHA3-384`, `SHA3-512`
 - SHAKE: `SHAKE128`, `SHAKE256`
 - cSHAKE: `CSHAKE128`, `CSHAKE256`
+- K12: `KANGAROOTWELVE`, `K12`
 - Keccak: `KECCAK-256`
 - BLAKE: `BLAKE2B`, `BLAKE2S`, `BLAKE3`
 - Others: `RIPEMD-160`, `SM3`, `WHIRLPOOL`, `STREEBOG-256`, `STREEBOG-512`, `MD5`

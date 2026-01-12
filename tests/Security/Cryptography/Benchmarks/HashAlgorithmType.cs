@@ -139,6 +139,9 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType CShake256_Managed = new("CShake256_Managed", "CSHAKE256", () => CH.CShake256.Create(64));
 #endif
 
+    public static readonly HashAlgorithmType KangarooTwelve_Managed = new("KangarooTwelve_Managed", "K12", () => CH.KangarooTwelve.Create(32));
+    // Note: BouncyCastle 2.6.2 does not include KangarooTwelve
+
     #endregion
 
     #region BLAKE Family
@@ -251,6 +254,7 @@ public sealed class HashAlgorithmType : IFormattable
         yield return CShake128_Managed;
         yield return CShake256_Managed;
 #endif
+        yield return KangarooTwelve_Managed;
         yield return Blake2b_Managed;
         yield return Blake2s_Managed;
         yield return Blake3_Managed;
@@ -331,6 +335,7 @@ public sealed class HashAlgorithmType : IFormattable
         yield return CShake128_Managed;
         yield return CShake256_Managed;
 #endif
+        yield return KangarooTwelve_Managed;
 
         // BLAKE
         yield return Blake2b_Managed;
@@ -404,6 +409,7 @@ public sealed class HashAlgorithmType : IFormattable
         yield return CShake128_Managed;
         yield return CShake256_Managed;
 #endif
+        yield return KangarooTwelve_Managed;
     }
 
     /// <summary>All KMAC implementations for comparison, filtered to only supported algorithms.</summary>

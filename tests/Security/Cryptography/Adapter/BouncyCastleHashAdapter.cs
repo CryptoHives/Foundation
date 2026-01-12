@@ -226,4 +226,7 @@ internal sealed class BouncyCastleKmacAdapter : HashAlgorithm
     }
 }
 
+// Note: BouncyCastle 2.6.2 does not include KangarooTwelve (K12).
+// Tests use XKCP reference test vectors for verification.
+
 

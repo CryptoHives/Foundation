@@ -823,5 +823,31 @@ public static class Streebog512Implementations
 
 #endregion
 
+#region KangarooTwelve
+
+/// <summary>
+/// Provides test case sources for KangarooTwelve implementations (32-byte output).
+/// </summary>
+public static class KangarooTwelveImplementations
+{
+    /// <summary>
+    /// Gets all available KangarooTwelve implementations for testing (32-byte output).
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "KangarooTwelve",
+                () => CryptoHives.Foundation.Security.Cryptography.Hash.KangarooTwelve.Create(32));
+
+            // Note: BouncyCastle 2.6.2 does not include KangarooTwelve
+            // Tests will compare against XKCP reference vectors
+        }
+    }
+}
+
+#endregion
+
 
 
