@@ -8,6 +8,11 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
+#endif
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -69,6 +74,9 @@ public sealed class Blake3 : HashAlgorithm
     /// </summary>
     public const int ChunkSizeBytes = 1024;
 
+    // Number of compression rounds
+    private const int Rounds = 7;
+
     // BLAKE3 flags
     private const uint FlagChunkStart = 1 << 0;
     private const uint FlagChunkEnd = 1 << 1;
@@ -82,6 +90,31 @@ public sealed class Blake3 : HashAlgorithm
         0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU,
         0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U
     ];
+
+#if NET8_0_OR_GREATER
+    // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words
+    // Rotate right by 16 bits
+    private static readonly Vector128<byte> RotateMask16 = Vector128.Create(
+        (byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
+
+    // Rotate right by 8 bits
+    private static readonly Vector128<byte> RotateMask8 = Vector128.Create(
+        (byte)1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
+
+    // Pre-computed IV vectors
+    private static readonly Vector128<uint> IVLow = Vector128.Create(
+        0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU);
+
+    private static readonly Vector128<uint> IVHigh = Vector128.Create(
+        0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U);
+
+    // Vector state for SSE path
+    private Vector128<uint> _cvVec0;
+    private Vector128<uint> _cvVec1;
+    private Vector128<uint> _keyVec0;
+    private Vector128<uint> _keyVec1;
+    private readonly bool _useAvx2;
+#endif
 
     private readonly uint[] _keyWords;
     private readonly uint[] _cv;
@@ -108,9 +141,7 @@ public sealed class Blake3 : HashAlgorithm
     public Blake3(int outputBytes)
     {
         if (outputBytes < 1)
-        {
             throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
-        }
 
         _outputBytes = outputBytes;
         _mode = Blake3Mode.Hash;
@@ -120,6 +151,11 @@ public sealed class Blake3 : HashAlgorithm
         _cv = new uint[8];
         _chunkBuffer = new byte[ChunkSizeBytes];
         _cvStack = new List<uint[]>();
+
+#if NET8_0_OR_GREATER
+        _useAvx2 = Avx2.IsSupported;
+#endif
+
         Initialize();
     }
 
@@ -131,19 +167,13 @@ public sealed class Blake3 : HashAlgorithm
     private Blake3(byte[] key, int outputBytes)
     {
         if (key == null)
-        {
             throw new ArgumentNullException(nameof(key));
-        }
 
         if (key.Length != KeySizeBytes)
-        {
             throw new ArgumentException($"Key must be exactly {KeySizeBytes} bytes.", nameof(key));
-        }
 
         if (outputBytes < 1)
-        {
             throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
-        }
 
         _outputBytes = outputBytes;
         _mode = Blake3Mode.KeyedHash;
@@ -154,11 +184,23 @@ public sealed class Blake3 : HashAlgorithm
         _chunkBuffer = new byte[ChunkSizeBytes];
         _cvStack = new List<uint[]>();
 
+#if NET8_0_OR_GREATER
+        _useAvx2 = Avx2.IsSupported;
+#endif
+
         // Parse key as little-endian uint32 words
         for (int i = 0; i < 8; i++)
         {
             _keyWords[i] = BinaryPrimitives.ReadUInt32LittleEndian(key.AsSpan(i * 4));
         }
+
+#if NET8_0_OR_GREATER
+        if (_useAvx2)
+        {
+            _keyVec0 = Vector128.Create(_keyWords[0], _keyWords[1], _keyWords[2], _keyWords[3]);
+            _keyVec1 = Vector128.Create(_keyWords[4], _keyWords[5], _keyWords[6], _keyWords[7]);
+        }
+#endif
 
         Initialize();
     }
@@ -212,11 +254,27 @@ public sealed class Blake3 : HashAlgorithm
         if (_mode == Blake3Mode.KeyedHash)
         {
             Array.Copy(_keyWords, _cv, 8);
+#if NET8_0_OR_GREATER
+            if (_useAvx2)
+            {
+                _cvVec0 = _keyVec0;
+                _cvVec1 = _keyVec1;
+            }
+#endif
         }
         else
         {
             Array.Copy(IV, _keyWords, 8);
             Array.Copy(IV, _cv, 8);
+#if NET8_0_OR_GREATER
+            if (_useAvx2)
+            {
+                _keyVec0 = IVLow;
+                _keyVec1 = IVHigh;
+                _cvVec0 = IVLow;
+                _cvVec1 = IVHigh;
+            }
+#endif
         }
 
         _chunkBufferLength = 0;
@@ -241,7 +299,17 @@ public sealed class Blake3 : HashAlgorithm
                 _chunkCounter++;
                 _chunkBufferLength = 0;
                 _blocksCompressed = 0;
-                Array.Copy(_keyWords, _cv, 8);
+#if NET8_0_OR_GREATER
+                if (_useAvx2)
+                {
+                    _cvVec0 = _keyVec0;
+                    _cvVec1 = _keyVec1;
+                }
+                else
+#endif
+                {
+                    Array.Copy(_keyWords, _cv, 8);
+                }
             }
 
             int toCopy = Math.Min(ChunkSizeBytes - _chunkBufferLength, source.Length - offset);
@@ -303,7 +371,7 @@ public sealed class Blake3 : HashAlgorithm
                 }
             }
 
-            // We shouldn't get here with multi-chunk, but just in case
+            // Single CV remaining after merges
             if (_cvStack.Count == 1)
             {
                 uint[] cv = _cvStack[0];
@@ -357,6 +425,15 @@ public sealed class Blake3 : HashAlgorithm
     {
         if (disposing)
         {
+#if NET8_0_OR_GREATER
+            if (_useAvx2)
+            {
+                _cvVec0 = default;
+                _cvVec1 = default;
+                _keyVec0 = default;
+                _keyVec1 = default;
+            }
+#endif
             Array.Clear(_keyWords, 0, _keyWords.Length);
             Array.Clear(_cv, 0, _cv.Length);
             ClearBuffer(_chunkBuffer);
@@ -389,7 +466,20 @@ public sealed class Blake3 : HashAlgorithm
         }
 
         uint[] result = new uint[8];
-        Array.Copy(_cv, result, 8);
+#if NET8_0_OR_GREATER
+        if (_useAvx2)
+        {
+            // Extract from vector state
+            Span<uint> temp = stackalloc uint[8];
+            Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref temp[0]), _cvVec0);
+            Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref temp[4]), _cvVec1);
+            temp.CopyTo(result.AsSpan());
+        }
+        else
+#endif
+        {
+            Array.Copy(_cv, result, 8);
+        }
         return result;
     }
 
@@ -500,6 +590,14 @@ public sealed class Blake3 : HashAlgorithm
 
     private void CompressBlock(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
+#if NET8_0_OR_GREATER
+        if (_useAvx2)
+        {
+            CompressBlockSse2(block, blockLen, counter, flags);
+            return;
+        }
+#endif
+
         Span<uint> v = stackalloc uint[16];
         Span<uint> m = stackalloc uint[16];
         ParseBlock(block, m);
@@ -520,14 +618,174 @@ public sealed class Blake3 : HashAlgorithm
         }
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void CompressBlockSse2(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
+    {
+        // Parse message block
+        Span<uint> m = stackalloc uint[16];
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
+        }
+        else
+        {
+            for (int i = 0; i < 16; i++)
+            {
+                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
+            }
+        }
+
+        // Initialize rows
+        var row0 = _cvVec0;
+        var row1 = _cvVec1;
+        var row2 = IVLow;
+        var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
+
+        // 7 rounds of mixing with BLAKE3's fixed message schedule
+        // Round 1: 0,1,2,3,4,5,6,7 | 8,9,10,11,12,13,14,15
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[0], m[2], m[4], m[6]),
+            Vector128.Create(m[1], m[3], m[5], m[7]));
+        DiagPermuteForward(ref row1, ref row2, ref row3);
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[8], m[10], m[12], m[14]),
+            Vector128.Create(m[9], m[11], m[13], m[15]));
+        DiagPermuteBack(ref row1, ref row2, ref row3);
+
+        // Round 2: 2,6,3,10,7,0,4,13 | 1,11,12,5,9,14,15,8
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[2], m[3], m[7], m[4]),
+            Vector128.Create(m[6], m[10], m[0], m[13]));
+        DiagPermuteForward(ref row1, ref row2, ref row3);
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[1], m[12], m[9], m[15]),
+            Vector128.Create(m[11], m[5], m[14], m[8]));
+        DiagPermuteBack(ref row1, ref row2, ref row3);
+
+        // Round 3: 3,4,10,12,13,2,7,14 | 6,5,9,0,11,15,8,1
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[3], m[10], m[13], m[7]),
+            Vector128.Create(m[4], m[12], m[2], m[14]));
+        DiagPermuteForward(ref row1, ref row2, ref row3);
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[6], m[9], m[11], m[8]),
+            Vector128.Create(m[5], m[0], m[15], m[1]));
+        DiagPermuteBack(ref row1, ref row2, ref row3);
+
+        // Round 4: 10,7,12,9,14,3,13,15 | 4,0,11,2,5,8,1,6
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[10], m[12], m[14], m[13]),
+            Vector128.Create(m[7], m[9], m[3], m[15]));
+        DiagPermuteForward(ref row1, ref row2, ref row3);
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[4], m[11], m[5], m[1]),
+            Vector128.Create(m[0], m[2], m[8], m[6]));
+        DiagPermuteBack(ref row1, ref row2, ref row3);
+
+        // Round 5: 12,13,9,11,15,10,14,8 | 7,2,5,3,0,1,6,4
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[12], m[9], m[15], m[14]),
+            Vector128.Create(m[13], m[11], m[10], m[8]));
+        DiagPermuteForward(ref row1, ref row2, ref row3);
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[7], m[5], m[0], m[6]),
+            Vector128.Create(m[2], m[3], m[1], m[4]));
+        DiagPermuteBack(ref row1, ref row2, ref row3);
+
+        // Round 6: 9,14,11,5,8,12,15,1 | 13,3,0,10,2,6,4,7
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[9], m[11], m[8], m[15]),
+            Vector128.Create(m[14], m[5], m[12], m[1]));
+        DiagPermuteForward(ref row1, ref row2, ref row3);
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[13], m[0], m[2], m[4]),
+            Vector128.Create(m[3], m[10], m[6], m[7]));
+        DiagPermuteBack(ref row1, ref row2, ref row3);
+
+        // Round 7: 11,15,5,0,1,9,8,6 | 14,10,2,12,3,4,7,13
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[11], m[5], m[1], m[8]),
+            Vector128.Create(m[15], m[0], m[9], m[6]));
+        DiagPermuteForward(ref row1, ref row2, ref row3);
+        GRound(ref row0, ref row1, ref row2, ref row3,
+            Vector128.Create(m[14], m[2], m[3], m[7]),
+            Vector128.Create(m[10], m[12], m[4], m[13]));
+        DiagPermuteBack(ref row1, ref row2, ref row3);
+
+        // Finalize: cv = row0 ^ row2, cv = row1 ^ row3
+        _cvVec0 = Sse2.Xor(row0, row2);
+        _cvVec1 = Sse2.Xor(row1, row3);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void DiagPermuteForward(ref Vector128<uint> row1, ref Vector128<uint> row2, ref Vector128<uint> row3)
+    {
+        row1 = Sse2.Shuffle(row1, 0b00_11_10_01); // 1,2,3,0
+        row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
+        row3 = Sse2.Shuffle(row3, 0b10_01_00_11); // 3,0,1,2
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void DiagPermuteBack(ref Vector128<uint> row1, ref Vector128<uint> row2, ref Vector128<uint> row3)
+    {
+        row1 = Sse2.Shuffle(row1, 0b10_01_00_11); // 3,0,1,2
+        row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
+        row3 = Sse2.Shuffle(row3, 0b00_11_10_01); // 1,2,3,0
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void GRound(
+        ref Vector128<uint> a,
+        ref Vector128<uint> b,
+        ref Vector128<uint> c,
+        ref Vector128<uint> d,
+        Vector128<uint> x,
+        Vector128<uint> y)
+    {
+        // a = a + b + x
+        a = Sse2.Add(a, Sse2.Add(b, x));
+        // d = ror(d ^ a, 16)
+        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateMask16).AsUInt32();
+        // c = c + d
+        c = Sse2.Add(c, d);
+        // b = ror(b ^ c, 12)
+        var t1 = Sse2.Xor(b, c);
+        b = Sse2.Or(Sse2.ShiftRightLogical(t1, 12), Sse2.ShiftLeftLogical(t1, 20));
+        // a = a + b + y
+        a = Sse2.Add(a, Sse2.Add(b, y));
+        // d = ror(d ^ a, 8)
+        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateMask8).AsUInt32();
+        // c = c + d
+        c = Sse2.Add(c, d);
+        // b = ror(b ^ c, 7)
+        var t2 = Sse2.Xor(b, c);
+        b = Sse2.Or(Sse2.ShiftRightLogical(t2, 7), Sse2.ShiftLeftLogical(t2, 25));
+    }
+#endif
+
     private void CompressBlockFull(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags, Span<uint> result)
     {
         Span<uint> v = stackalloc uint[16];
         Span<uint> m = stackalloc uint[16];
         ParseBlock(block, m);
 
-        v[0] = _cv[0]; v[1] = _cv[1]; v[2] = _cv[2]; v[3] = _cv[3];
-        v[4] = _cv[4]; v[5] = _cv[5]; v[6] = _cv[6]; v[7] = _cv[7];
+#if NET8_0_OR_GREATER
+        if (_useAvx2)
+        {
+            Span<uint> cvTemp = stackalloc uint[8];
+            Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref cvTemp[0]), _cvVec0);
+            Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref cvTemp[4]), _cvVec1);
+            v[0] = cvTemp[0]; v[1] = cvTemp[1]; v[2] = cvTemp[2]; v[3] = cvTemp[3];
+            v[4] = cvTemp[4]; v[5] = cvTemp[5]; v[6] = cvTemp[6]; v[7] = cvTemp[7];
+        }
+        else
+#endif
+        {
+            v[0] = _cv[0]; v[1] = _cv[1]; v[2] = _cv[2]; v[3] = _cv[3];
+            v[4] = _cv[4]; v[5] = _cv[5]; v[6] = _cv[6]; v[7] = _cv[7];
+        }
+
         v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
         v[12] = (uint)counter;
         v[13] = (uint)(counter >> 32);
@@ -536,16 +794,39 @@ public sealed class Blake3 : HashAlgorithm
 
         Compress(v, m);
 
-        for (int i = 0; i < 8; i++)
+#if NET8_0_OR_GREATER
+        if (_useAvx2)
         {
-            result[i] = v[i] ^ v[i + 8];
-            result[i + 8] = v[i + 8] ^ _cv[i];
+            Span<uint> cvTemp = stackalloc uint[8];
+            Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref cvTemp[0]), _cvVec0);
+            Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref cvTemp[4]), _cvVec1);
+            for (int i = 0; i < 8; i++)
+            {
+                result[i] = v[i] ^ v[i + 8];
+                result[i + 8] = v[i + 8] ^ cvTemp[i];
+            }
+        }
+        else
+#endif
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                result[i] = v[i] ^ v[i + 8];
+                result[i + 8] = v[i + 8] ^ _cv[i];
+            }
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ParseBlock(ReadOnlySpan<byte> block, Span<uint> m)
     {
+#if NET8_0_OR_GREATER
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
+            return;
+        }
+#endif
         for (int i = 0; i < 16; i++)
         {
             m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
@@ -632,13 +913,13 @@ public sealed class Blake3 : HashAlgorithm
         unchecked
         {
             a = a + b + mx;
-            d = RotateRight(d ^ a, 16);
+            d = BitOperations.RotateRight(d ^ a, 16);
             c = c + d;
-            b = RotateRight(b ^ c, 12);
+            b = BitOperations.RotateRight(b ^ c, 12);
             a = a + b + my;
-            d = RotateRight(d ^ a, 8);
+            d = BitOperations.RotateRight(d ^ a, 8);
             c = c + d;
-            b = RotateRight(b ^ c, 7);
+            b = BitOperations.RotateRight(b ^ c, 7);
         }
     }
 
@@ -687,7 +968,4 @@ public sealed class Blake3 : HashAlgorithm
             }
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
 }
