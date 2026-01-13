@@ -413,6 +413,94 @@ public sealed class Blake2b : HashAlgorithm
     }
 
 #if NET8_0_OR_GREATER
+    // Pre-computed Vector256<int> indices for gather operations (scaled by 8 for ulong stride)
+    private static readonly Vector128<int>[] GatherIndicesX = new Vector128<int>[Rounds * 2];
+    private static readonly Vector128<int>[] GatherIndicesY = new Vector128<int>[Rounds * 2];
+
+    static Blake2b()
+    {
+        for (int round = 0; round < Rounds; round++)
+        {
+            int offset = round * ScratchSize;
+
+            // Column step indices (multiply by 8 for byte offset of ulong)
+            GatherIndicesX[round * 2] = Vector128.Create(
+                Sigma[offset + 0] * 8, Sigma[offset + 2] * 8,
+                Sigma[offset + 4] * 8, Sigma[offset + 6] * 8);
+            GatherIndicesY[round * 2] = Vector128.Create(
+                Sigma[offset + 1] * 8, Sigma[offset + 3] * 8,
+                Sigma[offset + 5] * 8, Sigma[offset + 7] * 8);
+
+            // Diagonal step indices
+            GatherIndicesX[round * 2 + 1] = Vector128.Create(
+                Sigma[offset + 8] * 8, Sigma[offset + 10] * 8,
+                Sigma[offset + 12] * 8, Sigma[offset + 14] * 8);
+            GatherIndicesY[round * 2 + 1] = Vector128.Create(
+                Sigma[offset + 9] * 8, Sigma[offset + 11] * 8,
+                Sigma[offset + 13] * 8, Sigma[offset + 15] * 8);
+        }
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
+    {
+        _bytesCompressed += (ulong)_bufferLength;
+
+        // Pin the message block for gather operations
+        fixed (byte* mPtr = block)
+        {
+            // Initialize rows...
+            var row0 = Vector256.Create(_state[0], _state[1], _state[2], _state[3]);
+            var row1 = Vector256.Create(_state[4], _state[5], _state[6], _state[7]);
+            var row2 = Vector256.Create(IV[0], IV[1], IV[2], IV[3]);
+            var row3 = Vector256.Create(
+                IV[4] ^ _bytesCompressed,
+                IV[5],
+                isFinal ? ~IV[6] : IV[6],
+                IV[7]);
+
+            for (int round = 0; round < Rounds; round++)
+            {
+                int gatherIdx = round * 2;
+
+                // Column step - use gather for message words
+                var mx0 = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIdx], 1).AsUInt64();
+                var my0 = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIdx], 1).AsUInt64();
+
+                GRound(ref row0, ref row1, ref row2, ref row3, mx0, my0);
+
+                // Diagonal permutations
+                row1 = Avx2.Permute4x64(row1, 0b00_11_10_01);
+                row2 = Avx2.Permute4x64(row2, 0b01_00_11_10);
+                row3 = Avx2.Permute4x64(row3, 0b10_01_00_11);
+
+                // Diagonal step
+                var mx1 = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIdx + 1], 1).AsUInt64();
+                var my1 = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIdx + 1], 1).AsUInt64();
+
+                GRound(ref row0, ref row1, ref row2, ref row3, mx1, my1);
+
+                // Un-rotate
+                row1 = Avx2.Permute4x64(row1, 0b10_01_00_11);
+                row2 = Avx2.Permute4x64(row2, 0b01_00_11_10);
+                row3 = Avx2.Permute4x64(row3, 0b00_11_10_01);
+            }
+
+            // Finalize state
+            var finalXor0 = Avx2.Xor(row0, row2);
+            var finalXor1 = Avx2.Xor(row1, row3);
+
+            _state[0] ^= finalXor0.GetElement(0);
+            _state[1] ^= finalXor0.GetElement(1);
+            _state[2] ^= finalXor0.GetElement(2);
+            _state[3] ^= finalXor0.GetElement(3);
+            _state[4] ^= finalXor1.GetElement(0);
+            _state[5] ^= finalXor1.GetElement(1);
+            _state[6] ^= finalXor1.GetElement(2);
+            _state[7] ^= finalXor1.GetElement(3);
+        }
+    }
+
     /// <summary>
     /// AVX2-optimized compression function for BLAKE2b.
     /// </summary>
@@ -427,7 +515,7 @@ public sealed class Blake2b : HashAlgorithm
     /// Diagonal step requires permuting the rows to align the diagonal elements.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
+    private unsafe void CompressAvx3(ReadOnlySpan<byte> block, bool isFinal)
     {
         // Update counter
         _bytesCompressed += (ulong)_bufferLength;
