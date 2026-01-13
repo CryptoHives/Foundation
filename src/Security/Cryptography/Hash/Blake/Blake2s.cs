@@ -117,6 +117,7 @@ public sealed class Blake2s : HashAlgorithm
     private Vector128<uint> _stateVec0;
     private Vector128<uint> _stateVec1;
     private readonly bool _useSse2;
+    private readonly bool _useAvx2;
 
     static Blake2s()
     {
@@ -192,6 +193,7 @@ public sealed class Blake2s : HashAlgorithm
 
 #if NET8_0_OR_GREATER
         _useSse2 = Sse2.IsSupported;
+        _useAvx2 = Avx2.IsSupported;
 #endif
 
         if (key != null && key.Length > 0)
@@ -416,6 +418,11 @@ public sealed class Blake2s : HashAlgorithm
     private void Compress(ReadOnlySpan<byte> block, bool isFinal)
     {
 #if NET8_0_OR_GREATER
+        if (_useAvx2)
+        {
+            CompressAvx2(block, isFinal);
+            return;
+        }
         if (_useSse2)
         {
             CompressSse2(block, isFinal);
@@ -576,6 +583,66 @@ public sealed class Blake2s : HashAlgorithm
                     m[Sigma[sigmaOffset + 12]], m[Sigma[sigmaOffset + 14]]);
                 var my1 = Vector128.Create(m[Sigma[sigmaOffset + 9]], m[Sigma[sigmaOffset + 11]],
                     m[Sigma[sigmaOffset + 13]], m[Sigma[sigmaOffset + 15]]);
+
+                GRound(ref row0, ref row1, ref row2, ref row3, mx1, my1);
+
+                // Un-rotate rows to restore column order
+                row1 = Sse2.Shuffle(row1, 0b10_01_00_11); // 3,0,1,2
+                row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
+                row3 = Sse2.Shuffle(row3, 0b00_11_10_01); // 1,2,3,0
+            }
+
+            // Finalize: state ^= row0 ^ row2, state ^= row1 ^ row3
+            _stateVec0 = Sse2.Xor(_stateVec0, Sse2.Xor(row0, row2));
+            _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
+        }
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
+    {
+        _bytesCompressed += (ulong)_bufferLength;
+
+        // Pin the message block for gather operations
+        fixed (byte* mPtr = block)
+        {
+            // Initialize rows from vector state
+            // row0 = v[0..3] = state[0..3]
+            // row1 = v[4..7] = state[4..7]
+            // row2 = v[8..11] = IV[0..3]
+            // row3 = v[12..15] = IV[4..7] with counter/finalization
+            var row0 = _stateVec0;
+            var row1 = _stateVec1;
+            var row2 = IVLow;
+
+            // row3 = IVHigh with counter/finalization applied
+            var counterVec = Vector128.Create((uint)_bytesCompressed, (uint)(_bytesCompressed >> 32), 0U, 0U);
+            var row3 = Sse2.Xor(IVHigh, counterVec);
+
+            if (isFinal)
+            {
+                row3 = Sse2.Xor(row3, FinalMask);
+            }
+
+            // 10 rounds of mixing
+            for (int round = 0; round < Rounds; round++)
+            {
+                int gatherIdx = round * 2;
+
+                // Column step - use AVX2 gather for message words
+                var mx0 = Avx2.GatherVector128((int*)mPtr, GatherIndicesX[gatherIdx], 1).AsUInt32();
+                var my0 = Avx2.GatherVector128((int*)mPtr, GatherIndicesY[gatherIdx], 1).AsUInt32();
+
+                GRound(ref row0, ref row1, ref row2, ref row3, mx0, my0);
+
+                // Diagonal step: rotate rows to align diagonals
+                row1 = Sse2.Shuffle(row1, 0b00_11_10_01); // 1,2,3,0
+                row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
+                row3 = Sse2.Shuffle(row3, 0b10_01_00_11); // 3,0,1,2
+
+                // Diagonal step - use AVX2 gather for message words
+                var mx1 = Avx2.GatherVector128((int*)mPtr, GatherIndicesX[gatherIdx + 1], 1).AsUInt32();
+                var my1 = Avx2.GatherVector128((int*)mPtr, GatherIndicesY[gatherIdx + 1], 1).AsUInt32();
 
                 GRound(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
