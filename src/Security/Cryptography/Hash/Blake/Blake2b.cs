@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1814 // Prefer jagged arrays - Sigma is a fixed-size cryptographic constant where multidimensional is clearer
@@ -108,8 +108,54 @@ public sealed class Blake2b : HashAlgorithm
         10, 11, 12, 13, 14, 15, 8, 9,
         18, 19, 20, 21, 22, 23, 16, 17,
         26, 27, 28, 29, 30, 31, 24, 25);
+
+    // Pre-computed IV vectors for AVX2 path
+    private static readonly Vector256<ulong> IVLow = Vector256.Create(
+        0x6a09e667f3bcc908UL, 0xbb67ae8584caa73bUL,
+        0x3c6ef372fe94f82bUL, 0xa54ff53a5f1d36f1UL);
+
+    private static readonly Vector256<ulong> IVHigh = Vector256.Create(
+        0x510e527fade682d1UL, 0x9b05688c2b3e6c1fUL,
+        0x1f83d9abfb41bd6bUL, 0x5be0cd19137e2179UL);
+
+    // Finalization mask for inverting element 2 of row3
+    private static readonly Vector256<ulong> FinalMask = Vector256.Create(0UL, 0UL, ~0UL, 0UL);
+
+    // Pre-computed Vector128<int> indices for gather operations (scaled by 8 for ulong stride)
+    private static readonly Vector128<int>[] GatherIndicesX = new Vector128<int>[Rounds * 2];
+    private static readonly Vector128<int>[] GatherIndicesY = new Vector128<int>[Rounds * 2];
+
+    // Vector state for AVX2 path
+    private Vector256<ulong> _stateVec0;
+    private Vector256<ulong> _stateVec1;
+    private readonly bool _useAvx2;
+
+    static Blake2b()
+    {
+        for (int round = 0; round < Rounds; round++)
+        {
+            int offset = round * ScratchSize;
+
+            // Column step indices (multiply by 8 for byte offset of ulong)
+            GatherIndicesX[round * 2] = Vector128.Create(
+                Sigma[offset + 0] * 8, Sigma[offset + 2] * 8,
+                Sigma[offset + 4] * 8, Sigma[offset + 6] * 8);
+            GatherIndicesY[round * 2] = Vector128.Create(
+                Sigma[offset + 1] * 8, Sigma[offset + 3] * 8,
+                Sigma[offset + 5] * 8, Sigma[offset + 7] * 8);
+
+            // Diagonal step indices
+            GatherIndicesX[round * 2 + 1] = Vector128.Create(
+                Sigma[offset + 8] * 8, Sigma[offset + 10] * 8,
+                Sigma[offset + 12] * 8, Sigma[offset + 14] * 8);
+            GatherIndicesY[round * 2 + 1] = Vector128.Create(
+                Sigma[offset + 9] * 8, Sigma[offset + 11] * 8,
+                Sigma[offset + 13] * 8, Sigma[offset + 15] * 8);
+        }
+    }
 #endif
 
+    // Scalar state for non-AVX2 path and output extraction
     private readonly ulong[] _state;
     private readonly byte[] _buffer;
     private readonly byte[]? _key;
@@ -155,6 +201,10 @@ public sealed class Blake2b : HashAlgorithm
         HashSizeValue = outputBytes * 8;
         _state = new ulong[StateSize];
         _buffer = new byte[BlockSizeBytes];
+
+#if NET8_0_OR_GREATER
+        _useAvx2 = Avx2.IsSupported;
+#endif
 
         if (key != null && key.Length > 0)
         {
@@ -207,12 +257,23 @@ public sealed class Blake2b : HashAlgorithm
     /// <inheritdoc/>
     public override void Initialize()
     {
-        // Copy IV to state
-        Array.Copy(IV, _state, StateSize);
-
-        // XOR first word with parameter block: 0x01010000 | (kk << 8) | nn
         int keyLength = _key?.Length ?? 0;
-        _state[0] ^= 0x01010000UL | ((ulong)keyLength << 8) | (uint)_outputBytes;
+        ulong paramBlock = 0x01010000UL | ((ulong)keyLength << 8) | (uint)_outputBytes;
+
+#if NET8_0_OR_GREATER
+        if (_useAvx2)
+        {
+            // Initialize vector state: IV with parameter XOR on first word
+            _stateVec0 = Avx2.Xor(IVLow, Vector256.Create(paramBlock, 0UL, 0UL, 0UL));
+            _stateVec1 = IVHigh;
+        }
+        else
+#endif
+        {
+            // Scalar initialization
+            Array.Copy(IV, _state, StateSize);
+            _state[0] ^= paramBlock;
+        }
 
         _bytesCompressed = 0;
         _bufferLength = 0;
@@ -288,7 +349,17 @@ public sealed class Blake2b : HashAlgorithm
         // Compress final block
         Compress(_buffer, true);
 
-        // Extract output (little-endian)
+#if NET8_0_OR_GREATER
+        if (_useAvx2)
+        {
+            // Extract from vector state
+            ExtractOutputAvx2(destination);
+            bytesWritten = _outputBytes;
+            return true;
+        }
+#endif
+
+        // Scalar output extraction
         int fullWords = _outputBytes / 8;
         for (int i = 0; i < fullWords; i++)
         {
@@ -308,11 +379,43 @@ public sealed class Blake2b : HashAlgorithm
         return true;
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ExtractOutputAvx2(Span<byte> destination)
+    {
+        // Store vectors to stack, then copy required bytes
+        Span<ulong> temp = stackalloc ulong[8];
+        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[0]), _stateVec0);
+        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[4]), _stateVec1);
+
+        int fullWords = _outputBytes / 8;
+        for (int i = 0; i < fullWords; i++)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * 8), temp[i]);
+        }
+
+        int remainingBytes = _outputBytes % 8;
+        if (remainingBytes > 0)
+        {
+            Span<byte> tempBytes = stackalloc byte[8];
+            BinaryPrimitives.WriteUInt64LittleEndian(tempBytes, temp[fullWords]);
+            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 8));
+        }
+    }
+#endif
+
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+#if NET8_0_OR_GREATER
+            if (_useAvx2)
+            {
+                _stateVec0 = default;
+                _stateVec1 = default;
+            }
+#endif
             Array.Clear(_state, 0, _state.Length);
             ClearBuffer(_buffer);
             if (_key != null)
@@ -327,7 +430,7 @@ public sealed class Blake2b : HashAlgorithm
     private void Compress(ReadOnlySpan<byte> block, bool isFinal)
     {
 #if NET8_0_OR_GREATER
-        if (Avx2.IsSupported)
+        if (_useAvx2)
         {
             CompressAvx2(block, isFinal);
             return;
@@ -413,34 +516,6 @@ public sealed class Blake2b : HashAlgorithm
     }
 
 #if NET8_0_OR_GREATER
-    // Pre-computed Vector256<int> indices for gather operations (scaled by 8 for ulong stride)
-    private static readonly Vector128<int>[] GatherIndicesX = new Vector128<int>[Rounds * 2];
-    private static readonly Vector128<int>[] GatherIndicesY = new Vector128<int>[Rounds * 2];
-
-    static Blake2b()
-    {
-        for (int round = 0; round < Rounds; round++)
-        {
-            int offset = round * ScratchSize;
-
-            // Column step indices (multiply by 8 for byte offset of ulong)
-            GatherIndicesX[round * 2] = Vector128.Create(
-                Sigma[offset + 0] * 8, Sigma[offset + 2] * 8,
-                Sigma[offset + 4] * 8, Sigma[offset + 6] * 8);
-            GatherIndicesY[round * 2] = Vector128.Create(
-                Sigma[offset + 1] * 8, Sigma[offset + 3] * 8,
-                Sigma[offset + 5] * 8, Sigma[offset + 7] * 8);
-
-            // Diagonal step indices
-            GatherIndicesX[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 8] * 8, Sigma[offset + 10] * 8,
-                Sigma[offset + 12] * 8, Sigma[offset + 14] * 8);
-            GatherIndicesY[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 9] * 8, Sigma[offset + 11] * 8,
-                Sigma[offset + 13] * 8, Sigma[offset + 15] * 8);
-        }
-    }
-
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
     {
@@ -449,16 +524,22 @@ public sealed class Blake2b : HashAlgorithm
         // Pin the message block for gather operations
         fixed (byte* mPtr = block)
         {
-            // Initialize rows...
-            var row0 = Vector256.Create(_state[0], _state[1], _state[2], _state[3]);
-            var row1 = Vector256.Create(_state[4], _state[5], _state[6], _state[7]);
-            var row2 = Vector256.Create(IV[0], IV[1], IV[2], IV[3]);
-            var row3 = Vector256.Create(
-                IV[4] ^ _bytesCompressed,
-                IV[5],
-                isFinal ? ~IV[6] : IV[6],
-                IV[7]);
+            // Initialize rows from vector state
+            var row0 = _stateVec0;
+            var row1 = _stateVec1;
+            var row2 = IVLow;
 
+            // row3 = IVHigh with counter/finalization applied
+            var counterVec = Vector256.Create(_bytesCompressed, 0UL, 0UL, 0UL);
+            var row3 = Avx2.Xor(IVHigh, counterVec);
+
+            if (isFinal)
+            {
+                // Invert element 2 (the finalization flag)
+                row3 = Avx2.Xor(row3, FinalMask);
+            }
+
+            // 12 rounds
             for (int round = 0; round < Rounds; round++)
             {
                 int gatherIdx = round * 2;
@@ -486,123 +567,10 @@ public sealed class Blake2b : HashAlgorithm
                 row3 = Avx2.Permute4x64(row3, 0b00_11_10_01);
             }
 
-            // Finalize state
-            var finalXor0 = Avx2.Xor(row0, row2);
-            var finalXor1 = Avx2.Xor(row1, row3);
-
-            _state[0] ^= finalXor0.GetElement(0);
-            _state[1] ^= finalXor0.GetElement(1);
-            _state[2] ^= finalXor0.GetElement(2);
-            _state[3] ^= finalXor0.GetElement(3);
-            _state[4] ^= finalXor1.GetElement(0);
-            _state[5] ^= finalXor1.GetElement(1);
-            _state[6] ^= finalXor1.GetElement(2);
-            _state[7] ^= finalXor1.GetElement(3);
+            // Finalize: state ^= row0 ^ row2, state ^= row1 ^ row3
+            _stateVec0 = Avx2.Xor(_stateVec0, Avx2.Xor(row0, row2));
+            _stateVec1 = Avx2.Xor(_stateVec1, Avx2.Xor(row1, row3));
         }
-    }
-
-    /// <summary>
-    /// AVX2-optimized compression function for BLAKE2b.
-    /// </summary>
-    /// <remarks>
-    /// The working vector v[0..15] is reorganized into 4 Vector256 registers:
-    /// - row0: v[0], v[1], v[2], v[3]
-    /// - row1: v[4], v[5], v[6], v[7]
-    /// - row2: v[8], v[9], v[10], v[11]
-    /// - row3: v[12], v[13], v[14], v[15]
-    /// 
-    /// Column step operates on these rows directly.
-    /// Diagonal step requires permuting the rows to align the diagonal elements.
-    /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressAvx3(ReadOnlySpan<byte> block, bool isFinal)
-    {
-        // Update counter
-        _bytesCompressed += (ulong)_bufferLength;
-
-        // Parse message block into 16 64-bit words
-        Span<ulong> m = stackalloc ulong[ScratchSize];
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, ulong>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < ScratchSize; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
-            }
-        }
-
-        // Initialize working vector rows
-        // row0 = v[0..3] = state[0..3]
-        // row1 = v[4..7] = state[4..7]
-        // row2 = v[8..11] = IV[0..3]
-        // row3 = v[12..15] = IV[4..7] with counter/finalization XOR
-        var row0 = Vector256.Create(_state[0], _state[1], _state[2], _state[3]);
-        var row1 = Vector256.Create(_state[4], _state[5], _state[6], _state[7]);
-        var row2 = Vector256.Create(IV[0], IV[1], IV[2], IV[3]);
-
-        // v[12] ^= counter_low, v[13] ^= counter_high (0), v[14] ^= final flag
-        var row3 = Vector256.Create(
-            IV[4] ^ _bytesCompressed,
-            IV[5],  // ^ 0 (high counter always 0 for us)
-            isFinal ? ~IV[6] : IV[6],
-            IV[7]);
-
-        // 12 rounds of mixing
-        for (int round = 0; round < Rounds; round++)
-        {
-            int sigmaOffset = round * ScratchSize;
-
-            // Column step: G on (v[0],v[4],v[8],v[12]), (v[1],v[5],v[9],v[13]), etc.
-            var mx0 = Vector256.Create(m[Sigma[sigmaOffset + 0]], m[Sigma[sigmaOffset + 2]],
-                m[Sigma[sigmaOffset + 4]], m[Sigma[sigmaOffset + 6]]);
-            var my0 = Vector256.Create(m[Sigma[sigmaOffset + 1]], m[Sigma[sigmaOffset + 3]],
-                m[Sigma[sigmaOffset + 5]], m[Sigma[sigmaOffset + 7]]);
-
-            GRound(ref row0, ref row1, ref row2, ref row3, mx0, my0);
-
-            // Diagonal step: rotate rows to align diagonals
-            // row1: rotate left by 1 -> [v5, v6, v7, v4]
-            // row2: rotate left by 2 -> [v10, v11, v8, v9]
-            // row3: rotate left by 3 -> [v15, v12, v13, v14]
-            row1 = Avx2.Permute4x64(row1, 0b00_11_10_01); // 1,2,3,0
-            row2 = Avx2.Permute4x64(row2, 0b01_00_11_10); // 2,3,0,1
-            row3 = Avx2.Permute4x64(row3, 0b10_01_00_11); // 3,0,1,2
-
-            var mx1 = Vector256.Create(m[Sigma[sigmaOffset + 8]], m[Sigma[sigmaOffset + 10]],
-                m[Sigma[sigmaOffset + 12]], m[Sigma[sigmaOffset + 14]]);
-            var my1 = Vector256.Create(m[Sigma[sigmaOffset + 9]], m[Sigma[sigmaOffset + 11]],
-                m[Sigma[sigmaOffset + 13]], m[Sigma[sigmaOffset + 15]]);
-
-            GRound(ref row0, ref row1, ref row2, ref row3, mx1, my1);
-
-            // Un-rotate rows to restore column order
-            row1 = Avx2.Permute4x64(row1, 0b10_01_00_11); // 3,0,1,2
-            row2 = Avx2.Permute4x64(row2, 0b01_00_11_10); // 2,3,0,1
-            row3 = Avx2.Permute4x64(row3, 0b00_11_10_01); // 1,2,3,0
-        }
-
-        // Finalize: state[i] ^= v[i] ^ v[i+8]
-        var finalXor0 = Avx2.Xor(row0, row2);
-        var finalXor1 = Avx2.Xor(row1, row3);
-
-        // Extract and XOR with existing state
-        Span<ulong> result0 = stackalloc ulong[4];
-        Span<ulong> result1 = stackalloc ulong[4];
-
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref result0[0]), finalXor0);
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref result1[0]), finalXor1);
-
-        _state[0] ^= result0[0];
-        _state[1] ^= result0[1];
-        _state[2] ^= result0[2];
-        _state[3] ^= result0[3];
-        _state[4] ^= result1[0];
-        _state[5] ^= result1[1];
-        _state[6] ^= result1[2];
-        _state[7] ^= result1[3];
     }
 
     /// <summary>
