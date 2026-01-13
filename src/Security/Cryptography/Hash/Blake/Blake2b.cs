@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 #endif
 
 /// <summary>
@@ -87,6 +88,27 @@ public sealed class Blake2b : HashAlgorithm
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3
     };
+
+#if NET8_0_OR_GREATER
+    // Pre-computed shuffle masks for byte-aligned rotations (static to avoid recreation)
+    private static readonly Vector256<byte> RotateMask32 = Vector256.Create(
+        (byte)4, 5, 6, 7, 0, 1, 2, 3,
+        12, 13, 14, 15, 8, 9, 10, 11,
+        20, 21, 22, 23, 16, 17, 18, 19,
+        28, 29, 30, 31, 24, 25, 26, 27);
+
+    private static readonly Vector256<byte> RotateMask24 = Vector256.Create(
+        (byte)3, 4, 5, 6, 7, 0, 1, 2,
+        11, 12, 13, 14, 15, 8, 9, 10,
+        19, 20, 21, 22, 23, 16, 17, 18,
+        27, 28, 29, 30, 31, 24, 25, 26);
+
+    private static readonly Vector256<byte> RotateMask16 = Vector256.Create(
+        (byte)2, 3, 4, 5, 6, 7, 0, 1,
+        10, 11, 12, 13, 14, 15, 8, 9,
+        18, 19, 20, 21, 22, 23, 16, 17,
+        26, 27, 28, 29, 30, 31, 24, 25);
+#endif
 
     private readonly ulong[] _state;
     private readonly byte[] _buffer;
@@ -304,6 +326,14 @@ public sealed class Blake2b : HashAlgorithm
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void Compress(ReadOnlySpan<byte> block, bool isFinal)
     {
+#if NET8_0_OR_GREATER
+        if (Avx2.IsSupported)
+        {
+            CompressAvx2(block, isFinal);
+            return;
+        }
+#endif
+
         // Update counter
         _bytesCompressed += (ulong)_bufferLength;
 
@@ -331,8 +361,9 @@ public sealed class Blake2b : HashAlgorithm
         // Initialize working vector
         _state.CopyTo(v.Slice(0, StateSize));
         IV.CopyTo(v.Slice(StateSize, StateSize));
+
         v[12] ^= _bytesCompressed;                  // XOR with low 64 bits of counter
-        // v[13] = IV[5];                           // XOR with high 64 bits (always 0 for us)
+                                                    // v[13] = IV[5];                           // XOR with high 64 bits (always 0 for us)
         v[14] = isFinal ? ~IV[6] : IV[6];           // Invert if final block
 
         // 12 rounds of mixing
@@ -380,4 +411,141 @@ public sealed class Blake2b : HashAlgorithm
             b = BitOperations.RotateRight(b ^ c, 63);
         }
     }
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// AVX2-optimized compression function for BLAKE2b.
+    /// </summary>
+    /// <remarks>
+    /// The working vector v[0..15] is reorganized into 4 Vector256 registers:
+    /// - row0: v[0], v[1], v[2], v[3]
+    /// - row1: v[4], v[5], v[6], v[7]
+    /// - row2: v[8], v[9], v[10], v[11]
+    /// - row3: v[12], v[13], v[14], v[15]
+    /// 
+    /// Column step operates on these rows directly.
+    /// Diagonal step requires permuting the rows to align the diagonal elements.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
+    {
+        // Update counter
+        _bytesCompressed += (ulong)_bufferLength;
+
+        // Parse message block into 16 64-bit words
+        Span<ulong> m = stackalloc ulong[ScratchSize];
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, ulong>(block).CopyTo(m);
+        }
+        else
+        {
+            for (int i = 0; i < ScratchSize; i++)
+            {
+                m[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+            }
+        }
+
+        // Initialize working vector rows
+        // row0 = v[0..3] = state[0..3]
+        // row1 = v[4..7] = state[4..7]
+        // row2 = v[8..11] = IV[0..3]
+        // row3 = v[12..15] = IV[4..7] with counter/finalization XOR
+        var row0 = Vector256.Create(_state[0], _state[1], _state[2], _state[3]);
+        var row1 = Vector256.Create(_state[4], _state[5], _state[6], _state[7]);
+        var row2 = Vector256.Create(IV[0], IV[1], IV[2], IV[3]);
+
+        // v[12] ^= counter_low, v[13] ^= counter_high (0), v[14] ^= final flag
+        var row3 = Vector256.Create(
+            IV[4] ^ _bytesCompressed,
+            IV[5],  // ^ 0 (high counter always 0 for us)
+            isFinal ? ~IV[6] : IV[6],
+            IV[7]);
+
+        // 12 rounds of mixing
+        for (int round = 0; round < Rounds; round++)
+        {
+            int sigmaOffset = round * ScratchSize;
+
+            // Column step: G on (v[0],v[4],v[8],v[12]), (v[1],v[5],v[9],v[13]), etc.
+            var mx0 = Vector256.Create(m[Sigma[sigmaOffset + 0]], m[Sigma[sigmaOffset + 2]],
+                m[Sigma[sigmaOffset + 4]], m[Sigma[sigmaOffset + 6]]);
+            var my0 = Vector256.Create(m[Sigma[sigmaOffset + 1]], m[Sigma[sigmaOffset + 3]],
+                m[Sigma[sigmaOffset + 5]], m[Sigma[sigmaOffset + 7]]);
+
+            GRound(ref row0, ref row1, ref row2, ref row3, mx0, my0);
+
+            // Diagonal step: rotate rows to align diagonals
+            // row1: rotate left by 1 -> [v5, v6, v7, v4]
+            // row2: rotate left by 2 -> [v10, v11, v8, v9]
+            // row3: rotate left by 3 -> [v15, v12, v13, v14]
+            row1 = Avx2.Permute4x64(row1, 0b00_11_10_01); // 1,2,3,0
+            row2 = Avx2.Permute4x64(row2, 0b01_00_11_10); // 2,3,0,1
+            row3 = Avx2.Permute4x64(row3, 0b10_01_00_11); // 3,0,1,2
+
+            var mx1 = Vector256.Create(m[Sigma[sigmaOffset + 8]], m[Sigma[sigmaOffset + 10]],
+                m[Sigma[sigmaOffset + 12]], m[Sigma[sigmaOffset + 14]]);
+            var my1 = Vector256.Create(m[Sigma[sigmaOffset + 9]], m[Sigma[sigmaOffset + 11]],
+                m[Sigma[sigmaOffset + 13]], m[Sigma[sigmaOffset + 15]]);
+
+            GRound(ref row0, ref row1, ref row2, ref row3, mx1, my1);
+
+            // Un-rotate rows to restore column order
+            row1 = Avx2.Permute4x64(row1, 0b10_01_00_11); // 3,0,1,2
+            row2 = Avx2.Permute4x64(row2, 0b01_00_11_10); // 2,3,0,1
+            row3 = Avx2.Permute4x64(row3, 0b00_11_10_01); // 1,2,3,0
+        }
+
+        // Finalize: state[i] ^= v[i] ^ v[i+8]
+        var finalXor0 = Avx2.Xor(row0, row2);
+        var finalXor1 = Avx2.Xor(row1, row3);
+
+        // Extract and XOR with existing state
+        Span<ulong> result0 = stackalloc ulong[4];
+        Span<ulong> result1 = stackalloc ulong[4];
+
+        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref result0[0]), finalXor0);
+        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref result1[0]), finalXor1);
+
+        _state[0] ^= result0[0];
+        _state[1] ^= result0[1];
+        _state[2] ^= result0[2];
+        _state[3] ^= result0[3];
+        _state[4] ^= result1[0];
+        _state[5] ^= result1[1];
+        _state[6] ^= result1[2];
+        _state[7] ^= result1[3];
+    }
+
+    /// <summary>
+    /// Performs one G round on 4 parallel lanes using AVX2.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void GRound(
+        ref Vector256<ulong> a,
+        ref Vector256<ulong> b,
+        ref Vector256<ulong> c,
+        ref Vector256<ulong> d,
+        Vector256<ulong> x,
+        Vector256<ulong> y)
+    {
+        // a = a + b + x
+        a = Avx2.Add(a, Avx2.Add(b, x));
+        // d = ror(d ^ a, 32)
+        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateMask32).AsUInt64();
+        // c = c + d
+        c = Avx2.Add(c, d);
+        // b = ror(b ^ c, 24)
+        b = Avx2.Shuffle(Avx2.Xor(b, c).AsByte(), RotateMask24).AsUInt64();
+        // a = a + b + y
+        a = Avx2.Add(a, Avx2.Add(b, y));
+        // d = ror(d ^ a, 16)
+        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateMask16).AsUInt64();
+        // c = c + d
+        c = Avx2.Add(c, d);
+        // b = ror(b ^ c, 63) - must use shift+or
+        var t = Avx2.Xor(b, c);
+        b = Avx2.Or(Avx2.ShiftRightLogical(t, 63), Avx2.ShiftLeftLogical(t, 1));
+    }
+#endif
 }

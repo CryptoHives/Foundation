@@ -35,11 +35,11 @@ internal static class MethodImplOptionsEx
     /// </summary>
     /// <remarks>
     /// On .NET 8+: <c>AggressiveOptimization</c>.
-    /// On older frameworks: <see cref="MethodImplOptions.AggressiveInlining"/> (best available hint).
+    /// On older frameworks: <see cref="MethodImplOptions.NoInlining"/> (best available hint).
     /// </remarks>
 #if NET8_0_OR_GREATER
     public const MethodImplOptions OptimizedLoop = MethodImplOptions.AggressiveOptimization;
 #else
-    public const MethodImplOptions OptimizedLoop = MethodImplOptions.AggressiveInlining;
+    public const MethodImplOptions OptimizedLoop = MethodImplOptions.NoInlining;
 #endif
 }
