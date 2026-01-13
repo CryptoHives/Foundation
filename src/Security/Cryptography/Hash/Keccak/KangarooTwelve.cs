@@ -5,7 +5,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -32,11 +31,13 @@ public sealed class KangarooTwelve : HashAlgorithm
     public const int RateBytes = 168;
 
     private const int Rounds = 12;
+    private const int InitialBufferSize = 256;
 
     private readonly int _outputBytes;
     private readonly byte[] _customization;
     private readonly ulong[] _state;
-    private List<byte> _buffer;
+    private byte[] _buffer;
+    private int _bufferLength;
     private bool _finalized;
     private int _squeezeOffset;
 
@@ -78,7 +79,8 @@ public sealed class KangarooTwelve : HashAlgorithm
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
         _state = new ulong[25];
-        _buffer = new List<byte>(256);
+        _buffer = new byte[InitialBufferSize];
+        _bufferLength = 0;
         Initialize();
     }
 
@@ -121,7 +123,7 @@ public sealed class KangarooTwelve : HashAlgorithm
     public override void Initialize()
     {
         Array.Clear(_state, 0, _state.Length);
-        _buffer.Clear();
+        _bufferLength = 0;
         _finalized = false;
         _squeezeOffset = 0;
     }
@@ -134,14 +136,9 @@ public sealed class KangarooTwelve : HashAlgorithm
             throw new InvalidOperationException("Cannot add data after finalization.");
         }
 
-#if NET8_0_OR_GREATER
-        _buffer.AddRange(source);
-#else
-        foreach (byte b in source)
-        {
-            _buffer.Add(b);
-        }
-#endif
+        EnsureBufferCapacity(_bufferLength + source.Length);
+        source.CopyTo(_buffer.AsSpan(_bufferLength));
+        _bufferLength += source.Length;
     }
 
     /// <inheritdoc/>
@@ -168,27 +165,52 @@ public sealed class KangarooTwelve : HashAlgorithm
         SqueezeXof(_state, output, ref _squeezeOffset);
     }
 
-    private void FinalizeAbsorption()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void EnsureBufferCapacity(int requiredCapacity)
     {
-        // Append customization string
-        _buffer.AddRange(_customization);
-
-        // Append right_encode(|C|)
-        Span<byte> encoded = stackalloc byte[9];
-        int encLen = RightEncode(encoded, (ulong)_customization.Length);
-        for (int i = 0; i < encLen; i++)
+        if (_buffer.Length >= requiredCapacity)
         {
-            _buffer.Add(encoded[i]);
+            return;
         }
 
-        // Convert to array and absorb
-#if NET8_0_OR_GREATER
-        AbsorbMessage(_state, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_buffer));
-#else
-        AbsorbMessage(_state, _buffer.ToArray());
-#endif
+        int newSize = _buffer.Length;
+        while (newSize < requiredCapacity)
+        {
+            newSize *= 2;
+        }
+
+        byte[] newBuffer = new byte[newSize];
+        _buffer.AsSpan(0, _bufferLength).CopyTo(newBuffer);
+        _buffer = newBuffer;
     }
 
+    private void FinalizeAbsorption()
+    {
+        // Calculate total size needed: message + customization + right_encode(|C|)
+        int custLen = _customization.Length;
+        Span<byte> encoded = stackalloc byte[9];
+        int encLen = RightEncode(encoded, (ulong)custLen);
+
+        int totalLen = _bufferLength + custLen + encLen;
+        EnsureBufferCapacity(totalLen);
+
+        // Append customization string
+        _customization.AsSpan().CopyTo(_buffer.AsSpan(_bufferLength));
+        _bufferLength += custLen;
+
+        // Append right_encode(|C|)
+        encoded.Slice(0, encLen).CopyTo(_buffer.AsSpan(_bufferLength));
+        _bufferLength += encLen;
+
+        // Absorb message
+        AbsorbMessage(_state, _buffer.AsSpan(0, _bufferLength));
+    }
+
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#else
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
     private static void AbsorbMessage(ulong[] state, ReadOnlySpan<byte> message)
     {
         int offset = 0;
@@ -254,6 +276,7 @@ public sealed class KangarooTwelve : HashAlgorithm
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int RightEncode(Span<byte> output, ulong value)
     {
         if (value == 0)
@@ -280,7 +303,11 @@ public sealed class KangarooTwelve : HashAlgorithm
         return n + 1;
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#else
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
     private static void Permute12(ulong[] state)
     {
         Span<ulong> c = stackalloc ulong[5];
@@ -294,66 +321,63 @@ public sealed class KangarooTwelve : HashAlgorithm
             0x8000000080008081UL, 0x8000000000008080UL, 0x0000000080000001UL, 0x8000000080008008UL
         ];
 
-        unchecked
+        for (int round = 0; round < Rounds; round++)
         {
-            for (int round = 0; round < Rounds; round++)
+            c[0] = state[0] ^ state[5] ^ state[10] ^ state[15] ^ state[20];
+            c[1] = state[1] ^ state[6] ^ state[11] ^ state[16] ^ state[21];
+            c[2] = state[2] ^ state[7] ^ state[12] ^ state[17] ^ state[22];
+            c[3] = state[3] ^ state[8] ^ state[13] ^ state[18] ^ state[23];
+            c[4] = state[4] ^ state[9] ^ state[14] ^ state[19] ^ state[24];
+
+            d[0] = c[4] ^ RotateLeft(c[1], 1);
+            d[1] = c[0] ^ RotateLeft(c[2], 1);
+            d[2] = c[1] ^ RotateLeft(c[3], 1);
+            d[3] = c[2] ^ RotateLeft(c[4], 1);
+            d[4] = c[3] ^ RotateLeft(c[0], 1);
+
+            state[0] ^= d[0]; state[1] ^= d[1]; state[2] ^= d[2]; state[3] ^= d[3]; state[4] ^= d[4];
+            state[5] ^= d[0]; state[6] ^= d[1]; state[7] ^= d[2]; state[8] ^= d[3]; state[9] ^= d[4];
+            state[10] ^= d[0]; state[11] ^= d[1]; state[12] ^= d[2]; state[13] ^= d[3]; state[14] ^= d[4];
+            state[15] ^= d[0]; state[16] ^= d[1]; state[17] ^= d[2]; state[18] ^= d[3]; state[19] ^= d[4];
+            state[20] ^= d[0]; state[21] ^= d[1]; state[22] ^= d[2]; state[23] ^= d[3]; state[24] ^= d[4];
+
+            b[0] = state[0];
+            b[1] = RotateLeft(state[6], 44);
+            b[2] = RotateLeft(state[12], 43);
+            b[3] = RotateLeft(state[18], 21);
+            b[4] = RotateLeft(state[24], 14);
+            b[5] = RotateLeft(state[3], 28);
+            b[6] = RotateLeft(state[9], 20);
+            b[7] = RotateLeft(state[10], 3);
+            b[8] = RotateLeft(state[16], 45);
+            b[9] = RotateLeft(state[22], 61);
+            b[10] = RotateLeft(state[1], 1);
+            b[11] = RotateLeft(state[7], 6);
+            b[12] = RotateLeft(state[13], 25);
+            b[13] = RotateLeft(state[19], 8);
+            b[14] = RotateLeft(state[20], 18);
+            b[15] = RotateLeft(state[4], 27);
+            b[16] = RotateLeft(state[5], 36);
+            b[17] = RotateLeft(state[11], 10);
+            b[18] = RotateLeft(state[17], 15);
+            b[19] = RotateLeft(state[23], 56);
+            b[20] = RotateLeft(state[2], 62);
+            b[21] = RotateLeft(state[8], 55);
+            b[22] = RotateLeft(state[14], 39);
+            b[23] = RotateLeft(state[15], 41);
+            b[24] = RotateLeft(state[21], 2);
+
+            for (int y = 0; y < 5; y++)
             {
-                c[0] = state[0] ^ state[5] ^ state[10] ^ state[15] ^ state[20];
-                c[1] = state[1] ^ state[6] ^ state[11] ^ state[16] ^ state[21];
-                c[2] = state[2] ^ state[7] ^ state[12] ^ state[17] ^ state[22];
-                c[3] = state[3] ^ state[8] ^ state[13] ^ state[18] ^ state[23];
-                c[4] = state[4] ^ state[9] ^ state[14] ^ state[19] ^ state[24];
-
-                d[0] = c[4] ^ RotateLeft(c[1], 1);
-                d[1] = c[0] ^ RotateLeft(c[2], 1);
-                d[2] = c[1] ^ RotateLeft(c[3], 1);
-                d[3] = c[2] ^ RotateLeft(c[4], 1);
-                d[4] = c[3] ^ RotateLeft(c[0], 1);
-
-                state[0] ^= d[0]; state[1] ^= d[1]; state[2] ^= d[2]; state[3] ^= d[3]; state[4] ^= d[4];
-                state[5] ^= d[0]; state[6] ^= d[1]; state[7] ^= d[2]; state[8] ^= d[3]; state[9] ^= d[4];
-                state[10] ^= d[0]; state[11] ^= d[1]; state[12] ^= d[2]; state[13] ^= d[3]; state[14] ^= d[4];
-                state[15] ^= d[0]; state[16] ^= d[1]; state[17] ^= d[2]; state[18] ^= d[3]; state[19] ^= d[4];
-                state[20] ^= d[0]; state[21] ^= d[1]; state[22] ^= d[2]; state[23] ^= d[3]; state[24] ^= d[4];
-
-                b[0] = state[0];
-                b[1] = RotateLeft(state[6], 44);
-                b[2] = RotateLeft(state[12], 43);
-                b[3] = RotateLeft(state[18], 21);
-                b[4] = RotateLeft(state[24], 14);
-                b[5] = RotateLeft(state[3], 28);
-                b[6] = RotateLeft(state[9], 20);
-                b[7] = RotateLeft(state[10], 3);
-                b[8] = RotateLeft(state[16], 45);
-                b[9] = RotateLeft(state[22], 61);
-                b[10] = RotateLeft(state[1], 1);
-                b[11] = RotateLeft(state[7], 6);
-                b[12] = RotateLeft(state[13], 25);
-                b[13] = RotateLeft(state[19], 8);
-                b[14] = RotateLeft(state[20], 18);
-                b[15] = RotateLeft(state[4], 27);
-                b[16] = RotateLeft(state[5], 36);
-                b[17] = RotateLeft(state[11], 10);
-                b[18] = RotateLeft(state[17], 15);
-                b[19] = RotateLeft(state[23], 56);
-                b[20] = RotateLeft(state[2], 62);
-                b[21] = RotateLeft(state[8], 55);
-                b[22] = RotateLeft(state[14], 39);
-                b[23] = RotateLeft(state[15], 41);
-                b[24] = RotateLeft(state[21], 2);
-
-                for (int y = 0; y < 5; y++)
-                {
-                    int off = y * 5;
-                    state[off] = b[off] ^ (~b[off + 1] & b[off + 2]);
-                    state[off + 1] = b[off + 1] ^ (~b[off + 2] & b[off + 3]);
-                    state[off + 2] = b[off + 2] ^ (~b[off + 3] & b[off + 4]);
-                    state[off + 3] = b[off + 3] ^ (~b[off + 4] & b[off]);
-                    state[off + 4] = b[off + 4] ^ (~b[off] & b[off + 1]);
-                }
-
-                state[0] ^= roundConstants[round];
+                int off = y * 5;
+                state[off] = b[off] ^ (~b[off + 1] & b[off + 2]);
+                state[off + 1] = b[off + 1] ^ (~b[off + 2] & b[off + 3]);
+                state[off + 2] = b[off + 2] ^ (~b[off + 3] & b[off + 4]);
+                state[off + 3] = b[off + 3] ^ (~b[off + 4] & b[off]);
+                state[off + 4] = b[off + 4] ^ (~b[off] & b[off + 1]);
             }
+
+            state[0] ^= roundConstants[round];
         }
     }
 
@@ -371,7 +395,7 @@ public sealed class KangarooTwelve : HashAlgorithm
         if (disposing)
         {
             Array.Clear(_state, 0, _state.Length);
-            _buffer.Clear();
+            Array.Clear(_buffer, 0, _buffer.Length);
         }
         base.Dispose(disposing);
     }

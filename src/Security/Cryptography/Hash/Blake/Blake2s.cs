@@ -8,6 +8,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes the BLAKE2s hash for the input data.
@@ -72,8 +74,6 @@ public sealed class Blake2s : HashAlgorithm
     };
 
     private readonly uint[] _state;
-    private readonly uint[] _v;
-    private readonly uint[] _m;
     private readonly byte[] _buffer;
     private readonly byte[]? _key;
     private readonly int _outputBytes;
@@ -117,8 +117,6 @@ public sealed class Blake2s : HashAlgorithm
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
         _state = new uint[8];
-        _v = new uint[16];
-        _m = new uint[16];
         _buffer = new byte[BlockSizeBytes];
 
         if (key != null && key.Length > 0)
@@ -246,10 +244,7 @@ public sealed class Blake2s : HashAlgorithm
         }
 
         // Zero-pad the remaining buffer
-        for (int i = _bufferLength; i < BlockSizeBytes; i++)
-        {
-            _buffer[i] = 0;
-        }
+        _buffer.AsSpan(_bufferLength).Clear();
 
         // Compress final block
         Compress(_buffer, true);
@@ -280,8 +275,6 @@ public sealed class Blake2s : HashAlgorithm
         if (disposing)
         {
             Array.Clear(_state, 0, _state.Length);
-            Array.Clear(_v, 0, _v.Length);
-            Array.Clear(_m, 0, _m.Length);
             ClearBuffer(_buffer);
             if (_key != null)
             {
@@ -291,82 +284,93 @@ public sealed class Blake2s : HashAlgorithm
         base.Dispose(disposing);
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
     private void Compress(ReadOnlySpan<byte> block, bool isFinal)
     {
-        unchecked
+        // Update counter
+        _bytesCompressed += (ulong)_bufferLength;
+
+        // Use stackalloc for working vectors to avoid heap allocations
+        Span<uint> v = stackalloc uint[16];
+        Span<uint> m = stackalloc uint[16];
+
+        // Parse message block into 16 32-bit words (little-endian)
+        for (int i = 0; i < 16; i++)
         {
-            // Update counter
-            _bytesCompressed += (ulong)_bufferLength;
-
-            // Parse message block into 16 32-bit words (little-endian)
-            for (int i = 0; i < 16; i++)
-            {
-                _m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
-            }
-
-            // Initialize working vector
-            _v[0] = _state[0];
-            _v[1] = _state[1];
-            _v[2] = _state[2];
-            _v[3] = _state[3];
-            _v[4] = _state[4];
-            _v[5] = _state[5];
-            _v[6] = _state[6];
-            _v[7] = _state[7];
-            _v[8] = IV[0];
-            _v[9] = IV[1];
-            _v[10] = IV[2];
-            _v[11] = IV[3];
-            _v[12] = IV[4] ^ (uint)_bytesCompressed;              // XOR with low 32 bits of counter
-            _v[13] = IV[5] ^ (uint)(_bytesCompressed >> 32);      // XOR with high 32 bits of counter
-            _v[14] = isFinal ? ~IV[6] : IV[6];                    // Invert if final block
-            _v[15] = IV[7];
-
-            // 10 rounds of mixing
-            for (int round = 0; round < 10; round++)
-            {
-                // Column step
-                G(0, 4, 8, 12, _m[Sigma[round, 0]], _m[Sigma[round, 1]]);
-                G(1, 5, 9, 13, _m[Sigma[round, 2]], _m[Sigma[round, 3]]);
-                G(2, 6, 10, 14, _m[Sigma[round, 4]], _m[Sigma[round, 5]]);
-                G(3, 7, 11, 15, _m[Sigma[round, 6]], _m[Sigma[round, 7]]);
-
-                // Diagonal step
-                G(0, 5, 10, 15, _m[Sigma[round, 8]], _m[Sigma[round, 9]]);
-                G(1, 6, 11, 12, _m[Sigma[round, 10]], _m[Sigma[round, 11]]);
-                G(2, 7, 8, 13, _m[Sigma[round, 12]], _m[Sigma[round, 13]]);
-                G(3, 4, 9, 14, _m[Sigma[round, 14]], _m[Sigma[round, 15]]);
-            }
-
-            // Finalize state
-            _state[0] ^= _v[0] ^ _v[8];
-            _state[1] ^= _v[1] ^ _v[9];
-            _state[2] ^= _v[2] ^ _v[10];
-            _state[3] ^= _v[3] ^ _v[11];
-            _state[4] ^= _v[4] ^ _v[12];
-            _state[5] ^= _v[5] ^ _v[13];
-            _state[6] ^= _v[6] ^ _v[14];
-            _state[7] ^= _v[7] ^ _v[15];
+            m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
         }
+
+        // Initialize working vector
+        v[0] = _state[0];
+        v[1] = _state[1];
+        v[2] = _state[2];
+        v[3] = _state[3];
+        v[4] = _state[4];
+        v[5] = _state[5];
+        v[6] = _state[6];
+        v[7] = _state[7];
+        v[8] = IV[0];
+        v[9] = IV[1];
+        v[10] = IV[2];
+        v[11] = IV[3];
+        v[12] = IV[4] ^ (uint)_bytesCompressed;              // XOR with low 32 bits of counter
+        v[13] = IV[5] ^ (uint)(_bytesCompressed >> 32);      // XOR with high 32 bits of counter
+        v[14] = isFinal ? ~IV[6] : IV[6];                    // Invert if final block
+        v[15] = IV[7];
+
+        // 10 rounds of mixing
+        for (int round = 0; round < 10; round++)
+        {
+            // Column step
+            G(ref v[0], ref v[4], ref v[8], ref v[12], m[Sigma[round, 0]], m[Sigma[round, 1]]);
+            G(ref v[1], ref v[5], ref v[9], ref v[13], m[Sigma[round, 2]], m[Sigma[round, 3]]);
+            G(ref v[2], ref v[6], ref v[10], ref v[14], m[Sigma[round, 4]], m[Sigma[round, 5]]);
+            G(ref v[3], ref v[7], ref v[11], ref v[15], m[Sigma[round, 6]], m[Sigma[round, 7]]);
+
+            // Diagonal step
+            G(ref v[0], ref v[5], ref v[10], ref v[15], m[Sigma[round, 8]], m[Sigma[round, 9]]);
+            G(ref v[1], ref v[6], ref v[11], ref v[12], m[Sigma[round, 10]], m[Sigma[round, 11]]);
+            G(ref v[2], ref v[7], ref v[8], ref v[13], m[Sigma[round, 12]], m[Sigma[round, 13]]);
+            G(ref v[3], ref v[4], ref v[9], ref v[14], m[Sigma[round, 14]], m[Sigma[round, 15]]);
+        }
+
+        // Finalize state
+        _state[0] ^= v[0] ^ v[8];
+        _state[1] ^= v[1] ^ v[9];
+        _state[2] ^= v[2] ^ v[10];
+        _state[3] ^= v[3] ^ v[11];
+        _state[4] ^= v[4] ^ v[12];
+        _state[5] ^= v[5] ^ v[13];
+        _state[6] ^= v[6] ^ v[14];
+        _state[7] ^= v[7] ^ v[15];
     }
 
     /// <summary>
     /// BLAKE2s mixing function G (uses 32-bit rotations).
     /// </summary>
-    private void G(int a, int b, int c, int d, uint x, uint y)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void G(ref uint a, ref uint b, ref uint c, ref uint d, uint x, uint y)
     {
         unchecked
         {
-            _v[a] = _v[a] + _v[b] + x;
-            _v[d] = RotateRight(_v[d] ^ _v[a], 16);
-            _v[c] = _v[c] + _v[d];
-            _v[b] = RotateRight(_v[b] ^ _v[c], 12);
-            _v[a] = _v[a] + _v[b] + y;
-            _v[d] = RotateRight(_v[d] ^ _v[a], 8);
-            _v[c] = _v[c] + _v[d];
-            _v[b] = RotateRight(_v[b] ^ _v[c], 7);
+            a = a + b + x;
+            d = RotateRight(d ^ a, 16);
+            c = c + d;
+            b = RotateRight(b ^ c, 12);
+            a = a + b + y;
+            d = RotateRight(d ^ a, 8);
+            c = c + d;
+            b = RotateRight(b ^ c, 7);
         }
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
+#else
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint RotateRight(uint x, int n) => (x >> n) | (x << (32 - n));
+#endif
 }

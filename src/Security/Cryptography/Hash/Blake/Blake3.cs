@@ -6,6 +6,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -267,20 +269,21 @@ public sealed class Blake3 : HashAlgorithm
         if (_cvStack.Count == 0 && _chunkCounter == 0)
         {
             // Single chunk case - finalize with root flag
-            uint[] rootOutput = FinalizeChunkAsRoot();
+            Span<uint> rootOutput = stackalloc uint[16];
+            FinalizeChunkAsRoot(rootOutput);
             ExtractOutput(rootOutput, output);
         }
         else
         {
+            Span<uint> rootOutput = stackalloc uint[16];
+
             // Multi-chunk case - finalize current chunk and add to tree
             uint[] chunkCv = FinalizeChunk();
             _cvStack.Add(chunkCv);
 
             // Now merge all CVs in the stack
-            // Each merge reduces the count by 1, and the final merge uses ROOT flag
             while (_cvStack.Count > 1)
             {
-                // Always take the last two
                 uint[] right = _cvStack[^1];
                 _cvStack.RemoveAt(_cvStack.Count - 1);
                 uint[] left = _cvStack[^1];
@@ -289,7 +292,7 @@ public sealed class Blake3 : HashAlgorithm
                 if (_cvStack.Count == 0)
                 {
                     // This is the final merge - use ROOT flag and full output
-                    uint[] rootOutput = ParentOutput(left, right);
+                    ParentOutput(left, right, rootOutput);
                     ExtractOutput(rootOutput, output);
                     return;
                 }
@@ -313,42 +316,41 @@ public sealed class Blake3 : HashAlgorithm
     /// <summary>
     /// Produces full output from a parent node with ROOT flag (for XOF output).
     /// </summary>
-    private uint[] ParentOutput(uint[] left, uint[] right)
+    private void ParentOutput(uint[] left, uint[] right, Span<uint> result)
     {
         // Concatenate left and right CVs as block input
-        byte[] block = new byte[BlockSizeBytes];
+        Span<byte> block = stackalloc byte[BlockSizeBytes];
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.AsSpan(i * 4), left[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * 4), left[i]);
         }
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.AsSpan(32 + i * 4), right[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * 4), right[i]);
         }
 
         uint flags = _baseFlags | FlagParent | FlagRoot;
 
-        uint[] v = new uint[16];
-        uint[] m = ParseBlock(block);
+        Span<uint> v = stackalloc uint[16];
+        Span<uint> m = stackalloc uint[16];
+        ParseBlock(block, m);
 
         // Initialize state with key words
         v[0] = _keyWords[0]; v[1] = _keyWords[1]; v[2] = _keyWords[2]; v[3] = _keyWords[3];
         v[4] = _keyWords[4]; v[5] = _keyWords[5]; v[6] = _keyWords[6]; v[7] = _keyWords[7];
         v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
-        v[12] = 0;  // Counter low
-        v[13] = 0;  // Counter high
+        v[12] = 0;
+        v[13] = 0;
         v[14] = BlockSizeBytes;
         v[15] = flags;
 
         Compress(v, m);
 
-        uint[] result = new uint[16];
         for (int i = 0; i < 8; i++)
         {
             result[i] = v[i] ^ v[i + 8];
             result[i + 8] = v[i + 8] ^ _keyWords[i];
         }
-        return result;
     }
 
     /// <inheritdoc/>
@@ -366,8 +368,9 @@ public sealed class Blake3 : HashAlgorithm
 
     private uint[] FinalizeChunk()
     {
-        // Process remaining blocks in chunk
+        Span<byte> block = stackalloc byte[BlockSizeBytes];
         int offset = 0;
+
         while (offset < _chunkBufferLength)
         {
             int blockLen = Math.Min(BlockSizeBytes, _chunkBufferLength - offset);
@@ -378,7 +381,7 @@ public sealed class Blake3 : HashAlgorithm
             if (isStart) flags |= FlagChunkStart;
             if (isEnd) flags |= FlagChunkEnd;
 
-            byte[] block = new byte[BlockSizeBytes];
+            block.Clear();
             _chunkBuffer.AsSpan(offset, blockLen).CopyTo(block);
 
             CompressBlock(block, (uint)blockLen, _chunkCounter, flags);
@@ -391,26 +394,26 @@ public sealed class Blake3 : HashAlgorithm
         return result;
     }
 
-    private uint[] FinalizeChunkAsRoot()
+    private void FinalizeChunkAsRoot(Span<uint> result)
     {
         int offset = 0;
         int lastBlockOffset = 0;
         int lastBlockLen = _chunkBufferLength;
 
-        // Handle empty input
         if (_chunkBufferLength == 0)
         {
             lastBlockLen = 0;
         }
         else
         {
-            // Find the last block
             while (lastBlockLen > BlockSizeBytes)
             {
                 lastBlockOffset += BlockSizeBytes;
                 lastBlockLen -= BlockSizeBytes;
             }
         }
+
+        Span<byte> block = stackalloc byte[BlockSizeBytes];
 
         // Process all blocks except the last
         while (offset < lastBlockOffset)
@@ -420,7 +423,7 @@ public sealed class Blake3 : HashAlgorithm
             uint flags = _baseFlags;
             if (isStart) flags |= FlagChunkStart;
 
-            byte[] block = new byte[BlockSizeBytes];
+            block.Clear();
             _chunkBuffer.AsSpan(offset, BlockSizeBytes).CopyTo(block);
 
             CompressBlock(block, BlockSizeBytes, _chunkCounter, flags);
@@ -432,19 +435,17 @@ public sealed class Blake3 : HashAlgorithm
         uint finalFlags = _baseFlags | FlagChunkEnd | FlagRoot;
         if (_blocksCompressed == 0) finalFlags |= FlagChunkStart;
 
-        byte[] lastBlock = new byte[BlockSizeBytes];
+        block.Clear();
         if (lastBlockLen > 0)
         {
-            _chunkBuffer.AsSpan(lastBlockOffset, lastBlockLen).CopyTo(lastBlock);
+            _chunkBuffer.AsSpan(lastBlockOffset, lastBlockLen).CopyTo(block);
         }
 
-        // For root output, we use the full compression output
-        return CompressBlockFull(lastBlock, (uint)lastBlockLen, _chunkCounter, finalFlags);
+        CompressBlockFull(block, (uint)lastBlockLen, _chunkCounter, finalFlags, result);
     }
 
     private void AddChunkToTree(uint[] chunkCv)
     {
-        // Add to stack and merge complete subtrees
         _cvStack.Add(chunkCv);
 
         ulong totalChunks = _chunkCounter + 1;
@@ -463,29 +464,28 @@ public sealed class Blake3 : HashAlgorithm
 
     private uint[] ParentCv(uint[] left, uint[] right, bool isRoot)
     {
-        // Concatenate left and right CVs as block input
-        byte[] block = new byte[BlockSizeBytes];
+        Span<byte> block = stackalloc byte[BlockSizeBytes];
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.AsSpan(i * 4), left[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * 4), left[i]);
         }
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.AsSpan(32 + i * 4), right[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * 4), right[i]);
         }
 
         uint flags = _baseFlags | FlagParent;
         if (isRoot) flags |= FlagRoot;
 
-        uint[] v = new uint[16];
-        uint[] m = ParseBlock(block);
+        Span<uint> v = stackalloc uint[16];
+        Span<uint> m = stackalloc uint[16];
+        ParseBlock(block, m);
 
-        // Initialize state with key words
         v[0] = _keyWords[0]; v[1] = _keyWords[1]; v[2] = _keyWords[2]; v[3] = _keyWords[3];
         v[4] = _keyWords[4]; v[5] = _keyWords[5]; v[6] = _keyWords[6]; v[7] = _keyWords[7];
         v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
-        v[12] = 0;  // Counter low (always 0 for parent)
-        v[13] = 0;  // Counter high
+        v[12] = 0;
+        v[13] = 0;
         v[14] = BlockSizeBytes;
         v[15] = flags;
 
@@ -499,10 +499,11 @@ public sealed class Blake3 : HashAlgorithm
         return result;
     }
 
-    private void CompressBlock(byte[] block, uint blockLen, ulong counter, uint flags)
+    private void CompressBlock(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
-        uint[] v = new uint[16];
-        uint[] m = ParseBlock(block);
+        Span<uint> v = stackalloc uint[16];
+        Span<uint> m = stackalloc uint[16];
+        ParseBlock(block, m);
 
         v[0] = _cv[0]; v[1] = _cv[1]; v[2] = _cv[2]; v[3] = _cv[3];
         v[4] = _cv[4]; v[5] = _cv[5]; v[6] = _cv[6]; v[7] = _cv[7];
@@ -514,19 +515,17 @@ public sealed class Blake3 : HashAlgorithm
 
         Compress(v, m);
 
-        unchecked
+        for (int i = 0; i < 8; i++)
         {
-            for (int i = 0; i < 8; i++)
-            {
-                _cv[i] = v[i] ^ v[i + 8];
-            }
+            _cv[i] = v[i] ^ v[i + 8];
         }
     }
 
-    private uint[] CompressBlockFull(byte[] block, uint blockLen, ulong counter, uint flags)
+    private void CompressBlockFull(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags, Span<uint> result)
     {
-        uint[] v = new uint[16];
-        uint[] m = ParseBlock(block);
+        Span<uint> v = stackalloc uint[16];
+        Span<uint> m = stackalloc uint[16];
+        ParseBlock(block, m);
 
         v[0] = _cv[0]; v[1] = _cv[1]; v[2] = _cv[2]; v[3] = _cv[3];
         v[4] = _cv[4]; v[5] = _cv[5]; v[6] = _cv[6]; v[7] = _cv[7];
@@ -538,122 +537,123 @@ public sealed class Blake3 : HashAlgorithm
 
         Compress(v, m);
 
-        uint[] result = new uint[16];
-        unchecked
+        for (int i = 0; i < 8; i++)
         {
-            for (int i = 0; i < 8; i++)
-            {
-                result[i] = v[i] ^ v[i + 8];
-                result[i + 8] = v[i + 8] ^ _cv[i];
-            }
+            result[i] = v[i] ^ v[i + 8];
+            result[i + 8] = v[i + 8] ^ _cv[i];
         }
-        return result;
     }
 
-    private static uint[] ParseBlock(byte[] block)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ParseBlock(ReadOnlySpan<byte> block, Span<uint> m)
     {
-        uint[] m = new uint[16];
         for (int i = 0; i < 16; i++)
         {
-            m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.AsSpan(i * 4));
+            m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
         }
-        return m;
     }
 
-    private static void Compress(uint[] v, uint[] m)
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
+    private static void Compress(Span<uint> v, Span<uint> m)
+    {
+        // Round 1
+        G(ref v[0], ref v[4], ref v[8], ref v[12], m[0], m[1]);
+        G(ref v[1], ref v[5], ref v[9], ref v[13], m[2], m[3]);
+        G(ref v[2], ref v[6], ref v[10], ref v[14], m[4], m[5]);
+        G(ref v[3], ref v[7], ref v[11], ref v[15], m[6], m[7]);
+        G(ref v[0], ref v[5], ref v[10], ref v[15], m[8], m[9]);
+        G(ref v[1], ref v[6], ref v[11], ref v[12], m[10], m[11]);
+        G(ref v[2], ref v[7], ref v[8], ref v[13], m[12], m[13]);
+        G(ref v[3], ref v[4], ref v[9], ref v[14], m[14], m[15]);
+
+        // Round 2
+        G(ref v[0], ref v[4], ref v[8], ref v[12], m[2], m[6]);
+        G(ref v[1], ref v[5], ref v[9], ref v[13], m[3], m[10]);
+        G(ref v[2], ref v[6], ref v[10], ref v[14], m[7], m[0]);
+        G(ref v[3], ref v[7], ref v[11], ref v[15], m[4], m[13]);
+        G(ref v[0], ref v[5], ref v[10], ref v[15], m[1], m[11]);
+        G(ref v[1], ref v[6], ref v[11], ref v[12], m[12], m[5]);
+        G(ref v[2], ref v[7], ref v[8], ref v[13], m[9], m[14]);
+        G(ref v[3], ref v[4], ref v[9], ref v[14], m[15], m[8]);
+
+        // Round 3
+        G(ref v[0], ref v[4], ref v[8], ref v[12], m[3], m[4]);
+        G(ref v[1], ref v[5], ref v[9], ref v[13], m[10], m[12]);
+        G(ref v[2], ref v[6], ref v[10], ref v[14], m[13], m[2]);
+        G(ref v[3], ref v[7], ref v[11], ref v[15], m[7], m[14]);
+        G(ref v[0], ref v[5], ref v[10], ref v[15], m[6], m[5]);
+        G(ref v[1], ref v[6], ref v[11], ref v[12], m[9], m[0]);
+        G(ref v[2], ref v[7], ref v[8], ref v[13], m[11], m[15]);
+        G(ref v[3], ref v[4], ref v[9], ref v[14], m[8], m[1]);
+
+        // Round 4
+        G(ref v[0], ref v[4], ref v[8], ref v[12], m[10], m[7]);
+        G(ref v[1], ref v[5], ref v[9], ref v[13], m[12], m[9]);
+        G(ref v[2], ref v[6], ref v[10], ref v[14], m[14], m[3]);
+        G(ref v[3], ref v[7], ref v[11], ref v[15], m[13], m[15]);
+        G(ref v[0], ref v[5], ref v[10], ref v[15], m[4], m[0]);
+        G(ref v[1], ref v[6], ref v[11], ref v[12], m[11], m[2]);
+        G(ref v[2], ref v[7], ref v[8], ref v[13], m[5], m[8]);
+        G(ref v[3], ref v[4], ref v[9], ref v[14], m[1], m[6]);
+
+        // Round 5
+        G(ref v[0], ref v[4], ref v[8], ref v[12], m[12], m[13]);
+        G(ref v[1], ref v[5], ref v[9], ref v[13], m[9], m[11]);
+        G(ref v[2], ref v[6], ref v[10], ref v[14], m[15], m[10]);
+        G(ref v[3], ref v[7], ref v[11], ref v[15], m[14], m[8]);
+        G(ref v[0], ref v[5], ref v[10], ref v[15], m[7], m[2]);
+        G(ref v[1], ref v[6], ref v[11], ref v[12], m[5], m[3]);
+        G(ref v[2], ref v[7], ref v[8], ref v[13], m[0], m[1]);
+        G(ref v[3], ref v[4], ref v[9], ref v[14], m[6], m[4]);
+
+        // Round 6
+        G(ref v[0], ref v[4], ref v[8], ref v[12], m[9], m[14]);
+        G(ref v[1], ref v[5], ref v[9], ref v[13], m[11], m[5]);
+        G(ref v[2], ref v[6], ref v[10], ref v[14], m[8], m[12]);
+        G(ref v[3], ref v[7], ref v[11], ref v[15], m[15], m[1]);
+        G(ref v[0], ref v[5], ref v[10], ref v[15], m[13], m[3]);
+        G(ref v[1], ref v[6], ref v[11], ref v[12], m[0], m[10]);
+        G(ref v[2], ref v[7], ref v[8], ref v[13], m[2], m[6]);
+        G(ref v[3], ref v[4], ref v[9], ref v[14], m[4], m[7]);
+
+        // Round 7
+        G(ref v[0], ref v[4], ref v[8], ref v[12], m[11], m[15]);
+        G(ref v[1], ref v[5], ref v[9], ref v[13], m[5], m[0]);
+        G(ref v[2], ref v[6], ref v[10], ref v[14], m[1], m[9]);
+        G(ref v[3], ref v[7], ref v[11], ref v[15], m[8], m[6]);
+        G(ref v[0], ref v[5], ref v[10], ref v[15], m[14], m[10]);
+        G(ref v[1], ref v[6], ref v[11], ref v[12], m[2], m[12]);
+        G(ref v[2], ref v[7], ref v[8], ref v[13], m[3], m[4]);
+        G(ref v[3], ref v[4], ref v[9], ref v[14], m[7], m[13]);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void G(ref uint a, ref uint b, ref uint c, ref uint d, uint mx, uint my)
     {
         unchecked
         {
-            // Round 1
-            G(v, 0, 4, 8, 12, m[0], m[1]);
-            G(v, 1, 5, 9, 13, m[2], m[3]);
-            G(v, 2, 6, 10, 14, m[4], m[5]);
-            G(v, 3, 7, 11, 15, m[6], m[7]);
-            G(v, 0, 5, 10, 15, m[8], m[9]);
-            G(v, 1, 6, 11, 12, m[10], m[11]);
-            G(v, 2, 7, 8, 13, m[12], m[13]);
-            G(v, 3, 4, 9, 14, m[14], m[15]);
-
-            // Round 2
-            G(v, 0, 4, 8, 12, m[2], m[6]);
-            G(v, 1, 5, 9, 13, m[3], m[10]);
-            G(v, 2, 6, 10, 14, m[7], m[0]);
-            G(v, 3, 7, 11, 15, m[4], m[13]);
-            G(v, 0, 5, 10, 15, m[1], m[11]);
-            G(v, 1, 6, 11, 12, m[12], m[5]);
-            G(v, 2, 7, 8, 13, m[9], m[14]);
-            G(v, 3, 4, 9, 14, m[15], m[8]);
-
-            // Round 3
-            G(v, 0, 4, 8, 12, m[3], m[4]);
-            G(v, 1, 5, 9, 13, m[10], m[12]);
-            G(v, 2, 6, 10, 14, m[13], m[2]);
-            G(v, 3, 7, 11, 15, m[7], m[14]);
-            G(v, 0, 5, 10, 15, m[6], m[5]);
-            G(v, 1, 6, 11, 12, m[9], m[0]);
-            G(v, 2, 7, 8, 13, m[11], m[15]);
-            G(v, 3, 4, 9, 14, m[8], m[1]);
-
-            // Round 4
-            G(v, 0, 4, 8, 12, m[10], m[7]);
-            G(v, 1, 5, 9, 13, m[12], m[9]);
-            G(v, 2, 6, 10, 14, m[14], m[3]);
-            G(v, 3, 7, 11, 15, m[13], m[15]);
-            G(v, 0, 5, 10, 15, m[4], m[0]);
-            G(v, 1, 6, 11, 12, m[11], m[2]);
-            G(v, 2, 7, 8, 13, m[5], m[8]);
-            G(v, 3, 4, 9, 14, m[1], m[6]);
-
-            // Round 5
-            G(v, 0, 4, 8, 12, m[12], m[13]);
-            G(v, 1, 5, 9, 13, m[9], m[11]);
-            G(v, 2, 6, 10, 14, m[15], m[10]);
-            G(v, 3, 7, 11, 15, m[14], m[8]);
-            G(v, 0, 5, 10, 15, m[7], m[2]);
-            G(v, 1, 6, 11, 12, m[5], m[3]);
-            G(v, 2, 7, 8, 13, m[0], m[1]);
-            G(v, 3, 4, 9, 14, m[6], m[4]);
-
-            // Round 6
-            G(v, 0, 4, 8, 12, m[9], m[14]);
-            G(v, 1, 5, 9, 13, m[11], m[5]);
-            G(v, 2, 6, 10, 14, m[8], m[12]);
-            G(v, 3, 7, 11, 15, m[15], m[1]);
-            G(v, 0, 5, 10, 15, m[13], m[3]);
-            G(v, 1, 6, 11, 12, m[0], m[10]);
-            G(v, 2, 7, 8, 13, m[2], m[6]);
-            G(v, 3, 4, 9, 14, m[4], m[7]);
-
-            // Round 7
-            G(v, 0, 4, 8, 12, m[11], m[15]);
-            G(v, 1, 5, 9, 13, m[5], m[0]);
-            G(v, 2, 6, 10, 14, m[1], m[9]);
-            G(v, 3, 7, 11, 15, m[8], m[6]);
-            G(v, 0, 5, 10, 15, m[14], m[10]);
-            G(v, 1, 6, 11, 12, m[2], m[12]);
-            G(v, 2, 7, 8, 13, m[3], m[4]);
-            G(v, 3, 4, 9, 14, m[7], m[13]);
+            a = a + b + mx;
+            d = RotateRight(d ^ a, 16);
+            c = c + d;
+            b = RotateRight(b ^ c, 12);
+            a = a + b + my;
+            d = RotateRight(d ^ a, 8);
+            c = c + d;
+            b = RotateRight(b ^ c, 7);
         }
     }
 
-    private static void G(uint[] v, int a, int b, int c, int d, uint mx, uint my)
-    {
-        unchecked
-        {
-            v[a] = v[a] + v[b] + mx;
-            v[d] = RotateRight(v[d] ^ v[a], 16);
-            v[c] = v[c] + v[d];
-            v[b] = RotateRight(v[b] ^ v[c], 12);
-            v[a] = v[a] + v[b] + my;
-            v[d] = RotateRight(v[d] ^ v[a], 8);
-            v[c] = v[c] + v[d];
-            v[b] = RotateRight(v[b] ^ v[c], 7);
-        }
-    }
-
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
+#else
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint RotateRight(uint x, int n) => (x >> n) | (x << (32 - n));
+#endif
 
-    private static void ExtractOutput(uint[] cv, Span<byte> output)
+    private static void ExtractOutput(ReadOnlySpan<uint> cv, Span<byte> output)
     {
         int offset = 0;
         int wordIndex = 0;
