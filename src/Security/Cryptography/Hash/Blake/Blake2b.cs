@@ -10,6 +10,9 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices;
+#endif
 
 /// <summary>
 /// Computes the BLAKE2b hash for the input data.
@@ -48,6 +51,12 @@ public sealed class Blake2b : HashAlgorithm
     // Rounds of mixing
     private const int Rounds = 12;
 
+    // The size of the state buffer
+    private const int StateSize = 8;
+
+    // The size of the scratch buffers
+    private const int ScratchSize = 16;
+
     // BLAKE2b IV constants (same as SHA-512)
     private static readonly ulong[] IV =
     [
@@ -62,7 +71,7 @@ public sealed class Blake2b : HashAlgorithm
     ];
 
     // BLAKE2b sigma permutations for message scheduling
-    private static readonly byte[,] Sigma = new byte[Rounds, 16]
+    private static readonly byte[,] Sigma = new byte[Rounds, ScratchSize]
     {
         { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
         { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 },
@@ -121,7 +130,7 @@ public sealed class Blake2b : HashAlgorithm
 
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
-        _state = new ulong[8];
+        _state = new ulong[StateSize];
         _buffer = new byte[BlockSizeBytes];
 
         if (key != null && key.Length > 0)
@@ -176,7 +185,7 @@ public sealed class Blake2b : HashAlgorithm
     public override void Initialize()
     {
         // Copy IV to state
-        Array.Copy(IV, _state, 8);
+        Array.Copy(IV, _state, StateSize);
 
         // XOR first word with parameter block: 0x01010000 | (kk << 8) | nn
         int keyLength = _key?.Length ?? 0;
@@ -302,28 +311,33 @@ public sealed class Blake2b : HashAlgorithm
         Span<ulong> m = stackalloc ulong[16];
 
         // Parse message block into 16 64-bit words (little-endian)
-        for (int i = 0; i < 16; i++)
+#if NET8_0_OR_GREATER
+        // On little-endian platforms, directly reinterpret the byte span as ulong.
+        // This avoids 16 individual BinaryPrimitives.ReadUInt64LittleEndian calls.
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, ulong>(block).CopyTo(m);
+        }
+        else
+        {
+            for (int i = 0; i < ScratchSize; i++)
+            {
+                m[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+            }
+        }
+#else
+        for (int i = 0; i < ScratchSize; i++)
         {
             m[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
         }
+#endif
 
         // Initialize working vector
-        v[0] = _state[0];
-        v[1] = _state[1];
-        v[2] = _state[2];
-        v[3] = _state[3];
-        v[4] = _state[4];
-        v[5] = _state[5];
-        v[6] = _state[6];
-        v[7] = _state[7];
-        v[8] = IV[0];
-        v[9] = IV[1];
-        v[10] = IV[2];
-        v[11] = IV[3];
-        v[12] = IV[4] ^ _bytesCompressed;           // XOR with low 64 bits of counter
-        v[13] = IV[5];                              // XOR with high 64 bits (always 0 for us)
+        _state.CopyTo(v.Slice(0, StateSize));
+        IV.CopyTo(v.Slice(StateSize, StateSize));
+        v[12] ^= _bytesCompressed;                  // XOR with low 64 bits of counter
+        // v[13] = IV[5];                           // XOR with high 64 bits (always 0 for us)
         v[14] = isFinal ? ~IV[6] : IV[6];           // Invert if final block
-        v[15] = IV[7];
 
         // 12 rounds of mixing
         for (int round = 0; round < Rounds; round++)
