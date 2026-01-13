@@ -5,6 +5,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes the SM3 hash for the input data.
@@ -168,10 +170,13 @@ public sealed class SM3 : HashAlgorithm
         base.Dispose(disposing);
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
-        uint[] w = new uint[68];
-        uint[] wp = new uint[64];
+        Span<uint> w = stackalloc uint[68];
+        Span<uint> wp = stackalloc uint[64];
 
         unchecked
         {
@@ -236,14 +241,25 @@ public sealed class SM3 : HashAlgorithm
     }
 
     // Boolean functions
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint FF0(uint x, uint y, uint z) => x ^ y ^ z;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint FF1(uint x, uint y, uint z) => (x & y) | (x & z) | (y & z);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint GG0(uint x, uint y, uint z) => x ^ y ^ z;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint GG1(uint x, uint y, uint z) => (x & y) | (~x & z);
 
     // Permutation functions
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint P0(uint x) => x ^ RotateLeft(x, 9) ^ RotateLeft(x, 17);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint P1(uint x) => x ^ RotateLeft(x, 15) ^ RotateLeft(x, 23);
 
-    private static uint RotateLeft(uint x, int n) => (x << n) | (x >> (32 - n));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
 }

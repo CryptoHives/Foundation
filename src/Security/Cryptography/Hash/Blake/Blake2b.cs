@@ -372,11 +372,6 @@ public sealed class Blake2b : HashAlgorithm
         }
     }
 
-#if NET8_0_OR_GREATER
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong RotateRight(ulong x, int n) => BitOperations.RotateRight(x, n);
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateRight(ulong x, int n) => (x >> n) | (x << (64 - n));
-#endif
 }

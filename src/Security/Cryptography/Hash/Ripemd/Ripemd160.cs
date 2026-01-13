@@ -5,6 +5,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes the RIPEMD-160 hash for the input data.
@@ -210,9 +212,12 @@ public sealed class Ripemd160 : HashAlgorithm
         base.Dispose(disposing);
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
-        uint[] x = new uint[16];
+        Span<uint> x = stackalloc uint[16];
 
         unchecked
         {
@@ -260,10 +265,10 @@ public sealed class Ripemd160 : HashAlgorithm
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint F(int round, uint x, uint y, uint z)
     {
-        return round switch
-        {
+        return round switch {
             0 => x ^ y ^ z,
             1 => (x & y) | (~x & z),
             2 => (x | ~y) ^ z,
@@ -273,5 +278,6 @@ public sealed class Ripemd160 : HashAlgorithm
         };
     }
 
-    private static uint RotateLeft(uint x, int n) => (x << n) | (x >> (32 - n));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
 }

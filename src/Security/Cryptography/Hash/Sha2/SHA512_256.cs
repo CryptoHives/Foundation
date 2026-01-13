@@ -8,6 +8,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes the SHA-512/256 hash for the input data.
@@ -67,7 +69,6 @@ public sealed class SHA512_256 : HashAlgorithm
 
     private readonly byte[] _buffer;
     private readonly ulong[] _state;
-    private readonly ulong[] _w;
     private long _bytesProcessed;
     private int _bufferLength;
 
@@ -79,7 +80,6 @@ public sealed class SHA512_256 : HashAlgorithm
         HashSizeValue = HashSizeBits;
         _buffer = new byte[BlockSizeBytes];
         _state = new ulong[8];
-        _w = new ulong[80];
         Initialize();
     }
 
@@ -175,25 +175,29 @@ public sealed class SHA512_256 : HashAlgorithm
         {
             ClearBuffer(_buffer);
             Array.Clear(_state, 0, _state.Length);
-            Array.Clear(_w, 0, _w.Length);
         }
         base.Dispose(disposing);
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
+        Span<ulong> w = stackalloc ulong[80];
+
         unchecked
         {
             for (int i = 0; i < 16; i++)
             {
-                _w[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * 8));
+                w[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * 8));
             }
 
             for (int i = 16; i < 80; i++)
             {
-                ulong s0 = RotateRight(_w[i - 15], 1) ^ RotateRight(_w[i - 15], 8) ^ (_w[i - 15] >> 7);
-                ulong s1 = RotateRight(_w[i - 2], 19) ^ RotateRight(_w[i - 2], 61) ^ (_w[i - 2] >> 6);
-                _w[i] = _w[i - 16] + s0 + _w[i - 7] + s1;
+                ulong s0 = RotateRight(w[i - 15], 1) ^ RotateRight(w[i - 15], 8) ^ (w[i - 15] >> 7);
+                ulong s1 = RotateRight(w[i - 2], 19) ^ RotateRight(w[i - 2], 61) ^ (w[i - 2] >> 6);
+                w[i] = w[i - 16] + s0 + w[i - 7] + s1;
             }
 
             ulong a = _state[0];
@@ -209,7 +213,7 @@ public sealed class SHA512_256 : HashAlgorithm
             {
                 ulong S1 = RotateRight(e, 14) ^ RotateRight(e, 18) ^ RotateRight(e, 41);
                 ulong ch = (e & f) ^ (~e & g);
-                ulong temp1 = h + S1 + ch + K[i] + _w[i];
+                ulong temp1 = h + S1 + ch + K[i] + w[i];
                 ulong S0 = RotateRight(a, 28) ^ RotateRight(a, 34) ^ RotateRight(a, 39);
                 ulong maj = (a & b) ^ (a & c) ^ (b & c);
                 ulong temp2 = S0 + maj;
@@ -265,5 +269,6 @@ public sealed class SHA512_256 : HashAlgorithm
         }
     }
 
-    private static ulong RotateRight(ulong x, int n) => (x >> n) | (x << (64 - n));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong RotateRight(ulong x, int n) => BitOperations.RotateRight(x, n);
 }

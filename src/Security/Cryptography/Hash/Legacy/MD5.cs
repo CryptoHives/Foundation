@@ -196,9 +196,12 @@ public sealed class MD5 : HashAlgorithm
         base.Dispose(disposing);
     }
 
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
-        uint[] m = new uint[16];
+        Span<uint> m = stackalloc uint[16];
 
         unchecked
         {
@@ -254,9 +257,5 @@ public sealed class MD5 : HashAlgorithm
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#if NET8_0_OR_GREATER
     private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
-#else
-    private static uint RotateLeft(uint x, int n) => (x << n) | (x >> (32 - n));
-#endif
 }

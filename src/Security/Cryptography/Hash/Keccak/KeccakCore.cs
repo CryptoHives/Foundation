@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -53,7 +53,11 @@ internal static class KeccakCore
     /// Performs the Keccak-f[1600] permutation on the given state.
     /// </summary>
     /// <param name="state">The 25-element state array to permute in place.</param>
+#if NET8_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+#else
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
     public static void Permute(ulong[] state)
     {
         // Thread-local scratch arrays to avoid allocations

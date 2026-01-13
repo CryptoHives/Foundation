@@ -164,8 +164,7 @@ public sealed class Blake3 : HashAlgorithm
     }
 
     /// <inheritdoc/>
-    public override string AlgorithmName => _mode switch
-    {
+    public override string AlgorithmName => _mode switch {
         Blake3Mode.KeyedHash => "BLAKE3-Keyed",
         Blake3Mode.DeriveKey => "BLAKE3-DeriveKey",
         _ => "BLAKE3"
@@ -645,14 +644,6 @@ public sealed class Blake3 : HashAlgorithm
         }
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateRight(uint x, int n) => (x >> n) | (x << (32 - n));
-#endif
-
     private static void ExtractOutput(ReadOnlySpan<uint> cv, Span<byte> output)
     {
         int offset = 0;
@@ -698,4 +689,7 @@ public sealed class Blake3 : HashAlgorithm
             }
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
 }

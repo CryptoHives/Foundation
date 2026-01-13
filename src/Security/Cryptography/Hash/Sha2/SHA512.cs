@@ -10,9 +10,10 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
-#if NET8_0_OR_GREATER
 using System.Numerics;
 using System.Runtime.CompilerServices;
+
+#if NET8_0_OR_GREATER
 #if USE_AVX2_SHA512
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -443,12 +444,10 @@ public sealed class SHA512 : HashAlgorithm
         }
     }
 
+#endif
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong RotateRight(ulong x, int n) => BitOperations.RotateRight(x, n);
-#else
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateRight(ulong x, int n) => (x >> n) | (x << (64 - n));
-#endif
 
     private void PadAndFinalize()
     {

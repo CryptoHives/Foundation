@@ -7,10 +7,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
-#if NET8_0_OR_GREATER
 using System.Numerics;
 using System.Runtime.CompilerServices;
-#endif
 
 /// <summary>
 /// Computes the SHA-256 hash for the input data.
@@ -277,11 +275,6 @@ public sealed class SHA256 : HashAlgorithm
         }
     }
 
-#if NET8_0_OR_GREATER
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
-#else
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    private static uint RotateRight(uint x, int n) => (x >> n) | (x << (32 - n));
-#endif
 }
