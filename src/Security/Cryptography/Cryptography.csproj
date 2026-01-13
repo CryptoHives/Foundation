@@ -14,6 +14,7 @@
     <PackageLicenseFile></PackageLicenseFile>
     <PackageTags>$(PackageTags) Cryptography Hash MD5 SHA1 SHA2 SHA3 BLAKE2 BLAKE3 SHAKE CSHAKE SM3 Keccak Streebog Whirlpool Ripemd</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
