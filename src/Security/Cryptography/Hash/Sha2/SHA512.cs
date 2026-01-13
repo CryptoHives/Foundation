@@ -3,22 +3,15 @@
 
 #pragma warning disable IDE1006 // Naming rule violation - K and IV are standard cryptographic constant names per FIPS 180-4
 
-// Uncomment the following line to use the AVX2-based implementation for benchmarking
-// #define USE_AVX2_SHA512
-
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-
 #if NET8_0_OR_GREATER
-#if USE_AVX2_SHA512
-using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-#endif
 #endif
 
 /// <summary>
@@ -80,7 +73,7 @@ public sealed class SHA512 : HashAlgorithm
         0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817
     ];
 
-#if NET8_0_OR_GREATER && USE_AVX2_SHA512
+#if NET8_0_OR_GREATER
     /// <summary>
     /// Gets a value indicating whether hardware-accelerated SHA-512 is available.
     /// </summary>
@@ -90,8 +83,6 @@ public sealed class SHA512 : HashAlgorithm
     /// improved message schedule computation.
     /// </remarks>
     public static bool IsAccelerated => Avx2.IsSupported;
-
-    private static readonly bool s_useAvx2 = Avx2.IsSupported;
 #endif
 
     private readonly byte[] _buffer;
@@ -211,8 +202,8 @@ public sealed class SHA512 : HashAlgorithm
 
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
-#if NET8_0_OR_GREATER && USE_AVX2_SHA512
-        if (s_useAvx2)
+#if NET8_0_OR_GREATER
+        if (IsAccelerated)
         {
             ProcessBlockAvx2(block);
             return;
@@ -303,7 +294,7 @@ public sealed class SHA512 : HashAlgorithm
         }
     }
 
-#if NET8_0_OR_GREATER && USE_AVX2_SHA512
+#if NET8_0_OR_GREATER
     /// <summary>
     /// Process a single 128-byte block using AVX2 optimizations.
     /// </summary>
@@ -312,7 +303,7 @@ public sealed class SHA512 : HashAlgorithm
     /// BitOperations.RotateRight for efficient rotation (JIT compiles to RORX).
     /// The compression function uses 8-way unrolling for better ILP.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlockAvx2(ReadOnlySpan<byte> block)
     {
         unchecked

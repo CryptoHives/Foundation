@@ -552,9 +552,7 @@ public sealed class Blake3 : HashAlgorithm
         }
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void Compress(Span<uint> v, Span<uint> m)
     {
         // Round 1

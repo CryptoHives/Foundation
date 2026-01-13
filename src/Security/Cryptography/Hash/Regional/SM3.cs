@@ -170,9 +170,7 @@ public sealed class SM3 : HashAlgorithm
         base.Dispose(disposing);
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
         Span<uint> w = stackalloc uint[68];

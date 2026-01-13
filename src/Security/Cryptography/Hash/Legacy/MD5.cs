@@ -196,9 +196,7 @@ public sealed class MD5 : HashAlgorithm
         base.Dispose(disposing);
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
         Span<uint> m = stackalloc uint[16];

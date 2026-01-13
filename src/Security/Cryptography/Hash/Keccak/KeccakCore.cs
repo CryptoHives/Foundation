@@ -53,11 +53,7 @@ internal static class KeccakCore
     /// Performs the Keccak-f[1600] permutation on the given state.
     /// </summary>
     /// <param name="state">The 25-element state array to permute in place.</param>
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void Permute(ulong[] state)
     {
         // Thread-local scratch arrays to avoid allocations
@@ -243,11 +239,11 @@ internal static class KeccakCore
         }
     }
 
-#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Rotates the bits of a 64-bit unsigned integer to the left by the specified number of positions.
+    /// </summary>
+    /// <param name="x">The value to rotate.</param>
+    /// <param name="n">The number of positions to rotate.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong RotateLeft(ulong x, int n) => BitOperations.RotateLeft(x, n);
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong RotateLeft(ulong x, int n) => (x << n) | (x >> (64 - n));
-#endif
 }

@@ -206,11 +206,7 @@ public sealed class KangarooTwelve : HashAlgorithm
         AbsorbMessage(_state, _buffer.AsSpan(0, _bufferLength));
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void AbsorbMessage(ulong[] state, ReadOnlySpan<byte> message)
     {
         int offset = 0;
@@ -303,11 +299,7 @@ public sealed class KangarooTwelve : HashAlgorithm
         return n + 1;
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void Permute12(ulong[] state)
     {
         Span<ulong> c = stackalloc ulong[5];

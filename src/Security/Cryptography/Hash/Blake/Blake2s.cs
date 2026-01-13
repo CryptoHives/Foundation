@@ -284,9 +284,7 @@ public sealed class Blake2s : HashAlgorithm
         base.Dispose(disposing);
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void Compress(ReadOnlySpan<byte> block, bool isFinal)
     {
         // Update counter

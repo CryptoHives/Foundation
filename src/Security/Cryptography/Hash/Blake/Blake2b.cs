@@ -45,6 +45,9 @@ public sealed class Blake2b : HashAlgorithm
     /// </summary>
     public const int BlockSizeBytes = 128;
 
+    // Rounds of mixing
+    private const int Rounds = 12;
+
     // BLAKE2b IV constants (same as SHA-512)
     private static readonly ulong[] IV =
     [
@@ -59,7 +62,7 @@ public sealed class Blake2b : HashAlgorithm
     ];
 
     // BLAKE2b sigma permutations for message scheduling
-    private static readonly byte[,] Sigma = new byte[12, 16]
+    private static readonly byte[,] Sigma = new byte[Rounds, 16]
     {
         { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
         { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 },
@@ -288,11 +291,7 @@ public sealed class Blake2b : HashAlgorithm
         base.Dispose(disposing);
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void Compress(ReadOnlySpan<byte> block, bool isFinal)
     {
         // Update counter
@@ -327,7 +326,7 @@ public sealed class Blake2b : HashAlgorithm
         v[15] = IV[7];
 
         // 12 rounds of mixing
-        for (int round = 0; round < 12; round++)
+        for (int round = 0; round < Rounds; round++)
         {
             // Column step
             G(ref v[0], ref v[4], ref v[8], ref v[12], m[Sigma[round, 0]], m[Sigma[round, 1]]);
@@ -362,16 +361,13 @@ public sealed class Blake2b : HashAlgorithm
         unchecked
         {
             a = a + b + x;
-            d = RotateRight(d ^ a, 32);
+            d = BitOperations.RotateRight(d ^ a, 32);
             c = c + d;
-            b = RotateRight(b ^ c, 24);
+            b = BitOperations.RotateRight(b ^ c, 24);
             a = a + b + y;
-            d = RotateRight(d ^ a, 16);
+            d = BitOperations.RotateRight(d ^ a, 16);
             c = c + d;
-            b = RotateRight(b ^ c, 63);
+            b = BitOperations.RotateRight(b ^ c, 63);
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateRight(ulong x, int n) => BitOperations.RotateRight(x, n);
 }
