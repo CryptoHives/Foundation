@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Security.Cryptography.Tests.GOST;
+namespace Cryptography.Tests.Hash.Regional;
 
 using System;
 using System.Linq;

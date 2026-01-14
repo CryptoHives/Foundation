@@ -1,9 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if BLAKE3_NATIVE
+namespace Cryptography.Tests.Adapter;
 
-namespace Security.Cryptography.Tests;
+#if BLAKE3_NATIVE
 
 using System;
 using System.Security.Cryptography;

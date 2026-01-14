@@ -1,10 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Security.Cryptography.Tests;
+namespace Cryptography.Tests.Hash.Sha2;
 
 using System;
 using System.Text;
+using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 

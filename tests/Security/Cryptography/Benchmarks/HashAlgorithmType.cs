@@ -4,7 +4,6 @@
 #pragma warning disable CA1050 // Declare types in namespaces
 
 using Org.BouncyCastle.Crypto.Digests;
-using Security.Cryptography.Tests;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -15,6 +14,7 @@ using System.Runtime.Intrinsics.X86;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
 using System.Runtime.CompilerServices;
+using Cryptography.Tests.Adapter;
 
 /// <summary>
 /// Factory for creating hash algorithm instances for benchmarking.
@@ -138,9 +138,9 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType Shake256_Managed = new("SHAKE256", () => CH.Shake256.Create(64));
     public static readonly HashAlgorithmType Shake256_Bouncy = new("SHAKE256", () => new BouncyCastleXofAdapter(new ShakeDigest(256), 64));
 
-    public static readonly HashAlgorithmType CShake128_Managed = new( "CSHAKE128", () => CH.CShake128.Create(32));
-    public static readonly HashAlgorithmType CShake128_Bouncy = new( "CSHAKE128", () => new BouncyCastleCShakeAdapter(128, null, null, 32));
-    public static readonly HashAlgorithmType CShake256_Managed = new( "CSHAKE256", () => CH.CShake256.Create(64));
+    public static readonly HashAlgorithmType CShake128_Managed = new("CSHAKE128", () => CH.CShake128.Create(32));
+    public static readonly HashAlgorithmType CShake128_Bouncy = new("CSHAKE128", () => new BouncyCastleCShakeAdapter(128, null, null, 32));
+    public static readonly HashAlgorithmType CShake256_Managed = new("CSHAKE256", () => CH.CShake256.Create(64));
     public static readonly HashAlgorithmType CShake256_Bouncy = new("CSHAKE256", () => new BouncyCastleCShakeAdapter(256, null, null, 64));
 
     public static readonly HashAlgorithmType KangarooTwelve_Managed = new("K12", () => CH.KangarooTwelve.Create(32));
@@ -153,7 +153,7 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType Blake2b_Managed = new("BLAKE2b-512", () => CH.Blake2b.Create(64));
     public static readonly HashAlgorithmType Blake2b_Bouncy = new("BLAKE2b-512", () => new BouncyCastleHashAdapter(new Blake2bDigest(512)));
 
-    public static readonly HashAlgorithmType Blake2s_Managed = new( "BLAKE2s-256", () => CH.Blake2s.Create(32));
+    public static readonly HashAlgorithmType Blake2s_Managed = new("BLAKE2s-256", () => CH.Blake2s.Create(32));
     public static readonly HashAlgorithmType Blake2s_Bouncy = new("BLAKE2s-256", () => new BouncyCastleHashAdapter(new Blake2sDigest(256)));
 
     public static readonly HashAlgorithmType Blake3_Managed = new("BLAKE3", () => CH.Blake3.Create(32));
@@ -214,8 +214,8 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType SM3_Managed = new("SM3", CH.SM3.Create);
     public static readonly HashAlgorithmType SM3_Bouncy = new("SM3", () => new BouncyCastleHashAdapter(new SM3Digest()));
 
-    public static readonly HashAlgorithmType Whirlpool_Managed = new( "Whirlpool", CH.Whirlpool.Create);
-    public static readonly HashAlgorithmType Whirlpool_Bouncy = new( "Whirlpool", () => new BouncyCastleHashAdapter(new WhirlpoolDigest()));
+    public static readonly HashAlgorithmType Whirlpool_Managed = new("Whirlpool", CH.Whirlpool.Create);
+    public static readonly HashAlgorithmType Whirlpool_Bouncy = new("Whirlpool", () => new BouncyCastleHashAdapter(new WhirlpoolDigest()));
 
     public static readonly HashAlgorithmType Streebog256_Managed = new("Streebog-256", () => CH.Streebog.Create(32));
     public static readonly HashAlgorithmType Streebog256_Bouncy = new("Streebog-256", () => new BouncyCastleHashAdapter(new Gost3411_2012_256Digest()));
@@ -223,7 +223,7 @@ public sealed class HashAlgorithmType : IFormattable
 
     public static readonly HashAlgorithmType Streebog512_Managed = new("Streebog-512", () => CH.Streebog.Create(64));
     public static readonly HashAlgorithmType Streebog512_Bouncy = new("Streebog-512", () => new BouncyCastleHashAdapter(new Gost3411_2012_512Digest()));
-    public static readonly HashAlgorithmType Streebog512_OpenGost = new( "Streebog-512", () => OpenGost.Security.Cryptography.Streebog512.Create());
+    public static readonly HashAlgorithmType Streebog512_OpenGost = new("Streebog-512", () => OpenGost.Security.Cryptography.Streebog512.Create());
 
     #endregion
 
@@ -240,7 +240,7 @@ public sealed class HashAlgorithmType : IFormattable
 
     private static readonly byte[] SharedKmacCustomization = Encoding.UTF8.GetBytes("Benchmark");
 
-    public static readonly HashAlgorithmType Kmac128_Managed = new( "KMAC-128",
+    public static readonly HashAlgorithmType Kmac128_Managed = new("KMAC-128",
         () => CHMac.Kmac128.Create(SharedKmacKey, 32, "Benchmark"));
 
     public static readonly HashAlgorithmType Kmac128_Bouncy = new("KMAC-128",
@@ -257,7 +257,7 @@ public sealed class HashAlgorithmType : IFormattable
         () => new Kmac128HashAdapter(SharedKmacKey, 32, SharedKmacCustomization),
         () => Kmac128.IsSupported);
 
-    public static readonly HashAlgorithmType Kmac256_OS = new( "KMAC-256",
+    public static readonly HashAlgorithmType Kmac256_OS = new("KMAC-256",
         () => new Kmac256HashAdapter(SharedKmacKey, 64, SharedKmacCustomization),
         () => Kmac256.IsSupported);
 #endif
@@ -499,7 +499,7 @@ public sealed class HashAlgorithmType : IFormattable
     }
 #endif
 
-#endregion
+    #endregion
 }
 
 

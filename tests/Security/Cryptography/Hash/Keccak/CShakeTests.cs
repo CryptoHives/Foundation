@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Security.Cryptography.Tests.SHAKE;
+namespace Cryptography.Tests.Hash.Keccak;
 
 using System.Text;
 using CryptoHives.Foundation.Security.Cryptography.Hash;

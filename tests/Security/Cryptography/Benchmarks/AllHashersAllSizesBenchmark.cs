@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Security.Cryptography.Tests.Benchmarks;
+namespace Cryptography.Tests.Benchmarks;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;

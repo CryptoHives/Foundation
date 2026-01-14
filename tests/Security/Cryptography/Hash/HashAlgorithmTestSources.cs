@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Security.Cryptography.Tests;
+namespace Cryptography.Tests.Hash;
 
 using System;
 using System.Collections;
@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using Org.BouncyCastle.Crypto.Digests;
+using Cryptography.Tests.Adapter;
 
 /// <summary>
 /// Represents a factory for creating hash algorithm instances for testing.
