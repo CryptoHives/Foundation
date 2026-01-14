@@ -88,18 +88,28 @@ public sealed class SHA512 : HashAlgorithm
     private readonly byte[] _buffer;
     private readonly ulong[] _state;
     private readonly ulong[] _w;
+    private readonly SimdSupport _simdSupport;
     private long _bytesProcessed;
     private int _bufferLength;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA512"/> class.
     /// </summary>
-    public SHA512()
+    public SHA512() : this(SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SHA512"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
+    internal SHA512(SimdSupport simdSupport)
     {
         HashSizeValue = HashSizeBits;
         _buffer = new byte[BlockSizeBytes];
         _state = new ulong[8];
         _w = new ulong[80];
+        _simdSupport = simdSupport;
         Initialize();
     }
 
@@ -110,10 +120,32 @@ public sealed class SHA512 : HashAlgorithm
     public override int BlockSize => BlockSizeBytes;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
     /// Creates a new instance of the <see cref="SHA512"/> class.
     /// </summary>
     /// <returns>A new SHA-512 hash algorithm instance.</returns>
     public static new SHA512 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="SHA512"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new SHA-512 hash algorithm instance.</returns>
+    internal static SHA512 Create(SimdSupport simdSupport) => new(simdSupport);
 
     /// <inheritdoc/>
     public override void Initialize()
@@ -203,7 +235,7 @@ public sealed class SHA512 : HashAlgorithm
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
 #if NET8_0_OR_GREATER
-        if (IsAccelerated)
+        if ((_simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported)
         {
             ProcessBlockAvx2(block);
             return;

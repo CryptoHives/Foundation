@@ -48,16 +48,26 @@ public sealed class SHA3_256 : HashAlgorithm
 
     private readonly ulong[] _state;
     private readonly byte[] _buffer;
+    private readonly SimdSupport _simdSupport;
     private int _bufferLength;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_256"/> class.
     /// </summary>
-    public SHA3_256()
+    public SHA3_256() : this(SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SHA3_256"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
+    internal SHA3_256(SimdSupport simdSupport)
     {
         HashSizeValue = HashSizeBits;
         _state = new ulong[KeccakCore.StateSize];
         _buffer = new byte[RateBytes];
+        _simdSupport = simdSupport;
         Initialize();
     }
 
@@ -68,10 +78,22 @@ public sealed class SHA3_256 : HashAlgorithm
     public override int BlockSize => RateBytes;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport => KeccakCore.SimdSupport;
+
+    /// <summary>
     /// Creates a new instance of the <see cref="SHA3_256"/> class.
     /// </summary>
     /// <returns>A new SHA3-256 hash algorithm instance.</returns>
     public static new SHA3_256 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="SHA3_256"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new SHA3-256 hash algorithm instance.</returns>
+    internal static SHA3_256 Create(SimdSupport simdSupport) => new(simdSupport);
 
     /// <inheritdoc/>
     public override void Initialize()
@@ -96,7 +118,7 @@ public sealed class SHA3_256 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                KeccakCore.Absorb(_state, _buffer, RateBytes);
+                KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
                 _bufferLength = 0;
             }
         }
@@ -104,7 +126,7 @@ public sealed class SHA3_256 : HashAlgorithm
         // Process full blocks
         while (offset + RateBytes <= source.Length)
         {
-            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes);
+            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes, _simdSupport);
             offset += RateBytes;
         }
 
@@ -138,7 +160,7 @@ public sealed class SHA3_256 : HashAlgorithm
         _buffer[RateBytes - 1] |= 0x80;
 
         // Absorb final block
-        KeccakCore.Absorb(_state, _buffer, RateBytes);
+        KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
 
         // Squeeze output (SHA3-256 only needs one squeeze since output <= rate)
         KeccakCore.Squeeze(_state, destination, HashSizeBytes);

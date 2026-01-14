@@ -64,6 +64,21 @@ internal static class KeccakCore
 #endif
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    public static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
     /// Performs the Keccak-f[1600] permutation on the given state.
     /// </summary>
     /// <param name="state">The 25-element state array to permute in place.</param>
@@ -72,6 +87,24 @@ internal static class KeccakCore
     {
 #if NET8_0_OR_GREATER
         if (IsAccelerated)
+        {
+            PermuteAvx2(state);
+            return;
+        }
+#endif
+        PermuteScalar(state);
+    }
+
+    /// <summary>
+    /// Performs the Keccak-f[1600] permutation on the given state with explicit SIMD control.
+    /// </summary>
+    /// <param name="state">The 25-element state array to permute in place.</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void Permute(ulong[] state, SimdSupport simdSupport)
+    {
+#if NET8_0_OR_GREATER
+        if ((simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported)
         {
             PermuteAvx2(state);
             return;
@@ -361,6 +394,26 @@ internal static class KeccakCore
     }
 
     /// <summary>
+    /// Absorbs a block of data into the Keccak state with explicit SIMD control.
+    /// </summary>
+    /// <param name="state">The 25-element state array.</param>
+    /// <param name="block">The block to absorb (must be exactly rateBytes long).</param>
+    /// <param name="rateBytes">The rate in bytes (determines how many bytes to XOR).</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void Absorb(ulong[] state, ReadOnlySpan<byte> block, int rateBytes, SimdSupport simdSupport)
+    {
+        int rateLanes = rateBytes / 8;
+
+        for (int i = 0; i < rateLanes; i++)
+        {
+            state[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+        }
+
+        Permute(state, simdSupport);
+    }
+
+    /// <summary>
     /// Extracts output bytes from the Keccak state (single squeeze, no additional permutations).
     /// </summary>
     /// <param name="state">The 25-element state array.</param>
@@ -408,6 +461,49 @@ internal static class KeccakCore
             if (squeezeOffset >= rateBytes)
             {
                 Permute(state);
+                squeezeOffset = 0;
+            }
+
+            int stateIndex = squeezeOffset / 8;
+            int byteIndex = squeezeOffset % 8;
+
+            unchecked
+            {
+                while (outputOffset < output.Length && squeezeOffset < rateBytes)
+                {
+                    output[outputOffset++] = (byte)(state[stateIndex] >> (byteIndex * 8));
+                    byteIndex++;
+                    squeezeOffset++;
+
+                    if (byteIndex >= 8)
+                    {
+                        byteIndex = 0;
+                        stateIndex++;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Performs an extended squeeze operation for XOF with explicit SIMD control.
+    /// </summary>
+    /// <param name="state">The 25-element state array.</param>
+    /// <param name="output">The buffer to receive the output.</param>
+    /// <param name="rateBytes">The rate in bytes.</param>
+    /// <param name="squeezeOffset">
+    /// The current offset within the rate portion. Updated after the operation.
+    /// </param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    public static void SqueezeXof(ulong[] state, Span<byte> output, int rateBytes, ref int squeezeOffset, SimdSupport simdSupport)
+    {
+        int outputOffset = 0;
+
+        while (outputOffset < output.Length)
+        {
+            if (squeezeOffset >= rateBytes)
+            {
+                Permute(state, simdSupport);
                 squeezeOffset = 0;
             }
 

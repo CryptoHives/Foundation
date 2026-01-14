@@ -178,9 +178,17 @@ public static class Sha512Implementations
                 "SHA512 (OS)",
                 () => SHA512.Create());
 
+            var simdSupport = CH.SHA512.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA512 (AVX2)",
+                    () => CH.SHA512.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "SHA512",
-                () => CH.SHA512.Create());
+                "SHA512 (Managed)",
+                () => CH.SHA512.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "SHA512 (BouncyCastle)",
@@ -253,9 +261,17 @@ public static class Sha3224Implementations
         {
             // No OS implementation for SHA3-224 on .NET 8+
 
+            var simdSupport = CH.SHA3_224.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_224 (AVX2)",
+                    () => CH.SHA3_224.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "SHA3_224",
-                () => CH.SHA3_224.Create());
+                "SHA3_224 (Managed)",
+                () => CH.SHA3_224.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "SHA3-224 (BouncyCastle)",
@@ -285,9 +301,17 @@ public static class Sha3256Implementations
             }
 #endif
 
+            var simdSupport = CH.SHA3_256.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_256 (AVX2)",
+                    () => CH.SHA3_256.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "SHA3_256",
-                () => CH.SHA3_256.Create());
+                "SHA3_256 (Managed)",
+                () => CH.SHA3_256.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "SHA3-256 (BouncyCastle)",
@@ -317,9 +341,17 @@ public static class Sha3384Implementations
             }
 #endif
 
+            var simdSupport = CH.SHA3_384.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_384 (AVX2)",
+                    () => CH.SHA3_384.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "SHA3_384",
-                () => CH.SHA3_384.Create());
+                "SHA3_384 (Managed)",
+                () => CH.SHA3_384.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "SHA3-384 (BouncyCastle)",
@@ -349,9 +381,17 @@ public static class Sha3512Implementations
             }
 #endif
 
+            var simdSupport = CH.SHA3_512.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_512 (AVX2)",
+                    () => CH.SHA3_512.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "SHA3_512",
-                () => CH.SHA3_512.Create());
+                "SHA3_512 (Managed)",
+                () => CH.SHA3_512.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "SHA3-512 (BouncyCastle)",
@@ -630,9 +670,17 @@ public static class Keccak256Implementations
     {
         get
         {
+            var simdSupport = CH.Keccak256.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak256 (AVX2)",
+                    () => CH.Keccak256.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Keccak256",
-                () => CH.Keccak256.Create());
+                "Keccak256 (Managed)",
+                () => CH.Keccak256.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "Keccak-256 (BouncyCastle)",
@@ -653,9 +701,17 @@ public static class Keccak384Implementations
     {
         get
         {
+            var simdSupport = CH.Keccak384.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak384 (AVX2)",
+                    () => CH.Keccak384.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Keccak384",
-                () => CH.Keccak384.Create());
+                "Keccak384 (Managed)",
+                () => CH.Keccak384.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "Keccak-384 (BouncyCastle)",
@@ -676,9 +732,17 @@ public static class Keccak512Implementations
     {
         get
         {
+            var simdSupport = CH.Keccak512.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak512 (AVX2)",
+                    () => CH.Keccak512.Create(CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Keccak512",
-                () => CH.Keccak512.Create());
+                "Keccak512 (Managed)",
+                () => CH.Keccak512.Create(CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "Keccak-512 (BouncyCastle)",
