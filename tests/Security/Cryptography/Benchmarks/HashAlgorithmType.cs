@@ -134,10 +134,10 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType Shake256_Managed = new("Shake256_Managed", "SHAKE256", () => CH.Shake256.Create(64));
     public static readonly HashAlgorithmType Shake256_Bouncy = new("Shake256_Bouncy", "SHAKE256", () => new BouncyCastleXofAdapter(new ShakeDigest(256), 64));
 
-#if NET8_0_OR_GREATER
     public static readonly HashAlgorithmType CShake128_Managed = new("CShake128_Managed", "CSHAKE128", () => CH.CShake128.Create(32));
+    public static readonly HashAlgorithmType CShake128_Bouncy = new("CShake128_Bouncy", "CSHAKE128", () => new BouncyCastleCShakeAdapter(128, null, null, 32));
     public static readonly HashAlgorithmType CShake256_Managed = new("CShake256_Managed", "CSHAKE256", () => CH.CShake256.Create(64));
-#endif
+    public static readonly HashAlgorithmType CShake256_Bouncy = new("CShake256_Bouncy", "CSHAKE256", () => new BouncyCastleCShakeAdapter(256, null, null, 64));
 
     public static readonly HashAlgorithmType KangarooTwelve_Managed = new("KangarooTwelve_Managed", "K12", () => CH.KangarooTwelve.Create(32));
     // Note: BouncyCastle 2.6.2 does not include KangarooTwelve
@@ -250,10 +250,8 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Keccak256_Managed;
         yield return Shake128_Managed;
         yield return Shake256_Managed;
-#if NET8_0_OR_GREATER
         yield return CShake128_Managed;
         yield return CShake256_Managed;
-#endif
         yield return KangarooTwelve_Managed;
         yield return Blake2b_Managed;
         yield return Blake2s_Managed;
@@ -331,10 +329,10 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Shake128_Bouncy;
         yield return Shake256_Managed;
         yield return Shake256_Bouncy;
-#if NET8_0_OR_GREATER
         yield return CShake128_Managed;
+        yield return CShake128_Bouncy;
         yield return CShake256_Managed;
-#endif
+        yield return CShake256_Bouncy;
         yield return KangarooTwelve_Managed;
 
         // BLAKE
@@ -405,10 +403,10 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Shake128_Bouncy;
         yield return Shake256_Managed;
         yield return Shake256_Bouncy;
-#if NET8_0_OR_GREATER
         yield return CShake128_Managed;
+        yield return CShake128_Bouncy;
         yield return CShake256_Managed;
-#endif
+        yield return CShake256_Bouncy;
         yield return KangarooTwelve_Managed;
     }
 
