@@ -101,11 +101,11 @@ internal static class KeccakCore
                 c[3] = state[3] ^ state[8] ^ state[13] ^ state[18] ^ state[23];
                 c[4] = state[4] ^ state[9] ^ state[14] ^ state[19] ^ state[24];
 
-                d[0] = c[4] ^ RotateLeft(c[1], 1);
-                d[1] = c[0] ^ RotateLeft(c[2], 1);
-                d[2] = c[1] ^ RotateLeft(c[3], 1);
-                d[3] = c[2] ^ RotateLeft(c[4], 1);
-                d[4] = c[3] ^ RotateLeft(c[0], 1);
+                d[0] = c[4] ^ BitOperations.RotateLeft(c[1], 1);
+                d[1] = c[0] ^ BitOperations.RotateLeft(c[2], 1);
+                d[2] = c[1] ^ BitOperations.RotateLeft(c[3], 1);
+                d[3] = c[2] ^ BitOperations.RotateLeft(c[4], 1);
+                d[4] = c[3] ^ BitOperations.RotateLeft(c[0], 1);
 
                 state[0] ^= d[0];
                 state[1] ^= d[1];
@@ -135,30 +135,30 @@ internal static class KeccakCore
 
                 // Rho and Pi steps combined: rotate and reorder lanes
                 b[0] = state[0];
-                b[1] = RotateLeft(state[6], 44);
-                b[2] = RotateLeft(state[12], 43);
-                b[3] = RotateLeft(state[18], 21);
-                b[4] = RotateLeft(state[24], 14);
-                b[5] = RotateLeft(state[3], 28);
-                b[6] = RotateLeft(state[9], 20);
-                b[7] = RotateLeft(state[10], 3);
-                b[8] = RotateLeft(state[16], 45);
-                b[9] = RotateLeft(state[22], 61);
-                b[10] = RotateLeft(state[1], 1);
-                b[11] = RotateLeft(state[7], 6);
-                b[12] = RotateLeft(state[13], 25);
-                b[13] = RotateLeft(state[19], 8);
-                b[14] = RotateLeft(state[20], 18);
-                b[15] = RotateLeft(state[4], 27);
-                b[16] = RotateLeft(state[5], 36);
-                b[17] = RotateLeft(state[11], 10);
-                b[18] = RotateLeft(state[17], 15);
-                b[19] = RotateLeft(state[23], 56);
-                b[20] = RotateLeft(state[2], 62);
-                b[21] = RotateLeft(state[8], 55);
-                b[22] = RotateLeft(state[14], 39);
-                b[23] = RotateLeft(state[15], 41);
-                b[24] = RotateLeft(state[21], 2);
+                b[1] = BitOperations.RotateLeft(state[6], 44);
+                b[2] = BitOperations.RotateLeft(state[12], 43);
+                b[3] = BitOperations.RotateLeft(state[18], 21);
+                b[4] = BitOperations.RotateLeft(state[24], 14);
+                b[5] = BitOperations.RotateLeft(state[3], 28);
+                b[6] = BitOperations.RotateLeft(state[9], 20);
+                b[7] = BitOperations.RotateLeft(state[10], 3);
+                b[8] = BitOperations.RotateLeft(state[16], 45);
+                b[9] = BitOperations.RotateLeft(state[22], 61);
+                b[10] = BitOperations.RotateLeft(state[1], 1);
+                b[11] = BitOperations.RotateLeft(state[7], 6);
+                b[12] = BitOperations.RotateLeft(state[13], 25);
+                b[13] = BitOperations.RotateLeft(state[19], 8);
+                b[14] = BitOperations.RotateLeft(state[20], 18);
+                b[15] = BitOperations.RotateLeft(state[4], 27);
+                b[16] = BitOperations.RotateLeft(state[5], 36);
+                b[17] = BitOperations.RotateLeft(state[11], 10);
+                b[18] = BitOperations.RotateLeft(state[17], 15);
+                b[19] = BitOperations.RotateLeft(state[23], 56);
+                b[20] = BitOperations.RotateLeft(state[2], 62);
+                b[21] = BitOperations.RotateLeft(state[8], 55);
+                b[22] = BitOperations.RotateLeft(state[14], 39);
+                b[23] = BitOperations.RotateLeft(state[15], 41);
+                b[24] = BitOperations.RotateLeft(state[21], 2);
 
                 // Chi step: non-linear mixing
                 for (int y = 0; y < 5; y++)
@@ -431,7 +431,4 @@ internal static class KeccakCore
             }
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong RotateLeft(ulong x, int n) => BitOperations.RotateLeft(x, n);
 }

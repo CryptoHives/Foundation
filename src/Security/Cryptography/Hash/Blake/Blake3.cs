@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -113,7 +113,7 @@ public sealed class Blake3 : HashAlgorithm
     private Vector128<uint> _cvVec1;
     private Vector128<uint> _keyVec0;
     private Vector128<uint> _keyVec1;
-    private readonly bool _useAvx2;
+    private readonly bool _useSsse3;
 #endif
 
     private readonly uint[] _keyWords;
@@ -130,7 +130,7 @@ public sealed class Blake3 : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class with default output size (32 bytes).
     /// </summary>
-    public Blake3() : this(DefaultHashSizeBytes)
+    public Blake3() : this(DefaultHashSizeBytes, SimdSupport.All)
     {
     }
 
@@ -138,7 +138,16 @@ public sealed class Blake3 : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake3"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public Blake3(int outputBytes)
+    public Blake3(int outputBytes) : this(outputBytes, SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake3"/> class with specified output size and SIMD support.
+    /// </summary>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
+    internal Blake3(int outputBytes, SimdSupport simdSupport)
     {
         if (outputBytes < 1)
             throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
@@ -153,7 +162,7 @@ public sealed class Blake3 : HashAlgorithm
         _cvStack = new List<uint[]>();
 
 #if NET8_0_OR_GREATER
-        _useAvx2 = Avx2.IsSupported;
+        _useSsse3 = (simdSupport & SimdSupport.Ssse3) != 0 && Ssse3.IsSupported;
 #endif
 
         Initialize();
@@ -164,7 +173,17 @@ public sealed class Blake3 : HashAlgorithm
     /// </summary>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    private Blake3(byte[] key, int outputBytes)
+    private Blake3(byte[] key, int outputBytes) : this(key, outputBytes, SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake3"/> class in keyed hash mode with SIMD support.
+    /// </summary>
+    /// <param name="key">The 32-byte key for keyed hashing.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    private Blake3(byte[] key, int outputBytes, SimdSupport simdSupport)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
@@ -185,7 +204,7 @@ public sealed class Blake3 : HashAlgorithm
         _cvStack = new List<uint[]>();
 
 #if NET8_0_OR_GREATER
-        _useAvx2 = Avx2.IsSupported;
+        _useSsse3 = (simdSupport & SimdSupport.Ssse3) != 0 && Ssse3.IsSupported;
 #endif
 
         // Parse key as little-endian uint32 words
@@ -195,7 +214,7 @@ public sealed class Blake3 : HashAlgorithm
         }
 
 #if NET8_0_OR_GREATER
-        if (_useAvx2)
+        if (_useSsse3)
         {
             _keyVec0 = Vector128.Create(_keyWords[0], _keyWords[1], _keyWords[2], _keyWords[3]);
             _keyVec1 = Vector128.Create(_keyWords[4], _keyWords[5], _keyWords[6], _keyWords[7]);
@@ -221,6 +240,23 @@ public sealed class Blake3 : HashAlgorithm
     public Blake3Mode Mode => _mode;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    /// <returns>Flags indicating which SIMD instruction sets are available.</returns>
+    internal static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
+            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
     /// Creates a new instance of the <see cref="Blake3"/> class with default output size.
     /// </summary>
     /// <returns>A new BLAKE3 instance.</returns>
@@ -232,6 +268,14 @@ public sealed class Blake3 : HashAlgorithm
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <returns>A new BLAKE3 instance.</returns>
     public static Blake3 Create(int outputBytes) => new(outputBytes);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Blake3"/> class with specified output size and SIMD support.
+    /// </summary>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new BLAKE3 instance.</returns>
+    internal static Blake3 Create(int outputBytes, SimdSupport simdSupport) => new(outputBytes, simdSupport);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake3"/> class.
@@ -248,6 +292,15 @@ public sealed class Blake3 : HashAlgorithm
     /// <returns>A new BLAKE3 instance configured for keyed hashing.</returns>
     public static Blake3 CreateKeyed(byte[] key, int outputBytes) => new(key, outputBytes);
 
+    /// <summary>
+    /// Creates a new keyed instance of the <see cref="Blake3"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="key">The 32-byte key for keyed hashing.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new BLAKE3 instance configured for keyed hashing.</returns>
+    internal static Blake3 CreateKeyed(byte[] key, int outputBytes, SimdSupport simdSupport) => new(key, outputBytes, simdSupport);
+
     /// <inheritdoc/>
     public override void Initialize()
     {
@@ -255,7 +308,7 @@ public sealed class Blake3 : HashAlgorithm
         {
             Array.Copy(_keyWords, _cv, 8);
 #if NET8_0_OR_GREATER
-            if (_useAvx2)
+            if (_useSsse3)
             {
                 _cvVec0 = _keyVec0;
                 _cvVec1 = _keyVec1;
@@ -267,7 +320,7 @@ public sealed class Blake3 : HashAlgorithm
             Array.Copy(IV, _keyWords, 8);
             Array.Copy(IV, _cv, 8);
 #if NET8_0_OR_GREATER
-            if (_useAvx2)
+            if (_useSsse3)
             {
                 _keyVec0 = IVLow;
                 _keyVec1 = IVHigh;
@@ -300,7 +353,7 @@ public sealed class Blake3 : HashAlgorithm
                 _chunkBufferLength = 0;
                 _blocksCompressed = 0;
 #if NET8_0_OR_GREATER
-                if (_useAvx2)
+                if (_useSsse3)
                 {
                     _cvVec0 = _keyVec0;
                     _cvVec1 = _keyVec1;
@@ -426,7 +479,7 @@ public sealed class Blake3 : HashAlgorithm
         if (disposing)
         {
 #if NET8_0_OR_GREATER
-            if (_useAvx2)
+            if (_useSsse3)
             {
                 _cvVec0 = default;
                 _cvVec1 = default;
@@ -467,7 +520,7 @@ public sealed class Blake3 : HashAlgorithm
 
         uint[] result = new uint[8];
 #if NET8_0_OR_GREATER
-        if (_useAvx2)
+        if (_useSsse3)
         {
             // Extract from vector state
             Span<uint> temp = stackalloc uint[8];
@@ -591,7 +644,7 @@ public sealed class Blake3 : HashAlgorithm
     private void CompressBlock(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
-        if (_useAvx2)
+        if (_useSsse3)
         {
             CompressBlockSse2(block, blockLen, counter, flags);
             return;
@@ -771,7 +824,7 @@ public sealed class Blake3 : HashAlgorithm
         ParseBlock(block, m);
 
 #if NET8_0_OR_GREATER
-        if (_useAvx2)
+        if (_useSsse3)
         {
             Span<uint> cvTemp = stackalloc uint[8];
             Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref cvTemp[0]), _cvVec0);
@@ -795,7 +848,7 @@ public sealed class Blake3 : HashAlgorithm
         Compress(v, m);
 
 #if NET8_0_OR_GREATER
-        if (_useAvx2)
+        if (_useSsse3)
         {
             Span<uint> cvTemp = stackalloc uint[8];
             Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref cvTemp[0]), _cvVec0);
@@ -969,3 +1022,5 @@ public sealed class Blake3 : HashAlgorithm
         }
     }
 }
+
+

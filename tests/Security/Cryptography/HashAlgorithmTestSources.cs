@@ -7,6 +7,7 @@ using System;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
+using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using Org.BouncyCastle.Crypto.Digests;
 
 /// <summary>
@@ -68,7 +69,7 @@ public static class Sha1Implementations
 #pragma warning disable CS0618 // Type or member is obsolete
             yield return new HashAlgorithmFactory(
                 "SHA1",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA1.Create());
+                () => CH.SHA1.Create());
 #pragma warning restore CS0618
 
             yield return new HashAlgorithmFactory(
@@ -98,7 +99,7 @@ public static class Sha224Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA224",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA224.Create());
+                () => CH.SHA224.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA224 (BouncyCastle)",
@@ -125,7 +126,7 @@ public static class Sha256Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA256.Create());
+                () => CH.SHA256.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA256 (BouncyCastle)",
@@ -152,7 +153,7 @@ public static class Sha384Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA384",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA384.Create());
+                () => CH.SHA384.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA384 (BouncyCastle)",
@@ -179,7 +180,7 @@ public static class Sha512Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA512",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.Create());
+                () => CH.SHA512.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA512 (BouncyCastle)",
@@ -202,7 +203,7 @@ public static class Sha512T224Implementations
         {
             yield return new HashAlgorithmFactory(
                 "SHA512_224",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_224.Create());
+                () => CH.SHA512_224.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA512/224 (BouncyCastle)",
@@ -225,7 +226,7 @@ public static class Sha512T256Implementations
         {
             yield return new HashAlgorithmFactory(
                 "SHA512_256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_256.Create());
+                () => CH.SHA512_256.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA512/256 (BouncyCastle)",
@@ -254,7 +255,7 @@ public static class Sha3224Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA3_224",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_224.Create());
+                () => CH.SHA3_224.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA3-224 (BouncyCastle)",
@@ -286,7 +287,7 @@ public static class Sha3256Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA3_256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_256.Create());
+                () => CH.SHA3_256.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA3-256 (BouncyCastle)",
@@ -318,7 +319,7 @@ public static class Sha3384Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA3_384",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_384.Create());
+                () => CH.SHA3_384.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA3-384 (BouncyCastle)",
@@ -350,7 +351,7 @@ public static class Sha3512Implementations
 
             yield return new HashAlgorithmFactory(
                 "SHA3_512",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_512.Create());
+                () => CH.SHA3_512.Create());
 
             yield return new HashAlgorithmFactory(
                 "SHA3-512 (BouncyCastle)",
@@ -386,7 +387,7 @@ public static class Shake128Implementations
 
             yield return new HashAlgorithmFactory(
                 "Shake128",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Shake128.Create(32));
+                () => CH.Shake128.Create(32));
 
             yield return new HashAlgorithmFactory(
                 "Shake128 (BouncyCastle)",
@@ -418,7 +419,7 @@ public static class Shake256Implementations
 
             yield return new HashAlgorithmFactory(
                 "Shake256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Shake256.Create(64));
+                () => CH.Shake256.Create(64));
 
             yield return new HashAlgorithmFactory(
                 "Shake256 (BouncyCastle)",
@@ -443,9 +444,17 @@ public static class Blake2b512Implementations
     {
         get
         {
+            var simdSupport = CH.Blake2b.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2b-512 (AVX2)",
+                    () => CH.Blake2b.Create(64, CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Blake2b",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Blake2b.Create(64));
+                "Blake2b-512 (Managed)",
+                () => CH.Blake2b.Create(64, CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "BLAKE2b-512 (BouncyCastle)",
@@ -470,9 +479,17 @@ public static class Blake2b256Implementations
     {
         get
         {
+            var simdSupport = CH.Blake2b.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2b-256 (AVX2)",
+                    () => CH.Blake2b.Create(32, CH.SimdSupport.Avx2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Blake2b-256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Blake2b.Create(32));
+                "Blake2b-256 (Managed)",
+                () => CH.Blake2b.Create(32, CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "BLAKE2b-256 (BouncyCastle)",
@@ -497,9 +514,24 @@ public static class Blake2s256Implementations
     {
         get
         {
+            var simdSupport = CH.Blake2s.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2s-256 (AVX2)",
+                    () => CH.Blake2s.Create(32, CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Sse2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2s-256 (SSE2)",
+                    () => CH.Blake2s.Create(32, CH.SimdSupport.Sse2));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Blake2s",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Blake2s.Create(32));
+                "Blake2s-256 (Managed)",
+                () => CH.Blake2s.Create(32, CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "BLAKE2s-256 (BouncyCastle)",
@@ -520,9 +552,24 @@ public static class Blake2s128Implementations
     {
         get
         {
+            var simdSupport = CH.Blake2s.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2s-128 (AVX2)",
+                    () => CH.Blake2s.Create(32, CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Sse2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2s-128 (SSE2)",
+                    () => CH.Blake2s.Create(32, CH.SimdSupport.Sse2));
+            }
+
             yield return new HashAlgorithmFactory(
                 "Blake2s-128",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Blake2s.Create(16));
+                () => CH.Blake2s.Create(16));
 
             yield return new HashAlgorithmFactory(
                 "BLAKE2s-128 (BouncyCastle)",
@@ -549,7 +596,7 @@ public static class Blake3Implementations
         {
             yield return new HashAlgorithmFactory(
                 "Blake3",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Blake3.Create(32));
+                () => CH.Blake3.Create(32));
 
             yield return new HashAlgorithmFactory(
                 "BLAKE3 (BouncyCastle)",
@@ -585,7 +632,7 @@ public static class Keccak256Implementations
         {
             yield return new HashAlgorithmFactory(
                 "Keccak256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Keccak256.Create());
+                () => CH.Keccak256.Create());
 
             yield return new HashAlgorithmFactory(
                 "Keccak-256 (BouncyCastle)",
@@ -608,7 +655,7 @@ public static class Keccak384Implementations
         {
             yield return new HashAlgorithmFactory(
                 "Keccak384",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Keccak384.Create());
+                () => CH.Keccak384.Create());
 
             yield return new HashAlgorithmFactory(
                 "Keccak-384 (BouncyCastle)",
@@ -631,7 +678,7 @@ public static class Keccak512Implementations
         {
             yield return new HashAlgorithmFactory(
                 "Keccak512",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Keccak512.Create());
+                () => CH.Keccak512.Create());
 
             yield return new HashAlgorithmFactory(
                 "Keccak-512 (BouncyCastle)",
@@ -664,7 +711,7 @@ public static class Md5Implementations
 #pragma warning disable CS0618 // Type or member is obsolete
             yield return new HashAlgorithmFactory(
                 "MD5",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.MD5.Create());
+                () => CH.MD5.Create());
 #pragma warning restore CS0618
 
             yield return new HashAlgorithmFactory(
@@ -692,7 +739,7 @@ public static class Ripemd160Implementations
         {
             yield return new HashAlgorithmFactory(
                 "Ripemd160",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Ripemd160.Create());
+                () => CH.Ripemd160.Create());
 
             yield return new HashAlgorithmFactory(
                 "RIPEMD-160 (BouncyCastle)",
@@ -719,7 +766,7 @@ public static class Sm3Implementations
         {
             yield return new HashAlgorithmFactory(
                 "SM3",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.SM3.Create());
+                () => CH.SM3.Create());
 
             yield return new HashAlgorithmFactory(
                 "SM3 (BouncyCastle)",
@@ -746,7 +793,7 @@ public static class WhirlpoolImplementations
         {
             yield return new HashAlgorithmFactory(
                 "Whirlpool",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create());
+                () => CH.Whirlpool.Create());
 
             yield return new HashAlgorithmFactory(
                 "Whirlpool (BouncyCastle)",
@@ -777,7 +824,7 @@ public static class CShake128Implementations
         {
             yield return new HashAlgorithmFactory(
                 "CShake128",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.CShake128.Create(32));
+                () => CH.CShake128.Create(32));
 
             yield return new HashAlgorithmFactory(
                 "cShake128 (BouncyCastle)",
@@ -800,7 +847,7 @@ public static class CShake256Implementations
         {
             yield return new HashAlgorithmFactory(
                 "CShake256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.CShake256.Create(64));
+                () => CH.CShake256.Create(64));
 
             yield return new HashAlgorithmFactory(
                 "cShake256 (BouncyCastle)",
@@ -827,7 +874,7 @@ public static class Streebog256Implementations
         {
             yield return new HashAlgorithmFactory(
                 "Streebog-256",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Streebog.Create(32));
+                () => CH.Streebog.Create(32));
 
             yield return new HashAlgorithmFactory(
                 "Streebog-256 (BouncyCastle)",
@@ -854,7 +901,7 @@ public static class Streebog512Implementations
         {
             yield return new HashAlgorithmFactory(
                 "Streebog-512",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.Streebog.Create(64));
+                () => CH.Streebog.Create(64));
 
             yield return new HashAlgorithmFactory(
                 "Streebog-512 (BouncyCastle)",
@@ -885,7 +932,7 @@ public static class KangarooTwelveImplementations
         {
             yield return new HashAlgorithmFactory(
                 "KangarooTwelve",
-                () => CryptoHives.Foundation.Security.Cryptography.Hash.KangarooTwelve.Create(32));
+                () => CH.KangarooTwelve.Create(32));
 
             // Note: BouncyCastle 2.6.2 does not include KangarooTwelve
             // Tests will compare against XKCP reference vectors

@@ -1,7 +1,6 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#pragma warning disable CA1814 // Prefer jagged arrays - Sigma is a fixed-size cryptographic constant where multidimensional is clearer
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -155,7 +154,7 @@ public sealed class Blake2s : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2s"/> class with default output size (32 bytes).
     /// </summary>
-    public Blake2s() : this(MaxHashSizeBytes, null)
+    public Blake2s() : this(MaxHashSizeBytes, null, SimdSupport.All)
     {
     }
 
@@ -163,7 +162,7 @@ public sealed class Blake2s : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2s"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
-    public Blake2s(int outputBytes) : this(outputBytes, null)
+    public Blake2s(int outputBytes) : this(outputBytes, null, SimdSupport.All)
     {
     }
 
@@ -172,7 +171,17 @@ public sealed class Blake2s : HashAlgorithm
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
     /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-32 bytes.</param>
-    public Blake2s(int outputBytes, byte[]? key)
+    public Blake2s(int outputBytes, byte[]? key) : this(outputBytes, key, SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake2s"/> class with specified output size, key, and SIMD support.
+    /// </summary>
+    /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
+    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-32 bytes.</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
+    internal Blake2s(int outputBytes, byte[]? key, SimdSupport simdSupport)
     {
         if (outputBytes < 1 || outputBytes > MaxHashSizeBytes)
         {
@@ -192,8 +201,8 @@ public sealed class Blake2s : HashAlgorithm
         _buffer = new byte[BlockSizeBytes];
 
 #if NET8_0_OR_GREATER
-        _useSse2 = Sse2.IsSupported;
-        _useAvx2 = Avx2.IsSupported;
+        _useAvx2 = (simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported;
+        _useSse2 = (_useAvx2 || (simdSupport & SimdSupport.Sse2) != 0) && Sse2.IsSupported;
 #endif
 
         if (key != null && key.Length > 0)
@@ -217,6 +226,23 @@ public sealed class Blake2s : HashAlgorithm
     public bool IsKeyed => _key != null;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    /// <returns>Flags indicating which SIMD instruction sets are available.</returns>
+    internal static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
+            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
     /// Creates a new instance of the <see cref="Blake2s"/> class with default output size.
     /// </summary>
     /// <returns>A new BLAKE2s instance.</returns>
@@ -228,6 +254,14 @@ public sealed class Blake2s : HashAlgorithm
     /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
     /// <returns>A new BLAKE2s instance.</returns>
     public static Blake2s Create(int outputBytes) => new(outputBytes);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Blake2s"/> class with specified output size and SIMD support.
+    /// </summary>
+    /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new BLAKE2s instance.</returns>
+    internal static Blake2s Create(int outputBytes, SimdSupport simdSupport) => new(outputBytes, null, simdSupport);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake2s"/> class.
@@ -243,6 +277,15 @@ public sealed class Blake2s : HashAlgorithm
     /// <param name="key">The key for keyed hashing (up to 32 bytes).</param>
     /// <returns>A new BLAKE2s instance configured for keyed hashing.</returns>
     public static Blake2s CreateKeyed(byte[] key) => new(MaxHashSizeBytes, key);
+
+    /// <summary>
+    /// Creates a new keyed instance of the <see cref="Blake2s"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
+    /// <param name="key">The key for keyed hashing (up to 32 bytes).</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new BLAKE2s instance configured for keyed hashing.</returns>
+    internal static Blake2s CreateKeyed(int outputBytes, byte[] key, SimdSupport simdSupport) => new(outputBytes, key, simdSupport);
 
     /// <inheritdoc/>
     public override void Initialize()

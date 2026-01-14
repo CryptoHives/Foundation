@@ -9,8 +9,12 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics.X86;
+#endif
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Factory for creating hash algorithm instances for benchmarking.
@@ -20,12 +24,12 @@ public sealed class HashAlgorithmType : IFormattable
     private readonly Func<HashAlgorithm> _factory;
     private readonly Func<bool>? _isSupported;
 
-    public HashAlgorithmType(string name, string category, Func<HashAlgorithm> factory, Func<bool>? isSupported = null)
+    public HashAlgorithmType(string category, Func<HashAlgorithm> factory, Func<bool>? isSupported = null, [CallerMemberName] string? name = null)
     {
-        Name = name;
         Category = category;
         _factory = factory;
         _isSupported = isSupported;
+        Name = name!;
     }
 
     public string Name { get; }
@@ -79,26 +83,26 @@ public sealed class HashAlgorithmType : IFormattable
 
     #region SHA-2 Family
 
-    public static readonly HashAlgorithmType SHA256_OS = new("SHA256_OS", "SHA-256", SHA256.Create);
-    public static readonly HashAlgorithmType SHA256_Managed = new("SHA256_Managed", "SHA-256", CH.SHA256.Create);
-    public static readonly HashAlgorithmType SHA256_Bouncy = new("SHA256_Bouncy", "SHA-256", () => new BouncyCastleHashAdapter(new Sha256Digest()));
+    public static readonly HashAlgorithmType SHA256_OS = new("SHA-256", SHA256.Create);
+    public static readonly HashAlgorithmType SHA256_Managed = new("SHA-256", CH.SHA256.Create);
+    public static readonly HashAlgorithmType SHA256_Bouncy = new("SHA-256", () => new BouncyCastleHashAdapter(new Sha256Digest()));
 
-    public static readonly HashAlgorithmType SHA384_OS = new("SHA384_OS", "SHA-384", SHA384.Create);
-    public static readonly HashAlgorithmType SHA384_Managed = new("SHA384_Managed", "SHA-384", CH.SHA384.Create);
-    public static readonly HashAlgorithmType SHA384_Bouncy = new("SHA384_Bouncy", "SHA-384", () => new BouncyCastleHashAdapter(new Sha384Digest()));
+    public static readonly HashAlgorithmType SHA384_OS = new("SHA-384", SHA384.Create);
+    public static readonly HashAlgorithmType SHA384_Managed = new("SHA-384", CH.SHA384.Create);
+    public static readonly HashAlgorithmType SHA384_Bouncy = new("SHA-384", () => new BouncyCastleHashAdapter(new Sha384Digest()));
 
-    public static readonly HashAlgorithmType SHA512_OS = new("SHA512_OS", "SHA-512", SHA512.Create);
-    public static readonly HashAlgorithmType SHA512_Managed = new("SHA512_Managed", "SHA-512", CH.SHA512.Create);
-    public static readonly HashAlgorithmType SHA512_Bouncy = new("SHA512_Bouncy", "SHA-512", () => new BouncyCastleHashAdapter(new Sha512Digest()));
+    public static readonly HashAlgorithmType SHA512_OS = new("SHA-512", SHA512.Create);
+    public static readonly HashAlgorithmType SHA512_Managed = new("SHA-512", CH.SHA512.Create);
+    public static readonly HashAlgorithmType SHA512_Bouncy = new("SHA-512", () => new BouncyCastleHashAdapter(new Sha512Digest()));
 
-    public static readonly HashAlgorithmType SHA224_Managed = new("SHA224_Managed", "SHA-224", CH.SHA224.Create);
-    public static readonly HashAlgorithmType SHA224_Bouncy = new("SHA224_Bouncy", "SHA-224", () => new BouncyCastleHashAdapter(new Sha224Digest()));
+    public static readonly HashAlgorithmType SHA224_Managed = new("SHA-224", CH.SHA224.Create);
+    public static readonly HashAlgorithmType SHA224_Bouncy = new("SHA-224", () => new BouncyCastleHashAdapter(new Sha224Digest()));
 
-    public static readonly HashAlgorithmType SHA512_224_Managed = new("SHA512_224_Managed", "SHA-512/224", CH.SHA512_224.Create);
-    public static readonly HashAlgorithmType SHA512_224_Bouncy = new("SHA512_224_Bouncy", "SHA-512/224", () => new BouncyCastleHashAdapter(new Sha512tDigest(224)));
+    public static readonly HashAlgorithmType SHA512_224_Managed = new("SHA-512/224", CH.SHA512_224.Create);
+    public static readonly HashAlgorithmType SHA512_224_Bouncy = new("SHA-512/224", () => new BouncyCastleHashAdapter(new Sha512tDigest(224)));
 
-    public static readonly HashAlgorithmType SHA512_256_Managed = new("SHA512_256_Managed", "SHA-512/256", CH.SHA512_256.Create);
-    public static readonly HashAlgorithmType SHA512_256_Bouncy = new("SHA512_256_Bouncy", "SHA-512/256", () => new BouncyCastleHashAdapter(new Sha512tDigest(256)));
+    public static readonly HashAlgorithmType SHA512_256_Managed = new("SHA-512/256", CH.SHA512_256.Create);
+    public static readonly HashAlgorithmType SHA512_256_Bouncy = new("SHA-512/256", () => new BouncyCastleHashAdapter(new Sha512tDigest(256)));
 
     #endregion
 
@@ -106,56 +110,84 @@ public sealed class HashAlgorithmType : IFormattable
 
 #if NET8_0_OR_GREATER
     // .NET 8+ OS-supported SHA-3 (requires OS support - Windows 11+, modern Linux)
-    public static readonly HashAlgorithmType SHA3_256_OS = new("SHA3_256_OS", "SHA3-256", () => SHA3_256.Create(), () => SHA3_256.IsSupported);
-    public static readonly HashAlgorithmType SHA3_384_OS = new("SHA3_384_OS", "SHA3-384", () => SHA3_384.Create(), () => SHA3_384.IsSupported);
-    public static readonly HashAlgorithmType SHA3_512_OS = new("SHA3_512_OS", "SHA3-512", () => SHA3_512.Create(), () => SHA3_512.IsSupported);
-    public static readonly HashAlgorithmType Shake128_OS = new("Shake128_OS", "SHAKE128", () => new Shake128HashAdapter(32), () => Shake128.IsSupported);
-    public static readonly HashAlgorithmType Shake256_OS = new("Shake256_OS", "SHAKE256", () => new Shake256HashAdapter(64), () => Shake256.IsSupported);
+    public static readonly HashAlgorithmType SHA3_256_OS = new("SHA3-256", () => SHA3_256.Create(), () => SHA3_256.IsSupported);
+    public static readonly HashAlgorithmType SHA3_384_OS = new("SHA3-384", () => SHA3_384.Create(), () => SHA3_384.IsSupported);
+    public static readonly HashAlgorithmType SHA3_512_OS = new("SHA3-512", () => SHA3_512.Create(), () => SHA3_512.IsSupported);
+    public static readonly HashAlgorithmType Shake128_OS = new("SHAKE128", () => new Shake128HashAdapter(32), () => Shake128.IsSupported);
+    public static readonly HashAlgorithmType Shake256_OS = new("SHAKE256", () => new Shake256HashAdapter(64), () => Shake256.IsSupported);
 #endif
 
-    public static readonly HashAlgorithmType SHA3_224_Managed = new("SHA3_224_Managed", "SHA3-224", CH.SHA3_224.Create);
-    public static readonly HashAlgorithmType SHA3_224_Bouncy = new("SHA3_224_Bouncy", "SHA3-224", () => new BouncyCastleHashAdapter(new Sha3Digest(224)));
+    public static readonly HashAlgorithmType SHA3_224_Managed = new("SHA3-224", CH.SHA3_224.Create);
+    public static readonly HashAlgorithmType SHA3_224_Bouncy = new("SHA3-224", () => new BouncyCastleHashAdapter(new Sha3Digest(224)));
 
-    public static readonly HashAlgorithmType SHA3_256_Managed = new("SHA3_256_Managed", "SHA3-256", CH.SHA3_256.Create);
-    public static readonly HashAlgorithmType SHA3_256_Bouncy = new("SHA3_256_Bouncy", "SHA3-256", () => new BouncyCastleHashAdapter(new Sha3Digest(256)));
+    public static readonly HashAlgorithmType SHA3_256_Managed = new("SHA3-256", CH.SHA3_256.Create);
+    public static readonly HashAlgorithmType SHA3_256_Bouncy = new("SHA3-256", () => new BouncyCastleHashAdapter(new Sha3Digest(256)));
 
-    public static readonly HashAlgorithmType SHA3_384_Managed = new("SHA3_384_Managed", "SHA3-384", CH.SHA3_384.Create);
-    public static readonly HashAlgorithmType SHA3_384_Bouncy = new("SHA3_384_Bouncy", "SHA3-384", () => new BouncyCastleHashAdapter(new Sha3Digest(384)));
+    public static readonly HashAlgorithmType SHA3_384_Managed = new("SHA3-384", CH.SHA3_384.Create);
+    public static readonly HashAlgorithmType SHA3_384_Bouncy = new("SHA3-384", () => new BouncyCastleHashAdapter(new Sha3Digest(384)));
 
-    public static readonly HashAlgorithmType SHA3_512_Managed = new("SHA3_512_Managed", "SHA3-512", CH.SHA3_512.Create);
-    public static readonly HashAlgorithmType SHA3_512_Bouncy = new("SHA3_512_Bouncy", "SHA3-512", () => new BouncyCastleHashAdapter(new Sha3Digest(512)));
+    public static readonly HashAlgorithmType SHA3_512_Managed = new("SHA3-512", CH.SHA3_512.Create);
+    public static readonly HashAlgorithmType SHA3_512_Bouncy = new("SHA3-512", () => new BouncyCastleHashAdapter(new Sha3Digest(512)));
 
-    public static readonly HashAlgorithmType Keccak256_Managed = new("Keccak256_Managed", "Keccak-256", CH.Keccak256.Create);
-    public static readonly HashAlgorithmType Keccak256_Bouncy = new("Keccak256_Bouncy", "Keccak-256", () => new BouncyCastleHashAdapter(new KeccakDigest(256)));
+    public static readonly HashAlgorithmType Keccak256_Managed = new("Keccak-256", CH.Keccak256.Create);
+    public static readonly HashAlgorithmType Keccak256_Bouncy = new("Keccak-256", () => new BouncyCastleHashAdapter(new KeccakDigest(256)));
 
-    public static readonly HashAlgorithmType Shake128_Managed = new("Shake128_Managed", "SHAKE128", () => CH.Shake128.Create(32));
-    public static readonly HashAlgorithmType Shake128_Bouncy = new("Shake128_Bouncy", "SHAKE128", () => new BouncyCastleXofAdapter(new ShakeDigest(128), 32));
+    public static readonly HashAlgorithmType Shake128_Managed = new("SHAKE128", () => CH.Shake128.Create(32));
+    public static readonly HashAlgorithmType Shake128_Bouncy = new("SHAKE128", () => new BouncyCastleXofAdapter(new ShakeDigest(128), 32));
 
-    public static readonly HashAlgorithmType Shake256_Managed = new("Shake256_Managed", "SHAKE256", () => CH.Shake256.Create(64));
-    public static readonly HashAlgorithmType Shake256_Bouncy = new("Shake256_Bouncy", "SHAKE256", () => new BouncyCastleXofAdapter(new ShakeDigest(256), 64));
+    public static readonly HashAlgorithmType Shake256_Managed = new("SHAKE256", () => CH.Shake256.Create(64));
+    public static readonly HashAlgorithmType Shake256_Bouncy = new("SHAKE256", () => new BouncyCastleXofAdapter(new ShakeDigest(256), 64));
 
-    public static readonly HashAlgorithmType CShake128_Managed = new("CShake128_Managed", "CSHAKE128", () => CH.CShake128.Create(32));
-    public static readonly HashAlgorithmType CShake128_Bouncy = new("CShake128_Bouncy", "CSHAKE128", () => new BouncyCastleCShakeAdapter(128, null, null, 32));
-    public static readonly HashAlgorithmType CShake256_Managed = new("CShake256_Managed", "CSHAKE256", () => CH.CShake256.Create(64));
-    public static readonly HashAlgorithmType CShake256_Bouncy = new("CShake256_Bouncy", "CSHAKE256", () => new BouncyCastleCShakeAdapter(256, null, null, 64));
+    public static readonly HashAlgorithmType CShake128_Managed = new( "CSHAKE128", () => CH.CShake128.Create(32));
+    public static readonly HashAlgorithmType CShake128_Bouncy = new( "CSHAKE128", () => new BouncyCastleCShakeAdapter(128, null, null, 32));
+    public static readonly HashAlgorithmType CShake256_Managed = new( "CSHAKE256", () => CH.CShake256.Create(64));
+    public static readonly HashAlgorithmType CShake256_Bouncy = new("CSHAKE256", () => new BouncyCastleCShakeAdapter(256, null, null, 64));
 
-    public static readonly HashAlgorithmType KangarooTwelve_Managed = new("KangarooTwelve_Managed", "K12", () => CH.KangarooTwelve.Create(32));
+    public static readonly HashAlgorithmType KangarooTwelve_Managed = new("K12", () => CH.KangarooTwelve.Create(32));
     // Note: BouncyCastle 2.6.2 does not include KangarooTwelve
 
     #endregion
 
     #region BLAKE Family
 
-    public static readonly HashAlgorithmType Blake2b_Managed = new("Blake2b_Managed", "BLAKE2b-512", () => CH.Blake2b.Create(64));
-    public static readonly HashAlgorithmType Blake2b_Bouncy = new("Blake2b_Bouncy", "BLAKE2b-512", () => new BouncyCastleHashAdapter(new Blake2bDigest(512)));
+    public static readonly HashAlgorithmType Blake2b_Managed = new("BLAKE2b-512", () => CH.Blake2b.Create(64));
+    public static readonly HashAlgorithmType Blake2b_Bouncy = new("BLAKE2b-512", () => new BouncyCastleHashAdapter(new Blake2bDigest(512)));
 
-    public static readonly HashAlgorithmType Blake2s_Managed = new("Blake2s_Managed", "BLAKE2s-256", () => CH.Blake2s.Create(32));
-    public static readonly HashAlgorithmType Blake2s_Bouncy = new("Blake2s_Bouncy", "BLAKE2s-256", () => new BouncyCastleHashAdapter(new Blake2sDigest(256)));
+    public static readonly HashAlgorithmType Blake2s_Managed = new( "BLAKE2s-256", () => CH.Blake2s.Create(32));
+    public static readonly HashAlgorithmType Blake2s_Bouncy = new("BLAKE2s-256", () => new BouncyCastleHashAdapter(new Blake2sDigest(256)));
 
-    public static readonly HashAlgorithmType Blake3_Managed = new("Blake3_Managed", "BLAKE3", () => CH.Blake3.Create(32));
-    public static readonly HashAlgorithmType Blake3_Bouncy = new("Blake3_Bouncy", "BLAKE3", () => new BouncyCastleHashAdapter(new Blake3Digest(256)));
+    public static readonly HashAlgorithmType Blake3_Managed = new("BLAKE3", () => CH.Blake3.Create(32));
+    public static readonly HashAlgorithmType Blake3_Bouncy = new("BLAKE3", () => new BouncyCastleHashAdapter(new Blake3Digest(256)));
+
+#if NET8_0_OR_GREATER
+    // SIMD-accelerated variants (use SIMD when available)
+    public static readonly HashAlgorithmType Blake2b_Managed_Avx2 = new("BLAKE2b-512",
+        () => CH.Blake2b.Create(64, CH.SimdSupport.Avx2), () => Avx2.IsSupported);
+
+    public static readonly HashAlgorithmType Blake2s_Managed_Sse2 = new("BLAKE2s-256",
+        () => CH.Blake2s.Create(32, CH.SimdSupport.Sse2), () => Sse2.IsSupported);
+
+    public static readonly HashAlgorithmType Blake2s_Managed_Avx2 = new("BLAKE2s-256",
+        () => CH.Blake2s.Create(32, CH.SimdSupport.Avx2), () => Avx2.IsSupported);
+
+    public static readonly HashAlgorithmType Blake3_Managed_Ssse3 = new("BLAKE3",
+        () => CH.Blake3.Create(32, CH.SimdSupport.Ssse3), () => Ssse3.IsSupported);
+
+    // Scalar variants (force scalar path for comparison)
+    // Note: These require SimdSupport parameter in constructors (to be implemented)
+    // For now, these will use SIMD if available - full scalar support requires algorithm changes
+    public static readonly HashAlgorithmType Blake2b_Managed_Scalar = new("BLAKE2b-512",
+        () => new CH.Blake2b(64, null, CH.SimdSupport.None), () => true);
+
+    public static readonly HashAlgorithmType Blake2s_Managed_Scalar = new("BLAKE2s-256",
+        () => new CH.Blake2s(32, null, CH.SimdSupport.None), () => true);
+
+    public static readonly HashAlgorithmType Blake3_Managed_Scalar = new("BLAKE3",
+        () => new CH.Blake3(32, CH.SimdSupport.None), () => true);
+#endif
+
 #if BLAKE3_NATIVE
-    public static readonly HashAlgorithmType Blake3_Native = new("Blake3_Native", "BLAKE3", () => new Blake3NativeAdapter(32));
+    public static readonly HashAlgorithmType Blake3_Native = new("BLAKE3", () => new Blake3NativeAdapter(32));
 #endif
 
     #endregion
@@ -163,35 +195,35 @@ public sealed class HashAlgorithmType : IFormattable
     #region Legacy
 
 #pragma warning disable CA5350, CA5351, CS0618
-    public static readonly HashAlgorithmType MD5_OS = new("MD5_OS", "MD5", MD5.Create);
-    public static readonly HashAlgorithmType MD5_Managed = new("MD5_Managed", "MD5", CH.MD5.Create);
-    public static readonly HashAlgorithmType MD5_Bouncy = new("MD5_Bouncy", "MD5", () => new BouncyCastleHashAdapter(new MD5Digest()));
+    public static readonly HashAlgorithmType MD5_OS = new("MD5", MD5.Create);
+    public static readonly HashAlgorithmType MD5_Managed = new("MD5", CH.MD5.Create);
+    public static readonly HashAlgorithmType MD5_Bouncy = new("MD5", () => new BouncyCastleHashAdapter(new MD5Digest()));
 
-    public static readonly HashAlgorithmType SHA1_OS = new("SHA1_OS", "SHA-1", SHA1.Create);
-    public static readonly HashAlgorithmType SHA1_Managed = new("SHA1_Managed", "SHA-1", CH.SHA1.Create);
-    public static readonly HashAlgorithmType SHA1_Bouncy = new("SHA1_Bouncy", "SHA-1", () => new BouncyCastleHashAdapter(new Sha1Digest()));
+    public static readonly HashAlgorithmType SHA1_OS = new("SHA-1", SHA1.Create);
+    public static readonly HashAlgorithmType SHA1_Managed = new("SHA-1", CH.SHA1.Create);
+    public static readonly HashAlgorithmType SHA1_Bouncy = new("SHA-1", () => new BouncyCastleHashAdapter(new Sha1Digest()));
 #pragma warning restore CA5350, CA5351, CS0618
 
     #endregion
 
     #region Regional/Specialty
 
-    public static readonly HashAlgorithmType Ripemd160_Managed = new("Ripemd160_Managed", "RIPEMD-160", CH.Ripemd160.Create);
-    public static readonly HashAlgorithmType Ripemd160_Bouncy = new("Ripemd160_Bouncy", "RIPEMD-160", () => new BouncyCastleHashAdapter(new RipeMD160Digest()));
+    public static readonly HashAlgorithmType Ripemd160_Managed = new("RIPEMD-160", CH.Ripemd160.Create);
+    public static readonly HashAlgorithmType Ripemd160_Bouncy = new("RIPEMD-160", () => new BouncyCastleHashAdapter(new RipeMD160Digest()));
 
-    public static readonly HashAlgorithmType SM3_Managed = new("SM3_Managed", "SM3", CH.SM3.Create);
-    public static readonly HashAlgorithmType SM3_Bouncy = new("SM3_Bouncy", "SM3", () => new BouncyCastleHashAdapter(new SM3Digest()));
+    public static readonly HashAlgorithmType SM3_Managed = new("SM3", CH.SM3.Create);
+    public static readonly HashAlgorithmType SM3_Bouncy = new("SM3", () => new BouncyCastleHashAdapter(new SM3Digest()));
 
-    public static readonly HashAlgorithmType Whirlpool_Managed = new("Whirlpool_Managed", "Whirlpool", CH.Whirlpool.Create);
-    public static readonly HashAlgorithmType Whirlpool_Bouncy = new("Whirlpool_Bouncy", "Whirlpool", () => new BouncyCastleHashAdapter(new WhirlpoolDigest()));
+    public static readonly HashAlgorithmType Whirlpool_Managed = new( "Whirlpool", CH.Whirlpool.Create);
+    public static readonly HashAlgorithmType Whirlpool_Bouncy = new( "Whirlpool", () => new BouncyCastleHashAdapter(new WhirlpoolDigest()));
 
-    public static readonly HashAlgorithmType Streebog256_Managed = new("Streebog256_Managed", "Streebog-256", () => CH.Streebog.Create(32));
-    public static readonly HashAlgorithmType Streebog256_Bouncy = new("Streebog256_Bouncy", "Streebog-256", () => new BouncyCastleHashAdapter(new Gost3411_2012_256Digest()));
-    public static readonly HashAlgorithmType Streebog256_OpenGost = new("Streebog256_OpenGost", "Streebog-256", () => OpenGost.Security.Cryptography.Streebog256.Create());
+    public static readonly HashAlgorithmType Streebog256_Managed = new("Streebog-256", () => CH.Streebog.Create(32));
+    public static readonly HashAlgorithmType Streebog256_Bouncy = new("Streebog-256", () => new BouncyCastleHashAdapter(new Gost3411_2012_256Digest()));
+    public static readonly HashAlgorithmType Streebog256_OpenGost = new("Streebog-256", () => OpenGost.Security.Cryptography.Streebog256.Create());
 
-    public static readonly HashAlgorithmType Streebog512_Managed = new("Streebog512_Managed", "Streebog-512", () => CH.Streebog.Create(64));
-    public static readonly HashAlgorithmType Streebog512_Bouncy = new("Streebog512_Bouncy", "Streebog-512", () => new BouncyCastleHashAdapter(new Gost3411_2012_512Digest()));
-    public static readonly HashAlgorithmType Streebog512_OpenGost = new("Streebog512_OpenGost", "Streebog-512", () => OpenGost.Security.Cryptography.Streebog512.Create());
+    public static readonly HashAlgorithmType Streebog512_Managed = new("Streebog-512", () => CH.Streebog.Create(64));
+    public static readonly HashAlgorithmType Streebog512_Bouncy = new("Streebog-512", () => new BouncyCastleHashAdapter(new Gost3411_2012_512Digest()));
+    public static readonly HashAlgorithmType Streebog512_OpenGost = new( "Streebog-512", () => OpenGost.Security.Cryptography.Streebog512.Create());
 
     #endregion
 
@@ -208,24 +240,24 @@ public sealed class HashAlgorithmType : IFormattable
 
     private static readonly byte[] SharedKmacCustomization = Encoding.UTF8.GetBytes("Benchmark");
 
-    public static readonly HashAlgorithmType Kmac128_Managed = new("Kmac128_Managed", "KMAC-128",
+    public static readonly HashAlgorithmType Kmac128_Managed = new( "KMAC-128",
         () => CHMac.Kmac128.Create(SharedKmacKey, 32, "Benchmark"));
 
-    public static readonly HashAlgorithmType Kmac128_Bouncy = new("Kmac128_Bouncy", "KMAC-128",
+    public static readonly HashAlgorithmType Kmac128_Bouncy = new("KMAC-128",
         () => new BouncyCastleKmacAdapter(128, SharedKmacKey, SharedKmacCustomization, 32));
 
-    public static readonly HashAlgorithmType Kmac256_Managed = new("Kmac256_Managed", "KMAC-256",
+    public static readonly HashAlgorithmType Kmac256_Managed = new("KMAC-256",
         () => CHMac.Kmac256.Create(SharedKmacKey, 64, "Benchmark"));
 
-    public static readonly HashAlgorithmType Kmac256_Bouncy = new("Kmac256_Bouncy", "KMAC-256",
+    public static readonly HashAlgorithmType Kmac256_Bouncy = new("KMAC-256",
         () => new BouncyCastleKmacAdapter(256, SharedKmacKey, SharedKmacCustomization, 64));
 
 #if NET9_0_OR_GREATER
-    public static readonly HashAlgorithmType Kmac128_OS = new("Kmac128_OS", "KMAC-128",
+    public static readonly HashAlgorithmType Kmac128_OS = new("KMAC-128",
         () => new Kmac128HashAdapter(SharedKmacKey, 32, SharedKmacCustomization),
         () => Kmac128.IsSupported);
 
-    public static readonly HashAlgorithmType Kmac256_OS = new("Kmac256_OS", "KMAC-256",
+    public static readonly HashAlgorithmType Kmac256_OS = new( "KMAC-256",
         () => new Kmac256HashAdapter(SharedKmacKey, 64, SharedKmacCustomization),
         () => Kmac256.IsSupported);
 #endif
@@ -336,15 +368,34 @@ public sealed class HashAlgorithmType : IFormattable
         yield return KangarooTwelve_Managed;
 
         // BLAKE
+#if NET8_0_OR_GREATER
+        // BLAKE2b variants
+        if (Blake2b_Managed_Avx2.IsSupported) yield return Blake2b_Managed_Avx2;
+        yield return Blake2b_Managed_Scalar;
+        yield return Blake2b_Bouncy;
+
+        // BLAKE2s variants
+        if (Blake2s_Managed_Avx2.IsSupported) yield return Blake2s_Managed_Avx2;
+        if (Blake2s_Managed_Sse2.IsSupported) yield return Blake2s_Managed_Sse2;
+        yield return Blake2s_Managed_Scalar;
+        yield return Blake2s_Bouncy;
+
+        // BLAKE3 variants
+        if (Blake3_Managed_Ssse3.IsSupported) yield return Blake3_Managed_Ssse3;
+        yield return Blake3_Managed_Scalar;
+        yield return Blake3_Bouncy;
+#else
         yield return Blake2b_Managed;
         yield return Blake2b_Bouncy;
         yield return Blake2s_Managed;
         yield return Blake2s_Bouncy;
         yield return Blake3_Managed;
         yield return Blake3_Bouncy;
+#endif
 #if BLAKE3_NATIVE
         yield return Blake3_Native;
 #endif
+
 
         // Legacy
         yield return MD5_OS;
@@ -423,7 +474,32 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Kmac256_Bouncy;
     }
 
-    #endregion
+#if NET8_0_OR_GREATER
+    /// <summary>All BLAKE SIMD variants for comparison benchmarks.</summary>
+    public static IEnumerable<HashAlgorithmType> AllBlakeSimdVariants()
+    {
+        // BLAKE2b variants
+        if (Blake2b_Managed_Avx2.IsSupported) yield return Blake2b_Managed_Avx2;
+        yield return Blake2b_Managed_Scalar;
+        yield return Blake2b_Bouncy;
+
+        // BLAKE2s variants
+        if (Blake2s_Managed_Avx2.IsSupported) yield return Blake2s_Managed_Avx2;
+        if (Blake2s_Managed_Sse2.IsSupported) yield return Blake2s_Managed_Sse2;
+        yield return Blake2s_Managed_Scalar;
+        yield return Blake2s_Bouncy;
+
+        // BLAKE3 variants
+        if (Blake3_Managed_Ssse3.IsSupported) yield return Blake3_Managed_Ssse3;
+        yield return Blake3_Managed_Scalar;
+        yield return Blake3_Bouncy;
+#if BLAKE3_NATIVE
+        yield return Blake3_Native;
+#endif
+    }
+#endif
+
+#endregion
 }
 
 

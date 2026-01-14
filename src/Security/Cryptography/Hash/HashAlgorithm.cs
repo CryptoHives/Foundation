@@ -10,6 +10,52 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 
 /// <summary>
+/// Specifies the SIMD instruction set support for hash algorithm implementations.
+/// </summary>
+/// <remarks>
+/// This enum is used to control which SIMD optimizations are used by hash algorithms
+/// and to query which optimizations are available on the current platform.
+/// </remarks>
+[Flags]
+internal enum SimdSupport
+{
+    /// <summary>
+    /// No SIMD acceleration (pure scalar implementation).
+    /// </summary>
+    None = 0,
+
+    /// <summary>
+    /// SSE2 instruction set support (128-bit vectors).
+    /// </summary>
+    Sse2 = 1 << 0,
+
+    /// <summary>
+    /// SSSE3 instruction set support (adds byte shuffle).
+    /// </summary>
+    Ssse3 = 1 << 1,
+
+    /// <summary>
+    /// AVX2 instruction set support (256-bit vectors, gather).
+    /// </summary>
+    Avx2 = 1 << 2,
+
+    /// <summary>
+    /// AVX-512 instruction set support (512-bit vectors).
+    /// </summary>
+    Avx512 = 1 << 3,
+
+    /// <summary>
+    /// ARM NEON instruction set support.
+    /// </summary>
+    Neon = 1 << 4,
+
+    /// <summary>
+    /// All available SIMD optimizations (default behavior).
+    /// </summary>
+    All = Sse2 | Ssse3 | Avx2 | Avx512 | Neon
+}
+
+/// <summary>
 /// Base class for CryptoHives clean-room hash algorithm implementations.
 /// </summary>
 /// <remarks>
