@@ -557,14 +557,14 @@ public static class Blake2s128Implementations
             {
                 yield return new HashAlgorithmFactory(
                     "Blake2s-128 (AVX2)",
-                    () => CH.Blake2s.Create(32, CH.SimdSupport.Avx2));
+                    () => CH.Blake2s.Create(16, CH.SimdSupport.Avx2));
             }
 
             if ((simdSupport & CH.SimdSupport.Sse2) != 0)
             {
                 yield return new HashAlgorithmFactory(
                     "Blake2s-128 (SSE2)",
-                    () => CH.Blake2s.Create(32, CH.SimdSupport.Sse2));
+                    () => CH.Blake2s.Create(16, CH.SimdSupport.Sse2));
             }
 
             yield return new HashAlgorithmFactory(

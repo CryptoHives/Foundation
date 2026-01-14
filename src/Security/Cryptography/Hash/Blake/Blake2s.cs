@@ -201,7 +201,7 @@ public sealed class Blake2s : HashAlgorithm
         _buffer = new byte[BlockSizeBytes];
 
 #if NET8_0_OR_GREATER
-        _useAvx2 = (simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported;
+        _useAvx2 = (simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported && Sse2.IsSupported;
         _useSse2 = (_useAvx2 || (simdSupport & SimdSupport.Sse2) != 0) && Sse2.IsSupported;
 #endif
 
