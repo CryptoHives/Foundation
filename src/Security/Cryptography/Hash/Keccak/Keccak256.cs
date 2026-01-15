@@ -17,7 +17,7 @@ using System;
 /// Keccak-256 produces a 256-bit (32-byte) hash value.
 /// </para>
 /// </remarks>
-public sealed class Keccak256 : HashAlgorithm
+public sealed class Keccak256 : KeccakBase
 {
     /// <summary>
     /// The hash size in bits.
@@ -39,10 +39,6 @@ public sealed class Keccak256 : HashAlgorithm
     /// </summary>
     private const byte DomainSeparator = 0x01;
 
-    private KeccakCoreState _keccakCore;
-    private readonly byte[] _buffer;
-    private int _bufferLength;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="Keccak256"/> class.
     /// </summary>
@@ -54,11 +50,9 @@ public sealed class Keccak256 : HashAlgorithm
     /// Initializes a new instance of the <see cref="Keccak256"/> class with specified SIMD support.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal Keccak256(SimdSupport simdSupport)
+    internal Keccak256(SimdSupport simdSupport) : base(RateBytes, simdSupport)
     {
         HashSizeValue = HashSizeBits;
-        _keccakCore = new KeccakCoreState(simdSupport);
-        _buffer = new byte[RateBytes];
         Initialize();
     }
 
@@ -67,11 +61,6 @@ public sealed class Keccak256 : HashAlgorithm
 
     /// <inheritdoc/>
     public override int BlockSize => RateBytes;
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport => KeccakCore.SimdSupport;
 
     /// <summary>
     /// Creates a new instance of the <see cref="Keccak256"/> class.
@@ -85,14 +74,6 @@ public sealed class Keccak256 : HashAlgorithm
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <returns>A new Keccak-256 hash algorithm instance.</returns>
     internal static Keccak256 Create(SimdSupport simdSupport) => new(simdSupport);
-
-    /// <inheritdoc/>
-    public override void Initialize()
-    {
-        _keccakCore.Reset();
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
-    }
 
     /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
@@ -150,16 +131,5 @@ public sealed class Keccak256 : HashAlgorithm
 
         bytesWritten = HashSizeBytes;
         return true;
-    }
-
-    /// <inheritdoc/>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _keccakCore.Reset();
-            ClearBuffer(_buffer);
-        }
-        base.Dispose(disposing);
     }
 }

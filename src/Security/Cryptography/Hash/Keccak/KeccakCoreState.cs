@@ -428,6 +428,11 @@ internal unsafe struct KeccakCoreState
         }
     }
 
+    /// <summary>
+    /// This implementation follows the naming conventions and structure from:
+    /// https://github.com/XKCP/K12/blob/master/lib/Optimized64/KeccakP-1600-opt64.c
+    /// </summary>
+    /// <param name="startRound">Set the round start to 12 for TurboShake and KT</param>
     [SkipLocalsInit]
 #endif
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -476,14 +481,14 @@ internal unsafe struct KeccakCoreState
 
             for (int round = startRound; round < Rounds; round += 2)
             {
-                //    prepareTheta
+                // prepareTheta
                 bCa = aba ^ aga ^ aka ^ ama ^ asa;
                 bCe = abe ^ age ^ ake ^ ame ^ ase;
                 bCi = abi ^ agi ^ aki ^ ami ^ asi;
                 bCo = abo ^ ago ^ ako ^ amo ^ aso;
                 bCu = abu ^ agu ^ aku ^ amu ^ asu;
 
-                //thetaRhoPiChiIotaPrepareTheta(round  , A, E)
+                // thetaRhoPiChiIotaPrepareTheta(round, A, E)
                 da = bCu ^ BitOperations.RotateLeft(bCe, 1);
                 de = bCa ^ BitOperations.RotateLeft(bCi, 1);
                 di = bCe ^ BitOperations.RotateLeft(bCo, 1);
@@ -545,11 +550,11 @@ internal unsafe struct KeccakCoreState
                 eso = bCo ^ ((~bCu) & bCa);
                 esu = bCu ^ ((~bCa) & bCe);
 
-                //    prepareTheta
+                // prepareTheta
                 bCe = ebe ^ ege ^ eke ^ eme ^ ese;
                 bCu = ebu ^ egu ^ eku ^ emu ^ esu;
 
-                //thetaRhoPiChiIotaPrepareTheta(round+1, E, A)
+                // thetaRhoPiChiIotaPrepareTheta(round+1, E, A)
                 da = bCu ^ BitOperations.RotateLeft(bCe, 1);
                 bCa = eba ^ ega ^ eka ^ ema ^ esa;
                 bCi = ebi ^ egi ^ eki ^ emi ^ esi;
