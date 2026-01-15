@@ -426,7 +426,7 @@ public static class Shake128Implementations
             }
 #endif
 
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -466,7 +466,7 @@ public static class Shake256Implementations
             }
 #endif
 
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -501,7 +501,7 @@ public static class CShake128Implementations
     {
         get
         {
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -532,7 +532,7 @@ public static class CShake256Implementations
     {
         get
         {
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -1027,7 +1027,7 @@ public static class KT128Implementations
     {
         get
         {
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -1056,7 +1056,7 @@ public static class KT256Implementations
     {
         get
         {
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -1081,11 +1081,11 @@ public static class TurboShake128Implementations
     /// <summary>
     /// Gets all available TurboShake128 implementations for testing.
     /// </summary>
-    public static IEnumerable All
+    public static IEnumerable All32
     {
         get
         {
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -1097,6 +1097,29 @@ public static class TurboShake128Implementations
                 "TurboShake128 (Managed)",
                 () => CH.TurboShake128.Create(CH.SimdSupport.None, 32));
                 
+            // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
+        }
+    }
+
+    /// <summary>
+    /// Gets all available TurboShake128 implementations for testing.
+    /// </summary>
+    public static IEnumerable All64
+    {
+        get
+        {
+            var simdSupport = CH.KeccakCore.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake128 (AVX512F)",
+                    () => CH.TurboShake128.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
+            yield return new HashAlgorithmFactory(
+                "TurboShake128 (Managed)",
+                () => CH.TurboShake128.Create(CH.SimdSupport.None, 64));
+
             // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
         }
     }
@@ -1114,7 +1137,7 @@ public static class TurboShake256Implementations
     {
         get
         {
-            var simdSupport = CH.KeccakBase.SimdSupport;
+            var simdSupport = CH.KeccakCore.SimdSupport;
             if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
             {
                 yield return new HashAlgorithmFactory(

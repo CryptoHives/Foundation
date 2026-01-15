@@ -18,7 +18,7 @@ using System.Text;
 /// When both N and S are empty, cSHAKE256 is equivalent to SHAKE256.
 /// </para>
 /// </remarks>
-public sealed class CShake256 : KeccakBase
+public sealed class CShake256 : KeccakCore
 {
     /// <summary>
     /// The default output size in bits.

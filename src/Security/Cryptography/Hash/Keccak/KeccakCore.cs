@@ -21,13 +21,13 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 /// On platforms with AVX512F support (.NET 8+), an optimized SIMD implementation can be used.
 /// </para>
 /// </remarks>
-public abstract class KeccakBase : HashAlgorithm
+public abstract class KeccakCore : HashAlgorithm
 {
     private protected KeccakCoreState _keccakCore;
     private protected readonly byte[] _buffer;
     private protected int _bufferLength;
 
-    internal KeccakBase(int rateBytes, SimdSupport simdSupport = SimdSupport.Default)
+    internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.Default)
     {
         _keccakCore = new KeccakCoreState(simdSupport);
         _buffer = new byte[rateBytes];

@@ -19,7 +19,7 @@ using System;
 /// SHA3-256 produces a 256-bit (32-byte) hash value.
 /// </para>
 /// </remarks>
-public sealed class SHA3_256 : KeccakBase
+public sealed class SHA3_256 : KeccakCore
 {
     /// <summary>
     /// The hash size in bits.

@@ -20,7 +20,7 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 /// pseudorandom function (XOF mode with arbitrary output length).
 /// </para>
 /// </remarks>
-public sealed class Kmac128 : KeccakBase
+public sealed class Kmac128 : KeccakCore
 {
     /// <summary>
     /// The default output size in bits.

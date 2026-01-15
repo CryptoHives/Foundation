@@ -23,7 +23,7 @@ using System.Runtime.CompilerServices;
 /// The domain separation byte D must be in the range [0x01, 0x7F]. The default value is 0x1F.
 /// </para>
 /// </remarks>
-public sealed class TurboShake256 : KeccakBase
+public sealed class TurboShake256 : KeccakCore
 {
     /// <summary>
     /// The default output size in bits.

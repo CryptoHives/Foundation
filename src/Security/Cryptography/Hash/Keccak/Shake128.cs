@@ -17,7 +17,7 @@ using System;
 /// SHAKE128 provides 128-bit security strength against all attacks.
 /// </para>
 /// </remarks>
-public sealed class Shake128 : KeccakBase
+public sealed class Shake128 : KeccakCore
 {
     /// <summary>
     /// The default output size in bits.

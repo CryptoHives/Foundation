@@ -19,7 +19,7 @@ using System;
 /// SHA3-512 produces a 512-bit (64-byte) hash value.
 /// </para>
 /// </remarks>
-public sealed class SHA3_512 : KeccakBase
+public sealed class SHA3_512 : KeccakCore
 {
     /// <summary>
     /// The hash size in bits.

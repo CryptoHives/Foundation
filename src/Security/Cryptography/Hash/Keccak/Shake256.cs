@@ -17,7 +17,7 @@ using System;
 /// SHAKE256 provides 256-bit security strength against all attacks.
 /// </para>
 /// </remarks>
-public sealed class Shake256 : KeccakBase
+public sealed class Shake256 : KeccakCore
 {
     /// <summary>
     /// The default output size in bits.

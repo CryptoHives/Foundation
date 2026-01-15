@@ -18,7 +18,7 @@ using System.Text;
 /// When both N and S are empty, cSHAKE128 is equivalent to SHAKE128.
 /// </para>
 /// </remarks>
-public sealed class CShake128 : KeccakBase
+public sealed class CShake128 : KeccakCore
 {
     /// <summary>
     /// The default output size in bits.

@@ -17,7 +17,7 @@ using System;
 /// Keccak-512 produces a 512-bit (64-byte) hash value.
 /// </para>
 /// </remarks>
-public sealed class Keccak512 : KeccakBase
+public sealed class Keccak512 : KeccakCore
 {
     /// <summary>
     /// The hash size in bits.
