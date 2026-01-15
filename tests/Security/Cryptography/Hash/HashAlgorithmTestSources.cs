@@ -426,9 +426,17 @@ public static class Shake128Implementations
             }
 #endif
 
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Shake128 (AVX512F)",
+                    () => CH.Shake128.Create(CH.SimdSupport.Avx512F, 32));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Shake128",
-                () => CH.Shake128.Create(32));
+                "Shake128 (Managed)",
+                () => CH.Shake128.Create(CH.SimdSupport.None, 32));
 
             yield return new HashAlgorithmFactory(
                 "Shake128 (BouncyCastle)",
@@ -458,13 +466,87 @@ public static class Shake256Implementations
             }
 #endif
 
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Shake256 (AVX512F)",
+                    () => CH.Shake256.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
             yield return new HashAlgorithmFactory(
-                "Shake256",
-                () => CH.Shake256.Create(64));
+                "Shake256 (Managed)",
+                () => CH.Shake256.Create(CH.SimdSupport.None, 64));
 
             yield return new HashAlgorithmFactory(
                 "Shake256 (BouncyCastle)",
                 () => new BouncyCastleXofAdapter(new ShakeDigest(256), 64));
+        }
+    }
+}
+
+#endregion
+
+#region cSHAKE
+
+/// <summary>
+/// Provides test case sources for cShake128 implementations (32-byte output).
+/// </summary>
+public static class CShake128Implementations
+{
+    /// <summary>
+    /// Gets all available cShake128 implementations for testing (32-byte output).
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "CShake128 (AVX512F)",
+                    () => CH.CShake128.Create(CH.SimdSupport.Avx512F, 32));
+            }
+
+            yield return new HashAlgorithmFactory(
+                "CShake128 (Managed)",
+                () => CH.CShake128.Create(CH.SimdSupport.None, 32));
+
+            yield return new HashAlgorithmFactory(
+                "cShake128 (BouncyCastle)",
+                () => new BouncyCastleCShakeAdapter(128, null, null, 32));
+        }
+    }
+}
+
+/// <summary>
+/// Provides test case sources for cShake256 implementations (64-byte output).
+/// </summary>
+public static class CShake256Implementations
+{
+    /// <summary>
+    /// Gets all available cShake256 implementations for testing (64-byte output).
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "CShake256 (AVX512F)",
+                    () => CH.CShake256.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
+            yield return new HashAlgorithmFactory(
+                "CShake256 (Managed)",
+                () => CH.CShake256.Create(CH.SimdSupport.None, 64));
+
+            yield return new HashAlgorithmFactory(
+                "cShake256 (BouncyCastle)",
+                () => new BouncyCastleCShakeAdapter(256, null, null, 64));
         }
     }
 }
@@ -873,56 +955,6 @@ public static class WhirlpoolImplementations
 
 #endregion
 
-#region cSHAKE
-
-/// <summary>
-/// Provides test case sources for cShake128 implementations (32-byte output).
-/// </summary>
-public static class CShake128Implementations
-{
-    /// <summary>
-    /// Gets all available cShake128 implementations for testing (32-byte output).
-    /// </summary>
-    public static IEnumerable All
-    {
-        get
-        {
-            yield return new HashAlgorithmFactory(
-                "CShake128",
-                () => CH.CShake128.Create(32));
-
-            yield return new HashAlgorithmFactory(
-                "cShake128 (BouncyCastle)",
-                () => new BouncyCastleCShakeAdapter(128, null, null, 32));
-        }
-    }
-}
-
-/// <summary>
-/// Provides test case sources for cShake256 implementations (64-byte output).
-/// </summary>
-public static class CShake256Implementations
-{
-    /// <summary>
-    /// Gets all available cShake256 implementations for testing (64-byte output).
-    /// </summary>
-    public static IEnumerable All
-    {
-        get
-        {
-            yield return new HashAlgorithmFactory(
-                "CShake256",
-                () => CH.CShake256.Create(64));
-
-            yield return new HashAlgorithmFactory(
-                "cShake256 (BouncyCastle)",
-                () => new BouncyCastleCShakeAdapter(256, null, null, 64));
-        }
-    }
-}
-
-#endregion
-
 #region Streebog
 
 /// <summary>
@@ -995,9 +1027,17 @@ public static class KT128Implementations
     {
         get
         {
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "KT128 (AVX512F)",
+                    () => CH.KT128.Create(CH.SimdSupport.Avx512F, 32));
+            }
+
             yield return new HashAlgorithmFactory(
-                "KT128",
-                () => CH.KT128.Create(32));
+                "KT128 (Managed)",
+                () => CH.KT128.Create(CH.SimdSupport.None, 32));
 
             // Note: BouncyCastle 2.6.2 does not include KT128/KangarooTwelve
         }
@@ -1016,9 +1056,17 @@ public static class KT256Implementations
     {
         get
         {
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "KT256 (AVX512F)",
+                    () => CH.KT256.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
             yield return new HashAlgorithmFactory(
-                "KT256",
-                () => CH.KT256.Create(64));
+                "KT256 (Managed)",
+                () => CH.KT256.Create(CH.SimdSupport.None, 64));
             
             // Note: BouncyCastle 2.6.2 does not include KT256
         }
@@ -1037,9 +1085,17 @@ public static class TurboShake128Implementations
     {
         get
         {
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake128 (AVX512F)",
+                    () => CH.TurboShake128.Create(CH.SimdSupport.Avx512F, 32));
+            }
+
             yield return new HashAlgorithmFactory(
-                "TurboShake128",
-                () => CH.TurboShake128.Create(32));
+                "TurboShake128 (Managed)",
+                () => CH.TurboShake128.Create(CH.SimdSupport.None, 32));
                 
             // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
         }
@@ -1058,9 +1114,17 @@ public static class TurboShake256Implementations
     {
         get
         {
+            var simdSupport = CH.KeccakBase.SimdSupport;
+            if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake256 (AVX512F)",
+                    () => CH.TurboShake256.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
             yield return new HashAlgorithmFactory(
-                "TurboShake256",
-                () => CH.TurboShake256.Create(64));
+                "TurboShake256 (Managed)",
+                () => CH.TurboShake256.Create(CH.SimdSupport.None, 64));
                 
             // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
         }
@@ -1068,6 +1132,9 @@ public static class TurboShake256Implementations
 }
 
 #endregion
+
+
+
 
 
 

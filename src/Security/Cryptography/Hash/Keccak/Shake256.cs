@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -17,7 +17,7 @@ using System;
 /// SHAKE256 provides 256-bit security strength against all attacks.
 /// </para>
 /// </remarks>
-public sealed class Shake256 : HashAlgorithm
+public sealed class Shake256 : KeccakBase
 {
     /// <summary>
     /// The default output size in bits.
@@ -39,10 +39,7 @@ public sealed class Shake256 : HashAlgorithm
     /// </summary>
     private const byte DomainSeparator = 0x1F;
 
-    private readonly ulong[] _state;
-    private readonly byte[] _buffer;
     private readonly int _outputBytes;
-    private int _bufferLength;
     private bool _finalized;
     private int _squeezeOffset;
 
@@ -57,7 +54,11 @@ public sealed class Shake256 : HashAlgorithm
     /// Initializes a new instance of the <see cref="Shake256"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public Shake256(int outputBytes)
+    public Shake256(int outputBytes) : this(SimdSupport.Default, outputBytes)
+    {
+    }
+
+    internal Shake256(SimdSupport simdSupport, int outputBytes) : base(RateBytes, simdSupport)
     {
         if (outputBytes <= 0)
         {
@@ -66,8 +67,6 @@ public sealed class Shake256 : HashAlgorithm
 
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
-        _state = new ulong[KeccakCore.StateSize];
-        _buffer = new byte[RateBytes];
         Initialize();
     }
 
@@ -90,12 +89,12 @@ public sealed class Shake256 : HashAlgorithm
     /// <returns>A new SHAKE256 instance.</returns>
     public static Shake256 Create(int outputBytes) => new(outputBytes);
 
+    internal static Shake256 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8) => new(simdSupport, outputBytes);
+
     /// <inheritdoc/>
     public override void Initialize()
     {
-        Array.Clear(_state, 0, _state.Length);
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
+        base.Initialize();
         _finalized = false;
         _squeezeOffset = 0;
     }
@@ -119,14 +118,14 @@ public sealed class Shake256 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                KeccakCore.Absorb(_state, _buffer, RateBytes);
+                _keccakCore.Absorb(_buffer, RateBytes);
                 _bufferLength = 0;
             }
         }
 
         while (offset + RateBytes <= source.Length)
         {
-            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes);
+            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
             offset += RateBytes;
         }
 
@@ -162,22 +161,11 @@ public sealed class Shake256 : HashAlgorithm
 
             _buffer[RateBytes - 1] |= 0x80;
 
-            KeccakCore.Absorb(_state, _buffer, RateBytes);
+            _keccakCore.Absorb(_buffer, RateBytes);
             _finalized = true;
             _squeezeOffset = 0;
         }
 
-        KeccakCore.SqueezeXof(_state, output, RateBytes, ref _squeezeOffset);
-    }
-
-    /// <inheritdoc/>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Array.Clear(_state, 0, _state.Length);
-            ClearBuffer(_buffer);
-        }
-        base.Dispose(disposing);
+        _keccakCore.SqueezeXof(output, RateBytes, ref _squeezeOffset);
     }
 }

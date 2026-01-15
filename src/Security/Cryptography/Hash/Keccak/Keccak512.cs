@@ -17,7 +17,7 @@ using System;
 /// Keccak-512 produces a 512-bit (64-byte) hash value.
 /// </para>
 /// </remarks>
-public sealed class Keccak512 : HashAlgorithm
+public sealed class Keccak512 : KeccakBase
 {
     /// <summary>
     /// The hash size in bits.
@@ -39,11 +39,6 @@ public sealed class Keccak512 : HashAlgorithm
     /// </summary>
     private const byte DomainSeparator = 0x01;
 
-    private readonly ulong[] _state;
-    private readonly byte[] _buffer;
-    private readonly SimdSupport _simdSupport;
-    private int _bufferLength;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="Keccak512"/> class.
     /// </summary>
@@ -55,12 +50,9 @@ public sealed class Keccak512 : HashAlgorithm
     /// Initializes a new instance of the <see cref="Keccak512"/> class with specified SIMD support.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal Keccak512(SimdSupport simdSupport)
+    internal Keccak512(SimdSupport simdSupport) : base(RateBytes, simdSupport)
     {
         HashSizeValue = HashSizeBits;
-        _state = new ulong[KeccakCore.StateSize];
-        _buffer = new byte[RateBytes];
-        _simdSupport = simdSupport;
         Initialize();
     }
 
@@ -69,11 +61,6 @@ public sealed class Keccak512 : HashAlgorithm
 
     /// <inheritdoc/>
     public override int BlockSize => RateBytes;
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport => KeccakCore.SimdSupport;
 
     /// <summary>
     /// Creates a new instance of the <see cref="Keccak512"/> class.
@@ -91,9 +78,7 @@ public sealed class Keccak512 : HashAlgorithm
     /// <inheritdoc/>
     public override void Initialize()
     {
-        Array.Clear(_state, 0, _state.Length);
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
+        base.Initialize();
     }
 
     /// <inheritdoc/>
@@ -110,14 +95,14 @@ public sealed class Keccak512 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
+                _keccakCore.Absorb(_buffer, RateBytes);
                 _bufferLength = 0;
             }
         }
 
         while (offset + RateBytes <= source.Length)
         {
-            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes, _simdSupport);
+            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
             offset += RateBytes;
         }
 
@@ -147,21 +132,10 @@ public sealed class Keccak512 : HashAlgorithm
 
         _buffer[RateBytes - 1] |= 0x80;
 
-        KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
-        KeccakCore.Squeeze(_state, destination, HashSizeBytes);
+        _keccakCore.Absorb(_buffer, RateBytes);
+        _keccakCore.Squeeze(destination, HashSizeBytes);
 
         bytesWritten = HashSizeBytes;
         return true;
-    }
-
-    /// <inheritdoc/>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Array.Clear(_state, 0, _state.Length);
-            ClearBuffer(_buffer);
-        }
-        base.Dispose(disposing);
     }
 }

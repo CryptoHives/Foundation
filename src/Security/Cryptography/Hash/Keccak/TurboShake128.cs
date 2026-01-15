@@ -23,7 +23,7 @@ using System.Runtime.CompilerServices;
 /// The domain separation byte D must be in the range [0x01, 0x7F]. The default value is 0x1F.
 /// </para>
 /// </remarks>
-public sealed class TurboShake128 : HashAlgorithm
+public sealed class TurboShake128 : KeccakBase
 {
     /// <summary>
     /// The default output size in bits.
@@ -50,11 +50,8 @@ public sealed class TurboShake128 : HashAlgorithm
     /// </summary>
     public const byte DefaultDomainSeparator = 0x1F;
 
-    private readonly ulong[] _state;
-    private readonly byte[] _buffer;
     private readonly int _outputBytes;
     private readonly byte _domainSeparator;
-    private int _bufferLength;
     private bool _finalized;
     private int _squeezeOffset;
 
@@ -82,7 +79,11 @@ public sealed class TurboShake128 : HashAlgorithm
     /// Thrown when <paramref name="outputBytes"/> is not positive or
     /// <paramref name="domainSeparator"/> is not in range [0x01, 0x7F].
     /// </exception>
-    public TurboShake128(int outputBytes, byte domainSeparator)
+    public TurboShake128(int outputBytes, byte domainSeparator) : this(SimdSupport.Default, outputBytes, domainSeparator)
+    {
+    }
+
+    internal TurboShake128(SimdSupport simdSupport, int outputBytes, byte domainSeparator) : base(RateBytes, simdSupport)
     {
         if (outputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
         if (domainSeparator < 0x01 || domainSeparator > 0x7F) throw new ArgumentOutOfRangeException(nameof(domainSeparator), "Domain separator must be in range [0x01, 0x7F].");
@@ -90,8 +91,6 @@ public sealed class TurboShake128 : HashAlgorithm
         _outputBytes = outputBytes;
         _domainSeparator = domainSeparator;
         HashSizeValue = outputBytes * 8;
-        _state = new ulong[KeccakCore.StateSize];
-        _buffer = new byte[RateBytes];
         Initialize();
     }
 
@@ -119,6 +118,8 @@ public sealed class TurboShake128 : HashAlgorithm
     /// <returns>A new TurboSHAKE128 instance.</returns>
     public static TurboShake128 Create(int outputBytes) => new(outputBytes);
 
+    internal static TurboShake128 Create(SimdSupport simdSupport, int outputBytes) => new(simdSupport, outputBytes, DefaultDomainSeparator);
+
     /// <summary>
     /// Creates a new instance of the <see cref="TurboShake128"/> class with specified output size and domain separator.
     /// </summary>
@@ -127,12 +128,13 @@ public sealed class TurboShake128 : HashAlgorithm
     /// <returns>A new TurboSHAKE128 instance.</returns>
     public static TurboShake128 Create(int outputBytes, byte domainSeparator) => new(outputBytes, domainSeparator);
 
+    internal static TurboShake128 Create(SimdSupport simdSupport, int outputBytes, byte domainSeparator)
+        => new(simdSupport, outputBytes, domainSeparator);
+
     /// <inheritdoc/>
     public override void Initialize()
     {
-        Array.Clear(_state, 0, _state.Length);
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
+        base.Initialize();
         _finalized = false;
         _squeezeOffset = 0;
     }
@@ -165,14 +167,14 @@ public sealed class TurboShake128 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                AbsorbBlock(_state, _buffer.AsSpan(), RateBytes);
+                _keccakCore.Absorb(_buffer, RateBytes, startRound: 12);
                 _bufferLength = 0;
             }
         }
 
         while (offset + RateBytes <= source.Length)
         {
-            AbsorbBlock(_state, source.Slice(offset, RateBytes), RateBytes);
+            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes, startRound: 12);
             offset += RateBytes;
         }
 
@@ -210,76 +212,11 @@ public sealed class TurboShake128 : HashAlgorithm
 
             _buffer[RateBytes - 1] |= 0x80;
 
-            AbsorbBlock(_state, _buffer.AsSpan(), RateBytes);
+            _keccakCore.Absorb(_buffer, RateBytes, startRound: 12);
             _finalized = true;
             _squeezeOffset = 0;
         }
 
-        SqueezeXof(_state, output, ref _squeezeOffset);
-    }
-
-    /// <summary>
-    /// Absorbs a block of data into the state using 12-round Keccak-p permutation.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void AbsorbBlock(Span<ulong> state, ReadOnlySpan<byte> block, int rateBytes)
-    {
-        int rateLanes = rateBytes / 8;
-
-        for (int i = 0; i < rateLanes; i++)
-        {
-            state[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
-        }
-
-        // Use 12 rounds for TurboSHAKE
-        KeccakCore.PermuteScalar(state, startRound: 12);
-    }
-
-    /// <summary>
-    /// Squeezes output bytes from the XOF state using 12-round Keccak-p permutation.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void SqueezeXof(Span<ulong> state, Span<byte> output, ref int squeezeOffset)
-    {
-        int outputOffset = 0;
-
-        while (outputOffset < output.Length)
-        {
-            if (squeezeOffset >= RateBytes)
-            {
-                KeccakCore.PermuteScalar(state, startRound: 12);
-                squeezeOffset = 0;
-            }
-
-            int stateIndex = squeezeOffset / 8;
-            int byteIndex = squeezeOffset % 8;
-
-            unchecked
-            {
-                while (outputOffset < output.Length && squeezeOffset < RateBytes)
-                {
-                    output[outputOffset++] = (byte)(state[stateIndex] >> (byteIndex * 8));
-                    byteIndex++;
-                    squeezeOffset++;
-
-                    if (byteIndex >= 8)
-                    {
-                        byteIndex = 0;
-                        stateIndex++;
-                    }
-                }
-            }
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Array.Clear(_state, 0, _state.Length);
-            ClearBuffer(_buffer);
-        }
-        base.Dispose(disposing);
+        _keccakCore.SqueezeXof(output, RateBytes, ref _squeezeOffset, startRound: 12);
     }
 }

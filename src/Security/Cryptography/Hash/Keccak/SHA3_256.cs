@@ -19,7 +19,7 @@ using System;
 /// SHA3-256 produces a 256-bit (32-byte) hash value.
 /// </para>
 /// </remarks>
-public sealed class SHA3_256 : HashAlgorithm
+public sealed class SHA3_256 : KeccakBase
 {
     /// <summary>
     /// The hash size in bits.
@@ -46,11 +46,6 @@ public sealed class SHA3_256 : HashAlgorithm
     /// </summary>
     private const byte DomainSeparator = 0x06;
 
-    private readonly ulong[] _state;
-    private readonly byte[] _buffer;
-    private readonly SimdSupport _simdSupport;
-    private int _bufferLength;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_256"/> class.
     /// </summary>
@@ -62,12 +57,9 @@ public sealed class SHA3_256 : HashAlgorithm
     /// Initializes a new instance of the <see cref="SHA3_256"/> class with specified SIMD support.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal SHA3_256(SimdSupport simdSupport)
+    internal SHA3_256(SimdSupport simdSupport) : base(RateBytes, simdSupport)
     {
         HashSizeValue = HashSizeBits;
-        _state = new ulong[KeccakCore.StateSize];
-        _buffer = new byte[RateBytes];
-        _simdSupport = simdSupport;
         Initialize();
     }
 
@@ -76,11 +68,6 @@ public sealed class SHA3_256 : HashAlgorithm
 
     /// <inheritdoc/>
     public override int BlockSize => RateBytes;
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport => KeccakCore.SimdSupport;
 
     /// <summary>
     /// Creates a new instance of the <see cref="SHA3_256"/> class.
@@ -98,9 +85,7 @@ public sealed class SHA3_256 : HashAlgorithm
     /// <inheritdoc/>
     public override void Initialize()
     {
-        Array.Clear(_state, 0, _state.Length);
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
+        base.Initialize();
     }
 
     /// <inheritdoc/>
@@ -118,7 +103,7 @@ public sealed class SHA3_256 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
+                _keccakCore.Absorb(_buffer, RateBytes);
                 _bufferLength = 0;
             }
         }
@@ -126,7 +111,7 @@ public sealed class SHA3_256 : HashAlgorithm
         // Process full blocks
         while (offset + RateBytes <= source.Length)
         {
-            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes, _simdSupport);
+            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
             offset += RateBytes;
         }
 
@@ -160,23 +145,12 @@ public sealed class SHA3_256 : HashAlgorithm
         _buffer[RateBytes - 1] |= 0x80;
 
         // Absorb final block
-        KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
+        _keccakCore.Absorb(_buffer, RateBytes);
 
         // Squeeze output (SHA3-256 only needs one squeeze since output <= rate)
-        KeccakCore.Squeeze(_state, destination, HashSizeBytes);
+        _keccakCore.Squeeze(destination, HashSizeBytes);
 
         bytesWritten = HashSizeBytes;
         return true;
-    }
-
-    /// <inheritdoc/>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Array.Clear(_state, 0, _state.Length);
-            ClearBuffer(_buffer);
-        }
-        base.Dispose(disposing);
     }
 }

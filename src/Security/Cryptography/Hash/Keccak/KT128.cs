@@ -61,6 +61,7 @@ public sealed class KT128 : HashAlgorithm
 
     private readonly int _outputBytes;
     private readonly byte[] _customization;
+    private readonly SimdSupport _simdSupport;
     private byte[] _buffer;
     private int _bufferLength;
     private bool _finalized;
@@ -95,13 +96,18 @@ public sealed class KT128 : HashAlgorithm
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">The customization bytes for domain separation.</param>
-    public KT128(int outputBytes, ReadOnlySpan<byte> customization)
+    public KT128(int outputBytes, ReadOnlySpan<byte> customization) : this(SimdSupport.Default, outputBytes, customization)
+    {
+    }
+
+    internal KT128(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> customization)
     {
         if (outputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
 
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
+        _simdSupport = simdSupport;
         _buffer = new byte[InitialBufferSize];
         _bufferLength = 0;
         Initialize();
@@ -141,6 +147,8 @@ public sealed class KT128 : HashAlgorithm
     /// <param name="customization">The customization bytes for domain separation.</param>
     /// <returns>A new KT128 instance.</returns>
     public static KT128 Create(int outputBytes, ReadOnlySpan<byte> customization) => new(outputBytes, customization);
+
+    internal static KT128 Create(SimdSupport simdSupport, int outputBytes) => new(simdSupport, outputBytes, ReadOnlySpan<byte>.Empty);
 
     /// <inheritdoc/>
     public override void Initialize()
@@ -243,9 +251,9 @@ public sealed class KT128 : HashAlgorithm
         }
     }
 
-    private static void ComputeTurboShake128(ReadOnlySpan<byte> input, Span<byte> output, byte domainSeparator)
+    private void ComputeTurboShake128(ReadOnlySpan<byte> input, Span<byte> output, byte domainSeparator)
     {
-        using var turbo = new TurboShake128(output.Length, domainSeparator);
+        using var turbo = TurboShake128.Create(_simdSupport, output.Length, domainSeparator);
         turbo.TransformBlock(input);
         turbo.Squeeze(output);
     }

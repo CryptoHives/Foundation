@@ -62,10 +62,12 @@ public class Keccak384Tests
         byte[] data = Encoding.UTF8.GetBytes(input);
         byte[] expected = TestHelpers.FromHexString(expectedHex);
 
-        using var keccak = Keccak384.Create();
-        byte[] actual = keccak.ComputeHash(data);
-
-        Assert.That(actual, Is.EqualTo(expected), $"Keccak-384 mismatch for: \"{input}\"");
+        foreach (HashAlgorithmFactory hashFactory in Keccak384Implementations.All)
+        {
+            using var impl = hashFactory.Create();
+            byte[] implHash = impl.ComputeHash(data);
+            Assert.That(implHash, Is.EqualTo(expected), $"{hashFactory.Name} Keccak-384 mismatch for: \"{input}\"");
+        }
     }
 
     /// <summary>

@@ -114,6 +114,9 @@ public sealed class CShake128 : KeccakBase
     public static CShake128 Create(int outputBytes, string functionName, string? customization = null)
         => new(outputBytes, functionName, customization);
 
+    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes)
+        => new(simdSupport, outputBytes, [], []);
+
     internal static CShake128 Create(SimdSupport simdSupport, int outputBytes, string functionName, string? customization = null)
         => new(simdSupport, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization));
 

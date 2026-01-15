@@ -125,16 +125,16 @@ internal unsafe struct KeccakCoreState
     /// Performs the Keccak-f[1600] permutation on the given state with explicit SIMD control.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Permute()
+    public void Permute(int startRound = 0)
     {
 #if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.Avx512F) != 0)
         {
-            PermuteAvx512F();
+            PermuteAvx512F(startRound);
             return;
         }
 #endif
-        PermuteScalar();
+        PermuteScalar(startRound);
     }
 
 #if NET8_0_OR_GREATER
@@ -263,7 +263,7 @@ internal unsafe struct KeccakCoreState
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void PermuteAvx512F()
+    public void PermuteAvx512F(int startRound = 0)
     {
         fixed (ulong* statePtr = _state)
         {
@@ -284,7 +284,7 @@ internal unsafe struct KeccakCoreState
             // Cache round constants reference
             ref ulong rcRef = ref MemoryMarshal.GetArrayDataReference(RoundConstants);
 
-            for (int round = 0; round < Rounds; round += 2)
+            for (int round = startRound; round < Rounds; round += 2)
             {
                 // Round N
                 {
@@ -654,8 +654,9 @@ internal unsafe struct KeccakCoreState
     /// </summary>
     /// <param name="block">The block to absorb (must be exactly rateBytes long).</param>
     /// <param name="rateBytes">The rate in bytes (determines how many bytes to XOR).</param>
+    /// <param name="startRound">The starting round for the permutation (default 0). Use 12 for TurboSHAKE.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Absorb(ReadOnlySpan<byte> block, int rateBytes)
+    public void Absorb(ReadOnlySpan<byte> block, int rateBytes, int startRound = 0)
     {
         int rateLanes = rateBytes / 8;
         Debug.Assert(rateLanes <= StateSize);
@@ -681,7 +682,7 @@ internal unsafe struct KeccakCoreState
             }
         }
 
-        Permute();
+        Permute(startRound);
     }
 
     /// <summary>
@@ -734,8 +735,9 @@ internal unsafe struct KeccakCoreState
     /// <param name="squeezeOffset">
     /// The current offset within the rate portion. Updated after the operation.
     /// </param>
+    /// <param name="startRound">The starting round for the permutation (default 0). Use 12 for TurboSHAKE.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void SqueezeXof(Span<byte> output, int rateBytes, ref int squeezeOffset)
+    public void SqueezeXof(Span<byte> output, int rateBytes, ref int squeezeOffset, int startRound = 0)
     {
         int outputOffset = 0;
 
@@ -745,7 +747,7 @@ internal unsafe struct KeccakCoreState
             {
                 if (squeezeOffset >= rateBytes)
                 {
-                    Permute();
+                    Permute(startRound);
                     squeezeOffset = 0;
                 }
 

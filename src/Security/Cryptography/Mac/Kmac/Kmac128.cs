@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Mac;
@@ -20,7 +20,7 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 /// pseudorandom function (XOF mode with arbitrary output length).
 /// </para>
 /// </remarks>
-public sealed class Kmac128 : HashAlgorithm
+public sealed class Kmac128 : KeccakBase
 {
     /// <summary>
     /// The default output size in bits.
@@ -34,12 +34,9 @@ public sealed class Kmac128 : HashAlgorithm
 
     private static readonly byte[] KmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
 
-    private readonly ulong[] _state;
-    private readonly byte[] _buffer;
     private readonly int _outputBytes;
     private readonly byte[] _key;
     private readonly byte[] _customization;
-    private int _bufferLength;
     private bool _finalized;
     private int _squeezeOffset;
 
@@ -50,7 +47,7 @@ public sealed class Kmac128 : HashAlgorithm
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
     public Kmac128(byte[] key, int outputBytes = DefaultOutputBits / 8, string customization = "")
-        : this(key, outputBytes, Encoding.UTF8.GetBytes(customization ?? ""))
+        : this(SimdSupport.Default, key, outputBytes, Encoding.UTF8.GetBytes(customization ?? ""))
     {
     }
 
@@ -61,6 +58,12 @@ public sealed class Kmac128 : HashAlgorithm
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization bytes S.</param>
     public Kmac128(byte[] key, int outputBytes, byte[] customization)
+        : this(SimdSupport.Default, key, outputBytes, customization)
+    {
+    }
+
+    internal Kmac128(SimdSupport simdSupport, byte[] key, int outputBytes, byte[] customization)
+        : base(RateBytes, simdSupport)
     {
         if (key is null || key.Length == 0)
         {
@@ -77,8 +80,6 @@ public sealed class Kmac128 : HashAlgorithm
         _customization = customization ?? [];
 
         HashSizeValue = outputBytes * 8;
-        _state = new ulong[KeccakCore.StateSize];
-        _buffer = new byte[RateBytes];
         Initialize();
     }
 
@@ -98,12 +99,13 @@ public sealed class Kmac128 : HashAlgorithm
     public static Kmac128 Create(byte[] key, int outputBytes = DefaultOutputBits / 8, string customization = "")
         => new(key, outputBytes, customization);
 
+    internal static Kmac128 Create(SimdSupport simdSupport, byte[] key, int outputBytes, string customization)
+        => new(simdSupport, key, outputBytes, Encoding.UTF8.GetBytes(customization ?? ""));
+
     /// <inheritdoc/>
     public override void Initialize()
     {
-        Array.Clear(_state, 0, _state.Length);
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
+        base.Initialize();
         _finalized = false;
         _squeezeOffset = 0;
 
@@ -135,14 +137,14 @@ public sealed class Kmac128 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                KeccakCore.Absorb(_state, _buffer, RateBytes);
+                _keccakCore.Absorb(_buffer, RateBytes);
                 _bufferLength = 0;
             }
         }
 
         while (offset + RateBytes <= source.Length)
         {
-            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes);
+            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
             offset += RateBytes;
         }
 
@@ -176,7 +178,7 @@ public sealed class Kmac128 : HashAlgorithm
                 _buffer[_bufferLength++] = b;
                 if (_bufferLength == RateBytes)
                 {
-                    KeccakCore.Absorb(_state, _buffer, RateBytes);
+                    _keccakCore.Absorb(_buffer, RateBytes);
                     _bufferLength = 0;
                 }
             }
@@ -191,12 +193,12 @@ public sealed class Kmac128 : HashAlgorithm
 
             _buffer[RateBytes - 1] |= 0x80;
 
-            KeccakCore.Absorb(_state, _buffer, RateBytes);
+            _keccakCore.Absorb(_buffer, RateBytes);
             _finalized = true;
             _squeezeOffset = 0;
         }
 
-        KeccakCore.SqueezeXof(_state, output, RateBytes, ref _squeezeOffset);
+        _keccakCore.SqueezeXof(output, RateBytes, ref _squeezeOffset);
     }
 
     /// <inheritdoc/>
@@ -204,8 +206,6 @@ public sealed class Kmac128 : HashAlgorithm
     {
         if (disposing)
         {
-            Array.Clear(_state, 0, _state.Length);
-            ClearBuffer(_buffer);
             ClearBuffer(_key);
         }
         base.Dispose(disposing);
@@ -234,7 +234,7 @@ public sealed class Kmac128 : HashAlgorithm
 
         for (int i = 0; i < bytePadded.Length; i += RateBytes)
         {
-            KeccakCore.Absorb(_state, bytePadded.AsSpan(i, RateBytes), RateBytes);
+            _keccakCore.Absorb(bytePadded.AsSpan(i, RateBytes), RateBytes);
         }
     }
 
@@ -257,7 +257,7 @@ public sealed class Kmac128 : HashAlgorithm
 
         for (int i = 0; i < bytePadded.Length; i += RateBytes)
         {
-            KeccakCore.Absorb(_state, bytePadded.AsSpan(i, RateBytes), RateBytes);
+            _keccakCore.Absorb(bytePadded.AsSpan(i, RateBytes), RateBytes);
         }
     }
 }
