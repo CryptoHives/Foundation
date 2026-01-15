@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1050 // Declare types in namespaces
@@ -140,12 +140,44 @@ public sealed class HashAlgorithmType : IFormattable
 
     public static readonly HashAlgorithmType CShake128_Managed = new("CSHAKE128", () => CH.CShake128.Create(32));
     public static readonly HashAlgorithmType CShake128_Bouncy = new("CSHAKE128", () => new BouncyCastleCShakeAdapter(128, null, null, 32));
+
     public static readonly HashAlgorithmType CShake256_Managed = new("CSHAKE256", () => CH.CShake256.Create(64));
     public static readonly HashAlgorithmType CShake256_Bouncy = new("CSHAKE256", () => new BouncyCastleCShakeAdapter(256, null, null, 64));
 
     public static readonly HashAlgorithmType KangarooTwelve_Managed = new("K12", () => CH.KangarooTwelve.Create(32));
-    // Note: BouncyCastle 2.6.2 does not include KangarooTwelve
 
+#if NET8_0_OR_GREATER
+    // SIMD-accelerated variants (use SIMD when available)
+    public static readonly HashAlgorithmType Keccak256_Managed_Avx512F = new("Keccak-256",
+        () => CH.Keccak256.Create(CH.SimdSupport.Avx512F), () => (CH.Keccak256.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType Keccak256_Managed_Scalar = new("Keccak-256",
+        () => CH.Keccak256.Create(CH.SimdSupport.None), () => true);
+
+    public static readonly HashAlgorithmType SHA3_224_Managed_Avx512F = new("SHA3-224",
+        () => CH.SHA3_224.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_224.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType SHA3_224_Managed_Scalar = new("SHA3-224",
+        () => CH.SHA3_224.Create(CH.SimdSupport.None), () => true);
+
+    public static readonly HashAlgorithmType SHA3_256_Managed_Avx512F = new("SHA3-256",
+        () => CH.SHA3_256.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_256.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType SHA3_256_Managed_Scalar = new("SHA3-256",
+        () => CH.SHA3_256.Create(CH.SimdSupport.None), () => true);
+
+    public static readonly HashAlgorithmType SHA3_384_Managed_Avx512F = new("SHA3-384",
+        () => CH.SHA3_384.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_384.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType SHA3_384_Managed_Scalar = new("SHA3-384",
+        () => CH.SHA3_384.Create(CH.SimdSupport.None), () => true);
+
+    public static readonly HashAlgorithmType SHA3_512_Managed_Avx512F = new("SHA3-512",
+        () => CH.SHA3_512.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_512.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType SHA3_512_Managed_Scalar = new("SHA3-512",
+        () => CH.SHA3_512.Create(CH.SimdSupport.None), () => true);
+#endif
     #endregion
 
     #region BLAKE Family
@@ -174,8 +206,6 @@ public sealed class HashAlgorithmType : IFormattable
         () => CH.Blake3.Create(32, CH.SimdSupport.Ssse3), () => Ssse3.IsSupported);
 
     // Scalar variants (force scalar path for comparison)
-    // Note: These require SimdSupport parameter in constructors (to be implemented)
-    // For now, these will use SIMD if available - full scalar support requires algorithm changes
     public static readonly HashAlgorithmType Blake2b_Managed_Scalar = new("BLAKE2b-512",
         () => new CH.Blake2b(64, null, CH.SimdSupport.None), () => true);
 
@@ -346,7 +376,19 @@ public sealed class HashAlgorithmType : IFormattable
         if (SHA3_512_OS.IsSupported) yield return SHA3_512_OS;
         if (Shake128_OS.IsSupported) yield return Shake128_OS;
         if (Shake256_OS.IsSupported) yield return Shake256_OS;
-#endif
+        if (SHA3_224_Managed_Avx512F.IsSupported) yield return SHA3_224_Managed_Avx512F;
+        yield return SHA3_224_Managed_Scalar;
+        yield return SHA3_224_Bouncy;
+        if (SHA3_256_Managed_Avx512F.IsSupported) yield return SHA3_256_Managed_Avx512F;
+        yield return SHA3_256_Managed_Scalar;
+        yield return SHA3_256_Bouncy;
+        if (SHA3_384_Managed_Avx512F.IsSupported) yield return SHA3_384_Managed_Avx512F;
+        yield return SHA3_384_Managed_Scalar;
+        yield return SHA3_384_Bouncy;
+        if (SHA3_512_Managed_Avx512F.IsSupported) yield return SHA3_512_Managed_Avx512F;
+        yield return SHA3_512_Managed_Scalar;
+        yield return SHA3_512_Bouncy;
+#else
         yield return SHA3_224_Managed;
         yield return SHA3_224_Bouncy;
         yield return SHA3_256_Managed;
@@ -355,8 +397,19 @@ public sealed class HashAlgorithmType : IFormattable
         yield return SHA3_384_Bouncy;
         yield return SHA3_512_Managed;
         yield return SHA3_512_Bouncy;
+#endif
+
+        // Keccak
+#if NET8_0_OR_GREATER
+        if (Keccak256_Managed_Avx512F.IsSupported) yield return Keccak256_Managed_Avx512F;
+        yield return Keccak256_Managed_Scalar;
+        yield return Keccak256_Bouncy;
+#else
         yield return Keccak256_Managed;
         yield return Keccak256_Bouncy;
+#endif
+
+        // SHAKE and cSHAKE
         yield return Shake128_Managed;
         yield return Shake128_Bouncy;
         yield return Shake256_Managed;
@@ -395,7 +448,6 @@ public sealed class HashAlgorithmType : IFormattable
 #if BLAKE3_NATIVE
         yield return Blake3_Native;
 #endif
-
 
         // Legacy
         yield return MD5_OS;

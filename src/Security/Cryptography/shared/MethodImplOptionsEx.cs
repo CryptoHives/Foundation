@@ -30,15 +30,15 @@ internal static class MethodImplOptionsEx
 #endif
 
     /// <summary>
-    /// Optimization hint for methods with loops or complex logic that benefit from aggressive optimization
-    /// but are too large to inline.
+    /// Optimization hint for methods with loops or complex logic that benefit
+    /// from aggressive optimization but are too large to inline.
     /// </summary>
     /// <remarks>
-    /// On .NET 8+: <c>AggressiveOptimization</c>.
+    /// On .NET 8+: On .NET 8+: <c>NoInlining | AggressiveOptimization</c>.
     /// On older frameworks: <see cref="MethodImplOptions.NoInlining"/> (best available hint).
     /// </remarks>
 #if NET8_0_OR_GREATER
-    public const MethodImplOptions OptimizedLoop = MethodImplOptions.AggressiveOptimization;
+    public const MethodImplOptions OptimizedLoop = MethodImplOptions.NoInlining | MethodImplOptions.AggressiveOptimization;
 #else
     public const MethodImplOptions OptimizedLoop = MethodImplOptions.NoInlining;
 #endif

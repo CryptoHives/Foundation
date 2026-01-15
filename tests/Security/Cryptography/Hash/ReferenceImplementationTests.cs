@@ -635,7 +635,6 @@ public class ReferenceImplementationTests
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Ignore("Streebog implementation needs further RFC 6986 verification - see issue tracking")]
     public void Streebog256MatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);
@@ -665,7 +664,6 @@ public class ReferenceImplementationTests
     [TestCase("a")]
     [TestCase("abc")]
     [TestCase("The quick brown fox jumps over the lazy dog")]
-    [Ignore("Streebog implementation needs further RFC 6986 verification - see issue tracking")]
     public void Streebog512MatchesBouncyCastle(string message)
     {
         byte[] input = Encoding.UTF8.GetBytes(message);

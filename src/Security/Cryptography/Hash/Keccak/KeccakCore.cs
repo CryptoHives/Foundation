@@ -5,8 +5,10 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -46,7 +48,7 @@ internal static class KeccakCore
     /// <remarks>
     /// These constants are derived from the output of a linear feedback shift register.
     /// </remarks>
-    public static ReadOnlySpan<ulong> RoundConstants =>
+    public static readonly ulong[] RoundConstants =
     [
         0x0000000000000001UL, 0x0000000000008082UL, 0x800000000000808aUL, 0x8000000080008000UL,
         0x000000000000808bUL, 0x0000000080000001UL, 0x8000000080008081UL, 0x8000000000008009UL,
@@ -55,13 +57,6 @@ internal static class KeccakCore
         0x8000000000008002UL, 0x8000000000000080UL, 0x000000000000800aUL, 0x800000008000000aUL,
         0x8000000080008081UL, 0x8000000000008080UL, 0x0000000080000001UL, 0x8000000080008008UL
     ];
-
-#if NET8_0_OR_GREATER
-    /// <summary>
-    /// Gets a value indicating whether hardware-accelerated Keccak permutation is available.
-    /// </summary>
-    public static bool IsAccelerated => Avx2.IsSupported;
-#endif
 
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
@@ -72,27 +67,10 @@ internal static class KeccakCore
         {
             var support = SimdSupport.None;
 #if NET8_0_OR_GREATER
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+            if (Avx512F.IsSupported) support |= SimdSupport.Avx512F;
 #endif
             return support;
         }
-    }
-
-    /// <summary>
-    /// Performs the Keccak-f[1600] permutation on the given state.
-    /// </summary>
-    /// <param name="state">The 25-element state array to permute in place.</param>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    public static void Permute(ulong[] state)
-    {
-#if NET8_0_OR_GREATER
-        if (IsAccelerated)
-        {
-            PermuteAvx2(state);
-            return;
-        }
-#endif
-        PermuteScalar(state);
     }
 
     /// <summary>
@@ -100,297 +78,525 @@ internal static class KeccakCore
     /// </summary>
     /// <param name="state">The 25-element state array to permute in place.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    public static void Permute(ulong[] state, SimdSupport simdSupport)
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public static void Permute(Span<ulong> state, SimdSupport simdSupport)
     {
 #if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported)
+        if ((simdSupport & SimdSupport.Avx512F) != 0 && Avx512F.IsSupported)
         {
-            PermuteAvx2(state);
+            PermuteAvx512F(state);
             return;
         }
 #endif
         PermuteScalar(state);
     }
 
-    /// <summary>
-    /// Scalar implementation of the Keccak-f[1600] permutation.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void PermuteScalar(ulong[] state)
+#if NET8_0_OR_GREATER
+    // All static constants hoisted outside method
+    private record struct PermuteAvx512FVectors
     {
-        Span<ulong> c = stackalloc ulong[5];
-        Span<ulong> d = stackalloc ulong[5];
-        Span<ulong> b = stackalloc ulong[25];
-
-        unchecked
+        public PermuteAvx512FVectors()
         {
-            for (int round = 0; round < Rounds; round++)
-            {
-                // Theta step: compute column parities
-                c[0] = state[0] ^ state[5] ^ state[10] ^ state[15] ^ state[20];
-                c[1] = state[1] ^ state[6] ^ state[11] ^ state[16] ^ state[21];
-                c[2] = state[2] ^ state[7] ^ state[12] ^ state[17] ^ state[22];
-                c[3] = state[3] ^ state[8] ^ state[13] ^ state[18] ^ state[23];
-                c[4] = state[4] ^ state[9] ^ state[14] ^ state[19] ^ state[24];
+            Mask5 = Vector512.Create(ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, 0UL, 0UL, 0UL);
+            Perm1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
+            Perm2 = Vector512.Create(2UL, 3UL, 4UL, 0UL, 1UL, 5UL, 6UL, 7UL);
+            PermTheta1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
+            PermTheta4 = Vector512.Create(4UL, 0UL, 1UL, 2UL, 3UL, 5UL, 6UL, 7UL);
+            Rho0 = Vector512.Create(0UL, 1UL, 62UL, 28UL, 27UL, 0UL, 0UL, 0UL);
+            Rho1 = Vector512.Create(36UL, 44UL, 6UL, 55UL, 20UL, 0UL, 0UL, 0UL);
+            Rho2 = Vector512.Create(3UL, 10UL, 43UL, 25UL, 39UL, 0UL, 0UL, 0UL);
+            Rho3 = Vector512.Create(41UL, 45UL, 15UL, 21UL, 8UL, 0UL, 0UL, 0UL);
+            Rho4 = Vector512.Create(18UL, 2UL, 61UL, 56UL, 14UL, 0UL, 0UL, 0UL);
 
-                d[0] = c[4] ^ BitOperations.RotateLeft(c[1], 1);
-                d[1] = c[0] ^ BitOperations.RotateLeft(c[2], 1);
-                d[2] = c[1] ^ BitOperations.RotateLeft(c[3], 1);
-                d[3] = c[2] ^ BitOperations.RotateLeft(c[4], 1);
-                d[4] = c[3] ^ BitOperations.RotateLeft(c[0], 1);
+            // Pi permutations
+            Pi0_From1 = Vector512.Create(0UL, 8 + 1, 2, 3, 4, 5, 6, 7);
+            Pi0_From2 = Vector512.Create(0UL, 1, 8 + 2, 3, 4, 5, 6, 7);
+            Pi0_From3 = Vector512.Create(0UL, 1, 2, 8 + 3, 4, 5, 6, 7);
+            Pi0_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 4, 5, 6, 7);
 
-                state[0] ^= d[0];
-                state[1] ^= d[1];
-                state[2] ^= d[2];
-                state[3] ^= d[3];
-                state[4] ^= d[4];
-                state[5] ^= d[0];
-                state[6] ^= d[1];
-                state[7] ^= d[2];
-                state[8] ^= d[3];
-                state[9] ^= d[4];
-                state[10] ^= d[0];
-                state[11] ^= d[1];
-                state[12] ^= d[2];
-                state[13] ^= d[3];
-                state[14] ^= d[4];
-                state[15] ^= d[0];
-                state[16] ^= d[1];
-                state[17] ^= d[2];
-                state[18] ^= d[3];
-                state[19] ^= d[4];
-                state[20] ^= d[0];
-                state[21] ^= d[1];
-                state[22] ^= d[2];
-                state[23] ^= d[3];
-                state[24] ^= d[4];
+            Pi1_From0 = Vector512.Create(3UL, 8 + 4, 2, 3, 4, 5, 6, 7);
+            Pi1_From2 = Vector512.Create(0UL, 1, 8 + 0, 3, 4, 5, 6, 7);
+            Pi1_From3 = Vector512.Create(0UL, 1, 2, 8 + 1, 4, 5, 6, 7);
+            Pi1_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 2, 5, 6, 7);
 
-                // Rho and Pi steps combined: rotate and reorder lanes
-                b[0] = state[0];
-                b[1] = BitOperations.RotateLeft(state[6], 44);
-                b[2] = BitOperations.RotateLeft(state[12], 43);
-                b[3] = BitOperations.RotateLeft(state[18], 21);
-                b[4] = BitOperations.RotateLeft(state[24], 14);
-                b[5] = BitOperations.RotateLeft(state[3], 28);
-                b[6] = BitOperations.RotateLeft(state[9], 20);
-                b[7] = BitOperations.RotateLeft(state[10], 3);
-                b[8] = BitOperations.RotateLeft(state[16], 45);
-                b[9] = BitOperations.RotateLeft(state[22], 61);
-                b[10] = BitOperations.RotateLeft(state[1], 1);
-                b[11] = BitOperations.RotateLeft(state[7], 6);
-                b[12] = BitOperations.RotateLeft(state[13], 25);
-                b[13] = BitOperations.RotateLeft(state[19], 8);
-                b[14] = BitOperations.RotateLeft(state[20], 18);
-                b[15] = BitOperations.RotateLeft(state[4], 27);
-                b[16] = BitOperations.RotateLeft(state[5], 36);
-                b[17] = BitOperations.RotateLeft(state[11], 10);
-                b[18] = BitOperations.RotateLeft(state[17], 15);
-                b[19] = BitOperations.RotateLeft(state[23], 56);
-                b[20] = BitOperations.RotateLeft(state[2], 62);
-                b[21] = BitOperations.RotateLeft(state[8], 55);
-                b[22] = BitOperations.RotateLeft(state[14], 39);
-                b[23] = BitOperations.RotateLeft(state[15], 41);
-                b[24] = BitOperations.RotateLeft(state[21], 2);
+            Pi2_From0 = Vector512.Create(1UL, 8 + 2, 2, 3, 4, 5, 6, 7);
+            Pi2_From2 = Vector512.Create(0UL, 1, 8 + 3, 3, 4, 5, 6, 7);
+            Pi2_From3 = Vector512.Create(0UL, 1, 2, 8 + 4, 4, 5, 6, 7);
+            Pi2_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 0, 5, 6, 7);
 
-                // Chi step: non-linear mixing
-                for (int y = 0; y < 5; y++)
-                {
-                    int offset = y * 5;
-                    state[offset] = b[offset] ^ (~b[offset + 1] & b[offset + 2]);
-                    state[offset + 1] = b[offset + 1] ^ (~b[offset + 2] & b[offset + 3]);
-                    state[offset + 2] = b[offset + 2] ^ (~b[offset + 3] & b[offset + 4]);
-                    state[offset + 3] = b[offset + 3] ^ (~b[offset + 4] & b[offset]);
-                    state[offset + 4] = b[offset + 4] ^ (~b[offset] & b[offset + 1]);
-                }
+            Pi3_From0 = Vector512.Create(4UL, 8 + 0, 2, 3, 4, 5, 6, 7);
+            Pi3_From2 = Vector512.Create(0UL, 1, 8 + 1, 3, 4, 5, 6, 7);
+            Pi3_From3 = Vector512.Create(0UL, 1, 2, 8 + 2, 4, 5, 6, 7);
+            Pi3_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 3, 5, 6, 7);
 
-                // Iota step: break symmetry with round constant
-                state[0] ^= RoundConstants[round];
-            }
+            Pi4_From0 = Vector512.Create(2UL, 8 + 3, 2, 3, 4, 5, 6, 7);
+            Pi4_From2 = Vector512.Create(0UL, 1, 8 + 4, 3, 4, 5, 6, 7);
+            Pi4_From3 = Vector512.Create(0UL, 1, 2, 8 + 0, 4, 5, 6, 7);
+            Pi4_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 1, 5, 6, 7);
         }
+
+        public Vector512<ulong> Mask5;
+        public Vector512<ulong> Perm1;
+        public Vector512<ulong> Perm2;
+        public Vector512<ulong> PermTheta1;
+        public Vector512<ulong> PermTheta4;
+        public Vector512<ulong> Rho0;
+        public Vector512<ulong> Rho1;
+        public Vector512<ulong> Rho2;
+        public Vector512<ulong> Rho3;
+        public Vector512<ulong> Rho4;
+
+        // Pi permutations
+        public Vector512<ulong> Pi0_From1;
+        public Vector512<ulong> Pi0_From2;
+        public Vector512<ulong> Pi0_From3;
+        public Vector512<ulong> Pi0_From4;
+
+        public Vector512<ulong> Pi1_From0;
+        public Vector512<ulong> Pi1_From2;
+        public Vector512<ulong> Pi1_From3;
+        public Vector512<ulong> Pi1_From4;
+
+        public Vector512<ulong> Pi2_From0;
+        public Vector512<ulong> Pi2_From2;
+        public Vector512<ulong> Pi2_From3;
+        public Vector512<ulong> Pi2_From4;
+
+        public Vector512<ulong> Pi3_From0;
+        public Vector512<ulong> Pi3_From2;
+        public Vector512<ulong> Pi3_From3;
+        public Vector512<ulong> Pi3_From4;
+
+        public Vector512<ulong> Pi4_From0;
+        public Vector512<ulong> Pi4_From2;
+        public Vector512<ulong> Pi4_From3;
+        public Vector512<ulong> Pi4_From4;
     }
 
-#if NET8_0_OR_GREATER
-    /// <summary>
-    /// AVX2-optimized implementation of the Keccak-f[1600] permutation.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This implementation uses AVX2 256-bit vectors to accelerate the Theta and Chi steps.
-    /// The 25-lane state is processed in groups of 4 lanes where possible.
-    /// </para>
-    /// <para>
-    /// Key optimizations:
-    /// - Theta step: parallel XOR and rotate operations on 4 lanes at once
-    /// - Chi step: parallel AND-NOT and XOR operations on 4 lanes at once
-    /// - Uses BMI2 RORX instruction via BitOperations.RotateLeft for rotations
-    /// </para>
-    /// </remarks>
+    private static readonly PermuteAvx512FVectors Avx512FVectors = new();
+
+#if mist
+    private static readonly Vector512<ulong> Mask5 = Vector512.Create(
+        ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, 0UL, 0UL, 0UL);
+    private static readonly Vector512<ulong> Perm1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
+    private static readonly Vector512<ulong> Perm2 = Vector512.Create(2UL, 3UL, 4UL, 0UL, 1UL, 5UL, 6UL, 7UL);
+    private static readonly Vector512<ulong> PermTheta1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
+    private static readonly Vector512<ulong> PermTheta4 = Vector512.Create(4UL, 0UL, 1UL, 2UL, 3UL, 5UL, 6UL, 7UL);
+    private static readonly Vector512<ulong> Rho0 = Vector512.Create(0UL, 1UL, 62UL, 28UL, 27UL, 0UL, 0UL, 0UL);
+    private static readonly Vector512<ulong> Rho1 = Vector512.Create(36UL, 44UL, 6UL, 55UL, 20UL, 0UL, 0UL, 0UL);
+    private static readonly Vector512<ulong> Rho2 = Vector512.Create(3UL, 10UL, 43UL, 25UL, 39UL, 0UL, 0UL, 0UL);
+    private static readonly Vector512<ulong> Rho3 = Vector512.Create(41UL, 45UL, 15UL, 21UL, 8UL, 0UL, 0UL, 0UL);
+    private static readonly Vector512<ulong> Rho4 = Vector512.Create(18UL, 2UL, 61UL, 56UL, 14UL, 0UL, 0UL, 0UL);
+
+    // Pi permutations
+    private static readonly Vector512<ulong> Pi0_From1 = Vector512.Create(0UL, 8 + 1, 2, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi0_From2 = Vector512.Create(0UL, 1, 8 + 2, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi0_From3 = Vector512.Create(0UL, 1, 2, 8 + 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi0_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 4, 5, 6, 7);
+
+    private static readonly Vector512<ulong> Pi1_From0 = Vector512.Create(3UL, 8 + 4, 2, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi1_From2 = Vector512.Create(0UL, 1, 8 + 0, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi1_From3 = Vector512.Create(0UL, 1, 2, 8 + 1, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi1_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 2, 5, 6, 7);
+
+    private static readonly Vector512<ulong> Pi2_From0 = Vector512.Create(1UL, 8 + 2, 2, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi2_From2 = Vector512.Create(0UL, 1, 8 + 3, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi2_From3 = Vector512.Create(0UL, 1, 2, 8 + 4, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi2_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 0, 5, 6, 7);
+
+    private static readonly Vector512<ulong> Pi3_From0 = Vector512.Create(4UL, 8 + 0, 2, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi3_From2 = Vector512.Create(0UL, 1, 8 + 1, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi3_From3 = Vector512.Create(0UL, 1, 2, 8 + 2, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi3_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 3, 5, 6, 7);
+
+    private static readonly Vector512<ulong> Pi4_From0 = Vector512.Create(2UL, 8 + 3, 2, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi4_From2 = Vector512.Create(0UL, 1, 8 + 4, 3, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi4_From3 = Vector512.Create(0UL, 1, 2, 8 + 0, 4, 5, 6, 7);
+    private static readonly Vector512<ulong> Pi4_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 1, 5, 6, 7);
+#endif
+
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void PermuteAvx2(ulong[] state)
+    public static void PermuteAvx512F(Span<ulong> state)
     {
-        // Load state into local variables for better register allocation
-        ulong s00 = state[0], s01 = state[1], s02 = state[2], s03 = state[3], s04 = state[4];
-        ulong s05 = state[5], s06 = state[6], s07 = state[7], s08 = state[8], s09 = state[9];
-        ulong s10 = state[10], s11 = state[11], s12 = state[12], s13 = state[13], s14 = state[14];
-        ulong s15 = state[15], s16 = state[16], s17 = state[17], s18 = state[18], s19 = state[19];
-        ulong s20 = state[20], s21 = state[21], s22 = state[22], s23 = state[23], s24 = state[24];
+        // Bounds check elimination
+        _ = state[24];
 
-        for (int round = 0; round < Rounds; round++)
+        ref ulong stateRef = ref MemoryMarshal.GetReference(state);
+
+        // Load state into vectors
+        Vector512<ulong> c0 = Vector512.BitwiseAnd(Avx512FVectors.Mask5,
+            Unsafe.As<ulong, Vector512<ulong>>(ref stateRef));
+        Vector512<ulong> c1 = Vector512.BitwiseAnd(Avx512FVectors.Mask5,
+            Unsafe.As<ulong, Vector512<ulong>>(ref Unsafe.Add(ref stateRef, 5)));
+        Vector512<ulong> c2 = Vector512.BitwiseAnd(Avx512FVectors.Mask5,
+            Unsafe.As<ulong, Vector512<ulong>>(ref Unsafe.Add(ref stateRef, 10)));
+        Vector512<ulong> c3 = Vector512.BitwiseAnd(Avx512FVectors.Mask5,
+            Unsafe.As<ulong, Vector512<ulong>>(ref Unsafe.Add(ref stateRef, 15)));
+
+        Vector256<ulong> c4a = Unsafe.As<ulong, Vector256<ulong>>(ref Unsafe.Add(ref stateRef, 20));
+        Vector512<ulong> c4 = Vector512.Create(c4a, Vector256.Create(state[24], 0UL, 0UL, 0UL));
+
+        // Cache round constants reference
+        ref ulong rcRef = ref MemoryMarshal.GetArrayDataReference(RoundConstants);
+
+        for (int round = 0; round < Rounds; round += 2)
         {
-            // ========== Theta step ==========
-            // Compute column parities: C[x] = state[x] ^ state[x+5] ^ state[x+10] ^ state[x+15] ^ state[x+20]
-            ulong c0 = s00 ^ s05 ^ s10 ^ s15 ^ s20;
-            ulong c1 = s01 ^ s06 ^ s11 ^ s16 ^ s21;
-            ulong c2 = s02 ^ s07 ^ s12 ^ s17 ^ s22;
-            ulong c3 = s03 ^ s08 ^ s13 ^ s18 ^ s23;
-            ulong c4 = s04 ^ s09 ^ s14 ^ s19 ^ s24;
+            // Round N
+            {
+                // Theta
+                Vector512<ulong> parity = Avx512F.TernaryLogic(
+                    Avx512F.TernaryLogic(c0, c1, c2, 0x96), c3, c4, 0x96);
 
-            // Compute D[x] = C[x-1] ^ ROL(C[x+1], 1)
-            ulong d0 = c4 ^ BitOperations.RotateLeft(c1, 1);
-            ulong d1 = c0 ^ BitOperations.RotateLeft(c2, 1);
-            ulong d2 = c1 ^ BitOperations.RotateLeft(c3, 1);
-            ulong d3 = c2 ^ BitOperations.RotateLeft(c4, 1);
-            ulong d4 = c3 ^ BitOperations.RotateLeft(c0, 1);
+                Vector512<ulong> theta = Avx512F.Xor(
+                    Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta4),
+                    Avx512F.RotateLeft(Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta1), 1));
 
-            // Apply Theta: state[x,y] ^= D[x] - use AVX2 for parallel XOR
-            // Process rows 0-3 (16 lanes) with AVX2, then row 4 (5 lanes) scalar
-            Vector256<ulong> dv0 = Vector256.Create(d0, d1, d2, d3);
-            Vector256<ulong> dv1 = Vector256.Create(d4, d0, d1, d2);
+                c0 = Avx512F.Xor(c0, theta);
+                c1 = Avx512F.Xor(c1, theta);
+                c2 = Avx512F.Xor(c2, theta);
+                c3 = Avx512F.Xor(c3, theta);
+                c4 = Avx512F.Xor(c4, theta);
 
-            // Row 0: lanes 0-3
-            Vector256<ulong> row0 = Vector256.Create(s00, s01, s02, s03);
-            row0 = Avx2.Xor(row0, dv0);
-            s00 = row0.GetElement(0); s01 = row0.GetElement(1); s02 = row0.GetElement(2); s03 = row0.GetElement(3);
-            s04 ^= d4;
+                // Rho
+                c0 = Avx512F.RotateLeftVariable(c0, Avx512FVectors.Rho0);
+                c1 = Avx512F.RotateLeftVariable(c1, Avx512FVectors.Rho1);
+                c2 = Avx512F.RotateLeftVariable(c2, Avx512FVectors.Rho2);
+                c3 = Avx512F.RotateLeftVariable(c3, Avx512FVectors.Rho3);
+                c4 = Avx512F.RotateLeftVariable(c4, Avx512FVectors.Rho4);
 
-            // Row 1: lanes 5-8
-            Vector256<ulong> row1 = Vector256.Create(s05, s06, s07, s08);
-            row1 = Avx2.Xor(row1, dv0);
-            s05 = row1.GetElement(0); s06 = row1.GetElement(1); s07 = row1.GetElement(2); s08 = row1.GetElement(3);
-            s09 ^= d4;
+                // Pi
+                Vector512<ulong> c0Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi0_From1, c1);
+                c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From2, c2);
+                c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From3, c3);
+                c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From4, c4);
 
-            // Row 2: lanes 10-13
-            Vector256<ulong> row2 = Vector256.Create(s10, s11, s12, s13);
-            row2 = Avx2.Xor(row2, dv0);
-            s10 = row2.GetElement(0); s11 = row2.GetElement(1); s12 = row2.GetElement(2); s13 = row2.GetElement(3);
-            s14 ^= d4;
+                Vector512<ulong> c1Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi1_From0, c1);
+                c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From2, c2);
+                c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From3, c3);
+                c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From4, c4);
 
-            // Row 3: lanes 15-18
-            Vector256<ulong> row3 = Vector256.Create(s15, s16, s17, s18);
-            row3 = Avx2.Xor(row3, dv0);
-            s15 = row3.GetElement(0); s16 = row3.GetElement(1); s17 = row3.GetElement(2); s18 = row3.GetElement(3);
-            s19 ^= d4;
+                Vector512<ulong> c2Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi2_From0, c1);
+                c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From2, c2);
+                c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From3, c3);
+                c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From4, c4);
 
-            // Row 4: lanes 20-23
-            Vector256<ulong> row4 = Vector256.Create(s20, s21, s22, s23);
-            row4 = Avx2.Xor(row4, dv0);
-            s20 = row4.GetElement(0); s21 = row4.GetElement(1); s22 = row4.GetElement(2); s23 = row4.GetElement(3);
-            s24 ^= d4;
+                Vector512<ulong> c3Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi3_From0, c1);
+                c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From2, c2);
+                c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From3, c3);
+                c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From4, c4);
 
-            // ========== Rho and Pi steps combined ==========
-            // Each b[i] = ROL(state[pi[i]], rho[i])
-            // Pi permutation indices and Rho rotation amounts are pre-computed
-            ulong b00 = s00;
-            ulong b01 = BitOperations.RotateLeft(s06, 44);
-            ulong b02 = BitOperations.RotateLeft(s12, 43);
-            ulong b03 = BitOperations.RotateLeft(s18, 21);
-            ulong b04 = BitOperations.RotateLeft(s24, 14);
-            ulong b05 = BitOperations.RotateLeft(s03, 28);
-            ulong b06 = BitOperations.RotateLeft(s09, 20);
-            ulong b07 = BitOperations.RotateLeft(s10, 3);
-            ulong b08 = BitOperations.RotateLeft(s16, 45);
-            ulong b09 = BitOperations.RotateLeft(s22, 61);
-            ulong b10 = BitOperations.RotateLeft(s01, 1);
-            ulong b11 = BitOperations.RotateLeft(s07, 6);
-            ulong b12 = BitOperations.RotateLeft(s13, 25);
-            ulong b13 = BitOperations.RotateLeft(s19, 8);
-            ulong b14 = BitOperations.RotateLeft(s20, 18);
-            ulong b15 = BitOperations.RotateLeft(s04, 27);
-            ulong b16 = BitOperations.RotateLeft(s05, 36);
-            ulong b17 = BitOperations.RotateLeft(s11, 10);
-            ulong b18 = BitOperations.RotateLeft(s17, 15);
-            ulong b19 = BitOperations.RotateLeft(s23, 56);
-            ulong b20 = BitOperations.RotateLeft(s02, 62);
-            ulong b21 = BitOperations.RotateLeft(s08, 55);
-            ulong b22 = BitOperations.RotateLeft(s14, 39);
-            ulong b23 = BitOperations.RotateLeft(s15, 41);
-            ulong b24 = BitOperations.RotateLeft(s21, 2);
+                Vector512<ulong> c4Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi4_From0, c1);
+                c0 = c0Pi;
+                c1 = c1Pi;
+                c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From2, c2);
+                c2 = c2Pi;
+                c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From3, c3);
+                c3 = c3Pi;
+                c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From4, c4);
+                c4 = c4Pi;
 
-            // ========== Chi step with AVX2 ==========
-            // Chi: state[x] = b[x] ^ (~b[x+1] & b[x+2])
-            // Process each row of 5 elements using AVX2 where beneficial
+                // Chi
+                c0 = Avx512F.TernaryLogic(c0, Avx512F.PermuteVar8x64(c0, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c0, Avx512FVectors.Perm2), 0xD2);
+                c1 = Avx512F.TernaryLogic(c1, Avx512F.PermuteVar8x64(c1, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c1, Avx512FVectors.Perm2), 0xD2);
+                c2 = Avx512F.TernaryLogic(c2, Avx512F.PermuteVar8x64(c2, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c2, Avx512FVectors.Perm2), 0xD2);
+                c3 = Avx512F.TernaryLogic(c3, Avx512F.PermuteVar8x64(c3, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c3, Avx512FVectors.Perm2), 0xD2);
+                c4 = Avx512F.TernaryLogic(c4, Avx512F.PermuteVar8x64(c4, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c4, Avx512FVectors.Perm2), 0xD2);
 
-            // Row 0: b00-b04
-            Vector256<ulong> bv0_01 = Vector256.Create(b00, b01, b02, b03);
-            Vector256<ulong> bv0_12 = Vector256.Create(b01, b02, b03, b04);
-            Vector256<ulong> bv0_23 = Vector256.Create(b02, b03, b04, b00);
-            Vector256<ulong> chi0 = Avx2.Xor(bv0_01, Avx2.AndNot(bv0_12, bv0_23));
-            s00 = chi0.GetElement(0); s01 = chi0.GetElement(1); s02 = chi0.GetElement(2); s03 = chi0.GetElement(3);
-            s04 = b04 ^ (~b00 & b01);
+                // Iota
+                c0 = Vector512.Xor(c0, Vector512.Create(Unsafe.Add(ref rcRef, round), 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL));
+            }
 
-            // Row 1: b05-b09
-            Vector256<ulong> bv1_01 = Vector256.Create(b05, b06, b07, b08);
-            Vector256<ulong> bv1_12 = Vector256.Create(b06, b07, b08, b09);
-            Vector256<ulong> bv1_23 = Vector256.Create(b07, b08, b09, b05);
-            Vector256<ulong> chi1 = Avx2.Xor(bv1_01, Avx2.AndNot(bv1_12, bv1_23));
-            s05 = chi1.GetElement(0); s06 = chi1.GetElement(1); s07 = chi1.GetElement(2); s08 = chi1.GetElement(3);
-            s09 = b09 ^ (~b05 & b06);
+            // Round N+1 (identical structure, just different round constant)
+            {
+                Vector512<ulong> parity = Avx512F.TernaryLogic(
+                    Avx512F.TernaryLogic(c0, c1, c2, 0x96), c3, c4, 0x96);
 
-            // Row 2: b10-b14
-            Vector256<ulong> bv2_01 = Vector256.Create(b10, b11, b12, b13);
-            Vector256<ulong> bv2_12 = Vector256.Create(b11, b12, b13, b14);
-            Vector256<ulong> bv2_23 = Vector256.Create(b12, b13, b14, b10);
-            Vector256<ulong> chi2 = Avx2.Xor(bv2_01, Avx2.AndNot(bv2_12, bv2_23));
-            s10 = chi2.GetElement(0); s11 = chi2.GetElement(1); s12 = chi2.GetElement(2); s13 = chi2.GetElement(3);
-            s14 = b14 ^ (~b10 & b11);
+                Vector512<ulong> theta = Avx512F.Xor(
+                    Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta4),
+                    Avx512F.RotateLeft(Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta1), 1));
 
-            // Row 3: b15-b19
-            Vector256<ulong> bv3_01 = Vector256.Create(b15, b16, b17, b18);
-            Vector256<ulong> bv3_12 = Vector256.Create(b16, b17, b18, b19);
-            Vector256<ulong> bv3_23 = Vector256.Create(b17, b18, b19, b15);
-            Vector256<ulong> chi3 = Avx2.Xor(bv3_01, Avx2.AndNot(bv3_12, bv3_23));
-            s15 = chi3.GetElement(0); s16 = chi3.GetElement(1); s17 = chi3.GetElement(2); s18 = chi3.GetElement(3);
-            s19 = b19 ^ (~b15 & b16);
+                c0 = Avx512F.Xor(c0, theta);
+                c1 = Avx512F.Xor(c1, theta);
+                c2 = Avx512F.Xor(c2, theta);
+                c3 = Avx512F.Xor(c3, theta);
+                c4 = Avx512F.Xor(c4, theta);
 
-            // Row 4: b20-b24
-            Vector256<ulong> bv4_01 = Vector256.Create(b20, b21, b22, b23);
-            Vector256<ulong> bv4_12 = Vector256.Create(b21, b22, b23, b24);
-            Vector256<ulong> bv4_23 = Vector256.Create(b22, b23, b24, b20);
-            Vector256<ulong> chi4 = Avx2.Xor(bv4_01, Avx2.AndNot(bv4_12, bv4_23));
-            s20 = chi4.GetElement(0); s21 = chi4.GetElement(1); s22 = chi4.GetElement(2); s23 = chi4.GetElement(3);
-            s24 = b24 ^ (~b20 & b21);
+                c0 = Avx512F.RotateLeftVariable(c0, Avx512FVectors.Rho0);
+                c1 = Avx512F.RotateLeftVariable(c1, Avx512FVectors.Rho1);
+                c2 = Avx512F.RotateLeftVariable(c2, Avx512FVectors.Rho2);
+                c3 = Avx512F.RotateLeftVariable(c3, Avx512FVectors.Rho3);
+                c4 = Avx512F.RotateLeftVariable(c4, Avx512FVectors.Rho4);
 
-            // ========== Iota step ==========
-            s00 ^= RoundConstants[round];
+                Vector512<ulong> c0Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi0_From1, c1);
+                c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From2, c2);
+                c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From3, c3);
+                c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From4, c4);
+
+                Vector512<ulong> c1Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi1_From0, c1);
+                c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From2, c2);
+                c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From3, c3);
+                c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From4, c4);
+
+                Vector512<ulong> c2Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi2_From0, c1);
+                c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From2, c2);
+                c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From3, c3);
+                c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From4, c4);
+
+                Vector512<ulong> c3Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi3_From0, c1);
+                c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From2, c2);
+                c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From3, c3);
+                c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From4, c4);
+
+                Vector512<ulong> c4Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi4_From0, c1);
+                c0 = c0Pi;
+                c1 = c1Pi;
+                c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From2, c2);
+                c2 = c2Pi;
+                c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From3, c3);
+                c3 = c3Pi;
+                c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From4, c4);
+                c4 = c4Pi;
+
+                // Chi
+                c0 = Avx512F.TernaryLogic(c0, Avx512F.PermuteVar8x64(c0, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c0, Avx512FVectors.Perm2), 0xD2);
+                c1 = Avx512F.TernaryLogic(c1, Avx512F.PermuteVar8x64(c1, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c1, Avx512FVectors.Perm2), 0xD2);
+                c2 = Avx512F.TernaryLogic(c2, Avx512F.PermuteVar8x64(c2, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c2, Avx512FVectors.Perm2), 0xD2);
+                c3 = Avx512F.TernaryLogic(c3, Avx512F.PermuteVar8x64(c3, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c3, Avx512FVectors.Perm2), 0xD2);
+                c4 = Avx512F.TernaryLogic(c4, Avx512F.PermuteVar8x64(c4, Avx512FVectors.Perm1), Avx512F.PermuteVar8x64(c4, Avx512FVectors.Perm2), 0xD2);
+
+                // Iota
+                c0 = Vector512.Xor(c0, Vector512.Create(Unsafe.Add(ref rcRef, round + 1), 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL));
+            }
+
         }
 
         // Store state back
-        state[0] = s00; state[1] = s01; state[2] = s02; state[3] = s03; state[4] = s04;
-        state[5] = s05; state[6] = s06; state[7] = s07; state[8] = s08; state[9] = s09;
-        state[10] = s10; state[11] = s11; state[12] = s12; state[13] = s13; state[14] = s14;
-        state[15] = s15; state[16] = s16; state[17] = s17; state[18] = s18; state[19] = s19;
-        state[20] = s20; state[21] = s21; state[22] = s22; state[23] = s23; state[24] = s24;
+        Unsafe.As<ulong, Vector512<ulong>>(ref stateRef) = c0;
+        Unsafe.As<ulong, Vector512<ulong>>(ref Unsafe.Add(ref stateRef, 5)) = c1;
+        Unsafe.As<ulong, Vector512<ulong>>(ref Unsafe.Add(ref stateRef, 10)) = c2;
+        Unsafe.As<ulong, Vector512<ulong>>(ref Unsafe.Add(ref stateRef, 15)) = c3;
+        Unsafe.As<ulong, Vector256<ulong>>(ref Unsafe.Add(ref stateRef, 20)) = c4.GetLower();
+        state[24] = c4.GetElement(4);
     }
 #endif
 
-    /// <summary>
-    /// Absorbs a block of data into the Keccak state by XORing it with the rate portion.
-    /// </summary>
-    /// <param name="state">The 25-element state array.</param>
-    /// <param name="block">The block to absorb (must be exactly rateBytes long).</param>
-    /// <param name="rateBytes">The rate in bytes (determines how many bytes to XOR).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Absorb(ulong[] state, ReadOnlySpan<byte> block, int rateBytes)
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public static void PermuteScalar(Span<ulong> state, int startRound = 0)
     {
-        int rateLanes = rateBytes / 8;
+        Debug.Assert(state.Length == 25);
 
-        for (int i = 0; i < rateLanes; i++)
         {
-            state[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+            // Redundant statement that removes all the in loop bounds checks
+            _ = state[24];
         }
 
-        Permute(state);
+        ulong aba, abe, abi, abo, abu;
+        ulong aga, age, agi, ago, agu;
+        ulong aka, ake, aki, ako, aku;
+        ulong ama, ame, ami, amo, amu;
+        ulong asa, ase, asi, aso, asu;
+        ulong bCa, bCe, bCi, bCo, bCu;
+        ulong da, de, di, @do, du;
+        ulong eba, ebe, ebi, ebo, ebu;
+        ulong ega, ege, egi, ego, egu;
+        ulong eka, eke, eki, eko, eku;
+        ulong ema, eme, emi, emo, emu;
+        ulong esa, ese, esi, eso, esu;
+
+        asu = state[24];
+        aso = state[23];
+        asi = state[22];
+        ase = state[21];
+        asa = state[20];
+        amu = state[19];
+        amo = state[18];
+        ami = state[17];
+        ame = state[16];
+        ama = state[15];
+        aku = state[14];
+        ako = state[13];
+        aki = state[12];
+        ake = state[11];
+        aka = state[10];
+        agu = state[9];
+        ago = state[8];
+        agi = state[7];
+        age = state[6];
+        aga = state[5];
+        abu = state[4];
+        abo = state[3];
+        abi = state[2];
+        abe = state[1];
+        aba = state[0];
+
+        for (int round = startRound; round < Rounds; round += 2)
+        {
+            //    prepareTheta
+            bCa = aba ^ aga ^ aka ^ ama ^ asa;
+            bCe = abe ^ age ^ ake ^ ame ^ ase;
+            bCi = abi ^ agi ^ aki ^ ami ^ asi;
+            bCo = abo ^ ago ^ ako ^ amo ^ aso;
+            bCu = abu ^ agu ^ aku ^ amu ^ asu;
+
+            //thetaRhoPiChiIotaPrepareTheta(round  , A, E)
+            da = bCu ^ BitOperations.RotateLeft(bCe, 1);
+            de = bCa ^ BitOperations.RotateLeft(bCi, 1);
+            di = bCe ^ BitOperations.RotateLeft(bCo, 1);
+            @do = bCi ^ BitOperations.RotateLeft(bCu, 1);
+            du = bCo ^ BitOperations.RotateLeft(bCa, 1);
+
+            bCa = aba ^ da;
+            bCe = BitOperations.RotateLeft(age ^ de, 44);
+            bCi = BitOperations.RotateLeft(aki ^ di, 43);
+            eba = bCa ^ ((~bCe) & bCi) ^ RoundConstants[round];
+            bCo = BitOperations.RotateLeft(amo ^ @do, 21);
+            ebe = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(asu ^ du, 14);
+            ebi = bCi ^ ((~bCo) & bCu);
+            ebo = bCo ^ ((~bCu) & bCa);
+            ebu = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(abo ^ @do, 28);
+            bCe = BitOperations.RotateLeft(agu ^ du, 20);
+            bCi = BitOperations.RotateLeft(aka ^ da, 3);
+            ega = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(ame ^ de, 45);
+            ege = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(asi ^ di, 61);
+            egi = bCi ^ ((~bCo) & bCu);
+            ego = bCo ^ ((~bCu) & bCa);
+            egu = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(abe ^ de, 1);
+            bCe = BitOperations.RotateLeft(agi ^ di, 6);
+            bCi = BitOperations.RotateLeft(ako ^ @do, 25);
+            eka = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(amu ^ du, 8);
+            eke = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(asa ^ da, 18);
+            eki = bCi ^ ((~bCo) & bCu);
+            eko = bCo ^ ((~bCu) & bCa);
+            eku = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(abu ^ du, 27);
+            bCe = BitOperations.RotateLeft(aga ^ da, 36);
+            bCi = BitOperations.RotateLeft(ake ^ de, 10);
+            ema = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(ami ^ di, 15);
+            eme = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(aso ^ @do, 56);
+            emi = bCi ^ ((~bCo) & bCu);
+            emo = bCo ^ ((~bCu) & bCa);
+            emu = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(abi ^ di, 62);
+            bCe = BitOperations.RotateLeft(ago ^ @do, 55);
+            bCi = BitOperations.RotateLeft(aku ^ du, 39);
+            esa = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(ama ^ da, 41);
+            ese = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(ase ^ de, 2);
+            esi = bCi ^ ((~bCo) & bCu);
+            eso = bCo ^ ((~bCu) & bCa);
+            esu = bCu ^ ((~bCa) & bCe);
+
+            //    prepareTheta
+            bCe = ebe ^ ege ^ eke ^ eme ^ ese;
+            bCu = ebu ^ egu ^ eku ^ emu ^ esu;
+
+            //thetaRhoPiChiIotaPrepareTheta(round+1, E, A)
+            da = bCu ^ BitOperations.RotateLeft(bCe, 1);
+            bCa = eba ^ ega ^ eka ^ ema ^ esa;
+            bCi = ebi ^ egi ^ eki ^ emi ^ esi;
+            de = bCa ^ BitOperations.RotateLeft(bCi, 1);
+            bCo = ebo ^ ego ^ eko ^ emo ^ eso;
+            di = bCe ^ BitOperations.RotateLeft(bCo, 1);
+            @do = bCi ^ BitOperations.RotateLeft(bCu, 1);
+            du = bCo ^ BitOperations.RotateLeft(bCa, 1);
+
+            bCi = BitOperations.RotateLeft(eki ^ di, 43);
+            bCe = BitOperations.RotateLeft(ege ^ de, 44);
+            bCa = eba ^ da;
+            aba = bCa ^ ((~bCe) & bCi) ^ RoundConstants[round + 1];
+            bCo = BitOperations.RotateLeft(emo ^ @do, 21);
+            abe = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(esu ^ du, 14);
+            abi = bCi ^ ((~bCo) & bCu);
+            abo = bCo ^ ((~bCu) & bCa);
+            abu = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(ebo ^ @do, 28);
+            bCe = BitOperations.RotateLeft(egu ^ du, 20);
+            bCi = BitOperations.RotateLeft(eka ^ da, 3);
+            aga = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(eme ^ de, 45);
+            age = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(esi ^ di, 61);
+            agi = bCi ^ ((~bCo) & bCu);
+            ago = bCo ^ ((~bCu) & bCa);
+            agu = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(ebe ^ de, 1);
+            bCe = BitOperations.RotateLeft(egi ^ di, 6);
+            bCi = BitOperations.RotateLeft(eko ^ @do, 25);
+            aka = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(emu ^ du, 8);
+            ake = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(esa ^ da, 18);
+            aki = bCi ^ ((~bCo) & bCu);
+            ako = bCo ^ ((~bCu) & bCa);
+            aku = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(ebu ^ du, 27);
+            bCe = BitOperations.RotateLeft(ega ^ da, 36);
+            bCi = BitOperations.RotateLeft(eke ^ de, 10);
+            ama = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(emi ^ di, 15);
+            ame = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(eso ^ @do, 56);
+            ami = bCi ^ ((~bCo) & bCu);
+            amo = bCo ^ ((~bCu) & bCa);
+            amu = bCu ^ ((~bCa) & bCe);
+
+            bCa = BitOperations.RotateLeft(ebi ^ di, 62);
+            bCe = BitOperations.RotateLeft(ego ^ @do, 55);
+            bCi = BitOperations.RotateLeft(eku ^ du, 39);
+            asa = bCa ^ ((~bCe) & bCi);
+            bCo = BitOperations.RotateLeft(ema ^ da, 41);
+            ase = bCe ^ ((~bCi) & bCo);
+            bCu = BitOperations.RotateLeft(ese ^ de, 2);
+            asi = bCi ^ ((~bCo) & bCu);
+            aso = bCo ^ ((~bCu) & bCa);
+            asu = bCu ^ ((~bCa) & bCe);
+        }
+
+        //copyToState(state, A)
+        state[24] = asu;
+        state[23] = aso;
+        state[22] = asi;
+        state[21] = ase;
+        state[20] = asa;
+        state[19] = amu;
+        state[18] = amo;
+        state[17] = ami;
+        state[16] = ame;
+        state[15] = ama;
+        state[14] = aku;
+        state[13] = ako;
+        state[12] = aki;
+        state[11] = ake;
+        state[10] = aka;
+        state[9] = agu;
+        state[8] = ago;
+        state[7] = agi;
+        state[6] = age;
+        state[5] = aga;
+        state[4] = abu;
+        state[3] = abo;
+        state[2] = abi;
+        state[1] = abe;
+        state[0] = aba;
     }
 
     /// <summary>
@@ -400,14 +606,27 @@ internal static class KeccakCore
     /// <param name="block">The block to absorb (must be exactly rateBytes long).</param>
     /// <param name="rateBytes">The rate in bytes (determines how many bytes to XOR).</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Absorb(ulong[] state, ReadOnlySpan<byte> block, int rateBytes, SimdSupport simdSupport)
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public static void Absorb(Span<ulong> state, ReadOnlySpan<byte> block, int rateBytes, SimdSupport simdSupport = SimdSupport.None)
     {
         int rateLanes = rateBytes / 8;
 
-        for (int i = 0; i < rateLanes; i++)
+        if (BitConverter.IsLittleEndian)
         {
-            state[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+            // Fast path: direct memory XOR on little-endian systems
+            ReadOnlySpan<ulong> blockLanes = MemoryMarshal.Cast<byte, ulong>(block.Slice(0, rateLanes * 8));
+            for (int i = 0; i < rateLanes; i++)
+            {
+                state[i] ^= blockLanes[i];
+            }
+        }
+        else
+        {
+            // Big-endian: convert each ulong individually
+            for (int i = 0; i < rateLanes; i++)
+            {
+                state[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+            }
         }
 
         Permute(state, simdSupport);
@@ -419,68 +638,36 @@ internal static class KeccakCore
     /// <param name="state">The 25-element state array.</param>
     /// <param name="output">The buffer to receive the output.</param>
     /// <param name="length">The number of bytes to extract (must be ≤ rate).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Squeeze(ulong[] state, Span<byte> output, int length)
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public static void Squeeze(ReadOnlySpan<ulong> state, Span<byte> output, int length)
     {
         const int uInt64Size = sizeof(ulong);
-        int offset = 0;
-        int stateIndex = 0;
 
-        int bytesToCopy = length - offset;
-        while (bytesToCopy >= uInt64Size)
+        if (BitConverter.IsLittleEndian)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(offset), state[stateIndex]);
-            offset += uInt64Size;
-            bytesToCopy -= uInt64Size;
-            stateIndex++;
+            // Fast path: direct memory copy on little-endian systems
+            MemoryMarshal.AsBytes(state).Slice(0, length).CopyTo(output);
         }
-
-        if (bytesToCopy > 0)
+        else
         {
-            Span<byte> temp = stackalloc byte[uInt64Size];
-            BinaryPrimitives.WriteUInt64LittleEndian(temp, state[stateIndex]);
-            temp.Slice(0, bytesToCopy).CopyTo(output.Slice(offset));
-        }
-    }
+            // Big-endian: convert each ulong individually
+            int offset = 0;
+            int stateIndex = 0;
+            int bytesToCopy = length;
 
-    /// <summary>
-    /// Performs an extended squeeze operation for XOF (extendable-output function) algorithms.
-    /// </summary>
-    /// <param name="state">The 25-element state array.</param>
-    /// <param name="output">The buffer to receive the output.</param>
-    /// <param name="rateBytes">The rate in bytes.</param>
-    /// <param name="squeezeOffset">
-    /// The current offset within the rate portion. Updated after the operation.
-    /// </param>
-    public static void SqueezeXof(ulong[] state, Span<byte> output, int rateBytes, ref int squeezeOffset)
-    {
-        int outputOffset = 0;
-
-        while (outputOffset < output.Length)
-        {
-            if (squeezeOffset >= rateBytes)
+            while (bytesToCopy >= uInt64Size)
             {
-                Permute(state);
-                squeezeOffset = 0;
+                BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(offset), state[stateIndex]);
+                offset += uInt64Size;
+                bytesToCopy -= uInt64Size;
+                stateIndex++;
             }
 
-            int stateIndex = squeezeOffset / 8;
-            int byteIndex = squeezeOffset % 8;
-
-            unchecked
+            if (bytesToCopy > 0)
             {
-                while (outputOffset < output.Length && squeezeOffset < rateBytes)
-                {
-                    output[outputOffset++] = (byte)(state[stateIndex] >> (byteIndex * 8));
-                    byteIndex++;
-                    squeezeOffset++;
-
-                    if (byteIndex >= 8)
-                    {
-                        byteIndex = 0;
-                        stateIndex++;
-                    }
-                }
+                Span<byte> temp = stackalloc byte[uInt64Size];
+                BinaryPrimitives.WriteUInt64LittleEndian(temp, state[stateIndex]);
+                temp.Slice(0, bytesToCopy).CopyTo(output.Slice(offset));
             }
         }
     }
@@ -495,7 +682,8 @@ internal static class KeccakCore
     /// The current offset within the rate portion. Updated after the operation.
     /// </param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    public static void SqueezeXof(ulong[] state, Span<byte> output, int rateBytes, ref int squeezeOffset, SimdSupport simdSupport)
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public static void SqueezeXof(Span<ulong> state, Span<byte> output, int rateBytes, ref int squeezeOffset, SimdSupport simdSupport = SimdSupport.None)
     {
         int outputOffset = 0;
 

@@ -40,9 +40,9 @@ internal enum SimdSupport
     Avx2 = 1 << 2,
 
     /// <summary>
-    /// AVX-512 instruction set support (512-bit vectors).
+    /// AVX-512F instruction set support (512-bit vectors).
     /// </summary>
-    Avx512 = 1 << 3,
+    Avx512F = 1 << 3,
 
     /// <summary>
     /// ARM NEON instruction set support.
@@ -52,7 +52,7 @@ internal enum SimdSupport
     /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
-    All = Sse2 | Ssse3 | Avx2 | Avx512 | Neon
+    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon
 }
 
 /// <summary>

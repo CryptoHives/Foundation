@@ -217,7 +217,7 @@ public sealed class KangarooTwelve : HashAlgorithm
             {
                 state[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(message.Slice(offset + i * 8));
             }
-            Permute12(state);
+            KeccakCore.PermuteScalar(state, 12);
             offset += RateBytes;
         }
 
@@ -236,7 +236,7 @@ public sealed class KangarooTwelve : HashAlgorithm
 
         state[RateBytes / 8 - 1] ^= 0x80UL << 56;
 
-        Permute12(state);
+        KeccakCore.PermuteScalar(state, 12);
     }
 
     private static void SqueezeXof(ulong[] state, Span<byte> output, ref int squeezeOffset)
@@ -247,7 +247,7 @@ public sealed class KangarooTwelve : HashAlgorithm
         {
             if (squeezeOffset >= RateBytes)
             {
-                Permute12(state);
+                KeccakCore.PermuteScalar(state, 12);
                 squeezeOffset = 0;
             }
 
@@ -298,88 +298,6 @@ public sealed class KangarooTwelve : HashAlgorithm
         output[n] = (byte)n;
         return n + 1;
     }
-
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void Permute12(ulong[] state)
-    {
-        Span<ulong> c = stackalloc ulong[5];
-        Span<ulong> d = stackalloc ulong[5];
-        Span<ulong> b = stackalloc ulong[25];
-
-        ReadOnlySpan<ulong> roundConstants =
-        [
-            0x000000008000808bUL, 0x800000000000008bUL, 0x8000000000008089UL, 0x8000000000008003UL,
-            0x8000000000008002UL, 0x8000000000000080UL, 0x000000000000800aUL, 0x800000008000000aUL,
-            0x8000000080008081UL, 0x8000000000008080UL, 0x0000000080000001UL, 0x8000000080008008UL
-        ];
-
-        for (int round = 0; round < Rounds; round++)
-        {
-            c[0] = state[0] ^ state[5] ^ state[10] ^ state[15] ^ state[20];
-            c[1] = state[1] ^ state[6] ^ state[11] ^ state[16] ^ state[21];
-            c[2] = state[2] ^ state[7] ^ state[12] ^ state[17] ^ state[22];
-            c[3] = state[3] ^ state[8] ^ state[13] ^ state[18] ^ state[23];
-            c[4] = state[4] ^ state[9] ^ state[14] ^ state[19] ^ state[24];
-
-            d[0] = c[4] ^ RotateLeft(c[1], 1);
-            d[1] = c[0] ^ RotateLeft(c[2], 1);
-            d[2] = c[1] ^ RotateLeft(c[3], 1);
-            d[3] = c[2] ^ RotateLeft(c[4], 1);
-            d[4] = c[3] ^ RotateLeft(c[0], 1);
-
-            state[0] ^= d[0]; state[1] ^= d[1]; state[2] ^= d[2]; state[3] ^= d[3]; state[4] ^= d[4];
-            state[5] ^= d[0]; state[6] ^= d[1]; state[7] ^= d[2]; state[8] ^= d[3]; state[9] ^= d[4];
-            state[10] ^= d[0]; state[11] ^= d[1]; state[12] ^= d[2]; state[13] ^= d[3]; state[14] ^= d[4];
-            state[15] ^= d[0]; state[16] ^= d[1]; state[17] ^= d[2]; state[18] ^= d[3]; state[19] ^= d[4];
-            state[20] ^= d[0]; state[21] ^= d[1]; state[22] ^= d[2]; state[23] ^= d[3]; state[24] ^= d[4];
-
-            b[0] = state[0];
-            b[1] = RotateLeft(state[6], 44);
-            b[2] = RotateLeft(state[12], 43);
-            b[3] = RotateLeft(state[18], 21);
-            b[4] = RotateLeft(state[24], 14);
-            b[5] = RotateLeft(state[3], 28);
-            b[6] = RotateLeft(state[9], 20);
-            b[7] = RotateLeft(state[10], 3);
-            b[8] = RotateLeft(state[16], 45);
-            b[9] = RotateLeft(state[22], 61);
-            b[10] = RotateLeft(state[1], 1);
-            b[11] = RotateLeft(state[7], 6);
-            b[12] = RotateLeft(state[13], 25);
-            b[13] = RotateLeft(state[19], 8);
-            b[14] = RotateLeft(state[20], 18);
-            b[15] = RotateLeft(state[4], 27);
-            b[16] = RotateLeft(state[5], 36);
-            b[17] = RotateLeft(state[11], 10);
-            b[18] = RotateLeft(state[17], 15);
-            b[19] = RotateLeft(state[23], 56);
-            b[20] = RotateLeft(state[2], 62);
-            b[21] = RotateLeft(state[8], 55);
-            b[22] = RotateLeft(state[14], 39);
-            b[23] = RotateLeft(state[15], 41);
-            b[24] = RotateLeft(state[21], 2);
-
-            for (int y = 0; y < 5; y++)
-            {
-                int off = y * 5;
-                state[off] = b[off] ^ (~b[off + 1] & b[off + 2]);
-                state[off + 1] = b[off + 1] ^ (~b[off + 2] & b[off + 3]);
-                state[off + 2] = b[off + 2] ^ (~b[off + 3] & b[off + 4]);
-                state[off + 3] = b[off + 3] ^ (~b[off + 4] & b[off]);
-                state[off + 4] = b[off + 4] ^ (~b[off] & b[off + 1]);
-            }
-
-            state[0] ^= roundConstants[round];
-        }
-    }
-
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateLeft(ulong x, int n) => BitOperations.RotateLeft(x, n);
-#else
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateLeft(ulong x, int n) => (x << n) | (x >> (64 - n));
-#endif
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
