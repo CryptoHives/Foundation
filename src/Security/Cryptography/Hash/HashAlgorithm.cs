@@ -157,8 +157,12 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             // cSHAKE (NIST SP 800-185)
             "CSHAKE128" => CShake128.Create(),
             "CSHAKE256" => CShake256.Create(),
-            // KangarooTwelve (K12)
-            "KANGAROOTWELVE" or "K12" => KangarooTwelve.Create(),
+            // TurboSHAKE (RFC 9861)
+            "TURBOSHAKE128" => TurboShake128.Create(),
+            "TURBOSHAKE256" => TurboShake256.Create(),
+            // KangarooTwelve / KT128 / KT256 (RFC 9861)
+            "KANGAROOTWELVE" or "K12" or "KT128" => KT128.Create(),
+            "KT256" => KT256.Create(),
             // Keccak (original, used by Ethereum)
             "KECCAK-256" or "KECCAK256" => Keccak256.Create(),
             "KECCAK-384" or "KECCAK384" => Keccak384.Create(),

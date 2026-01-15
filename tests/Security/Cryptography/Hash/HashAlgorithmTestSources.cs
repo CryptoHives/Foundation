@@ -981,26 +981,88 @@ public static class Streebog512Implementations
 
 #endregion
 
-#region KangarooTwelve
+#region KangarooTwelve / TurboSHAKE
 
 /// <summary>
-/// Provides test case sources for KangarooTwelve implementations (32-byte output).
+/// Provides test case sources for KT128 implementations (32-byte output).
 /// </summary>
-public static class KangarooTwelveImplementations
+public static class KT128Implementations
 {
     /// <summary>
-    /// Gets all available KangarooTwelve implementations for testing (32-byte output).
+    /// Gets all available KT128 implementations for testing (32-byte output).
     /// </summary>
     public static IEnumerable All
     {
         get
         {
             yield return new HashAlgorithmFactory(
-                "KangarooTwelve",
-                () => CH.KangarooTwelve.Create(32));
+                "KT128",
+                () => CH.KT128.Create(32));
 
-            // Note: BouncyCastle 2.6.2 does not include KangarooTwelve
-            // Tests will compare against XKCP reference vectors
+            // Note: BouncyCastle 2.6.2 does not include KT128/KangarooTwelve
+        }
+    }
+}
+
+/// <summary>
+/// Provides test case sources for KT256 implementations (64-byte output).
+/// </summary>
+public static class KT256Implementations
+{
+    /// <summary>
+    /// Gets all available KT256 implementations for testing (64-byte output).
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "KT256",
+                () => CH.KT256.Create(64));
+            
+            // Note: BouncyCastle 2.6.2 does not include KT256
+        }
+    }
+}
+
+/// <summary>
+/// Provides test case sources for TurboShake128 implementations.
+/// </summary>
+public static class TurboShake128Implementations
+{
+    /// <summary>
+    /// Gets all available TurboShake128 implementations for testing.
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "TurboShake128",
+                () => CH.TurboShake128.Create(32));
+                
+            // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
+        }
+    }
+}
+
+/// <summary>
+/// Provides test case sources for TurboShake256 implementations.
+/// </summary>
+public static class TurboShake256Implementations
+{
+    /// <summary>
+    /// Gets all available TurboShake256 implementations for testing.
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "TurboShake256",
+                () => CH.TurboShake256.Create(64));
+                
+            // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
         }
     }
 }

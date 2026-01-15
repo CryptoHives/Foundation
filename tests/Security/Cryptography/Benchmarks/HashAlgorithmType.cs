@@ -144,7 +144,10 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType CShake256_Managed = new("CSHAKE256", () => CH.CShake256.Create(64));
     public static readonly HashAlgorithmType CShake256_Bouncy = new("CSHAKE256", () => new BouncyCastleCShakeAdapter(256, null, null, 64));
 
-    public static readonly HashAlgorithmType KangarooTwelve_Managed = new("K12", () => CH.KangarooTwelve.Create(32));
+    public static readonly HashAlgorithmType KT128_Managed = new("KT128", () => CH.KT128.Create(32));
+    public static readonly HashAlgorithmType KT256_Managed = new("KT256", () => CH.KT256.Create(64));
+    public static readonly HashAlgorithmType TurboShake128_Managed = new("TurboSHAKE128", () => CH.TurboShake128.Create(32));
+    public static readonly HashAlgorithmType TurboShake256_Managed = new("TurboSHAKE256", () => CH.TurboShake256.Create(64));
 
 #if NET8_0_OR_GREATER
     // SIMD-accelerated variants (use SIMD when available)
@@ -314,7 +317,10 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Shake256_Managed;
         yield return CShake128_Managed;
         yield return CShake256_Managed;
-        yield return KangarooTwelve_Managed;
+        yield return KT128_Managed;
+        yield return KT256_Managed;
+        yield return TurboShake128_Managed;
+        yield return TurboShake256_Managed;
         yield return Blake2b_Managed;
         yield return Blake2s_Managed;
         yield return Blake3_Managed;
@@ -418,7 +424,10 @@ public sealed class HashAlgorithmType : IFormattable
         yield return CShake128_Bouncy;
         yield return CShake256_Managed;
         yield return CShake256_Bouncy;
-        yield return KangarooTwelve_Managed;
+        yield return KT128_Managed;
+        yield return KT256_Managed;
+        yield return TurboShake128_Managed;
+        yield return TurboShake256_Managed;
 
         // BLAKE
 #if NET8_0_OR_GREATER
@@ -510,7 +519,10 @@ public sealed class HashAlgorithmType : IFormattable
         yield return CShake128_Bouncy;
         yield return CShake256_Managed;
         yield return CShake256_Bouncy;
-        yield return KangarooTwelve_Managed;
+        yield return KT128_Managed;
+        yield return KT256_Managed;
+        yield return TurboShake128_Managed;
+        yield return TurboShake256_Managed;
     }
 
     /// <summary>All KMAC implementations for comparison, filtered to only supported algorithms.</summary>
