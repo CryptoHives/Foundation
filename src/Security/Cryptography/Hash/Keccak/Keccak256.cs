@@ -42,7 +42,7 @@ public sealed class Keccak256 : KeccakBase
     /// <summary>
     /// Initializes a new instance of the <see cref="Keccak256"/> class.
     /// </summary>
-    public Keccak256() : this(SimdSupport.None)
+    public Keccak256() : this(SimdSupport.Default)
     {
     }
 

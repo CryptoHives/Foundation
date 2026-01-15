@@ -54,7 +54,7 @@ public sealed class SHA3_224 : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_224"/> class.
     /// </summary>
-    public SHA3_224() : this(SimdSupport.All)
+    public SHA3_224() : this(SimdSupport.Default)
     {
     }
 

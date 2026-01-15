@@ -52,7 +52,12 @@ internal enum SimdSupport
     /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
-    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon
+    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon,
+
+    /// <summary>
+    /// The optimization to use if no specific SIMD flags are specified.
+    /// </summary>
+    Default = None
 }
 
 /// <summary>

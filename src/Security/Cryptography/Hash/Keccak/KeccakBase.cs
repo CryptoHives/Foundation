@@ -27,7 +27,7 @@ public abstract class KeccakBase : HashAlgorithm
     private protected readonly byte[] _buffer;
     private protected int _bufferLength;
 
-    internal KeccakBase(int rateBytes, SimdSupport simdSupport = SimdSupport.None)
+    internal KeccakBase(int rateBytes, SimdSupport simdSupport = SimdSupport.Default)
     {
         _keccakCore = new KeccakCoreState(simdSupport);
         _buffer = new byte[rateBytes];

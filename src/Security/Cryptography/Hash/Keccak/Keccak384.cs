@@ -47,7 +47,7 @@ public sealed class Keccak384 : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Keccak384"/> class.
     /// </summary>
-    public Keccak384() : this(SimdSupport.All)
+    public Keccak384() : this(SimdSupport.Default)
     {
     }
 

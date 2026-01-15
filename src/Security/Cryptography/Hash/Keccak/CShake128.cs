@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -18,7 +18,7 @@ using System.Text;
 /// When both N and S are empty, cSHAKE128 is equivalent to SHAKE128.
 /// </para>
 /// </remarks>
-public sealed class CShake128 : HashAlgorithm
+public sealed class CShake128 : KeccakBase
 {
     /// <summary>
     /// The default output size in bits.
@@ -35,13 +35,10 @@ public sealed class CShake128 : HashAlgorithm
     /// </summary>
     public const int CapacityBytes = 32;
 
-    private readonly ulong[] _state;
-    private readonly byte[] _buffer;
     private readonly int _outputBytes;
     private readonly byte[] _functionName;
     private readonly byte[] _customization;
     private readonly bool _isCustomized;
-    private int _bufferLength;
     private bool _finalized;
     private int _squeezeOffset;
 
@@ -51,8 +48,8 @@ public sealed class CShake128 : HashAlgorithm
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="functionName">The function name string N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S.</param>
-    public CShake128(int outputBytes = DefaultOutputBits / 8, string functionName = "", string customization = "")
-        : this(outputBytes, Encoding.UTF8.GetBytes(functionName ?? ""), Encoding.UTF8.GetBytes(customization ?? ""))
+    public CShake128(int outputBytes = DefaultOutputBits / 8, string? functionName = null, string? customization = null)
+        : this(SimdSupport.Default, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization))
     {
     }
 
@@ -63,11 +60,14 @@ public sealed class CShake128 : HashAlgorithm
     /// <param name="functionName">The function name bytes N.</param>
     /// <param name="customization">The customization bytes S.</param>
     public CShake128(int outputBytes, byte[] functionName, byte[] customization)
+        : this(SimdSupport.Default, outputBytes, functionName, customization)
     {
-        if (outputBytes <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
-        }
+    }
+
+    internal CShake128(SimdSupport simdSupport, int outputBytes, byte[]? functionName, byte[]? customization)
+        : base(RateBytes, simdSupport)
+    {
+        if (outputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
 
         _outputBytes = outputBytes;
         _functionName = functionName ?? [];
@@ -75,8 +75,6 @@ public sealed class CShake128 : HashAlgorithm
         _isCustomized = _functionName.Length > 0 || _customization.Length > 0;
 
         HashSizeValue = outputBytes * 8;
-        _state = new ulong[KeccakCore.StateSize];
-        _buffer = new byte[RateBytes];
         Initialize();
     }
 
@@ -92,20 +90,37 @@ public sealed class CShake128 : HashAlgorithm
     public static new CShake128 Create() => new();
 
     /// <summary>
+    /// Creates a new instance of the CShake128 hash function with the specified output length, function name, and
+    /// customization string.
+    /// </summary>
+    /// <param name="outputBytes">The desired length, in bytes, of the hash output. Must be a positive integer.</param>
+    /// <param name="functionName">An optional function name as a byte array, used to domain-separate the hash function. Can be null if no function
+    /// name is required.</param>
+    /// <param name="customization">An optional customization string as a byte array, used to further parameterize the hash function. Can be null if
+    /// no customization is required.</param>
+    /// <returns>A new CShake128 instance configured with the specified output length, function name, and customization string.</returns>
+    public static CShake128 Create(int outputBytes, byte[]? functionName = null, byte[]? customization = null)
+        => new(SimdSupport.Default, outputBytes, functionName, customization);
+
+    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8, byte[]? functionName = null, byte[]? customization = null)
+        => new(simdSupport, outputBytes, functionName, customization);
+
+    /// <summary>
     /// Creates a new instance of the <see cref="CShake128"/> class with specified parameters.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="functionName">The function name N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S (user-defined).</param>
-    public static CShake128 Create(int outputBytes, string functionName = "", string customization = "")
+    public static CShake128 Create(int outputBytes, string functionName, string? customization = null)
         => new(outputBytes, functionName, customization);
+
+    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes, string functionName, string? customization = null)
+        => new(simdSupport, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization));
 
     /// <inheritdoc/>
     public override void Initialize()
     {
-        Array.Clear(_state, 0, _state.Length);
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
+        base.Initialize();
         _finalized = false;
         _squeezeOffset = 0;
 
@@ -119,10 +134,7 @@ public sealed class CShake128 : HashAlgorithm
     /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
-        if (_finalized)
-        {
-            throw new InvalidOperationException("Cannot add data after finalization.");
-        }
+        if (_finalized) throw new InvalidOperationException("Cannot add data after finalization.");
 
         int offset = 0;
 
@@ -135,14 +147,14 @@ public sealed class CShake128 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                KeccakCore.Absorb(_state, _buffer, RateBytes);
+                _keccakCore.Absorb(_buffer, RateBytes);
                 _bufferLength = 0;
             }
         }
 
         while (offset + RateBytes <= source.Length)
         {
-            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes);
+            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
             offset += RateBytes;
         }
 
@@ -180,23 +192,12 @@ public sealed class CShake128 : HashAlgorithm
 
             _buffer[RateBytes - 1] |= 0x80;
 
-            KeccakCore.Absorb(_state, _buffer, RateBytes);
+            _keccakCore.Absorb(_buffer, RateBytes);
             _finalized = true;
             _squeezeOffset = 0;
         }
 
-        KeccakCore.SqueezeXof(_state, output, RateBytes, ref _squeezeOffset);
-    }
-
-    /// <inheritdoc/>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Array.Clear(_state, 0, _state.Length);
-            ClearBuffer(_buffer);
-        }
-        base.Dispose(disposing);
+        _keccakCore.SqueezeXof(output, RateBytes, ref _squeezeOffset);
     }
 
     private void AbsorbBytePad()
@@ -228,7 +229,7 @@ public sealed class CShake128 : HashAlgorithm
             int blockLen = Math.Min(RateBytes, bytePadded.Length - i);
             if (blockLen == RateBytes)
             {
-                KeccakCore.Absorb(_state, bytePadded.AsSpan(i, RateBytes), RateBytes);
+                _keccakCore.Absorb(bytePadded.AsSpan(i, RateBytes), RateBytes);
             }
             else
             {
