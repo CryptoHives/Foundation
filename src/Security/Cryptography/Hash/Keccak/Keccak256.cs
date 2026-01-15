@@ -39,15 +39,14 @@ public sealed class Keccak256 : HashAlgorithm
     /// </summary>
     private const byte DomainSeparator = 0x01;
 
-    private readonly ulong[] _state;
+    private KeccakCoreState _keccakCore;
     private readonly byte[] _buffer;
-    private readonly SimdSupport _simdSupport;
     private int _bufferLength;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Keccak256"/> class.
     /// </summary>
-    public Keccak256() : this(SimdSupport.All)
+    public Keccak256() : this(SimdSupport.None)
     {
     }
 
@@ -58,9 +57,8 @@ public sealed class Keccak256 : HashAlgorithm
     internal Keccak256(SimdSupport simdSupport)
     {
         HashSizeValue = HashSizeBits;
-        _state = new ulong[KeccakCore.StateSize];
+        _keccakCore = new KeccakCoreState(simdSupport);
         _buffer = new byte[RateBytes];
-        _simdSupport = simdSupport;
         Initialize();
     }
 
@@ -91,7 +89,7 @@ public sealed class Keccak256 : HashAlgorithm
     /// <inheritdoc/>
     public override void Initialize()
     {
-        Array.Clear(_state, 0, _state.Length);
+        _keccakCore.Reset();
         ClearBuffer(_buffer);
         _bufferLength = 0;
     }
@@ -110,14 +108,14 @@ public sealed class Keccak256 : HashAlgorithm
 
             if (_bufferLength == RateBytes)
             {
-                KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
+                _keccakCore.Absorb(_buffer, RateBytes);
                 _bufferLength = 0;
             }
         }
 
         while (offset + RateBytes <= source.Length)
         {
-            KeccakCore.Absorb(_state, source.Slice(offset, RateBytes), RateBytes, _simdSupport);
+            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
             offset += RateBytes;
         }
 
@@ -147,8 +145,8 @@ public sealed class Keccak256 : HashAlgorithm
 
         _buffer[RateBytes - 1] |= 0x80;
 
-        KeccakCore.Absorb(_state, _buffer, RateBytes, _simdSupport);
-        KeccakCore.Squeeze(_state, destination, HashSizeBytes);
+        _keccakCore.Absorb(_buffer, RateBytes);
+        _keccakCore.Squeeze(destination, HashSizeBytes);
 
         bytesWritten = HashSizeBytes;
         return true;
@@ -159,7 +157,7 @@ public sealed class Keccak256 : HashAlgorithm
     {
         if (disposing)
         {
-            Array.Clear(_state, 0, _state.Length);
+            _keccakCore.Reset();
             ClearBuffer(_buffer);
         }
         base.Dispose(disposing);
