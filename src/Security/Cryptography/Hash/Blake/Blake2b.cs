@@ -9,8 +9,8 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-#if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 #endif
@@ -487,7 +487,6 @@ public sealed class Blake2b : HashAlgorithm
         Span<ulong> m = stackalloc ulong[ScratchSize];
 
         // Parse message block into 16 64-bit words (little-endian)
-#if NET8_0_OR_GREATER
         // On little-endian platforms, directly reinterpret the byte span as ulong.
         // This avoids 16 individual BinaryPrimitives.ReadUInt64LittleEndian calls.
         if (BitConverter.IsLittleEndian)
@@ -495,7 +494,6 @@ public sealed class Blake2b : HashAlgorithm
             MemoryMarshal.Cast<byte, ulong>(block).CopyTo(m);
         }
         else
-#endif
         {
             for (int i = 0; i < ScratchSize; i++)
             {

@@ -323,14 +323,24 @@ public sealed class Streebog : HashAlgorithm
     {
         // Convert message to ulong array
         Span<ulong> mn = stackalloc ulong[8];
-        mn[0] = BinaryPrimitives.ReadUInt64LittleEndian(m);
-        mn[1] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(8));
-        mn[2] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(16));
-        mn[3] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(24));
-        mn[4] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(32));
-        mn[5] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(40));
-        mn[6] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(48));
-        mn[7] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(56));
+
+        // On little-endian platforms, directly reinterpret the byte span as ulong.
+        // This avoids 16 individual BinaryPrimitives.ReadUInt64LittleEndian calls.
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, ulong>(m).CopyTo(mn);
+        }
+        else
+        {
+            mn[0] = BinaryPrimitives.ReadUInt64LittleEndian(m);
+            mn[1] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(8));
+            mn[2] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(16));
+            mn[3] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(24));
+            mn[4] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(32));
+            mn[5] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(40));
+            mn[6] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(48));
+            mn[7] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(56));
+        }
 
         // g_N(h, m)
         GN(_h, _n, mn);
@@ -359,14 +369,21 @@ public sealed class Streebog : HashAlgorithm
 
         // Convert padded block to ulongs
         Span<ulong> p = stackalloc ulong[8];
-        p[0] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock);
-        p[1] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(8));
-        p[2] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(16));
-        p[3] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(24));
-        p[4] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(32));
-        p[5] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(40));
-        p[6] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(48));
-        p[7] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(56));
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, ulong>(paddedBlock).CopyTo(p);
+        }
+        else
+        {
+            p[0] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock);
+            p[1] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(8));
+            p[2] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(16));
+            p[3] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(24));
+            p[4] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(32));
+            p[5] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(40));
+            p[6] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(48));
+            p[7] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(56));
+        }
 
         // Stage 3: Process padded block
         GN(_h, _n, p);
@@ -411,6 +428,7 @@ public sealed class Streebog : HashAlgorithm
     /// The g_N compression function: h = h ^ E(h ^ N, m) ^ m
     /// Uses Miyaguchi-Preneel construction with SIMD acceleration.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
@@ -428,12 +446,11 @@ public sealed class Streebog : HashAlgorithm
         ApplyLPS(k);
 
         // t = E(k, m)
-        Span<ulong> t = stackalloc ulong[8];
-        E(k, m, t);
+        // E function outputs directly to Vector512, reusing kV for temp storage
+        E(k, m, ref kV);
 
         // h = h ^ t ^ m (using SIMD)
-        Vector512<ulong> tV = Vector512.Create(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
-        Vector512<ulong> resultV = Vector512.Xor(Vector512.Xor(hV, tV), mV);
+        Vector512<ulong> resultV = Vector512.Xor(Vector512.Xor(hV, kV), mV);
 
         // Store result back to h
         h[0] = resultV.GetElement(0);
@@ -450,7 +467,7 @@ public sealed class Streebog : HashAlgorithm
     /// The E function: 12-round block cipher with key schedule using SIMD.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, Span<ulong> result)
+    private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, ref Vector512<ulong> resultV)
     {
         // Initialize state and key as Vector512
         Vector512<ulong> stateV = Vector512.Create(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]);
@@ -477,17 +494,7 @@ public sealed class Streebog : HashAlgorithm
         }
 
         // Final AddRoundKey (SIMD)
-        Vector512<ulong> resultV = Vector512.Xor(stateV, keyV);
-
-        // Store result
-        result[0] = resultV.GetElement(0);
-        result[1] = resultV.GetElement(1);
-        result[2] = resultV.GetElement(2);
-        result[3] = resultV.GetElement(3);
-        result[4] = resultV.GetElement(4);
-        result[5] = resultV.GetElement(5);
-        result[6] = resultV.GetElement(6);
-        result[7] = resultV.GetElement(7);
+        resultV = Vector512.Xor(stateV, keyV);
     }
 #else
     /// <summary>

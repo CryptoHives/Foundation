@@ -8,6 +8,7 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 
 /// <summary>
@@ -112,14 +113,18 @@ public class StreebogTests
     /// <summary>
     /// Test Streebog-512 with empty string.
     /// </summary>
-    [Test]
-    public void Rfc6986EmptyString_Streebog512()
+    [TestCaseSource(typeof(Streebog512Implementations), nameof(Streebog512Implementations.All))]
+    public void Rfc6986EmptyString_Streebog512(HashAlgorithmFactory factory)
     {
         // Expected hash
         byte[] expected = Rfc6986EmptyStringExpected512;
 
-        using var streebog = Streebog.Create(64);
+        using var streebog = factory.Create();
         byte[] actual = streebog.ComputeHash(Array.Empty<byte>());
+
+        TestContext.Out.WriteLine($"{factory.Name}: {TestHelpers.ToHexString(actual)}");
+        TestContext.Out.WriteLine($"RFC Expected: {TestHelpers.ToHexString(expected)}");
+        TestContext.Out.WriteLine($"Match: {actual.SequenceEqual(expected)}");
 
         Assert.That(actual, Is.EqualTo(expected), "Streebog-512 empty string mismatch");
     }
@@ -130,14 +135,18 @@ public class StreebogTests
     /// <remarks>
     /// RFC 6986 Section 10.1.1 - Message 1 for 512-bit hash.
     /// </remarks>
-    [Test]
-    public void Rfc6986M1_Streebog512()
+    [TestCaseSource(typeof(Streebog512Implementations), nameof(Streebog512Implementations.All))]
+    public void Rfc6986M1_Streebog512(HashAlgorithmFactory factory)
     {
         // Expected hash from RFC 6986 Section 10.1.1
         byte[] expected = Rfc6986M1Expected512;
 
-        using var streebog = Streebog.Create(64);
+        using var streebog = factory.Create();
         byte[] actual = streebog.ComputeHash(Rfc6986Message1);
+
+        TestContext.Out.WriteLine($"{factory.Name}: {TestHelpers.ToHexString(actual)}");
+        TestContext.Out.WriteLine($"RFC Expected: {TestHelpers.ToHexString(expected)}");
+        TestContext.Out.WriteLine($"Match: {actual.SequenceEqual(expected)}");
 
         Assert.That(actual, Is.EqualTo(expected), "Streebog-512 RFC 6986 M1 mismatch");
     }
@@ -148,14 +157,18 @@ public class StreebogTests
     /// <remarks>
     /// RFC 6986 Section 10.1.2 - Message 2 for 512-bit hash.
     /// </remarks>
-    [Test]
-    public void Rfc6986M2_Streebog512()
+    [TestCaseSource(typeof(Streebog512Implementations), nameof(Streebog512Implementations.All))]
+    public void Rfc6986M2_Streebog512(HashAlgorithmFactory factory)
     {
         // Expected hash from RFC 6986 Section 10.1.2
         byte[] expected = Rfc6986M2Expected512;
 
-        using var streebog = Streebog.Create(64);
+        using var streebog = factory.Create();
         byte[] actual = streebog.ComputeHash(Rfc6986Message2);
+
+        TestContext.Out.WriteLine($"{factory.Name}: {TestHelpers.ToHexString(actual)}");
+        TestContext.Out.WriteLine($"RFC Expected: {TestHelpers.ToHexString(expected)}");
+        TestContext.Out.WriteLine($"Match: {actual.SequenceEqual(expected)}");
 
         Assert.That(actual, Is.EqualTo(expected), "Streebog-512 RFC 6986 M2 mismatch");
     }
@@ -163,14 +176,18 @@ public class StreebogTests
     /// <summary>
     /// Test Streebog-256 with empty string.
     /// </summary>
-    [Test]
-    public void Rfc6986EmptyString_Streebog256()
+    [TestCaseSource(typeof(Streebog256Implementations), nameof(Streebog256Implementations.All))]
+    public void Rfc6986EmptyString_Streebog256(HashAlgorithmFactory factory)
     {
         // Expected hash
         byte[] expected = Rfc6986EmptyStringExpected256;
 
-        using var streebog = Streebog.Create(32);
+        using var streebog = factory.Create();
         byte[] actual = streebog.ComputeHash(Array.Empty<byte>());
+
+        TestContext.Out.WriteLine($"{factory.Name}: {TestHelpers.ToHexString(actual)}");
+        TestContext.Out.WriteLine($"RFC Expected: {TestHelpers.ToHexString(expected)}");
+        TestContext.Out.WriteLine($"Match: {actual.SequenceEqual(expected)}");
 
         Assert.That(actual, Is.EqualTo(expected), "Streebog-256 empty string mismatch");
     }
@@ -181,16 +198,42 @@ public class StreebogTests
     /// <remarks>
     /// RFC 6986 Section 10.2.1 - Message 1 for 256-bit hash.
     /// </remarks>
-    [Test]
-    public void Rfc6986M1_Streebog256()
+    [TestCaseSource(typeof(Streebog256Implementations), nameof(Streebog256Implementations.All))]
+    public void Rfc6986M1_Streebog256(HashAlgorithmFactory factory)
     {
         // Expected hash from RFC 6986 Section 10.2.1
         byte[] expected = Rfc6986M1Expected256;
 
-        using var streebog = Streebog.Create(32);
+        using var streebog = factory.Create();
         byte[] actual = streebog.ComputeHash(Rfc6986Message1);
 
+        TestContext.Out.WriteLine($"{factory.Name}: {TestHelpers.ToHexString(actual)}");
+        TestContext.Out.WriteLine($"RFC Expected: {TestHelpers.ToHexString(expected)}");
+        TestContext.Out.WriteLine($"Match: {actual.SequenceEqual(expected)}");
+
         Assert.That(actual, Is.EqualTo(expected), "Streebog-256 RFC 6986 M1 mismatch");
+    }
+
+    /// <summary>
+    /// Test Streebog-256 with RFC 6986 test vector M2 (72 bytes).
+    /// </summary>
+    /// <remarks>
+    /// RFC 6986 Section 10.2.2 - Message 2 for 256-bit hash.
+    /// </remarks>
+    [TestCaseSource(typeof(Streebog256Implementations), nameof(Streebog256Implementations.All))]
+    public void Rfc6986M2_Streebog256(HashAlgorithmFactory factory)
+    {
+        // Expected hash from RFC 6986 Section 10.2.2
+        byte[] expected = Rfc6986M2Expected256;
+
+        using var streebog = factory.Create();
+        byte[] actual = streebog.ComputeHash(Rfc6986Message2);
+
+        TestContext.Out.WriteLine($"{factory.Name}: {TestHelpers.ToHexString(actual)}");
+        TestContext.Out.WriteLine($"RFC Expected: {TestHelpers.ToHexString(expected)}");
+        TestContext.Out.WriteLine($"Match: {actual.SequenceEqual(expected)}");
+
+        Assert.That(actual, Is.EqualTo(expected), "Streebog-256 RFC 6986 M2 mismatch");
     }
 
     /// <summary>
@@ -241,24 +284,6 @@ public class StreebogTests
         Streebog.ApplyLPS(testvector);
 
         Assert.That(testvector, Is.EqualTo(expected), "Streebog-256 Second round LPS mismatch");
-    }
-
-    /// <summary>
-    /// Test Streebog-256 with RFC 6986 test vector M2 (72 bytes).
-    /// </summary>
-    /// <remarks>
-    /// RFC 6986 Section 10.2.2 - Message 2 for 256-bit hash.
-    /// </remarks>
-    [Test]
-    public void Rfc6986M2_Streebog256()
-    {
-        // Expected hash from RFC 6986 Section 10.2.2
-        byte[] expected = Rfc6986M2Expected256;
-
-        using var streebog = Streebog.Create(32);
-        byte[] actual = streebog.ComputeHash(Rfc6986Message2);
-
-        Assert.That(actual, Is.EqualTo(expected), "Streebog-256 RFC 6986 M2 mismatch");
     }
 
     /// <summary>

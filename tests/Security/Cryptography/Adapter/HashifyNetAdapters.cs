@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Adapter;
@@ -273,7 +273,7 @@ internal sealed class HashifyNetKeccakAdapter : HashAlgorithm
     {
         _buffer.Position = 0;
         // Create a fresh hasher for each computation to ensure clean state
-        var config = new KeccakConfig { HashSizeInBits = _hashSizeBits, UseSha3Padding = _useSha3Padding };
+        using var config = new KeccakConfig { HashSizeInBits = _hashSizeBits, UseSha3Padding = _useSha3Padding };
         using var hasher = HashFactory<IKeccak>.Create(config);
         var result = hasher.ComputeHash(_buffer);
         return [.. result.Hash];
@@ -342,7 +342,7 @@ internal sealed class HashifyNetStreebogAdapter : HashAlgorithm
     {
         _buffer.Position = 0;
         // Create a fresh hasher for each computation to ensure clean state
-        var config = new GostConfig { HashSizeInBits = _hashSizeBits };
+        using var config = new GostConfig { HashSizeInBits = _hashSizeBits };
         using var hasher = HashFactory<IGost>.Create(config);
         var result = hasher.ComputeHash(_buffer);
         return [.. result.Hash];
