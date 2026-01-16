@@ -144,122 +144,65 @@ internal unsafe struct KeccakCoreState
         public PermuteAvx512FVectors()
         {
             Mask5 = Vector512.Create(ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, 0UL, 0UL, 0UL);
-            Perm1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
-            Perm2 = Vector512.Create(2UL, 3UL, 4UL, 0UL, 1UL, 5UL, 6UL, 7UL);
-            PermTheta1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
-            PermTheta4 = Vector512.Create(4UL, 0UL, 1UL, 2UL, 3UL, 5UL, 6UL, 7UL);
-            Rho0 = Vector512.Create(0UL, 1UL, 62UL, 28UL, 27UL, 0UL, 0UL, 0UL);
-            Rho1 = Vector512.Create(36UL, 44UL, 6UL, 55UL, 20UL, 0UL, 0UL, 0UL);
-            Rho2 = Vector512.Create(3UL, 10UL, 43UL, 25UL, 39UL, 0UL, 0UL, 0UL);
-            Rho3 = Vector512.Create(41UL, 45UL, 15UL, 21UL, 8UL, 0UL, 0UL, 0UL);
-            Rho4 = Vector512.Create(18UL, 2UL, 61UL, 56UL, 14UL, 0UL, 0UL, 0UL);
+            MoveThetaPrev = Vector512.Create(4UL, 0UL, 1UL, 2UL, 3UL, 5UL, 6UL, 7UL);
+            MoveThetaNext = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
+            RhoB = Vector512.Create(0UL, 1UL, 62UL, 28UL, 27UL, 0UL, 0UL, 0UL);
+            RhoG = Vector512.Create(36UL, 44UL, 6UL, 55UL, 20UL, 0UL, 0UL, 0UL);
+            RhoK = Vector512.Create(3UL, 10UL, 43UL, 25UL, 39UL, 0UL, 0UL, 0UL);
+            RhoM = Vector512.Create(41UL, 45UL, 15UL, 21UL, 8UL, 0UL, 0UL, 0UL);
+            RhoS = Vector512.Create(18UL, 2UL, 61UL, 56UL, 14UL, 0UL, 0UL, 0UL);
 
-            // Pi permutations
-            Pi0_From1 = Vector512.Create(0UL, 8 + 1, 2, 3, 4, 5, 6, 7);
-            Pi0_From2 = Vector512.Create(0UL, 1, 8 + 2, 3, 4, 5, 6, 7);
-            Pi0_From3 = Vector512.Create(0UL, 1, 2, 8 + 3, 4, 5, 6, 7);
-            Pi0_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 4, 5, 6, 7);
+            Pi1B = Vector512.Create(0UL, 3UL, 1UL, 4UL, 2UL, 5UL, 6UL, 7UL);
+            Pi1G = Vector512.Create(1UL, 4UL, 2UL, 0UL, 3UL, 5UL, 6UL, 7UL);
+            Pi1K = Vector512.Create(2UL, 0UL, 3UL, 1UL, 4UL, 5UL, 6UL, 7UL);
+            Pi1M = Vector512.Create(3UL, 1UL, 4UL, 2UL, 0UL, 5UL, 6UL, 7UL);
+            Pi1S = Vector512.Create(4UL, 2UL, 0UL, 3UL, 1UL, 5UL, 6UL, 7UL);
 
-            Pi1_From0 = Vector512.Create(3UL, 8 + 4, 2, 3, 4, 5, 6, 7);
-            Pi1_From2 = Vector512.Create(0UL, 1, 8 + 0, 3, 4, 5, 6, 7);
-            Pi1_From3 = Vector512.Create(0UL, 1, 2, 8 + 1, 4, 5, 6, 7);
-            Pi1_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 2, 5, 6, 7);
+            Pi2S1 = Vector512.Create(0UL, 1UL, 2UL, 3UL, 4UL, 5UL, 8UL, 10UL);
+            Pi2S2 = Vector512.Create(0UL, 1UL, 2UL, 3UL, 4UL, 5UL, 9UL, 11UL);
+            Pi2BG = Vector512.Create(0UL, 1UL, 8UL, 9UL, 6UL, 5UL, 6UL, 7UL);
+            Pi2KM = Vector512.Create(2UL, 3UL, 10UL, 11UL, 7UL, 5UL, 6UL, 7UL);
+            Pi2S3 = Vector512.Create(4UL, 5UL, 12UL, 13UL, 4UL, 5UL, 6UL, 7UL);
 
-            Pi2_From0 = Vector512.Create(1UL, 8 + 2, 2, 3, 4, 5, 6, 7);
-            Pi2_From2 = Vector512.Create(0UL, 1, 8 + 3, 3, 4, 5, 6, 7);
-            Pi2_From3 = Vector512.Create(0UL, 1, 2, 8 + 4, 4, 5, 6, 7);
-            Pi2_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 0, 5, 6, 7);
-
-            Pi3_From0 = Vector512.Create(4UL, 8 + 0, 2, 3, 4, 5, 6, 7);
-            Pi3_From2 = Vector512.Create(0UL, 1, 8 + 1, 3, 4, 5, 6, 7);
-            Pi3_From3 = Vector512.Create(0UL, 1, 2, 8 + 2, 4, 5, 6, 7);
-            Pi3_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 3, 5, 6, 7);
-
-            Pi4_From0 = Vector512.Create(2UL, 8 + 3, 2, 3, 4, 5, 6, 7);
-            Pi4_From2 = Vector512.Create(0UL, 1, 8 + 4, 3, 4, 5, 6, 7);
-            Pi4_From3 = Vector512.Create(0UL, 1, 2, 8 + 0, 4, 5, 6, 7);
-            Pi4_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 1, 5, 6, 7);
+            Lane4Mask = Vector512.Create(0UL, 0UL, 0UL, 0UL, ulong.MaxValue, 0UL, 0UL, 0UL);
         }
 
         public readonly Vector512<ulong> Mask5;
-        public readonly Vector512<ulong> Perm1;
-        public readonly Vector512<ulong> Perm2;
-        public readonly Vector512<ulong> PermTheta1;
-        public readonly Vector512<ulong> PermTheta4;
-        public readonly Vector512<ulong> Rho0;
-        public readonly Vector512<ulong> Rho1;
-        public readonly Vector512<ulong> Rho2;
-        public readonly Vector512<ulong> Rho3;
-        public readonly Vector512<ulong> Rho4;
+        public readonly Vector512<ulong> MoveThetaPrev;
+        public readonly Vector512<ulong> MoveThetaNext;
+        public readonly Vector512<ulong> RhoB;
+        public readonly Vector512<ulong> RhoG;
+        public readonly Vector512<ulong> RhoK;
+        public readonly Vector512<ulong> RhoM;
+        public readonly Vector512<ulong> RhoS;
 
-        // Pi permutations
-        public readonly Vector512<ulong> Pi0_From1;
-        public readonly Vector512<ulong> Pi0_From2;
-        public readonly Vector512<ulong> Pi0_From3;
-        public readonly Vector512<ulong> Pi0_From4;
+        public readonly Vector512<ulong> Pi1B;
+        public readonly Vector512<ulong> Pi1G;
+        public readonly Vector512<ulong> Pi1K;
+        public readonly Vector512<ulong> Pi1M;
+        public readonly Vector512<ulong> Pi1S;
 
-        public readonly Vector512<ulong> Pi1_From0;
-        public readonly Vector512<ulong> Pi1_From2;
-        public readonly Vector512<ulong> Pi1_From3;
-        public readonly Vector512<ulong> Pi1_From4;
-
-        public readonly Vector512<ulong> Pi2_From0;
-        public readonly Vector512<ulong> Pi2_From2;
-        public readonly Vector512<ulong> Pi2_From3;
-        public readonly Vector512<ulong> Pi2_From4;
-
-        public readonly Vector512<ulong> Pi3_From0;
-        public readonly Vector512<ulong> Pi3_From2;
-        public readonly Vector512<ulong> Pi3_From3;
-        public readonly Vector512<ulong> Pi3_From4;
-
-        public readonly Vector512<ulong> Pi4_From0;
-        public readonly Vector512<ulong> Pi4_From2;
-        public readonly Vector512<ulong> Pi4_From3;
-        public readonly Vector512<ulong> Pi4_From4;
+        public readonly Vector512<ulong> Pi2S1;
+        public readonly Vector512<ulong> Pi2S2;
+        public readonly Vector512<ulong> Pi2BG;
+        public readonly Vector512<ulong> Pi2KM;
+        public readonly Vector512<ulong> Pi2S3;
+        public readonly Vector512<ulong> Lane4Mask;
     }
 
     private static readonly PermuteAvx512FVectors Avx512FVectors = new();
+    private static readonly Vector512<ulong>[] RoundConstantsAvx512 = CreateRoundConstantsAvx512();
 
-#if mist
-    private static readonly Vector512<ulong> Mask5 = Vector512.Create(
-        ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, 0UL, 0UL, 0UL);
-    private static readonly Vector512<ulong> Perm1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
-    private static readonly Vector512<ulong> Perm2 = Vector512.Create(2UL, 3UL, 4UL, 0UL, 1UL, 5UL, 6UL, 7UL);
-    private static readonly Vector512<ulong> PermTheta1 = Vector512.Create(1UL, 2UL, 3UL, 4UL, 0UL, 5UL, 6UL, 7UL);
-    private static readonly Vector512<ulong> PermTheta4 = Vector512.Create(4UL, 0UL, 1UL, 2UL, 3UL, 5UL, 6UL, 7UL);
-    private static readonly Vector512<ulong> Rho0 = Vector512.Create(0UL, 1UL, 62UL, 28UL, 27UL, 0UL, 0UL, 0UL);
-    private static readonly Vector512<ulong> Rho1 = Vector512.Create(36UL, 44UL, 6UL, 55UL, 20UL, 0UL, 0UL, 0UL);
-    private static readonly Vector512<ulong> Rho2 = Vector512.Create(3UL, 10UL, 43UL, 25UL, 39UL, 0UL, 0UL, 0UL);
-    private static readonly Vector512<ulong> Rho3 = Vector512.Create(41UL, 45UL, 15UL, 21UL, 8UL, 0UL, 0UL, 0UL);
-    private static readonly Vector512<ulong> Rho4 = Vector512.Create(18UL, 2UL, 61UL, 56UL, 14UL, 0UL, 0UL, 0UL);
+    private static Vector512<ulong>[] CreateRoundConstantsAvx512()
+    {
+        var constants = new Vector512<ulong>[Rounds];
+        for (int i = 0; i < Rounds; i++)
+        {
+            constants[i] = Vector512.Create(RoundConstants[i], 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL);
+        }
 
-    // Pi permutations
-    private static readonly Vector512<ulong> Pi0_From1 = Vector512.Create(0UL, 8 + 1, 2, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi0_From2 = Vector512.Create(0UL, 1, 8 + 2, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi0_From3 = Vector512.Create(0UL, 1, 2, 8 + 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi0_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 4, 5, 6, 7);
-
-    private static readonly Vector512<ulong> Pi1_From0 = Vector512.Create(3UL, 8 + 4, 2, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi1_From2 = Vector512.Create(0UL, 1, 8 + 0, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi1_From3 = Vector512.Create(0UL, 1, 2, 8 + 1, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi1_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 2, 5, 6, 7);
-
-    private static readonly Vector512<ulong> Pi2_From0 = Vector512.Create(1UL, 8 + 2, 2, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi2_From2 = Vector512.Create(0UL, 1, 8 + 3, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi2_From3 = Vector512.Create(0UL, 1, 2, 8 + 4, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi2_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 0, 5, 6, 7);
-
-    private static readonly Vector512<ulong> Pi3_From0 = Vector512.Create(4UL, 8 + 0, 2, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi3_From2 = Vector512.Create(0UL, 1, 8 + 1, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi3_From3 = Vector512.Create(0UL, 1, 2, 8 + 2, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi3_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 3, 5, 6, 7);
-
-    private static readonly Vector512<ulong> Pi4_From0 = Vector512.Create(2UL, 8 + 3, 2, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi4_From2 = Vector512.Create(0UL, 1, 8 + 4, 3, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi4_From3 = Vector512.Create(0UL, 1, 2, 8 + 0, 4, 5, 6, 7);
-    private static readonly Vector512<ulong> Pi4_From4 = Vector512.Create(0UL, 1, 2, 3, 8 + 1, 5, 6, 7);
-#endif
+        return constants;
+    }
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -267,164 +210,77 @@ internal unsafe struct KeccakCoreState
     {
         fixed (ulong* statePtr = _state)
         {
-            // Load state into vectors
-            var mask5 = Avx512FVectors.Mask5;
-            Vector512<ulong> c0 = Vector512.BitwiseAnd(mask5,
-                Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[0]));
-            Vector512<ulong> c1 = Vector512.BitwiseAnd(mask5,
-                Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[5]));
-            Vector512<ulong> c2 = Vector512.BitwiseAnd(mask5,
-                Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[10]));
-            Vector512<ulong> c3 = Vector512.BitwiseAnd(mask5,
-                Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[15]));
+            var vectors = Avx512FVectors;
+            var mask5 = vectors.Mask5;
 
-            Vector256<ulong> c4a = Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[20]);
-            Vector512<ulong> c4 = Vector512.Create(c4a, Vector256.Create(statePtr[24], 0UL, 0UL, 0UL));
+            Vector512<ulong> a0 = Vector512.BitwiseAnd(mask5, Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[0]));
+            Vector512<ulong> a1 = Vector512.BitwiseAnd(mask5, Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[5]));
+            Vector512<ulong> a2 = Vector512.BitwiseAnd(mask5, Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[10]));
+            Vector512<ulong> a3 = Vector512.BitwiseAnd(mask5, Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[15]));
 
-            // Cache round constants reference
-            ref ulong rcRef = ref MemoryMarshal.GetArrayDataReference(RoundConstants);
+            Vector256<ulong> a4Lower = Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[20]);
+            Vector512<ulong> a4 = Vector512.Create(a4Lower, Vector256.Create(statePtr[24], 0UL, 0UL, 0UL));
 
-            for (int round = startRound; round < Rounds; round += 2)
+            for (int round = startRound; round < Rounds; round++)
             {
-                // Round N
-                {
-                    // Theta
-                    Vector512<ulong> parity = Avx512F.TernaryLogic(
-                        Avx512F.TernaryLogic(c0, c1, c2, 0x96), c3, c4, 0x96);
+                Vector512<ulong> parity = Avx512F.TernaryLogic(
+                    Avx512F.TernaryLogic(a0, a1, a2, 0x96), a3, a4, 0x96);
 
-                    Vector512<ulong> theta = Avx512F.Xor(
-                        Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta4),
-                        Avx512F.RotateLeft(Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta1), 1));
+                Vector512<ulong> thetaPrev = Avx512F.PermuteVar8x64(parity, vectors.MoveThetaPrev);
+                Vector512<ulong> thetaNext = Avx512F.RotateLeft(Avx512F.PermuteVar8x64(parity, vectors.MoveThetaNext), 1);
 
-                    c0 = Avx512F.Xor(c0, theta);
-                    c1 = Avx512F.Xor(c1, theta);
-                    c2 = Avx512F.Xor(c2, theta);
-                    c3 = Avx512F.Xor(c3, theta);
-                    c4 = Avx512F.Xor(c4, theta);
+                a0 = Avx512F.TernaryLogic(a0, thetaPrev, thetaNext, 0x96);
+                a1 = Avx512F.TernaryLogic(a1, thetaPrev, thetaNext, 0x96);
+                a2 = Avx512F.TernaryLogic(a2, thetaPrev, thetaNext, 0x96);
+                a3 = Avx512F.TernaryLogic(a3, thetaPrev, thetaNext, 0x96);
+                a4 = Avx512F.TernaryLogic(a4, thetaPrev, thetaNext, 0x96);
 
-                    // Rho
-                    c0 = Avx512F.RotateLeftVariable(c0, Avx512FVectors.Rho0);
-                    c1 = Avx512F.RotateLeftVariable(c1, Avx512FVectors.Rho1);
-                    c2 = Avx512F.RotateLeftVariable(c2, Avx512FVectors.Rho2);
-                    c3 = Avx512F.RotateLeftVariable(c3, Avx512FVectors.Rho3);
-                    c4 = Avx512F.RotateLeftVariable(c4, Avx512FVectors.Rho4);
+                a0 = Avx512F.RotateLeftVariable(a0, vectors.RhoB);
+                a1 = Avx512F.RotateLeftVariable(a1, vectors.RhoG);
+                a2 = Avx512F.RotateLeftVariable(a2, vectors.RhoK);
+                a3 = Avx512F.RotateLeftVariable(a3, vectors.RhoM);
+                a4 = Avx512F.RotateLeftVariable(a4, vectors.RhoS);
 
-                    // Pi
-                    Vector512<ulong> c0Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi0_From1, c1);
-                    c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From2, c2);
-                    c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From3, c3);
-                    c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From4, c4);
+                Vector512<ulong> p0 = Avx512F.PermuteVar8x64(a0, vectors.Pi1B);
+                Vector512<ulong> p1 = Avx512F.PermuteVar8x64(a1, vectors.Pi1G);
+                Vector512<ulong> p2 = Avx512F.PermuteVar8x64(a2, vectors.Pi1K);
+                Vector512<ulong> p3 = Avx512F.PermuteVar8x64(a3, vectors.Pi1M);
+                Vector512<ulong> p4 = Avx512F.PermuteVar8x64(a4, vectors.Pi1S);
 
-                    Vector512<ulong> c1Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi1_From0, c1);
-                    c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From2, c2);
-                    c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From3, c3);
-                    c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From4, c4);
+                a0 = Avx512F.TernaryLogic(p0, p1, p2, 0xD2);
+                a1 = Avx512F.TernaryLogic(p1, p2, p3, 0xD2);
+                a2 = Avx512F.TernaryLogic(p2, p3, p4, 0xD2);
+                a3 = Avx512F.TernaryLogic(p3, p4, p0, 0xD2);
+                a4 = Avx512F.TernaryLogic(p4, p0, p1, 0xD2);
 
-                    Vector512<ulong> c2Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi2_From0, c1);
-                    c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From2, c2);
-                    c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From3, c3);
-                    c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From4, c4);
+                a0 = Vector512.Xor(a0, RoundConstantsAvx512[round]);
 
-                    Vector512<ulong> c3Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi3_From0, c1);
-                    c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From2, c2);
-                    c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From3, c3);
-                    c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From4, c4);
+                Vector512<ulong> a4Chi = a4;
+                Vector512<ulong> s0 = Avx512F.UnpackLow(a0, a1);
+                Vector512<ulong> s1 = Avx512F.UnpackLow(a2, a3);
+                s0 = Avx512F.PermuteVar8x64x2(s0, vectors.Pi2S1, a4Chi);
+                Vector512<ulong> s2 = Avx512F.UnpackHigh(a0, a1);
+                Vector512<ulong> s3 = Avx512F.UnpackHigh(a2, a3);
+                s2 = Avx512F.PermuteVar8x64x2(s2, vectors.Pi2S2, a4Chi);
 
-                    Vector512<ulong> c4Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi4_From0, c1);
-                    c0 = c0Pi;
-                    c1 = c1Pi;
-                    c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From2, c2);
-                    c2 = c2Pi;
-                    c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From3, c3);
-                    c3 = c3Pi;
-                    c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From4, c4);
-                    c4 = c4Pi;
+                a0 = Avx512F.PermuteVar8x64x2(s0, vectors.Pi2BG, s1);
+                a1 = Avx512F.PermuteVar8x64x2(s2, vectors.Pi2BG, s3);
+                a2 = Avx512F.PermuteVar8x64x2(s0, vectors.Pi2KM, s1);
+                a3 = Avx512F.PermuteVar8x64x2(s2, vectors.Pi2KM, s3);
+                s0 = Avx512F.PermuteVar8x64x2(s0, vectors.Pi2S3, s1);
 
-                    // Chi
-                    var perm1 = Avx512FVectors.Perm1;
-                    var perm2 = Avx512FVectors.Perm2;
-                    c0 = Avx512F.TernaryLogic(c0, Avx512F.PermuteVar8x64(c0, perm1), Avx512F.PermuteVar8x64(c0, perm2), 0xD2);
-                    c1 = Avx512F.TernaryLogic(c1, Avx512F.PermuteVar8x64(c1, perm1), Avx512F.PermuteVar8x64(c1, perm2), 0xD2);
-                    c2 = Avx512F.TernaryLogic(c2, Avx512F.PermuteVar8x64(c2, perm1), Avx512F.PermuteVar8x64(c2, perm2), 0xD2);
-                    c3 = Avx512F.TernaryLogic(c3, Avx512F.PermuteVar8x64(c3, perm1), Avx512F.PermuteVar8x64(c3, perm2), 0xD2);
-                    c4 = Avx512F.TernaryLogic(c4, Avx512F.PermuteVar8x64(c4, perm1), Avx512F.PermuteVar8x64(c4, perm2), 0xD2);
-
-                    // Iota
-                    c0 = Vector512.Xor(c0, Vector512.Create(Unsafe.Add(ref rcRef, round), 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL));
-                }
-
-                // Round N+1 (identical structure, just different round constant)
-                {
-                    Vector512<ulong> parity = Avx512F.TernaryLogic(
-                        Avx512F.TernaryLogic(c0, c1, c2, 0x96), c3, c4, 0x96);
-
-                    Vector512<ulong> theta = Avx512F.Xor(
-                        Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta4),
-                        Avx512F.RotateLeft(Avx512F.PermuteVar8x64(parity, Avx512FVectors.PermTheta1), 1));
-
-                    c0 = Avx512F.Xor(c0, theta);
-                    c1 = Avx512F.Xor(c1, theta);
-                    c2 = Avx512F.Xor(c2, theta);
-                    c3 = Avx512F.Xor(c3, theta);
-                    c4 = Avx512F.Xor(c4, theta);
-
-                    c0 = Avx512F.RotateLeftVariable(c0, Avx512FVectors.Rho0);
-                    c1 = Avx512F.RotateLeftVariable(c1, Avx512FVectors.Rho1);
-                    c2 = Avx512F.RotateLeftVariable(c2, Avx512FVectors.Rho2);
-                    c3 = Avx512F.RotateLeftVariable(c3, Avx512FVectors.Rho3);
-                    c4 = Avx512F.RotateLeftVariable(c4, Avx512FVectors.Rho4);
-
-                    Vector512<ulong> c0Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi0_From1, c1);
-                    c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From2, c2);
-                    c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From3, c3);
-                    c0Pi = Avx512F.PermuteVar8x64x2(c0Pi, Avx512FVectors.Pi0_From4, c4);
-
-                    Vector512<ulong> c1Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi1_From0, c1);
-                    c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From2, c2);
-                    c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From3, c3);
-                    c1Pi = Avx512F.PermuteVar8x64x2(c1Pi, Avx512FVectors.Pi1_From4, c4);
-
-                    Vector512<ulong> c2Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi2_From0, c1);
-                    c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From2, c2);
-                    c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From3, c3);
-                    c2Pi = Avx512F.PermuteVar8x64x2(c2Pi, Avx512FVectors.Pi2_From4, c4);
-
-                    Vector512<ulong> c3Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi3_From0, c1);
-                    c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From2, c2);
-                    c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From3, c3);
-                    c3Pi = Avx512F.PermuteVar8x64x2(c3Pi, Avx512FVectors.Pi3_From4, c4);
-
-                    Vector512<ulong> c4Pi = Avx512F.PermuteVar8x64x2(c0, Avx512FVectors.Pi4_From0, c1);
-                    c0 = c0Pi;
-                    c1 = c1Pi;
-                    c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From2, c2);
-                    c2 = c2Pi;
-                    c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From3, c3);
-                    c3 = c3Pi;
-                    c4Pi = Avx512F.PermuteVar8x64x2(c4Pi, Avx512FVectors.Pi4_From4, c4);
-                    c4 = c4Pi;
-
-                    // Chi
-                    var perm1 = Avx512FVectors.Perm1;
-                    var perm2 = Avx512FVectors.Perm2;
-                    c0 = Avx512F.TernaryLogic(c0, Avx512F.PermuteVar8x64(c0, perm1), Avx512F.PermuteVar8x64(c0, perm2), 0xD2);
-                    c1 = Avx512F.TernaryLogic(c1, Avx512F.PermuteVar8x64(c1, perm1), Avx512F.PermuteVar8x64(c1, perm2), 0xD2);
-                    c2 = Avx512F.TernaryLogic(c2, Avx512F.PermuteVar8x64(c2, perm1), Avx512F.PermuteVar8x64(c2, perm2), 0xD2);
-                    c3 = Avx512F.TernaryLogic(c3, Avx512F.PermuteVar8x64(c3, perm1), Avx512F.PermuteVar8x64(c3, perm2), 0xD2);
-                    c4 = Avx512F.TernaryLogic(c4, Avx512F.PermuteVar8x64(c4, perm1), Avx512F.PermuteVar8x64(c4, perm2), 0xD2);
-
-                    // Iota
-                    c0 = Vector512.Xor(c0, Vector512.Create(Unsafe.Add(ref rcRef, round + 1), 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL));
-                }
+                Vector512<ulong> lane4Mask = vectors.Lane4Mask;
+                Vector512<ulong> keepLane4 = Avx512F.And(lane4Mask, a4Chi);
+                Vector512<ulong> replaceOthers = Avx512F.AndNot(lane4Mask, s0);
+                a4 = Avx512F.Or(keepLane4, replaceOthers);
             }
 
-            // Store state back
-            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[0]) = c0;
-            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[5]) = c1;
-            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[10]) = c2;
-            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[15]) = c3;
-            Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[20]) = c4.GetLower();
-            statePtr[24] = c4.GetElement(4);
+            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[0]) = a0;
+            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[5]) = a1;
+            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[10]) = a2;
+            Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[15]) = a3;
+            Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[20]) = a4.GetLower();
+            statePtr[24] = a4.GetElement(4);
         }
     }
 
