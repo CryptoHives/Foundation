@@ -342,7 +342,7 @@ internal sealed class HashifyNetStreebogAdapter : HashAlgorithm
     {
         _buffer.Position = 0;
         // Create a fresh hasher for each computation to ensure clean state
-        var config = new GostConfig { HashSizeInBits = _hashSizeBits };
+        using var config = new GostConfig { HashSizeInBits = _hashSizeBits };
         using var hasher = HashFactory<IGost>.Create(config);
         var result = hasher.ComputeHash(_buffer);
         return [.. result.Hash];
