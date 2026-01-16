@@ -101,8 +101,8 @@ public class Blake2sTests
         byte[] hash16 = blake16.ComputeHash(input);
         byte[] hash32 = blake32.ComputeHash(input);
 
-        Assert.That(hash16.Length, Is.EqualTo(16));
-        Assert.That(hash32.Length, Is.EqualTo(32));
+        Assert.That(hash16, Has.Length.EqualTo(16));
+        Assert.That(hash32, Has.Length.EqualTo(32));
     }
 
     /// <summary>

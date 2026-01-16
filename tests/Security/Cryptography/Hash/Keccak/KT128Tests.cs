@@ -122,8 +122,8 @@ public class KT128Tests
         byte[] hash16 = kt128_16.ComputeHash(input);
         byte[] hash64 = kt128_64.ComputeHash(input);
 
-        Assert.That(hash16.Length, Is.EqualTo(16));
-        Assert.That(hash64.Length, Is.EqualTo(64));
+        Assert.That(hash16, Has.Length.EqualTo(16));
+        Assert.That(hash64, Has.Length.EqualTo(64));
         // First 16 bytes of 64-byte output should match 16-byte output (XOF property)
         Assert.That(hash64.AsSpan(0, 16).ToArray(), Is.EqualTo(hash16));
     }

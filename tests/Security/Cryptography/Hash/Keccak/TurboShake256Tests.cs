@@ -104,8 +104,8 @@ public class TurboShake256Tests
         byte[] hash32 = ts256_32.ComputeHash(input);
         byte[] hash64 = ts256_64.ComputeHash(input);
 
-        Assert.That(hash32.Length, Is.EqualTo(32));
-        Assert.That(hash64.Length, Is.EqualTo(64));
+        Assert.That(hash32, Has.Length.EqualTo(32));
+        Assert.That(hash64, Has.Length.EqualTo(64));
         
         Assert.That(hash64.AsSpan(0, 32).ToArray(), Is.EqualTo(hash32));
     }

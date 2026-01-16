@@ -86,8 +86,8 @@ public class Blake3Tests
         byte[] hash32 = blake32.ComputeHash(input);
         byte[] hash64 = blake64.ComputeHash(input);
 
-        Assert.That(hash32.Length, Is.EqualTo(32));
-        Assert.That(hash64.Length, Is.EqualTo(64));
+        Assert.That(hash32, Has.Length.EqualTo(32));
+        Assert.That(hash64, Has.Length.EqualTo(64));
 
         // First 32 bytes of 64-byte output should match 32-byte output
         Assert.That(hash64.AsSpan(0, 32).ToArray(), Is.EqualTo(hash32));
