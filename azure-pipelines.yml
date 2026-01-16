@@ -60,7 +60,7 @@ stages:
     parameters:
       configuration: Release
       framework: net8.0
-      agents: '@{ windows = "windows-2022"; linux="ubuntu-24.04"; mac = "macOS-15"}'
+      agents: '@{ windows = "windows-2022"; linux="ubuntu-22.04"; mac = "macOS-15-arm64"}'
       jobnamesuffix: net80
       customtestarget: net8.0
 - stage: testreleasepr
@@ -72,7 +72,6 @@ stages:
     parameters:
       configuration: Release
       framework: net8.0
-      agents: '@{ windows = "windows-latest"; linux="ubuntu-latest"}'
       jobnamesuffix: net80pr
 - stage: testdebug
   dependsOn: [build]
