@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1050 // Declare types in namespaces
+#pragma warning disable IDE0011 // Add braces
 
 using Org.BouncyCastle.Crypto.Digests;
 using System;
@@ -154,11 +155,23 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType Keccak256_Managed_Avx512F = new("Keccak-256",
         () => CH.Keccak256.Create(CH.SimdSupport.Avx512F), () => (CH.Keccak256.SimdSupport & CH.SimdSupport.Avx512F) != 0);
 
+    public static readonly HashAlgorithmType Keccak256_Managed_Avx2 = new("Keccak-256",
+        () => CH.Keccak256.Create(CH.SimdSupport.Avx2), () => (CH.Keccak256.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType Keccak256_Managed_Ssse3 = new("Keccak-256",
+        () => CH.Keccak256.Create(CH.SimdSupport.Ssse3), () => (CH.Keccak256.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
     public static readonly HashAlgorithmType Keccak256_Managed_Scalar = new("Keccak-256",
         () => CH.Keccak256.Create(CH.SimdSupport.None), () => true);
 
     public static readonly HashAlgorithmType SHA3_224_Managed_Avx512F = new("SHA3-224",
         () => CH.SHA3_224.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_224.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType SHA3_224_Managed_Avx2 = new("SHA3-224",
+        () => CH.SHA3_224.Create(CH.SimdSupport.Avx2), () => (CH.SHA3_224.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType SHA3_224_Managed_Ssse3 = new("SHA3-224",
+        () => CH.SHA3_224.Create(CH.SimdSupport.Ssse3), () => (CH.SHA3_224.SimdSupport & CH.SimdSupport.Ssse3) != 0);
 
     public static readonly HashAlgorithmType SHA3_224_Managed_Scalar = new("SHA3-224",
         () => CH.SHA3_224.Create(CH.SimdSupport.None), () => true);
@@ -166,11 +179,23 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType SHA3_256_Managed_Avx512F = new("SHA3-256",
         () => CH.SHA3_256.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_256.SimdSupport & CH.SimdSupport.Avx512F) != 0);
 
+    public static readonly HashAlgorithmType SHA3_256_Managed_Avx2 = new("SHA3-256",
+        () => CH.SHA3_256.Create(CH.SimdSupport.Avx2), () => (CH.SHA3_256.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType SHA3_256_Managed_Ssse3 = new("SHA3-256",
+        () => CH.SHA3_256.Create(CH.SimdSupport.Ssse3), () => (CH.SHA3_256.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
     public static readonly HashAlgorithmType SHA3_256_Managed_Scalar = new("SHA3-256",
         () => CH.SHA3_256.Create(CH.SimdSupport.None), () => true);
 
     public static readonly HashAlgorithmType SHA3_384_Managed_Avx512F = new("SHA3-384",
         () => CH.SHA3_384.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_384.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType SHA3_384_Managed_Avx2 = new("SHA3-384",
+        () => CH.SHA3_384.Create(CH.SimdSupport.Avx2), () => (CH.SHA3_384.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType SHA3_384_Managed_Ssse3 = new("SHA3-384",
+        () => CH.SHA3_384.Create(CH.SimdSupport.Ssse3), () => (CH.SHA3_384.SimdSupport & CH.SimdSupport.Ssse3) != 0);
 
     public static readonly HashAlgorithmType SHA3_384_Managed_Scalar = new("SHA3-384",
         () => CH.SHA3_384.Create(CH.SimdSupport.None), () => true);
@@ -178,8 +203,114 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType SHA3_512_Managed_Avx512F = new("SHA3-512",
         () => CH.SHA3_512.Create(CH.SimdSupport.Avx512F), () => (CH.SHA3_512.SimdSupport & CH.SimdSupport.Avx512F) != 0);
 
+    public static readonly HashAlgorithmType SHA3_512_Managed_Avx2 = new("SHA3-512",
+        () => CH.SHA3_512.Create(CH.SimdSupport.Avx2), () => (CH.SHA3_512.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType SHA3_512_Managed_Ssse3 = new("SHA3-512",
+        () => CH.SHA3_512.Create(CH.SimdSupport.Ssse3), () => (CH.SHA3_512.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
     public static readonly HashAlgorithmType SHA3_512_Managed_Scalar = new("SHA3-512",
         () => CH.SHA3_512.Create(CH.SimdSupport.None), () => true);
+
+    // SHAKE SIMD variants
+    public static readonly HashAlgorithmType Shake128_Managed_Avx512F = new("SHAKE128",
+        () => CH.Shake128.Create(CH.SimdSupport.Avx512F, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType Shake128_Managed_Avx2 = new("SHAKE128",
+        () => CH.Shake128.Create(CH.SimdSupport.Avx2, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType Shake128_Managed_Ssse3 = new("SHAKE128",
+        () => CH.Shake128.Create(CH.SimdSupport.Ssse3, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType Shake128_Managed_Scalar = new("SHAKE128",
+        () => CH.Shake128.Create(CH.SimdSupport.None, 32), () => true);
+
+    public static readonly HashAlgorithmType Shake256_Managed_Avx512F = new("SHAKE256",
+        () => CH.Shake256.Create(CH.SimdSupport.Avx512F, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType Shake256_Managed_Avx2 = new("SHAKE256",
+        () => CH.Shake256.Create(CH.SimdSupport.Avx2, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType Shake256_Managed_Ssse3 = new("SHAKE256",
+        () => CH.Shake256.Create(CH.SimdSupport.Ssse3, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType Shake256_Managed_Scalar = new("SHAKE256",
+        () => CH.Shake256.Create(CH.SimdSupport.None, 64), () => true);
+
+    // cSHAKE SIMD variants
+    public static readonly HashAlgorithmType CShake128_Managed_Avx512F = new("CSHAKE128",
+        () => CH.CShake128.Create(CH.SimdSupport.Avx512F, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType CShake128_Managed_Avx2 = new("CSHAKE128",
+        () => CH.CShake128.Create(CH.SimdSupport.Avx2, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType CShake128_Managed_Ssse3 = new("CSHAKE128",
+        () => CH.CShake128.Create(CH.SimdSupport.Ssse3, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType CShake128_Managed_Scalar = new("CSHAKE128",
+        () => CH.CShake128.Create(CH.SimdSupport.None, 32), () => true);
+
+    public static readonly HashAlgorithmType CShake256_Managed_Avx512F = new("CSHAKE256",
+        () => CH.CShake256.Create(CH.SimdSupport.Avx512F, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType CShake256_Managed_Avx2 = new("CSHAKE256",
+        () => CH.CShake256.Create(CH.SimdSupport.Avx2, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType CShake256_Managed_Ssse3 = new("CSHAKE256",
+        () => CH.CShake256.Create(CH.SimdSupport.Ssse3, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType CShake256_Managed_Scalar = new("CSHAKE256",
+        () => CH.CShake256.Create(CH.SimdSupport.None, 64), () => true);
+
+    // KT SIMD variants
+    public static readonly HashAlgorithmType KT128_Managed_Avx512F = new("KT128",
+        () => CH.KT128.Create(CH.SimdSupport.Avx512F, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType KT128_Managed_Avx2 = new("KT128",
+        () => CH.KT128.Create(CH.SimdSupport.Avx2, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType KT128_Managed_Ssse3 = new("KT128",
+        () => CH.KT128.Create(CH.SimdSupport.Ssse3, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType KT128_Managed_Scalar = new("KT128",
+        () => CH.KT128.Create(CH.SimdSupport.None, 32), () => true);
+
+    public static readonly HashAlgorithmType KT256_Managed_Avx512F = new("KT256",
+        () => CH.KT256.Create(CH.SimdSupport.Avx512F, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType KT256_Managed_Avx2 = new("KT256",
+        () => CH.KT256.Create(CH.SimdSupport.Avx2, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType KT256_Managed_Ssse3 = new("KT256",
+        () => CH.KT256.Create(CH.SimdSupport.Ssse3, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType KT256_Managed_Scalar = new("KT256",
+        () => CH.KT256.Create(CH.SimdSupport.None, 64), () => true);
+
+    // TurboSHAKE SIMD variants
+    public static readonly HashAlgorithmType TurboShake128_Managed_Avx512F = new("TurboSHAKE128",
+        () => CH.TurboShake128.Create(CH.SimdSupport.Avx512F, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType TurboShake128_Managed_Avx2 = new("TurboSHAKE128",
+        () => CH.TurboShake128.Create(CH.SimdSupport.Avx2, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType TurboShake128_Managed_Ssse3 = new("TurboSHAKE128",
+        () => CH.TurboShake128.Create(CH.SimdSupport.Ssse3, 32), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType TurboShake128_Managed_Scalar = new("TurboSHAKE128",
+        () => CH.TurboShake128.Create(CH.SimdSupport.None, 32), () => true);
+
+    public static readonly HashAlgorithmType TurboShake256_Managed_Avx512F = new("TurboSHAKE256",
+        () => CH.TurboShake256.Create(CH.SimdSupport.Avx512F, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx512F) != 0);
+
+    public static readonly HashAlgorithmType TurboShake256_Managed_Avx2 = new("TurboSHAKE256",
+        () => CH.TurboShake256.Create(CH.SimdSupport.Avx2, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Avx2) != 0);
+
+    public static readonly HashAlgorithmType TurboShake256_Managed_Ssse3 = new("TurboSHAKE256",
+        () => CH.TurboShake256.Create(CH.SimdSupport.Ssse3, 64), () => (CH.KeccakCore.SimdSupport & CH.SimdSupport.Ssse3) != 0);
+
+    public static readonly HashAlgorithmType TurboShake256_Managed_Scalar = new("TurboSHAKE256",
+        () => CH.TurboShake256.Create(CH.SimdSupport.None, 64), () => true);
 #endif
     #endregion
 
@@ -382,16 +513,32 @@ public sealed class HashAlgorithmType : IFormattable
         if (SHA3_512_OS.IsSupported) yield return SHA3_512_OS;
         if (Shake128_OS.IsSupported) yield return Shake128_OS;
         if (Shake256_OS.IsSupported) yield return Shake256_OS;
+
+        // SHA3-224 SIMD variants
         if (SHA3_224_Managed_Avx512F.IsSupported) yield return SHA3_224_Managed_Avx512F;
+        if (SHA3_224_Managed_Avx2.IsSupported) yield return SHA3_224_Managed_Avx2;
+        if (SHA3_224_Managed_Ssse3.IsSupported) yield return SHA3_224_Managed_Ssse3;
         yield return SHA3_224_Managed_Scalar;
         yield return SHA3_224_Bouncy;
+
+        // SHA3-256 SIMD variants
         if (SHA3_256_Managed_Avx512F.IsSupported) yield return SHA3_256_Managed_Avx512F;
+        if (SHA3_256_Managed_Avx2.IsSupported) yield return SHA3_256_Managed_Avx2;
+        if (SHA3_256_Managed_Ssse3.IsSupported) yield return SHA3_256_Managed_Ssse3;
         yield return SHA3_256_Managed_Scalar;
         yield return SHA3_256_Bouncy;
+
+        // SHA3-384 SIMD variants
         if (SHA3_384_Managed_Avx512F.IsSupported) yield return SHA3_384_Managed_Avx512F;
+        if (SHA3_384_Managed_Avx2.IsSupported) yield return SHA3_384_Managed_Avx2;
+        if (SHA3_384_Managed_Ssse3.IsSupported) yield return SHA3_384_Managed_Ssse3;
         yield return SHA3_384_Managed_Scalar;
         yield return SHA3_384_Bouncy;
+
+        // SHA3-512 SIMD variants
         if (SHA3_512_Managed_Avx512F.IsSupported) yield return SHA3_512_Managed_Avx512F;
+        if (SHA3_512_Managed_Avx2.IsSupported) yield return SHA3_512_Managed_Avx2;
+        if (SHA3_512_Managed_Ssse3.IsSupported) yield return SHA3_512_Managed_Ssse3;
         yield return SHA3_512_Managed_Scalar;
         yield return SHA3_512_Bouncy;
 #else
@@ -408,6 +555,8 @@ public sealed class HashAlgorithmType : IFormattable
         // Keccak
 #if NET8_0_OR_GREATER
         if (Keccak256_Managed_Avx512F.IsSupported) yield return Keccak256_Managed_Avx512F;
+        if (Keccak256_Managed_Avx2.IsSupported) yield return Keccak256_Managed_Avx2;
+        if (Keccak256_Managed_Ssse3.IsSupported) yield return Keccak256_Managed_Ssse3;
         yield return Keccak256_Managed_Scalar;
         yield return Keccak256_Bouncy;
 #else
@@ -416,6 +565,51 @@ public sealed class HashAlgorithmType : IFormattable
 #endif
 
         // SHAKE and cSHAKE
+#if NET8_0_OR_GREATER
+        if (Shake128_Managed_Avx512F.IsSupported) yield return Shake128_Managed_Avx512F;
+        if (Shake128_Managed_Avx2.IsSupported) yield return Shake128_Managed_Avx2;
+        if (Shake128_Managed_Ssse3.IsSupported) yield return Shake128_Managed_Ssse3;
+        yield return Shake128_Managed_Scalar;
+        yield return Shake128_Bouncy;
+
+        if (Shake256_Managed_Avx512F.IsSupported) yield return Shake256_Managed_Avx512F;
+        if (Shake256_Managed_Avx2.IsSupported) yield return Shake256_Managed_Avx2;
+        if (Shake256_Managed_Ssse3.IsSupported) yield return Shake256_Managed_Ssse3;
+        yield return Shake256_Managed_Scalar;
+        yield return Shake256_Bouncy;
+
+        if (CShake128_Managed_Avx512F.IsSupported) yield return CShake128_Managed_Avx512F;
+        if (CShake128_Managed_Avx2.IsSupported) yield return CShake128_Managed_Avx2;
+        if (CShake128_Managed_Ssse3.IsSupported) yield return CShake128_Managed_Ssse3;
+        yield return CShake128_Managed_Scalar;
+        yield return CShake128_Bouncy;
+
+        if (CShake256_Managed_Avx512F.IsSupported) yield return CShake256_Managed_Avx512F;
+        if (CShake256_Managed_Avx2.IsSupported) yield return CShake256_Managed_Avx2;
+        if (CShake256_Managed_Ssse3.IsSupported) yield return CShake256_Managed_Ssse3;
+        yield return CShake256_Managed_Scalar;
+        yield return CShake256_Bouncy;
+
+        if (KT128_Managed_Avx512F.IsSupported) yield return KT128_Managed_Avx512F;
+        if (KT128_Managed_Avx2.IsSupported) yield return KT128_Managed_Avx2;
+        if (KT128_Managed_Ssse3.IsSupported) yield return KT128_Managed_Ssse3;
+        yield return KT128_Managed_Scalar;
+
+        if (KT256_Managed_Avx512F.IsSupported) yield return KT256_Managed_Avx512F;
+        if (KT256_Managed_Avx2.IsSupported) yield return KT256_Managed_Avx2;
+        if (KT256_Managed_Ssse3.IsSupported) yield return KT256_Managed_Ssse3;
+        yield return KT256_Managed_Scalar;
+
+        if (TurboShake128_Managed_Avx512F.IsSupported) yield return TurboShake128_Managed_Avx512F;
+        if (TurboShake128_Managed_Avx2.IsSupported) yield return TurboShake128_Managed_Avx2;
+        if (TurboShake128_Managed_Ssse3.IsSupported) yield return TurboShake128_Managed_Ssse3;
+        yield return TurboShake128_Managed_Scalar;
+
+        if (TurboShake256_Managed_Avx512F.IsSupported) yield return TurboShake256_Managed_Avx512F;
+        if (TurboShake256_Managed_Avx2.IsSupported) yield return TurboShake256_Managed_Avx2;
+        if (TurboShake256_Managed_Ssse3.IsSupported) yield return TurboShake256_Managed_Ssse3;
+        yield return TurboShake256_Managed_Scalar;
+#else
         yield return Shake128_Managed;
         yield return Shake128_Bouncy;
         yield return Shake256_Managed;
@@ -428,6 +622,7 @@ public sealed class HashAlgorithmType : IFormattable
         yield return KT256_Managed;
         yield return TurboShake128_Managed;
         yield return TurboShake256_Managed;
+#endif
 
         // BLAKE
 #if NET8_0_OR_GREATER
@@ -560,6 +755,97 @@ public sealed class HashAlgorithmType : IFormattable
 #if BLAKE3_NATIVE
         yield return Blake3_Native;
 #endif
+    }
+
+    /// <summary>All Keccak-based SIMD variants for comparison benchmarks.</summary>
+    public static IEnumerable<HashAlgorithmType> AllKeccakSimdVariants()
+    {
+        // SHA3-224 variants
+        if (SHA3_224_Managed_Avx512F.IsSupported) yield return SHA3_224_Managed_Avx512F;
+        if (SHA3_224_Managed_Avx2.IsSupported) yield return SHA3_224_Managed_Avx2;
+        if (SHA3_224_Managed_Ssse3.IsSupported) yield return SHA3_224_Managed_Ssse3;
+        yield return SHA3_224_Managed_Scalar;
+        yield return SHA3_224_Bouncy;
+
+        // SHA3-256 variants
+        if (SHA3_256_Managed_Avx512F.IsSupported) yield return SHA3_256_Managed_Avx512F;
+        if (SHA3_256_Managed_Avx2.IsSupported) yield return SHA3_256_Managed_Avx2;
+        if (SHA3_256_Managed_Ssse3.IsSupported) yield return SHA3_256_Managed_Ssse3;
+        yield return SHA3_256_Managed_Scalar;
+        yield return SHA3_256_Bouncy;
+
+        // SHA3-384 variants
+        if (SHA3_384_Managed_Avx512F.IsSupported) yield return SHA3_384_Managed_Avx512F;
+        if (SHA3_384_Managed_Avx2.IsSupported) yield return SHA3_384_Managed_Avx2;
+        if (SHA3_384_Managed_Ssse3.IsSupported) yield return SHA3_384_Managed_Ssse3;
+        yield return SHA3_384_Managed_Scalar;
+        yield return SHA3_384_Bouncy;
+
+        // SHA3-512 variants
+        if (SHA3_512_Managed_Avx512F.IsSupported) yield return SHA3_512_Managed_Avx512F;
+        if (SHA3_512_Managed_Avx2.IsSupported) yield return SHA3_512_Managed_Avx2;
+        if (SHA3_512_Managed_Ssse3.IsSupported) yield return SHA3_512_Managed_Ssse3;
+        yield return SHA3_512_Managed_Scalar;
+        yield return SHA3_512_Bouncy;
+
+        // Keccak-256 variants
+        if (Keccak256_Managed_Avx512F.IsSupported) yield return Keccak256_Managed_Avx512F;
+        if (Keccak256_Managed_Avx2.IsSupported) yield return Keccak256_Managed_Avx2;
+        if (Keccak256_Managed_Ssse3.IsSupported) yield return Keccak256_Managed_Ssse3;
+        yield return Keccak256_Managed_Scalar;
+        yield return Keccak256_Bouncy;
+
+        // SHAKE128 variants
+        if (Shake128_Managed_Avx512F.IsSupported) yield return Shake128_Managed_Avx512F;
+        if (Shake128_Managed_Avx2.IsSupported) yield return Shake128_Managed_Avx2;
+        if (Shake128_Managed_Ssse3.IsSupported) yield return Shake128_Managed_Ssse3;
+        yield return Shake128_Managed_Scalar;
+        yield return Shake128_Bouncy;
+
+        // SHAKE256 variants
+        if (Shake256_Managed_Avx512F.IsSupported) yield return Shake256_Managed_Avx512F;
+        if (Shake256_Managed_Avx2.IsSupported) yield return Shake256_Managed_Avx2;
+        if (Shake256_Managed_Ssse3.IsSupported) yield return Shake256_Managed_Ssse3;
+        yield return Shake256_Managed_Scalar;
+        yield return Shake256_Bouncy;
+
+        // cSHAKE128 variants
+        if (CShake128_Managed_Avx512F.IsSupported) yield return CShake128_Managed_Avx512F;
+        if (CShake128_Managed_Avx2.IsSupported) yield return CShake128_Managed_Avx2;
+        if (CShake128_Managed_Ssse3.IsSupported) yield return CShake128_Managed_Ssse3;
+        yield return CShake128_Managed_Scalar;
+        yield return CShake128_Bouncy;
+
+        // cSHAKE256 variants
+        if (CShake256_Managed_Avx512F.IsSupported) yield return CShake256_Managed_Avx512F;
+        if (CShake256_Managed_Avx2.IsSupported) yield return CShake256_Managed_Avx2;
+        if (CShake256_Managed_Ssse3.IsSupported) yield return CShake256_Managed_Ssse3;
+        yield return CShake256_Managed_Scalar;
+        yield return CShake256_Bouncy;
+
+        // KT128 variants
+        if (KT128_Managed_Avx512F.IsSupported) yield return KT128_Managed_Avx512F;
+        if (KT128_Managed_Avx2.IsSupported) yield return KT128_Managed_Avx2;
+        if (KT128_Managed_Ssse3.IsSupported) yield return KT128_Managed_Ssse3;
+        yield return KT128_Managed_Scalar;
+
+        // KT256 variants
+        if (KT256_Managed_Avx512F.IsSupported) yield return KT256_Managed_Avx512F;
+        if (KT256_Managed_Avx2.IsSupported) yield return KT256_Managed_Avx2;
+        if (KT256_Managed_Ssse3.IsSupported) yield return KT256_Managed_Ssse3;
+        yield return KT256_Managed_Scalar;
+
+        // TurboSHAKE128 variants
+        if (TurboShake128_Managed_Avx512F.IsSupported) yield return TurboShake128_Managed_Avx512F;
+        if (TurboShake128_Managed_Avx2.IsSupported) yield return TurboShake128_Managed_Avx2;
+        if (TurboShake128_Managed_Ssse3.IsSupported) yield return TurboShake128_Managed_Ssse3;
+        yield return TurboShake128_Managed_Scalar;
+
+        // TurboSHAKE256 variants
+        if (TurboShake256_Managed_Avx512F.IsSupported) yield return TurboShake256_Managed_Avx512F;
+        if (TurboShake256_Managed_Avx2.IsSupported) yield return TurboShake256_Managed_Avx2;
+        if (TurboShake256_Managed_Ssse3.IsSupported) yield return TurboShake256_Managed_Ssse3;
+        yield return TurboShake256_Managed_Scalar;
     }
 #endif
 

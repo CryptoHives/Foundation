@@ -75,8 +75,10 @@ internal unsafe struct KeccakCoreState
     {
         get
         {
-            var support = SimdSupport.None;
+            SimdSupport support = SimdSupport.None;
 #if NET8_0_OR_GREATER
+            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Avx512F.IsSupported) support |= SimdSupport.Avx512F;
 #endif
             return support;
@@ -133,13 +135,23 @@ internal unsafe struct KeccakCoreState
             PermuteAvx512F(startRound);
             return;
         }
+        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        {
+            PermuteAvx2(startRound);
+            return;
+        }
+        if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            PermuteSsse3(startRound);
+            return;
+        }
 #endif
         PermuteScalar(startRound);
     }
 
 #if NET8_0_OR_GREATER
     // All static constants hoisted outside method
-    private record struct PermuteAvx512FVectors
+    private readonly record struct PermuteAvx512FVectors
     {
         public PermuteAvx512FVectors()
         {
@@ -210,8 +222,8 @@ internal unsafe struct KeccakCoreState
     {
         fixed (ulong* statePtr = _state)
         {
-            var vectors = Avx512FVectors;
-            var mask5 = vectors.Mask5;
+            PermuteAvx512FVectors vectors = Avx512FVectors;
+            Vector512<ulong> mask5 = vectors.Mask5;
 
             Vector512<ulong> a0 = Vector512.BitwiseAnd(mask5, Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[0]));
             Vector512<ulong> a1 = Vector512.BitwiseAnd(mask5, Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[5]));
@@ -281,6 +293,753 @@ internal unsafe struct KeccakCoreState
             Unsafe.As<ulong, Vector512<ulong>>(ref statePtr[15]) = a3;
             Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[20]) = a4.GetLower();
             statePtr[24] = a4.GetElement(4);
+        }
+    }
+
+    // AVX2 constants for byte shuffle-based rotation (rotate left by 8 bits)
+    private static readonly Vector256<byte> Rho8Avx2 = Vector256.Create(
+        (byte)7, 0, 1, 2, 3, 4, 5, 6, 15, 8, 9, 10, 11, 12, 13, 14,
+        23, 16, 17, 18, 19, 20, 21, 22, 31, 24, 25, 26, 27, 28, 29, 30);
+
+    // AVX2 constants for byte shuffle-based rotation (rotate left by 56 bits)
+    private static readonly Vector256<byte> Rho56Avx2 = Vector256.Create(
+        (byte)1, 2, 3, 4, 5, 6, 7, 0, 9, 10, 11, 12, 13, 14, 15, 8,
+        17, 18, 19, 20, 21, 22, 23, 16, 25, 26, 27, 28, 29, 30, 31, 24);
+
+    /// <summary>
+    /// Performs 64-bit rotation using AVX2 shift and OR operations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, byte offset)
+    {
+        return Avx2.Or(Avx2.ShiftLeftLogical(a, offset), Avx2.ShiftRightLogical(a, (byte)(64 - offset)));
+    }
+
+    /// <summary>
+    /// Performs 64-bit rotation by 8 bits using byte shuffle (faster than shift).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector256<ulong> Rol64Avx2By8(Vector256<ulong> a)
+    {
+        return Avx2.Shuffle(a.AsByte(), Rho8Avx2).AsUInt64();
+    }
+
+    /// <summary>
+    /// Performs 64-bit rotation by 56 bits using byte shuffle (faster than shift).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector256<ulong> Rol64Avx2By56(Vector256<ulong> a)
+    {
+        return Avx2.Shuffle(a.AsByte(), Rho56Avx2).AsUInt64();
+    }
+
+    /// <summary>
+    /// Performs AND-NOT: (~a) AND b, matching the C macro ANDnu256.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector256<ulong> AndNot256(Vector256<ulong> a, Vector256<ulong> b)
+    {
+        return Avx2.AndNot(a, b);
+    }
+
+    /// <summary>
+    /// Performs 64-bit rotation on each lane of a Vector256 with different rotation amounts.
+    /// </summary>
+    /// <param name="a">The input vector containing 4 ulong values.</param>
+    /// <param name="r0">Rotation amount for element 0.</param>
+    /// <param name="r1">Rotation amount for element 1.</param>
+    /// <param name="r2">Rotation amount for element 2.</param>
+    /// <param name="r3">Rotation amount for element 3.</param>
+    /// <returns>A vector with each element rotated left by its corresponding amount.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, byte r0, byte r1, byte r2, byte r3)
+    {
+        // Create shift amount vectors for left and right shifts
+        Vector256<ulong> leftShifts = Vector256.Create((ulong)r0, r1, r2, r3);
+        Vector256<ulong> rightShifts = Vector256.Create((ulong)(64 - r0), (ulong)(64 - r1), (ulong)(64 - r2), (ulong)(64 - r3));
+
+        // Perform variable shifts and combine with OR
+        return Avx2.Or(
+            Avx2.ShiftLeftLogicalVariable(a, leftShifts),
+            Avx2.ShiftRightLogicalVariable(a, rightShifts));
+    }
+
+    /// <summary>
+    /// AVX2-optimized Keccak-f[1600] permutation.
+    /// Based on the XKCP reference implementation patterns with full AVX2 vectorization.
+    /// Uses 2-round unrolling with all operations in AVX2 vectors.
+    /// </summary>
+    /// <param name="startRound">The starting round (0 for SHA-3/SHAKE, 12 for TurboSHAKE/K12).</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public void PermuteAvx2(int startRound = 0)
+    {
+        // Declare all state variables as Vector256<ulong>
+        // Each vector holds a single 64-bit lane replicated or used as scalar-in-vector
+        Vector256<ulong> Abaeio, Abu;
+        Vector256<ulong> Agaeio, Agu;
+        Vector256<ulong> Akaeio, Aku;
+        Vector256<ulong> Amaeio, Amu;
+        Vector256<ulong> Asaeio, Asu;
+
+        Vector256<ulong> Bbaeio, Bbu;
+        Vector256<ulong> Bgaeio, Bgu;
+        Vector256<ulong> Bkaeio, Bku;
+        Vector256<ulong> Bmaeio, Bmu;
+        Vector256<ulong> Bsaeio, Bsu;
+
+        Vector256<ulong> Caeio, Cu;
+        Vector256<ulong> Daeio, Du;
+
+        Vector256<ulong> Ebaeio, Ebu;
+        Vector256<ulong> Egaeio, Egu;
+        Vector256<ulong> Ekaeio, Eku;
+        Vector256<ulong> Emaeio, Emu;
+        Vector256<ulong> Esaeio, Esu;
+
+        fixed (ulong* state = _state)
+        {
+            // Load state into vectors (broadcast each lane to all 4 positions for uniform operations)
+            Abaeio = Vector256.Create(state[0], state[1], state[2], state[3]);
+            Abu = Vector256.Create(state[4]);
+            Agaeio = Vector256.Create(state[5], state[6], state[7], state[8]);
+            Agu = Vector256.Create(state[9]);
+            Akaeio = Vector256.Create(state[10], state[11], state[12], state[13]);
+            Aku = Vector256.Create(state[14]);
+            Amaeio = Vector256.Create(state[15], state[16], state[17], state[18]);
+            Amu = Vector256.Create(state[19]);
+            Asaeio = Vector256.Create(state[20], state[21], state[22], state[23]);
+            Asu = Vector256.Create(state[24]);
+
+            for (int round = startRound; round < Rounds; round++)
+            {
+                // ============================================================
+                // ROUND 1: A -> E
+                // ============================================================
+
+                {
+                    // prepareTheta: compute column parities
+                    Caeio = Avx2.Xor(Abaeio, Avx2.Xor(Agaeio, Avx2.Xor(Akaeio, Avx2.Xor(Amaeio, Asaeio))));
+                    Cu = Avx2.Xor(Abu, Avx2.Xor(Agu, Avx2.Xor(Aku, Avx2.Xor(Amu, Asu))));
+
+                    // thetaRhoPiChiIotaPrepareTheta: compute D values
+                    var tCaeioRol1 = Rol64Avx2(Caeio, 1);
+                    var tCeiouRol1 = Vector256.Create(tCaeioRol1.GetElement(1), tCaeioRol1.GetElement(2), tCaeioRol1.GetElement(3), BitOperations.RotateLeft(Cu.GetElement(0), 1));
+                    var tCuaei = Vector256.Create(Cu.GetElement(0), Caeio.GetElement(0), Caeio.GetElement(1), Caeio.GetElement(2));
+                    Daeio = Avx2.Xor(tCuaei, tCeiouRol1);
+                    Du = Avx2.Xor(Vector256.Create(Caeio.GetElement(3)), tCaeioRol1);
+
+                    Abaeio = Avx2.Xor(Abaeio, Daeio);
+                    Abu = Avx2.Xor(Abu, Du);
+                    Agaeio = Avx2.Xor(Agaeio, Daeio);
+                    Agu = Avx2.Xor(Agu, Du);
+                    Akaeio = Avx2.Xor(Akaeio, Daeio);
+                    Aku = Avx2.Xor(Aku, Du);
+                    Amaeio = Avx2.Xor(Amaeio, Daeio);
+                    Amu = Avx2.Xor(Amu, Du);
+                    Asaeio = Avx2.Xor(Asaeio, Daeio);
+                    Asu = Avx2.Xor(Asu, Du);
+
+                    // Row 0: Eba, Ebe, Ebi, Ebo, Ebu
+                    // Aba = Avx2.Xor(Aba, Da);
+                    // Bba = Aba;
+                    // Age = Avx2.Xor(Age, De);
+                    // Bbe = Rol64Avx2(Age, 44);
+                    // Aki = Avx2.Xor(Aki, Di);
+                    // Bbi = Rol64Avx2(Aki, 43);
+                    // Amo = Avx2.Xor(Amo, Do);
+                    // Bbo = Rol64Avx2(Amo, 21);
+                    // Asu = Avx2.Xor(Asu, Du);
+                    Bbaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(0), Agaeio.GetElement(1), Akaeio.GetElement(2), Amaeio.GetElement(3)), 0, 44, 43, 21);
+                    Bbu = Rol64Avx2(Asu, 14);
+
+                    var tBbioua = Vector256.Create(Bbaeio.GetElement(2), Bbaeio.GetElement(3), Bbu.GetElement(0), Bbaeio.GetElement(0));
+                    var tBbeiou = Vector256.Create(Bbaeio.GetElement(1), Bbaeio.GetElement(2), Bbaeio.GetElement(3), Bbu.GetElement(0));
+                    Ebaeio = Avx2.Xor(Bbaeio, AndNot256(tBbeiou, tBbioua));
+                    Ebu = Avx2.Xor(Bbu, Vector256.Create(~Bbaeio.GetElement(0) & Bbaeio.GetElement(1)));
+                    // Eba = Avx2.Xor(Bba, AndNot256(Bbe, Bbi));
+                    // Ca = Eba;
+                    // Ebe = Avx2.Xor(Bbe, AndNot256(Bbi, Bbo));
+                    // Ce = Ebe;
+                    // Ebi = Avx2.Xor(Bbi, AndNot256(Bbo, Bbu));
+                    // Ci = Ebi;
+                    // Ebo = Avx2.Xor(Bbo, AndNot256(Bbu, Bba));
+                    // Co = Ebo;
+                    Ebaeio = Avx2.Xor(Ebaeio, Vector256.Create(RoundConstants[round], 0, 0, 0));
+                    Caeio = Ebaeio;
+                    Cu = Ebu;
+
+                    // Row 1: Ega, Ege, Egi, Ego, Egu
+                    // Aka = Avx2.Xor(Aka, Da);
+                    // Ame = Avx2.Xor(Ame, De);
+                    // Asi = Avx2.Xor(Asi, Di);
+                    // Abo = Avx2.Xor(Abo, Do);
+                    // Agu = Avx2.Xor(Agu, Du);
+
+                    // Bga = Rol64Avx2(Abo, 28);
+                    // Bge = Rol64Avx2(Agu, 20);
+                    // Bgi = Rol64Avx2(Aka, 3);
+                    // Bgo = Rol64Avx2(Ame, 45);
+                    // Bgu = Rol64Avx2(Asi, 61);
+                    Bgaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(3), Agu.GetElement(0), Akaeio.GetElement(0), Amaeio.GetElement(1)), 28, 20, 3, 45);
+                    Bgu = Rol64Avx2(Vector256.Create(Asaeio.GetElement(2)), 61);
+
+                    var tBgioua = Vector256.Create(Bgaeio.GetElement(2), Bgaeio.GetElement(3), Bgu.GetElement(0), Bgaeio.GetElement(0));
+                    var tBgeiou = Vector256.Create(Bgaeio.GetElement(1), Bgaeio.GetElement(2), Bgaeio.GetElement(3), Bgu.GetElement(0));
+                    Egaeio = Avx2.Xor(Bgaeio, AndNot256(tBgeiou, tBgioua));
+                    Egu = Avx2.Xor(Bgu, Vector256.Create(~Bgaeio.GetElement(0) & Bgaeio.GetElement(1)));
+
+                    // Ega = Avx2.Xor(Bga, AndNot256(Bge, Bgi));
+                    // Ca = Avx2.Xor(Ca, Ega);
+                    // Ege = Avx2.Xor(Bge, AndNot256(Bgi, Bgo));
+                    // Ce = Avx2.Xor(Ce, Ege);
+                    // Egi = Avx2.Xor(Bgi, AndNot256(Bgo, Bgu));
+                    // Ci = Avx2.Xor(Ci, Egi);
+                    // Ego = Avx2.Xor(Bgo, AndNot256(Bgu, Bga));
+                    // Co = Avx2.Xor(Co, Ego);
+                    // Egu = Avx2.Xor(Bgu, AndNot256(Bga, Bge));
+                    Caeio = Avx2.Xor(Caeio, Egaeio);
+                    Cu = Avx2.Xor(Cu, Egu);
+
+                    // Row 2: Eka, Eke, Eki, Eko, Eku
+                    // Abe = Avx2.Xor(Abe, De);
+                    // Agi = Avx2.Xor(Agi, Di);
+                    // Ako = Avx2.Xor(Ako, Do);
+                    // Amu = Avx2.Xor(Amu, Du);
+                    // Asa = Avx2.Xor(Asa, Da);
+
+                    // Bka = Rol64Avx2(Abe, 1);
+                    // Bke = Rol64Avx2(Agi, 6);
+                    // Bki = Rol64Avx2(Ako, 25);
+                    // Bko = Rol64Avx2By8(Amu);
+                    // Bku = Rol64Avx2(Asa, 18);
+                    Bkaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(1), Agaeio.GetElement(2), Akaeio.GetElement(3), Amu.GetElement(0)), 1, 6, 25, 8);
+                    Bku = Rol64Avx2(Vector256.Create(Asaeio.GetElement(0)), 18);
+
+                    var tBkioua = Vector256.Create(Bkaeio.GetElement(2), Bkaeio.GetElement(3), Bku.GetElement(0), Bkaeio.GetElement(0));
+                    var tBkeiou = Vector256.Create(Bkaeio.GetElement(1), Bkaeio.GetElement(2), Bkaeio.GetElement(3), Bku.GetElement(0));
+                    Ekaeio = Avx2.Xor(Bkaeio, AndNot256(tBkeiou, tBkioua));
+                    Eku = Avx2.Xor(Bku, Vector256.Create(~Bkaeio.GetElement(0) & Bkaeio.GetElement(1)));
+
+                    // Eka = Avx2.Xor(Bka, AndNot256(Bke, Bki));
+                    // Ca = Avx2.Xor(Ca, Eka);
+                    // Eke = Avx2.Xor(Bke, AndNot256(Bki, Bko));
+                    // Ce = Avx2.Xor(Ce, Eke);
+                    // Eki = Avx2.Xor(Bki, AndNot256(Bko, Bku));
+                    // Ci = Avx2.Xor(Ci, Eki);
+                    // Eko = Avx2.Xor(Bko, AndNot256(Bku, Bka));
+                    // Co = Avx2.Xor(Co, Eko);
+                    // Eku = Avx2.Xor(Bku, AndNot256(Bka, Bke));
+                    Caeio = Avx2.Xor(Caeio, Ekaeio);
+                    Cu = Avx2.Xor(Cu, Eku);
+
+                    // Row 3: Ema, Eme, Emi, Emo, Emu
+                    // Abu = Avx2.Xor(Abu, Du);
+                    // Aga = Avx2.Xor(Aga, Da);
+                    // Ake = Avx2.Xor(Ake, De);
+                    // Ami = Avx2.Xor(Ami, Di);
+                    // Aso = Avx2.Xor(Aso, Do);
+                    //Bma = Rol64Avx2(Abu, 27);
+                    //Bme = Rol64Avx2(Aga, 36);
+                    //Bmi = Rol64Avx2(Ake, 10);
+                    //Bmo = Rol64Avx2(Ami, 15);
+                    //Bmu = Rol64Avx2By56(Aso);
+                    Bmaeio = Rol64Avx2(Vector256.Create(Abu.GetElement(0), Agaeio.GetElement(0), Akaeio.GetElement(1), Amaeio.GetElement(2)), 27, 36, 10, 15);
+                    Bmu = Rol64Avx2(Vector256.Create(Asaeio.GetElement(3)), 56);
+
+                    var tBmioua = Vector256.Create(Bmaeio.GetElement(2), Bmaeio.GetElement(3), Bmu.GetElement(0), Bmaeio.GetElement(0));
+                    var tBmeiou = Vector256.Create(Bmaeio.GetElement(1), Bmaeio.GetElement(2), Bmaeio.GetElement(3), Bmu.GetElement(0));
+                    Emaeio = Avx2.Xor(Bmaeio, AndNot256(tBmeiou, tBmioua));
+                    Emu = Avx2.Xor(Bmu, Vector256.Create(~Bmaeio.GetElement(0) & Bmaeio.GetElement(1)));
+
+                    // Ema = Avx2.Xor(Bma, AndNot256(Bme, Bmi));
+                    // Ca = Avx2.Xor(Ca, Ema);
+                    // Eme = Avx2.Xor(Bme, AndNot256(Bmi, Bmo));
+                    // Ce = Avx2.Xor(Ce, Eme);
+                    // Emi = Avx2.Xor(Bmi, AndNot256(Bmo, Bmu));
+                    // Ci = Avx2.Xor(Ci, Emi);
+                    // Emo = Avx2.Xor(Bmo, AndNot256(Bmu, Bma));
+                    // Co = Avx2.Xor(Co, Emo);
+                    // Emu = Avx2.Xor(Bmu, AndNot256(Bma, Bme));
+                    Caeio = Avx2.Xor(Caeio, Emaeio);
+                    Cu = Avx2.Xor(Cu, Emu);
+
+                    // Row 4: Esa, Ese, Esi, Eso, Esu
+                    // Abi = Avx2.Xor(Abi, Di);
+                    // Ago = Avx2.Xor(Ago, Do);
+                    // Aku = Avx2.Xor(Aku, Du);
+                    // Ama = Avx2.Xor(Ama, Da);
+                    // Ase = Avx2.Xor(Ase, De);
+                    // Bsa = Rol64Avx2(Abi, 62);
+                    // Bse = Rol64Avx2(Ago, 55);
+                    // Bsi = Rol64Avx2(Aku, 39);
+                    // Bso = Rol64Avx2(Ama, 41);
+                    // Bsu = Rol64Avx2(Ase, 2);
+                    Bsaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(2), Agaeio.GetElement(3), Aku.GetElement(0), Amaeio.GetElement(0)), 62, 55, 39, 41);
+                    Bsu = Rol64Avx2(Vector256.Create(Asaeio.GetElement(1)), 2);
+
+                    var tBsioua = Vector256.Create(Bsaeio.GetElement(2), Bsaeio.GetElement(3), Bsu.GetElement(0), Bsaeio.GetElement(0));
+                    var tBseiou = Vector256.Create(Bsaeio.GetElement(1), Bsaeio.GetElement(2), Bsaeio.GetElement(3), Bsu.GetElement(0));
+                    Esaeio = Avx2.Xor(Bsaeio, AndNot256(tBseiou, tBsioua));
+                    Esu = Avx2.Xor(Bsu, Vector256.Create(~Bsaeio.GetElement(0) & Bsaeio.GetElement(1)));
+
+                    //Esa = Avx2.Xor(Bsa, AndNot256(Bse, Bsi));
+                    //Ca = Avx2.Xor(Ca, Esa);
+                    //Ese = Avx2.Xor(Bse, AndNot256(Bsi, Bso));
+                    //Ce = Avx2.Xor(Ce, Ese);
+                    //Esi = Avx2.Xor(Bsi, AndNot256(Bso, Bsu));
+                    //Ci = Avx2.Xor(Ci, Esi);
+                    //Eso = Avx2.Xor(Bso, AndNot256(Bsu, Bsa));
+                    //Co = Avx2.Xor(Co, Eso);
+                    //Esu = Avx2.Xor(Bsu, AndNot256(Bsa, Bse));
+                    Caeio = Avx2.Xor(Caeio, Esaeio);
+                    Cu = Avx2.Xor(Cu, Esu);
+
+                    // copy E -> A
+                    Abaeio = Ebaeio;
+                    Abu = Ebu;
+                    Agaeio = Egaeio;
+                    Agu = Egu;
+                    Akaeio = Ekaeio;
+                    Aku = Eku;
+                    Amaeio = Emaeio;
+                    Amu = Emu;
+                    Asaeio = Esaeio;
+                    Asu = Esu;
+                }
+
+#if mist
+                // ============================================================
+                // ROUND 2: E -> A
+                // ============================================================
+
+                {
+                    // thetaRhoPiChiIota: compute D values (Ca, Ce, Ci, Co, Cu already prepared)
+                    var tCaeioRol1 = Rol64Avx2(Caeio, 1);
+                    var tCeiouRol1 = Vector256.Create(tCaeioRol1.GetElement(1), tCaeioRol1.GetElement(2), tCaeioRol1.GetElement(3), BitOperations.RotateLeft(Cu.GetElement(0), 1));
+                    var tCuaei = Vector256.Create(Cu.GetElement(0), Caeio.GetElement(0), Caeio.GetElement(1), Caeio.GetElement(2));
+                    Daeio = Avx2.Xor(tCuaei, tCeiouRol1);
+                    Du = Avx2.Xor(Vector256.Create(Caeio.GetElement(3)), tCaeioRol1);
+
+                    // Da = Avx2.Xor(Cu, Rol64Avx2(Ce, 1));
+                    // De = Avx2.Xor(Ca, Rol64Avx2(Ci, 1));
+                    // Di = Avx2.Xor(Ce, Rol64Avx2(Co, 1));
+                    // Do = Avx2.Xor(Ci, Rol64Avx2(Cu, 1));
+                    // Du = Avx2.Xor(Co, Rol64Avx2(Ca, 1));
+
+                    // Row 0: Aba, Abe, Abi, Abo, Abu
+                    Eba = Avx2.Xor(Eba, Da);
+                    Bba = Eba;
+                    Ege = Avx2.Xor(Ege, De);
+                    Bbe = Rol64Avx2(Ege, 44);
+                    Eki = Avx2.Xor(Eki, Di);
+                    Bbi = Rol64Avx2(Eki, 43);
+                    Aba = Avx2.Xor(Bba, AndNot256(Bbe, Bbi));
+                    Aba = Avx2.Xor(Aba, Vector256.Create(RoundConstants[round + 1]));
+                    Emo = Avx2.Xor(Emo, Do);
+                    Bbo = Rol64Avx2(Emo, 21);
+                    Abe = Avx2.Xor(Bbe, AndNot256(Bbi, Bbo));
+                    Esu = Avx2.Xor(Esu, Du);
+                    Bbu = Rol64Avx2(Esu, 14);
+                    Abi = Avx2.Xor(Bbi, AndNot256(Bbo, Bbu));
+                    Abo = Avx2.Xor(Bbo, AndNot256(Bbu, Bba));
+                    Abu = Avx2.Xor(Bbu, AndNot256(Bba, Bbe));
+
+                    // Row 1: Aga, Age, Agi, Ago, Agu
+                    Ebo = Avx2.Xor(Ebo, Do);
+                    Bga = Rol64Avx2(Ebo, 28);
+                    Egu = Avx2.Xor(Egu, Du);
+                    Bge = Rol64Avx2(Egu, 20);
+                    Eka = Avx2.Xor(Eka, Da);
+                    Bgi = Rol64Avx2(Eka, 3);
+                    Aga = Avx2.Xor(Bga, AndNot256(Bge, Bgi));
+                    Eme = Avx2.Xor(Eme, De);
+                    Bgo = Rol64Avx2(Eme, 45);
+                    Age = Avx2.Xor(Bge, AndNot256(Bgi, Bgo));
+                    Esi = Avx2.Xor(Esi, Di);
+                    Bgu = Rol64Avx2(Esi, 61);
+                    Agi = Avx2.Xor(Bgi, AndNot256(Bgo, Bgu));
+                    Ago = Avx2.Xor(Bgo, AndNot256(Bgu, Bga));
+                    Agu = Avx2.Xor(Bgu, AndNot256(Bga, Bge));
+
+                    // Row 2: Aka, Ake, Aki, Ako, Aku
+                    Ebe = Avx2.Xor(Ebe, De);
+                    Bka = Rol64Avx2(Ebe, 1);
+                    Egi = Avx2.Xor(Egi, Di);
+                    Bke = Rol64Avx2(Egi, 6);
+                    Eko = Avx2.Xor(Eko, Do);
+                    Bki = Rol64Avx2(Eko, 25);
+                    Aka = Avx2.Xor(Bka, AndNot256(Bke, Bki));
+                    Emu = Avx2.Xor(Emu, Du);
+                    Bko = Rol64Avx2By8(Emu);
+                    Ake = Avx2.Xor(Bke, AndNot256(Bki, Bko));
+                    Esa = Avx2.Xor(Esa, Da);
+                    Bku = Rol64Avx2(Esa, 18);
+                    Aki = Avx2.Xor(Bki, AndNot256(Bko, Bku));
+                    Ako = Avx2.Xor(Bko, AndNot256(Bku, Bka));
+                    Aku = Avx2.Xor(Bku, AndNot256(Bka, Bke));
+
+                    // Row 3: Ama, Ame, Ami, Amo, Amu
+                    Ebu = Avx2.Xor(Ebu, Du);
+                    Bma = Rol64Avx2(Ebu, 27);
+                    Ega = Avx2.Xor(Ega, Da);
+                    Bme = Rol64Avx2(Ega, 36);
+                    Eke = Avx2.Xor(Eke, De);
+                    Bmi = Rol64Avx2(Eke, 10);
+                    Ama = Avx2.Xor(Bma, AndNot256(Bme, Bmi));
+                    Emi = Avx2.Xor(Emi, Di);
+                    Bmo = Rol64Avx2(Emi, 15);
+                    Ame = Avx2.Xor(Bme, AndNot256(Bmi, Bmo));
+                    Eso = Avx2.Xor(Eso, Do);
+                    Bmu = Rol64Avx2By56(Eso);
+                    Ami = Avx2.Xor(Bmi, AndNot256(Bmo, Bmu));
+                    Amo = Avx2.Xor(Bmo, AndNot256(Bmu, Bma));
+                    Amu = Avx2.Xor(Bmu, AndNot256(Bma, Bme));
+
+                    // Row 4: Asa, Ase, Asi, Aso, Asu
+                    Ebi = Avx2.Xor(Ebi, Di);
+                    Bsa = Rol64Avx2(Ebi, 62);
+                    Ego = Avx2.Xor(Ego, Do);
+                    Bse = Rol64Avx2(Ego, 55);
+                    Eku = Avx2.Xor(Eku, Du);
+                    Bsi = Rol64Avx2(Eku, 39);
+                    Asa = Avx2.Xor(Bsa, AndNot256(Bse, Bsi));
+                    Ema = Avx2.Xor(Ema, Da);
+                    Bso = Rol64Avx2(Ema, 41);
+                    Ase = Avx2.Xor(Bse, AndNot256(Bsi, Bso));
+                    Ese = Avx2.Xor(Ese, De);
+                    Bsu = Rol64Avx2(Ese, 2);
+                    Asi = Avx2.Xor(Bsi, AndNot256(Bso, Bsu));
+                    Aso = Avx2.Xor(Bso, AndNot256(Bsu, Bsa));
+                    Asu = Avx2.Xor(Bsu, AndNot256(Bsa, Bse));
+                }
+#endif
+            }
+
+            // Store state back (extract element 0 from each vector)
+            state[0] = Abaeio.GetElement(0);
+            state[1] = Abaeio.GetElement(1);
+            state[2] = Abaeio.GetElement(2);
+            state[3] = Abaeio.GetElement(3);
+            state[4] = Abu.GetElement(0);
+            state[5] = Agaeio.GetElement(0);
+            state[6] = Agaeio.GetElement(1);
+            state[7] = Agaeio.GetElement(2);
+            state[8] = Agaeio.GetElement(3);
+            state[9] = Agu.GetElement(0);
+            state[10] = Akaeio.GetElement(0);
+            state[11] = Akaeio.GetElement(1);
+            state[12] = Akaeio.GetElement(2);
+            state[13] = Akaeio.GetElement(3);
+            state[14] = Aku.GetElement(0);
+            state[15] = Amaeio.GetElement(0);
+            state[16] = Amaeio.GetElement(1);
+            state[17] = Amaeio.GetElement(2);
+            state[18] = Amaeio.GetElement(3);
+            state[19] = Amu.GetElement(0);
+            state[20] = Asaeio.GetElement(0);
+            state[21] = Asaeio.GetElement(1);
+            state[22] = Asaeio.GetElement(2);
+            state[23] = Asaeio.GetElement(3);
+            state[24] = Asu.GetElement(0);
+        }
+    }
+
+    // SSSE3 constants for byte shuffle-based rotation
+    private static readonly Vector128<byte> Rho8Ssse3 = Vector128.Create(
+        (byte)7, 0, 1, 2, 3, 4, 5, 6, 15, 8, 9, 10, 11, 12, 13, 14);
+
+    private static readonly Vector128<byte> Rho56Ssse3 = Vector128.Create(
+        (byte)1, 2, 3, 4, 5, 6, 7, 0, 9, 10, 11, 12, 13, 14, 15, 8);
+
+    /// <summary>
+    /// Performs 64-bit rotation using SSSE3 shift and OR operations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector128<ulong> Rol64Ssse3(Vector128<ulong> a, int offset)
+    {
+        return Sse2.Or(Sse2.ShiftLeftLogical(a, (byte)offset), Sse2.ShiftRightLogical(a, (byte)(64 - offset)));
+    }
+
+    /// <summary>
+    /// SSSE3-optimized Keccak-f[1600] permutation.
+    /// Based on the XKCP reference implementation patterns with pipelined Theta preparation.
+    /// </summary>
+    /// <param name="startRound">The starting round (0 for SHA-3/SHAKE, 12 for TurboSHAKE/K12).</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public void PermuteSsse3(int startRound = 0)
+    {
+        // Load state into scalar variables
+        ulong aba, abe, abi, abo, abu;
+        ulong aga, age, agi, ago, agu;
+        ulong aka, ake, aki, ako, aku;
+        ulong ama, ame, ami, amo, amu;
+        ulong asa, ase, asi, aso, asu;
+        ulong bCa, bCe, bCi, bCo, bCu;
+        ulong da, de, di, @do, du;
+        ulong eba, ebe, ebi, ebo, ebu;
+        ulong ega, ege, egi, ego, egu;
+        ulong eka, eke, eki, eko, eku;
+        ulong ema, eme, emi, emo, emu;
+        ulong esa, ese, esi, eso, esu;
+
+        // Theta parity accumulators
+        Vector128<ulong> c0, c1;
+        ulong cu;
+
+        fixed (ulong* state = _state)
+        {
+            // Load state
+            aba = state[0]; abe = state[1]; abi = state[2]; abo = state[3]; abu = state[4];
+            aga = state[5]; age = state[6]; agi = state[7]; ago = state[8]; agu = state[9];
+            aka = state[10]; ake = state[11]; aki = state[12]; ako = state[13]; aku = state[14];
+            ama = state[15]; ame = state[16]; ami = state[17]; amo = state[18]; amu = state[19];
+            asa = state[20]; ase = state[21]; asi = state[22]; aso = state[23]; asu = state[24];
+
+            // Initial Theta: Compute column parities
+            // This is done before the loop to prime the pipeline
+            var vA0 = Vector128.Create(aba, abe);
+            var vG0 = Vector128.Create(aga, age);
+            var vK0 = Vector128.Create(aka, ake);
+            var vM0 = Vector128.Create(ama, ame);
+            var vS0 = Vector128.Create(asa, ase);
+            c0 = Sse2.Xor(Sse2.Xor(Sse2.Xor(vA0, vG0), Sse2.Xor(vK0, vM0)), vS0);
+
+            var vA1 = Vector128.Create(abi, abo);
+            var vG1 = Vector128.Create(agi, ago);
+            var vK1 = Vector128.Create(aki, ako);
+            var vM1 = Vector128.Create(ami, amo);
+            var vS1 = Vector128.Create(asi, aso);
+            c1 = Sse2.Xor(Sse2.Xor(Sse2.Xor(vA1, vG1), Sse2.Xor(vK1, vM1)), vS1);
+
+            cu = abu ^ agu ^ aku ^ amu ^ asu;
+
+            for (int round = startRound; round < Rounds; round += 2)
+            {
+                // ROUND 1: Transform A -> E
+                // ----------------------------------------------------------------
+
+                // 1. Theta D calculation
+                bCa = c0.GetElement(0);
+                bCe = c0.GetElement(1);
+                bCi = c1.GetElement(0);
+                bCo = c1.GetElement(1);
+                // bCu is cu
+
+                da = cu ^ BitOperations.RotateLeft(bCe, 1);
+                de = bCa ^ BitOperations.RotateLeft(bCi, 1);
+                di = bCe ^ BitOperations.RotateLeft(bCo, 1);
+                @do = bCi ^ BitOperations.RotateLeft(cu, 1);
+                du = bCo ^ BitOperations.RotateLeft(bCa, 1);
+
+                // Reset accumulators for next round (pipelined)
+                c0 = Vector128<ulong>.Zero;
+                c1 = Vector128<ulong>.Zero;
+                cu = 0;
+
+                // 2. Rho, Pi, Chi, Iota (Interleaved with Theta accumulation)
+
+                // Row E (y=0)
+                bCa = aba ^ da;
+                bCe = BitOperations.RotateLeft(age ^ de, 44);
+                bCi = BitOperations.RotateLeft(aki ^ di, 43);
+                bCo = BitOperations.RotateLeft(amo ^ @do, 21);
+                bCu = BitOperations.RotateLeft(asu ^ du, 14);
+
+                eba = bCa ^ ((~bCe) & bCi) ^ RoundConstants[round];
+                ebe = bCe ^ ((~bCi) & bCo);
+                ebi = bCi ^ ((~bCo) & bCu);
+                ebo = bCo ^ ((~bCu) & bCa);
+                ebu = bCu ^ ((~bCa) & bCe);
+
+                // Accumulate next Theta parities
+                c0 = Sse2.Xor(c0, Vector128.Create(eba, ebe));
+                c1 = Sse2.Xor(c1, Vector128.Create(ebi, ebo));
+                cu ^= ebu;
+
+                // Row G (y=1)
+                bCa = BitOperations.RotateLeft(abo ^ @do, 28);
+                bCe = BitOperations.RotateLeft(agu ^ du, 20);
+                bCi = BitOperations.RotateLeft(aka ^ da, 3);
+                bCo = BitOperations.RotateLeft(ame ^ de, 45);
+                bCu = BitOperations.RotateLeft(asi ^ di, 61);
+
+                ega = bCa ^ ((~bCe) & bCi);
+                ege = bCe ^ ((~bCi) & bCo);
+                egi = bCi ^ ((~bCo) & bCu);
+                ego = bCo ^ ((~bCu) & bCa);
+                egu = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(ega, ege));
+                c1 = Sse2.Xor(c1, Vector128.Create(egi, ego));
+                cu ^= egu;
+
+                // Row K (y=2)
+                bCa = BitOperations.RotateLeft(abe ^ de, 1);
+                bCe = BitOperations.RotateLeft(agi ^ di, 6);
+                bCi = BitOperations.RotateLeft(ako ^ @do, 25);
+                bCo = BitOperations.RotateLeft(amu ^ du, 8);
+                bCu = BitOperations.RotateLeft(asa ^ da, 18);
+
+                eka = bCa ^ ((~bCe) & bCi);
+                eke = bCe ^ ((~bCi) & bCo);
+                eki = bCi ^ ((~bCo) & bCu);
+                eko = bCo ^ ((~bCu) & bCa);
+                eku = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(eka, eke));
+                c1 = Sse2.Xor(c1, Vector128.Create(eki, eko));
+                cu ^= eku;
+
+                // Row M (y=3)
+                bCa = BitOperations.RotateLeft(abu ^ du, 27);
+                bCe = BitOperations.RotateLeft(aga ^ da, 36);
+                bCi = BitOperations.RotateLeft(ake ^ de, 10);
+                bCo = BitOperations.RotateLeft(ami ^ di, 15);
+                bCu = BitOperations.RotateLeft(aso ^ @do, 56);
+
+                ema = bCa ^ ((~bCe) & bCi);
+                eme = bCe ^ ((~bCi) & bCo);
+                emi = bCi ^ ((~bCo) & bCu);
+                emo = bCo ^ ((~bCu) & bCa);
+                emu = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(ema, eme));
+                c1 = Sse2.Xor(c1, Vector128.Create(emi, emo));
+                cu ^= emu;
+
+                // Row S (y=4)
+                bCa = BitOperations.RotateLeft(abi ^ di, 62);
+                bCe = BitOperations.RotateLeft(ago ^ @do, 55);
+                bCi = BitOperations.RotateLeft(aku ^ du, 39);
+                bCo = BitOperations.RotateLeft(ama ^ da, 41);
+                bCu = BitOperations.RotateLeft(ase ^ de, 2);
+
+                esa = bCa ^ ((~bCe) & bCi);
+                ese = bCe ^ ((~bCi) & bCo);
+                esi = bCi ^ ((~bCo) & bCu);
+                eso = bCo ^ ((~bCu) & bCa);
+                esu = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(esa, ese));
+                c1 = Sse2.Xor(c1, Vector128.Create(esi, eso));
+                cu ^= esu;
+
+                // ROUND 2: Transform E -> A
+                // ----------------------------------------------------------------
+
+                // 1. Theta D calculation (using parities computed in Round 1)
+                bCa = c0.GetElement(0);
+                bCe = c0.GetElement(1);
+                bCi = c1.GetElement(0);
+                bCo = c1.GetElement(1);
+
+                da = cu ^ BitOperations.RotateLeft(bCe, 1);
+                de = bCa ^ BitOperations.RotateLeft(bCi, 1);
+                di = bCe ^ BitOperations.RotateLeft(bCo, 1);
+                @do = bCi ^ BitOperations.RotateLeft(cu, 1);
+                du = bCo ^ BitOperations.RotateLeft(bCa, 1);
+
+                // Reset accumulators
+                c0 = Vector128<ulong>.Zero;
+                c1 = Vector128<ulong>.Zero;
+                cu = 0;
+
+                // 2. Rho, Pi, Chi, Iota (Interleaved)
+
+                // Row A from E
+                bCa = eba ^ da;
+                bCe = BitOperations.RotateLeft(ege ^ de, 44);
+                bCi = BitOperations.RotateLeft(eki ^ di, 43);
+                bCo = BitOperations.RotateLeft(emo ^ @do, 21);
+                bCu = BitOperations.RotateLeft(esu ^ du, 14);
+
+                aba = bCa ^ ((~bCe) & bCi) ^ RoundConstants[round + 1];
+                abe = bCe ^ ((~bCi) & bCo);
+                abi = bCi ^ ((~bCo) & bCu);
+                abo = bCo ^ ((~bCu) & bCa);
+                abu = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(aba, abe));
+                c1 = Sse2.Xor(c1, Vector128.Create(abi, abo));
+                cu ^= abu;
+
+                // Row G from E
+                bCa = BitOperations.RotateLeft(ebo ^ @do, 28);
+                bCe = BitOperations.RotateLeft(egu ^ du, 20);
+                bCi = BitOperations.RotateLeft(eka ^ da, 3);
+                bCo = BitOperations.RotateLeft(eme ^ de, 45);
+                bCu = BitOperations.RotateLeft(esi ^ di, 61);
+
+                aga = bCa ^ ((~bCe) & bCi);
+                age = bCe ^ ((~bCi) & bCo);
+                agi = bCi ^ ((~bCo) & bCu);
+                ago = bCo ^ ((~bCu) & bCa);
+                agu = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(aga, age));
+                c1 = Sse2.Xor(c1, Vector128.Create(agi, ago));
+                cu ^= agu;
+
+                // Row K from E
+                bCa = BitOperations.RotateLeft(ebe ^ de, 1);
+                bCe = BitOperations.RotateLeft(egi ^ di, 6);
+                bCi = BitOperations.RotateLeft(eko ^ @do, 25);
+                bCo = BitOperations.RotateLeft(emu ^ du, 8);
+                bCu = BitOperations.RotateLeft(esa ^ da, 18);
+
+                aka = bCa ^ ((~bCe) & bCi);
+                ake = bCe ^ ((~bCi) & bCo);
+                aki = bCi ^ ((~bCo) & bCu);
+                ako = bCo ^ ((~bCu) & bCa);
+                aku = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(aka, ake));
+                c1 = Sse2.Xor(c1, Vector128.Create(aki, ako));
+                cu ^= aku;
+
+                // Row M from E
+                bCa = BitOperations.RotateLeft(ebu ^ du, 27);
+                bCe = BitOperations.RotateLeft(ega ^ da, 36);
+                bCi = BitOperations.RotateLeft(eke ^ de, 10);
+                bCo = BitOperations.RotateLeft(emi ^ di, 15);
+                bCu = BitOperations.RotateLeft(eso ^ @do, 56);
+
+                ama = bCa ^ ((~bCe) & bCi);
+                ame = bCe ^ ((~bCi) & bCo);
+                ami = bCi ^ ((~bCo) & bCu);
+                amo = bCo ^ ((~bCu) & bCa);
+                amu = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(ama, ame));
+                c1 = Sse2.Xor(c1, Vector128.Create(ami, amo));
+                cu ^= amu;
+
+                // Row S from E
+                bCa = BitOperations.RotateLeft(ebi ^ di, 62);
+                bCe = BitOperations.RotateLeft(ego ^ @do, 55);
+                bCi = BitOperations.RotateLeft(eku ^ du, 39);
+                bCo = BitOperations.RotateLeft(ema ^ da, 41);
+                bCu = BitOperations.RotateLeft(ese ^ de, 2);
+
+                asa = bCa ^ ((~bCe) & bCi);
+                ase = bCe ^ ((~bCi) & bCo);
+                asi = bCi ^ ((~bCo) & bCu);
+                aso = bCo ^ ((~bCu) & bCa);
+                asu = bCu ^ ((~bCa) & bCe);
+
+                c0 = Sse2.Xor(c0, Vector128.Create(asa, ase));
+                c1 = Sse2.Xor(c1, Vector128.Create(asi, aso));
+                cu ^= asu;
+            }
+
+            // Store state back
+            state[0] = aba; state[1] = abe; state[2] = abi; state[3] = abo; state[4] = abu;
+            state[5] = aga; state[6] = age; state[7] = agi; state[8] = ago; state[9] = agu;
+            state[10] = aka; state[11] = ake; state[12] = aki; state[13] = ako; state[14] = aku;
+            state[15] = ama; state[16] = ame; state[17] = ami; state[18] = amo; state[19] = amu;
+            state[20] = asa; state[21] = ase; state[22] = asi; state[23] = aso; state[24] = asu;
         }
     }
 

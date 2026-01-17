@@ -270,6 +270,20 @@ public static class Sha3224Implementations
                     () => CH.SHA3_224.Create(CH.SimdSupport.Avx512F));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_224 (AVX2)",
+                    () => CH.SHA3_224.Create(CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_224 (SSSE3)",
+                    () => CH.SHA3_224.Create(CH.SimdSupport.Ssse3));
+            }
+
             yield return new HashAlgorithmFactory(
                 "SHA3_224 (Managed)",
                 () => CH.SHA3_224.Create(CH.SimdSupport.None));
@@ -308,6 +322,20 @@ public static class Sha3256Implementations
                 yield return new HashAlgorithmFactory(
                     "SHA3_256 (AVX512F)",
                     () => CH.SHA3_256.Create(CH.SimdSupport.Avx512F));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_256 (AVX2)",
+                    () => CH.SHA3_256.Create(CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_256 (SSSE3)",
+                    () => CH.SHA3_256.Create(CH.SimdSupport.Ssse3));
             }
 
             yield return new HashAlgorithmFactory(
@@ -350,6 +378,20 @@ public static class Sha3384Implementations
                     () => CH.SHA3_384.Create(CH.SimdSupport.Avx512F));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_384 (AVX2)",
+                    () => CH.SHA3_384.Create(CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_384 (SSSE3)",
+                    () => CH.SHA3_384.Create(CH.SimdSupport.Ssse3));
+            }
+
             yield return new HashAlgorithmFactory(
                 "SHA3_384 (Managed)",
                 () => CH.SHA3_384.Create(CH.SimdSupport.None));
@@ -388,6 +430,20 @@ public static class Sha3512Implementations
                 yield return new HashAlgorithmFactory(
                     "SHA3_512 (AVX512F)",
                     () => CH.SHA3_512.Create(CH.SimdSupport.Avx512F));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_512 (AVX2)",
+                    () => CH.SHA3_512.Create(CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "SHA3_512 (SSSE3)",
+                    () => CH.SHA3_512.Create(CH.SimdSupport.Ssse3));
             }
 
             yield return new HashAlgorithmFactory(
@@ -434,6 +490,20 @@ public static class Shake128Implementations
                     () => CH.Shake128.Create(CH.SimdSupport.Avx512F, 32));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Shake128 (AVX2)",
+                    () => CH.Shake128.Create(CH.SimdSupport.Avx2, 32));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Shake128 (SSSE3)",
+                    () => CH.Shake128.Create(CH.SimdSupport.Ssse3, 32));
+            }
+
             yield return new HashAlgorithmFactory(
                 "Shake128 (Managed)",
                 () => CH.Shake128.Create(CH.SimdSupport.None, 32));
@@ -474,6 +544,20 @@ public static class Shake256Implementations
                     () => CH.Shake256.Create(CH.SimdSupport.Avx512F, 64));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Shake256 (AVX2)",
+                    () => CH.Shake256.Create(CH.SimdSupport.Avx2, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Shake256 (SSSE3)",
+                    () => CH.Shake256.Create(CH.SimdSupport.Ssse3, 64));
+            }
+
             yield return new HashAlgorithmFactory(
                 "Shake256 (Managed)",
                 () => CH.Shake256.Create(CH.SimdSupport.None, 64));
@@ -509,6 +593,20 @@ public static class CShake128Implementations
                     () => CH.CShake128.Create(CH.SimdSupport.Avx512F, 32));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "CShake128 (AVX2)",
+                    () => CH.CShake128.Create(CH.SimdSupport.Avx2, 32));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "CShake128 (SSSE3)",
+                    () => CH.CShake128.Create(CH.SimdSupport.Ssse3, 32));
+            }
+
             yield return new HashAlgorithmFactory(
                 "CShake128 (Managed)",
                 () => CH.CShake128.Create(CH.SimdSupport.None, 32));
@@ -538,6 +636,20 @@ public static class CShake256Implementations
                 yield return new HashAlgorithmFactory(
                     "CShake256 (AVX512F)",
                     () => CH.CShake256.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "CShake256 (AVX2)",
+                    () => CH.CShake256.Create(CH.SimdSupport.Avx2, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "CShake256 (SSSE3)",
+                    () => CH.CShake256.Create(CH.SimdSupport.Ssse3, 64));
             }
 
             yield return new HashAlgorithmFactory(
@@ -761,6 +873,20 @@ public static class Keccak256Implementations
                     () => CH.Keccak256.Create(CH.SimdSupport.Avx512F));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak256 (AVX2)",
+                    () => CH.Keccak256.Create(CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak256 (SSSE3)",
+                    () => CH.Keccak256.Create(CH.SimdSupport.Ssse3));
+            }
+
             yield return new HashAlgorithmFactory(
                 "Keccak256 (Managed)",
                 () => CH.Keccak256.Create(CH.SimdSupport.None));
@@ -792,6 +918,20 @@ public static class Keccak384Implementations
                     () => CH.Keccak384.Create(CH.SimdSupport.Avx512F));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak384 (AVX2)",
+                    () => CH.Keccak384.Create(CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak384 (SSSE3)",
+                    () => CH.Keccak384.Create(CH.SimdSupport.Ssse3));
+            }
+
             yield return new HashAlgorithmFactory(
                 "Keccak384 (Managed)",
                 () => CH.Keccak384.Create(CH.SimdSupport.None));
@@ -821,6 +961,20 @@ public static class Keccak512Implementations
                 yield return new HashAlgorithmFactory(
                     "Keccak512 (AVX512F)",
                     () => CH.Keccak512.Create(CH.SimdSupport.Avx512F));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak512 (AVX2)",
+                    () => CH.Keccak512.Create(CH.SimdSupport.Avx2));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Keccak512 (SSSE3)",
+                    () => CH.Keccak512.Create(CH.SimdSupport.Ssse3));
             }
 
             yield return new HashAlgorithmFactory(
@@ -1035,6 +1189,20 @@ public static class KT128Implementations
                     () => CH.KT128.Create(CH.SimdSupport.Avx512F, 32));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "KT128 (AVX2)",
+                    () => CH.KT128.Create(CH.SimdSupport.Avx2, 32));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "KT128 (SSSE3)",
+                    () => CH.KT128.Create(CH.SimdSupport.Ssse3, 32));
+            }
+
             yield return new HashAlgorithmFactory(
                 "KT128 (Managed)",
                 () => CH.KT128.Create(CH.SimdSupport.None, 32));
@@ -1062,6 +1230,20 @@ public static class KT256Implementations
                 yield return new HashAlgorithmFactory(
                     "KT256 (AVX512F)",
                     () => CH.KT256.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "KT256 (AVX2)",
+                    () => CH.KT256.Create(CH.SimdSupport.Avx2, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "KT256 (SSSE3)",
+                    () => CH.KT256.Create(CH.SimdSupport.Ssse3, 64));
             }
 
             yield return new HashAlgorithmFactory(
@@ -1093,6 +1275,20 @@ public static class TurboShake128Implementations
                     () => CH.TurboShake128.Create(CH.SimdSupport.Avx512F, 32));
             }
 
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake128 (AVX2)",
+                    () => CH.TurboShake128.Create(CH.SimdSupport.Avx2, 32));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake128 (SSSE3)",
+                    () => CH.TurboShake128.Create(CH.SimdSupport.Ssse3, 32));
+            }
+
             yield return new HashAlgorithmFactory(
                 "TurboShake128 (Managed)",
                 () => CH.TurboShake128.Create(CH.SimdSupport.None, 32));
@@ -1114,6 +1310,20 @@ public static class TurboShake128Implementations
                 yield return new HashAlgorithmFactory(
                     "TurboShake128 (AVX512F)",
                     () => CH.TurboShake128.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake128 (AVX2)",
+                    () => CH.TurboShake128.Create(CH.SimdSupport.Avx2, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake128 (SSSE3)",
+                    () => CH.TurboShake128.Create(CH.SimdSupport.Ssse3, 64));
             }
 
             yield return new HashAlgorithmFactory(
@@ -1143,6 +1353,20 @@ public static class TurboShake256Implementations
                 yield return new HashAlgorithmFactory(
                     "TurboShake256 (AVX512F)",
                     () => CH.TurboShake256.Create(CH.SimdSupport.Avx512F, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake256 (AVX2)",
+                    () => CH.TurboShake256.Create(CH.SimdSupport.Avx2, 64));
+            }
+
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "TurboShake256 (SSSE3)",
+                    () => CH.TurboShake256.Create(CH.SimdSupport.Ssse3, 64));
             }
 
             yield return new HashAlgorithmFactory(

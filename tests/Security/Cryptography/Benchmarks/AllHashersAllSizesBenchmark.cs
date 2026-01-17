@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Benchmarks;
@@ -63,10 +63,10 @@ public class AllHashersAllSizesBenchmark : HashBenchmarkBase
         TestDataSize = dataSize;
         GlobalSetup();
         var result = ComputeHash();
-        Assert.That(result.Length, Is.EqualTo(HashAlgorithm.HashSize / 8), "Result Hash has length mismatch.");
+        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8), "Result Hash has length mismatch.");
 
         var nextResult = ComputeHash();
-        Assert.That(result.Length, Is.EqualTo(nextResult.Length));
+        Assert.That(result, Has.Length.EqualTo(nextResult.Length));
         Assert.That(result, Is.EqualTo(nextResult), "Subsequent hash results do not match.");
     }
 
