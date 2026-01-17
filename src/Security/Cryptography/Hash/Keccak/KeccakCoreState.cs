@@ -124,7 +124,7 @@ internal unsafe struct KeccakCoreState
     }
 
     /// <summary>
-    /// Performs the Keccak-f[1600] permutation on the given state with explicit SIMD control.
+    /// Performs the Keccak-f[1600] permutation on the given statePtr with explicit SIMD control.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void Permute(int startRound = 0)
@@ -306,12 +306,12 @@ internal unsafe struct KeccakCoreState
         (byte)1, 2, 3, 4, 5, 6, 7, 0, 9, 10, 11, 12, 13, 14, 15, 8,
         17, 18, 19, 20, 21, 22, 23, 16, 25, 26, 27, 28, 29, 30, 31, 24);
 
-    private static readonly Vector256<ulong> Rol64Avx2RShift = Vector256.Create((ulong)64);
-    private static readonly Vector256<ulong> Plane0Rol64Avx2 = Vector256.Create((ulong)0, 44, 43, 21);
-    private static readonly Vector256<ulong> Plane1Rol64Avx2 = Vector256.Create((ulong)28, 20, 3, 45);
-    private static readonly Vector256<ulong> Plane2Rol64Avx2 = Vector256.Create((ulong)1, 6, 25, 8);
-    private static readonly Vector256<ulong> Plane3Rol64Avx2 = Vector256.Create((ulong)27, 36, 10, 15);
-    private static readonly Vector256<ulong> Plane4Rol64Avx2 = Vector256.Create((ulong)62, 55, 39, 41);
+    private static readonly Vector256<ulong> Rol64Avx2RShift = Vector256.Create(64ul);
+    private static readonly Vector256<ulong> Plane0Rol64Avx2 = Vector256.Create(0ul, 44ul, 43ul, 21ul);
+    private static readonly Vector256<ulong> Plane1Rol64Avx2 = Vector256.Create(28ul, 20ul, 3ul, 45ul);
+    private static readonly Vector256<ulong> Plane2Rol64Avx2 = Vector256.Create(1ul, 6ul, 25ul, 8ul);
+    private static readonly Vector256<ulong> Plane3Rol64Avx2 = Vector256.Create(27ul, 36ul, 10ul, 15ul);
+    private static readonly Vector256<ulong> Plane4Rol64Avx2 = Vector256.Create(62ul, 55ul, 39ul, 41ul);
 
     /// <summary>
     /// Performs 64-bit rotation using AVX2 shift and OR operations.
@@ -338,15 +338,6 @@ internal unsafe struct KeccakCoreState
     private static Vector256<ulong> Rol64Avx2By56(Vector256<ulong> a)
     {
         return Avx2.Shuffle(a.AsByte(), Rho56Avx2).AsUInt64();
-    }
-
-    /// <summary>
-    /// Performs AND-NOT: (~a) AND b, matching the C macro ANDnu256.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static Vector256<ulong> AndNot256(Vector256<ulong> a, Vector256<ulong> b)
-    {
-        return Avx2.AndNot(a, b);
     }
 
     /// <summary>
@@ -399,7 +390,7 @@ internal unsafe struct KeccakCoreState
         // State: A (current), B (after Rho/Pi), E (after Chi), C (Theta parity), D (Theta effect)
         // Plane: b(y=0), g(y=1), k(y=2), m(y=3), s(y=4)
         // Lanes: aeio (x=0,1,2,3 in a vector), u (x=4 scalar)
-        
+
         Vector256<ulong> Abaeio, Bbaeio, Ebaeio;
         Vector256<ulong> Agaeio, Bgaeio, Egaeio;
         Vector256<ulong> Akaeio, Bkaeio, Ekaeio;
@@ -414,20 +405,20 @@ internal unsafe struct KeccakCoreState
         ulong Asu, Bsu, Esu;
         ulong Cu, Du;
 
-        fixed (ulong* state = _state)
+        fixed (ulong* statePtr = _state)
         {
             // Load state into vectors
             // Each vector holds 4 lanes of a row (x=0..3), the 5th lane (x=4) is scalar
-            Abaeio = Vector256.Create(state[0], state[1], state[2], state[3]);
-            Abu = state[4];
-            Agaeio = Vector256.Create(state[5], state[6], state[7], state[8]);
-            Agu = state[9];
-            Akaeio = Vector256.Create(state[10], state[11], state[12], state[13]);
-            Aku = state[14];
-            Amaeio = Vector256.Create(state[15], state[16], state[17], state[18]);
-            Amu = state[19];
-            Asaeio = Vector256.Create(state[20], state[21], state[22], state[23]);
-            Asu = state[24];
+            Abaeio = Vector256.Create(statePtr[0], statePtr[1], statePtr[2], statePtr[3]);
+            Abu = statePtr[4];
+            Agaeio = Vector256.Create(statePtr[5], statePtr[6], statePtr[7], statePtr[8]);
+            Agu = statePtr[9];
+            Akaeio = Vector256.Create(statePtr[10], statePtr[11], statePtr[12], statePtr[13]);
+            Aku = statePtr[14];
+            Amaeio = Vector256.Create(statePtr[15], statePtr[16], statePtr[17], statePtr[18]);
+            Amu = statePtr[19];
+            Asaeio = Vector256.Create(statePtr[20], statePtr[21], statePtr[22], statePtr[23]);
+            Asu = statePtr[24];
 
             for (int round = startRound; round < Rounds; round++)
             {
@@ -448,11 +439,11 @@ internal unsafe struct KeccakCoreState
                 // ---------------------------------------------------------------------------------
                 {
                     // Align C[x+1] <<< 1 for x=0..3
-                    var tCeiouRol1 = Rol64Avx2(Vector256.Create(Caeio.GetElement(1), Caeio.GetElement(2), Caeio.GetElement(3), Cu), 1);
+                    var tCeiouRol1 = Rol64Avx2(Avx2.Permute4x64(Caeio, 0b00_11_10_01).WithElement(3, Cu), 1);
 
                     // Align C[x-1] for x=0..3 (element 0 needs Cu)
-                    var tCuaei = Vector256.Create(Cu, Caeio.GetElement(0), Caeio.GetElement(1), Caeio.GetElement(2));
-                    
+                   var tCuaei = Avx2.Permute4x64(Caeio, 0b10_01_00_00).WithElement(0, Cu);
+
                     Daeio = Avx2.Xor(tCuaei, tCeiouRol1);
                     // D[4]: Needs C[3] and (C[0] <<< 1)
                     Du = Caeio.GetElement(3) ^ BitOperations.RotateLeft(Caeio.GetElement(0), 1);
@@ -490,15 +481,15 @@ internal unsafe struct KeccakCoreState
                 Bbu = BitOperations.RotateLeft(Asu, 14); // A[4,4] -> B[4,0]
                 {
                     // Chi step setup: Shuffle B to align B[x+1] and B[x+2]
-                    var tBbioua = Vector256.Create(Bbaeio.GetElement(2), Bbaeio.GetElement(3), Bbu, Bbaeio.GetElement(0));
-                    var tBbeiou = Vector256.Create(Bbaeio.GetElement(1), Bbaeio.GetElement(2), Bbaeio.GetElement(3), Bbu);
-                    Ebaeio = Avx2.Xor(Bbaeio, AndNot256(tBbeiou, tBbioua));
+                    var tBbioua = Avx2.Permute4x64(Bbaeio, 0b00_00_11_10).WithElement(2, Bbu);
+                    var tBbeiou = Avx2.Permute4x64(Bbaeio, 0b00_11_10_01).WithElement(3, Bbu);
+                    Ebaeio = Avx2.Xor(Bbaeio, Avx2.AndNot(tBbeiou, tBbioua));
                     Ebu = Bbu ^ (~Bbaeio.GetElement(0) & Bbaeio.GetElement(1));
                 }
 
                 // Iota step
                 Ebaeio = Avx2.Xor(Ebaeio, Vector256.Create(RoundConstants[round], 0, 0, 0));
-                
+
                 // Pipelined Theta parity calculation for next round (Partial)
                 Caeio = Ebaeio;
                 Cu = Ebu;
@@ -508,9 +499,9 @@ internal unsafe struct KeccakCoreState
                 Bgaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(3), Agu, Akaeio.GetElement(0), Amaeio.GetElement(1)), Plane1Rol64Avx2);
                 Bgu = BitOperations.RotateLeft(Asaeio.GetElement(2), 61); // A[2,4] -> B[4,1]
                 {
-                    var tBgioua = Vector256.Create(Bgaeio.GetElement(2), Bgaeio.GetElement(3), Bgu, Bgaeio.GetElement(0));
-                    var tBgeiou = Vector256.Create(Bgaeio.GetElement(1), Bgaeio.GetElement(2), Bgaeio.GetElement(3), Bgu);
-                    Egaeio = Avx2.Xor(Bgaeio, AndNot256(tBgeiou, tBgioua));
+                    var tBgioua = Avx2.Permute4x64(Bgaeio, 0b00_00_11_10).WithElement(2, Bgu);
+                    var tBgeiou = Avx2.Permute4x64(Bgaeio, 0b00_11_10_01).WithElement(3, Bgu);
+                    Egaeio = Avx2.Xor(Bgaeio, Avx2.AndNot(tBgeiou, tBgioua));
                     Egu = Bgu ^ (~Bgaeio.GetElement(0) & Bgaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Egaeio);
@@ -521,9 +512,9 @@ internal unsafe struct KeccakCoreState
                 Bkaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(1), Agaeio.GetElement(2), Akaeio.GetElement(3), Amu), Plane2Rol64Avx2);
                 Bku = BitOperations.RotateLeft(Asaeio.GetElement(0), 18); // A[0,4] -> B[4,2]
                 {
-                    var tBkioua = Vector256.Create(Bkaeio.GetElement(2), Bkaeio.GetElement(3), Bku, Bkaeio.GetElement(0));
-                    var tBkeiou = Vector256.Create(Bkaeio.GetElement(1), Bkaeio.GetElement(2), Bkaeio.GetElement(3), Bku);
-                    Ekaeio = Avx2.Xor(Bkaeio, AndNot256(tBkeiou, tBkioua));
+                    var tBkioua = Avx2.Permute4x64(Bkaeio, 0b00_00_11_10).WithElement(2, Bku);
+                    var tBkeiou = Avx2.Permute4x64(Bkaeio, 0b00_11_10_01).WithElement(3, Bku);
+                    Ekaeio = Avx2.Xor(Bkaeio, Avx2.AndNot(tBkeiou, tBkioua));
                     Eku = Bku ^ (~Bkaeio.GetElement(0) & Bkaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Ekaeio);
@@ -534,9 +525,9 @@ internal unsafe struct KeccakCoreState
                 Bmaeio = Rol64Avx2(Vector256.Create(Abu, Agaeio.GetElement(0), Akaeio.GetElement(1), Amaeio.GetElement(2)), Plane3Rol64Avx2);
                 Bmu = BitOperations.RotateLeft(Asaeio.GetElement(3), 56); // A[3,4] -> B[4,3]
                 {
-                    var tBmioua = Vector256.Create(Bmaeio.GetElement(2), Bmaeio.GetElement(3), Bmu, Bmaeio.GetElement(0));
-                    var tBmeiou = Vector256.Create(Bmaeio.GetElement(1), Bmaeio.GetElement(2), Bmaeio.GetElement(3), Bmu);
-                    Emaeio = Avx2.Xor(Bmaeio, AndNot256(tBmeiou, tBmioua));
+                    var tBmioua = Avx2.Permute4x64(Bmaeio, 0b00_00_11_10).WithElement(2, Bmu);
+                    var tBmeiou = Avx2.Permute4x64(Bmaeio, 0b00_11_10_01).WithElement(3, Bmu);
+                    Emaeio = Avx2.Xor(Bmaeio, Avx2.AndNot(tBmeiou, tBmioua));
                     Emu = Bmu ^ (~Bmaeio.GetElement(0) & Bmaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Emaeio);
@@ -547,13 +538,13 @@ internal unsafe struct KeccakCoreState
                 Bsaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(2), Agaeio.GetElement(3), Aku, Amaeio.GetElement(0)), Plane4Rol64Avx2);
                 Bsu = BitOperations.RotateLeft(Asaeio.GetElement(1), 2); // A[1,4] -> B[4,4]
                 {
-                    var tBsioua = Vector256.Create(Bsaeio.GetElement(2), Bsaeio.GetElement(3), Bsu, Bsaeio.GetElement(0));
-                    var tBseiou = Vector256.Create(Bsaeio.GetElement(1), Bsaeio.GetElement(2), Bsaeio.GetElement(3), Bsu);
-                    Esaeio = Avx2.Xor(Bsaeio, AndNot256(tBseiou, tBsioua));
+                    var tBsioua = Avx2.Permute4x64(Bsaeio, 0b00_00_11_10).WithElement(2, Bsu);
+                    var tBseiou = Avx2.Permute4x64(Bsaeio, 0b00_11_10_01).WithElement(3, Bsu);
+                    Esaeio = Avx2.Xor(Bsaeio, Avx2.AndNot(tBseiou, tBsioua));
                     Esu = Bsu ^ (~Bsaeio.GetElement(0) & Bsaeio.GetElement(1));
                 }
                 // (Note: C update for plane 4 could be added here if we used pipelining fully)
-                
+
                 // =================================================================================
                 // State Update: E -> A
                 // =================================================================================
@@ -569,32 +560,17 @@ internal unsafe struct KeccakCoreState
                 Asu = Esu;
             }
 
-            // Store state back (extract element 0 from each vector)
-            state[0] = Abaeio.GetElement(0);
-            state[1] = Abaeio.GetElement(1);
-            state[2] = Abaeio.GetElement(2);
-            state[3] = Abaeio.GetElement(3);
-            state[4] = Abu;
-            state[5] = Agaeio.GetElement(0);
-            state[6] = Agaeio.GetElement(1);
-            state[7] = Agaeio.GetElement(2);
-            state[8] = Agaeio.GetElement(3);
-            state[9] = Agu;
-            state[10] = Akaeio.GetElement(0);
-            state[11] = Akaeio.GetElement(1);
-            state[12] = Akaeio.GetElement(2);
-            state[13] = Akaeio.GetElement(3);
-            state[14] = Aku;
-            state[15] = Amaeio.GetElement(0);
-            state[16] = Amaeio.GetElement(1);
-            state[17] = Amaeio.GetElement(2);
-            state[18] = Amaeio.GetElement(3);
-            state[19] = Amu;
-            state[20] = Asaeio.GetElement(0);
-            state[21] = Asaeio.GetElement(1);
-            state[22] = Asaeio.GetElement(2);
-            state[23] = Asaeio.GetElement(3);
-            state[24] = Asu;
+            // Store state back 
+            Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[0]) = Abaeio;
+            statePtr[4] = Abu;
+            Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[5]) = Agaeio;
+            statePtr[9] = Agu;
+            Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[10]) = Akaeio;
+            statePtr[14] = Aku;
+            Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[15]) = Amaeio;
+            statePtr[19] = Amu;
+            Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[20]) = Asaeio;
+            statePtr[24] = Asu;
         }
     }
 
@@ -623,7 +599,7 @@ internal unsafe struct KeccakCoreState
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void PermuteSsse3(int startRound = 0)
     {
-        // Load state into scalar variables
+        // Load statePtr into scalar variables
         ulong aba, abe, abi, abo, abu;
         ulong aga, age, agi, ago, agu;
         ulong aka, ake, aki, ako, aku;
@@ -643,7 +619,7 @@ internal unsafe struct KeccakCoreState
 
         fixed (ulong* state = _state)
         {
-            // Load state
+            // Load statePtr
             aba = state[0]; abe = state[1]; abi = state[2]; abo = state[3]; abu = state[4];
             aga = state[5]; age = state[6]; agi = state[7]; ago = state[8]; agu = state[9];
             aka = state[10]; ake = state[11]; aki = state[12]; ako = state[13]; aku = state[14];
@@ -887,7 +863,7 @@ internal unsafe struct KeccakCoreState
                 cu ^= asu;
             }
 
-            // Store state back
+            // Store statePtr back
             state[0] = aba; state[1] = abe; state[2] = abi; state[3] = abo; state[4] = abu;
             state[5] = aga; state[6] = age; state[7] = agi; state[8] = ago; state[9] = agu;
             state[10] = aka; state[11] = ake; state[12] = aki; state[13] = ako; state[14] = aku;
@@ -1088,7 +1064,7 @@ internal unsafe struct KeccakCoreState
                 asu = bCu ^ ((~bCa) & bCe);
             }
 
-            //copyToState(state, A)
+            //copyToState(statePtr, A)
             state[24] = asu;
             state[23] = aso;
             state[22] = asi;
@@ -1118,7 +1094,7 @@ internal unsafe struct KeccakCoreState
     }
 
     /// <summary>
-    /// Absorbs a block of data into the Keccak state with explicit SIMD control.
+    /// Absorbs a block of data into the Keccak statePtr with explicit SIMD control.
     /// </summary>
     /// <param name="block">The block to absorb (must be exactly rateBytes long).</param>
     /// <param name="rateBytes">The rate in bytes (determines how many bytes to XOR).</param>
@@ -1154,7 +1130,7 @@ internal unsafe struct KeccakCoreState
     }
 
     /// <summary>
-    /// Extracts output bytes from the Keccak state (single squeeze, no additional permutations).
+    /// Extracts output bytes from the Keccak statePtr (single squeeze, no additional permutations).
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
     /// <param name="length">The number of bytes to extract (must be ≤ rate).</param>
