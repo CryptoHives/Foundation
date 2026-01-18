@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -108,7 +109,8 @@ public sealed class KT128 : HashAlgorithm
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
         _simdSupport = simdSupport;
-        _buffer = new byte[InitialBufferSize];
+        // Rent initial buffer from shared pool to reduce allocations under benchmarks
+        _buffer = ArrayPool<byte>.Shared.Rent(InitialBufferSize);
         _bufferLength = 0;
         Initialize();
     }
@@ -211,11 +213,13 @@ public sealed class KT128 : HashAlgorithm
         int newSize = _buffer.Length;
         while (newSize < requiredCapacity)
         {
-            newSize *= 2;
+            newSize = Math.Max(newSize * 2, requiredCapacity);
         }
 
-        byte[] newBuffer = new byte[newSize];
-        _buffer.AsSpan(0, _bufferLength).CopyTo(newBuffer);
+        byte[] newBuffer = ArrayPool<byte>.Shared.Rent(newSize);
+        Array.Copy(_buffer, 0, newBuffer, 0, _bufferLength);
+        // Return old buffer to pool and clear to avoid leaking sensitive data
+        ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
         _buffer = newBuffer;
     }
 
@@ -265,46 +269,53 @@ public sealed class KT128 : HashAlgorithm
 
         // Build FinalNode = S_0 || 0x03 || 0x00^7 || CV_1 || ... || CV_(n-1) || length_encode(n-1) || 0xFF || 0xFF
         int finalNodeSize = ChunkSize + 8 + (numChunks - 1) * ChainingValueSize + 9 + 2;
-        byte[] finalNode = new byte[finalNodeSize];
-        int finalNodeLen = 0;
-
-        // Copy S_0 (first chunk)
-        int firstChunkLen = Math.Min(ChunkSize, s.Length);
-        s.Slice(0, firstChunkLen).CopyTo(finalNode.AsSpan(finalNodeLen));
-        finalNodeLen += firstChunkLen;
-
-        // Append 0x03 || 0x00^7
-        finalNode[finalNodeLen++] = 0x03;
-        for (int i = 0; i < 7; i++)
+        byte[] finalNode = ArrayPool<byte>.Shared.Rent(finalNodeSize);
+        try
         {
-            finalNode[finalNodeLen++] = 0x00;
-        }
+            int finalNodeLen = 0;
 
-        // Compute and append chaining values CV_1 to CV_(n-1)
-        for (int i = 1; i < numChunks; i++)
+            // Copy S_0 (first chunk)
+            int firstChunkLen = Math.Min(ChunkSize, s.Length);
+            s.Slice(0, firstChunkLen).CopyTo(finalNode.AsSpan(finalNodeLen));
+            finalNodeLen += firstChunkLen;
+
+            // Append 0x03 || 0x00^7
+            finalNode[finalNodeLen++] = 0x03;
+            for (int i = 0; i < 7; i++)
+            {
+                finalNode[finalNodeLen++] = 0x00;
+            }
+
+            // Compute and append chaining values CV_1 to CV_(n-1)
+            for (int i = 1; i < numChunks; i++)
+            {
+                int chunkStart = i * ChunkSize;
+                int chunkLen = Math.Min(ChunkSize, s.Length - chunkStart);
+                ReadOnlySpan<byte> chunk = s.Slice(chunkStart, chunkLen);
+
+                // CV_i = TurboSHAKE128(S_i, 0x0B, 32)
+                Span<byte> cv = finalNode.AsSpan(finalNodeLen, ChainingValueSize);
+                ComputeTurboShake128(chunk, cv, DomainIntermediateNode);
+                finalNodeLen += ChainingValueSize;
+            }
+
+            // Append length_encode(n-1)
+            Span<byte> encodedNumBlocks = stackalloc byte[9];
+            int encLen = LengthEncode(encodedNumBlocks, (ulong)(numChunks - 1));
+            encodedNumBlocks.Slice(0, encLen).CopyTo(finalNode.AsSpan(finalNodeLen));
+            finalNodeLen += encLen;
+
+            // Append 0xFF || 0xFF
+            finalNode[finalNodeLen++] = 0xFF;
+            finalNode[finalNodeLen++] = 0xFF;
+
+            // Output = TurboSHAKE128(FinalNode, 0x06, L)
+            ComputeTurboShake128(finalNode.AsSpan(0, finalNodeLen), output, DomainFinalNode);
+        }
+        finally
         {
-            int chunkStart = i * ChunkSize;
-            int chunkLen = Math.Min(ChunkSize, s.Length - chunkStart);
-            ReadOnlySpan<byte> chunk = s.Slice(chunkStart, chunkLen);
-
-            // CV_i = TurboSHAKE128(S_i, 0x0B, 32)
-            Span<byte> cv = finalNode.AsSpan(finalNodeLen, ChainingValueSize);
-            ComputeTurboShake128(chunk, cv, DomainIntermediateNode);
-            finalNodeLen += ChainingValueSize;
+            ArrayPool<byte>.Shared.Return(finalNode, clearArray: true);
         }
-
-        // Append length_encode(n-1)
-        Span<byte> encodedNumBlocks = stackalloc byte[9];
-        int encLen = LengthEncode(encodedNumBlocks, (ulong)(numChunks - 1));
-        encodedNumBlocks.Slice(0, encLen).CopyTo(finalNode.AsSpan(finalNodeLen));
-        finalNodeLen += encLen;
-
-        // Append 0xFF || 0xFF
-        finalNode[finalNodeLen++] = 0xFF;
-        finalNode[finalNodeLen++] = 0xFF;
-
-        // Output = TurboSHAKE128(FinalNode, 0x06, L)
-        ComputeTurboShake128(finalNode.AsSpan(0, finalNodeLen), output, DomainFinalNode);
     }
 
     /// <summary>
@@ -349,7 +360,12 @@ public sealed class KT128 : HashAlgorithm
     {
         if (disposing)
         {
-            Array.Clear(_buffer, 0, _buffer.Length);
+            if (_buffer != null)
+            {
+                // Clear and return to pool to avoid leaking sensitive data
+                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                _buffer = null!;
+            }
         }
         base.Dispose(disposing);
     }
