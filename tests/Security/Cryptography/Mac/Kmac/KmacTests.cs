@@ -1,14 +1,14 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Mac.Kmac;
 
-using System;
-using System.Text;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
+using System;
+using System.Text;
 
 #if NET9_0_OR_GREATER
 using NetKmac128 = System.Security.Cryptography.Kmac128;

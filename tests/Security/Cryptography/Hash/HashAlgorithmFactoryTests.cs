@@ -3,10 +3,9 @@
 
 namespace Cryptography.Tests.Hash;
 
+using NUnit.Framework;
 using System.Security.Cryptography;
 using System.Text;
-using NUnit.Framework;
-
 using CryptoHivesHash = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHivesMac = CryptoHives.Foundation.Security.Cryptography.Mac;
 

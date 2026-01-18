@@ -3,9 +3,9 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Text;
-using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// Computes the KMAC128 (Keccak Message Authentication Code) for the input data.

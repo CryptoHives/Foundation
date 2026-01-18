@@ -3,10 +3,10 @@
 
 namespace Cryptography.Tests.Hash.Regional;
 
-using System.Text;
 using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
+using System.Text;
 
 /// <summary>
 /// Tests for <see cref="SM3"/> hash algorithm.

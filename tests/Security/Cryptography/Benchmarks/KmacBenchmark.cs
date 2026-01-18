@@ -1,14 +1,14 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Benchmarks;
 
-using System;
-using System.Security.Cryptography;
-using System.Text;
 using BenchmarkDotNet.Attributes;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
+using System;
+using System.Security.Cryptography;
+using System.Text;
 using CHKmac128 = CryptoHives.Foundation.Security.Cryptography.Mac.Kmac128;
 using CHKmac256 = CryptoHives.Foundation.Security.Cryptography.Mac.Kmac256;
 

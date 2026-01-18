@@ -433,7 +433,7 @@ public class StreebogTests
         // Try with reversed message
         byte[] reversedMessage = (byte[])Rfc6986Message1.Clone();
         Array.Reverse(reversedMessage);
-        
+
         var bcDigest2 = new Org.BouncyCastle.Crypto.Digests.Gost3411_2012_512Digest();
         bcDigest2.BlockUpdate(reversedMessage, 0, reversedMessage.Length);
         byte[] bcHash2 = new byte[64];

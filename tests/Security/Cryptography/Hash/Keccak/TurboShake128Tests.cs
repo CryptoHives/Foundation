@@ -3,10 +3,10 @@
 
 namespace Cryptography.Tests.Hash.Keccak;
 
-using System;
 using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
+using System;
 
 /// <summary>
 /// Tests for TurboSHAKE128 per RFC 9861.

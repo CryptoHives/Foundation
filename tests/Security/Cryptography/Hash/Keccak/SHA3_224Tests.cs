@@ -3,11 +3,11 @@
 
 namespace Cryptography.Tests.Hash.Keccak;
 
-using System;
-using System.Text;
 using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
+using System;
+using System.Text;
 
 /// <summary>
 /// Tests for SHA3-224 implementations.

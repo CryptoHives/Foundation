@@ -3,14 +3,14 @@
 
 namespace Cryptography.Tests.Hash;
 
-using System;
-using System.Text;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
+using System;
+using System.Text;
 
 /// <summary>
 /// Tests that validate our implementations against BouncyCastle reference implementations.

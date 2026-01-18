@@ -1,12 +1,12 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Hash.Keccak;
 
-using System.Text;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Digests;
+using System.Text;
 
 /// <summary>
 /// Tests for <see cref="CShake128"/> and <see cref="CShake256"/> hash algorithms.

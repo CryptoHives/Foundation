@@ -3,11 +3,11 @@
 
 namespace Cryptography.Tests.Hash.Keccak;
 
-using System;
-using System.Text;
 using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
+using System;
+using System.Text;
 
 /// <summary>
 /// Tests for TurboSHAKE256 per RFC 9861.
@@ -106,7 +106,7 @@ public class TurboShake256Tests
 
         Assert.That(hash32, Has.Length.EqualTo(32));
         Assert.That(hash64, Has.Length.EqualTo(64));
-        
+
         Assert.That(hash64.AsSpan(0, 32).ToArray(), Is.EqualTo(hash32));
     }
 

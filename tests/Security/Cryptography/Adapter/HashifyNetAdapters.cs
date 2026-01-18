@@ -3,9 +3,6 @@
 
 namespace Cryptography.Tests.Adapter;
 
-using System;
-using System.IO;
-using System.Security.Cryptography;
 using HashifyNet;
 using HashifyNet.Algorithms.Blake2;
 // using HashifyNet.Algorithms.Blake3; // Commented out - has known bug at 1024-byte chunk boundary
@@ -13,6 +10,9 @@ using HashifyNet.Algorithms.Gost;
 using HashifyNet.Algorithms.Keccak;
 using HashifyNet.Algorithms.SM3;
 using HashifyNet.Algorithms.Whirlpool;
+using System;
+using System.IO;
+using System.Security.Cryptography;
 
 /// <summary>
 /// Wraps a HashifyNET BLAKE2b implementation as a <see cref="HashAlgorithm"/>.

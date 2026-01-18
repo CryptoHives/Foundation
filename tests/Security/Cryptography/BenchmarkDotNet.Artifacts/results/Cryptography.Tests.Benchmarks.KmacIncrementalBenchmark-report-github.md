@@ -1,17 +1,17 @@
 ```
 
-BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.7623/25H2/2025Update/HudsonValley2)
-AMD Ryzen 9 8945HS w/ Radeon 780M Graphics 4.00GHz, 1 CPU, 16 logical and 8 physical cores
-.NET SDK 10.0.101
-  [Host]    : .NET 10.0.1 (10.0.1, 10.0.125.57005), X64 RyuJIT x86-64-v4
-  .NET 10.0 : .NET 10.0.1 (10.0.1, 10.0.125.57005), X64 RyuJIT x86-64-v4
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26100.4770/24H2/2024Update/HudsonValley)
+AMD Ryzen 5 7600X 4.70GHz, 1 CPU, 12 logical and 6 physical cores
+.NET SDK 10.0.102
+  [Host]    : .NET 10.0.2 (10.0.2, 10.0.225.61305), X64 RyuJIT x86-64-v4
+  .NET 10.0 : .NET 10.0.2 (10.0.2, 10.0.225.61305), X64 RyuJIT x86-64-v4
 
 Job=.NET 10.0  Runtime=.NET 10.0  Toolchain=net10.0  
 
 ```
 | Method                             | Mean      | Error     | StdDev    | Min       | Max       | Median    | Gen0   | Allocated |
 |----------------------------------- |----------:|----------:|----------:|----------:|----------:|----------:|-------:|----------:|
-| &#39;KMAC128 CryptoHives Incremental&#39;  |  6.041 μs | 0.0512 μs | 0.0479 μs |  5.983 μs |  6.130 μs |  6.041 μs | 0.3128 |   2.62 KB |
-| &#39;KMAC128 BouncyCastle Incremental&#39; |  9.623 μs | 0.0446 μs | 0.0372 μs |  9.534 μs |  9.660 μs |  9.633 μs | 0.1526 |   1.37 KB |
-| &#39;KMAC256 CryptoHives Incremental&#39;  |  7.189 μs | 0.0413 μs | 0.0366 μs |  7.122 μs |  7.261 μs |  7.194 μs | 0.3052 |   2.55 KB |
-| &#39;KMAC256 BouncyCastle Incremental&#39; | 11.213 μs | 0.0848 μs | 0.0793 μs | 11.134 μs | 11.366 μs | 11.179 μs | 0.1678 |    1.4 KB |
+| &#39;KMAC128 CryptoHives Incremental&#39;  |  5.805 μs | 0.0209 μs | 0.0175 μs |  5.781 μs |  5.842 μs |  5.806 μs | 0.1526 |   2.62 KB |
+| &#39;KMAC128 BouncyCastle Incremental&#39; |  9.287 μs | 0.0619 μs | 0.0549 μs |  9.219 μs |  9.414 μs |  9.276 μs | 0.0763 |   1.37 KB |
+| &#39;KMAC256 CryptoHives Incremental&#39;  |  6.769 μs | 0.0152 μs | 0.0127 μs |  6.749 μs |  6.788 μs |  6.772 μs | 0.1526 |   2.55 KB |
+| &#39;KMAC256 BouncyCastle Incremental&#39; | 10.770 μs | 0.1303 μs | 0.1088 μs | 10.652 μs | 11.052 μs | 10.754 μs | 0.0763 |    1.4 KB |

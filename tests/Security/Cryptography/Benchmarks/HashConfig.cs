@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Benchmarks;
@@ -115,14 +115,12 @@ public class HashConfig : ManualConfig
         public IEnumerable<IGrouping<string, BenchmarkCase>> GetLogicalGroupOrder(IEnumerable<IGrouping<string, BenchmarkCase>> logicalGroups,
             IEnumerable<BenchmarkLogicalGroupRule>? order = null) =>
             logicalGroups
-                .OrderBy(g =>
-                {
+                .OrderBy(g => {
                     // Order by category first
                     var parts = g.Key.Split('|');
                     return parts.Length > 0 ? parts[0].Trim() : "";
                 })
-                .ThenBy(g =>
-                {
+                .ThenBy(g => {
                     // Then by data size bytes
                     var parts = g.Key.Split('|');
                     var sizeName = parts.Length > 1 ? parts[1].Trim() : "";

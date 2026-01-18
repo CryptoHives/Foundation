@@ -3,12 +3,12 @@
 
 namespace Cryptography.Tests.Adapter;
 
-using System;
-using System.Security.Cryptography;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
+using System;
+using System.Security.Cryptography;
 
 /// <summary>
 /// Wraps a BouncyCastle <see cref="IDigest"/> as a <see cref="HashAlgorithm"/>.

@@ -3,13 +3,13 @@
 
 namespace Cryptography.Tests.Hash;
 
+using Cryptography.Tests.Adapter;
+using Org.BouncyCastle.Crypto.Digests;
 using System;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
-using Org.BouncyCastle.Crypto.Digests;
-using Cryptography.Tests.Adapter;
 
 /// <summary>
 /// Represents a factory for creating hash algorithm instances for testing.
@@ -1249,7 +1249,7 @@ public static class KT256Implementations
             yield return new HashAlgorithmFactory(
                 "KT256 (Managed)",
                 () => CH.KT256.Create(CH.SimdSupport.None, 64));
-            
+
             // Note: BouncyCastle 2.6.2 does not include KT256
         }
     }
@@ -1292,7 +1292,7 @@ public static class TurboShake128Implementations
             yield return new HashAlgorithmFactory(
                 "TurboShake128 (Managed)",
                 () => CH.TurboShake128.Create(CH.SimdSupport.None, 32));
-                
+
             // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
         }
     }
@@ -1372,7 +1372,7 @@ public static class TurboShake256Implementations
             yield return new HashAlgorithmFactory(
                 "TurboShake256 (Managed)",
                 () => CH.TurboShake256.Create(CH.SimdSupport.None, 64));
-                
+
             // Note: BouncyCastle 2.6.2 does not include TurboSHAKE
         }
     }
