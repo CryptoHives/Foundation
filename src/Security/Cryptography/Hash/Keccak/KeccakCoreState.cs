@@ -436,7 +436,6 @@ internal unsafe struct KeccakCoreState
         fixed (ulong* statePtr = _state)
         {
             // Load state into vectors
-            // Each vector holds 4 lanes of a row (x=0..3), the 5th lane (x=4) is scalar
             Asu = statePtr[24];
             Abaeio = Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[0]);
             Abu = statePtr[4];
@@ -448,88 +447,58 @@ internal unsafe struct KeccakCoreState
             Amu = statePtr[19];
             Asaeio = Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[20]);
 
-            // =================================================================================
-            // 1. Theta Step: Calculate Column Parities (C)
-            // =================================================================================
-            // Compute the parity of each of the 5 columns (each column has 5 lanes from y=0..4).
-            // C[x] = A[x,0] ^ A[x,1] ^ A[x,2] ^ A[x,3] ^ A[x,4]
-            // ---------------------------------------------------------------------------------
+            // 1. Initial Theta Parity
             Caeio = Avx2.Xor(Abaeio, Avx2.Xor(Agaeio, Avx2.Xor(Akaeio, Avx2.Xor(Amaeio, Asaeio))));
             Cu = Abu ^ Agu ^ Aku ^ Amu ^ Asu;
 
             for (int round = startRound; round < Rounds; round += 2)
             {
                 // =================================================================================
-                // 2. Theta Step: Calculate effect (D) and Apply to State
+                // ROUND 1 (A -> E)
                 // =================================================================================
-                // D[x] = C[x-1] ^ (C[x+1] <<< 1)
-                // The indices are modulo 5. We use vector shuffles/permutes to align C values.
-                // ---------------------------------------------------------------------------------
                 {
-                    // Align C[x+1] <<< 1 for x=0..3
                     var tCeiouRol1 = Rol64Avx2(Avx2.Permute4x64(Caeio, 0b00_11_10_01).WithElement(3, Cu), 1);
-
-                    // Align C[x-1] for x=0..3 (element 0 needs Cu)
                     var tCuaei = Avx2.Permute4x64(Caeio, 0b10_01_00_00).WithElement(0, Cu);
-
                     Daeio = Avx2.Xor(tCuaei, tCeiouRol1);
-                    // D[4]: Needs C[3] and (C[0] <<< 1)
                     Du = Caeio.GetElement(3) ^ BitOperations.RotateLeft(Caeio.GetElement(0), 1);
                 }
 
-                // Apply Theta (A = A ^ D)
-                Abaeio = Avx2.Xor(Abaeio, Daeio);
-                Abu = Abu ^ Du;
-                Agaeio = Avx2.Xor(Agaeio, Daeio);
-                Agu = Agu ^ Du;
-                Akaeio = Avx2.Xor(Akaeio, Daeio);
-                Aku = Aku ^ Du;
-                Amaeio = Avx2.Xor(Amaeio, Daeio);
-                Amu = Amu ^ Du;
-                Asaeio = Avx2.Xor(Asaeio, Daeio);
-                Asu = Asu ^ Du;
+                Abaeio = Avx2.Xor(Abaeio, Daeio); Abu ^= Du;
+                Agaeio = Avx2.Xor(Agaeio, Daeio); Agu ^= Du;
+                Akaeio = Avx2.Xor(Akaeio, Daeio); Aku ^= Du;
+                Amaeio = Avx2.Xor(Amaeio, Daeio); Amu ^= Du;
+                Asaeio = Avx2.Xor(Asaeio, Daeio); Asu ^= Du;
 
-                // =================================================================================
-                // 3, 4, 5. Rho, Pi, Chi, Iota Steps (Fused)
-                // =================================================================================
-                // These steps are pipelined for each plane (y=0..4).
-                // 
-                // Rho (Rotation): B[x,y] = A[x,y] <<< r[x,y]
-                // Pi (Permutation): Permute lanes (x,y) -> (y, 2x+3y)
-                //    - We gather specific lanes from A that map to the target B row.
-                //    - This reorders the lanes according to Pi mapping.
-                // Chi (Non-linear): E[x] = B[x] ^ ((~B[x+1]) & B[x+2])
-                //    - This is computed using the B values we just derived.
-                // Iota (Round Constant): E[0] ^= RC[round] (Applied to Lane 0 of Plane 0 only)
-                // ---------------------------------------------------------------------------------
-
-                // --- Plane 0 (y=0) ---
-                // Gather A lanes for B row y=0: (0,0), (1,1), (2,2), (3,3) -> B[0..3, 0]
+                // Plane 0
                 {
-                    var Bbaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(0), Agaeio.GetElement(1), Akaeio.GetElement(2), Amaeio.GetElement(3)), Plane0Rol64Avx2);
-                    var Bbu = BitOperations.RotateLeft(Asu, 14); // A[4,4] -> B[4,0]
+                    var t01 = Avx.Blend(Abaeio.AsDouble(), Agaeio.AsDouble(), 0b_0010);
+                    var t23 = Avx.Blend(Akaeio.AsDouble(), Amaeio.AsDouble(), 0b_1000);
+                    var gathered = Avx.Blend(t01, t23, 0b_1100).AsUInt64();
 
-                    // Chi step setup: Shuffle B to align B[x+1] and B[x+2]
+                    var Bbaeio = Rol64Avx2(gathered, Plane0Rol64Avx2);
+                    var Bbu = BitOperations.RotateLeft(Asu, 14);
+
                     var tBbioua = Avx2.Permute4x64(Bbaeio, 0b00_00_11_10).WithElement(2, Bbu);
                     var tBbeiou = Avx2.Permute4x64(Bbaeio, 0b00_11_10_01).WithElement(3, Bbu);
                     Ebaeio = Avx2.Xor(Bbaeio, Avx2.AndNot(tBbeiou, tBbioua));
                     Ebu = Bbu ^ (~Bbaeio.GetElement(0) & Bbaeio.GetElement(1));
                 }
 
-                // Iota step
                 Ebaeio = Avx2.Xor(Ebaeio, RoundConstantsAvx2[round]);
+                Caeio = Ebaeio; Cu = Ebu;
 
-                // Pipelined Theta parity calculation for next round (Partial)
-                Caeio = Ebaeio;
-                Cu = Ebu;
-
-                // PreRotate Asaeio for ulong
                 var Bksgm = Rol64Avx2(Asaeio, BksgmRol64Avx2);
 
-                // --- Plane 1 (y=1) ---
-                // Gather A lanes for B row y=1: (3,0), (4,1), (0,2), (1,3) -> B[0..3, 1]
+                // Plane 1
                 {
-                    var Bgaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(3), Agu, Akaeio.GetElement(0), Amaeio.GetElement(1)), Plane1Rol64Avx2);
+                    var t0 = Avx2.Permute4x64(Abaeio, 0b_11_11_11_11); // Src 3 (A[3,0]->B[0])
+                    var t2 = Avx2.Permute4x64(Akaeio, 0b_00_00_00_00); // Src 0 (A[0,2]->B[2])
+                    var t3 = Avx2.Permute4x64(Amaeio, 0b_01_01_01_01); // Src 1 (A[1,3]->B[3])
+
+                    var t02 = Avx.Blend(t0.AsDouble(), t2.AsDouble(), 0b_0100);
+                    var gathered = Avx.Blend(t02, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(1, Agu);
+
+                    var Bgaeio = Rol64Avx2(gathered, Plane1Rol64Avx2);
                     var Bgu = Bksgm.GetElement(2);
 
                     var tBgioua = Avx2.Permute4x64(Bgaeio, 0b00_00_11_10).WithElement(2, Bgu);
@@ -537,13 +506,18 @@ internal unsafe struct KeccakCoreState
                     Egaeio = Avx2.Xor(Bgaeio, Avx2.AndNot(tBgeiou, tBgioua));
                     Egu = Bgu ^ (~Bgaeio.GetElement(0) & Bgaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Egaeio);
-                Cu = Cu ^ Egu;
+                Caeio = Avx2.Xor(Caeio, Egaeio); Cu ^= Egu;
 
-                // --- Plane 2 (y=2) ---
-                // Gather A lanes for B row y=2: (1,0), (2,1), (3,2), (4,3) -> B[0..3, 2]
+                // Plane 2
                 {
-                    var Bkaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(1), Agaeio.GetElement(2), Akaeio.GetElement(3), Amu), Plane2Rol64Avx2);
+                    var t0 = Avx2.Permute4x64(Abaeio, 0b_01_01_01_01); // Src 1 (A[1,0]->B[0])
+                    var t1 = Avx2.Permute4x64(Agaeio, 0b_10_10_10_10); // Src 2 (A[2,1]->B[1])
+                    var t2 = Avx2.Permute4x64(Akaeio, 0b_11_11_11_11); // Src 3 (A[3,2]->B[2])
+
+                    var t01 = Avx.Blend(t0.AsDouble(), t1.AsDouble(), 0b_0010);
+                    var gathered = Avx.Blend(t01, t2.AsDouble(), 0b_0100).AsUInt64().WithElement(3, Amu);
+
+                    var Bkaeio = Rol64Avx2(gathered, Plane2Rol64Avx2);
                     var Bku = Bksgm.GetElement(0);
 
                     var tBkioua = Avx2.Permute4x64(Bkaeio, 0b00_00_11_10).WithElement(2, Bku);
@@ -551,13 +525,18 @@ internal unsafe struct KeccakCoreState
                     Ekaeio = Avx2.Xor(Bkaeio, Avx2.AndNot(tBkeiou, tBkioua));
                     Eku = Bku ^ (~Bkaeio.GetElement(0) & Bkaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Ekaeio);
-                Cu = Cu ^ Eku;
+                Caeio = Avx2.Xor(Caeio, Ekaeio); Cu ^= Eku;
 
-                // --- Plane 3 (y=3) ---
-                // Gather A lanes for B row y=3: (4,0), (0,1), (1,2), (2,3) -> B[0..3, 3]
+                // Plane 3
                 {
-                    var Bmaeio = Rol64Avx2(Vector256.Create(Abu, Agaeio.GetElement(0), Akaeio.GetElement(1), Amaeio.GetElement(2)), Plane3Rol64Avx2);
+                    var t1 = Avx2.Permute4x64(Agaeio, 0b_00_00_00_00); // Src 0 (A[0,1]->B[1])
+                    var t2 = Avx2.Permute4x64(Akaeio, 0b_01_01_01_01); // Src 1 (A[1,2]->B[2])
+                    var t3 = Avx2.Permute4x64(Amaeio, 0b_10_10_10_10); // Src 2 (A[2,3]->B[3])
+
+                    var t12 = Avx.Blend(t1.AsDouble(), t2.AsDouble(), 0b_0100);
+                    var gathered = Avx.Blend(t12, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(0, Abu);
+
+                    var Bmaeio = Rol64Avx2(gathered, Plane3Rol64Avx2);
                     var Bmu = Bksgm.GetElement(3);
 
                     var tBmioua = Avx2.Permute4x64(Bmaeio, 0b00_00_11_10).WithElement(2, Bmu);
@@ -565,13 +544,18 @@ internal unsafe struct KeccakCoreState
                     Emaeio = Avx2.Xor(Bmaeio, Avx2.AndNot(tBmeiou, tBmioua));
                     Emu = Bmu ^ (~Bmaeio.GetElement(0) & Bmaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Emaeio);
-                Cu = Cu ^ Emu;
+                Caeio = Avx2.Xor(Caeio, Emaeio); Cu ^= Emu;
 
-                // --- Plane 4 (y=4) ---
-                // Gather A lanes for B row y=4: (2,0), (3,1), (4,2), (0,3) -> B[0..3, 4]
+                // Plane 4
                 {
-                    var Bsaeio = Rol64Avx2(Vector256.Create(Abaeio.GetElement(2), Agaeio.GetElement(3), Aku, Amaeio.GetElement(0)), Plane4Rol64Avx2);
+                    var t0 = Avx2.Permute4x64(Abaeio, 0b_10_10_10_10); // Src 2 (A[2,0]->B[0])
+                    var t1 = Avx2.Permute4x64(Agaeio, 0b_11_11_11_11); // Src 3 (A[3,1]->B[1])
+                    var t3 = Avx2.Permute4x64(Amaeio, 0b_00_00_00_00); // Src 0 (A[0,3]->B[3])
+
+                    var t01 = Avx.Blend(t0.AsDouble(), t1.AsDouble(), 0b_0010);
+                    var gathered = Avx.Blend(t01, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(2, Aku);
+
+                    var Bsaeio = Rol64Avx2(gathered, Plane4Rol64Avx2);
                     var Bsu = Bksgm.GetElement(1);
 
                     var tBsioua = Avx2.Permute4x64(Bsaeio, 0b00_00_11_10).WithElement(2, Bsu);
@@ -579,95 +563,52 @@ internal unsafe struct KeccakCoreState
                     Esaeio = Avx2.Xor(Bsaeio, Avx2.AndNot(tBseiou, tBsioua));
                     Esu = Bsu ^ (~Bsaeio.GetElement(0) & Bsaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Esaeio);
-                Cu = Cu ^ Esu;
+                Caeio = Avx2.Xor(Caeio, Esaeio); Cu ^= Esu;
 
-#if SINGLEROUND
                 // =================================================================================
-                // State Update: E -> A
+                // ROUND 2 (E -> A)
                 // =================================================================================
-                Abaeio = Ebaeio;
-                Abu = Ebu;
-                Agaeio = Egaeio;
-                Agu = Egu;
-                Akaeio = Ekaeio;
-                Aku = Eku;
-                Amaeio = Emaeio;
-                Amu = Emu;
-                Asaeio = Esaeio;
-                Asu = Esu;
-#else
-                // =================================================================================
-                // 2. Theta Step: Calculate effect (D) and Apply to State
-                // =================================================================================
-                // D[x] = C[x-1] ^ (C[x+1] <<< 1)
-                // The indices are modulo 5. We use vector shuffles/permutes to align C values.
-                // ---------------------------------------------------------------------------------
                 {
-                    // Align C[x+1] <<< 1 for x=0..3
                     var tCeiouRol1 = Rol64Avx2(Avx2.Permute4x64(Caeio, 0b00_11_10_01).WithElement(3, Cu), 1);
-
-                    // Align C[x-1] for x=0..3 (element 0 needs Cu)
                     var tCuaei = Avx2.Permute4x64(Caeio, 0b10_01_00_00).WithElement(0, Cu);
-
                     Daeio = Avx2.Xor(tCuaei, tCeiouRol1);
-                    // D[4]: Needs C[3] and (C[0] <<< 1)
                     Du = Caeio.GetElement(3) ^ BitOperations.RotateLeft(Caeio.GetElement(0), 1);
                 }
 
-                // Apply Theta (E = E ^ D)
-                Ebaeio = Avx2.Xor(Ebaeio, Daeio);
-                Ebu = Ebu ^ Du;
-                Egaeio = Avx2.Xor(Egaeio, Daeio);
-                Egu = Egu ^ Du;
-                Ekaeio = Avx2.Xor(Ekaeio, Daeio);
-                Eku = Eku ^ Du;
-                Emaeio = Avx2.Xor(Emaeio, Daeio);
-                Emu = Emu ^ Du;
-                Esaeio = Avx2.Xor(Esaeio, Daeio);
-                Esu = Esu ^ Du;
+                Ebaeio = Avx2.Xor(Ebaeio, Daeio); Ebu ^= Du;
+                Egaeio = Avx2.Xor(Egaeio, Daeio); Egu ^= Du;
+                Ekaeio = Avx2.Xor(Ekaeio, Daeio); Eku ^= Du;
+                Emaeio = Avx2.Xor(Emaeio, Daeio); Emu ^= Du;
+                Esaeio = Avx2.Xor(Esaeio, Daeio); Esu ^= Du;
 
-                // =================================================================================
-                // 3, 4, 5. Rho, Pi, Chi, Iota Steps (Fused)
-                // =================================================================================
-                // These steps are pipelined for each plane (y=0..4).
-                // 
-                // Rho (Rotation): B[x,y] = A[x,y] <<< r[x,y]
-                // Pi (Permutation): Permute lanes (x,y) -> (y, 2x+3y)
-                //    - We gather specific lanes from A that map to the target B row.
-                //    - This reorders the lanes according to Pi mapping.
-                // Chi (Non-linear): E[x] = B[x] ^ ((~B[x+1]) & B[x+2])
-                //    - This is computed using the B values we just derived.
-                // Iota (Round Constant): E[0] ^= RC[round] (Applied to Lane 0 of Plane 0 only)
-                // ---------------------------------------------------------------------------------
-
-                // --- Plane 0 (y=0) ---
-                // Gather A lanes for B row y=0: (0,0), (1,1), (2,2), (3,3) -> B[0..3, 0]
+                // Plane 0
                 {
-                    var Bbaeio = Rol64Avx2(Vector256.Create(Ebaeio.GetElement(0), Egaeio.GetElement(1), Ekaeio.GetElement(2), Emaeio.GetElement(3)), Plane0Rol64Avx2);
-                    var Bbu = BitOperations.RotateLeft(Esu, 14); // A[4,4] -> B[4,0]
+                    var t01 = Avx.Blend(Ebaeio.AsDouble(), Egaeio.AsDouble(), 0b_0010);
+                    var t23 = Avx.Blend(Ekaeio.AsDouble(), Emaeio.AsDouble(), 0b_1000);
+                    var gathered = Avx.Blend(t01, t23, 0b_1100).AsUInt64();
 
-                    // Chi step setup: Shuffle B to align B[x+1] and B[x+2]
+                    var Bbaeio = Rol64Avx2(gathered, Plane0Rol64Avx2);
+                    var Bbu = BitOperations.RotateLeft(Esu, 14);
+
                     var tBbioua = Avx2.Permute4x64(Bbaeio, 0b00_00_11_10).WithElement(2, Bbu);
                     var tBbeiou = Avx2.Permute4x64(Bbaeio, 0b00_11_10_01).WithElement(3, Bbu);
                     Abaeio = Avx2.Xor(Bbaeio, Avx2.AndNot(tBbeiou, tBbioua));
                     Abu = Bbu ^ (~Bbaeio.GetElement(0) & Bbaeio.GetElement(1));
                 }
-
-                // Iota step
                 Abaeio = Avx2.Xor(Abaeio, RoundConstantsAvx2[round + 1]);
+                Caeio = Abaeio; Cu = Abu;
 
-                // Pipelined Theta parity calculation for next round (Partial)
-                Caeio = Abaeio;
-                Cu = Abu;
-
-                // PreRotate Asaeio for ulong
                 Bksgm = Rol64Avx2(Esaeio, BksgmRol64Avx2);
 
-                // --- Plane 1 (y=1) ---
-                // Gather A lanes for B row y=1: (3,0), (4,1), (0,2), (1,3) -> B[0..3, 1]
+                // Plane 1
                 {
-                    var Bgaeio = Rol64Avx2(Vector256.Create(Ebaeio.GetElement(3), Egu, Ekaeio.GetElement(0), Emaeio.GetElement(1)), Plane1Rol64Avx2);
+                    var t0 = Avx2.Permute4x64(Ebaeio, 0b_11_11_11_11);
+                    var t2 = Avx2.Permute4x64(Ekaeio, 0b_00_00_00_00);
+                    var t3 = Avx2.Permute4x64(Emaeio, 0b_01_01_01_01);
+                    var t02 = Avx.Blend(t0.AsDouble(), t2.AsDouble(), 0b_0100);
+                    var gathered = Avx.Blend(t02, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(1, Egu);
+
+                    var Bgaeio = Rol64Avx2(gathered, Plane1Rol64Avx2);
                     var Bgu = Bksgm.GetElement(2);
 
                     var tBgioua = Avx2.Permute4x64(Bgaeio, 0b00_00_11_10).WithElement(2, Bgu);
@@ -675,13 +616,17 @@ internal unsafe struct KeccakCoreState
                     Agaeio = Avx2.Xor(Bgaeio, Avx2.AndNot(tBgeiou, tBgioua));
                     Agu = Bgu ^ (~Bgaeio.GetElement(0) & Bgaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Agaeio);
-                Cu = Cu ^ Agu;
+                Caeio = Avx2.Xor(Caeio, Agaeio); Cu ^= Agu;
 
-                // --- Plane 2 (y=2) ---
-                // Gather A lanes for B row y=2: (1,0), (2,1), (3,2), (4,3) -> B[0..3, 2]
+                // Plane 2
                 {
-                    var Bkaeio = Rol64Avx2(Vector256.Create(Ebaeio.GetElement(1), Egaeio.GetElement(2), Ekaeio.GetElement(3), Emu), Plane2Rol64Avx2);
+                    var t0 = Avx2.Permute4x64(Ebaeio, 0b_01_01_01_01);
+                    var t1 = Avx2.Permute4x64(Egaeio, 0b_10_10_10_10);
+                    var t2 = Avx2.Permute4x64(Ekaeio, 0b_11_11_11_11);
+                    var t01 = Avx.Blend(t0.AsDouble(), t1.AsDouble(), 0b_0010);
+                    var gathered = Avx.Blend(t01, t2.AsDouble(), 0b_0100).AsUInt64().WithElement(3, Emu);
+
+                    var Bkaeio = Rol64Avx2(gathered, Plane2Rol64Avx2);
                     var Bku = Bksgm.GetElement(0);
 
                     var tBkioua = Avx2.Permute4x64(Bkaeio, 0b00_00_11_10).WithElement(2, Bku);
@@ -689,13 +634,17 @@ internal unsafe struct KeccakCoreState
                     Akaeio = Avx2.Xor(Bkaeio, Avx2.AndNot(tBkeiou, tBkioua));
                     Aku = Bku ^ (~Bkaeio.GetElement(0) & Bkaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Akaeio);
-                Cu = Cu ^ Aku;
+                Caeio = Avx2.Xor(Caeio, Akaeio); Cu ^= Aku;
 
-                // --- Plane 3 (y=3) ---
-                // Gather A lanes for B row y=3: (4,0), (0,1), (1,2), (2,3) -> B[0..3, 3]
+                // Plane 3
                 {
-                    var Bmaeio = Rol64Avx2(Vector256.Create(Ebu, Egaeio.GetElement(0), Ekaeio.GetElement(1), Emaeio.GetElement(2)), Plane3Rol64Avx2);
+                    var t1 = Avx2.Permute4x64(Egaeio, 0b_00_00_00_00);
+                    var t2 = Avx2.Permute4x64(Ekaeio, 0b_01_01_01_01);
+                    var t3 = Avx2.Permute4x64(Emaeio, 0b_10_10_10_10);
+                    var t12 = Avx.Blend(t1.AsDouble(), t2.AsDouble(), 0b_0100);
+                    var gathered = Avx.Blend(t12, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(0, Ebu);
+
+                    var Bmaeio = Rol64Avx2(gathered, Plane3Rol64Avx2);
                     var Bmu = Bksgm.GetElement(3);
 
                     var tBmioua = Avx2.Permute4x64(Bmaeio, 0b00_00_11_10).WithElement(2, Bmu);
@@ -703,13 +652,17 @@ internal unsafe struct KeccakCoreState
                     Amaeio = Avx2.Xor(Bmaeio, Avx2.AndNot(tBmeiou, tBmioua));
                     Amu = Bmu ^ (~Bmaeio.GetElement(0) & Bmaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Amaeio);
-                Cu = Cu ^ Amu;
+                Caeio = Avx2.Xor(Caeio, Amaeio); Cu ^= Amu;
 
-                // --- Plane 4 (y=4) ---
-                // Gather A lanes for B row y=4: (2,0), (3,1), (4,2), (0,3) -> B[0..3, 4]
+                // Plane 4
                 {
-                    var Bsaeio = Rol64Avx2(Vector256.Create(Ebaeio.GetElement(2), Egaeio.GetElement(3), Eku, Emaeio.GetElement(0)), Plane4Rol64Avx2);
+                    var t0 = Avx2.Permute4x64(Ebaeio, 0b_10_10_10_10);
+                    var t1 = Avx2.Permute4x64(Egaeio, 0b_11_11_11_11);
+                    var t3 = Avx2.Permute4x64(Emaeio, 0b_00_00_00_00);
+                    var t01 = Avx.Blend(t0.AsDouble(), t1.AsDouble(), 0b_0010);
+                    var gathered = Avx.Blend(t01, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(2, Eku);
+
+                    var Bsaeio = Rol64Avx2(gathered, Plane4Rol64Avx2);
                     var Bsu = Bksgm.GetElement(1);
 
                     var tBsioua = Avx2.Permute4x64(Bsaeio, 0b00_00_11_10).WithElement(2, Bsu);
@@ -717,12 +670,10 @@ internal unsafe struct KeccakCoreState
                     Asaeio = Avx2.Xor(Bsaeio, Avx2.AndNot(tBseiou, tBsioua));
                     Asu = Bsu ^ (~Bsaeio.GetElement(0) & Bsaeio.GetElement(1));
                 }
-                Caeio = Avx2.Xor(Caeio, Asaeio);
-                Cu = Cu ^ Asu;
-#endif
+                Caeio = Avx2.Xor(Caeio, Asaeio); Cu ^= Asu;
             }
 
-            // Store state back 
+            // Store state back
             Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[0]) = Abaeio;
             statePtr[4] = Abu;
             Unsafe.As<ulong, Vector256<ulong>>(ref statePtr[5]) = Agaeio;

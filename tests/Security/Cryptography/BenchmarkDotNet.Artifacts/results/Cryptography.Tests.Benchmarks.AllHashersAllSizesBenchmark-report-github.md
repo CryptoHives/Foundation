@@ -10,40 +10,40 @@ Method=ComputeHash  Job=.NET 10.0  Runtime=.NET 10.0
 Toolchain=net10.0  
 
 ```
-| Description                                      | TestDataSize | Mean         | Error        | StdDev        | Median       | Allocated |
-|------------------------------------------------- |------------- |-------------:|-------------:|--------------:|-------------:|----------:|
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 128B         |     264.6 ns |      5.29 ns |       7.75 ns |     261.5 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 128B         |     336.7 ns |      6.40 ns |       8.10 ns |     334.4 ns |     112 B |
-| ComputeHash | SHA3-256 | BouncyCastle            | 128B         |     349.0 ns |      6.97 ns |      13.26 ns |     344.5 ns |     112 B |
-| ComputeHash | SHA3-256 | OS Native               | 128B         |     387.3 ns |      3.67 ns |       3.43 ns |     385.9 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 128B         |     686.5 ns |      9.71 ns |       8.61 ns |     685.0 ns |     112 B |
-|                                                  |              |              |              |               |              |           |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 137B         |     588.3 ns |     11.83 ns |      19.10 ns |     582.1 ns |     112 B |
-| ComputeHash | SHA3-256 | BouncyCastle            | 137B         |     629.9 ns |     12.53 ns |      27.77 ns |     615.1 ns |     112 B |
-| ComputeHash | SHA3-256 | OS Native               | 137B         |     659.5 ns |     12.96 ns |      11.49 ns |     655.2 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 137B         |     778.0 ns |     14.99 ns |      12.52 ns |     773.7 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 137B         |   1,431.0 ns |     28.36 ns |      53.27 ns |   1,403.7 ns |     112 B |
-|                                                  |              |              |              |               |              |           |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 1KB          |   1,859.1 ns |     36.92 ns |      57.48 ns |   1,836.7 ns |     112 B |
-| ComputeHash | SHA3-256 | BouncyCastle            | 1KB          |   2,303.7 ns |     46.04 ns |      43.07 ns |   2,284.0 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 1KB          |   2,379.7 ns |     27.09 ns |      22.62 ns |   2,385.0 ns |     112 B |
-| ComputeHash | SHA3-256 | OS Native               | 1KB          |   2,392.7 ns |     41.04 ns |      36.38 ns |   2,383.0 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 1KB          |   5,107.2 ns |     57.60 ns |      48.10 ns |   5,105.9 ns |     112 B |
-|                                                  |              |              |              |               |              |           |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 1025B        |   1,870.4 ns |     36.96 ns |      64.73 ns |   1,848.0 ns |     112 B |
-| ComputeHash | SHA3-256 | BouncyCastle            | 1025B        |   2,456.1 ns |     66.75 ns |     187.17 ns |   2,392.4 ns |     112 B |
-| ComputeHash | SHA3-256 | OS Native               | 1025B        |   2,474.5 ns |     47.38 ns |      56.40 ns |   2,474.0 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 1025B        |   2,699.8 ns |    107.36 ns |     302.82 ns |   2,596.8 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 1025B        |   5,569.3 ns |    183.59 ns |     523.80 ns |   5,348.5 ns |     112 B |
-|                                                  |              |              |              |               |              |           |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 8KB          |  13,632.9 ns |    261.01 ns |     339.39 ns |  13,533.6 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 8KB          |  17,676.0 ns |    287.93 ns |     255.25 ns |  17,615.4 ns |     112 B |
-| ComputeHash | SHA3-256 | OS Native               | 8KB          |  17,734.0 ns |    305.51 ns |     270.82 ns |  17,684.1 ns |     112 B |
-| ComputeHash | SHA3-256 | BouncyCastle            | 8KB          |  17,824.2 ns |    390.54 ns |   1,075.65 ns |  17,462.7 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 8KB          |  38,698.5 ns |    640.30 ns |     567.61 ns |  38,523.9 ns |     112 B |
-|                                                  |              |              |              |               |              |           |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 128KB        | 283,734.4 ns | 20,178.70 ns |  58,542.08 ns | 276,609.8 ns |     112 B |
-| ComputeHash | SHA3-256 | OS Native               | 128KB        | 314,356.5 ns | 16,732.49 ns |  47,467.30 ns | 290,615.7 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 128KB        | 334,382.4 ns | 21,498.97 ns |  61,684.57 ns | 313,417.6 ns |     112 B |
-| ComputeHash | SHA3-256 | BouncyCastle            | 128KB        | 429,742.0 ns | 65,031.74 ns | 191,747.56 ns | 313,213.9 ns |     112 B |
-| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 128KB        | 800,842.3 ns | 59,284.87 ns | 173,872.28 ns | 758,053.5 ns |     112 B |
+| Description                                      | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 128B         |     257.6 ns |     5.09 ns |     5.86 ns |     112 B |
+| ComputeHash | SHA3-256 | BouncyCastle            | 128B         |     327.4 ns |     5.84 ns |     5.74 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 128B         |     330.6 ns |     5.29 ns |     6.88 ns |     112 B |
+| ComputeHash | SHA3-256 | OS Native               | 128B         |     396.1 ns |     4.07 ns |     3.60 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 128B         |     577.9 ns |    11.31 ns |    18.90 ns |     112 B |
+|                                                  |              |              |             |             |           |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 137B         |     551.2 ns |     5.00 ns |     4.43 ns |     112 B |
+| ComputeHash | SHA3-256 | BouncyCastle            | 137B         |     592.4 ns |    11.49 ns |    14.11 ns |     112 B |
+| ComputeHash | SHA3-256 | OS Native               | 137B         |     636.2 ns |     8.90 ns |     8.33 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 137B         |     761.3 ns |    14.73 ns |    13.05 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 137B         |   1,173.4 ns |    11.80 ns |    10.46 ns |     112 B |
+|                                                  |              |              |             |             |           |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 1KB          |   1,763.8 ns |    14.96 ns |    13.27 ns |     112 B |
+| ComputeHash | SHA3-256 | BouncyCastle            | 1KB          |   2,179.2 ns |    28.63 ns |    23.91 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 1KB          |   2,293.1 ns |    15.47 ns |    12.92 ns |     112 B |
+| ComputeHash | SHA3-256 | OS Native               | 1KB          |   2,311.0 ns |    29.52 ns |    24.65 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 1KB          |   4,256.1 ns |    75.13 ns |    66.60 ns |     112 B |
+|                                                  |              |              |             |             |           |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 1025B        |   1,775.2 ns |    30.85 ns |    28.86 ns |     112 B |
+| ComputeHash | SHA3-256 | BouncyCastle            | 1025B        |   2,207.9 ns |    43.54 ns |    42.76 ns |     112 B |
+| ComputeHash | SHA3-256 | OS Native               | 1025B        |   2,301.9 ns |    15.04 ns |    12.56 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 1025B        |   2,326.2 ns |    43.65 ns |    42.87 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 1025B        |   4,249.9 ns |    66.65 ns |    74.08 ns |     112 B |
+|                                                  |              |              |             |             |           |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 8KB          |  13,357.1 ns |   171.67 ns |   160.58 ns |     112 B |
+| ComputeHash | SHA3-256 | BouncyCastle            | 8KB          |  16,973.2 ns |   338.03 ns |   331.99 ns |     112 B |
+| ComputeHash | SHA3-256 | OS Native               | 8KB          |  17,186.8 ns |   313.55 ns |   261.83 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 8KB          |  17,507.6 ns |   309.55 ns |   356.48 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 8KB          |  32,065.7 ns |   423.77 ns |   375.66 ns |     112 B |
+|                                                  |              |              |             |             |           |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Scalar | 128KB        | 201,985.7 ns | 2,474.93 ns | 1,932.27 ns |     112 B |
+| ComputeHash | SHA3-256 | BouncyCastle            | 128KB        | 261,210.7 ns | 5,218.74 ns | 7,811.16 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Ssse3  | 128KB        | 267,374.5 ns | 3,098.66 ns | 2,746.88 ns |     112 B |
+| ComputeHash | SHA3-256 | OS Native               | 128KB        | 277,090.8 ns | 3,733.57 ns | 3,492.38 ns |     112 B |
+| ComputeHash | SHA3-256 | SHA3_256_Managed_Avx2   | 128KB        | 518,148.7 ns | 7,686.16 ns | 7,189.64 ns |     112 B |
