@@ -18,6 +18,7 @@ using CHKmac256 = CryptoHives.Foundation.Security.Cryptography.Mac.Kmac256;
 /// </summary>
 [MemoryDiagnoser]
 [MinColumn, MaxColumn, MeanColumn, MedianColumn]
+[Config(typeof(KmacConfig))]
 public class KmacBenchmark
 {
     private static readonly Random RandomInstance = new(42);
@@ -115,6 +116,7 @@ public class KmacBenchmark
 /// </summary>
 [MemoryDiagnoser]
 [MinColumn, MaxColumn, MeanColumn, MedianColumn]
+[Config(typeof(KmacConfig))]
 public class KmacOutputSizeBenchmark
 {
     private static readonly Random RandomInstance = new(42);
@@ -155,8 +157,18 @@ public class KmacOutputSizeBenchmark
         var kmac = new KMac(128, _customization);
         kmac.Init(new KeyParameter(_key));
         kmac.BlockUpdate(_data, 0, _data.Length);
+
+        // BouncyCastle KMac produces a default mac size (GetMacSize). For variable
+        // output lengths (XOF-like behavior) we allocate the engine's mac size and
+        // then truncate or return the requested OutputSize bytes. This avoids
+        // DoFinal throwing when the requested buffer is smaller than the engine's
+        // internal mac size.
+        int engineSize = kmac.GetMacSize();
+        byte[] temp = new byte[Math.Max(engineSize, OutputSize)];
+        kmac.DoFinal(temp, 0);
+        if (OutputSize == temp.Length) return temp;
         byte[] result = new byte[OutputSize];
-        kmac.DoFinal(result, 0);
+        Array.Copy(temp, 0, result, 0, OutputSize);
         return result;
     }
 
@@ -184,8 +196,13 @@ public class KmacOutputSizeBenchmark
         var kmac = new KMac(256, _customization);
         kmac.Init(new KeyParameter(_key));
         kmac.BlockUpdate(_data, 0, _data.Length);
+
+        int engineSize = kmac.GetMacSize();
+        byte[] temp = new byte[Math.Max(engineSize, OutputSize)];
+        kmac.DoFinal(temp, 0);
+        if (OutputSize == temp.Length) return temp;
         byte[] result = new byte[OutputSize];
-        kmac.DoFinal(result, 0);
+        Array.Copy(temp, 0, result, 0, OutputSize);
         return result;
     }
 
@@ -204,6 +221,7 @@ public class KmacOutputSizeBenchmark
 /// </summary>
 [MemoryDiagnoser]
 [MinColumn, MaxColumn, MeanColumn, MedianColumn]
+[Config(typeof(KmacConfig))]
 public class KmacIncrementalBenchmark
 {
     private static readonly Random RandomInstance = new(42);
