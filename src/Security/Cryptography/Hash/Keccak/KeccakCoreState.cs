@@ -460,14 +460,27 @@ internal unsafe struct KeccakCoreState
                 {
                     // Daeio[i] = C[(i+4)%5] ^ ROL(C[(i+1)%5], 1)
                     // For aeio lanes: Da = Cu ^ ROL(Ce,1), De = Ca ^ ROL(Ci,1), Di = Ce ^ ROL(Co,1), Do = Ci ^ ROL(Cu,1)
-                    var Ceiou = Avx2.Permute4x64(Caeio, 0b00_11_10_01).WithElement(3, Cu.GetElement(0));
-                    var Cuaei = Avx2.Permute4x64(Caeio, 0b10_01_00_00).WithElement(0, Cu.GetElement(0));
+                    // Ceiou: permute Caeio then replace lane3 with Cu
+                    var Ceiou = Avx.Blend(
+                        Avx2.Permute4x64(Caeio, 0b00_11_10_01).AsDouble(),
+                        Cu.AsDouble(),
+                        0b1000 /* select lane3 from Cu */
+                        ).AsUInt64();
+
+                    // Cuaei: permute Caeio then replace lane0 with Cu
+                    var Cuaei = Avx.Blend(
+                        Avx2.Permute4x64(Caeio, 0b10_01_00_00).AsDouble(),
+                        Cu.AsDouble(),
+                        0b0001 /* select lane0 from Cu */
+                        ).AsUInt64();
                     var CeiouRol1 = Rol64Avx2(Ceiou, 1);
                     Daeio = Avx2.Xor(Cuaei, CeiouRol1);
-                    // Du = Co ^ ROL(Ca, 1) - result is only correct in Lane 0. 
-                    // Broadcast Lane 0 to all lanes so Abu^=Du maintains Abu's uniform property.
-                    Du = Avx2.Xor(Avx2.Permute4x64(Caeio, 0b11_11_11_11), Rol64Avx2(Caeio, 1));
-                    Du = Avx2.Permute4x64(Du, 0b00_00_00_00);
+
+                    // Du = Co ^ ROL(Ca, 1) (only lane 0 is meaningful; broadcast for invariant)
+                    Du = Avx2.Xor(
+                        Avx2.Permute4x64(Caeio, 0b11_11_11_11),
+                        Rol64Avx2(Avx2.Permute4x64(Caeio, 0b00_00_00_00), 1)
+                        );
                 }
 
                 // Apply Theta - all in vector domain
@@ -588,12 +601,23 @@ internal unsafe struct KeccakCoreState
                 // ROUND 2 (E -> A)
                 // =================================================================================
                 {
-                    var Ceiou = Avx2.Permute4x64(Caeio, 0b00_11_10_01).WithElement(3, Cu.GetElement(0));
-                    var Cuaei = Avx2.Permute4x64(Caeio, 0b10_01_00_00).WithElement(0, Cu.GetElement(0));
-                    var CeiouRol1 = Rol64Avx2(Ceiou, 1);
-                    Daeio = Avx2.Xor(Cuaei, CeiouRol1);
-                    Du = Avx2.Xor(Avx2.Permute4x64(Caeio, 0b11_11_11_11), Rol64Avx2(Caeio, 1));
-                    Du = Avx2.Permute4x64(Du, 0b00_00_00_00);
+                    var Ceiou = Avx.Blend(
+                        Avx2.Permute4x64(Caeio, 0b00_11_10_01).AsDouble(),
+                        Cu.AsDouble(),
+                        0b1000 /* select lane3 from Cu */
+                        ).AsUInt64();
+
+                    var Cuaei = Avx.Blend(
+                        Avx2.Permute4x64(Caeio, 0b10_01_00_00).AsDouble(),
+                        Cu.AsDouble(),
+                        0b0001 /* select lane0 from Cu */
+                        ).AsUInt64();
+
+                    Daeio = Avx2.Xor(Cuaei, Rol64Avx2(Ceiou, 1));
+                    Du = Avx2.Xor(
+                        Avx2.Permute4x64(Caeio, 0b11_11_11_11),
+                        Rol64Avx2(Avx2.Permute4x64(Caeio, 0b00_00_00_00), 1)
+                        );
                 }
 
                 Ebaeio = Avx2.Xor(Ebaeio, Daeio); Ebu = Avx2.Xor(Ebu, Du);
