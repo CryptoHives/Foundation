@@ -1,4 +1,4 @@
-﻿#
+#
 # Test all projects with code coverage
 #
 parameters:
@@ -26,8 +26,13 @@ jobs:
   - checkout: self
     fetchDepth: 0  # fetch all commits for versioning
   - task: UseDotNet@2
+    displayName: 'Install .NET 8.0 Runtime'
+    condition: eq('${{parameters.framework}}', 'net8.0')
+    inputs:
+      packageType: 'runtime'
+      version: '8.0.x'
+  - task: UseDotNet@2
     displayName: 'Install .NET 10.0'
-    condition: eq('${{parameters.framework}}', 'net10.0')
     inputs:
       packageType: 'sdk'
       version: '10.0.x'
