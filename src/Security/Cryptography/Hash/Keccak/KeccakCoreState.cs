@@ -655,7 +655,7 @@ internal unsafe struct KeccakCoreState
                 }
 
                 // Iota step
-                Abaeio = Avx2.Xor(Abaeio, RoundConstantsAvx2[round+1]);
+                Abaeio = Avx2.Xor(Abaeio, RoundConstantsAvx2[round + 1]);
 
                 // Pipelined Theta parity calculation for next round (Partial)
                 Caeio = Abaeio;
