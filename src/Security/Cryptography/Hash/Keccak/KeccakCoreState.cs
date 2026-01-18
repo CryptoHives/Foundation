@@ -477,9 +477,10 @@ internal unsafe struct KeccakCoreState
 
                     var Bbaeio = Rol64Avx2(gathered, Plane0Rol64Avx2);
                     var Bbu = BitOperations.RotateLeft(Asu, 14);
+                    var BbuVec = Vector256.Create(Bbu);
 
-                    var tBbioua = Avx2.Permute4x64(Bbaeio, 0b00_00_11_10).WithElement(2, Bbu);
-                    var tBbeiou = Avx2.Permute4x64(Bbaeio, 0b00_11_10_01).WithElement(3, Bbu);
+                    var tBbioua = Avx.Blend(Avx2.Permute4x64(Bbaeio, 0b00_00_11_10).AsDouble(), BbuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBbeiou = Avx.Blend(Avx2.Permute4x64(Bbaeio, 0b00_11_10_01).AsDouble(), BbuVec.AsDouble(), 0b1000).AsUInt64();
                     Ebaeio = Avx2.Xor(Bbaeio, Avx2.AndNot(tBbeiou, tBbioua));
                     Ebu = Bbu ^ (~Bbaeio.GetElement(0) & Bbaeio.GetElement(1));
                 }
@@ -499,11 +500,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t02, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(1, Agu);
 
                     var Bgaeio = Rol64Avx2(gathered, Plane1Rol64Avx2);
-                    var Bgu = Bksgm.GetElement(2);
 
-                    var tBgioua = Avx2.Permute4x64(Bgaeio, 0b00_00_11_10).WithElement(2, Bgu);
-                    var tBgeiou = Avx2.Permute4x64(Bgaeio, 0b00_11_10_01).WithElement(3, Bgu);
+                    var BguVec = Avx2.Permute4x64(Bksgm, 0b_10_10_10_10); // Lane 2
+                    var tBgioua = Avx.Blend(Avx2.Permute4x64(Bgaeio, 0b00_00_11_10).AsDouble(), BguVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBgeiou = Avx.Blend(Avx2.Permute4x64(Bgaeio, 0b00_11_10_01).AsDouble(), BguVec.AsDouble(), 0b1000).AsUInt64();
                     Egaeio = Avx2.Xor(Bgaeio, Avx2.AndNot(tBgeiou, tBgioua));
+                    var Bgu = Bksgm.GetElement(2);
                     Egu = Bgu ^ (~Bgaeio.GetElement(0) & Bgaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Egaeio); Cu ^= Egu;
@@ -518,11 +520,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t01, t2.AsDouble(), 0b_0100).AsUInt64().WithElement(3, Amu);
 
                     var Bkaeio = Rol64Avx2(gathered, Plane2Rol64Avx2);
-                    var Bku = Bksgm.GetElement(0);
 
-                    var tBkioua = Avx2.Permute4x64(Bkaeio, 0b00_00_11_10).WithElement(2, Bku);
-                    var tBkeiou = Avx2.Permute4x64(Bkaeio, 0b00_11_10_01).WithElement(3, Bku);
+                    var BkuVec = Avx2.Permute4x64(Bksgm, 0b_00_00_00_00); // Lane 0
+                    var tBkioua = Avx.Blend(Avx2.Permute4x64(Bkaeio, 0b00_00_11_10).AsDouble(), BkuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBkeiou = Avx.Blend(Avx2.Permute4x64(Bkaeio, 0b00_11_10_01).AsDouble(), BkuVec.AsDouble(), 0b1000).AsUInt64();
                     Ekaeio = Avx2.Xor(Bkaeio, Avx2.AndNot(tBkeiou, tBkioua));
+                    var Bku = Bksgm.GetElement(0);
                     Eku = Bku ^ (~Bkaeio.GetElement(0) & Bkaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Ekaeio); Cu ^= Eku;
@@ -537,11 +540,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t12, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(0, Abu);
 
                     var Bmaeio = Rol64Avx2(gathered, Plane3Rol64Avx2);
-                    var Bmu = Bksgm.GetElement(3);
 
-                    var tBmioua = Avx2.Permute4x64(Bmaeio, 0b00_00_11_10).WithElement(2, Bmu);
-                    var tBmeiou = Avx2.Permute4x64(Bmaeio, 0b00_11_10_01).WithElement(3, Bmu);
+                    var BmuVec = Avx2.Permute4x64(Bksgm, 0b_11_11_11_11); // Lane 3
+                    var tBmioua = Avx.Blend(Avx2.Permute4x64(Bmaeio, 0b00_00_11_10).AsDouble(), BmuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBmeiou = Avx.Blend(Avx2.Permute4x64(Bmaeio, 0b00_11_10_01).AsDouble(), BmuVec.AsDouble(), 0b1000).AsUInt64();
                     Emaeio = Avx2.Xor(Bmaeio, Avx2.AndNot(tBmeiou, tBmioua));
+                    var Bmu = Bksgm.GetElement(3);
                     Emu = Bmu ^ (~Bmaeio.GetElement(0) & Bmaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Emaeio); Cu ^= Emu;
@@ -556,11 +560,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t01, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(2, Aku);
 
                     var Bsaeio = Rol64Avx2(gathered, Plane4Rol64Avx2);
-                    var Bsu = Bksgm.GetElement(1);
 
-                    var tBsioua = Avx2.Permute4x64(Bsaeio, 0b00_00_11_10).WithElement(2, Bsu);
-                    var tBseiou = Avx2.Permute4x64(Bsaeio, 0b00_11_10_01).WithElement(3, Bsu);
+                    var BsuVec = Avx2.Permute4x64(Bksgm, 0b_01_01_01_01); // Lane 1
+                    var tBsioua = Avx.Blend(Avx2.Permute4x64(Bsaeio, 0b00_00_11_10).AsDouble(), BsuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBseiou = Avx.Blend(Avx2.Permute4x64(Bsaeio, 0b00_11_10_01).AsDouble(), BsuVec.AsDouble(), 0b1000).AsUInt64();
                     Esaeio = Avx2.Xor(Bsaeio, Avx2.AndNot(tBseiou, tBsioua));
+                    var Bsu = Bksgm.GetElement(1);
                     Esu = Bsu ^ (~Bsaeio.GetElement(0) & Bsaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Esaeio); Cu ^= Esu;
@@ -589,9 +594,10 @@ internal unsafe struct KeccakCoreState
 
                     var Bbaeio = Rol64Avx2(gathered, Plane0Rol64Avx2);
                     var Bbu = BitOperations.RotateLeft(Esu, 14);
+                    var BbuVec = Vector256.Create(Bbu);
 
-                    var tBbioua = Avx2.Permute4x64(Bbaeio, 0b00_00_11_10).WithElement(2, Bbu);
-                    var tBbeiou = Avx2.Permute4x64(Bbaeio, 0b00_11_10_01).WithElement(3, Bbu);
+                    var tBbioua = Avx.Blend(Avx2.Permute4x64(Bbaeio, 0b00_00_11_10).AsDouble(), BbuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBbeiou = Avx.Blend(Avx2.Permute4x64(Bbaeio, 0b00_11_10_01).AsDouble(), BbuVec.AsDouble(), 0b1000).AsUInt64();
                     Abaeio = Avx2.Xor(Bbaeio, Avx2.AndNot(tBbeiou, tBbioua));
                     Abu = Bbu ^ (~Bbaeio.GetElement(0) & Bbaeio.GetElement(1));
                 }
@@ -609,11 +615,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t02, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(1, Egu);
 
                     var Bgaeio = Rol64Avx2(gathered, Plane1Rol64Avx2);
-                    var Bgu = Bksgm.GetElement(2);
 
-                    var tBgioua = Avx2.Permute4x64(Bgaeio, 0b00_00_11_10).WithElement(2, Bgu);
-                    var tBgeiou = Avx2.Permute4x64(Bgaeio, 0b00_11_10_01).WithElement(3, Bgu);
+                    var BguVec = Avx2.Permute4x64(Bksgm, 0b_10_10_10_10);
+                    var tBgioua = Avx.Blend(Avx2.Permute4x64(Bgaeio, 0b00_00_11_10).AsDouble(), BguVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBgeiou = Avx.Blend(Avx2.Permute4x64(Bgaeio, 0b00_11_10_01).AsDouble(), BguVec.AsDouble(), 0b1000).AsUInt64();
                     Agaeio = Avx2.Xor(Bgaeio, Avx2.AndNot(tBgeiou, tBgioua));
+                    var Bgu = Bksgm.GetElement(2);
                     Agu = Bgu ^ (~Bgaeio.GetElement(0) & Bgaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Agaeio); Cu ^= Agu;
@@ -627,11 +634,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t01, t2.AsDouble(), 0b_0100).AsUInt64().WithElement(3, Emu);
 
                     var Bkaeio = Rol64Avx2(gathered, Plane2Rol64Avx2);
-                    var Bku = Bksgm.GetElement(0);
 
-                    var tBkioua = Avx2.Permute4x64(Bkaeio, 0b00_00_11_10).WithElement(2, Bku);
-                    var tBkeiou = Avx2.Permute4x64(Bkaeio, 0b00_11_10_01).WithElement(3, Bku);
+                    var BkuVec = Avx2.Permute4x64(Bksgm, 0b_00_00_00_00);
+                    var tBkioua = Avx.Blend(Avx2.Permute4x64(Bkaeio, 0b00_00_11_10).AsDouble(), BkuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBkeiou = Avx.Blend(Avx2.Permute4x64(Bkaeio, 0b00_11_10_01).AsDouble(), BkuVec.AsDouble(), 0b1000).AsUInt64();
                     Akaeio = Avx2.Xor(Bkaeio, Avx2.AndNot(tBkeiou, tBkioua));
+                    var Bku = Bksgm.GetElement(0);
                     Aku = Bku ^ (~Bkaeio.GetElement(0) & Bkaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Akaeio); Cu ^= Aku;
@@ -645,11 +653,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t12, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(0, Ebu);
 
                     var Bmaeio = Rol64Avx2(gathered, Plane3Rol64Avx2);
-                    var Bmu = Bksgm.GetElement(3);
 
-                    var tBmioua = Avx2.Permute4x64(Bmaeio, 0b00_00_11_10).WithElement(2, Bmu);
-                    var tBmeiou = Avx2.Permute4x64(Bmaeio, 0b00_11_10_01).WithElement(3, Bmu);
+                    var BmuVec = Avx2.Permute4x64(Bksgm, 0b_11_11_11_11);
+                    var tBmioua = Avx.Blend(Avx2.Permute4x64(Bmaeio, 0b00_00_11_10).AsDouble(), BmuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBmeiou = Avx.Blend(Avx2.Permute4x64(Bmaeio, 0b00_11_10_01).AsDouble(), BmuVec.AsDouble(), 0b1000).AsUInt64();
                     Amaeio = Avx2.Xor(Bmaeio, Avx2.AndNot(tBmeiou, tBmioua));
+                    var Bmu = Bksgm.GetElement(3);
                     Amu = Bmu ^ (~Bmaeio.GetElement(0) & Bmaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Amaeio); Cu ^= Amu;
@@ -663,11 +672,12 @@ internal unsafe struct KeccakCoreState
                     var gathered = Avx.Blend(t01, t3.AsDouble(), 0b_1000).AsUInt64().WithElement(2, Eku);
 
                     var Bsaeio = Rol64Avx2(gathered, Plane4Rol64Avx2);
-                    var Bsu = Bksgm.GetElement(1);
 
-                    var tBsioua = Avx2.Permute4x64(Bsaeio, 0b00_00_11_10).WithElement(2, Bsu);
-                    var tBseiou = Avx2.Permute4x64(Bsaeio, 0b00_11_10_01).WithElement(3, Bsu);
+                    var BsuVec = Avx2.Permute4x64(Bksgm, 0b_01_01_01_01);
+                    var tBsioua = Avx.Blend(Avx2.Permute4x64(Bsaeio, 0b00_00_11_10).AsDouble(), BsuVec.AsDouble(), 0b0100).AsUInt64();
+                    var tBseiou = Avx.Blend(Avx2.Permute4x64(Bsaeio, 0b00_11_10_01).AsDouble(), BsuVec.AsDouble(), 0b1000).AsUInt64();
                     Asaeio = Avx2.Xor(Bsaeio, Avx2.AndNot(tBseiou, tBsioua));
+                    var Bsu = Bksgm.GetElement(1);
                     Asu = Bsu ^ (~Bsaeio.GetElement(0) & Bsaeio.GetElement(1));
                 }
                 Caeio = Avx2.Xor(Caeio, Asaeio); Cu ^= Asu;
