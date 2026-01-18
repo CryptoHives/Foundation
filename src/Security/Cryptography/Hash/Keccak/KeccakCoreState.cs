@@ -457,7 +457,7 @@ internal unsafe struct KeccakCoreState
             Caeio = Avx2.Xor(Abaeio, Avx2.Xor(Agaeio, Avx2.Xor(Akaeio, Avx2.Xor(Amaeio, Asaeio))));
             Cu = Abu ^ Agu ^ Aku ^ Amu ^ Asu;
 
-            for (int round = startRound; round < Rounds; round++)
+            for (int round = startRound; round < Rounds; round += 2)
             {
                 // =================================================================================
                 // 2. Theta Step: Calculate effect (D) and Apply to State
