@@ -1,4 +1,4 @@
-﻿#
+#
 # Test all projects with code coverage
 #
 parameters:
@@ -27,7 +27,6 @@ jobs:
     fetchDepth: 0  # fetch all commits for versioning
   - task: UseDotNet@2
     displayName: 'Install .NET 10.0'
-    condition: eq('${{parameters.framework}}', 'net10.0')
     inputs:
       packageType: 'sdk'
       version: '10.0.x'
