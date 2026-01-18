@@ -1,0 +1,69 @@
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
+    <AssemblyName>$(AssemblyPrefix).Security.Cryptography</AssemblyName>
+    <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <Description>CryptoHives Security Cryptography Library</Description>
+    <!-- set to true when experimental Nuget package is ready to ship-->
+    <IsPackable>false</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseFile></PackageLicenseFile>
+    <PackageTags>$(PackageTags) Cryptography Hash MD5 SHA1 SHA2 SHA3 BLAKE2 BLAKE3 SHAKE CSHAKE SM3 Keccak Streebog Whirlpool Ripemd</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageId>$(PackageId).Debug</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
+    <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
+  </PropertyGroup>
+
+  <Choose>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
+      <ItemGroup>
+        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Memory" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
+      <ItemGroup>
+        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Memory" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net48'">
+      <ItemGroup>
+        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Memory" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <!-- DocFX Documentation -->
+  <ItemGroup>
+    <None Include="..\..\..\docfx\packages\security\*.md" Link="docfx\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\*.yml" Link="docfx\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\cryptography\*.md" Link="docfx\cryptography\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\cryptography\*.yml" Link="docfx\cryptography\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\cryptography\specs\*.md" Link="specs\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\cryptography\specs\*.yml" Link="specs\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <Target Name="GetPackagingOutputs" />
+
+</Project>

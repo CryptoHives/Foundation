@@ -1,4 +1,4 @@
-# Copilot Instructions for CryptoHives .NET Foundation
+﻿# Copilot Instructions for CryptoHives .NET Foundation
 
 ## Purpose
 
@@ -23,13 +23,63 @@ Use the following structure when adding new projects, tests and analyzers:
 src/
 ├── Threading/           # Threading utilities (ValueTask pooling, async primitives)
 ├── Threading.Analyzers/ # Roslyn analyzers for ValueTask misuse detection
-└── Memory/              # Memory utilities (pooling, buffers, streams)
+├── Memory/              # Memory utilities (pooling, buffers, streams)
+└── Security/Cryptography/   # Cryptographic algorithms
+    ├── SHA2/            # SHA-2 family implementations
+    ├── SHA3/            # SHA-3 family implementations
+    ├── SHAKE/           # SHAKE and cSHAKE XOFs
+    ├── BLAKE2/          # BLAKE2b and BLAKE2s
+    ├── BLAKE3/          # BLAKE3
+    ├── Keccak/          # Keccak-256 (Ethereum)
+    ├── GOST/            # Streebog (GOST R 34.11-2012)
+    ├── RIPEMD/          # RIPEMD-160
+    ├── SM3/             # Chinese SM3
+    ├── Whirlpool/       # ISO Whirlpool
+    ├── MAC/             # Message Authentication Codes (KMAC)
+    ├── Legacy/          # Deprecated algorithms (MD5, SHA-1)
+    └── specs/           # Algorithm specification documents
 
 tests/
 ├── Threading/           # Runtime tests for Threading library
 ├── Threading.Analyzers/ # Analyzer unit tests (Roslyn testing framework)
-└── Memory/              # Runtime tests for Memory library
+├── Memory/              # Runtime tests for Memory library
+└── Security/Cryptography/ # Runtime tests for Cryptography library
 ```
+
+## Cryptography Namespace Structure
+
+The Security.Cryptography library uses a hierarchical namespace structure:
+
+```
+CryptoHives.Foundation.Security.Cryptography          # Root namespace
+CryptoHives.Foundation.Security.Cryptography.Hash     # Hash algorithm implementations
+CryptoHives.Foundation.Security.Cryptography.Mac      # MAC algorithm implementations
+```
+
+### Namespace Aliases for Drop-in Replacement
+
+The hash sub-namspace of the root namespace (`CryptoHives.Foundation.Security.Cryptography.Hash`) contains the sealed implementations of the hash algorithms. This allows drop-in replacement of .NET cryptographic types:
+
+```csharp
+// Before: using System.Security.Cryptography;
+// After:  using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+using var sha256 = SHA256.Create();  // Works with both!
+```
+
+When adding new hash algorithms:
+1. Implement in the appropriate folder under `src/Security/Cryptography/`
+2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Hash`
+3. Derive the new class from `CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm`
+4. Implement new class and functions
+5. Add new hash algorithm to tests and benchmarks sources
+6. Add third party implementations for verification and benchmarking to tests
+7. Add docfx documentation for package and add test vector description with reference to specs
+
+When adding new MAC algorithms:
+1. Implement in `src/Security/Cryptography/MAC/`
+2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Mac`
+3. ... etc
 
 ## General rules
 
@@ -51,6 +101,8 @@ tests/
 - Use XML `<code>` snippets for code examples.
 - Add only XML `<inheritdoc/>` tags when overriding or implementing interface members.
 - Keep methods short and focused. Prefer small helper methods when needed.
+- Prefer predefined primitives in `BinaryPrimitives` and `BitOperations`.
+- Implement byte accessing algorithms with endian invariance in mind.
 - Prefer `ValueTask` over `Task` for low-allocation hot-path async primitives when the project already uses `ValueTask` (see `Pooled.Async*` types).
 - Use `Microsoft.Extensions.ObjectPool` and the existing pool policy types when adding pooled objects.
 - Follow the project pattern for multi-targeting: code may include `#if` guards for framework-specific APIs (see `ReadOnlySequenceMemoryStream` for `NET8_0_OR_GREATER` checks).
@@ -114,7 +166,6 @@ When modifying CI pipelines:
 
 - Search for a similar implementation in the repository and copy the style and structure used there (e.g., `AsyncAutoResetEvent`, `ReadOnlySequenceMemoryStream`).
 - Prefer consistency with existing code over personal preference.
-- Check the existing analyzer tests in `ValueTaskMisuseAnalyzerTests.cs` for patterns.
 
 ## Contact
 

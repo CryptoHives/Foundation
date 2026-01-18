@@ -133,7 +133,7 @@ MyClass obj = owner.Object;
 
 ## See Also
 
-- [API Reference](../../api/CryptoHives.Foundation.Memory.Buffers.html)
+- [Memory Package Classes](arraypoolmemorystream.md)
 - [Threading Package](../threading/index.md)
 
 ---

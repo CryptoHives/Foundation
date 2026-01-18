@@ -275,10 +275,6 @@ await vt; // throws InvalidOperationException
 
 (Examples omitted - see `asyncmanualresetevent.md` for manual-reset patterns and broadcasting examples.)
 
-## Benchmarks
-
-See [Benchmarks](benchmarks.md#asyncautoresetevent-benchmarks) for detailed performance comparisons.
-
 ## See Also
 
 - [Threading Package Overview](index.md)
