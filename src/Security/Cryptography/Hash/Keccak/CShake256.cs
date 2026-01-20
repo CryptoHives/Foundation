@@ -49,7 +49,7 @@ public sealed class CShake256 : KeccakCore
     /// <param name="functionName">The function name string N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S.</param>
     public CShake256(int outputBytes = DefaultOutputBits / 8, string functionName = "", string customization = "")
-        : this(SimdSupport.Default, outputBytes, Encoding.UTF8.GetBytes(functionName ?? ""), Encoding.UTF8.GetBytes(customization ?? ""))
+        : this(SimdSupport.KeccakDefault, outputBytes, Encoding.UTF8.GetBytes(functionName ?? ""), Encoding.UTF8.GetBytes(customization ?? ""))
     {
     }
 
@@ -60,7 +60,7 @@ public sealed class CShake256 : KeccakCore
     /// <param name="functionName">The function name bytes N.</param>
     /// <param name="customization">The customization bytes S.</param>
     public CShake256(int outputBytes, byte[] functionName, byte[] customization)
-        : this(SimdSupport.Default, outputBytes, functionName, customization)
+        : this(SimdSupport.KeccakDefault, outputBytes, functionName, customization)
     {
     }
 

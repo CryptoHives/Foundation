@@ -54,7 +54,7 @@ public sealed class Shake128 : KeccakCore
     /// Initializes a new instance of the <see cref="Shake128"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public Shake128(int outputBytes) : this(SimdSupport.Default, outputBytes)
+    public Shake128(int outputBytes) : this(SimdSupport.KeccakDefault, outputBytes)
     {
     }
 

@@ -49,7 +49,7 @@ public sealed class CShake128 : KeccakCore
     /// <param name="functionName">The function name string N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S.</param>
     public CShake128(int outputBytes = DefaultOutputBits / 8, string? functionName = null, string? customization = null)
-        : this(SimdSupport.Default, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization))
+        : this(SimdSupport.KeccakDefault, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization))
     {
     }
 
@@ -60,7 +60,7 @@ public sealed class CShake128 : KeccakCore
     /// <param name="functionName">The function name bytes N.</param>
     /// <param name="customization">The customization bytes S.</param>
     public CShake128(int outputBytes, byte[] functionName, byte[] customization)
-        : this(SimdSupport.Default, outputBytes, functionName, customization)
+        : this(SimdSupport.KeccakDefault, outputBytes, functionName, customization)
     {
     }
 
@@ -100,7 +100,7 @@ public sealed class CShake128 : KeccakCore
     /// no customization is required.</param>
     /// <returns>A new CShake128 instance configured with the specified output length, function name, and customization string.</returns>
     public static CShake128 Create(int outputBytes, byte[]? functionName = null, byte[]? customization = null)
-        => new(SimdSupport.Default, outputBytes, functionName, customization);
+        => new(SimdSupport.KeccakDefault, outputBytes, functionName, customization);
 
     internal static CShake128 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8, byte[]? functionName = null, byte[]? customization = null)
         => new(simdSupport, outputBytes, functionName, customization);

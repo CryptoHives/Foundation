@@ -49,7 +49,7 @@ public sealed class SHA3_256 : KeccakCore
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_256"/> class.
     /// </summary>
-    public SHA3_256() : this(SimdSupport.Default)
+    public SHA3_256() : this(SimdSupport.KeccakDefault)
     {
     }
 

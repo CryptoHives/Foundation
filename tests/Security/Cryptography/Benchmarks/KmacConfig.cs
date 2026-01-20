@@ -57,16 +57,16 @@ public class KmacConfig : ManualConfig
 
         private static string MapCategory(string token)
         {
-            if (token.StartsWith("KMAC128", StringComparison.OrdinalIgnoreCase)) return "KMAC-128";
-            if (token.StartsWith("KMAC256", StringComparison.OrdinalIgnoreCase)) return "KMAC-256";
+            if (token.StartsWith("KMAC128", StringComparison.OrdinalIgnoreCase)) return "KMAC128";
+            if (token.StartsWith("KMAC256", StringComparison.OrdinalIgnoreCase)) return "KMAC256";
             return token;
         }
 
         private static string MapImpl(string token)
         {
-            if (token.IndexOf("Bouncy", StringComparison.OrdinalIgnoreCase) >= 0) return "BouncyCastle";
-            if (token.IndexOf("CryptoHives", StringComparison.OrdinalIgnoreCase) >= 0) return "CryptoHives";
-            if (token.IndexOf(".NET", StringComparison.OrdinalIgnoreCase) >= 0 || token.IndexOf("DotNet", StringComparison.OrdinalIgnoreCase) >= 0) return "OS Native";
+            if (token.Contains("Bouncy", StringComparison.OrdinalIgnoreCase)) return "BouncyCastle";
+            if (token.Contains("CryptoHives", StringComparison.OrdinalIgnoreCase)) return "CryptoHives";
+            if (token.Contains(".NET", StringComparison.OrdinalIgnoreCase) || token.Contains("DotNet", StringComparison.OrdinalIgnoreCase)) return "OS Native";
             return token;
         }
     }
@@ -87,7 +87,7 @@ public class KmacConfig : ManualConfig
         public string GetHighlightGroupKey(BenchmarkCase benchmarkCase)
         {
             var workload = benchmarkCase.Descriptor.WorkloadMethodDisplayInfo ?? "";
-            return workload.IndexOf("CryptoHives", StringComparison.OrdinalIgnoreCase) >= 0 ? "Managed" : null!;
+            return workload.Contains("CryptoHives", StringComparison.OrdinalIgnoreCase) ? "Managed" : null!;
         }
 
         public string GetLogicalGroupKey(ImmutableArray<BenchmarkCase> allBenchmarksCases, BenchmarkCase benchmarkCase)

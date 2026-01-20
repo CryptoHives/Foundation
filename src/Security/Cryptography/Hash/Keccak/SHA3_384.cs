@@ -49,7 +49,7 @@ public sealed class SHA3_384 : KeccakCore
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_384"/> class.
     /// </summary>
-    public SHA3_384() : this(SimdSupport.Default)
+    public SHA3_384() : this(SimdSupport.KeccakDefault)
     {
     }
 

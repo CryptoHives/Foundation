@@ -48,7 +48,7 @@ public sealed class Kmac256 : KeccakCore
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
     public Kmac256(byte[] key, int outputBytes = DefaultOutputBits / 8, string customization = "")
-        : this(SimdSupport.Default, key, outputBytes, Encoding.UTF8.GetBytes(customization ?? ""))
+        : this(SimdSupport.KeccakDefault, key, outputBytes, Encoding.UTF8.GetBytes(customization ?? ""))
     {
     }
 
@@ -59,7 +59,7 @@ public sealed class Kmac256 : KeccakCore
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization bytes S.</param>
     public Kmac256(byte[] key, int outputBytes, byte[] customization)
-        : this(SimdSupport.Default, key, outputBytes, customization)
+        : this(SimdSupport.KeccakDefault, key, outputBytes, customization)
     {
     }
 

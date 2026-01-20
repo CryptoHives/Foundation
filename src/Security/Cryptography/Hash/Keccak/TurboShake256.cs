@@ -79,7 +79,7 @@ public sealed class TurboShake256 : KeccakCore
     /// Thrown when <paramref name="outputBytes"/> is not positive or
     /// <paramref name="domainSeparator"/> is not in range [0x01, 0x7F].
     /// </exception>
-    public TurboShake256(int outputBytes, byte domainSeparator) : this(SimdSupport.Default, outputBytes, domainSeparator)
+    public TurboShake256(int outputBytes, byte domainSeparator) : this(SimdSupport.KeccakDefault, outputBytes, domainSeparator)
     {
     }
 

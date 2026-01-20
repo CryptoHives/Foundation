@@ -55,9 +55,10 @@ internal enum SimdSupport
     All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon,
 
     /// <summary>
-    /// The optimization to use if no specific SIMD flags are specified.
+    /// The default optimization to use for Keccak based algorithms.
+    /// Set to None since Keccak is faster with scalar instructions.
     /// </summary>
-    Default = None
+    KeccakDefault = None
 }
 
 /// <summary>
