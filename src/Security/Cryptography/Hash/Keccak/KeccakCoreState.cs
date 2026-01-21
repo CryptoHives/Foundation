@@ -223,6 +223,7 @@ internal unsafe struct KeccakCoreState
 
         fixed (ulong* statePtr = _state)
         {
+            ref Vector512<ulong> rcBase = ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx512);
             ref readonly PermuteAvx512FVectors vectors = ref Avx512FVectors;
             Vector512<ulong> mask5 = vectors.Mask5;
 
@@ -245,8 +246,7 @@ internal unsafe struct KeccakCoreState
                 // ROUND 1 (A -> E) - Uses pre-computed caeiou
                 // =================================================================
                 {
-                    var rc = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx512), round);
-
+                    var rc = Unsafe.Add(ref rcBase, round);
                     {
                         // Theta: Use parity accumulated during Round 1's Pi2
                         Vector512<ulong> cu = Avx512F.PermuteVar8x64(ca, vectors.MoveThetaPrev);
@@ -307,8 +307,7 @@ internal unsafe struct KeccakCoreState
                 // ROUND 2 (E -> A) - Uses parity accumulated in Round 1
                 // =================================================================
                 {
-                    var rc = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx512), round + 1);
-
+                    var rc = Unsafe.Add(ref rcBase, round + 1);
                     {
                         // Theta: Use parity accumulated during Round 1's Pi2
                         Vector512<ulong> cu = Avx512F.PermuteVar8x64(ca, vectors.MoveThetaPrev);
@@ -477,6 +476,8 @@ internal unsafe struct KeccakCoreState
 
         fixed (ulong* statePtr = _state)
         {
+            ref Vector256<ulong> rcBase = ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx2);
+
             // Load state into vectors
             // Key detail: we use Vector256.Create(value) for the U-lanes so that the value
             // is available in a vector register. All elements of the U-vector are meaningful;
@@ -537,7 +538,7 @@ internal unsafe struct KeccakCoreState
 
                 // Plane 0: gather [Aba, Age, Aki, Amo] + Bbu from Asu
                 {
-                    var rc = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx2), round);
+                    var rc = Unsafe.Add(ref rcBase, round);
                     var bbaeio = Rol64Avx2(
                         Avx.Blend(
                             Avx.Blend(abaeio.AsDouble(), agaeio.AsDouble(), 0b_0010),
@@ -705,7 +706,7 @@ internal unsafe struct KeccakCoreState
 
                 // Plane 0
                 {
-                    var rc = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx2), round + 1);
+                    var rc = Unsafe.Add(ref rcBase, round + 1);
                     var bbaeio = Rol64Avx2(
                         Avx.Blend(
                             Avx.Blend(ebaeio.AsDouble(), egaeio.AsDouble(), 0b_0010),
@@ -1075,7 +1076,7 @@ internal unsafe struct KeccakCoreState
             state[4] = abu; state[3] = abo; state[2] = abi; state[1] = abe; state[0] = aba;
         }
     }
-    #endregion
+#endregion
 
     /// <summary>
     /// Absorbs a block of data into the Keccak statePtr.

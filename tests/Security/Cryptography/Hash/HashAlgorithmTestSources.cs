@@ -757,6 +757,13 @@ public static class Blake2s256Implementations
                     () => CH.Blake2s.Create(32, CH.SimdSupport.Avx2));
             }
 
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2s-256 (SSSE3)",
+                    () => CH.Blake2s.Create(32, CH.SimdSupport.Ssse3));
+            }
+
             if ((simdSupport & CH.SimdSupport.Sse2) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -795,6 +802,13 @@ public static class Blake2s128Implementations
                     () => CH.Blake2s.Create(16, CH.SimdSupport.Avx2));
             }
 
+            if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                yield return new HashAlgorithmFactory(
+                    "Blake2s-128 (SSSE3)",
+                    () => CH.Blake2s.Create(16, CH.SimdSupport.Ssse3));
+            }
+
             if ((simdSupport & CH.SimdSupport.Sse2) != 0)
             {
                 yield return new HashAlgorithmFactory(
@@ -803,8 +817,8 @@ public static class Blake2s128Implementations
             }
 
             yield return new HashAlgorithmFactory(
-                "Blake2s-128",
-                () => CH.Blake2s.Create(16));
+                "Blake2s-128 (Managed)",
+                () => CH.Blake2s.Create(16, CH.SimdSupport.None));
 
             yield return new HashAlgorithmFactory(
                 "BLAKE2s-128 (BouncyCastle)",

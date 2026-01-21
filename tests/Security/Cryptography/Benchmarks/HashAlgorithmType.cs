@@ -330,14 +330,17 @@ public sealed class HashAlgorithmType : IFormattable
     public static readonly HashAlgorithmType Blake2b_Managed_Avx2 = new("BLAKE2b-512",
         () => CH.Blake2b.Create(64, CH.SimdSupport.Avx2), () => Avx2.IsSupported);
 
-    public static readonly HashAlgorithmType Blake2s_Managed_Sse2 = new("BLAKE2s-256",
-        () => CH.Blake2s.Create(32, CH.SimdSupport.Sse2), () => Sse2.IsSupported);
+    public static readonly HashAlgorithmType Blake2s_Managed_Ssse3 = new("BLAKE2s-256",
+        () => CH.Blake2s.Create(32, CH.SimdSupport.Ssse3), () => Ssse3.IsSupported);
 
     public static readonly HashAlgorithmType Blake2s_Managed_Avx2 = new("BLAKE2s-256",
         () => CH.Blake2s.Create(32, CH.SimdSupport.Avx2), () => Avx2.IsSupported);
 
     public static readonly HashAlgorithmType Blake3_Managed_Ssse3 = new("BLAKE3",
         () => CH.Blake3.Create(32, CH.SimdSupport.Ssse3), () => Ssse3.IsSupported);
+
+    public static readonly HashAlgorithmType Blake2s_Managed_Sse2 = new("BLAKE2s-256",
+        () => CH.Blake2s.Create(32, CH.SimdSupport.Sse2), () => Sse2.IsSupported);
 
     // Scalar variants (force scalar path for comparison)
     public static readonly HashAlgorithmType Blake2b_Managed_Scalar = new("BLAKE2b-512",
@@ -633,6 +636,7 @@ public sealed class HashAlgorithmType : IFormattable
 
         // BLAKE2s variants
         if (Blake2s_Managed_Avx2.IsSupported) yield return Blake2s_Managed_Avx2;
+        if (Blake2s_Managed_Ssse3.IsSupported) yield return Blake2s_Managed_Ssse3;                  
         if (Blake2s_Managed_Sse2.IsSupported) yield return Blake2s_Managed_Sse2;
         yield return Blake2s_Managed_Scalar;
         yield return Blake2s_Bouncy;
@@ -744,6 +748,7 @@ public sealed class HashAlgorithmType : IFormattable
 
         // BLAKE2s variants
         if (Blake2s_Managed_Avx2.IsSupported) yield return Blake2s_Managed_Avx2;
+        if (Blake2s_Managed_Ssse3.IsSupported) yield return Blake2s_Managed_Ssse3;
         if (Blake2s_Managed_Sse2.IsSupported) yield return Blake2s_Managed_Sse2;
         yield return Blake2s_Managed_Scalar;
         yield return Blake2s_Bouncy;
