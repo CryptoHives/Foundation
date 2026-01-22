@@ -87,8 +87,9 @@ using (await lockInstance.LockAsync())
 
 ## Next Steps
 
-- Browse the [API documentation](api/index.md)
-- Review [package documentation](packages/memory/index.md)
+- Browse the [Package Documentation](packages/index.md)
+- Review [Memory Package](packages/memory/index.md)
+- Review [Threading Package](packages/threading/index.md)
 
 ## Support
 

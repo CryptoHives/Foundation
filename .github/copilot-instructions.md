@@ -51,6 +51,8 @@ tests/
 - Use XML `<code>` snippets for code examples.
 - Add only XML `<inheritdoc/>` tags when overriding or implementing interface members.
 - Keep methods short and focused. Prefer small helper methods when needed.
+- Prefer predefined primitives in `BinaryPrimitives` and `BitOperations`.
+- Implement byte accessing algorithms with endian invariance in mind.
 - Prefer `ValueTask` over `Task` for low-allocation hot-path async primitives when the project already uses `ValueTask` (see `Pooled.Async*` types).
 - Use `Microsoft.Extensions.ObjectPool` and the existing pool policy types when adding pooled objects.
 - Follow the project pattern for multi-targeting: code may include `#if` guards for framework-specific APIs (see `ReadOnlySequenceMemoryStream` for `NET8_0_OR_GREATER` checks).
@@ -114,7 +116,6 @@ When modifying CI pipelines:
 
 - Search for a similar implementation in the repository and copy the style and structure used there (e.g., `AsyncAutoResetEvent`, `ReadOnlySequenceMemoryStream`).
 - Prefer consistency with existing code over personal preference.
-- Check the existing analyzer tests in `ValueTaskMisuseAnalyzerTests.cs` for patterns.
 
 ## Contact
 
