@@ -1076,7 +1076,7 @@ internal unsafe struct KeccakCoreState
             state[4] = abu; state[3] = abo; state[2] = abi; state[1] = abe; state[0] = aba;
         }
     }
-#endregion
+    #endregion
 
     /// <summary>
     /// Absorbs a block of data into the Keccak statePtr.
