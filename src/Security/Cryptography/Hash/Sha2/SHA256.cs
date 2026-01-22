@@ -196,8 +196,8 @@ public sealed class SHA256 : HashAlgorithm
 
             for (int i = 16; i < 64; i++)
             {
-                uint s0 = RotateRight(_w[i - 15], 7) ^ RotateRight(_w[i - 15], 18) ^ (_w[i - 15] >> 3);
-                uint s1 = RotateRight(_w[i - 2], 17) ^ RotateRight(_w[i - 2], 19) ^ (_w[i - 2] >> 10);
+                uint s0 = BitOperations.RotateRight(_w[i - 15], 7) ^ BitOperations.RotateRight(_w[i - 15], 18) ^ (_w[i - 15] >> 3);
+                uint s1 = BitOperations.RotateRight(_w[i - 2], 17) ^ BitOperations.RotateRight(_w[i - 2], 19) ^ (_w[i - 2] >> 10);
                 _w[i] = _w[i - 16] + s0 + _w[i - 7] + s1;
             }
 
@@ -214,10 +214,10 @@ public sealed class SHA256 : HashAlgorithm
             // Main loop
             for (int i = 0; i < 64; i++)
             {
-                uint S1 = RotateRight(e, 6) ^ RotateRight(e, 11) ^ RotateRight(e, 25);
+                uint S1 = BitOperations.RotateRight(e, 6) ^ BitOperations.RotateRight(e, 11) ^ BitOperations.RotateRight(e, 25);
                 uint ch = (e & f) ^ (~e & g);
                 uint temp1 = h + S1 + ch + K[i] + _w[i];
-                uint S0 = RotateRight(a, 2) ^ RotateRight(a, 13) ^ RotateRight(a, 22);
+                uint S0 = BitOperations.RotateRight(a, 2) ^ BitOperations.RotateRight(a, 13) ^ BitOperations.RotateRight(a, 22);
                 uint maj = (a & b) ^ (a & c) ^ (b & c);
                 uint temp2 = S0 + maj;
 
@@ -274,7 +274,4 @@ public sealed class SHA256 : HashAlgorithm
             ProcessBlock(_buffer);
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateRight(uint x, int n) => BitOperations.RotateRight(x, n);
 }

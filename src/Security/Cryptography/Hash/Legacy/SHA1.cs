@@ -6,7 +6,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes the SHA-1 hash for the input data.
@@ -16,10 +15,6 @@ using System.Runtime.CompilerServices;
 /// This is a fully managed implementation of SHA-1 based on FIPS 180-4.
 /// It does not rely on OS or hardware cryptographic APIs, ensuring
 /// deterministic behavior across all platforms and runtimes.
-/// </para>
-/// <para>
-/// On .NET 8+, this implementation uses optimized BitOperations for improved
-/// performance. Otherwise, a portable software implementation is used.
 /// </para>
 /// <para>
 /// <strong>Security Warning:</strong> SHA-1 is cryptographically weak and should NOT
@@ -172,7 +167,7 @@ public sealed class SHA1 : HashAlgorithm
             // Extend 16 words to 80 words
             for (int i = 16; i < 80; i++)
             {
-                _w[i] = RotateLeft(_w[i - 3] ^ _w[i - 8] ^ _w[i - 14] ^ _w[i - 16], 1);
+                _w[i] = BitOperations.RotateLeft(_w[i - 3] ^ _w[i - 8] ^ _w[i - 14] ^ _w[i - 16], 1);
             }
 
             uint a = _state[0];
@@ -185,10 +180,10 @@ public sealed class SHA1 : HashAlgorithm
             for (int i = 0; i < 20; i++)
             {
                 uint f = (b & c) | (~b & d);
-                uint temp = RotateLeft(a, 5) + f + e + 0x5a827999 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x5a827999 + _w[i];
                 e = d;
                 d = c;
-                c = RotateLeft(b, 30);
+                c = BitOperations.RotateLeft(b, 30);
                 b = a;
                 a = temp;
             }
@@ -197,10 +192,10 @@ public sealed class SHA1 : HashAlgorithm
             for (int i = 20; i < 40; i++)
             {
                 uint f = b ^ c ^ d;
-                uint temp = RotateLeft(a, 5) + f + e + 0x6ed9eba1 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x6ed9eba1 + _w[i];
                 e = d;
                 d = c;
-                c = RotateLeft(b, 30);
+                c = BitOperations.RotateLeft(b, 30);
                 b = a;
                 a = temp;
             }
@@ -209,10 +204,10 @@ public sealed class SHA1 : HashAlgorithm
             for (int i = 40; i < 60; i++)
             {
                 uint f = (b & c) | (b & d) | (c & d);
-                uint temp = RotateLeft(a, 5) + f + e + 0x8f1bbcdc + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x8f1bbcdc + _w[i];
                 e = d;
                 d = c;
-                c = RotateLeft(b, 30);
+                c = BitOperations.RotateLeft(b, 30);
                 b = a;
                 a = temp;
             }
@@ -221,10 +216,10 @@ public sealed class SHA1 : HashAlgorithm
             for (int i = 60; i < 80; i++)
             {
                 uint f = b ^ c ^ d;
-                uint temp = RotateLeft(a, 5) + f + e + 0xca62c1d6 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0xca62c1d6 + _w[i];
                 e = d;
                 d = c;
-                c = RotateLeft(b, 30);
+                c = BitOperations.RotateLeft(b, 30);
                 b = a;
                 a = temp;
             }
@@ -265,7 +260,4 @@ public sealed class SHA1 : HashAlgorithm
             ProcessBlock(_buffer);
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
 }

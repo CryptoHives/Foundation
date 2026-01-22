@@ -236,20 +236,20 @@ public sealed class Ripemd160 : HashAlgorithm
                 // Left line
                 fl = F(round, bl, cl, dl);
                 tl = al + fl + x[RL[j]] + KL[round];
-                tl = RotateLeft(tl, SL[j]) + el;
+                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
                 al = el;
                 el = dl;
-                dl = RotateLeft(cl, 10);
+                dl = BitOperations.RotateLeft(cl, 10);
                 cl = bl;
                 bl = tl;
 
                 // Right line
                 fr = F(4 - round, br, cr, dr);
                 tr = ar + fr + x[RR[j]] + KR[round];
-                tr = RotateLeft(tr, SR[j]) + er;
+                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
                 ar = er;
                 er = dr;
-                dr = RotateLeft(cr, 10);
+                dr = BitOperations.RotateLeft(cr, 10);
                 cr = br;
                 br = tr;
             }
@@ -275,7 +275,4 @@ public sealed class Ripemd160 : HashAlgorithm
             _ => 0
         };
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
 }

@@ -249,7 +249,6 @@ public sealed class Blake3 : HashAlgorithm
         {
             var support = SimdSupport.None;
 #if NET8_0_OR_GREATER
-            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
 #endif
             return support;
@@ -646,7 +645,7 @@ public sealed class Blake3 : HashAlgorithm
 #if NET8_0_OR_GREATER
         if (_useSsse3)
         {
-            CompressBlockSse2(block, blockLen, counter, flags);
+            CompressBlockSsse3(block, blockLen, counter, flags);
             return;
         }
 #endif
@@ -673,7 +672,7 @@ public sealed class Blake3 : HashAlgorithm
 
 #if NET8_0_OR_GREATER
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressBlockSse2(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
+private void CompressBlockSsse3(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
         // Parse message block
         Span<uint> m = stackalloc uint[16];

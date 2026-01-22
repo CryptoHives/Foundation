@@ -186,8 +186,8 @@ public sealed class SM3 : HashAlgorithm
 
             for (int i = 16; i < 68; i++)
             {
-                uint tmp = w[i - 16] ^ w[i - 9] ^ RotateLeft(w[i - 3], 15);
-                w[i] = P1(tmp) ^ RotateLeft(w[i - 13], 7) ^ w[i - 6];
+                uint tmp = w[i - 16] ^ w[i - 9] ^ BitOperations.RotateLeft(w[i - 3], 15);
+                w[i] = P1(tmp) ^ BitOperations.RotateLeft(w[i - 13], 7) ^ w[i - 6];
             }
 
             for (int i = 0; i < 64; i++)
@@ -202,8 +202,8 @@ public sealed class SM3 : HashAlgorithm
             for (int j = 0; j < 64; j++)
             {
                 uint tj = (j < 16) ? T0_15 : T16_63;
-                uint ss1 = RotateLeft(RotateLeft(a, 12) + e + RotateLeft(tj, j), 7);
-                uint ss2 = ss1 ^ RotateLeft(a, 12);
+                uint ss1 = BitOperations.RotateLeft(BitOperations.RotateLeft(a, 12) + e + BitOperations.RotateLeft(tj, j), 7);
+                uint ss2 = ss1 ^ BitOperations.RotateLeft(a, 12);
                 uint tt1, tt2;
 
                 if (j < 16)
@@ -218,11 +218,11 @@ public sealed class SM3 : HashAlgorithm
                 }
 
                 d = c;
-                c = RotateLeft(b, 9);
+                c = BitOperations.RotateLeft(b, 9);
                 b = a;
                 a = tt1;
                 h = g;
-                g = RotateLeft(f, 19);
+                g = BitOperations.RotateLeft(f, 19);
                 f = e;
                 e = P0(tt2);
             }
@@ -253,11 +253,8 @@ public sealed class SM3 : HashAlgorithm
 
     // Permutation functions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint P0(uint x) => x ^ RotateLeft(x, 9) ^ RotateLeft(x, 17);
+    private static uint P0(uint x) => x ^ BitOperations.RotateLeft(x, 9) ^ BitOperations.RotateLeft(x, 17);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint P1(uint x) => x ^ RotateLeft(x, 15) ^ RotateLeft(x, 23);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
+    private static uint P1(uint x) => x ^ BitOperations.RotateLeft(x, 15) ^ BitOperations.RotateLeft(x, 23);
 }

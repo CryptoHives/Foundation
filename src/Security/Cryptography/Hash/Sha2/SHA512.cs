@@ -261,10 +261,10 @@ public sealed class SHA512 : HashAlgorithm
                 ulong w2 = _w[i - 2];
 
                 // σ0(x) = ROTR^1(x) XOR ROTR^8(x) XOR SHR^7(x)
-                ulong s0 = RotateRight(w15, 1) ^ RotateRight(w15, 8) ^ (w15 >> 7);
+                ulong s0 = BitOperations.RotateRight(w15, 1) ^ BitOperations.RotateRight(w15, 8) ^ (w15 >> 7);
 
                 // σ1(x) = ROTR^19(x) XOR ROTR^61(x) XOR SHR^6(x)
-                ulong s1 = RotateRight(w2, 19) ^ RotateRight(w2, 61) ^ (w2 >> 6);
+                ulong s1 = BitOperations.RotateRight(w2, 19) ^ BitOperations.RotateRight(w2, 61) ^ (w2 >> 6);
 
                 _w[i] = _w[i - 16] + s0 + _w[i - 7] + s1;
             }
@@ -296,10 +296,10 @@ public sealed class SHA512 : HashAlgorithm
             // Standard compression loop
             for (int i = 0; i < 80; i++)
             {
-                ulong S1 = RotateRight(e, 14) ^ RotateRight(e, 18) ^ RotateRight(e, 41);
+                ulong S1 = BitOperations.RotateRight(e, 14) ^ BitOperations.RotateRight(e, 18) ^ BitOperations.RotateRight(e, 41);
                 ulong ch = (e & f) ^ (~e & g);
                 ulong temp1 = h + S1 + ch + K[i] + _w[i];
-                ulong S0 = RotateRight(a, 28) ^ RotateRight(a, 34) ^ RotateRight(a, 39);
+                ulong S0 = BitOperations.RotateRight(a, 28) ^ BitOperations.RotateRight(a, 34) ^ BitOperations.RotateRight(a, 39);
                 ulong maj = (a & b) ^ (a & c) ^ (b & c);
                 ulong temp2 = S0 + maj;
 
@@ -468,9 +468,6 @@ public sealed class SHA512 : HashAlgorithm
     }
 
 #endif
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateRight(ulong x, int n) => BitOperations.RotateRight(x, n);
 
     private void PadAndFinalize()
     {
