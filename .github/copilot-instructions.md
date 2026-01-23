@@ -1,4 +1,4 @@
-﻿# Copilot Instructions for CryptoHives .NET Foundation
+# Copilot Instructions for CryptoHives .NET Foundation
 
 ## Purpose
 
@@ -21,65 +21,20 @@ Use the following structure when adding new projects, tests and analyzers:
 
 ```
 src/
-├── Threading/           # Threading utilities (ValueTask pooling, async primitives)
-├── Threading.Analyzers/ # Roslyn analyzers for ValueTask misuse detection
-├── Memory/              # Memory utilities (pooling, buffers, streams)
-└── Security/Cryptography/   # Cryptographic algorithms
-    ├── SHA2/            # SHA-2 family implementations
-    ├── SHA3/            # SHA-3 family implementations
-    ├── SHAKE/           # SHAKE and cSHAKE XOFs
-    ├── BLAKE2/          # BLAKE2b and BLAKE2s
-    ├── BLAKE3/          # BLAKE3
-    ├── Keccak/          # Keccak-256 (Ethereum)
-    ├── GOST/            # Streebog (GOST R 34.11-2012)
-    ├── RIPEMD/          # RIPEMD-160
-    ├── SM3/             # Chinese SM3
-    ├── Whirlpool/       # ISO Whirlpool
-    ├── MAC/             # Message Authentication Codes (KMAC)
-    ├── Legacy/          # Deprecated algorithms (MD5, SHA-1)
-    └── specs/           # Algorithm specification documents
+├── Threading/                  # Threading utilities (ValueTask pooling, async primitives)
+├── Threading.Analyzers/        # Roslyn analyzers for ValueTask misuse detection
+├── Memory/                     # Memory utilities (pooling, buffers, streams)
+└── Security/Cryptography/      # Cryptographic algorithms
+    ├── Hash/                   # Hash algorithms
+    ├── Mac/                    # Mac algorithms
+    └── shared/                 # common helpers and abstractions
 
 tests/
-├── Threading/           # Runtime tests for Threading library
-├── Threading.Analyzers/ # Analyzer unit tests (Roslyn testing framework)
-├── Memory/              # Runtime tests for Memory library
-└── Security/Cryptography/ # Runtime tests for Cryptography library
+├── Threading/                  # Runtime tests for Threading library
+├── Threading.Analyzers/        # Analyzer unit tests (Roslyn testing framework)
+├── Memory/                     # Runtime tests for Memory library
+└── Security/Cryptography/      # Runtime tests for Cryptography library
 ```
-
-## Cryptography Namespace Structure
-
-The Security.Cryptography library uses a hierarchical namespace structure:
-
-```
-CryptoHives.Foundation.Security.Cryptography          # Root namespace
-CryptoHives.Foundation.Security.Cryptography.Hash     # Hash algorithm implementations
-CryptoHives.Foundation.Security.Cryptography.Mac      # MAC algorithm implementations
-```
-
-### Namespace Aliases for Drop-in Replacement
-
-The hash sub-namspace of the root namespace (`CryptoHives.Foundation.Security.Cryptography.Hash`) contains the sealed implementations of the hash algorithms. This allows drop-in replacement of .NET cryptographic types:
-
-```csharp
-// Before: using System.Security.Cryptography;
-// After:  using CryptoHives.Foundation.Security.Cryptography.Hash;
-
-using var sha256 = SHA256.Create();  // Works with both!
-```
-
-When adding new hash algorithms:
-1. Implement in the appropriate folder under `src/Security/Cryptography/`
-2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Hash`
-3. Derive the new class from `CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm`
-4. Implement new class and functions
-5. Add new hash algorithm to tests and benchmarks sources
-6. Add third party implementations for verification and benchmarking to tests
-7. Add docfx documentation for package and add test vector description with reference to specs
-
-When adding new MAC algorithms:
-1. Implement in `src/Security/Cryptography/MAC/`
-2. Use namespace `CryptoHives.Foundation.Security.Cryptography.Mac`
-3. ... etc
 
 ## General rules
 
@@ -89,7 +44,7 @@ When adding new MAC algorithms:
 - Never change package.json or package-lock.json files unless explicitly asked to.
 - Never change NuGet.Config files unless explicitly asked to.
 - Always trim trailing whitespace, and do not have whitespace on otherwise empty lines.
-- Always save files as UTF8.
+- Always save files as UTF8 with BOM.
 - Always preserve the SPDX file header found at the top of source files. Example: `// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives` followed by `// SPDX-License-Identifier: MIT`.
 - Follow the existing file layout: preprocessor directives (e.g. `#if ...`) come first, then the `namespace` declaration, then `using` directives. Keep a single blank line between these regions as in existing files.
 - Try to use `namespace` declarations that match the file path, unless a package works otherwise described. For example, files under `src/Threading/Async` use `namespace CryptoHives.Foundation.Threading.Async;`.
@@ -101,8 +56,9 @@ When adding new MAC algorithms:
 - Use XML `<code>` snippets for code examples.
 - Add only XML `<inheritdoc/>` tags when overriding or implementing interface members.
 - Keep methods short and focused. Prefer small helper methods when needed.
+- Avoid code duplication if possible. Extract common logic into helper methods or base classes.
 - Prefer predefined primitives in `BinaryPrimitives` and `BitOperations`.
-- Implement byte accessing algorithms with endian invariance in mind.
+- Implement byte accessing algorithms with endian invariance in mind. Implement fast path for the most common endianness if applicable.
 - Prefer `ValueTask` over `Task` for low-allocation hot-path async primitives when the project already uses `ValueTask` (see `Pooled.Async*` types).
 - Use `Microsoft.Extensions.ObjectPool` and the existing pool policy types when adding pooled objects.
 - Follow the project pattern for multi-targeting: code may include `#if` guards for framework-specific APIs (see `ReadOnlySequenceMemoryStream` for `NET8_0_OR_GREATER` checks).

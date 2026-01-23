@@ -18,8 +18,10 @@
       href: SHA3-vectors.md
     - name: SHAKE XOF
       href: SHAKE-vectors.md
-    - name: KangarooTwelve (K12)
-      href: KangarooTwelve-vectors.md
+    - name: TurboSHAKE
+      href: TurboSHAKE-vectors.md
+    - name: KT (KangarooTwelve)
+      href: KT-vectors.md
     - name: Keccak-256 (Ethereum)
       href: Keccak-vectors.md
     - name: BLAKE2
