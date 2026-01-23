@@ -25,6 +25,153 @@ Message Authentication Codes (MACs) provide both data integrity and authenticity
 
 ---
 
+## HMAC
+
+HMAC (Hash-based Message Authentication Code) is defined in RFC 2104 and uses any cryptographic hash function combined with a secret key.
+
+### Class Declaration
+
+```csharp
+public sealed class Hmac : HashAlgorithm
+```
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Security | Depends on underlying hash |
+| Output Size | Same as underlying hash |
+| Key Size | Any length (hashed if > block size) |
+| Block Size | Same as underlying hash |
+
+### Constructor
+
+```csharp
+public Hmac(string hashAlgorithmName, byte[] key)
+```
+
+**Parameters:**
+- `hashAlgorithmName` - The name of the hash algorithm (e.g., "SHA-256", "SHA-512")
+- `key` - The secret key (any length, cannot be empty)
+
+### Factory Methods
+
+```csharp
+public static Hmac CreateSha256(byte[] key)
+public static Hmac CreateSha384(byte[] key)
+public static Hmac CreateSha512(byte[] key)
+public static Hmac CreateSha3_256(byte[] key)
+public static Hmac CreateSha3_512(byte[] key)
+public static Hmac CreateBlake2b(byte[] key)
+public static Hmac CreateBlake3(byte[] key)
+public static Hmac Create(string hashAlgorithmName, byte[] key)
+```
+
+### Usage Examples
+
+```csharp
+byte[] key = new byte[32];
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
+
+// HMAC-SHA256
+using var hmac = Hmac.CreateSha256(key);
+byte[] mac = hmac.ComputeHash(message);
+
+// HMAC-SHA512
+using var hmacSha512 = Hmac.CreateSha512(key);
+byte[] mac512 = hmacSha512.ComputeHash(message);
+
+// Custom hash algorithm
+using var hmacBlake3 = Hmac.Create("BLAKE3", key);
+byte[] macBlake3 = hmacBlake3.ComputeHash(message);
+```
+
+### Incremental Usage
+
+```csharp
+using var hmac = Hmac.CreateSha256(key);
+
+// Process data in chunks
+hmac.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
+hmac.TransformBlock(chunk2, 0, chunk2.Length, null, 0);
+hmac.TransformFinalBlock(chunk3, 0, chunk3.Length);
+
+byte[] mac = hmac.Hash;
+```
+
+---
+
+## CMAC
+
+CMAC (Cipher-based Message Authentication Code) is defined in NIST SP 800-38B and RFC 4493, using AES as the underlying block cipher.
+
+### Class Declaration
+
+```csharp
+public sealed class Cmac : HashAlgorithm
+```
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Security | 64 bits (birthday bound for 128-bit block) |
+| Output Size | 128 bits (16 bytes) |
+| Key Size | 16, 24, or 32 bytes (AES-128/192/256) |
+| Block Size | 16 bytes |
+
+### Constructor
+
+```csharp
+public Cmac(byte[] key)
+```
+
+**Parameters:**
+- `key` - The secret key (16, 24, or 32 bytes for AES-128, AES-192, or AES-256)
+
+### Factory Methods
+
+```csharp
+public static Cmac CreateAes128(byte[] key)
+public static Cmac CreateAes192(byte[] key)
+public static Cmac CreateAes256(byte[] key)
+public static Cmac Create(byte[] key)
+```
+
+### Usage Examples
+
+```csharp
+byte[] key = new byte[16]; // 16 bytes for AES-128
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
+
+// AES-128-CMAC
+using var cmac = Cmac.CreateAes128(key);
+byte[] mac = cmac.ComputeHash(message);
+
+// AES-256-CMAC
+byte[] key256 = new byte[32];
+RandomNumberGenerator.Fill(key256);
+using var cmac256 = Cmac.CreateAes256(key256);
+byte[] mac256 = cmac256.ComputeHash(message);
+```
+
+### Incremental Usage
+
+```csharp
+using var cmac = Cmac.CreateAes128(key);
+
+// Process data in chunks
+cmac.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
+cmac.TransformBlock(chunk2, 0, chunk2.Length, null, 0);
+cmac.TransformFinalBlock(chunk3, 0, chunk3.Length);
+
+byte[] mac = cmac.Hash;
+```
+
+---
+
 ## KMAC128
 
 KMAC128 is the Keccak Message Authentication Code with 128-bit security, defined in NIST SP 800-185.
@@ -250,8 +397,11 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 
 | Algorithm | Security Strength | Notes |
 |-----------|-------------------|-------|
+| HMAC-SHA-512 | 256 bits | Widely supported, RFC 2104 |
+| HMAC-SHA-256 | 128 bits | Most common, RFC 2104 |
 | KMAC256 | 256 bits | Highest security, NIST approved |
 | KMAC128 | 128 bits | Good security, NIST approved |
+| CMAC (AES) | 64 bits | NIST approved, block cipher based |
 | BLAKE3 keyed | 128 bits | High performance |
 | BLAKE2b keyed | Up to 256 bits | Depends on key/output size |
 | BLAKE2s keyed | Up to 128 bits | Good for embedded systems |
@@ -262,19 +412,25 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 |-----------|----------------|----------|
 | BLAKE3 keyed | Fastest | High-throughput applications |
 | BLAKE2b keyed | Very fast | General purpose on 64-bit |
+| CMAC (AES) | Very fast | Hardware-accelerated AES systems |
+| HMAC-SHA-256 | Fast | Wide compatibility |
+| HMAC-SHA-512 | Fast | 64-bit systems |
 | BLAKE2s keyed | Fast | 32-bit and embedded systems |
 | KMAC256 | Moderate | Maximum security |
 | KMAC128 | Moderate | NIST compliance |
 
 ### Feature Comparison
 
-| Feature | KMAC | BLAKE2 | BLAKE3 |
-|---------|------|--------|--------|
-| Variable output | ✅ | ✅ | ✅ |
-| Customization string | ✅ | ❌ | ❌ |
-| NIST approved | ✅ | ❌ | ❌ |
-| Key derivation | ❌ | ❌ | ✅ |
-| Arbitrary key size | ✅ | ❌ | ❌ |
+| Feature | HMAC | CMAC | KMAC | BLAKE2 | BLAKE3 |
+|---------|------|------|------|--------|--------|
+| Variable output | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Customization string | ❌ | ❌ | ✅ | ❌ | ❌ |
+| NIST approved | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Key derivation | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Arbitrary key size | ✅ | ❌ | ✅ | ❌ | ❌ |
+| RFC standard | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Uses block cipher | ❌ | ✅ | ❌ | ❌ | ❌ |
+
 
 ---
 
