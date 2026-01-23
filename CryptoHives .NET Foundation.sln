@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36518.9
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 	ProjectSection(SolutionItems) = preProject
@@ -83,6 +83,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Threading.Analyzers", "src\Threading.Analyzers\Threading.Analyzers.csproj", "{49E146C4-D39F-4ED8-909C-409B6D054484}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Threading.Analyzers.Tests", "tests\Threading.Analyzers\Threading.Analyzers.Tests.csproj", "{DE9ABC7F-CE1F-4F69-A29B-4B8FCE00CD40}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography.Tests", "tests\Security\Cryptography\Cryptography.Tests.csproj", "{BB62C54C-1437-206A-A79B-AFF23405B974}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "src\Security\Cryptography\Cryptography.csproj", "{ED53E1F7-E3C2-5E07-22F5-476CBD125D11}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341}"
 	ProjectSection(SolutionItems) = preProject
