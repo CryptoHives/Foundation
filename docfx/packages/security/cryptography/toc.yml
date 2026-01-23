@@ -4,6 +4,8 @@
   href: hash-algorithms.md
 - name: MAC Algorithms
   href: mac-algorithms.md
+- name: Benchmarks
+  href: benchmarks.md
 - name: Specifications
   href: specs/README.md
   items:
