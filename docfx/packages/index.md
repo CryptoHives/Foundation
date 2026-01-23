@@ -162,7 +162,6 @@ All packages support:
 - .NET 10.0
 - .NET 8.0
 - .NET Framework 4.6.2
-- .NET Framework 4.8
 - .NET Standard 2.1
 - .NET Standard 2.0
 
