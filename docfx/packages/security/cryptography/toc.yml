@@ -1,0 +1,47 @@
+- name: Overview
+  href: index.md
+- name: Hash Algorithms
+  href: hash-algorithms.md
+- name: MAC Algorithms
+  href: mac-algorithms.md
+- name: Benchmarks
+  href: benchmarks.md
+- name: Specifications
+  href: specs/README.md
+  items:
+    - name: Overview
+      href: specs/README.md
+    - name: Standards Reference
+      items:
+        - name: FIPS 180-4 (SHA-1, SHA-2)
+          href: specs/NIST-FIPS-180-4.md
+        - name: FIPS 202 (SHA-3, SHAKE)
+          href: specs/NIST-FIPS-202.md
+        - name: SP 800-185 (cSHAKE, KMAC)
+          href: specs/NIST-SP-800-185.md
+    - name: Test Vectors
+      items:
+        - name: SHA-1 (Legacy)
+          href: specs/SHA1-vectors.md
+        - name: SHA-2 Family
+          href: specs/SHA2-vectors.md
+        - name: SHA-3 Family
+          href: specs/SHA3-vectors.md
+        - name: SHAKE XOF
+          href: specs/SHAKE-vectors.md
+        - name: Keccak-256 (Ethereum)
+          href: specs/Keccak-vectors.md
+        - name: BLAKE2
+          href: specs/BLAKE2-vectors.md
+        - name: BLAKE3
+          href: specs/BLAKE3-vectors.md
+        - name: RIPEMD-160
+          href: specs/RIPEMD-160-vectors.md
+        - name: SM3
+          href: specs/SM3-vectors.md
+        - name: Whirlpool
+          href: specs/Whirlpool-vectors.md
+        - name: Streebog (GOST)
+          href: specs/Streebog-vectors.md
+        - name: MD5 (Legacy)
+          href: specs/MD5-vectors.md

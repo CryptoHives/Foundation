@@ -29,6 +29,8 @@ jobs:
             folder: './tests'
           - name: Memory
             folder: './tests'
+          - name: Cryptography
+            folder: './tests/Security'
         framework: 
           - 'net10.0'
         configuration:
@@ -42,7 +44,7 @@ jobs:
     env:
       OS: ${{ matrix.os }}
       DOTNET_VERSION: ${{ matrix.dotnet-version }}
-      CONFIGURATION:  ${{ matrix.configuration }}
+      CONFIGURATION: ${{ matrix.configuration }}
       CSPROJ: ${{ matrix.csproj.name }}
       CSPROJECT: "${{ matrix.csproj.folder }}/${{ matrix.csproj.name }}/${{ matrix.csproj.name }}.Tests.csproj"
       TESTRESULTS: "TestResults-${{matrix.csproj.name}}-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}"
@@ -84,7 +86,6 @@ jobs:
         directory: ${{ env.TESTRESULTS }}
         env_vars: CSPROJ,OS,DOTNET_VERSION,CONFIGURATION
         fail_ci_if_error: false
-        #path_to_write_report: "./coverage/codecov_report-${{matrix.os}}-${{matrix.framework}}-${{matrix.configuration}}/"
         verbose: true      
       # Use always() to always run this step to publish test results when there are test failures
       if: ${{ always() }}
