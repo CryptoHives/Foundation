@@ -21,14 +21,19 @@ Use the following structure when adding new projects, tests and analyzers:
 
 ```
 src/
-├── Threading/           # Threading utilities (ValueTask pooling, async primitives)
-├── Threading.Analyzers/ # Roslyn analyzers for ValueTask misuse detection
-└── Memory/              # Memory utilities (pooling, buffers, streams)
+├── Threading/                  # Threading utilities (ValueTask pooling, async primitives)
+├── Threading.Analyzers/        # Roslyn analyzers for ValueTask misuse detection
+├── Memory/                     # Memory utilities (pooling, buffers, streams)
+└── Security/Cryptography/      # Cryptographic algorithms
+    ├── Hash/                   # Hash algorithms
+    ├── Mac/                    # Mac algorithms
+    └── shared/                 # common helpers and abstractions
 
 tests/
-├── Threading/           # Runtime tests for Threading library
-├── Threading.Analyzers/ # Analyzer unit tests (Roslyn testing framework)
-└── Memory/              # Runtime tests for Memory library
+├── Threading/                  # Runtime tests for Threading library
+├── Threading.Analyzers/        # Analyzer unit tests (Roslyn testing framework)
+├── Memory/                     # Runtime tests for Memory library
+└── Security/Cryptography/      # Runtime tests for Cryptography library
 ```
 
 ## General rules
@@ -39,7 +44,7 @@ tests/
 - Never change package.json or package-lock.json files unless explicitly asked to.
 - Never change NuGet.Config files unless explicitly asked to.
 - Always trim trailing whitespace, and do not have whitespace on otherwise empty lines.
-- Always save files as UTF8.
+- Always save files as UTF8 with BOM.
 - Always preserve the SPDX file header found at the top of source files. Example: `// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives` followed by `// SPDX-License-Identifier: MIT`.
 - Follow the existing file layout: preprocessor directives (e.g. `#if ...`) come first, then the `namespace` declaration, then `using` directives. Keep a single blank line between these regions as in existing files.
 - Try to use `namespace` declarations that match the file path, unless a package works otherwise described. For example, files under `src/Threading/Async` use `namespace CryptoHives.Foundation.Threading.Async;`.
@@ -51,8 +56,9 @@ tests/
 - Use XML `<code>` snippets for code examples.
 - Add only XML `<inheritdoc/>` tags when overriding or implementing interface members.
 - Keep methods short and focused. Prefer small helper methods when needed.
+- Avoid code duplication if possible. Extract common logic into helper methods or base classes.
 - Prefer predefined primitives in `BinaryPrimitives` and `BitOperations`.
-- Implement byte accessing algorithms with endian invariance in mind.
+- Implement byte accessing algorithms with endian invariance in mind. Implement fast path for the most common endianness if applicable.
 - Prefer `ValueTask` over `Task` for low-allocation hot-path async primitives when the project already uses `ValueTask` (see `Pooled.Async*` types).
 - Use `Microsoft.Extensions.ObjectPool` and the existing pool policy types when adding pooled objects.
 - Follow the project pattern for multi-targeting: code may include `#if` guards for framework-specific APIs (see `ReadOnlySequenceMemoryStream` for `NET8_0_OR_GREATER` checks).

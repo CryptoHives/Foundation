@@ -1,4 +1,4 @@
-﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # update-benchmark-docs.ps1
@@ -7,11 +7,15 @@
 
 [CmdletBinding()]
 param(
+    [Parameter(HelpMessage = "Benchmark package to update (Threading or Cryptography)")]
+    [ValidateSet("Threading", "Cryptography")]
+    [string]$Package = "Threading",
+
     [Parameter(HelpMessage = "Source directory containing BenchmarkDotNet results")]
-    [string]$SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results",
+    [string]$SourceDir,
 
     [Parameter(HelpMessage = "Destination directory for docfx benchmark documentation")]
-    [string]$DestDir = "docfx/packages/threading/benchmarks",
+    [string]$DestDir,
 
     [Parameter(HelpMessage = "Dry run - show actions without executing")]
     [switch]$DryRun
@@ -19,31 +23,72 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$packageConfigurations = @{
+    "Threading" = [ordered]@{
+        SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
+        DestDir   = "docfx/packages/threading/benchmarks"
+        Files     = @(
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncLockSingleBenchmark-report-github.md"; Target = "asynclock-single.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncLockMultipleBenchmark-report-github.md"; Target = "asynclock-multiple.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventSetBenchmark-report-github.md"; Target = "asyncautoresetevent-set.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventSetThenWaitBenchmark-report-github.md"; Target = "asyncautoresetevent-setthenw.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventWaitThenSetBenchmark-report-github.md"; Target = "asyncautoresetevent-waitthenset.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventSetResetBenchmark-report-github.md"; Target = "asyncmanualresetevent-setreset.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventSetThenWaitBenchmark-report-github.md"; Target = "asyncmanualresetevent-setthenw.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventWaitThenSetBenchmark-report-github.md"; Target = "asyncmanualresetevent-waitthenset.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncSemaphoreSingleBenchmark-report-github.md"; Target = "asyncsemaphore-single.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncCountdownEventSignalBenchmark-report-github.md"; Target = "asynccountdownevent-signal.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncBarrierSignalAndWaitBenchmark-report-github.md"; Target = "asyncbarrier-signalandwait.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncReaderWriterLockReaderBenchmark-report-github.md"; Target = "asyncreaderwriterlock-reader.md" }
+            @{ Source = "Threading.Tests.Async.Pooled.AsyncReaderWriterLockWriterBenchmark-report-github.md"; Target = "asyncreaderwriterlock-writer.md" }
+        )
+    }
+
+function Normalize-BenchmarkContent {
+    param([string]$Content)
+
+    if ([string]::IsNullOrWhiteSpace($Content)) {
+        return $Content
+    }
+
+    $normalized = $Content -replace "\*\*", ""
+    return $normalized.Trim()
+}
+    "Cryptography" = [ordered]@{
+        SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
+        DestDir   = "docfx/packages/security/cryptography/benchmarks"
+        Files     = @(
+            @{ Source = "Cryptography.Tests.Benchmarks.AllHashersAllSizesBenchmark-report-github.md"; Target = "allhashers-all-sizes.md" }
+        )
+    }
+}
+
+if (-not $packageConfigurations.ContainsKey($Package)) {
+    Write-Host "ERROR: Unknown package '$Package'." -ForegroundColor Red
+    exit 1
+}
+
+$selectedConfig = $packageConfigurations[$Package]
+
+if (-not $PSBoundParameters.ContainsKey('SourceDir') -or [string]::IsNullOrWhiteSpace($SourceDir)) {
+    $SourceDir = $selectedConfig.SourceDir
+}
+
+if (-not $PSBoundParameters.ContainsKey('DestDir') -or [string]::IsNullOrWhiteSpace($DestDir)) {
+    $DestDir = $selectedConfig.DestDir
+}
+
+$benchmarkMappings = $selectedConfig.Files
+
 Write-Host ""
 Write-Host "========================================"
 Write-Host " Updating Benchmark Documentation"
 Write-Host "========================================"
 Write-Host ""
+Write-Host "Package: $Package"
 Write-Host "Source: $SourceDir"
 Write-Host "Destination: $DestDir"
 Write-Host ""
-
-# Mapping of benchmark names to documentation filenames
-$benchmarkMappings = @{
-    "AsyncLockSingleBenchmark" = "asynclock-single.md"
-    "AsyncLockMultipleBenchmark" = "asynclock-multiple.md"
-    "AsyncAutoResetEventSetBenchmark" = "asyncautoresetevent-set.md"
-    "AsyncAutoResetEventSetThenWaitBenchmark" = "asyncautoresetevent-setthenw.md"
-    "AsyncAutoResetEventWaitThenSetBenchmark" = "asyncautoresetevent-waitthenset.md"
-    "AsyncManualResetEventSetResetBenchmark" = "asyncmanualresetevent-setreset.md"
-    "AsyncManualResetEventSetThenWaitBenchmark" = "asyncmanualresetevent-setthenw.md"
-    "AsyncManualResetEventWaitThenSetBenchmark" = "asyncmanualresetevent-waitthenset.md"
-    "AsyncSemaphoreSingleBenchmark" = "asyncsemaphore-single.md"
-    "AsyncCountdownEventSignalBenchmark" = "asynccountdownevent-signal.md"
-    "AsyncBarrierSignalAndWaitBenchmark" = "asyncbarrier-signalandwait.md"
-    "AsyncReaderWriterLockReaderBenchmark" = "asyncreaderwriterlock-reader.md"
-    "AsyncReaderWriterLockWriterBenchmark" = "asyncreaderwriterlock-writer.md"
-}
 
 if (-not (Test-Path $SourceDir)) {
     Write-Host "ERROR: Source directory does not exist." -ForegroundColor Red
@@ -129,10 +174,9 @@ $missing = 0
 $machineSpec = $null
 $machineSpecExtracted = $false
 
-foreach ($mapping in $benchmarkMappings.GetEnumerator()) {
-    $benchmarkName = $mapping.Key
-    $targetName = $mapping.Value
-    $sourceFile = Join-Path $SourceDir "Threading.Tests.Async.Pooled.$benchmarkName-report-github.md"
+foreach ($mapping in $benchmarkMappings) {
+    $sourceFile = Join-Path $SourceDir $mapping.Source
+    $targetName = $mapping.Target
 
     if (Test-Path $sourceFile) {
         $content = Get-Content -Path $sourceFile -Raw
@@ -141,11 +185,12 @@ foreach ($mapping in $benchmarkMappings.GetEnumerator()) {
         if (-not $machineSpecExtracted) {
             $machineSpec = Extract-MachineSpec -Content $content
             $machineSpecExtracted = $true
-            Write-Host "  [INFO] Extracted machine specification from $benchmarkName" -ForegroundColor Cyan
+            Write-Host "  [INFO] Extracted machine specification from $($mapping.Source)" -ForegroundColor Cyan
         }
 
-        # Strip machine spec and save only the table
+        # Strip machine spec and remove BenchmarkDotNet emphasis markers
         $tableContent = Strip-MachineSpec -Content $content
+        $tableContent = Normalize-BenchmarkContent -Content $tableContent
         $destFile = Join-Path $DestDir $targetName
 
         # Write the stripped content
@@ -157,7 +202,7 @@ foreach ($mapping in $benchmarkMappings.GetEnumerator()) {
         }
         $copied++
     } else {
-        Write-Host "  [--] $targetName (not found: $benchmarkName)" -ForegroundColor Yellow
+        Write-Host "  [--] $targetName (not found: $($mapping.Source))" -ForegroundColor Yellow
         $missing++
     }
 }
