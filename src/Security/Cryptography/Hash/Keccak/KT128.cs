@@ -358,14 +358,11 @@ public sealed class KT128 : HashAlgorithm
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && _buffer != null)
         {
-            if (_buffer != null)
-            {
-                // Clear and return to pool to avoid leaking sensitive data
-                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
-                _buffer = null!;
-            }
+            // Clear and return to pool to avoid leaking sensitive data
+            ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+            _buffer = null!;
         }
         base.Dispose(disposing);
     }
