@@ -1,7 +1,6 @@
-```
 | Description                                                 | TestDataSize | Mean           | Error        | StdDev       | Allocated |
 |------------------------------------------------------------ |------------- |---------------:|-------------:|-------------:|----------:|
-| **ComputeHash | BLAKE2b-512 | BouncyCastle**                    | **128B**         |       **131.1 ns** |      **2.29 ns** |      **2.14 ns** |     **176 B** |
+| ComputeHash | BLAKE2b-512 | BouncyCastle                    | 128B         |       131.1 ns |      2.29 ns |      2.14 ns |     176 B |
 | ComputeHash | BLAKE2b-512 | Blake2b_Managed_Avx2            | 128B         |       145.8 ns |      2.82 ns |      2.77 ns |     176 B |
 | ComputeHash | BLAKE2b-512 | Blake2b_Managed_Scalar          | 128B         |       400.4 ns |      5.52 ns |      5.16 ns |     176 B |
 |                                                             |              |                |              |              |           |
@@ -175,52 +174,52 @@
 | ComputeHash | Keccak-256 | Keccak256_Managed_Avx512F        | 128KB        |   268,858.2 ns |    788.67 ns |    737.72 ns |     112 B |
 | ComputeHash | Keccak-256 | BouncyCastle                     | 128KB        |   291,561.9 ns |  1,232.59 ns |  1,152.96 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-128 | CryptoHives**                        | **128B**         |       **733.4 ns** |      **6.09 ns** |      **5.40 ns** |     **824 B** |
-| **ComputeHash | KMAC-128 | OS Native**                          | **128B**         |     **1,053.8 ns** |      **4.79 ns** |      **4.48 ns** |     **296 B** |
+| ComputeHash | KMAC-128 | CryptoHives                        | 128B         |       733.4 ns |      6.09 ns |      5.40 ns |     824 B |
+| ComputeHash | KMAC-128 | OS Native                          | 128B         |     1,053.8 ns |      4.79 ns |      4.48 ns |     296 B |
 | ComputeHash | KMAC-128 | BouncyCastle                       | 128B         |     1,994.0 ns |      5.66 ns |      5.29 ns |     400 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-128 | CryptoHives**                        | **137B**         |       **727.0 ns** |      **2.84 ns** |      **2.66 ns** |     **824 B** |
-| **ComputeHash | KMAC-128 | OS Native**                          | **137B**         |     **1,054.6 ns** |      **5.53 ns** |      **4.90 ns** |     **312 B** |
+| ComputeHash | KMAC-128 | CryptoHives                        | 137B         |       727.0 ns |      2.84 ns |      2.66 ns |     824 B |
+| ComputeHash | KMAC-128 | OS Native                          | 137B         |     1,054.6 ns |      5.53 ns |      4.90 ns |     312 B |
 | ComputeHash | KMAC-128 | BouncyCastle                       | 137B         |     1,990.9 ns |      6.30 ns |      5.58 ns |     400 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-128 | CryptoHives**                        | **1KB**          |     **1,986.3 ns** |     **16.81 ns** |     **14.90 ns** |     **824 B** |
-| **ComputeHash | KMAC-128 | OS Native**                          | **1KB**          |     **2,524.4 ns** |     **15.43 ns** |     **13.68 ns** |    **1192 B** |
+| ComputeHash | KMAC-128 | CryptoHives                        | 1KB          |     1,986.3 ns |     16.81 ns |     14.90 ns |     824 B |
+| ComputeHash | KMAC-128 | OS Native                          | 1KB          |     2,524.4 ns |     15.43 ns |     13.68 ns |    1192 B |
 | ComputeHash | KMAC-128 | BouncyCastle                       | 1KB          |     3,832.4 ns |     18.62 ns |     17.42 ns |     400 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-128 | CryptoHives**                        | **1025B**        |     **1,992.2 ns** |     **11.16 ns** |      **9.89 ns** |     **824 B** |
-| **ComputeHash | KMAC-128 | OS Native**                          | **1025B**        |     **2,544.9 ns** |     **17.34 ns** |     **16.22 ns** |    **1200 B** |
+| ComputeHash | KMAC-128 | CryptoHives                        | 1025B        |     1,992.2 ns |     11.16 ns |      9.89 ns |     824 B |
+| ComputeHash | KMAC-128 | OS Native                          | 1025B        |     2,544.9 ns |     17.34 ns |     16.22 ns |    1200 B |
 | ComputeHash | KMAC-128 | BouncyCastle                       | 1025B        |     3,832.3 ns |     15.21 ns |     14.23 ns |     400 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-128 | CryptoHives**                        | **8KB**          |    **10,475.4 ns** |     **54.61 ns** |     **48.41 ns** |     **824 B** |
-| **ComputeHash | KMAC-128 | OS Native**                          | **8KB**          |    **12,887.0 ns** |     **67.30 ns** |     **62.95 ns** |    **8360 B** |
+| ComputeHash | KMAC-128 | CryptoHives                        | 8KB          |    10,475.4 ns |     54.61 ns |     48.41 ns |     824 B |
+| ComputeHash | KMAC-128 | OS Native                          | 8KB          |    12,887.0 ns |     67.30 ns |     62.95 ns |    8360 B |
 | ComputeHash | KMAC-128 | BouncyCastle                       | 8KB          |    16,694.8 ns |     75.55 ns |     70.67 ns |     400 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-128 | CryptoHives**                        | **128KB**        |   **158,359.6 ns** |    **628.92 ns** |    **557.52 ns** |     **824 B** |
-| **ComputeHash | KMAC-128 | OS Native**                          | **128KB**        |   **224,102.2 ns** |  **1,307.92 ns** |  **1,159.44 ns** |  **131263 B** |
+| ComputeHash | KMAC-128 | CryptoHives                        | 128KB        |   158,359.6 ns |    628.92 ns |    557.52 ns |     824 B |
+| ComputeHash | KMAC-128 | OS Native                          | 128KB        |   224,102.2 ns |  1,307.92 ns |  1,159.44 ns |  131263 B |
 | ComputeHash | KMAC-128 | BouncyCastle                       | 128KB        |   240,427.0 ns |    670.49 ns |    594.37 ns |     400 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-256 | CryptoHives**                        | **128B**         |       **736.7 ns** |      **2.89 ns** |      **2.41 ns** |     **824 B** |
-| **ComputeHash | KMAC-256 | OS Native**                          | **128B**         |     **1,064.2 ns** |      **6.80 ns** |      **6.36 ns** |     **360 B** |
+| ComputeHash | KMAC-256 | CryptoHives                        | 128B         |       736.7 ns |      2.89 ns |      2.41 ns |     824 B |
+| ComputeHash | KMAC-256 | OS Native                          | 128B         |     1,064.2 ns |      6.80 ns |      6.36 ns |     360 B |
 | ComputeHash | KMAC-256 | BouncyCastle                       | 128B         |     1,972.2 ns |      5.59 ns |      4.67 ns |     464 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-256 | CryptoHives**                        | **137B**         |       **985.7 ns** |     **10.08 ns** |      **9.43 ns** |     **824 B** |
-| **ComputeHash | KMAC-256 | OS Native**                          | **137B**         |     **1,302.7 ns** |      **7.74 ns** |      **7.24 ns** |     **376 B** |
+| ComputeHash | KMAC-256 | CryptoHives                        | 137B         |       985.7 ns |     10.08 ns |      9.43 ns |     824 B |
+| ComputeHash | KMAC-256 | OS Native                          | 137B         |     1,302.7 ns |      7.74 ns |      7.24 ns |     376 B |
 | ComputeHash | KMAC-256 | BouncyCastle                       | 137B         |     2,267.1 ns |      6.78 ns |      6.01 ns |     464 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-256 | CryptoHives**                        | **1KB**          |     **2,163.6 ns** |     **13.25 ns** |     **12.39 ns** |     **824 B** |
-| **ComputeHash | KMAC-256 | OS Native**                          | **1KB**          |     **2,766.2 ns** |     **12.98 ns** |     **11.51 ns** |    **1256 B** |
+| ComputeHash | KMAC-256 | CryptoHives                        | 1KB          |     2,163.6 ns |     13.25 ns |     12.39 ns |     824 B |
+| ComputeHash | KMAC-256 | OS Native                          | 1KB          |     2,766.2 ns |     12.98 ns |     11.51 ns |    1256 B |
 | ComputeHash | KMAC-256 | BouncyCastle                       | 1KB          |     4,098.4 ns |     17.92 ns |     15.88 ns |     464 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-256 | CryptoHives**                        | **1025B**        |     **2,165.6 ns** |     **14.98 ns** |     **14.01 ns** |     **824 B** |
-| **ComputeHash | KMAC-256 | OS Native**                          | **1025B**        |     **2,745.4 ns** |      **9.40 ns** |      **7.34 ns** |    **1264 B** |
+| ComputeHash | KMAC-256 | CryptoHives                        | 1025B        |     2,165.6 ns |     14.98 ns |     14.01 ns |     824 B |
+| ComputeHash | KMAC-256 | OS Native                          | 1025B        |     2,745.4 ns |      9.40 ns |      7.34 ns |    1264 B |
 | ComputeHash | KMAC-256 | BouncyCastle                       | 1025B        |     4,113.7 ns |     24.45 ns |     22.87 ns |     464 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-256 | CryptoHives**                        | **8KB**          |    **12,829.3 ns** |     **65.64 ns** |     **58.19 ns** |     **824 B** |
-| **ComputeHash | KMAC-256 | OS Native**                          | **8KB**          |    **15,597.2 ns** |     **71.46 ns** |     **59.67 ns** |    **8424 B** |
+| ComputeHash | KMAC-256 | CryptoHives                        | 8KB          |    12,829.3 ns |     65.64 ns |     58.19 ns |     824 B |
+| ComputeHash | KMAC-256 | OS Native                          | 8KB          |    15,597.2 ns |     71.46 ns |     59.67 ns |    8424 B |
 | ComputeHash | KMAC-256 | BouncyCastle                       | 8KB          |    20,125.9 ns |     47.04 ns |     41.70 ns |     464 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | KMAC-256 | CryptoHives**                        | **128KB**        |   **193,355.1 ns** |    **606.66 ns** |    **567.47 ns** |     **824 B** |
-| **ComputeHash | KMAC-256 | OS Native**                          | **128KB**        |   **264,196.0 ns** |  **1,287.74 ns** |  **1,204.55 ns** |  **131327 B** |
+| ComputeHash | KMAC-256 | CryptoHives                        | 128KB        |   193,355.1 ns |    606.66 ns |    567.47 ns |     824 B |
+| ComputeHash | KMAC-256 | OS Native                          | 128KB        |   264,196.0 ns |  1,287.74 ns |  1,204.55 ns |  131327 B |
 | ComputeHash | KMAC-256 | BouncyCastle                       | 128KB        |   293,279.2 ns |    909.18 ns |    850.44 ns |     464 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | KT128 | KT128_Managed_Scalar                  | 128B         |       226.9 ns |      1.02 ns |      0.91 ns |     584 B |
@@ -272,196 +271,196 @@
 | ComputeHash | KT256 | KT256_Managed_Avx512F                 | 128KB        |   151,246.9 ns |    590.11 ns |    492.77 ns |    7656 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | MD5 | OS Native                               | 128B         |       293.6 ns |      0.64 ns |      0.60 ns |      80 B |
-| **ComputeHash | MD5 | CryptoHives**                             | **128B**         |       **348.5 ns** |      **1.12 ns** |      **0.99 ns** |      **80 B** |
-| **ComputeHash | MD5 | BouncyCastle**                            | **128B**         |       **395.0 ns** |      **0.70 ns** |      **0.65 ns** |      **80 B** |
+| ComputeHash | MD5 | CryptoHives                             | 128B         |       348.5 ns |      1.12 ns |      0.99 ns |      80 B |
+| ComputeHash | MD5 | BouncyCastle                            | 128B         |       395.0 ns |      0.70 ns |      0.65 ns |      80 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | MD5 | OS Native                               | 137B         |       292.5 ns |      0.57 ns |      0.51 ns |      80 B |
-| **ComputeHash | MD5 | CryptoHives**                             | **137B**         |       **353.2 ns** |      **2.36 ns** |      **2.21 ns** |      **80 B** |
-| **ComputeHash | MD5 | BouncyCastle**                            | **137B**         |       **392.3 ns** |      **1.30 ns** |      **1.22 ns** |      **80 B** |
+| ComputeHash | MD5 | CryptoHives                             | 137B         |       353.2 ns |      2.36 ns |      2.21 ns |      80 B |
+| ComputeHash | MD5 | BouncyCastle                            | 137B         |       392.3 ns |      1.30 ns |      1.22 ns |      80 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | MD5 | OS Native                               | 1KB          |     1,396.5 ns |      1.59 ns |      1.49 ns |      80 B |
-| **ComputeHash | MD5 | CryptoHives**                             | **1KB**          |     **1,824.8 ns** |     **11.43 ns** |     **10.69 ns** |      **80 B** |
-| **ComputeHash | MD5 | BouncyCastle**                            | **1KB**          |     **2,029.7 ns** |      **4.95 ns** |      **4.63 ns** |      **80 B** |
+| ComputeHash | MD5 | CryptoHives                             | 1KB          |     1,824.8 ns |     11.43 ns |     10.69 ns |      80 B |
+| ComputeHash | MD5 | BouncyCastle                            | 1KB          |     2,029.7 ns |      4.95 ns |      4.63 ns |      80 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | MD5 | OS Native                               | 1025B        |     1,392.9 ns |      1.99 ns |      1.86 ns |      80 B |
-| **ComputeHash | MD5 | CryptoHives**                             | **1025B**        |     **1,827.9 ns** |     **10.58 ns** |      **9.89 ns** |      **80 B** |
-| **ComputeHash | MD5 | BouncyCastle**                            | **1025B**        |     **2,026.5 ns** |      **1.64 ns** |      **1.37 ns** |      **80 B** |
+| ComputeHash | MD5 | CryptoHives                             | 1025B        |     1,827.9 ns |     10.58 ns |      9.89 ns |      80 B |
+| ComputeHash | MD5 | BouncyCastle                            | 1025B        |     2,026.5 ns |      1.64 ns |      1.37 ns |      80 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | MD5 | OS Native                               | 8KB          |    10,185.2 ns |     17.98 ns |     16.82 ns |      80 B |
-| **ComputeHash | MD5 | CryptoHives**                             | **8KB**          |    **13,584.8 ns** |     **76.56 ns** |     **71.61 ns** |      **80 B** |
-| **ComputeHash | MD5 | BouncyCastle**                            | **8KB**          |    **15,008.3 ns** |     **23.01 ns** |     **20.40 ns** |      **80 B** |
+| ComputeHash | MD5 | CryptoHives                             | 8KB          |    13,584.8 ns |     76.56 ns |     71.61 ns |      80 B |
+| ComputeHash | MD5 | BouncyCastle                            | 8KB          |    15,008.3 ns |     23.01 ns |     20.40 ns |      80 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | MD5 | OS Native                               | 128KB        |   160,846.5 ns |    162.10 ns |    143.70 ns |      80 B |
-| **ComputeHash | MD5 | CryptoHives**                             | **128KB**        |   **214,611.1 ns** |    **849.79 ns** |    **709.61 ns** |      **80 B** |
-| **ComputeHash | MD5 | BouncyCastle**                            | **128KB**        |   **238,349.3 ns** |    **405.20 ns** |    **379.02 ns** |      **80 B** |
+| ComputeHash | MD5 | CryptoHives                             | 128KB        |   214,611.1 ns |    849.79 ns |    709.61 ns |      80 B |
+| ComputeHash | MD5 | BouncyCastle                            | 128KB        |   238,349.3 ns |    405.20 ns |    379.02 ns |      80 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | RIPEMD-160 | BouncyCastle                     | 128B         |       672.5 ns |      1.85 ns |      1.73 ns |      96 B |
-| **ComputeHash | RIPEMD-160 | CryptoHives**                      | **128B**         |       **979.1 ns** |      **7.55 ns** |      **5.90 ns** |      **96 B** |
+| ComputeHash | RIPEMD-160 | CryptoHives                      | 128B         |       979.1 ns |      7.55 ns |      5.90 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | RIPEMD-160 | BouncyCastle**                     | **137B**         |       **666.7 ns** |      **2.20 ns** |      **1.95 ns** |      **96 B** |
-| **ComputeHash | RIPEMD-160 | CryptoHives**                      | **137B**         |       **989.5 ns** |      **7.09 ns** |      **6.64 ns** |      **96 B** |
+| ComputeHash | RIPEMD-160 | BouncyCastle                     | 137B         |       666.7 ns |      2.20 ns |      1.95 ns |      96 B |
+| ComputeHash | RIPEMD-160 | CryptoHives                      | 137B         |       989.5 ns |      7.09 ns |      6.64 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | RIPEMD-160 | BouncyCastle**                     | **1KB**          |     **3,546.6 ns** |      **6.68 ns** |      **6.25 ns** |      **96 B** |
-| **ComputeHash | RIPEMD-160 | CryptoHives**                      | **1KB**          |     **5,462.5 ns** |     **50.84 ns** |     **47.55 ns** |      **96 B** |
+| ComputeHash | RIPEMD-160 | BouncyCastle                     | 1KB          |     3,546.6 ns |      6.68 ns |      6.25 ns |      96 B |
+| ComputeHash | RIPEMD-160 | CryptoHives                      | 1KB          |     5,462.5 ns |     50.84 ns |     47.55 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | RIPEMD-160 | BouncyCastle**                     | **1025B**        |     **3,554.7 ns** |      **6.50 ns** |      **6.08 ns** |      **96 B** |
-| **ComputeHash | RIPEMD-160 | CryptoHives**                      | **1025B**        |     **5,630.4 ns** |     **33.67 ns** |     **31.50 ns** |      **96 B** |
+| ComputeHash | RIPEMD-160 | BouncyCastle                     | 1025B        |     3,554.7 ns |      6.50 ns |      6.08 ns |      96 B |
+| ComputeHash | RIPEMD-160 | CryptoHives                      | 1025B        |     5,630.4 ns |     33.67 ns |     31.50 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | RIPEMD-160 | BouncyCastle**                     | **8KB**          |    **26,637.2 ns** |     **87.62 ns** |     **81.96 ns** |      **96 B** |
-| **ComputeHash | RIPEMD-160 | CryptoHives**                      | **8KB**          |    **40,465.3 ns** |    **237.74 ns** |    **222.38 ns** |      **96 B** |
+| ComputeHash | RIPEMD-160 | BouncyCastle                     | 8KB          |    26,637.2 ns |     87.62 ns |     81.96 ns |      96 B |
+| ComputeHash | RIPEMD-160 | CryptoHives                      | 8KB          |    40,465.3 ns |    237.74 ns |    222.38 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | RIPEMD-160 | BouncyCastle**                     | **128KB**        |   **423,560.8 ns** |    **767.70 ns** |    **680.55 ns** |      **96 B** |
-| **ComputeHash | RIPEMD-160 | CryptoHives**                      | **128KB**        |   **642,907.4 ns** |  **6,086.52 ns** |  **5,693.34 ns** |      **96 B** |
+| ComputeHash | RIPEMD-160 | BouncyCastle                     | 128KB        |   423,560.8 ns |    767.70 ns |    680.55 ns |      96 B |
+| ComputeHash | RIPEMD-160 | CryptoHives                      | 128KB        |   642,907.4 ns |  6,086.52 ns |  5,693.34 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-1 | OS Native**                             | **128B**         |       **253.0 ns** |      **1.42 ns** |      **1.25 ns** |      **96 B** |
+| ComputeHash | SHA-1 | OS Native                             | 128B         |       253.0 ns |      1.42 ns |      1.25 ns |      96 B |
 | ComputeHash | SHA-1 | BouncyCastle                          | 128B         |       460.4 ns |      1.64 ns |      1.46 ns |      96 B |
-| **ComputeHash | SHA-1 | CryptoHives**                           | **128B**         |       **486.1 ns** |      **3.32 ns** |      **3.11 ns** |      **96 B** |
+| ComputeHash | SHA-1 | CryptoHives                           | 128B         |       486.1 ns |      3.32 ns |      3.11 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-1 | OS Native**                             | **137B**         |       **253.0 ns** |      **1.59 ns** |      **1.49 ns** |      **96 B** |
+| ComputeHash | SHA-1 | OS Native                             | 137B         |       253.0 ns |      1.59 ns |      1.49 ns |      96 B |
 | ComputeHash | SHA-1 | BouncyCastle                          | 137B         |       462.3 ns |      1.77 ns |      1.66 ns |      96 B |
-| **ComputeHash | SHA-1 | CryptoHives**                           | **137B**         |       **480.9 ns** |      **1.28 ns** |      **1.20 ns** |      **96 B** |
+| ComputeHash | SHA-1 | CryptoHives                           | 137B         |       480.9 ns |      1.28 ns |      1.20 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-1 | OS Native**                             | **1KB**          |     **1,125.2 ns** |      **3.89 ns** |      **3.63 ns** |      **96 B** |
+| ComputeHash | SHA-1 | OS Native                             | 1KB          |     1,125.2 ns |      3.89 ns |      3.63 ns |      96 B |
 | ComputeHash | SHA-1 | BouncyCastle                          | 1KB          |     2,435.4 ns |     15.66 ns |     14.64 ns |      96 B |
-| **ComputeHash | SHA-1 | CryptoHives**                           | **1KB**          |     **2,480.1 ns** |     **17.00 ns** |     **15.90 ns** |      **96 B** |
+| ComputeHash | SHA-1 | CryptoHives                           | 1KB          |     2,480.1 ns |     17.00 ns |     15.90 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-1 | OS Native**                             | **1025B**        |     **1,126.1 ns** |      **6.19 ns** |      **5.79 ns** |      **96 B** |
+| ComputeHash | SHA-1 | OS Native                             | 1025B        |     1,126.1 ns |      6.19 ns |      5.79 ns |      96 B |
 | ComputeHash | SHA-1 | BouncyCastle                          | 1025B        |     2,429.1 ns |     10.34 ns |      9.68 ns |      96 B |
-| **ComputeHash | SHA-1 | CryptoHives**                           | **1025B**        |     **2,480.1 ns** |      **6.52 ns** |      **6.10 ns** |      **96 B** |
+| ComputeHash | SHA-1 | CryptoHives                           | 1025B        |     2,480.1 ns |      6.52 ns |      6.10 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-1 | OS Native**                             | **8KB**          |     **8,076.9 ns** |     **42.15 ns** |     **39.43 ns** |      **96 B** |
+| ComputeHash | SHA-1 | OS Native                             | 8KB          |     8,076.9 ns |     42.15 ns |     39.43 ns |      96 B |
 | ComputeHash | SHA-1 | BouncyCastle                          | 8KB          |    18,133.6 ns |     67.60 ns |     59.93 ns |      96 B |
-| **ComputeHash | SHA-1 | CryptoHives**                           | **8KB**          |    **18,400.4 ns** |     **95.24 ns** |     **89.08 ns** |      **96 B** |
+| ComputeHash | SHA-1 | CryptoHives                           | 8KB          |    18,400.4 ns |     95.24 ns |     89.08 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-1 | OS Native**                             | **128KB**        |   **127,197.0 ns** |    **510.14 ns** |    **477.19 ns** |      **96 B** |
+| ComputeHash | SHA-1 | OS Native                             | 128KB        |   127,197.0 ns |    510.14 ns |    477.19 ns |      96 B |
 | ComputeHash | SHA-1 | BouncyCastle                          | 128KB        |   287,505.5 ns |  1,258.28 ns |  1,176.99 ns |      96 B |
-| **ComputeHash | SHA-1 | CryptoHives**                           | **128KB**        |   **290,858.5 ns** |  **1,473.33 ns** |  **1,378.15 ns** |      **96 B** |
+| ComputeHash | SHA-1 | CryptoHives                           | 128KB        |   290,858.5 ns |  1,473.33 ns |  1,378.15 ns |      96 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-224 | BouncyCastle**                        | **128B**         |       **578.8 ns** |      **1.91 ns** |      **1.59 ns** |     **112 B** |
-| **ComputeHash | SHA-224 | CryptoHives**                         | **128B**         |       **586.5 ns** |      **3.42 ns** |      **3.20 ns** |     **112 B** |
+| ComputeHash | SHA-224 | BouncyCastle                        | 128B         |       578.8 ns |      1.91 ns |      1.59 ns |     112 B |
+| ComputeHash | SHA-224 | CryptoHives                         | 128B         |       586.5 ns |      3.42 ns |      3.20 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-224 | BouncyCastle**                        | **137B**         |       **579.2 ns** |      **3.04 ns** |      **2.84 ns** |     **112 B** |
-| **ComputeHash | SHA-224 | CryptoHives**                         | **137B**         |       **605.6 ns** |      **3.68 ns** |      **3.27 ns** |     **112 B** |
+| ComputeHash | SHA-224 | BouncyCastle                        | 137B         |       579.2 ns |      3.04 ns |      2.84 ns |     112 B |
+| ComputeHash | SHA-224 | CryptoHives                         | 137B         |       605.6 ns |      3.68 ns |      3.27 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-224 | BouncyCastle**                        | **1KB**          |     **3,090.7 ns** |     **11.14 ns** |     **10.42 ns** |     **112 B** |
-| **ComputeHash | SHA-224 | CryptoHives**                         | **1KB**          |     **3,185.0 ns** |     **19.98 ns** |     **18.69 ns** |     **112 B** |
+| ComputeHash | SHA-224 | BouncyCastle                        | 1KB          |     3,090.7 ns |     11.14 ns |     10.42 ns |     112 B |
+| ComputeHash | SHA-224 | CryptoHives                         | 1KB          |     3,185.0 ns |     19.98 ns |     18.69 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-224 | BouncyCastle**                        | **1025B**        |     **3,098.5 ns** |     **21.45 ns** |     **20.06 ns** |     **112 B** |
-| **ComputeHash | SHA-224 | CryptoHives**                         | **1025B**        |     **3,190.4 ns** |     **17.70 ns** |     **16.56 ns** |     **112 B** |
+| ComputeHash | SHA-224 | BouncyCastle                        | 1025B        |     3,098.5 ns |     21.45 ns |     20.06 ns |     112 B |
+| ComputeHash | SHA-224 | CryptoHives                         | 1025B        |     3,190.4 ns |     17.70 ns |     16.56 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-224 | BouncyCastle**                        | **8KB**          |    **23,141.6 ns** |     **96.10 ns** |     **89.89 ns** |     **112 B** |
-| **ComputeHash | SHA-224 | CryptoHives**                         | **8KB**          |    **23,752.9 ns** |    **181.29 ns** |    **169.58 ns** |     **112 B** |
+| ComputeHash | SHA-224 | BouncyCastle                        | 8KB          |    23,141.6 ns |     96.10 ns |     89.89 ns |     112 B |
+| ComputeHash | SHA-224 | CryptoHives                         | 8KB          |    23,752.9 ns |    181.29 ns |    169.58 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-224 | BouncyCastle**                        | **128KB**        |   **367,379.9 ns** |  **2,887.36 ns** |  **2,700.84 ns** |     **112 B** |
-| **ComputeHash | SHA-224 | CryptoHives**                         | **128KB**        |   **374,731.3 ns** |  **1,490.34 ns** |  **1,394.07 ns** |     **112 B** |
+| ComputeHash | SHA-224 | BouncyCastle                        | 128KB        |   367,379.9 ns |  2,887.36 ns |  2,700.84 ns |     112 B |
+| ComputeHash | SHA-224 | CryptoHives                         | 128KB        |   374,731.3 ns |  1,490.34 ns |  1,394.07 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-256 | OS Native**                           | **128B**         |       **129.1 ns** |      **0.33 ns** |      **0.31 ns** |     **112 B** |
+| ComputeHash | SHA-256 | OS Native                           | 128B         |       129.1 ns |      0.33 ns |      0.31 ns |     112 B |
 | ComputeHash | SHA-256 | BouncyCastle                        | 128B         |       570.0 ns |      2.43 ns |      2.28 ns |     112 B |
-| **ComputeHash | SHA-256 | CryptoHives**                         | **128B**         |       **608.9 ns** |      **3.77 ns** |      **3.53 ns** |     **112 B** |
+| ComputeHash | SHA-256 | CryptoHives                         | 128B         |       608.9 ns |      3.77 ns |      3.53 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-256 | OS Native**                           | **137B**         |       **129.4 ns** |      **0.39 ns** |      **0.35 ns** |     **112 B** |
+| ComputeHash | SHA-256 | OS Native                           | 137B         |       129.4 ns |      0.39 ns |      0.35 ns |     112 B |
 | ComputeHash | SHA-256 | BouncyCastle                        | 137B         |       572.3 ns |      4.68 ns |      4.38 ns |     112 B |
-| **ComputeHash | SHA-256 | CryptoHives**                         | **137B**         |       **603.6 ns** |      **2.28 ns** |      **1.90 ns** |     **112 B** |
+| ComputeHash | SHA-256 | CryptoHives                         | 137B         |       603.6 ns |      2.28 ns |      1.90 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-256 | OS Native**                           | **1KB**          |       **488.6 ns** |      **1.33 ns** |      **1.24 ns** |     **112 B** |
+| ComputeHash | SHA-256 | OS Native                           | 1KB          |       488.6 ns |      1.33 ns |      1.24 ns |     112 B |
 | ComputeHash | SHA-256 | BouncyCastle                        | 1KB          |     3,044.9 ns |     13.25 ns |     12.40 ns |     112 B |
-| **ComputeHash | SHA-256 | CryptoHives**                         | **1KB**          |     **3,165.7 ns** |     **23.40 ns** |     **21.89 ns** |     **112 B** |
+| ComputeHash | SHA-256 | CryptoHives                         | 1KB          |     3,165.7 ns |     23.40 ns |     21.89 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-256 | OS Native**                           | **1025B**        |       **490.6 ns** |      **2.58 ns** |      **2.41 ns** |     **112 B** |
+| ComputeHash | SHA-256 | OS Native                           | 1025B        |       490.6 ns |      2.58 ns |      2.41 ns |     112 B |
 | ComputeHash | SHA-256 | BouncyCastle                        | 1025B        |     3,043.6 ns |     12.04 ns |     10.67 ns |     112 B |
-| **ComputeHash | SHA-256 | CryptoHives**                         | **1025B**        |     **3,162.8 ns** |     **12.19 ns** |     **11.40 ns** |     **112 B** |
+| ComputeHash | SHA-256 | CryptoHives                         | 1025B        |     3,162.8 ns |     12.19 ns |     11.40 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-256 | OS Native**                           | **8KB**          |     **3,305.8 ns** |      **8.35 ns** |      **7.81 ns** |     **112 B** |
+| ComputeHash | SHA-256 | OS Native                           | 8KB          |     3,305.8 ns |      8.35 ns |      7.81 ns |     112 B |
 | ComputeHash | SHA-256 | BouncyCastle                        | 8KB          |    22,779.3 ns |     59.33 ns |     52.59 ns |     112 B |
-| **ComputeHash | SHA-256 | CryptoHives**                         | **8KB**          |    **23,541.7 ns** |     **81.86 ns** |     **72.57 ns** |     **112 B** |
+| ComputeHash | SHA-256 | CryptoHives                         | 8KB          |    23,541.7 ns |     81.86 ns |     72.57 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-256 | OS Native**                           | **128KB**        |    **51,607.5 ns** |    **130.22 ns** |    **121.80 ns** |     **112 B** |
+| ComputeHash | SHA-256 | OS Native                           | 128KB        |    51,607.5 ns |    130.22 ns |    121.80 ns |     112 B |
 | ComputeHash | SHA-256 | BouncyCastle                        | 128KB        |   361,444.3 ns |  1,028.10 ns |    911.39 ns |     112 B |
-| **ComputeHash | SHA-256 | CryptoHives**                         | **128KB**        |   **373,152.4 ns** |  **1,870.14 ns** |  **1,749.33 ns** |     **112 B** |
+| ComputeHash | SHA-256 | CryptoHives                         | 128KB        |   373,152.4 ns |  1,870.14 ns |  1,749.33 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-384 | OS Native**                           | **128B**         |       **372.7 ns** |      **2.45 ns** |      **2.29 ns** |     **144 B** |
+| ComputeHash | SHA-384 | OS Native                           | 128B         |       372.7 ns |      2.45 ns |      2.29 ns |     144 B |
 | ComputeHash | SHA-384 | BouncyCastle                        | 128B         |       508.5 ns |      2.71 ns |      2.54 ns |     144 B |
-| **ComputeHash | SHA-384 | CryptoHives**                         | **128B**         |       **539.4 ns** |      **2.69 ns** |      **2.51 ns** |     **144 B** |
+| ComputeHash | SHA-384 | CryptoHives                         | 128B         |       539.4 ns |      2.69 ns |      2.51 ns |     144 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-384 | OS Native**                           | **137B**         |       **371.1 ns** |      **1.62 ns** |      **1.51 ns** |     **144 B** |
+| ComputeHash | SHA-384 | OS Native                           | 137B         |       371.1 ns |      1.62 ns |      1.51 ns |     144 B |
 | ComputeHash | SHA-384 | BouncyCastle                        | 137B         |       506.1 ns |      2.58 ns |      2.41 ns |     144 B |
-| **ComputeHash | SHA-384 | CryptoHives**                         | **137B**         |       **535.1 ns** |      **2.78 ns** |      **2.46 ns** |     **144 B** |
+| ComputeHash | SHA-384 | CryptoHives                         | 137B         |       535.1 ns |      2.78 ns |      2.46 ns |     144 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-384 | OS Native**                           | **1KB**          |     **1,413.3 ns** |     **10.25 ns** |      **9.59 ns** |     **144 B** |
+| ComputeHash | SHA-384 | OS Native                           | 1KB          |     1,413.3 ns |     10.25 ns |      9.59 ns |     144 B |
 | ComputeHash | SHA-384 | BouncyCastle                        | 1KB          |     2,106.1 ns |      8.64 ns |      8.08 ns |     144 B |
-| **ComputeHash | SHA-384 | CryptoHives**                         | **1KB**          |     **2,131.4 ns** |     **11.98 ns** |     **11.21 ns** |     **144 B** |
+| ComputeHash | SHA-384 | CryptoHives                         | 1KB          |     2,131.4 ns |     11.98 ns |     11.21 ns |     144 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-384 | OS Native**                           | **1025B**        |     **1,417.5 ns** |      **7.51 ns** |      **7.02 ns** |     **144 B** |
+| ComputeHash | SHA-384 | OS Native                           | 1025B        |     1,417.5 ns |      7.51 ns |      7.02 ns |     144 B |
 | ComputeHash | SHA-384 | BouncyCastle                        | 1025B        |     2,103.8 ns |     10.38 ns |      9.71 ns |     144 B |
-| **ComputeHash | SHA-384 | CryptoHives**                         | **1025B**        |     **2,128.2 ns** |     **10.01 ns** |      **8.87 ns** |     **144 B** |
+| ComputeHash | SHA-384 | CryptoHives                         | 1025B        |     2,128.2 ns |     10.01 ns |      8.87 ns |     144 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-384 | OS Native**                           | **8KB**          |     **9,720.9 ns** |     **57.33 ns** |     **50.82 ns** |     **144 B** |
-| **ComputeHash | SHA-384 | CryptoHives**                         | **8KB**          |    **14,801.9 ns** |     **76.19 ns** |     **71.27 ns** |     **144 B** |
-| **ComputeHash | SHA-384 | BouncyCastle**                        | **8KB**          |    **14,825.1 ns** |     **31.81 ns** |     **24.83 ns** |     **144 B** |
+| ComputeHash | SHA-384 | OS Native                           | 8KB          |     9,720.9 ns |     57.33 ns |     50.82 ns |     144 B |
+| ComputeHash | SHA-384 | CryptoHives                         | 8KB          |    14,801.9 ns |     76.19 ns |     71.27 ns |     144 B |
+| ComputeHash | SHA-384 | BouncyCastle                        | 8KB          |    14,825.1 ns |     31.81 ns |     24.83 ns |     144 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | SHA-384 | OS Native                           | 128KB        |   152,137.5 ns |    710.61 ns |    664.70 ns |     144 B |
-| **ComputeHash | SHA-384 | CryptoHives**                         | **128KB**        |   **232,581.5 ns** |  **1,159.28 ns** |  **1,084.39 ns** |     **144 B** |
-| **ComputeHash | SHA-384 | BouncyCastle**                        | **128KB**        |   **233,647.6 ns** |    **727.14 ns** |    **680.17 ns** |     **144 B** |
+| ComputeHash | SHA-384 | CryptoHives                         | 128KB        |   232,581.5 ns |  1,159.28 ns |  1,084.39 ns |     144 B |
+| ComputeHash | SHA-384 | BouncyCastle                        | 128KB        |   233,647.6 ns |    727.14 ns |    680.17 ns |     144 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | SHA-512 | OS Native                           | 128B         |       371.9 ns |      1.41 ns |      1.25 ns |     176 B |
 | ComputeHash | SHA-512 | BouncyCastle                        | 128B         |       502.5 ns |      2.19 ns |      1.83 ns |     176 B |
-| **ComputeHash | SHA-512 | CryptoHives**                         | **128B**         |       **562.0 ns** |      **1.82 ns** |      **1.70 ns** |     **176 B** |
+| ComputeHash | SHA-512 | CryptoHives                         | 128B         |       562.0 ns |      1.82 ns |      1.70 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512 | OS Native**                           | **137B**         |       **369.4 ns** |      **2.23 ns** |      **1.98 ns** |     **176 B** |
+| ComputeHash | SHA-512 | OS Native                           | 137B         |       369.4 ns |      2.23 ns |      1.98 ns |     176 B |
 | ComputeHash | SHA-512 | BouncyCastle                        | 137B         |       506.9 ns |      2.62 ns |      2.45 ns |     176 B |
-| **ComputeHash | SHA-512 | CryptoHives**                         | **137B**         |       **559.9 ns** |      **2.72 ns** |      **2.55 ns** |     **176 B** |
+| ComputeHash | SHA-512 | CryptoHives                         | 137B         |       559.9 ns |      2.72 ns |      2.55 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512 | OS Native**                           | **1KB**          |     **1,406.0 ns** |      **3.34 ns** |      **2.79 ns** |     **176 B** |
+| ComputeHash | SHA-512 | OS Native                           | 1KB          |     1,406.0 ns |      3.34 ns |      2.79 ns |     176 B |
 | ComputeHash | SHA-512 | BouncyCastle                        | 1KB          |     2,136.1 ns |     41.11 ns |     38.45 ns |     176 B |
-| **ComputeHash | SHA-512 | CryptoHives**                         | **1KB**          |     **2,250.8 ns** |     **35.39 ns** |     **31.37 ns** |     **176 B** |
+| ComputeHash | SHA-512 | CryptoHives                         | 1KB          |     2,250.8 ns |     35.39 ns |     31.37 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512 | OS Native**                           | **1025B**        |     **1,425.1 ns** |     **15.57 ns** |     **13.80 ns** |     **176 B** |
+| ComputeHash | SHA-512 | OS Native                           | 1025B        |     1,425.1 ns |     15.57 ns |     13.80 ns |     176 B |
 | ComputeHash | SHA-512 | BouncyCastle                        | 1025B        |     2,195.0 ns |     36.09 ns |     33.75 ns |     176 B |
-| **ComputeHash | SHA-512 | CryptoHives**                         | **1025B**        |     **2,258.0 ns** |     **35.57 ns** |     **33.27 ns** |     **176 B** |
+| ComputeHash | SHA-512 | CryptoHives                         | 1025B        |     2,258.0 ns |     35.57 ns |     33.27 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512 | OS Native**                           | **8KB**          |     **9,820.9 ns** |    **138.52 ns** |    **129.57 ns** |     **176 B** |
+| ComputeHash | SHA-512 | OS Native                           | 8KB          |     9,820.9 ns |    138.52 ns |    129.57 ns |     176 B |
 | ComputeHash | SHA-512 | BouncyCastle                        | 8KB          |    15,051.3 ns |    219.61 ns |    205.42 ns |     176 B |
-| **ComputeHash | SHA-512 | CryptoHives**                         | **8KB**          |    **15,809.9 ns** |    **235.77 ns** |    **220.54 ns** |     **176 B** |
+| ComputeHash | SHA-512 | CryptoHives                         | 8KB          |    15,809.9 ns |    235.77 ns |    220.54 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512 | OS Native**                           | **128KB**        |   **154,316.1 ns** |  **2,500.08 ns** |  **2,338.58 ns** |     **176 B** |
+| ComputeHash | SHA-512 | OS Native                           | 128KB        |   154,316.1 ns |  2,500.08 ns |  2,338.58 ns |     176 B |
 | ComputeHash | SHA-512 | BouncyCastle                        | 128KB        |   238,017.6 ns |  3,303.83 ns |  3,090.41 ns |     176 B |
-| **ComputeHash | SHA-512 | CryptoHives**                         | **128KB**        |   **247,978.5 ns** |  **4,373.95 ns** |  **4,091.39 ns** |     **176 B** |
+| ComputeHash | SHA-512 | CryptoHives                         | 128KB        |   247,978.5 ns |  4,373.95 ns |  4,091.39 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/224 | BouncyCastle**                    | **128B**         |       **518.1 ns** |      **7.86 ns** |      **7.36 ns** |     **112 B** |
-| **ComputeHash | SHA-512/224 | CryptoHives**                     | **128B**         |       **542.2 ns** |      **8.89 ns** |      **8.32 ns** |     **112 B** |
+| ComputeHash | SHA-512/224 | BouncyCastle                    | 128B         |       518.1 ns |      7.86 ns |      7.36 ns |     112 B |
+| ComputeHash | SHA-512/224 | CryptoHives                     | 128B         |       542.2 ns |      8.89 ns |      8.32 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/224 | BouncyCastle**                    | **137B**         |       **524.4 ns** |      **8.37 ns** |      **7.83 ns** |     **112 B** |
-| **ComputeHash | SHA-512/224 | CryptoHives**                     | **137B**         |       **536.7 ns** |      **7.04 ns** |      **6.58 ns** |     **112 B** |
+| ComputeHash | SHA-512/224 | BouncyCastle                    | 137B         |       524.4 ns |      8.37 ns |      7.83 ns |     112 B |
+| ComputeHash | SHA-512/224 | CryptoHives                     | 137B         |       536.7 ns |      7.04 ns |      6.58 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/224 | BouncyCastle**                    | **1KB**          |     **2,137.5 ns** |     **32.20 ns** |     **30.12 ns** |     **112 B** |
-| **ComputeHash | SHA-512/224 | CryptoHives**                     | **1KB**          |     **2,139.8 ns** |     **14.36 ns** |     **12.73 ns** |     **112 B** |
+| ComputeHash | SHA-512/224 | BouncyCastle                    | 1KB          |     2,137.5 ns |     32.20 ns |     30.12 ns |     112 B |
+| ComputeHash | SHA-512/224 | CryptoHives                     | 1KB          |     2,139.8 ns |     14.36 ns |     12.73 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/224 | BouncyCastle**                    | **1025B**        |     **2,146.6 ns** |     **28.45 ns** |     **26.61 ns** |     **112 B** |
-| **ComputeHash | SHA-512/224 | CryptoHives**                     | **1025B**        |     **2,147.7 ns** |     **32.85 ns** |     **30.73 ns** |     **112 B** |
+| ComputeHash | SHA-512/224 | BouncyCastle                    | 1025B        |     2,146.6 ns |     28.45 ns |     26.61 ns |     112 B |
+| ComputeHash | SHA-512/224 | CryptoHives                     | 1025B        |     2,147.7 ns |     32.85 ns |     30.73 ns |     112 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | SHA-512/224 | CryptoHives                     | 8KB          |    14,918.3 ns |    235.23 ns |    220.04 ns |     112 B |
-| **ComputeHash | SHA-512/224 | BouncyCastle**                    | **8KB**          |    **15,047.4 ns** |    **234.02 ns** |    **218.90 ns** |     **112 B** |
+| ComputeHash | SHA-512/224 | BouncyCastle                    | 8KB          |    15,047.4 ns |    234.02 ns |    218.90 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/224 | CryptoHives**                     | **128KB**        |   **234,771.1 ns** |  **3,713.78 ns** |  **3,473.88 ns** |     **112 B** |
-| **ComputeHash | SHA-512/224 | BouncyCastle**                    | **128KB**        |   **235,074.2 ns** |  **3,090.60 ns** |  **2,890.95 ns** |     **112 B** |
+| ComputeHash | SHA-512/224 | CryptoHives                     | 128KB        |   234,771.1 ns |  3,713.78 ns |  3,473.88 ns |     112 B |
+| ComputeHash | SHA-512/224 | BouncyCastle                    | 128KB        |   235,074.2 ns |  3,090.60 ns |  2,890.95 ns |     112 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | SHA-512/256 | BouncyCastle                    | 128B         |       521.8 ns |      8.59 ns |      8.03 ns |     112 B |
-| **ComputeHash | SHA-512/256 | CryptoHives**                     | **128B**         |       **543.8 ns** |      **8.48 ns** |      **7.94 ns** |     **112 B** |
+| ComputeHash | SHA-512/256 | CryptoHives                     | 128B         |       543.8 ns |      8.48 ns |      7.94 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/256 | BouncyCastle**                    | **137B**         |       **528.5 ns** |      **8.09 ns** |      **7.57 ns** |     **112 B** |
-| **ComputeHash | SHA-512/256 | CryptoHives**                     | **137B**         |       **538.3 ns** |      **8.21 ns** |      **7.68 ns** |     **112 B** |
+| ComputeHash | SHA-512/256 | BouncyCastle                    | 137B         |       528.5 ns |      8.09 ns |      7.57 ns |     112 B |
+| ComputeHash | SHA-512/256 | CryptoHives                     | 137B         |       538.3 ns |      8.21 ns |      7.68 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/256 | BouncyCastle**                    | **1KB**          |     **2,141.5 ns** |     **32.42 ns** |     **30.33 ns** |     **112 B** |
-| **ComputeHash | SHA-512/256 | CryptoHives**                     | **1KB**          |     **2,143.6 ns** |     **30.10 ns** |     **28.16 ns** |     **112 B** |
+| ComputeHash | SHA-512/256 | BouncyCastle                    | 1KB          |     2,141.5 ns |     32.42 ns |     30.33 ns |     112 B |
+| ComputeHash | SHA-512/256 | CryptoHives                     | 1KB          |     2,143.6 ns |     30.10 ns |     28.16 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/256 | BouncyCastle**                    | **1025B**        |     **2,151.8 ns** |     **34.17 ns** |     **31.96 ns** |     **112 B** |
-| **ComputeHash | SHA-512/256 | CryptoHives**                     | **1025B**        |     **2,161.0 ns** |     **36.92 ns** |     **34.53 ns** |     **112 B** |
+| ComputeHash | SHA-512/256 | BouncyCastle                    | 1025B        |     2,151.8 ns |     34.17 ns |     31.96 ns |     112 B |
+| ComputeHash | SHA-512/256 | CryptoHives                     | 1025B        |     2,161.0 ns |     36.92 ns |     34.53 ns |     112 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | SHA-512/256 | CryptoHives                     | 8KB          |    15,035.2 ns |    275.05 ns |    257.28 ns |     112 B |
-| **ComputeHash | SHA-512/256 | BouncyCastle**                    | **8KB**          |    **15,035.8 ns** |    **243.16 ns** |    **227.45 ns** |     **112 B** |
+| ComputeHash | SHA-512/256 | BouncyCastle                    | 8KB          |    15,035.8 ns |    243.16 ns |    227.45 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SHA-512/256 | CryptoHives**                     | **128KB**        |   **235,655.9 ns** |  **3,240.53 ns** |  **3,031.19 ns** |     **112 B** |
-| **ComputeHash | SHA-512/256 | BouncyCastle**                    | **128KB**        |   **236,850.7 ns** |  **3,864.59 ns** |  **3,614.94 ns** |     **112 B** |
+| ComputeHash | SHA-512/256 | CryptoHives                     | 128KB        |   235,655.9 ns |  3,240.53 ns |  3,031.19 ns |     112 B |
+| ComputeHash | SHA-512/256 | BouncyCastle                    | 128KB        |   236,850.7 ns |  3,864.59 ns |  3,614.94 ns |     112 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | SHA3-224 | SHA3_224_Managed_Scalar            | 128B         |       245.1 ns |      3.52 ns |      3.29 ns |     112 B |
 | ComputeHash | SHA3-224 | SHA3_224_Managed_Avx2              | 128B         |       313.0 ns |      2.57 ns |      2.14 ns |     112 B |
@@ -674,69 +673,69 @@
 | ComputeHash | SHAKE256 | BouncyCastle                       | 128KB        |   292,726.1 ns |  1,107.72 ns |    981.96 ns |     176 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | SM3 | BouncyCastle                            | 128B         |       820.6 ns |      2.73 ns |      2.55 ns |     112 B |
-| **ComputeHash | SM3 | CryptoHives**                             | **128B**         |       **939.0 ns** |      **0.86 ns** |      **0.67 ns** |     **112 B** |
+| ComputeHash | SM3 | CryptoHives                             | 128B         |       939.0 ns |      0.86 ns |      0.67 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SM3 | BouncyCastle**                            | **137B**         |       **819.8 ns** |      **2.12 ns** |      **1.88 ns** |     **112 B** |
-| **ComputeHash | SM3 | CryptoHives**                             | **137B**         |       **944.8 ns** |      **2.08 ns** |      **1.94 ns** |     **112 B** |
+| ComputeHash | SM3 | BouncyCastle                            | 137B         |       819.8 ns |      2.12 ns |      1.88 ns |     112 B |
+| ComputeHash | SM3 | CryptoHives                             | 137B         |       944.8 ns |      2.08 ns |      1.94 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SM3 | BouncyCastle**                            | **1KB**          |     **4,369.8 ns** |     **11.78 ns** |     **11.02 ns** |     **112 B** |
-| **ComputeHash | SM3 | CryptoHives**                             | **1KB**          |     **5,160.0 ns** |     **12.52 ns** |     **11.09 ns** |     **112 B** |
+| ComputeHash | SM3 | BouncyCastle                            | 1KB          |     4,369.8 ns |     11.78 ns |     11.02 ns |     112 B |
+| ComputeHash | SM3 | CryptoHives                             | 1KB          |     5,160.0 ns |     12.52 ns |     11.09 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SM3 | BouncyCastle**                            | **1025B**        |     **4,382.3 ns** |     **23.65 ns** |     **22.12 ns** |     **112 B** |
-| **ComputeHash | SM3 | CryptoHives**                             | **1025B**        |     **5,174.2 ns** |     **16.24 ns** |     **15.19 ns** |     **112 B** |
+| ComputeHash | SM3 | BouncyCastle                            | 1025B        |     4,382.3 ns |     23.65 ns |     22.12 ns |     112 B |
+| ComputeHash | SM3 | CryptoHives                             | 1025B        |     5,174.2 ns |     16.24 ns |     15.19 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SM3 | BouncyCastle**                            | **8KB**          |    **33,327.9 ns** |    **102.85 ns** |     **96.20 ns** |     **112 B** |
-| **ComputeHash | SM3 | CryptoHives**                             | **8KB**          |    **38,877.1 ns** |     **80.15 ns** |     **71.05 ns** |     **112 B** |
+| ComputeHash | SM3 | BouncyCastle                            | 8KB          |    33,327.9 ns |    102.85 ns |     96.20 ns |     112 B |
+| ComputeHash | SM3 | CryptoHives                             | 8KB          |    38,877.1 ns |     80.15 ns |     71.05 ns |     112 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | SM3 | BouncyCastle**                            | **128KB**        |   **528,881.2 ns** |  **1,822.70 ns** |  **1,615.77 ns** |     **112 B** |
-| **ComputeHash | SM3 | CryptoHives**                             | **128KB**        |   **617,100.8 ns** |  **1,606.31 ns** |  **1,341.34 ns** |     **112 B** |
+| ComputeHash | SM3 | BouncyCastle                            | 128KB        |   528,881.2 ns |  1,822.70 ns |  1,615.77 ns |     112 B |
+| ComputeHash | SM3 | CryptoHives                             | 128KB        |   617,100.8 ns |  1,606.31 ns |  1,341.34 ns |     112 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | Streebog-256 | CryptoHives                    | 128B         |     2,412.4 ns |      8.05 ns |      7.53 ns |     112 B |
-| **ComputeHash | Streebog-256 | OpenGost**                       | **128B**         |     **3,429.1 ns** |     **21.41 ns** |     **20.03 ns** |     **464 B** |
+| ComputeHash | Streebog-256 | OpenGost                       | 128B         |     3,429.1 ns |     21.41 ns |     20.03 ns |     464 B |
 | ComputeHash | Streebog-256 | BouncyCastle                   | 128B         |     4,251.8 ns |     31.81 ns |     29.76 ns |     200 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-256 | CryptoHives**                    | **137B**         |     **2,429.7 ns** |      **5.41 ns** |      **5.06 ns** |     **112 B** |
-| **ComputeHash | Streebog-256 | OpenGost**                       | **137B**         |     **3,425.2 ns** |      **8.82 ns** |      **7.36 ns** |     **464 B** |
+| ComputeHash | Streebog-256 | CryptoHives                    | 137B         |     2,429.7 ns |      5.41 ns |      5.06 ns |     112 B |
+| ComputeHash | Streebog-256 | OpenGost                       | 137B         |     3,425.2 ns |      8.82 ns |      7.36 ns |     464 B |
 | ComputeHash | Streebog-256 | BouncyCastle                   | 137B         |     4,350.4 ns |     18.05 ns |     16.88 ns |     200 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-256 | CryptoHives**                    | **1KB**          |     **9,477.9 ns** |     **12.17 ns** |     **11.38 ns** |     **112 B** |
-| **ComputeHash | Streebog-256 | OpenGost**                       | **1KB**          |    **12,678.5 ns** |     **54.24 ns** |     **50.73 ns** |     **464 B** |
+| ComputeHash | Streebog-256 | CryptoHives                    | 1KB          |     9,477.9 ns |     12.17 ns |     11.38 ns |     112 B |
+| ComputeHash | Streebog-256 | OpenGost                       | 1KB          |    12,678.5 ns |     54.24 ns |     50.73 ns |     464 B |
 | ComputeHash | Streebog-256 | BouncyCastle                   | 1KB          |    16,378.1 ns |     57.29 ns |     50.78 ns |     200 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-256 | CryptoHives**                    | **1025B**        |     **9,188.5 ns** |     **21.87 ns** |     **20.45 ns** |     **112 B** |
-| **ComputeHash | Streebog-256 | OpenGost**                       | **1025B**        |    **12,667.0 ns** |     **80.10 ns** |     **74.92 ns** |     **464 B** |
+| ComputeHash | Streebog-256 | CryptoHives                    | 1025B        |     9,188.5 ns |     21.87 ns |     20.45 ns |     112 B |
+| ComputeHash | Streebog-256 | OpenGost                       | 1025B        |    12,667.0 ns |     80.10 ns |     74.92 ns |     464 B |
 | ComputeHash | Streebog-256 | BouncyCastle                   | 1025B        |    16,527.8 ns |     74.14 ns |     69.35 ns |     200 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-256 | CryptoHives**                    | **8KB**          |    **62,191.0 ns** |    **202.02 ns** |    **188.97 ns** |     **112 B** |
-| **ComputeHash | Streebog-256 | OpenGost**                       | **8KB**          |    **86,604.0 ns** |    **545.60 ns** |    **510.36 ns** |     **464 B** |
+| ComputeHash | Streebog-256 | CryptoHives                    | 8KB          |    62,191.0 ns |    202.02 ns |    188.97 ns |     112 B |
+| ComputeHash | Streebog-256 | OpenGost                       | 8KB          |    86,604.0 ns |    545.60 ns |    510.36 ns |     464 B |
 | ComputeHash | Streebog-256 | BouncyCastle                   | 8KB          |   111,435.1 ns |    444.15 ns |    415.46 ns |     200 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-256 | CryptoHives**                    | **128KB**        |   **991,517.1 ns** |  **7,128.27 ns** |  **6,667.79 ns** |     **112 B** |
-| **ComputeHash | Streebog-256 | OpenGost**                       | **128KB**        | **1,350,615.9 ns** |  **4,337.09 ns** |  **3,386.12 ns** |     **464 B** |
+| ComputeHash | Streebog-256 | CryptoHives                    | 128KB        |   991,517.1 ns |  7,128.27 ns |  6,667.79 ns |     112 B |
+| ComputeHash | Streebog-256 | OpenGost                       | 128KB        | 1,350,615.9 ns |  4,337.09 ns |  3,386.12 ns |     464 B |
 | ComputeHash | Streebog-256 | BouncyCastle                   | 128KB        | 1,744,523.1 ns |  7,074.49 ns |  6,617.48 ns |     200 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-512 | CryptoHives**                    | **128B**         |     **2,424.0 ns** |      **3.25 ns** |      **2.72 ns** |     **176 B** |
-| **ComputeHash | Streebog-512 | OpenGost**                       | **128B**         |     **3,345.9 ns** |     **11.24 ns** |     **10.51 ns** |     **264 B** |
+| ComputeHash | Streebog-512 | CryptoHives                    | 128B         |     2,424.0 ns |      3.25 ns |      2.72 ns |     176 B |
+| ComputeHash | Streebog-512 | OpenGost                       | 128B         |     3,345.9 ns |     11.24 ns |     10.51 ns |     264 B |
 | ComputeHash | Streebog-512 | BouncyCastle                   | 128B         |     4,261.4 ns |     19.38 ns |     18.13 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-512 | CryptoHives**                    | **137B**         |     **2,436.6 ns** |      **5.31 ns** |      **4.97 ns** |     **176 B** |
-| **ComputeHash | Streebog-512 | OpenGost**                       | **137B**         |     **3,353.9 ns** |     **14.16 ns** |     **13.24 ns** |     **264 B** |
+| ComputeHash | Streebog-512 | CryptoHives                    | 137B         |     2,436.6 ns |      5.31 ns |      4.97 ns |     176 B |
+| ComputeHash | Streebog-512 | OpenGost                       | 137B         |     3,353.9 ns |     14.16 ns |     13.24 ns |     264 B |
 | ComputeHash | Streebog-512 | BouncyCastle                   | 137B         |     4,280.4 ns |     22.79 ns |     21.32 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-512 | CryptoHives**                    | **1KB**          |     **9,123.4 ns** |     **18.35 ns** |     **15.32 ns** |     **176 B** |
-| **ComputeHash | Streebog-512 | OpenGost**                       | **1KB**          |    **12,610.9 ns** |     **56.63 ns** |     **52.97 ns** |     **264 B** |
+| ComputeHash | Streebog-512 | CryptoHives                    | 1KB          |     9,123.4 ns |     18.35 ns |     15.32 ns |     176 B |
+| ComputeHash | Streebog-512 | OpenGost                       | 1KB          |    12,610.9 ns |     56.63 ns |     52.97 ns |     264 B |
 | ComputeHash | Streebog-512 | BouncyCastle                   | 1KB          |    16,176.6 ns |     61.21 ns |     57.25 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-512 | CryptoHives**                    | **1025B**        |     **9,094.9 ns** |     **16.10 ns** |     **15.06 ns** |     **176 B** |
-| **ComputeHash | Streebog-512 | OpenGost**                       | **1025B**        |    **12,567.2 ns** |     **55.13 ns** |     **51.57 ns** |     **264 B** |
+| ComputeHash | Streebog-512 | CryptoHives                    | 1025B        |     9,094.9 ns |     16.10 ns |     15.06 ns |     176 B |
+| ComputeHash | Streebog-512 | OpenGost                       | 1025B        |    12,567.2 ns |     55.13 ns |     51.57 ns |     264 B |
 | ComputeHash | Streebog-512 | BouncyCastle                   | 1025B        |    19,041.9 ns |    104.67 ns |     97.91 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-512 | CryptoHives**                    | **8KB**          |    **63,297.7 ns** |    **162.18 ns** |    **143.77 ns** |     **176 B** |
-| **ComputeHash | Streebog-512 | OpenGost**                       | **8KB**          |    **86,054.3 ns** |    **361.30 ns** |    **301.70 ns** |     **264 B** |
+| ComputeHash | Streebog-512 | CryptoHives                    | 8KB          |    63,297.7 ns |    162.18 ns |    143.77 ns |     176 B |
+| ComputeHash | Streebog-512 | OpenGost                       | 8KB          |    86,054.3 ns |    361.30 ns |    301.70 ns |     264 B |
 | ComputeHash | Streebog-512 | BouncyCastle                   | 8KB          |   112,171.5 ns |    622.59 ns |    582.37 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Streebog-512 | CryptoHives**                    | **128KB**        |   **948,838.5 ns** |  **2,080.14 ns** |  **1,843.99 ns** |     **176 B** |
-| **ComputeHash | Streebog-512 | OpenGost**                       | **128KB**        | **1,352,934.9 ns** |  **4,756.70 ns** |  **4,216.69 ns** |     **264 B** |
+| ComputeHash | Streebog-512 | CryptoHives                    | 128KB        |   948,838.5 ns |  2,080.14 ns |  1,843.99 ns |     176 B |
+| ComputeHash | Streebog-512 | OpenGost                       | 128KB        | 1,352,934.9 ns |  4,756.70 ns |  4,216.69 ns |     264 B |
 | ComputeHash | Streebog-512 | BouncyCastle                   | 128KB        | 1,744,385.9 ns |  4,638.08 ns |  4,111.54 ns |     176 B |
 |                                                             |              |                |              |              |           |
 | ComputeHash | TurboSHAKE128 | TurboShake128_Managed_Scalar  | 128B         |       179.7 ns |      0.69 ns |      0.65 ns |     112 B |
@@ -787,21 +786,21 @@
 | ComputeHash | TurboSHAKE256 | TurboShake256_Managed_Avx2    | 128KB        |   135,799.6 ns |    440.92 ns |    390.87 ns |     176 B |
 | ComputeHash | TurboSHAKE256 | TurboShake256_Managed_Avx512F | 128KB        |   142,221.1 ns |    178.04 ns |    166.54 ns |     176 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Whirlpool | CryptoHives**                       | **128B**         |     **1,386.4 ns** |      **6.18 ns** |      **5.78 ns** |     **176 B** |
-| **ComputeHash | Whirlpool | BouncyCastle**                      | **128B**         |     **5,064.9 ns** |     **31.57 ns** |     **29.53 ns** |     **232 B** |
+| ComputeHash | Whirlpool | CryptoHives                       | 128B         |     1,386.4 ns |      6.18 ns |      5.78 ns |     176 B |
+| ComputeHash | Whirlpool | BouncyCastle                      | 128B         |     5,064.9 ns |     31.57 ns |     29.53 ns |     232 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Whirlpool | CryptoHives**                       | **137B**         |     **1,379.1 ns** |      **3.89 ns** |      **3.45 ns** |     **176 B** |
-| **ComputeHash | Whirlpool | BouncyCastle**                      | **137B**         |     **5,043.7 ns** |     **20.86 ns** |     **19.51 ns** |     **232 B** |
+| ComputeHash | Whirlpool | CryptoHives                       | 137B         |     1,379.1 ns |      3.89 ns |      3.45 ns |     176 B |
+| ComputeHash | Whirlpool | BouncyCastle                      | 137B         |     5,043.7 ns |     20.86 ns |     19.51 ns |     232 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Whirlpool | CryptoHives**                       | **1KB**          |     **7,633.5 ns** |     **42.33 ns** |     **39.59 ns** |     **176 B** |
-| **ComputeHash | Whirlpool | BouncyCastle**                      | **1KB**          |    **30,962.8 ns** |    **199.09 ns** |    **186.23 ns** |     **232 B** |
+| ComputeHash | Whirlpool | CryptoHives                       | 1KB          |     7,633.5 ns |     42.33 ns |     39.59 ns |     176 B |
+| ComputeHash | Whirlpool | BouncyCastle                      | 1KB          |    30,962.8 ns |    199.09 ns |    186.23 ns |     232 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Whirlpool | CryptoHives**                       | **1025B**        |     **7,717.2 ns** |     **42.20 ns** |     **39.47 ns** |     **176 B** |
-| **ComputeHash | Whirlpool | BouncyCastle**                      | **1025B**        |    **30,772.0 ns** |    **110.26 ns** |    **103.14 ns** |     **232 B** |
+| ComputeHash | Whirlpool | CryptoHives                       | 1025B        |     7,717.2 ns |     42.20 ns |     39.47 ns |     176 B |
+| ComputeHash | Whirlpool | BouncyCastle                      | 1025B        |    30,772.0 ns |    110.26 ns |    103.14 ns |     232 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Whirlpool | CryptoHives**                       | **8KB**          |    **57,644.7 ns** |    **252.72 ns** |    **236.39 ns** |     **176 B** |
-| **ComputeHash | Whirlpool | BouncyCastle**                      | **8KB**          |   **238,620.6 ns** |  **1,175.17 ns** |  **1,099.25 ns** |     **232 B** |
+| ComputeHash | Whirlpool | CryptoHives                       | 8KB          |    57,644.7 ns |    252.72 ns |    236.39 ns |     176 B |
+| ComputeHash | Whirlpool | BouncyCastle                      | 8KB          |   238,620.6 ns |  1,175.17 ns |  1,099.25 ns |     232 B |
 |                                                             |              |                |              |              |           |
-| **ComputeHash | Whirlpool | CryptoHives**                       | **128KB**        |   **923,722.0 ns** |  **3,750.51 ns** |  **3,508.23 ns** |     **176 B** |
-| **ComputeHash | Whirlpool | BouncyCastle**                      | **128KB**        | **3,778,732.2 ns** | **17,467.25 ns** | **16,338.87 ns** |     **232 B** |
-```
+| ComputeHash | Whirlpool | CryptoHives                       | 128KB        |   923,722.0 ns |  3,750.51 ns |  3,508.23 ns |     176 B |
+| ComputeHash | Whirlpool | BouncyCastle                      | 128KB        | 3,778,732.2 ns | 17,467.25 ns | 16,338.87 ns |     232 B |
+

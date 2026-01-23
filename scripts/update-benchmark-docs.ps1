@@ -43,6 +43,17 @@ $packageConfigurations = @{
             @{ Source = "Threading.Tests.Async.Pooled.AsyncReaderWriterLockWriterBenchmark-report-github.md"; Target = "asyncreaderwriterlock-writer.md" }
         )
     }
+
+function Normalize-BenchmarkContent {
+    param([string]$Content)
+
+    if ([string]::IsNullOrWhiteSpace($Content)) {
+        return $Content
+    }
+
+    $normalized = $Content -replace "\*\*", ""
+    return $normalized.Trim()
+}
     "Cryptography" = [ordered]@{
         SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
         DestDir   = "docfx/packages/security/cryptography/benchmarks"
@@ -177,8 +188,9 @@ foreach ($mapping in $benchmarkMappings) {
             Write-Host "  [INFO] Extracted machine specification from $($mapping.Source)" -ForegroundColor Cyan
         }
 
-        # Strip machine spec and save only the table
+        # Strip machine spec and remove BenchmarkDotNet emphasis markers
         $tableContent = Strip-MachineSpec -Content $content
+        $tableContent = Normalize-BenchmarkContent -Content $tableContent
         $destFile = Join-Path $DestDir $targetName
 
         # Write the stripped content
