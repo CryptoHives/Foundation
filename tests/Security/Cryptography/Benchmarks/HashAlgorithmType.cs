@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1050 // Declare types in namespaces
@@ -873,6 +873,65 @@ public sealed class HashAlgorithmType : IFormattable
         yield return TurboShake256_Managed_Scalar;
     }
 #endif
+
+    #endregion
+
+    #region Registry Bridge
+
+    /// <summary>
+    /// Gets all implementations from the unified registry, converted to HashAlgorithmType.
+    /// </summary>
+    /// <remarks>
+    /// This provides access to the <see cref="Cryptography.Tests.Hash.HashAlgorithmRegistry"/>
+    /// for scenarios where the unified registry is preferred over individual static fields.
+    /// </remarks>
+    public static IEnumerable<HashAlgorithmType> FromRegistry()
+    {
+        foreach (var impl in Cryptography.Tests.Hash.HashAlgorithmRegistry.Supported)
+        {
+            yield return new HashAlgorithmType(
+                impl.AlgorithmFamily,
+                impl.Create,
+                () => impl.IsSupported,
+                impl.Name);
+        }
+    }
+
+    /// <summary>
+    /// Gets implementations for a specific algorithm family from the registry.
+    /// </summary>
+    public static IEnumerable<HashAlgorithmType> FromRegistry(string algorithmFamily)
+    {
+        foreach (var impl in Cryptography.Tests.Hash.HashAlgorithmRegistry.ByFamily(algorithmFamily))
+        {
+            if (impl.IsSupported)
+            {
+                yield return new HashAlgorithmType(
+                    impl.AlgorithmFamily,
+                    impl.Create,
+                    () => impl.IsSupported,
+                    impl.Name);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets only CryptoHives managed implementations from the registry.
+    /// </summary>
+    public static IEnumerable<HashAlgorithmType> ManagedFromRegistry()
+    {
+        foreach (var impl in Cryptography.Tests.Hash.HashAlgorithmRegistry.ManagedOnly)
+        {
+            if (impl.IsSupported)
+            {
+                yield return new HashAlgorithmType(
+                    impl.AlgorithmFamily,
+                    impl.Create,
+                    () => impl.IsSupported,
+                    impl.Name);
+            }
+        }
+    }
 
     #endregion
 }
