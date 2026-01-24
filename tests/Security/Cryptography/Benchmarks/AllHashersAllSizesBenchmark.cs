@@ -31,7 +31,7 @@ public class AllHashersAllSizesBenchmark : HashBenchmarkBase
     public DataSize TestDataSize { get; set; } = DataSize.K8;
 
     [ParamsSource(nameof(AllHashers))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = HashAlgorithmType.SHA256_OS;
+    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
 
     public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
 
@@ -41,6 +41,7 @@ public class AllHashersAllSizesBenchmark : HashBenchmarkBase
     {
         TestDataSize = DataSize.K8;
     }
+
     /// <summary>
     /// Initializes a new instance for test fixtures.
     /// </summary>

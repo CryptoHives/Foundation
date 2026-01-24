@@ -8,14 +8,12 @@
 namespace Cryptography.Tests.Hash;
 
 using Cryptography.Tests.Adapter;
-using Org.BouncyCastle.Crypto.Digests;
+using BC = Org.BouncyCastle.Crypto.Digests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
-using BCAsconHash256 = Org.BouncyCastle.Crypto.Digests.AsconHash256;
-using BCAsconXof128 = Org.BouncyCastle.Crypto.Digests.AsconXof128;
 
 /// <summary>
 /// Central registry of all hash algorithm implementations for testing and benchmarking.
@@ -226,7 +224,7 @@ public static class HashAlgorithmRegistry
         list.Add(new HashImplementation("SHA-1", "OS", 160, SHA1.Create, Source.OS));
         list.Add(new HashImplementation("SHA-1", "Managed", 160, CH.SHA1.Create, Source.Managed));
         list.Add(new("SHA-1", "BouncyCastle", 160,
-            () => new BouncyCastleHashAdapter(new Sha1Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Sha1Digest()), Source.BouncyCastle));
     }
 
     #endregion
@@ -238,19 +236,19 @@ public static class HashAlgorithmRegistry
         // SHA-224
         list.Add(new HashImplementation("SHA-224", "Managed", 224, CH.SHA224.Create, Source.Managed));
         list.Add(new("SHA-224", "BouncyCastle", 224,
-            () => new BouncyCastleHashAdapter(new Sha224Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Sha224Digest()), Source.BouncyCastle));
 
         // SHA-256
         list.Add(new HashImplementation("SHA-256", "OS", 256, SHA256.Create, Source.OS));
         list.Add(new HashImplementation("SHA-256", "Managed", 256, CH.SHA256.Create, Source.Managed));
         list.Add(new("SHA-256", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new Sha256Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Sha256Digest()), Source.BouncyCastle));
 
         // SHA-384
         list.Add(new HashImplementation("SHA-384", "OS", 384, SHA384.Create, Source.OS));
         list.Add(new HashImplementation("SHA-384", "Managed", 384, CH.SHA384.Create, Source.Managed));
         list.Add(new("SHA-384", "BouncyCastle", 384,
-            () => new BouncyCastleHashAdapter(new Sha384Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Sha384Digest()), Source.BouncyCastle));
 
         // SHA-512
         list.Add(new HashImplementation("SHA-512", "OS", 512, SHA512.Create, Source.OS));
@@ -264,17 +262,17 @@ public static class HashAlgorithmRegistry
         list.Add(new("SHA-512", "Managed", 512,
             () => CH.SHA512.Create(CH.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-512", "BouncyCastle", 512,
-            () => new BouncyCastleHashAdapter(new Sha512Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Sha512Digest()), Source.BouncyCastle));
 
         // SHA-512/224
         list.Add(new HashImplementation("SHA-512/224", "Managed", 224, CH.SHA512_224.Create, Source.Managed));
         list.Add(new("SHA-512/224", "BouncyCastle", 224,
-            () => new BouncyCastleHashAdapter(new Sha512tDigest(224)), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Sha512tDigest(224)), Source.BouncyCastle));
 
         // SHA-512/256
         list.Add(new HashImplementation("SHA-512/256", "Managed", 256, CH.SHA512_256.Create, Source.Managed));
         list.Add(new("SHA-512/256", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new Sha512tDigest(256)), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Sha512tDigest(256)), Source.BouncyCastle));
     }
 
     #endregion
@@ -284,10 +282,10 @@ public static class HashAlgorithmRegistry
     private static void AddSha3(List<HashImplementation> list)
     {
         AddSha3Variant(list, "SHA3-224", 224, CH.SHA3_224.SimdSupport,
-            simd => CH.SHA3_224.Create(simd), () => new Sha3Digest(224));
+            simd => CH.SHA3_224.Create(simd), () => new BC.Sha3Digest(224));
 
         AddSha3Variant(list, "SHA3-256", 256, CH.SHA3_256.SimdSupport,
-            simd => CH.SHA3_256.Create(simd), () => new Sha3Digest(256),
+            simd => CH.SHA3_256.Create(simd), () => new BC.Sha3Digest(256),
 #if NET8_0_OR_GREATER
             () => SHA3_256.IsSupported ? SHA3_256.Create() : null
 #else
@@ -296,7 +294,7 @@ public static class HashAlgorithmRegistry
         );
 
         AddSha3Variant(list, "SHA3-384", 384, CH.SHA3_384.SimdSupport,
-            simd => CH.SHA3_384.Create(simd), () => new Sha3Digest(384),
+            simd => CH.SHA3_384.Create(simd), () => new BC.Sha3Digest(384),
 #if NET8_0_OR_GREATER
             () => SHA3_384.IsSupported ? SHA3_384.Create() : null
 #else
@@ -305,7 +303,7 @@ public static class HashAlgorithmRegistry
         );
 
         AddSha3Variant(list, "SHA3-512", 512, CH.SHA3_512.SimdSupport,
-            simd => CH.SHA3_512.Create(simd), () => new Sha3Digest(512),
+            simd => CH.SHA3_512.Create(simd), () => new BC.Sha3Digest(512),
 #if NET8_0_OR_GREATER
             () => SHA3_512.IsSupported ? SHA3_512.Create() : null
 #else
@@ -381,12 +379,12 @@ public static class HashAlgorithmRegistry
         AddKeccakSimdVariants(list, "SHAKE128", 256, simdSupport,
             s => CH.Shake128.Create(s, 32));
         list.Add(new("SHAKE128", "BouncyCastle", 256,
-            () => new BouncyCastleXofAdapter(new ShakeDigest(128), 32), Source.BouncyCastle));
+            () => new BouncyCastleXofAdapter(new BC.ShakeDigest(128), 32), Source.BouncyCastle));
 
         AddKeccakSimdVariants(list, "SHAKE256", 512, simdSupport,
             s => CH.Shake256.Create(s, 64));
         list.Add(new("SHAKE256", "BouncyCastle", 512,
-            () => new BouncyCastleXofAdapter(new ShakeDigest(256), 64), Source.BouncyCastle));
+            () => new BouncyCastleXofAdapter(new BC.ShakeDigest(256), 64), Source.BouncyCastle));
     }
 
     #endregion
@@ -425,7 +423,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-512", "Managed", 512,
             () => CH.Blake2b.Create(64, CH.SimdSupport.None), Source.Managed));
         list.Add(new("BLAKE2b-512", "BouncyCastle", 512,
-            () => new BouncyCastleHashAdapter(new Blake2bDigest(512)), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(512)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
             () => new HashifyNetBlake2bAdapter(512), Source.HashifyNet));
 
@@ -439,7 +437,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-256", "Managed", 256,
             () => CH.Blake2b.Create(32, CH.SimdSupport.None), Source.Managed));
         list.Add(new("BLAKE2b-256", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new Blake2bDigest(256)), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
             () => new HashifyNetBlake2bAdapter(256), Source.HashifyNet));
 
@@ -466,7 +464,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2s-256", "Managed", 256,
             () => CH.Blake2s.Create(32, CH.SimdSupport.None), Source.Managed));
         list.Add(new("BLAKE2s-256", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new Blake2sDigest(256)), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(256)), Source.BouncyCastle));
 
         // BLAKE2s-128
         if ((blake2sSimd & CH.SimdSupport.Avx2) != 0)
@@ -490,7 +488,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2s-128", "Managed", 128,
             () => CH.Blake2s.Create(16, CH.SimdSupport.None), Source.Managed));
         list.Add(new("BLAKE2s-128", "BouncyCastle", 128,
-            () => new BouncyCastleHashAdapter(new Blake2sDigest(128)), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(128)), Source.BouncyCastle));
     }
 
     #endregion
@@ -501,7 +499,7 @@ public static class HashAlgorithmRegistry
     {
         list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(32), Source.Managed));
         list.Add(new("BLAKE3", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new Blake3Digest(256)), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Blake3Digest(256)), Source.BouncyCastle));
 
 #if BLAKE3_NATIVE
         list.Add(new("BLAKE3", "Native", 256,
@@ -516,13 +514,13 @@ public static class HashAlgorithmRegistry
     private static void AddKeccak(List<HashImplementation> list)
     {
         AddKeccakVariant(list, "Keccak-256", 256, CH.Keccak256.SimdSupport,
-            s => CH.Keccak256.Create(s), () => new KeccakDigest(256));
+            s => CH.Keccak256.Create(s), () => new BC.KeccakDigest(256));
 
         AddKeccakVariant(list, "Keccak-384", 384, CH.Keccak384.SimdSupport,
-            s => CH.Keccak384.Create(s), () => new KeccakDigest(384));
+            s => CH.Keccak384.Create(s), () => new BC.KeccakDigest(384));
 
         AddKeccakVariant(list, "Keccak-512", 512, CH.Keccak512.SimdSupport,
-            s => CH.Keccak512.Create(s), () => new KeccakDigest(512));
+            s => CH.Keccak512.Create(s), () => new BC.KeccakDigest(512));
     }
 
     private static void AddKeccakVariant(
@@ -602,7 +600,7 @@ public static class HashAlgorithmRegistry
         list.Add(new HashImplementation("MD5", "OS", 128, MD5.Create, Source.OS));
         list.Add(new HashImplementation("MD5", "Managed", 128, CH.MD5.Create, Source.Managed));
         list.Add(new("MD5", "BouncyCastle", 128,
-            () => new BouncyCastleHashAdapter(new MD5Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.MD5Digest()), Source.BouncyCastle));
     }
 
     #endregion
@@ -613,7 +611,7 @@ public static class HashAlgorithmRegistry
     {
         list.Add(new HashImplementation("RIPEMD-160", "Managed", 160, CH.Ripemd160.Create, Source.Managed));
         list.Add(new("RIPEMD-160", "BouncyCastle", 160,
-            () => new BouncyCastleHashAdapter(new RipeMD160Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.RipeMD160Digest()), Source.BouncyCastle));
     }
 
     #endregion
@@ -624,7 +622,7 @@ public static class HashAlgorithmRegistry
     {
         list.Add(new HashImplementation("SM3", "Managed", 256, CH.SM3.Create, Source.Managed));
         list.Add(new("SM3", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new SM3Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.SM3Digest()), Source.BouncyCastle));
     }
 
     #endregion
@@ -635,7 +633,7 @@ public static class HashAlgorithmRegistry
     {
         list.Add(new HashImplementation("Whirlpool", "Managed", 512, CH.Whirlpool.Create, Source.Managed));
         list.Add(new("Whirlpool", "BouncyCastle", 512,
-            () => new BouncyCastleHashAdapter(new WhirlpoolDigest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.WhirlpoolDigest()), Source.BouncyCastle));
         list.Add(new("Whirlpool", "HashifyNET", 512,
             () => new HashifyNetWhirlpoolAdapter(), Source.HashifyNet));
     }
@@ -650,7 +648,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-256", "Managed", 256,
             () => CH.Streebog.Create(32), Source.Managed));
         list.Add(new("Streebog-256", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new Gost3411_2012_256Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_256Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-256", "OpenGost", 256,
             () => OpenGost.Security.Cryptography.Streebog256.Create(), Source.OpenGost));
 
@@ -658,7 +656,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-512", "Managed", 512,
             () => CH.Streebog.Create(64), Source.Managed));
         list.Add(new("Streebog-512", "BouncyCastle", 512,
-            () => new BouncyCastleHashAdapter(new Gost3411_2012_512Digest()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_512Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-512", "OpenGost", 512,
             () => OpenGost.Security.Cryptography.Streebog512.Create(), Source.OpenGost));
     }
@@ -711,13 +709,13 @@ public static class HashAlgorithmRegistry
         list.Add(new("Ascon-Hash256", "Managed", 256,
             CH.AsconHash256.Create, Source.Managed));
         list.Add(new("Ascon-Hash256", "BouncyCastle", 256,
-            () => new BouncyCastleHashAdapter(new BCAsconHash256()), Source.BouncyCastle));
+            () => new BouncyCastleHashAdapter(new BC.AsconHash256()), Source.BouncyCastle));
 
         // Ascon-XOF128 (32-byte output)
         list.Add(new("Ascon-XOF128", "Managed", 256,
             () => CH.AsconXof128.Create(32), Source.Managed));
         list.Add(new("Ascon-XOF128", "BouncyCastle", 256,
-            () => new BouncyCastleGenericXofAdapter(new BCAsconXof128(), 32), Source.BouncyCastle));
+            () => new BouncyCastleGenericXofAdapter(new BC.AsconXof128(), 32), Source.BouncyCastle));
     }
 
     #endregion

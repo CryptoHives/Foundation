@@ -58,7 +58,72 @@ function Normalize-BenchmarkContent {
         SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
         DestDir   = "docfx/packages/security/cryptography/benchmarks"
         Files     = @(
+            # Aggregate benchmark (all algorithms in one table)
             @{ Source = "Cryptography.Tests.Benchmarks.AllHashersAllSizesBenchmark-report-github.md"; Target = "allhashers-all-sizes.md" }
+
+            # SHA-2 individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA224Benchmark-report-github.md"; Target = "sha224.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA256Benchmark-report-github.md"; Target = "sha256.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA384Benchmark-report-github.md"; Target = "sha384.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA512Benchmark-report-github.md"; Target = "sha512.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA512_224Benchmark-report-github.md"; Target = "sha512-224.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA512_256Benchmark-report-github.md"; Target = "sha512-256.md" }
+
+            # SHA-3 individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA3_224Benchmark-report-github.md"; Target = "sha3-224.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA3_256Benchmark-report-github.md"; Target = "sha3-256.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA3_384Benchmark-report-github.md"; Target = "sha3-384.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA3_512Benchmark-report-github.md"; Target = "sha3-512.md" }
+
+            # Keccak individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.Keccak256Benchmark-report-github.md"; Target = "keccak256.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Keccak384Benchmark-report-github.md"; Target = "keccak384.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Keccak512Benchmark-report-github.md"; Target = "keccak512.md" }
+
+            # SHAKE individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.Shake128Benchmark-report-github.md"; Target = "shake128.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Shake256Benchmark-report-github.md"; Target = "shake256.md" }
+
+            # cSHAKE individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.CShake128Benchmark-report-github.md"; Target = "cshake128.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.CShake256Benchmark-report-github.md"; Target = "cshake256.md" }
+
+            # KT individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.KT128Benchmark-report-github.md"; Target = "kt128.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.KT256Benchmark-report-github.md"; Target = "kt256.md" }
+
+            # TurboSHAKE individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.TurboShake128Benchmark-report-github.md"; Target = "turboshake128.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.TurboShake256Benchmark-report-github.md"; Target = "turboshake256.md" }
+
+            # BLAKE2b individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.Blake2b256Benchmark-report-github.md"; Target = "blake2b256.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Blake2b512Benchmark-report-github.md"; Target = "blake2b512.md" }
+
+            # BLAKE2s individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.Blake2s128Benchmark-report-github.md"; Target = "blake2s128.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Blake2s256Benchmark-report-github.md"; Target = "blake2s256.md" }
+
+            # BLAKE3
+            @{ Source = "Cryptography.Tests.Benchmarks.Blake3Benchmark-report-github.md"; Target = "blake3.md" }
+
+            # Legacy individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.MD5Benchmark-report-github.md"; Target = "md5.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.SHA1Benchmark-report-github.md"; Target = "sha1.md" }
+
+            # Regional individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.SM3Benchmark-report-github.md"; Target = "sm3.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Streebog256Benchmark-report-github.md"; Target = "streebog256.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Streebog512Benchmark-report-github.md"; Target = "streebog512.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.WhirlpoolBenchmark-report-github.md"; Target = "whirlpool.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.Ripemd160Benchmark-report-github.md"; Target = "ripemd160.md" }
+
+            # Ascon individual algorithms
+            @{ Source = "Cryptography.Tests.Benchmarks.AsconHash256Benchmark-report-github.md"; Target = "asconhash256.md" }
+            @{ Source = "Cryptography.Tests.Benchmarks.AsconXof128Benchmark-report-github.md"; Target = "asconxof128.md" }
+
+            # KMAC
+            @{ Source = "Cryptography.Tests.Benchmarks.KmacBenchmark-report-github.md"; Target = "kmac.md" }
         )
     }
 }
