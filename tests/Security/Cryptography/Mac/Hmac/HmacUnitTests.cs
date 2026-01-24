@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Mac.Hmac;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 /// <summary>
@@ -391,5 +392,498 @@ public class HmacTests
         Assert.That(actual, Is.EqualTo(expected));
     }
 
+    /// <summary>
+    /// Compare with .NET built-in HMAC-SHA1 implementation.
+    /// </summary>
+    [Test]
+    public void CompareWithDotNetHmacSha1()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("LegacySha1Key");
+        byte[] data = Encoding.UTF8.GetBytes("Testing SHA-1 HMAC for legacy compatibility.");
+
+#pragma warning disable CS0618 // Intentionally testing deprecated algorithm
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA1(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha1(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+#pragma warning restore CS0618
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare with .NET built-in HMAC-MD5 implementation.
+    /// </summary>
+    [Test]
+    public void CompareWithDotNetHmacMd5()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("LegacyMd5Key");
+        byte[] data = Encoding.UTF8.GetBytes("Testing MD5 HMAC for legacy compatibility.");
+
+#pragma warning disable CS0618 // Intentionally testing deprecated algorithm
+        using var dotNetHmac = new System.Security.Cryptography.HMACMD5(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateMd5(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+#pragma warning restore CS0618
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
     #endregion
+
+    #region Extended .NET Comparison Tests
+
+    /// <summary>
+    /// Test data source for parameterized comparison tests.
+    /// </summary>
+    private static System.Collections.IEnumerable ComparisonTestCases()
+    {
+        // Various key sizes
+        yield return new TestCaseData(new byte[16], Encoding.UTF8.GetBytes("Short key test")).SetName("Key16Bytes");
+        yield return new TestCaseData(new byte[32], Encoding.UTF8.GetBytes("Medium key test")).SetName("Key32Bytes");
+        yield return new TestCaseData(new byte[64], Encoding.UTF8.GetBytes("Block-size key test")).SetName("Key64Bytes");
+        yield return new TestCaseData(new byte[128], Encoding.UTF8.GetBytes("Long key test")).SetName("Key128Bytes");
+
+        // Various data sizes
+        byte[] key = Encoding.UTF8.GetBytes("TestKey12345");
+        yield return new TestCaseData(key, Array.Empty<byte>()).SetName("EmptyData");
+        yield return new TestCaseData(key, new byte[1]).SetName("SingleByteData");
+        yield return new TestCaseData(key, new byte[15]).SetName("Data15Bytes");
+        yield return new TestCaseData(key, new byte[16]).SetName("Data16Bytes");
+        yield return new TestCaseData(key, new byte[17]).SetName("Data17Bytes");
+        yield return new TestCaseData(key, new byte[63]).SetName("Data63Bytes");
+        yield return new TestCaseData(key, new byte[64]).SetName("Data64Bytes");
+        yield return new TestCaseData(key, new byte[65]).SetName("Data65Bytes");
+        yield return new TestCaseData(key, new byte[1000]).SetName("Data1000Bytes");
+        yield return new TestCaseData(key, new byte[10000]).SetName("Data10000Bytes");
+    }
+
+    /// <summary>
+    /// Comprehensive HMAC-SHA256 comparison with .NET across various inputs.
+    /// </summary>
+    [TestCaseSource(nameof(ComparisonTestCases))]
+    public void CompareHmacSha256Comprehensive(byte[] key, byte[] data)
+    {
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha256(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Comprehensive HMAC-SHA384 comparison with .NET across various inputs.
+    /// </summary>
+    [TestCaseSource(nameof(ComparisonTestCases))]
+    public void CompareHmacSha384Comprehensive(byte[] key, byte[] data)
+    {
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA384(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha384(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Comprehensive HMAC-SHA512 comparison with .NET across various inputs.
+    /// </summary>
+    [TestCaseSource(nameof(ComparisonTestCases))]
+    public void CompareHmacSha512Comprehensive(byte[] key, byte[] data)
+    {
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA512(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha512(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare incremental hashing with .NET HMAC.
+    /// </summary>
+    [Test]
+    public void CompareIncrementalHashingWithDotNet()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("IncrementalTestKey");
+        byte[] data = new byte[200];
+        for (int i = 0; i < data.Length; i++) data[i] = (byte)(i % 256);
+
+        // .NET one-shot
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        // CryptoHives incremental
+        using var cryptoHivesHmac = Hmac.CreateSha256(key);
+        cryptoHivesHmac.TransformBlock(data, 0, 50, null, 0);
+        cryptoHivesHmac.TransformBlock(data, 50, 75, null, 0);
+        cryptoHivesHmac.TransformFinalBlock(data, 125, 75);
+        byte[] actual = cryptoHivesHmac.Hash!;
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare with random data to ensure no edge case failures.
+    /// </summary>
+    [Test]
+    public void CompareWithRandomData()
+    {
+        var random = new Random(42); // Fixed seed for reproducibility
+
+        for (int trial = 0; trial < 10; trial++)
+        {
+            // Random key size between 1 and 128 bytes
+            int keySize = random.Next(1, 129);
+            byte[] key = new byte[keySize];
+            random.NextBytes(key);
+
+            // Random data size between 0 and 1000 bytes
+            int dataSize = random.Next(0, 1001);
+            byte[] data = new byte[dataSize];
+            random.NextBytes(data);
+
+            using var dotNetHmac = new System.Security.Cryptography.HMACSHA256(key);
+            byte[] expected = dotNetHmac.ComputeHash(data);
+
+            using var cryptoHivesHmac = Hmac.CreateSha256(key);
+            byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+            Assert.That(actual, Is.EqualTo(expected), $"Failed on trial {trial} with keySize={keySize}, dataSize={dataSize}");
+        }
+    }
+
+    /// <summary>
+    /// Compare key longer than block size (triggers key hashing).
+    /// </summary>
+    [Test]
+    public void CompareWithKeyLongerThanBlockSize()
+    {
+        // SHA-256 block size is 64 bytes, so use a 100-byte key
+        byte[] key = new byte[100];
+        for (int i = 0; i < key.Length; i++) key[i] = (byte)(i + 1);
+
+        byte[] data = Encoding.UTF8.GetBytes("Testing with key longer than block size");
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha256(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare key exactly equal to block size.
+    /// </summary>
+    [Test]
+    public void CompareWithKeyEqualToBlockSize()
+    {
+        // SHA-256 block size is 64 bytes
+        byte[] key = new byte[64];
+        for (int i = 0; i < key.Length; i++) key[i] = (byte)(i + 1);
+
+        byte[] data = Encoding.UTF8.GetBytes("Testing with key equal to block size");
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha256(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare SHA-512 with key longer than its block size (128 bytes).
+    /// </summary>
+    [Test]
+    public void CompareHmacSha512WithLongKey()
+    {
+        // SHA-512 block size is 128 bytes, so use a 200-byte key
+        byte[] key = new byte[200];
+        for (int i = 0; i < key.Length; i++) key[i] = (byte)(i + 1);
+
+        byte[] data = Encoding.UTF8.GetBytes("Testing SHA-512 with key longer than 128-byte block size");
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA512(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha512(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare multiple sequential computations with same instance (reuse test).
+    /// </summary>
+    [Test]
+    public void CompareMultipleComputationsWithSameKey()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("ReusableKey");
+        byte[] data1 = Encoding.UTF8.GetBytes("First message");
+        byte[] data2 = Encoding.UTF8.GetBytes("Second message");
+        byte[] data3 = Encoding.UTF8.GetBytes("Third message");
+
+        // .NET computations
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA256(key);
+        byte[] expected1 = dotNetHmac.ComputeHash(data1);
+        byte[] expected2 = dotNetHmac.ComputeHash(data2);
+        byte[] expected3 = dotNetHmac.ComputeHash(data3);
+
+        // CryptoHives computations (new instance for each to match .NET behavior)
+        using var cryptoHives1 = Hmac.CreateSha256(key);
+        byte[] actual1 = cryptoHives1.ComputeHash(data1);
+
+        using var cryptoHives2 = Hmac.CreateSha256(key);
+        byte[] actual2 = cryptoHives2.ComputeHash(data2);
+
+        using var cryptoHives3 = Hmac.CreateSha256(key);
+        byte[] actual3 = cryptoHives3.ComputeHash(data3);
+
+        Assert.That(actual1, Is.EqualTo(expected1));
+        Assert.That(actual2, Is.EqualTo(expected2));
+        Assert.That(actual3, Is.EqualTo(expected3));
+    }
+
+    #endregion
+
+#if NET8_0_OR_GREATER
+    #region HMAC-SHA3 Comparison Tests (.NET 8+)
+
+    /// <summary>
+    /// Compare with .NET built-in HMAC-SHA3-256 implementation.
+    /// </summary>
+    [Test]
+    public void CompareWithDotNetHmacSha3_256()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("TestKeyForSha3_256");
+        byte[] data = Encoding.UTF8.GetBytes("Hello, World! Testing HMAC-SHA3-256.");
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_256(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare with .NET built-in HMAC-SHA3-512 implementation.
+    /// </summary>
+    [Test]
+    public void CompareWithDotNetHmacSha3_512()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("TestKeyForSha3_512");
+        byte[] data = Encoding.UTF8.GetBytes("Hello, World! Testing HMAC-SHA3-512.");
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_512(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_512(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare HMAC-SHA3-256 with empty data.
+    /// </summary>
+    [Test]
+    public void CompareHmacSha3_256EmptyData()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("KeyForEmptyData");
+        byte[] data = Array.Empty<byte>();
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_256(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare HMAC-SHA3-512 with empty data.
+    /// </summary>
+    [Test]
+    public void CompareHmacSha3_512EmptyData()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("KeyForEmptyData");
+        byte[] data = Array.Empty<byte>();
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_512(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_512(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare HMAC-SHA3-256 with key longer than block size.
+    /// SHA3-256 has a block size of 136 bytes.
+    /// </summary>
+    [Test]
+    public void CompareHmacSha3_256WithLongKey()
+    {
+        // SHA3-256 block size is 136 bytes, so use a 200-byte key
+        byte[] key = new byte[200];
+        for (int i = 0; i < key.Length; i++) key[i] = (byte)(i + 1);
+
+        byte[] data = Encoding.UTF8.GetBytes("Testing SHA3-256 with key longer than block size");
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_256(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare HMAC-SHA3-512 with key longer than block size.
+    /// SHA3-512 has a block size of 72 bytes.
+    /// </summary>
+    [Test]
+    public void CompareHmacSha3_512WithLongKey()
+    {
+        // SHA3-512 block size is 72 bytes, so use a 100-byte key
+        byte[] key = new byte[100];
+        for (int i = 0; i < key.Length; i++) key[i] = (byte)(i + 1);
+
+        byte[] data = Encoding.UTF8.GetBytes("Testing SHA3-512 with key longer than block size");
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_512(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_512(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Comprehensive HMAC-SHA3-256 comparison with various data sizes.
+    /// </summary>
+    [TestCase(1)]
+    [TestCase(15)]
+    [TestCase(16)]
+    [TestCase(17)]
+    [TestCase(135)]
+    [TestCase(136)]
+    [TestCase(137)]
+    [TestCase(1000)]
+    public void CompareHmacSha3_256VariousDataSizes(int dataSize)
+    {
+        byte[] key = Encoding.UTF8.GetBytes("TestKeyForSha3");
+        byte[] data = new byte[dataSize];
+        for (int i = 0; i < dataSize; i++) data[i] = (byte)(i % 256);
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_256(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_256(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Comprehensive HMAC-SHA3-512 comparison with various data sizes.
+    /// </summary>
+    [TestCase(1)]
+    [TestCase(15)]
+    [TestCase(16)]
+    [TestCase(17)]
+    [TestCase(71)]
+    [TestCase(72)]
+    [TestCase(73)]
+    [TestCase(1000)]
+    public void CompareHmacSha3_512VariousDataSizes(int dataSize)
+    {
+        byte[] key = Encoding.UTF8.GetBytes("TestKeyForSha3");
+        byte[] data = new byte[dataSize];
+        for (int i = 0; i < dataSize; i++) data[i] = (byte)(i % 256);
+
+        using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_512(key);
+        byte[] expected = dotNetHmac.ComputeHash(data);
+
+        using var cryptoHivesHmac = Hmac.CreateSha3_512(key);
+        byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Compare with random data for HMAC-SHA3-256.
+    /// </summary>
+    [Test]
+    public void CompareHmacSha3_256WithRandomData()
+    {
+        var random = new Random(123); // Fixed seed for reproducibility
+
+        for (int trial = 0; trial < 10; trial++)
+        {
+            int keySize = random.Next(1, 200);
+            byte[] key = new byte[keySize];
+            random.NextBytes(key);
+
+            int dataSize = random.Next(0, 500);
+            byte[] data = new byte[dataSize];
+            random.NextBytes(data);
+
+            using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_256(key);
+            byte[] expected = dotNetHmac.ComputeHash(data);
+
+            using var cryptoHivesHmac = Hmac.CreateSha3_256(key);
+            byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+            Assert.That(actual, Is.EqualTo(expected), $"Failed on trial {trial}");
+        }
+    }
+
+    /// <summary>
+    /// Compare with random data for HMAC-SHA3-512.
+    /// </summary>
+    [Test]
+    public void CompareHmacSha3_512WithRandomData()
+    {
+        var random = new Random(456); // Fixed seed for reproducibility
+
+        for (int trial = 0; trial < 10; trial++)
+        {
+            int keySize = random.Next(1, 200);
+            byte[] key = new byte[keySize];
+            random.NextBytes(key);
+
+            int dataSize = random.Next(0, 500);
+            byte[] data = new byte[dataSize];
+            random.NextBytes(data);
+
+            using var dotNetHmac = new System.Security.Cryptography.HMACSHA3_512(key);
+            byte[] expected = dotNetHmac.ComputeHash(data);
+
+            using var cryptoHivesHmac = Hmac.CreateSha3_512(key);
+            byte[] actual = cryptoHivesHmac.ComputeHash(data);
+
+            Assert.That(actual, Is.EqualTo(expected), $"Failed on trial {trial}");
+        }
+    }
+
+    #endregion
+#endif
 }
