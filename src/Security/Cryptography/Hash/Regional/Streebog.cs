@@ -318,7 +318,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Processes a complete 64-byte message block.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> m)
     {
         // Convert message to ulong array
@@ -353,6 +353,7 @@ public sealed class Streebog : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < _hashSizeBytes)
@@ -466,6 +467,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// The E function: 12-round block cipher with key schedule using SIMD.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, ref Vector512<ulong> resultV)
     {

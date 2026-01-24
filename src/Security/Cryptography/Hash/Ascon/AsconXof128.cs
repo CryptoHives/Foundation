@@ -161,6 +161,7 @@ public sealed class AsconXof128 : HashAlgorithm
         PadAndAbsorb();
 
         // Squeeze output
+        Span<byte> block = stackalloc byte[RateBytes];
         int remaining = _outputSizeBytes;
         int destOffset = 0;
 
@@ -173,7 +174,6 @@ public sealed class AsconXof128 : HashAlgorithm
             }
             else
             {
-                Span<byte> block = stackalloc byte[RateBytes];
                 BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
                 block.Slice(0, toCopy).CopyTo(destination.Slice(destOffset));
             }

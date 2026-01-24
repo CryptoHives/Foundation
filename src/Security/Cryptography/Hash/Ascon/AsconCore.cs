@@ -3,6 +3,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -22,7 +23,7 @@ internal static class Ascon800232Core
     /// <summary>
     /// Applies the Ascon permutation p^12.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void P12(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4)
     {
         Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xf0UL);
@@ -48,21 +49,11 @@ internal static class Ascon800232Core
         ulong t2 = s1 ^ sx ^ s4 ^ (s3 & s4);
         ulong t3 = s0 ^ s1 ^ sx ^ (~s0 & (s3 ^ s4));
         ulong t4 = s1 ^ s3 ^ s4 ^ ((s0 ^ s4) & s1);
-        s0 = t0 ^ RotateRight(t0, 19) ^ RotateRight(t0, 28);
-        s1 = t1 ^ RotateRight(t1, 39) ^ RotateRight(t1, 61);
-        s2 = ~(t2 ^ RotateRight(t2, 1) ^ RotateRight(t2, 6));
-        s3 = t3 ^ RotateRight(t3, 10) ^ RotateRight(t3, 17);
-        s4 = t4 ^ RotateRight(t4, 7) ^ RotateRight(t4, 41);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateRight(ulong value, int offset)
-    {
-#if NET6_0_OR_GREATER
-        return ulong.RotateRight(value, offset);
-#else
-        return (value >> offset) | (value << (64 - offset));
-#endif
+        s0 = t0 ^ BitOperations.RotateRight(t0, 19) ^ BitOperations.RotateRight(t0, 28);
+        s1 = t1 ^ BitOperations.RotateRight(t1, 39) ^ BitOperations.RotateRight(t1, 61);
+        s2 = ~(t2 ^ BitOperations.RotateRight(t2, 1) ^ BitOperations.RotateRight(t2, 6));
+        s3 = t3 ^ BitOperations.RotateRight(t3, 10) ^ BitOperations.RotateRight(t3, 17);
+        s4 = t4 ^ BitOperations.RotateRight(t4, 7) ^ BitOperations.RotateRight(t4, 41);
     }
 }
 
@@ -86,7 +77,7 @@ internal static class AsconCore
     /// <param name="x3">State word 3.</param>
     /// <param name="x4">State word 4.</param>
     /// <param name="rounds">The number of rounds to apply (8 or 12).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Permutation(ref ulong x0, ref ulong x1, ref ulong x2, ref ulong x3, ref ulong x4, int rounds)
     {
         unchecked
@@ -123,22 +114,12 @@ internal static class AsconCore
                 x2 = ~x2;
 
                 // Linear diffusion layer
-                x0 ^= RotateRight(x0, 19) ^ RotateRight(x0, 28);
-                x1 ^= RotateRight(x1, 61) ^ RotateRight(x1, 39);
-                x2 ^= RotateRight(x2, 1) ^ RotateRight(x2, 6);
-                x3 ^= RotateRight(x3, 10) ^ RotateRight(x3, 17);
-                x4 ^= RotateRight(x4, 7) ^ RotateRight(x4, 41);
+                x0 ^= BitOperations.RotateRight(x0, 19) ^ BitOperations.RotateRight(x0, 28);
+                x1 ^= BitOperations.RotateRight(x1, 61) ^ BitOperations.RotateRight(x1, 39);
+                x2 ^= BitOperations.RotateRight(x2, 1) ^ BitOperations.RotateRight(x2, 6);
+                x3 ^= BitOperations.RotateRight(x3, 10) ^ BitOperations.RotateRight(x3, 17);
+                x4 ^= BitOperations.RotateRight(x4, 7) ^ BitOperations.RotateRight(x4, 41);
             }
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong RotateRight(ulong value, int offset)
-    {
-#if NET6_0_OR_GREATER
-        return ulong.RotateRight(value, offset);
-#else
-        return (value >> offset) | (value << (64 - offset));
-#endif
     }
 }
