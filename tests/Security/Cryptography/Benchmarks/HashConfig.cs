@@ -29,7 +29,7 @@ public class HashConfig : ManualConfig
 
     public HashConfig()
     {
-        // Disable default exporters, only use our custom GitHub markdown exporter
+        // Disable default exporters
         WithOptions(ConfigOptions.DisableLogFile);
 
         Orderer = new CategoryThenDataSizeOrderer();

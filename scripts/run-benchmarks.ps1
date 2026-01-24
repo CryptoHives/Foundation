@@ -68,75 +68,75 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Individual algorithm to benchmark class mapping
+# Individual algorithm to benchmark category mapping
 $AlgorithmBenchmarkMap = @{
     # SHA-2
-    "SHA224"      = "SHA224Benchmark"
-    "SHA256"      = "SHA256Benchmark"
-    "SHA384"      = "SHA384Benchmark"
-    "SHA512"      = "SHA512Benchmark"
-    "SHA512_224"  = "SHA512_224Benchmark"
-    "SHA512_256"  = "SHA512_256Benchmark"
+    "SHA224"      = "SHA224"
+    "SHA256"      = "SHA256"
+    "SHA384"      = "SHA384"
+    "SHA512"      = "SHA512"
+    "SHA512_224"  = "SHA512_224"
+    "SHA512_256"  = "SHA512_256"
     # SHA-3
-    "SHA3_224"    = "SHA3_224Benchmark"
-    "SHA3_256"    = "SHA3_256Benchmark"
-    "SHA3_384"    = "SHA3_384Benchmark"
-    "SHA3_512"    = "SHA3_512Benchmark"
+    "SHA3_224"    = "SHA3_224"
+    "SHA3_256"    = "SHA3_256"
+    "SHA3_384"    = "SHA3_384"
+    "SHA3_512"    = "SHA3_512"
     # Keccak
-    "Keccak256"   = "Keccak256Benchmark"
-    "Keccak384"   = "Keccak384Benchmark"
-    "Keccak512"   = "Keccak512Benchmark"
+    "Keccak256"   = "Keccak256"
+    "Keccak384"   = "Keccak384"
+    "Keccak512"   = "Keccak512"
     # SHAKE
-    "Shake128"    = "Shake128Benchmark"
-    "Shake256"    = "Shake256Benchmark"
+    "Shake128"    = "Shake128"
+    "Shake256"    = "Shake256"
     # cSHAKE
-    "CShake128"   = "CShake128Benchmark"
-    "CShake256"   = "CShake256Benchmark"
+    "CShake128"   = "CShake128"
+    "CShake256"   = "CShake256"
     # KT
-    "KT128"       = "KT128Benchmark"
-    "KT256"       = "KT256Benchmark"
+    "KT128"       = "KT128"
+    "KT256"       = "KT256"
     # TurboSHAKE
-    "TurboShake128" = "TurboShake128Benchmark"
-    "TurboShake256" = "TurboShake256Benchmark"
+    "TurboShake128" = "TurboShake128"
+    "TurboShake256" = "TurboShake256"
     # BLAKE2b
-    "Blake2b256"  = "Blake2b256Benchmark"
-    "Blake2b512"  = "Blake2b512Benchmark"
+    "Blake2b256"  = "Blake2b256"
+    "Blake2b512"  = "Blake2b512"
     # BLAKE2s
-    "Blake2s128"  = "Blake2s128Benchmark"
-    "Blake2s256"  = "Blake2s256Benchmark"
+    "Blake2s128"  = "Blake2s128"
+    "Blake2s256"  = "Blake2s256"
     # BLAKE3
-    "Blake3"      = "Blake3Benchmark"
+    "Blake3"      = "Blake3"
     # Legacy
-    "MD5"         = "MD5Benchmark"
-    "SHA1"        = "SHA1Benchmark"
+    "MD5"         = "MD5"
+    "SHA1"        = "SHA1"
     # Regional
-    "SM3"         = "SM3Benchmark"
-    "Streebog256" = "Streebog256Benchmark"
-    "Streebog512" = "Streebog512Benchmark"
-    "Whirlpool"   = "WhirlpoolBenchmark"
-    "Ripemd160"   = "Ripemd160Benchmark"
+    "SM3"         = "SM3"
+    "Streebog256" = "Streebog256"
+    "Streebog512" = "Streebog512"
+    "Whirlpool"   = "Whirlpool"
+    "Ripemd160"   = "Ripemd160"
     # Ascon
-    "AsconHash256" = "AsconHash256Benchmark"
-    "AsconXof128" = "AsconXof128Benchmark"
+    "AsconHash256" = "AsconHash256"
+    "AsconXof128" = "AsconXof128"
     # KMAC
-    "Kmac128"     = "Kmac128Benchmark"
-    "Kmac256"     = "Kmac256Benchmark"
-    # All
-    "All"         = "AllHashersAllSizesBenchmark"
+    "Kmac128"     = "Kmac128"
+    "Kmac256"     = "Kmac256"
+    # Group Aliases
+    "All"         = "Hash"
 }
 
 # Group aliases expand to multiple individual benchmarks
 $GroupAliases = @{
-    "SHA2"        = @("SHA224", "SHA256", "SHA384", "SHA512", "SHA512_224", "SHA512_256")
-    "SHA3"        = @("SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512")
-    "Keccak"      = @("Keccak256", "Keccak384", "Keccak512")
+    "SHA2"        = @("SHA2")
+    "SHA3"        = @("SHA3")
+    "Keccak"      = @("Keccak")
     "SHAKE"       = @("Shake128", "Shake256")
     "cSHAKE"      = @("CShake128", "CShake256")
     "KT"          = @("KT128", "KT256")
     "TurboSHAKE"  = @("TurboShake128", "TurboShake256")
     "BLAKE2b"     = @("Blake2b256", "Blake2b512")
-    "BLAKE2s"     = @("Blake2s128", "Blake2s256")
-    "BLAKE"       = @("Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3")
+    "BLAKE2s"     = @("Blake2s256", "Blake2s128")
+    "BLAKE"       = @("Blake3", "Blake2s256", "Blake2b256", "Blake2s128", "Blake2b512")
     "Legacy"      = @("MD5", "SHA1")
     "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160")
     "Ascon"       = @("AsconHash256", "AsconXof128")
@@ -159,22 +159,21 @@ switch ($Project) {
     }
 }
 
-# Resolve family to benchmark classes
+# Resolve family to benchmark classes and build filter patterns
 $benchmarkClasses = @()
+$filterPatterns = @()
 if ($Project -eq "Cryptography" -and $Family) {
     if ($GroupAliases.ContainsKey($Family)) {
-        # Expand group alias to individual benchmarks
         foreach ($alg in $GroupAliases[$Family]) {
             $benchmarkClasses += $AlgorithmBenchmarkMap[$alg]
         }
     } elseif ($AlgorithmBenchmarkMap.ContainsKey($Family)) {
-        # Single algorithm
         $benchmarkClasses += $AlgorithmBenchmarkMap[$Family]
     }
 
     if ($benchmarkClasses.Count -gt 0) {
-        # Build filter for multiple benchmark classes
-        $Filter = ($benchmarkClasses | ForEach-Object { "*$_*" }) -join "|"
+        # Build filter patterns (one per category)
+        $filterPatterns = $benchmarkClasses | ForEach-Object { "*$_*" }
     }
 }
 
@@ -231,7 +230,7 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
     Write-Host "  -Family KMAC       runs: Kmac128, Kmac256"
-    Write-Host "  -Family All        runs: AllHashersAllSizesBenchmark (all algorithms in one table)"
+    Write-Host "  -Family All        runs: All Hash benchmarks"
     Write-Host ""
 }
 
@@ -253,8 +252,17 @@ $dotnetArgs = @(
 if ($List) {
     $dotnetArgs += "--list"
 } else {
-    $dotnetArgs += "--filter", $Filter
-    $dotnetArgs += "--runtimes", $Runtimes
+    # Add filter patterns - multiple patterns are space-separated after --filter
+    $dotnetArgs += "--filter"
+    if ($filterPatterns.Count -gt 0) {
+        foreach ($pattern in $filterPatterns) {
+            $dotnetArgs += $pattern
+        }
+    } else {
+        $dotnetArgs += $Filter
+    }
+    $dotnetArgs += "--runtimes"
+    $dotnetArgs += $Runtimes
 }
 
 # Add any extra arguments

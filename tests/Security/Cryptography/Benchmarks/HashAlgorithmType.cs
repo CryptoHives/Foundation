@@ -322,16 +322,4 @@ public sealed class HashAlgorithmType : IFormattable
 
     #endregion
 
-    #region Aggregate - AllHashers Only (no overlap)
-
-    /// <summary>
-    /// All supported hash algorithms from the registry suitable for benchmarking.
-    /// </summary>
-    /// <remarks>
-    /// Excludes implementations marked with <see cref="HashAlgorithmRegistry.HashImplementation.ExcludeFromBenchmark"/>.
-    /// </remarks>
-    public static IEnumerable<HashAlgorithmType> AllHashers()
-        => HashAlgorithmRegistry.Benchmarkable.Select(FromImplementation);
-
-    #endregion
 }
