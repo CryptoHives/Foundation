@@ -172,6 +172,73 @@ byte[] mac = cmac.Hash;
 
 ---
 
+## Poly1305
+
+Poly1305 is a fast one-time authenticator designed by Daniel J. Bernstein, defined in RFC 8439.
+
+### Class Declaration
+
+```csharp
+public sealed class Poly1305 : HashAlgorithm
+```
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Security | One-time (key must never be reused) |
+| Output Size | 128 bits (16 bytes) |
+| Key Size | Exactly 32 bytes |
+| Block Size | 16 bytes |
+
+### Constructor
+
+```csharp
+public Poly1305(byte[] key)
+```
+
+**Parameters:**
+- `key` - The 32-byte secret key (must be unique per message)
+
+### Factory Method
+
+```csharp
+public static Poly1305 Create(byte[] key)
+```
+
+### Usage Examples
+
+```csharp
+// Generate a unique key for each message (CRITICAL: never reuse keys!)
+byte[] key = new byte[32];
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
+
+using var poly = Poly1305.Create(key);
+byte[] tag = poly.ComputeHash(message);
+```
+
+### Important Security Notes
+
+> ⚠️ **Warning:** Poly1305 is a **one-time authenticator**. The key must **never** be reused for different messages. Reusing a key completely breaks the security of Poly1305.
+
+Poly1305 is typically used in combination with a stream cipher (like ChaCha20) that generates a unique key for each message. See the ChaCha20-Poly1305 AEAD construction in RFC 8439.
+
+### Incremental Usage
+
+```csharp
+using var poly = Poly1305.Create(key);
+
+// Process data in chunks
+poly.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
+poly.TransformBlock(chunk2, 0, chunk2.Length, null, 0);
+poly.TransformFinalBlock(chunk3, 0, chunk3.Length);
+
+byte[] tag = poly.Hash;
+```
+
+---
+
 ## KMAC128
 
 KMAC128 is the Keccak Message Authentication Code with 128-bit security, defined in NIST SP 800-185.
@@ -401,6 +468,7 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 | HMAC-SHA-256 | 128 bits | Most common, RFC 2104 |
 | KMAC256 | 256 bits | Highest security, NIST approved |
 | KMAC128 | 128 bits | Good security, NIST approved |
+| Poly1305 | One-time | RFC 8439, must not reuse keys |
 | CMAC (AES) | 64 bits | NIST approved, block cipher based |
 | BLAKE3 keyed | 128 bits | High performance |
 | BLAKE2b keyed | Up to 256 bits | Depends on key/output size |
@@ -410,6 +478,7 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 
 | Algorithm | Relative Speed | Best For |
 |-----------|----------------|----------|
+| Poly1305 | Fastest | AEAD constructions (with ChaCha20) |
 | BLAKE3 keyed | Fastest | High-throughput applications |
 | BLAKE2b keyed | Very fast | General purpose on 64-bit |
 | CMAC (AES) | Very fast | Hardware-accelerated AES systems |
@@ -421,15 +490,16 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 
 ### Feature Comparison
 
-| Feature | HMAC | CMAC | KMAC | BLAKE2 | BLAKE3 |
-|---------|------|------|------|--------|--------|
-| Variable output | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Customization string | ❌ | ❌ | ✅ | ❌ | ❌ |
-| NIST approved | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Key derivation | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Arbitrary key size | ✅ | ❌ | ✅ | ❌ | ❌ |
-| RFC standard | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Uses block cipher | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Feature | HMAC | CMAC | Poly1305 | KMAC | BLAKE2 | BLAKE3 |
+|---------|------|------|----------|------|--------|--------|
+| Variable output | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Customization string | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| NIST approved | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Key derivation | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Arbitrary key size | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| RFC standard | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Uses block cipher | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| One-time key required | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 
 
 ---
