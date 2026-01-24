@@ -34,7 +34,6 @@ public sealed class Kmac256 : KeccakCore
 
     private static readonly byte[] KmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
 
-    // Removed: _state, _buffer, _bufferLength
     private readonly int _outputBytes;
     private readonly byte[] _key;
     private readonly byte[] _customization;

@@ -264,31 +264,26 @@ public static class HashAlgorithmRegistry
 
         // SHA-384
         list.Add(new HashImplementation("SHA-384", "OS", 384, SHA384.Create, Source.OS));
-        list.Add(new HashImplementation("SHA-384", "Managed", 384, CH.SHA384.Create, Source.Managed));
+        list.Add(new("SHA-384", "Managed", 384, () => CH.SHA384.Create(), Source.Managed));
         list.Add(new("SHA-384", "BouncyCastle", 384,
             () => new BouncyCastleHashAdapter(new BC.Sha384Digest()), Source.BouncyCastle));
 
         // SHA-512
         list.Add(new HashImplementation("SHA-512", "OS", 512, SHA512.Create, Source.OS));
-        var sha512Simd = CH.SHA512.SimdSupport;
-        if ((sha512Simd & CH.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new("SHA-512", "AVX2", 512,
-                () => CH.SHA512.Create(CH.SimdSupport.Avx2), Source.Simd,
-                () => (CH.SHA512.SimdSupport & CH.SimdSupport.Avx2) != 0));
-        }
         list.Add(new("SHA-512", "Managed", 512,
-            () => CH.SHA512.Create(CH.SimdSupport.None), Source.Managed));
+            () => CH.SHA512.Create(), Source.Managed));
         list.Add(new("SHA-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Sha512Digest()), Source.BouncyCastle));
 
         // SHA-512/224
-        list.Add(new HashImplementation("SHA-512/224", "Managed", 224, CH.SHA512_224.Create, Source.Managed));
+        list.Add(new("SHA-512/224", "Managed", 224,
+            () => CH.SHA512_224.Create(), Source.Managed));
         list.Add(new("SHA-512/224", "BouncyCastle", 224,
             () => new BouncyCastleHashAdapter(new BC.Sha512tDigest(224)), Source.BouncyCastle));
 
         // SHA-512/256
-        list.Add(new HashImplementation("SHA-512/256", "Managed", 256, CH.SHA512_256.Create, Source.Managed));
+        list.Add(new("SHA-512/256", "Managed", 256,
+            () => CH.SHA512_256.Create(), Source.Managed));
         list.Add(new("SHA-512/256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Sha512tDigest(256)), Source.BouncyCastle));
     }
