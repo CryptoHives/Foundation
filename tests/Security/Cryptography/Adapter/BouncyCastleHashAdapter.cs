@@ -226,6 +226,61 @@ internal sealed class BouncyCastleKmacAdapter : HashAlgorithm
     }
 }
 
+/// <summary>
+/// Wraps a BouncyCastle <see cref="IXof"/> (extendable output function) as a <see cref="HashAlgorithm"/>.
+/// </summary>
+/// <remarks>
+/// This adapter allows any BouncyCastle XOF implementations (Ascon-Xof, etc.) to be used interchangeably
+/// with .NET <see cref="HashAlgorithm"/> implementations in tests.
+/// </remarks>
+internal sealed class BouncyCastleGenericXofAdapter : HashAlgorithm
+{
+    private readonly IXof _xof;
+    private readonly int _outputBytes;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BouncyCastleGenericXofAdapter"/> class.
+    /// </summary>
+    /// <param name="xof">The BouncyCastle XOF to wrap.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    public BouncyCastleGenericXofAdapter(IXof xof, int outputBytes)
+    {
+        _xof = xof ?? throw new ArgumentNullException(nameof(xof));
+        _outputBytes = outputBytes;
+        HashSizeValue = outputBytes * 8;
+    }
+
+    /// <inheritdoc/>
+    public override void Initialize()
+    {
+        _xof.Reset();
+    }
+
+    /// <inheritdoc/>
+    protected override void HashCore(byte[] array, int ibStart, int cbSize)
+    {
+        _xof.BlockUpdate(array, ibStart, cbSize);
+    }
+
+    /// <inheritdoc/>
+    protected override byte[] HashFinal()
+    {
+        byte[] hash = new byte[_outputBytes];
+        _xof.OutputFinal(hash, 0, _outputBytes);
+        return hash;
+    }
+
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _xof.Reset();
+        }
+        base.Dispose(disposing);
+    }
+}
+
 // Note: BouncyCastle 2.6.2 does not include KangarooTwelve (K12).
 // Tests use XKCP reference test vectors for verification.
 

@@ -14,6 +14,8 @@ using System.Runtime.Intrinsics.X86;
 #endif
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
+using BCAsconHash256 = Org.BouncyCastle.Crypto.Digests.AsconHash256;
+using BCAsconXof128 = Org.BouncyCastle.Crypto.Digests.AsconXof128;
 using System.Runtime.CompilerServices;
 using Cryptography.Tests.Adapter;
 
@@ -394,6 +396,16 @@ public sealed class HashAlgorithmType : IFormattable
 
     #endregion
 
+    #region Ascon (NIST SP 800-232)
+
+    public static readonly HashAlgorithmType AsconHash256_Managed = new("Ascon-Hash256", CH.AsconHash256.Create);
+    public static readonly HashAlgorithmType AsconHash256_Bouncy = new("Ascon-Hash256", () => new BouncyCastleHashAdapter(new BCAsconHash256()));
+
+    public static readonly HashAlgorithmType AsconXof128_Managed = new("Ascon-XOF128", () => CH.AsconXof128.Create(32));
+    public static readonly HashAlgorithmType AsconXof128_Bouncy = new("Ascon-XOF128", () => new BouncyCastleGenericXofAdapter(new BCAsconXof128(), 32));
+
+    #endregion
+
     #region KMAC (Keyed Message Authentication Code)
 
     // Shared key for KMAC benchmarks (32 bytes)
@@ -465,6 +477,8 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Whirlpool_Managed;
         yield return Streebog256_Managed;
         yield return Streebog512_Managed;
+        yield return AsconHash256_Managed;
+        yield return AsconXof128_Managed;
         yield return Kmac128_Managed;
         yield return Kmac256_Managed;
     }
@@ -678,6 +692,12 @@ public sealed class HashAlgorithmType : IFormattable
         yield return Streebog512_Managed;
         yield return Streebog512_Bouncy;
         yield return Streebog512_OpenGost;
+
+        // Ascon (NIST SP 800-232)
+        yield return AsconHash256_Managed;
+        yield return AsconHash256_Bouncy;
+        yield return AsconXof128_Managed;
+        yield return AsconXof128_Bouncy;
 
         // KMAC (OS-level - only yield if supported)
 #if NET9_0_OR_GREATER

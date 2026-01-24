@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CS0618
+
 namespace Cryptography.Tests.Hash;
 
 using Cryptography.Tests.Adapter;
@@ -10,6 +12,8 @@ using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
+using BCAsconHash256 = Org.BouncyCastle.Crypto.Digests.AsconHash256;
+using BCAsconXof128 = Org.BouncyCastle.Crypto.Digests.AsconXof128;
 
 /// <summary>
 /// Represents a factory for creating hash algorithm instances for testing.
@@ -1393,6 +1397,57 @@ public static class TurboShake256Implementations
 }
 
 #endregion
+
+#region Ascon (NIST SP 800-232)
+
+/// <summary>
+/// Provides test case sources for Ascon-Hash256 implementations.
+/// </summary>
+public static class AsconHash256Implementations
+{
+    /// <summary>
+    /// Gets all available Ascon-Hash256 implementations for testing.
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "Ascon-Hash256",
+                () => CH.AsconHash256.Create());
+
+            yield return new HashAlgorithmFactory(
+                "Ascon-Hash256 (BouncyCastle)",
+                () => new BouncyCastleHashAdapter(new BCAsconHash256()));
+        }
+    }
+}
+
+/// <summary>
+/// Provides test case sources for Ascon-XOF128 implementations (32-byte output).
+/// </summary>
+public static class AsconXof128Implementations
+{
+    /// <summary>
+    /// Gets all available Ascon-XOF128 implementations for testing (32-byte output).
+    /// </summary>
+    public static IEnumerable All
+    {
+        get
+        {
+            yield return new HashAlgorithmFactory(
+                "Ascon-XOF128",
+                () => CH.AsconXof128.Create(32));
+
+            yield return new HashAlgorithmFactory(
+                "Ascon-XOF128 (BouncyCastle)",
+                () => new BouncyCastleGenericXofAdapter(new BCAsconXof128(), 32));
+        }
+    }
+}
+
+#endregion
+
 
 
 
