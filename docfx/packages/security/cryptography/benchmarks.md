@@ -177,7 +177,11 @@ This page collects the BenchmarkDotNet measurements for every hash implementatio
 
 ### KMAC
 
-[!INCLUDE[](benchmarks/kmac.md)]
+#### KMAC128
+[!INCLUDE[](benchmarks/kmac128.md)]
+
+#### KMAC256
+[!INCLUDE[](benchmarks/kmac256.md)]
 
 ## See also
 

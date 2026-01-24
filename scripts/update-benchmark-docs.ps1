@@ -110,7 +110,8 @@ $packageConfigurations = @{
             @{ Source = "AsconXof128Benchmark-report.md"; Target = "asconxof128.md" }
 
             # KMAC
-            @{ Source = "KmacBenchmark-report.md"; Target = "kmac.md" }
+            @{ Source = "Kmac128Benchmark-report.md"; Target = "kmac128.md" }
+            @{ Source = "Kmac256Benchmark-report.md"; Target = "kmac256.md" }
         )
     }
 }
