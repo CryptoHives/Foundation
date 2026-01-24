@@ -239,6 +239,81 @@ byte[] tag = poly.Hash;
 
 ---
 
+## GMAC
+
+GMAC (Galois Message Authentication Code) is the authentication-only variant of GCM mode, defined in NIST SP 800-38D.
+
+### Class Declaration
+
+```csharp
+public sealed class Gmac : HashAlgorithm
+```
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Security | 128 bits (with proper nonce management) |
+| Output Size | 128 bits (16 bytes) |
+| Key Size | 16, 24, or 32 bytes (AES-128/192/256) |
+| Nonce Size | Typically 12 bytes (other sizes supported) |
+| Block Size | 16 bytes |
+
+### Constructor
+
+```csharp
+public Gmac(byte[] key, byte[] nonce)
+```
+
+**Parameters:**
+- `key` - The secret key (16, 24, or 32 bytes for AES-128, AES-192, or AES-256)
+- `nonce` - The nonce/IV (typically 12 bytes, must be unique per message)
+
+### Factory Methods
+
+```csharp
+public static Gmac CreateAes128(byte[] key, byte[] nonce)
+public static Gmac CreateAes192(byte[] key, byte[] nonce)
+public static Gmac CreateAes256(byte[] key, byte[] nonce)
+public static Gmac Create(byte[] key, byte[] nonce)
+```
+
+### Usage Examples
+
+```csharp
+byte[] key = new byte[16];
+RandomNumberGenerator.Fill(key);
+
+// Generate a unique nonce for each message (CRITICAL!)
+byte[] nonce = new byte[12];
+RandomNumberGenerator.Fill(nonce);
+
+byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
+
+// AES-128-GMAC
+using var gmac = Gmac.CreateAes128(key, nonce);
+byte[] tag = gmac.ComputeHash(message);
+```
+
+### Important Security Notes
+
+> ⚠️ **Warning:** The nonce must be **unique** for each message authenticated with the same key. Reusing a nonce completely compromises the security of GMAC and can allow forgery attacks.
+
+### Incremental Usage
+
+```csharp
+using var gmac = Gmac.CreateAes128(key, nonce);
+
+// Process data in chunks
+gmac.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
+gmac.TransformBlock(chunk2, 0, chunk2.Length, null, 0);
+gmac.TransformFinalBlock(chunk3, 0, chunk3.Length);
+
+byte[] tag = gmac.Hash;
+```
+
+---
+
 ## KMAC128
 
 KMAC128 is the Keccak Message Authentication Code with 128-bit security, defined in NIST SP 800-185.
@@ -468,6 +543,7 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 | HMAC-SHA-256 | 128 bits | Most common, RFC 2104 |
 | KMAC256 | 256 bits | Highest security, NIST approved |
 | KMAC128 | 128 bits | Good security, NIST approved |
+| GMAC (AES) | 128 bits | NIST approved, requires unique nonce |
 | Poly1305 | One-time | RFC 8439, must not reuse keys |
 | CMAC (AES) | 64 bits | NIST approved, block cipher based |
 | BLAKE3 keyed | 128 bits | High performance |
@@ -480,6 +556,7 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 |-----------|----------------|----------|
 | Poly1305 | Fastest | AEAD constructions (with ChaCha20) |
 | BLAKE3 keyed | Fastest | High-throughput applications |
+| GMAC (AES) | Very fast | AES-GCM authentication, HW accel |
 | BLAKE2b keyed | Very fast | General purpose on 64-bit |
 | CMAC (AES) | Very fast | Hardware-accelerated AES systems |
 | HMAC-SHA-256 | Fast | Wide compatibility |
@@ -490,16 +567,17 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 
 ### Feature Comparison
 
-| Feature | HMAC | CMAC | Poly1305 | KMAC | BLAKE2 | BLAKE3 |
-|---------|------|------|----------|------|--------|--------|
-| Variable output | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Customization string | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| NIST approved | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Key derivation | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Arbitrary key size | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| RFC standard | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Uses block cipher | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| One-time key required | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Feature | HMAC | CMAC | GMAC | Poly1305 | KMAC | BLAKE2 | BLAKE3 |
+|---------|------|------|------|----------|------|--------|--------|
+| Variable output | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Customization string | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| NIST approved | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Key derivation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Arbitrary key size | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| RFC standard | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Uses block cipher | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Requires unique nonce | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| One-time key required | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 
 
 ---
