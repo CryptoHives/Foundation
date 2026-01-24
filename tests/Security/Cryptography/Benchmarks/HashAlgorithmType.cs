@@ -103,7 +103,7 @@ public sealed class HashAlgorithmType : IFormattable
 
     private static IEnumerable<HashAlgorithmType> FromFamily(string family)
         => HashAlgorithmRegistry.ByFamily(family)
-            .Where(h => h.IsSupported)
+            .Where(h => h.IsSupported && !h.ExcludeFromBenchmark)
             .Select(FromImplementation);
 
     #endregion
@@ -325,10 +325,13 @@ public sealed class HashAlgorithmType : IFormattable
     #region Aggregate - AllHashers Only (no overlap)
 
     /// <summary>
-    /// All supported hash algorithms from the registry (for AllHashersAllSizesBenchmark only).
+    /// All supported hash algorithms from the registry suitable for benchmarking.
     /// </summary>
+    /// <remarks>
+    /// Excludes implementations marked with <see cref="HashAlgorithmRegistry.HashImplementation.ExcludeFromBenchmark"/>.
+    /// </remarks>
     public static IEnumerable<HashAlgorithmType> AllHashers()
-        => HashAlgorithmRegistry.Supported.Select(FromImplementation);
+        => HashAlgorithmRegistry.Benchmarkable.Select(FromImplementation);
 
     #endregion
 }

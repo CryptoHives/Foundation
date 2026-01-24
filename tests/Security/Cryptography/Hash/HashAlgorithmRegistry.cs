@@ -59,13 +59,15 @@ public static class HashAlgorithmRegistry
         /// <param name="factory">Factory function to create the hash algorithm.</param>
         /// <param name="source">Implementation source type.</param>
         /// <param name="supportCheck">Optional function to check if implementation is supported at runtime.</param>
+        /// <param name="excludeFromBenchmark">Whether to exclude this implementation from benchmarks.</param>
         public HashImplementation(
             string algorithmFamily,
             string variant,
             int hashSizeBits,
             Func<HashAlgorithm> factory,
             Source source,
-            Func<bool>? supportCheck = null)
+            Func<bool>? supportCheck = null,
+            bool excludeFromBenchmark = false)
         {
             AlgorithmFamily = algorithmFamily;
             Variant = variant;
@@ -73,6 +75,7 @@ public static class HashAlgorithmRegistry
             Factory = factory;
             Source = source;
             SupportCheck = supportCheck;
+            ExcludeFromBenchmark = excludeFromBenchmark;
         }
 
         /// <summary>
@@ -106,6 +109,15 @@ public static class HashAlgorithmRegistry
         public Func<bool>? SupportCheck { get; }
 
         /// <summary>
+        /// Gets whether this implementation should be excluded from benchmarks.
+        /// </summary>
+        /// <remarks>
+        /// Some implementations have design limitations that make them unsuitable for benchmarking,
+        /// such as requiring new instance allocation per hash operation due to non-resettable state.
+        /// </remarks>
+        public bool ExcludeFromBenchmark { get; }
+
+        /// <summary>
         /// Gets the display name combining family and variant.
         /// </summary>
         public string Name => string.IsNullOrEmpty(Variant)
@@ -137,6 +149,12 @@ public static class HashAlgorithmRegistry
     /// Gets all supported implementations (filters out unsupported at runtime).
     /// </summary>
     public static IEnumerable<HashImplementation> Supported => All.Where(h => h.IsSupported);
+
+    /// <summary>
+    /// Gets all supported implementations that are suitable for benchmarking.
+    /// </summary>
+    public static IEnumerable<HashImplementation> Benchmarkable
+        => All.Where(h => h.IsSupported && !h.ExcludeFromBenchmark);
 
     /// <summary>
     /// Gets implementations for a specific algorithm family.
@@ -425,7 +443,8 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(512)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
-            () => new HashifyNetBlake2bAdapter(512), Source.HashifyNet));
+            () => new HashifyNetBlake2bAdapter(512), Source.HashifyNet,
+            excludeFromBenchmark: true));
 
         // BLAKE2b-256
         if ((blake2bSimd & CH.SimdSupport.Avx2) != 0)
@@ -439,7 +458,8 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
-            () => new HashifyNetBlake2bAdapter(256), Source.HashifyNet));
+            () => new HashifyNetBlake2bAdapter(256), Source.HashifyNet,
+            excludeFromBenchmark: true));
 
         // BLAKE2s-256
         var blake2sSimd = CH.Blake2s.SimdSupport;
