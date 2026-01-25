@@ -14,11 +14,4 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Common\GlobalSuppressions.cs" Link="Properties\GlobalSuppressions.cs" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <!-- Disable strong name signing for test projects -->
-    <!-- Test dependencies (NUnit, BenchmarkDotNet, BouncyCastle, etc.) are not strong-named -->
-    <SignAssembly>false</SignAssembly>
-    <AssemblyOriginatorKeyFile></AssemblyOriginatorKeyFile>
-  </PropertyGroup>
 </Project>
