@@ -50,12 +50,6 @@ public sealed class Ripemd160 : HashAlgorithm
     private const uint H3 = 0x10325476;
     private const uint H4 = 0xC3D2E1F0;
 
-    // Left line constants
-    private static readonly uint[] KL = [0x00000000, 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xA953FD4E];
-
-    // Right line constants
-    private static readonly uint[] KR = [0x50A28BE6, 0x5C4DD124, 0x6D703EF3, 0x7A6D76E9, 0x00000000];
-
     // Left line message schedule
     private static readonly int[] RL =
     [
@@ -227,31 +221,64 @@ public sealed class Ripemd160 : HashAlgorithm
             uint al = _h0, bl = _h1, cl = _h2, dl = _h3, el = _h4;
             uint ar = _h0, br = _h1, cr = _h2, dr = _h3, er = _h4;
 
-            // 80 rounds
-            for (int j = 0; j < 80; j++)
+            // Round 0 (j = 0-15): FL = x^y^z, FR = x^(y|~z)
+            for (int j = 0; j < 16; j++)
             {
-                int round = j / 16;
-                uint fl, fr, tl, tr;
-
-                // Left line
-                fl = F(round, bl, cl, dl);
-                tl = al + fl + x[RL[j]] + KL[round];
+                uint tl = al + (bl ^ cl ^ dl) + x[RL[j]] + 0x00000000;
                 tl = BitOperations.RotateLeft(tl, SL[j]) + el;
-                al = el;
-                el = dl;
-                dl = BitOperations.RotateLeft(cl, 10);
-                cl = bl;
-                bl = tl;
+                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
 
-                // Right line
-                fr = F(4 - round, br, cr, dr);
-                tr = ar + fr + x[RR[j]] + KR[round];
+                uint tr = ar + (br ^ (cr | ~dr)) + x[RR[j]] + 0x50A28BE6;
                 tr = BitOperations.RotateLeft(tr, SR[j]) + er;
-                ar = er;
-                er = dr;
-                dr = BitOperations.RotateLeft(cr, 10);
-                cr = br;
-                br = tr;
+                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
+            }
+
+            // Round 1 (j = 16-31): FL = (x&y)|(~x&z), FR = (x&z)|(y&~z)
+            for (int j = 16; j < 32; j++)
+            {
+                uint tl = al + ((bl & cl) | (~bl & dl)) + x[RL[j]] + 0x5A827999;
+                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
+                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
+
+                uint tr = ar + ((br & dr) | (cr & ~dr)) + x[RR[j]] + 0x5C4DD124;
+                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
+                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
+            }
+
+            // Round 2 (j = 32-47): FL = (x|~y)^z, FR = (x|~y)^z
+            for (int j = 32; j < 48; j++)
+            {
+                uint tl = al + ((bl | ~cl) ^ dl) + x[RL[j]] + 0x6ED9EBA1;
+                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
+                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
+
+                uint tr = ar + ((br | ~cr) ^ dr) + x[RR[j]] + 0x6D703EF3;
+                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
+                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
+            }
+
+            // Round 3 (j = 48-63): FL = (x&z)|(y&~z), FR = (x&y)|(~x&z)
+            for (int j = 48; j < 64; j++)
+            {
+                uint tl = al + ((bl & dl) | (cl & ~dl)) + x[RL[j]] + 0x8F1BBCDC;
+                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
+                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
+
+                uint tr = ar + ((br & cr) | (~br & dr)) + x[RR[j]] + 0x7A6D76E9;
+                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
+                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
+            }
+
+            // Round 4 (j = 64-79): FL = x^(y|~z), FR = x^y^z
+            for (int j = 64; j < 80; j++)
+            {
+                uint tl = al + (bl ^ (cl | ~dl)) + x[RL[j]] + 0xA953FD4E;
+                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
+                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
+
+                uint tr = ar + (br ^ cr ^ dr) + x[RR[j]] + 0x00000000;
+                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
+                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
             }
 
             uint t = _h1 + cl + dr;
@@ -261,18 +288,5 @@ public sealed class Ripemd160 : HashAlgorithm
             _h4 = _h0 + bl + cr;
             _h0 = t;
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint F(int round, uint x, uint y, uint z)
-    {
-        return round switch {
-            0 => x ^ y ^ z,
-            1 => (x & y) | (~x & z),
-            2 => (x | ~y) ^ z,
-            3 => (x & z) | (y & ~z),
-            4 => x ^ (y | ~z),
-            _ => 0
-        };
     }
 }
