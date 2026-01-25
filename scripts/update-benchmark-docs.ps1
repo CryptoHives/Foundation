@@ -258,11 +258,12 @@ foreach ($mapping in $benchmarkMappings) {
         $tableContent = Normalize-BenchmarkContent -Content $tableContent
         $destFile = Join-Path $DestDir $targetName
 
-        # Write the stripped content
+        # Write the stripped content as UTF-8 with BOM
         if ($DryRun) {
-            Write-Host "  [DRY RUN] Set-Content -Path $destFile -Value $tableContent -NoNewline" -ForegroundColor Yellow
+            Write-Host "  [DRY RUN] Set-Content -Path $destFile (UTF-8 with BOM)" -ForegroundColor Yellow
         } else {
-            Set-Content -Path $destFile -Value $tableContent -NoNewline
+            $Utf8Bom = New-Object System.Text.UTF8Encoding $true
+            [System.IO.File]::WriteAllText($destFile, $tableContent, $Utf8Bom)
             Write-Host "  [OK] $targetName" -ForegroundColor Green
         }
         $copied++
@@ -287,9 +288,10 @@ $machineSpec
 > **Note:** Results are machine-specific and may vary between systems. Run benchmarks locally for your specific hardware.
 "@
     if ($DryRun) {
-        Write-Host "  [DRY RUN] Set-Content -Path $machineSpecFile -Value $machineSpecContent" -ForegroundColor Yellow
+        Write-Host "  [DRY RUN] Set-Content -Path $machineSpecFile (UTF-8 with BOM)" -ForegroundColor Yellow
     } else {
-        Set-Content -Path $machineSpecFile -Value $machineSpecContent
+        $Utf8Bom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($machineSpecFile, $machineSpecContent, $Utf8Bom)
         Write-Host ""
         Write-Host "  [OK] machine-spec.md (extracted machine specification)" -ForegroundColor Green
     }
