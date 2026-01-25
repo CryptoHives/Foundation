@@ -9,10 +9,10 @@
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <Description>CryptoHives Security Cryptography Library</Description>
     <!-- set to true when experimental Nuget package is ready to ship-->
-    <IsPackable>false</IsPackable>
+    <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Cryptography Hash MD5 SHA1 SHA2 SHA3 BLAKE2 BLAKE3 SHAKE CSHAKE SM3 Keccak Streebog Whirlpool Ripemd</PackageTags>
+    <PackageTags>$(PackageTags) Cryptography Hash Ascon SHA2 SHA3 BLAKE SHAKE CSHAKE SM3 Keccak Streebog Whirlpool Ripemd</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project>
   <!-- Import root Directory.Build.props first -->
@@ -14,4 +14,11 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Common\GlobalSuppressions.cs" Link="Properties\GlobalSuppressions.cs" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Disable strong name signing for test projects -->
+    <!-- Test dependencies (NUnit, BenchmarkDotNet, BouncyCastle, etc.) are not strong-named -->
+    <SignAssembly>false</SignAssembly>
+    <AssemblyOriginatorKeyFile></AssemblyOriginatorKeyFile>
+  </PropertyGroup>
 </Project>
