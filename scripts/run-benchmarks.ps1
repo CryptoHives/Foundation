@@ -127,8 +127,8 @@ $AlgorithmBenchmarkMap = @{
 
 # Group aliases expand to multiple individual benchmarks
 $GroupAliases = @{
-    "SHA2"        = @("SHA2")
-    "SHA3"        = @("SHA3")
+    "SHA2"        = @("SHA224", "SHA256", "SHA384", "SHA512", "SHA512_224", "SHA512_256")
+    "SHA3"        = @("SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512")
     "Keccak"      = @("Keccak")
     "SHAKE"       = @("Shake128", "Shake256")
     "cSHAKE"      = @("CShake128", "CShake256")
