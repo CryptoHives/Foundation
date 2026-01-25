@@ -4,9 +4,11 @@
 namespace Cryptography.Tests.Benchmarks;
 
 using BenchmarkDotNet.Attributes;
+using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using CHKmac128 = CryptoHives.Foundation.Security.Cryptography.Mac.Kmac128;
@@ -16,95 +18,78 @@ using CHKmac256 = CryptoHives.Foundation.Security.Cryptography.Mac.Kmac256;
 /// Benchmarks for KMAC128 and KMAC256 implementations.
 /// Compares CryptoHives managed implementation against BouncyCastle and .NET 9+ native.
 /// </summary>
-[MemoryDiagnoser]
-[MinColumn, MaxColumn, MeanColumn, MedianColumn]
-[Config(typeof(KmacConfig))]
-public class KmacBenchmark
+[TestFixture]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[NonParallelizable]
+[BenchmarkCategory("KMac", "KMac128")]
+public class Kmac128Benchmark
 {
     private static readonly Random RandomInstance = new(42);
 
+    [ParamsSource(nameof(Sizes))]
+    public DataSize TestDataSize { get; set; } = DataSize.K8;
+
+    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
+
+    public Kmac128Benchmark() => TestDataSize = DataSize.K8;
+
     private byte[] _key = null!;
     private byte[] _data = null!;
+    private byte[] _result = null!;
     private byte[] _customization = null!;
     private string _customizationString = null!;
+    private CHKmac128 _chkmac128 = null!;
+    private KMac _bckmac128 = null!;
 
-    [Params(64, 1024, 4096, 65536)]
-    public int DataSize { get; set; }
-
-    [GlobalSetup]
+    [GlobalSetup, OneTimeSetUp]
     public void Setup()
     {
         _key = new byte[32];
         RandomInstance.NextBytes(_key);
 
-        _data = new byte[DataSize];
+        _data = new byte[TestDataSize.Bytes];
         RandomInstance.NextBytes(_data);
+
+        _result = new byte[64];
 
         _customizationString = "Benchmark";
         _customization = Encoding.UTF8.GetBytes(_customizationString);
+
+        _bckmac128 = new KMac(128, _customization);
+        _bckmac128.Init(new KeyParameter(_key));
+
+        _chkmac128 = CHKmac128.Create(_key, 32, _customizationString);
+    }
+
+    [GlobalCleanup, OneTimeTearDown]
+    public void Teardown()
+    {
+        _chkmac128?.Dispose();
     }
 
     #region KMAC128 Benchmarks
 
-    [Benchmark(Description = "KMAC128 CryptoHives")]
-    [BenchmarkCategory("KMAC128")]
+    [Benchmark]
     public byte[] Kmac128_CryptoHives()
     {
         using var kmac = CHKmac128.Create(_key, 32, _customizationString);
         return kmac.ComputeHash(_data);
     }
 
-    [Benchmark(Description = "KMAC128 BouncyCastle")]
-    [BenchmarkCategory("KMAC128")]
-    public byte[] Kmac128_BouncyCastle()
+    [Benchmark]
+    public void Kmac128_BouncyCastle()
     {
-        var kmac = new KMac(128, _customization);
-        kmac.Init(new KeyParameter(_key));
-        kmac.BlockUpdate(_data, 0, _data.Length);
-        byte[] result = new byte[32];
-        kmac.DoFinal(result, 0);
-        return result;
+        _bckmac128.BlockUpdate(_data, 0, _data.Length);
+        _bckmac128.DoFinal(_result, 0);
     }
 
 #if NET9_0_OR_GREATER
-    [Benchmark(Description = "KMAC128 .NET")]
-    [BenchmarkCategory("KMAC128")]
-    public byte[] Kmac128_DotNet()
+    [Benchmark]
+    public void Kmac128_DotNet()
     {
-        return System.Security.Cryptography.Kmac128.HashData(_key, _data, 32, _customization);
-    }
-#endif
-
-    #endregion
-
-    #region KMAC256 Benchmarks
-
-    [Benchmark(Description = "KMAC256 CryptoHives")]
-    [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_CryptoHives()
-    {
-        using var kmac = CHKmac256.Create(_key, 64, _customizationString);
-        return kmac.ComputeHash(_data);
-    }
-
-    [Benchmark(Description = "KMAC256 BouncyCastle")]
-    [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_BouncyCastle()
-    {
-        var kmac = new KMac(256, _customization);
-        kmac.Init(new KeyParameter(_key));
-        kmac.BlockUpdate(_data, 0, _data.Length);
-        byte[] result = new byte[64];
-        kmac.DoFinal(result, 0);
-        return result;
-    }
-
-#if NET9_0_OR_GREATER
-    [Benchmark(Description = "KMAC256 .NET")]
-    [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_DotNet()
-    {
-        return System.Security.Cryptography.Kmac256.HashData(_key, _data, 64, _customization);
+        Kmac128.HashData(_key, _data, _result, _customization);
     }
 #endif
 
@@ -112,11 +97,95 @@ public class KmacBenchmark
 }
 
 /// <summary>
+/// Benchmarks for KMAC256 implementations.
+/// Compares CryptoHives managed implementation against BouncyCastle and .NET 9+ native.
+/// </summary>
+[TestFixture]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[NonParallelizable]
+[BenchmarkCategory("KMac", "KMac256")]
+public class Kmac256Benchmark
+{
+    private static readonly Random RandomInstance = new(42);
+
+    // public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+
+    [ParamsSource(nameof(Sizes))]
+    public DataSize TestDataSize { get; set; } = DataSize.K8;
+
+    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
+
+    public Kmac256Benchmark() => TestDataSize = DataSize.K8;
+
+    private byte[] _key = null!;
+    private byte[] _data = null!;
+    private byte[] _result = null!;
+    private byte[] _customization = null!;
+    private string _customizationString = null!;
+    private CHKmac256 _chkmac256 = null!;
+    private KMac _bckmac256 = null!;
+
+    [GlobalSetup, OneTimeSetUp]
+    public void Setup()
+    {
+        _key = new byte[32];
+        RandomInstance.NextBytes(_key);
+
+        _data = new byte[TestDataSize.Bytes];
+        RandomInstance.NextBytes(_data);
+
+        _result = new byte[64];
+
+        _customizationString = "Benchmark";
+        _customization = Encoding.UTF8.GetBytes(_customizationString);
+
+        _bckmac256 = new KMac(256, _customization);
+        _bckmac256.Init(new KeyParameter(_key));
+
+        _chkmac256 = CHKmac256.Create(_key, 64, _customizationString);
+    }
+
+    [GlobalCleanup, OneTimeTearDown]
+    public void Teardown()
+    {
+        _chkmac256?.Dispose();
+    }
+
+
+    [Benchmark]
+    [BenchmarkCategory("KMAC256")]
+    public void Kmac256_CryptoHives()
+    {
+        using var kmac = CHKmac256.Create(_key, 64, _customizationString);
+        kmac.ComputeHash(_data);
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("KMAC", "KMAC256")]
+    public void Kmac256_BouncyCastle()
+    {
+        _bckmac256.BlockUpdate(_data, 0, _data.Length);
+        _bckmac256.DoFinal(_result, 0);
+    }
+
+#if NET9_0_OR_GREATER
+    [Benchmark]
+    [BenchmarkCategory("KMAC", "KMAC256")]
+    public void Kmac256_DotNet()
+    {
+        Kmac256.HashData(_key, _data, _result, _customization);
+    }
+#endif
+}
+
+/// <summary>
 /// Benchmarks for KMAC with varying output sizes.
 /// </summary>
 [MemoryDiagnoser]
 [MinColumn, MaxColumn, MeanColumn, MedianColumn]
-[Config(typeof(KmacConfig))]
+[Config(typeof(HashConfig))]
 public class KmacOutputSizeBenchmark
 {
     private static readonly Random RandomInstance = new(42);
@@ -221,7 +290,7 @@ public class KmacOutputSizeBenchmark
 /// </summary>
 [MemoryDiagnoser]
 [MinColumn, MaxColumn, MeanColumn, MedianColumn]
-[Config(typeof(KmacConfig))]
+[Config(typeof(HashConfig))]
 public class KmacIncrementalBenchmark
 {
     private static readonly Random RandomInstance = new(42);

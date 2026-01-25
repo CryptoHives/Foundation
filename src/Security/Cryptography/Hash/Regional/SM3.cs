@@ -13,6 +13,11 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of SM3 that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
+/// <para>
 /// SM3 is the Chinese national cryptographic hash standard (GB/T 32905-2016).
 /// It produces a 256-bit (32-byte) hash value.
 /// </para>
@@ -174,48 +179,36 @@ public sealed class SM3 : HashAlgorithm
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
         Span<uint> w = stackalloc uint[68];
-        Span<uint> wp = stackalloc uint[64];
 
         unchecked
         {
-            // Message expansion
+            // Message expansion - load first 16 words
             for (int i = 0; i < 16; i++)
             {
                 w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * 4));
             }
 
+            // Message expansion - compute W[16..67]
             for (int i = 16; i < 68; i++)
             {
                 uint tmp = w[i - 16] ^ w[i - 9] ^ BitOperations.RotateLeft(w[i - 3], 15);
                 w[i] = P1(tmp) ^ BitOperations.RotateLeft(w[i - 13], 7) ^ w[i - 6];
             }
 
-            for (int i = 0; i < 64; i++)
-            {
-                wp[i] = w[i] ^ w[i + 4];
-            }
-
-            // Compression
+            // Compression function
             uint a = _v0, b = _v1, c = _v2, d = _v3;
             uint e = _v4, f = _v5, g = _v6, h = _v7;
 
-            for (int j = 0; j < 64; j++)
+            // Rounds 0-15 use T0_15 and FF0/GG0
+            uint tj = T0_15;
+            for (int j = 0; j < 16; j++)
             {
-                uint tj = (j < 16) ? T0_15 : T16_63;
-                uint ss1 = BitOperations.RotateLeft(BitOperations.RotateLeft(a, 12) + e + BitOperations.RotateLeft(tj, j), 7);
-                uint ss2 = ss1 ^ BitOperations.RotateLeft(a, 12);
-                uint tt1, tt2;
+                uint a12 = BitOperations.RotateLeft(a, 12);
+                uint ss1 = BitOperations.RotateLeft(a12 + e + tj, 7);
+                uint ss2 = ss1 ^ a12;
 
-                if (j < 16)
-                {
-                    tt1 = FF0(a, b, c) + d + ss2 + wp[j];
-                    tt2 = GG0(e, f, g) + h + ss1 + w[j];
-                }
-                else
-                {
-                    tt1 = FF1(a, b, c) + d + ss2 + wp[j];
-                    tt2 = GG1(e, f, g) + h + ss1 + w[j];
-                }
+                uint tt1 = (a ^ b ^ c) + d + ss2 + (w[j] ^ w[j + 4]);
+                uint tt2 = (e ^ f ^ g) + h + ss1 + w[j];
 
                 d = c;
                 c = BitOperations.RotateLeft(b, 9);
@@ -225,6 +218,31 @@ public sealed class SM3 : HashAlgorithm
                 g = BitOperations.RotateLeft(f, 19);
                 f = e;
                 e = P0(tt2);
+
+                tj = BitOperations.RotateLeft(tj, 1);
+            }
+
+            // Rounds 16-63 use T16_63 and FF1/GG1
+            tj = BitOperations.RotateLeft(T16_63, 16);
+            for (int j = 16; j < 64; j++)
+            {
+                uint a12 = BitOperations.RotateLeft(a, 12);
+                uint ss1 = BitOperations.RotateLeft(a12 + e + tj, 7);
+                uint ss2 = ss1 ^ a12;
+
+                uint tt1 = ((a & b) | (a & c) | (b & c)) + d + ss2 + (w[j] ^ w[j + 4]);
+                uint tt2 = ((e & f) | (~e & g)) + h + ss1 + w[j];
+
+                d = c;
+                c = BitOperations.RotateLeft(b, 9);
+                b = a;
+                a = tt1;
+                h = g;
+                g = BitOperations.RotateLeft(f, 19);
+                f = e;
+                e = P0(tt2);
+
+                tj = BitOperations.RotateLeft(tj, 1);
             }
 
             _v0 ^= a;
@@ -237,19 +255,6 @@ public sealed class SM3 : HashAlgorithm
             _v7 ^= h;
         }
     }
-
-    // Boolean functions
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint FF0(uint x, uint y, uint z) => x ^ y ^ z;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint FF1(uint x, uint y, uint z) => (x & y) | (x & z) | (y & z);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint GG0(uint x, uint y, uint z) => x ^ y ^ z;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint GG1(uint x, uint y, uint z) => (x & y) | (~x & z);
 
     // Permutation functions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

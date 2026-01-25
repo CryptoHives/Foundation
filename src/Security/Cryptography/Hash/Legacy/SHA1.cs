@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes the SHA-1 hash for the input data.
@@ -154,6 +155,7 @@ public sealed class SHA1 : HashAlgorithm
         base.Dispose(disposing);
     }
 
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
         unchecked

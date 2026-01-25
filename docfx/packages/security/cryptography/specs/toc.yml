@@ -8,6 +8,8 @@
       href: NIST-FIPS-202.md
     - name: SP 800-185 (cSHAKE, KMAC)
       href: NIST-SP-800-185.md
+    - name: SP 800-232 (Ascon)
+      href: NIST-SP-800-232.md
 - name: Test Vectors
   items:
     - name: SHA-1 (Legacy)

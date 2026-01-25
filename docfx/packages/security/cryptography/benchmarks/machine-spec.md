@@ -1,4 +1,4 @@
-## Machine Specification
+﻿## Machine Specification
 
 The benchmarks were run on the following machine:
 

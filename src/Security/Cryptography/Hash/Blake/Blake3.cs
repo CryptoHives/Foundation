@@ -40,6 +40,11 @@ public enum Blake3Mode
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of BLAKE3 that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
+/// <para>
 /// BLAKE3 is a cryptographic hash function that is much faster than SHA-256 while
 /// maintaining high security. It supports variable output length (XOF mode).
 /// </para>

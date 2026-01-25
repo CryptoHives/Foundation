@@ -12,6 +12,11 @@ using System.Text;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of KMAC256 based on the Keccak sponge
+/// construction. It does not rely on OS or hardware cryptographic APIs, ensuring
+/// deterministic behavior across all platforms and runtimes.
+/// </para>
+/// <para>
 /// KMAC256 is a MAC function based on Keccak (cSHAKE256) defined in NIST SP 800-185.
 /// It provides 256-bit security strength and supports variable-length output.
 /// </para>
@@ -34,7 +39,6 @@ public sealed class Kmac256 : KeccakCore
 
     private static readonly byte[] KmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
 
-    // Removed: _state, _buffer, _bufferLength
     private readonly int _outputBytes;
     private readonly byte[] _key;
     private readonly byte[] _customization;

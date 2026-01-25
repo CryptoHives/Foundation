@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace Cryptography.Tests.Hash;
 
 using NUnit.Framework;
@@ -143,7 +145,7 @@ public class CryptoHivesHashAlgorithmTests
     /// </summary>
     [TestCase("SHA1")]
     [TestCase("SHA-1")]
-#pragma warning disable CS0618 // Type or member is obsolete
+
     public void CreateReturnsSHA1ForLegacy(string name)
     {
         using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
@@ -159,7 +161,6 @@ public class CryptoHivesHashAlgorithmTests
         using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create("MD5");
         Assert.That(hash, Is.InstanceOf<CryptoHivesHash.MD5>());
     }
-#pragma warning restore CS0618
 
     /// <summary>
     /// Test that Create throws for unknown algorithms.
