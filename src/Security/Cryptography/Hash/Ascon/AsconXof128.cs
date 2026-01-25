@@ -12,6 +12,11 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of Ascon-XOF128 that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
+/// <para>
 /// Ascon-XOF128 is defined in NIST SP 800-232.
 /// It is based on the Ascon permutation with 12 rounds and produces variable-length output.
 /// </para>

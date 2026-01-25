@@ -7,9 +7,14 @@ using System;
 using System.Text;
 
 /// <summary>
-/// Computes a customizable SHAKE256 (cSHAKE256) output with a clean-room implementation.
+/// Computes a customizable SHAKE256 (cSHAKE256) output.
 /// </summary>
 /// <remarks>
+/// <para>
+/// This is a fully managed implementation of cSHAKE256 based on the Keccak sponge
+/// construction. It does not rely on OS or hardware cryptographic APIs, ensuring
+/// deterministic behavior across all platforms and runtimes.
+/// </para>
 /// <para>
 /// cSHAKE256 is a customizable variant of SHAKE256 defined in NIST SP 800-185.
 /// It supports function name (N) and customization string (S) parameters for domain separation.

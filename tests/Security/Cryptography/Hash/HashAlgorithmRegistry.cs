@@ -8,11 +8,11 @@
 namespace Cryptography.Tests.Hash;
 
 using Cryptography.Tests.Adapter;
-using BC = Org.BouncyCastle.Crypto.Digests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
+using BC = Org.BouncyCastle.Crypto.Digests;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>

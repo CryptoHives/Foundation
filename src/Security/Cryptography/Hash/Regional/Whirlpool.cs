@@ -14,6 +14,11 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of Whirlpool that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
+/// <para>
 /// Whirlpool is a hash function standardized in ISO/IEC 10118-3:2004.
 /// It produces a 512-bit (64-byte) hash value.
 /// </para>

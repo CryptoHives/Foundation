@@ -13,6 +13,11 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of SM3 that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
+/// <para>
 /// SM3 is the Chinese national cryptographic hash standard (GB/T 32905-2016).
 /// It produces a 256-bit (32-byte) hash value.
 /// </para>

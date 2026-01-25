@@ -7,9 +7,14 @@ using System;
 using System.Text;
 
 /// <summary>
-/// Computes a customizable SHAKE128 (cSHAKE128) output with a clean-room implementation.
+/// Computes a customizable SHAKE128 (cSHAKE128) output.
 /// </summary>
 /// <remarks>
+/// <para>
+/// This is a fully managed implementation of cSHAKE128 based on the Keccak sponge
+/// construction. It does not rely on OS or hardware cryptographic APIs, ensuring
+/// deterministic behavior across all platforms and runtimes.
+/// </para>
 /// <para>
 /// cSHAKE128 is a customizable variant of SHAKE128 defined in NIST SP 800-185.
 /// It supports function name (N) and customization string (S) parameters for domain separation.

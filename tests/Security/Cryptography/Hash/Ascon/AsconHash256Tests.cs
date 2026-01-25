@@ -1,12 +1,12 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Hash.Ascon;
 
 using NUnit.Framework;
 using System.Text;
-using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using BCAsconHash256 = Org.BouncyCastle.Crypto.Digests.AsconHash256;
+using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// Tests for <see cref="CH.AsconHash256"/> algorithm.

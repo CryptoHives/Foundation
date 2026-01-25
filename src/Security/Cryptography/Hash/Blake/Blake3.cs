@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -39,6 +39,11 @@ public enum Blake3Mode
 /// Computes the BLAKE3 hash for the input data.
 /// </summary>
 /// <remarks>
+/// <para>
+/// This is a fully managed implementation of BLAKE3 that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
 /// <para>
 /// BLAKE3 is a cryptographic hash function that is much faster than SHA-256 while
 /// maintaining high security. It supports variable output length (XOF mode).

@@ -16,6 +16,11 @@ using System.Runtime.Intrinsics;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of Streebog that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
+/// <para>
 /// Streebog is the Russian national cryptographic hash standard defined in GOST R 34.11-2012.
 /// It supports output sizes of 256 or 512 bits.
 /// </para>
@@ -431,7 +436,7 @@ public sealed class Streebog : HashAlgorithm
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
+    private static void GN(Span<ulong> h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
         // Load h, n, m as Vector512
         Vector512<ulong> hV = Vector512.Create(h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);

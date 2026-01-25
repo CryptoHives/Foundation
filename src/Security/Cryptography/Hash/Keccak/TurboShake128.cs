@@ -12,6 +12,11 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of TurboSHAKE128 based on the reduced-round
+/// Keccak permutation. It does not rely on OS or hardware cryptographic APIs, ensuring
+/// deterministic behavior across all platforms and runtimes.
+/// </para>
+/// <para>
 /// TurboSHAKE128 is an extendable-output function (XOF) based on a reduced-round
 /// Keccak-p[1600, n_r=12] permutation with 12 rounds instead of 24 used in SHAKE.
 /// It provides 128-bit security strength and is approximately twice as fast as SHAKE128.

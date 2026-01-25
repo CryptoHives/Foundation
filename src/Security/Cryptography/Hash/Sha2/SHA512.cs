@@ -6,7 +6,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 
-
 /// <summary>
 /// Computes the SHA-512 hash for the input data.
 /// </summary>
@@ -15,10 +14,6 @@ using System.Buffers.Binary;
 /// This is a fully managed implementation of SHA-512 that does not rely on
 /// OS or hardware cryptographic APIs, ensuring deterministic behavior across
 /// all platforms and runtimes.
-/// </para>
-/// <para>
-/// On .NET 8+, this implementation uses AVX2 optimizations for improved
-/// performance when available. Otherwise, a portable software implementation is used.
 /// </para>
 /// <para>
 /// SHA-512 produces a 512-bit (64-byte) hash value.

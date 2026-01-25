@@ -12,6 +12,11 @@ using System.Text;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of KMAC128 based on the Keccak sponge
+/// construction. It does not rely on OS or hardware cryptographic APIs, ensuring
+/// deterministic behavior across all platforms and runtimes.
+/// </para>
+/// <para>
 /// KMAC128 is a MAC function based on Keccak (cSHAKE128) defined in NIST SP 800-185.
 /// It provides 128-bit security strength and supports variable-length output.
 /// </para>

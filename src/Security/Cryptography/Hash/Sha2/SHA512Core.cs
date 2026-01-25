@@ -20,10 +20,6 @@ using System.Runtime.CompilerServices;
 /// identical compression functions and round constants, differing only in
 /// their initial hash values and output truncation.
 /// </para>
-/// <para>
-/// On .NET 8+, AVX2 optimizations are available for improved message loading
-/// performance using VPSHUFB for byte-swapping.
-/// </para>
 /// </remarks>
 internal static class SHA512Core
 {
