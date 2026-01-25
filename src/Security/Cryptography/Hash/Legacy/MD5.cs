@@ -243,7 +243,7 @@ public sealed class MD5 : HashAlgorithm
                 uint temp = d;
                 d = c;
                 c = b;
-                b = b + RotateLeft(a + f + K[i] + m[g], S[i]);
+                b = b + BitOperations.RotateLeft(a + f + K[i] + m[g], S[i]);
                 a = temp;
             }
 
@@ -253,7 +253,4 @@ public sealed class MD5 : HashAlgorithm
             _d += d;
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateLeft(uint x, int n) => BitOperations.RotateLeft(x, n);
 }

@@ -7,11 +7,17 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes the Whirlpool hash for the input data.
 /// </summary>
 /// <remarks>
+/// <para>
+/// This is a fully managed implementation of Whirlpool that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
 /// <para>
 /// Whirlpool is a hash function standardized in ISO/IEC 10118-3:2004.
 /// It produces a 512-bit (64-byte) hash value.
@@ -248,6 +254,8 @@ public sealed class Whirlpool : HashAlgorithm
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
         unchecked
@@ -314,6 +322,7 @@ public sealed class Whirlpool : HashAlgorithm
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static byte Mul(byte a, int b)
     {
         unchecked
@@ -340,6 +349,7 @@ public sealed class Whirlpool : HashAlgorithm
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong PackRow(byte b0, byte b1, byte b2, byte b3, byte b4, byte b5, byte b6, byte b7)
     {
         return ((ulong)b0 << 56) | ((ulong)b1 << 48) | ((ulong)b2 << 40) | ((ulong)b3 << 32) |

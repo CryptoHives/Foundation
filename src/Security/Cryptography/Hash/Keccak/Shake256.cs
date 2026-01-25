@@ -6,9 +6,14 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 
 /// <summary>
-/// Computes a variable-length output using SHAKE256 (XOF) with a clean-room implementation.
+/// Computes a variable-length output using SHAKE256 (XOF).
 /// </summary>
 /// <remarks>
+/// <para>
+/// This is a fully managed implementation of SHAKE256 based on the Keccak sponge
+/// construction. It does not rely on OS or hardware cryptographic APIs, ensuring
+/// deterministic behavior across all platforms and runtimes.
+/// </para>
 /// <para>
 /// SHAKE256 is an extendable-output function (XOF) based on the Keccak sponge construction.
 /// Unlike traditional hash functions, XOFs can produce output of arbitrary length.

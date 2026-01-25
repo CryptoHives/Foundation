@@ -20,6 +20,11 @@ using System.Runtime.Intrinsics.X86;
 /// </summary>
 /// <remarks>
 /// <para>
+/// This is a fully managed implementation of BLAKE2b that does not rely on
+/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
+/// all platforms and runtimes.
+/// </para>
+/// <para>
 /// BLAKE2b is optimized for 64-bit platforms and produces digests from 1 to 64 bytes.
 /// The default output size is 64 bytes (512 bits).
 /// </para>

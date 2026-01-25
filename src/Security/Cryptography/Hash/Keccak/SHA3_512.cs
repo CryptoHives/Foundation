@@ -13,7 +13,8 @@ using System;
 /// <remarks>
 /// <para>
 /// This is a fully managed implementation of SHA3-512 based on the Keccak sponge
-/// construction. It does not rely on OS or hardware cryptographic APIs.
+/// construction. It does not rely on OS or hardware cryptographic APIs, ensuring
+/// deterministic behavior across all platforms and runtimes.
 /// </para>
 /// <para>
 /// SHA3-512 produces a 512-bit (64-byte) hash value.

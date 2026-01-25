@@ -5,11 +5,15 @@ namespace Cryptography.Tests.Benchmarks;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 
 /// <summary>
@@ -18,11 +22,22 @@ using System.Linq;
 /// </summary>
 public class HashConfig : ManualConfig
 {
+    /// <summary>
+    /// Shared instance of the short name markdown exporter.
+    /// </summary>
+    private static readonly ShortNameMarkdownExporter ShortExporter = new();
+
     public HashConfig()
     {
+        // Disable default exporters
+        WithOptions(ConfigOptions.DisableLogFile);
+
         Orderer = new CategoryThenDataSizeOrderer();
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestHashAlgorithm");
+
+        // Use only the custom GitHub markdown exporter with shorter file names
+        AddExporter(ShortExporter);
     }
 
     /// <summary>
@@ -62,17 +77,17 @@ public class HashConfig : ManualConfig
 
         private static string GetImplementationType(string name)
         {
-            if (name.EndsWith("_OS", System.StringComparison.Ordinal))
+            if (name.EndsWith("_OS", StringComparison.Ordinal))
                 return "OS Native";
-            if (name.EndsWith("_OSManaged", System.StringComparison.Ordinal))
+            if (name.EndsWith("_OSManaged", StringComparison.Ordinal))
                 return "OS Managed";
-            if (name.EndsWith("_Managed", System.StringComparison.Ordinal))
+            if (name.EndsWith("_Managed", StringComparison.Ordinal))
                 return "CryptoHives";
-            if (name.EndsWith("_Bouncy", System.StringComparison.Ordinal))
+            if (name.EndsWith("_Bouncy", StringComparison.Ordinal))
                 return "BouncyCastle";
-            if (name.EndsWith("_OpenGost", System.StringComparison.Ordinal))
+            if (name.EndsWith("_OpenGost", StringComparison.Ordinal))
                 return "OpenGost";
-            if (name.EndsWith("_Native", System.StringComparison.Ordinal))
+            if (name.EndsWith("_Native", StringComparison.Ordinal))
                 return "Native";
             return name;
         }
@@ -102,7 +117,7 @@ public class HashConfig : ManualConfig
         {
             // Highlight CryptoHives "Managed" implementations
             var hashAlgorithm = benchmarkCase.Parameters["TestHashAlgorithm"] as HashAlgorithmType;
-            return hashAlgorithm?.Name.EndsWith("_Managed", System.StringComparison.Ordinal) == true ? "Managed" : null!;
+            return hashAlgorithm?.Name.EndsWith("_Managed", StringComparison.Ordinal) == true ? "Managed" : null!;
         }
 
         public string GetLogicalGroupKey(ImmutableArray<BenchmarkCase> allBenchmarksCases, BenchmarkCase benchmarkCase)
@@ -140,6 +155,42 @@ public class HashConfig : ManualConfig
         {
             var hashAlgorithm = benchmark.Parameters["TestHashAlgorithm"] as HashAlgorithmType;
             return hashAlgorithm?.Category ?? "Unknown";
+        }
+    }
+
+    /// <summary>
+    /// Custom markdown exporter that uses short file names (class name only, no namespace).
+    /// </summary>
+    /// <remarks>
+    /// Produces files like "SHA256Benchmark-report.md" instead of
+    /// "Cryptography.Tests.Benchmarks.SHA256Benchmark-report-github.md".
+    /// </remarks>
+    private sealed class ShortNameMarkdownExporter : IExporter
+    {
+        private readonly IExporter _inner = MarkdownExporter.GitHub;
+
+        public string Name => "ShortMarkdown";
+
+        public IEnumerable<string> ExportToFiles(Summary summary, ILogger consoleLogger)
+        {
+            // Get short class name (without namespace)
+            var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
+
+            var fileName = $"{typeName}-report.md";
+            var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
+
+            // Export using the inner exporter's logic
+            using var writer = new StreamWriter(filePath);
+            using var logger = new StreamLogger(writer);
+            _inner.ExportToLog(summary, logger);
+
+            consoleLogger.WriteLine($"  // * Results exported to: {filePath}");
+            return [filePath];
+        }
+
+        public void ExportToLog(Summary summary, ILogger logger)
+        {
+            _inner.ExportToLog(summary, logger);
         }
     }
 }
