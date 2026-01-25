@@ -28,11 +28,26 @@ This page collects the BenchmarkDotNet measurements for every hash implementatio
 
 ## Highlights by algorithm family
 
+| Family | Leader | Key Insight |
+|--------|--------|-------------|
+| **SHA-2** | OS (SHA-NI) | Hardware SHA-NI gives OS ~4–6× advantage; managed beats BouncyCastle by ~5% |
+| **SHA-3/Keccak** | Managed | Scalar Keccak outperforms OS and SIMD variants by 15–35% |
+| **BLAKE2b/2s** | BouncyCastle | Native optimizations give BouncyCastle ~20% edge; managed SIMD competitive |
+| **BLAKE3** | Native (Rust) | Rust interop ~3× faster; managed beats BouncyCastle by ~7× |
+| **Streebog** | Managed | 1.4–1.9× faster than OpenGost/BouncyCastle |
+| **KMAC** | .NET 9+ | OS KMAC fastest; managed beats BouncyCastle at larger sizes |
+| **Ascon** | Managed | Slightly faster than BouncyCastle (~2–3%) |
+
 ## Benchmark results by algorithm family
 
 ### SHA-2 Family
 
-There is no native support for SHA2 instructions in .NET, so both managed and BouncyCastle implementations rely on optimized scalar code. The managed implementation outperforms BouncyCastle across all payload sizes by a factor of 1.5–2×.
+The OS SHA-256/SHA-512 implementations leverage **SHA-NI hardware instructions** (available on AMD Zen+ and Intel Ice Lake+), providing 4–6× speedup over any software implementation. For pure managed code, CryptoHives outperforms BouncyCastle by approximately 5–6% through loop unrolling and hardcoded round constants.
+
+**Key observations:**
+- **OS** (129 ns @ 128B): Uses SHA-NI hardware acceleration
+- **Managed** (542 ns @ 128B): Optimized scalar with unrolled rounds
+- **BouncyCastle** (572 ns @ 128B): Reference scalar implementation
 
 #### SHA-224
 [!INCLUDE[](benchmarks/sha224.md)]
@@ -52,11 +67,16 @@ There is no native support for SHA2 instructions in .NET, so both managed and Bo
 #### SHA-512/256
 [!INCLUDE[](benchmarks/sha512-256.md)]
 
-### Keccak-derived families (SHA-3, SHAKE, cSHAKE, TurboSHAKE, Keccak-256)
+### Keccak-derived Families
 
-- The managed keccak core scalar implementation is faster than both OS-provided and BouncyCastle SHA-3 hashes across the board, SIMD optimizations provide no benefit for keccak core and are disabled by default. 
-- 
-### SHA-3 family
+The managed Keccak core uses an optimized **scalar implementation** that outperforms both the OS-provided SHA-3 and SIMD variants (AVX2/AVX-512F). This is unusual—typically SIMD accelerates cryptographic operations—but Keccak's irregular permutation structure doesn't map efficiently to SIMD lanes.
+
+**Key observations:**
+- **Managed scalar** is 15–20% faster than OS SHA-3 and 25–35% faster than SIMD variants
+- SIMD implementations (AVX2/AVX-512F) are provided but disabled by default
+- All Keccak-derived algorithms (SHA-3, SHAKE, cSHAKE, TurboSHAKE, KT) share the same optimized core
+
+### SHA-3 Family
 
 #### SHA3-224
 [!INCLUDE[](benchmarks/sha3-224.md)]
@@ -115,7 +135,12 @@ There is no native support for SHA2 instructions in .NET, so both managed and Bo
 
 ### BLAKE2 Family
 
-- BouncyCastle trails Blake2s and Blake2b benchmarks due to a fast SIMD implementation. Only the managed AVX2 version can keep up close.
+BouncyCastle leads the BLAKE2 benchmarks due to highly optimized native code. The managed AVX2/SSSE3/SSE2 SIMD implementations are competitive (within 15–25% of BouncyCastle), while the scalar fallback is significantly slower (~3× for BLAKE2b, ~5× for BLAKE2s).
+
+**Key observations:**
+- **BouncyCastle** (137 ns @ 128B for BLAKE2b-256): Highly optimized reference
+- **Managed AVX2** (146 ns @ 128B): Competitive SIMD implementation
+- **Managed scalar** (399 ns @ 128B): Fallback for non-SIMD platforms
 
 #### BLAKE2b-256
 [!INCLUDE[](benchmarks/blake2b256.md)]
@@ -130,13 +155,21 @@ There is no native support for SHA2 instructions in .NET, so both managed and Bo
 [!INCLUDE[](benchmarks/blake2s256.md)]
 
 ### BLAKE3
-- Blake3 is trailed by a library that uses a Rust binary implementation with .NET interop; the managed SIMD implementation is still slower but outruns BouncyCastle. Also the managed implementation does not process parallel blocks (yet).
+
+BLAKE3 is a modern hash function designed for extreme parallelism and speed. It can leverage tree hashing to process multiple chunks simultaneously, making it ideal for hashing large files. The **Native (Rust)** variant uses `blake3-dotnet`, which wraps the official Rust implementation via P/Invoke—this is the fastest option and recommended when native dependencies are acceptable.
+
+The managed CryptoHives implementation uses SSSE3 SIMD instructions and significantly outperforms BouncyCastle (3–7×), but trails the native Rust version by ~3× because the managed implementation does not yet exploit BLAKE3's parallel tree structure. For most use cases, the managed version provides excellent performance without native dependencies.
 
 [!INCLUDE[](benchmarks/blake3.md)]
 
 ### Legacy Algorithms
 
-- MD5 and SHA-1 are supported for backward compatibility and not optimized. The OS variant is typically the fastest, followed by BouncyCastle and the managed implementation.
+MD5 and SHA-1 are provided **exclusively for backward compatibility** with legacy protocols and file formats (e.g., verifying old checksums, interoperability with legacy systems). Both algorithms have known cryptographic weaknesses:
+
+- **MD5**: Vulnerable to collision attacks since 2004; should not be used for security
+- **SHA-1**: Collision attacks demonstrated in 2017 (SHAttered); deprecated by NIST
+
+The OS implementations are fastest due to potential hardware acceleration. The managed implementations prioritize correctness and portability over optimization, as these algorithms should only be used for non-security purposes.
 
 #### MD5
 [!INCLUDE[](benchmarks/md5.md)]
@@ -146,9 +179,16 @@ There is no native support for SHA2 instructions in .NET, so both managed and Bo
 
 ### Regional Standards
 
-- RIPEMD-160 is lead by BouncyCastle, followed by the managed implementation.
-- Whirlpool and SM3 is lead by the managed implementation.
-- Streebog-256/512 show a 1.4–1.8× speedup compared to OpenGost's reference build while consuming a fraction of the memory, which is important for constrained environments.
+These algorithms serve **regulatory compliance requirements** in specific jurisdictions. While not commonly used in Western applications, they are mandatory in their respective regions:
+
+| Algorithm | Region | Use Case |
+|-----------|--------|----------|
+| **SM3** | China | Required for Chinese government and financial systems (GB/T 32905-2016) |
+| **Streebog** | Russia | Russian federal standard GOST R 34.11-2012, required for government communications |
+| **Whirlpool** | ISO/NESSIE | European cryptographic standard (ISO/IEC 10118-3) |
+| **RIPEMD-160** | Europe/Crypto | Used in Bitcoin address generation and some European standards |
+
+The managed Streebog implementation is notably faster (1.4–1.9×) than reference implementations while using less memory—important for embedded systems in constrained environments.
 
 #### SM3
 [!INCLUDE[](benchmarks/sm3.md)]
@@ -167,13 +207,21 @@ There is no native support for SHA2 instructions in .NET, so both managed and Bo
 
 ### Ascon Family
 
+Ascon is a lightweight authenticated encryption and hashing family, selected as the **NIST Lightweight Cryptography standard** in 2023. It is designed for constrained environments (IoT, embedded systems) where resources are limited but security is paramount.
+
+The managed implementation performs on par with BouncyCastle, with consistent memory allocation regardless of input size—ideal for memory-constrained environments.
+
 #### Ascon-Hash256
 [!INCLUDE[](benchmarks/asconhash256.md)]
 
 #### Ascon-XOF128
 [!INCLUDE[](benchmarks/asconxof128.md)]
 
-### KMAC
+### KMAC Family
+
+KMAC (Keccak Message Authentication Code) is defined in NIST SP 800-185 and provides a **Keccak-based keyed hash function**. Like SHA-3, SHAKE, and cSHAKE, KMAC shares the same optimized Keccak permutation core, benefiting from the scalar optimizations described in the Keccak section above.
+
+On .NET 9+, the OS provides native KMAC support which is fastest for small inputs due to lower initialization overhead. However, the managed CryptoHives implementation scales better at larger payload sizes (8KB+), where the optimized Keccak core dominates the workload. For throughput-critical applications processing large data, the managed implementation is the best choice.
 
 #### KMAC128
 [!INCLUDE[](benchmarks/kmac128.md)]
