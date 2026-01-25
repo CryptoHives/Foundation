@@ -188,7 +188,7 @@ public sealed class AsconXof128 : HashAlgorithm
 
             if (remaining > 0)
             {
-                Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+                AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
             }
         }
 
@@ -214,7 +214,7 @@ public sealed class AsconXof128 : HashAlgorithm
         _x0 ^= BinaryPrimitives.ReadUInt64LittleEndian(block);
 
         // Apply permutation p^12
-        Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
     }
 
     private void PadAndAbsorb()
@@ -226,6 +226,6 @@ public sealed class AsconXof128 : HashAlgorithm
         paddedBlock ^= 0x01UL << finalBits;
 
         _x0 ^= paddedBlock;
-        Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
     }
 }
