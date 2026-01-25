@@ -32,7 +32,7 @@ param(
         "Kmac128", "Kmac256",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
-        "BLAKE2b", "BLAKE2s", "BLAKE",
+        "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
         "Legacy", "Regional", "Ascon", "KMAC",
         "All"
     )]
@@ -134,6 +134,7 @@ $GroupAliases = @{
     "cSHAKE"      = @("CShake128", "CShake256")
     "KT"          = @("KT128", "KT256")
     "TurboSHAKE"  = @("TurboShake128", "TurboShake256")
+    "BLAKE2"      = @("Blake2b256", "Blake2b512", "Blake2s256", "Blake2s128")
     "BLAKE2b"     = @("Blake2b256", "Blake2b512")
     "BLAKE2s"     = @("Blake2s256", "Blake2s128")
     "BLAKE"       = @("Blake3", "Blake2s256", "Blake2b256", "Blake2s128", "Blake2b512")

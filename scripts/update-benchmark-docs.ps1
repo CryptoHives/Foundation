@@ -244,7 +244,8 @@ foreach ($mapping in $benchmarkMappings) {
     $targetName = $mapping.Target
 
     if (Test-Path $sourceFile) {
-        $content = Get-Content -Path $sourceFile -Raw
+        # Read source file as UTF-8 (BenchmarkDotNet outputs UTF-8)
+        $content = [System.IO.File]::ReadAllText($sourceFile, [System.Text.Encoding]::UTF8)
 
         # Extract machine spec from first file only
         if (-not $machineSpecExtracted) {
