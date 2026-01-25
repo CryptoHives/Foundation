@@ -41,7 +41,8 @@ public class HashConfig : ManualConfig
     }
 
     /// <summary>
-    /// Custom column that creates a descriptive benchmark name like "ComputeHash | SHA-256 | BouncyCastle".
+    /// Custom column that creates a descriptive benchmark name like "ComputeHash · SHA-256 · BouncyCastle".
+    /// Uses middle dot (·) separator instead of pipe (|) to avoid breaking markdown tables.
     /// </summary>
     private class DescriptionColumn : IColumn
     {
@@ -52,7 +53,7 @@ public class HashConfig : ManualConfig
         public int PriorityInCategory => -10; // Show first
         public bool IsNumeric => false;
         public UnitType UnitType => UnitType.Dimensionless;
-        public string Legend => "Benchmark description: Method | Category | Implementation";
+        public string Legend => "Benchmark description: Method · Category · Implementation";
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase)
         {
@@ -65,7 +66,8 @@ public class HashConfig : ManualConfig
             }
 
             var implType = GetImplementationType(hashAlgorithm.Name);
-            return $"{method} | {hashAlgorithm.Category} | {implType}";
+            // Use middle dot (·) as separator to avoid breaking markdown tables
+            return $"{method} · {hashAlgorithm.Category} · {implType}";
         }
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)
