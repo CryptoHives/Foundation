@@ -1,4 +1,4 @@
-## Machine Specification
+﻿## Machine Specification
 
 The benchmarks were run on the following machine:
 
@@ -9,8 +9,7 @@ AMD Ryzen 5 7600X 4.70GHz, 1 CPU, 12 logical and 6 physical cores
 [Host]    : .NET 10.0.2 (10.0.2, 10.0.225.61305), X64 RyuJIT x86-64-v4
 .NET 10.0 : .NET 10.0.2 (10.0.2, 10.0.225.61305), X64 RyuJIT x86-64-v4
 Method=ComputeHash  Job=.NET 10.0  Runtime=.NET 10.0
-Toolchain=net10.0  IterationCount=1  LaunchCount=1
-RunStrategy=ColdStart  UnrollFactor=1  WarmupCount=1
+Toolchain=net10.0
 ```
 
 > **Note:** Results are machine-specific and may vary between systems. Run benchmarks locally for your specific hardware.
