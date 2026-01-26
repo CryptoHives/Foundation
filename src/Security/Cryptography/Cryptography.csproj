@@ -12,7 +12,7 @@
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Cryptography Hash Ascon SHA2 SHA3 BLAKE SHAKE CSHAKE SM3 Keccak Streebog Whirlpool Ripemd</PackageTags>
+    <PackageTags>$(PackageTags) Cryptography Hash MAC Ascon BLAKE SHA SHAKE SM3 Keccak Gost</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

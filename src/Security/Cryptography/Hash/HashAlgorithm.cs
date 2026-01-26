@@ -62,7 +62,7 @@ internal enum SimdSupport
 }
 
 /// <summary>
-/// Base class for CryptoHives clean-room hash algorithm implementations.
+/// Base class for the CryptoHives hash algorithm implementations.
 /// </summary>
 /// <remarks>
 /// <para>

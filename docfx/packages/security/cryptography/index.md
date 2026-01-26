@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Cryptography package provides clean-room implementations of cryptographic hash algorithms and message authentication codes (MACs) for .NET applications. All implementations are fully managed code that does not rely on OS or hardware cryptographic APIs, ensuring deterministic and consistent behavior across all platforms.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms and message authentication codes (MACs) for .NET applications. All implementations are fully managed code that does not rely on OS or hardware cryptographic APIs, ensuring deterministic and consistent behavior across all platforms.
 
 ## Key Features
 
-- **Clean-Room Implementations**: Written from scratch based on official specifications
+- **Specification-Based Implementations**: Written based on official specifications (NIST, RFC, ISO)
 - **No OS Dependencies**: Works identically on all platforms without calling OS crypto APIs
 - **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, and many more
 - **Variable Output**: XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
@@ -48,7 +48,10 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 | SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 | [Details](hash-algorithms.md#sha-3-family) |
 | SHAKE | SHAKE128, SHAKE256 (XOF) | [Details](hash-algorithms.md#shake-xof) |
 | cSHAKE | cSHAKE128, cSHAKE256 (Customizable XOF) | [Details](hash-algorithms.md#cshake) |
-| Keccak | Keccak-256 (Ethereum compatible) | [Details](hash-algorithms.md#keccak) |
+| TurboSHAKE | TurboSHAKE128, TurboSHAKE256 (High-performance XOF) | [Details](hash-algorithms.md#turboshake) |
+| KangarooTwelve | KT128, KT256 (Parallelizable XOF) | [Details](hash-algorithms.md#kangarootwelve-kt) |
+| Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) | [Details](hash-algorithms.md#keccak) |
+| Ascon | Ascon-Hash256, Ascon-XOF128 (Lightweight) | [Details](hash-algorithms.md#ascon) |
 | BLAKE2 | BLAKE2b (1-64 bytes), BLAKE2s (1-32 bytes) | [Details](hash-algorithms.md#blake2) |
 | BLAKE3 | BLAKE3 (variable output, keyed, derive key) | [Details](hash-algorithms.md#blake3) |
 | RIPEMD | RIPEMD-160 | [Details](hash-algorithms.md#ripemd) |
@@ -257,4 +260,4 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives
