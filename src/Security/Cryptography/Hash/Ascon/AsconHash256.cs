@@ -147,11 +147,11 @@ public sealed class AsconHash256 : HashAlgorithm
 
         // Squeeze output: 4 blocks of 64 bits = 256 bits
         BinaryPrimitives.WriteUInt64LittleEndian(destination, _x0);
-        Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
         BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(8), _x0);
-        Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
         BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(16), _x0);
-        Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
         BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(24), _x0);
 
         bytesWritten = HashSizeBytes;
@@ -176,7 +176,7 @@ public sealed class AsconHash256 : HashAlgorithm
         _x0 ^= BinaryPrimitives.ReadUInt64LittleEndian(block);
 
         // Apply permutation p^12
-        Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
     }
 
     private void PadAndAbsorb()
@@ -188,6 +188,6 @@ public sealed class AsconHash256 : HashAlgorithm
         paddedBlock ^= 0x01UL << finalBits;
 
         _x0 ^= paddedBlock;
-        Ascon800232Core.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
     }
 }

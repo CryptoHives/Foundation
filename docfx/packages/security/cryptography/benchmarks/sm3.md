@@ -1,19 +1,19 @@
 ﻿| Description                            | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |--------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash | SM3 | SM3 (Managed)      | 128B         |     734.1 ns |    14.33 ns |    14.08 ns |     112 B |
-| ComputeHash | SM3 | SM3 (BouncyCastle) | 128B         |     826.9 ns |    16.09 ns |    15.80 ns |     112 B |
+| ComputeHash · SM3 · SM3 (Managed)      | 128B         |     724.0 ns |     3.17 ns |     2.97 ns |     112 B |
+| ComputeHash · SM3 · SM3 (BouncyCastle) | 128B         |     821.6 ns |     2.85 ns |     2.38 ns |     112 B |
 |                                        |              |              |             |             |           |
-| ComputeHash | SM3 | SM3 (Managed)      | 137B         |     727.0 ns |     8.38 ns |     7.43 ns |     112 B |
-| ComputeHash | SM3 | SM3 (BouncyCastle) | 137B         |     831.8 ns |    16.39 ns |    15.33 ns |     112 B |
+| ComputeHash · SM3 · SM3 (Managed)      | 137B         |     727.2 ns |     5.07 ns |     4.75 ns |     112 B |
+| ComputeHash · SM3 · SM3 (BouncyCastle) | 137B         |     816.3 ns |     2.43 ns |     2.27 ns |     112 B |
 |                                        |              |              |             |             |           |
-| ComputeHash | SM3 | SM3 (Managed)      | 1KB          |   3,966.1 ns |    78.17 ns |    83.64 ns |     112 B |
-| ComputeHash | SM3 | SM3 (BouncyCastle) | 1KB          |   4,554.5 ns |    89.94 ns |    99.97 ns |     112 B |
+| ComputeHash · SM3 · SM3 (Managed)      | 1KB          |   3,949.4 ns |    32.87 ns |    30.75 ns |     112 B |
+| ComputeHash · SM3 · SM3 (BouncyCastle) | 1KB          |   4,488.3 ns |    22.41 ns |    20.96 ns |     112 B |
 |                                        |              |              |             |             |           |
-| ComputeHash | SM3 | SM3 (Managed)      | 1025B        |   3,911.5 ns |    15.93 ns |    14.13 ns |     112 B |
-| ComputeHash | SM3 | SM3 (BouncyCastle) | 1025B        |   4,448.3 ns |    13.39 ns |    12.53 ns |     112 B |
+| ComputeHash · SM3 · SM3 (Managed)      | 1025B        |   3,907.7 ns |    33.40 ns |    29.61 ns |     112 B |
+| ComputeHash · SM3 · SM3 (BouncyCastle) | 1025B        |   4,491.4 ns |    31.75 ns |    24.79 ns |     112 B |
 |                                        |              |              |             |             |           |
-| ComputeHash | SM3 | SM3 (Managed)      | 8KB          |  29,261.4 ns |    73.38 ns |    65.05 ns |     112 B |
-| ComputeHash | SM3 | SM3 (BouncyCastle) | 8KB          |  32,898.1 ns |    63.04 ns |    49.21 ns |     112 B |
+| ComputeHash · SM3 · SM3 (Managed)      | 8KB          |  29,462.0 ns |   122.61 ns |   108.69 ns |     112 B |
+| ComputeHash · SM3 · SM3 (BouncyCastle) | 8KB          |  33,205.3 ns |    96.80 ns |    80.83 ns |     112 B |
 |                                        |              |              |             |             |           |
-| ComputeHash | SM3 | SM3 (Managed)      | 128KB        | 464,236.4 ns | 1,744.02 ns | 1,546.02 ns |     112 B |
-| ComputeHash | SM3 | SM3 (BouncyCastle) | 128KB        | 527,316.0 ns | 4,831.64 ns | 4,283.13 ns |     112 B |
+| ComputeHash · SM3 · SM3 (Managed)      | 128KB        | 466,461.4 ns | 1,708.26 ns | 1,597.91 ns |     112 B |
+| ComputeHash · SM3 · SM3 (BouncyCastle) | 128KB        | 525,441.8 ns | 2,153.65 ns | 1,909.15 ns |     112 B |

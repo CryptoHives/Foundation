@@ -31,16 +31,15 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <!-- OpenGost for Streebog reference implementation testing -->
     <PackageReference Include="OpenGost.Security.Cryptography" />
   </ItemGroup>
-
-  <!-- Blake3 NuGet package only supports .NET 8+ -->
-  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+  
+  <!-- Blake3 NuGet package only supports .NET 8+ and is not strong name signed-->
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <PackageReference Include="Blake3" />
   </ItemGroup>
 
-  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <DefineConstants>$(DefineConstants);BLAKE3_NATIVE</DefineConstants>
   </PropertyGroup>
 
