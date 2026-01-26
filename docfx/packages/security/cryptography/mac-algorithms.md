@@ -391,4 +391,4 @@ public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expir
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives
