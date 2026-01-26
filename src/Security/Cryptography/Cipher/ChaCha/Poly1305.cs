@@ -78,7 +78,7 @@ internal static class Poly1305
         }
 
         // Add s and output (mod 2^128)
-        BigInteger result = acc + s;
+        BigInteger result = (acc + s) & ((BigInteger.One << 128) - 1);
         byte[] resultBytes = result.ToByteArray();
 
         // Output first 16 bytes (little-endian)

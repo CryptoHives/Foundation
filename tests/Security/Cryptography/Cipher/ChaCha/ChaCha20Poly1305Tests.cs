@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Cipher.ChaCha;
@@ -110,9 +110,10 @@ public class ChaCha20Poly1305Tests
     public void Poly1305_Rfc8439_AppendixA5()
     {
         // This tests the underlying Poly1305 implementation
+        // RFC 8439 Section 2.5.2
         byte[] key = FromHex(
-            "7bac2b252db447af09b67a55a4e95584" +
-            "0ae1d6731075d9eb2a9375783ed553ff");
+            "85d6be7857556d337f4452fe42d506a8" +
+            "0103808afb0db2fd4abff6af4149f51b");
         byte[] message = System.Text.Encoding.ASCII.GetBytes(
             "Cryptographic Forum Research Group");
         byte[] expectedTag = FromHex("a8061dc1305136c6c22b8baf0c0127a9");
