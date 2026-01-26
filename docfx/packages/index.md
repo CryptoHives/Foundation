@@ -77,7 +77,7 @@ public async Task AccessResourceAsync(CancellationToken ct)
 
 ### Security Packages
 
-**CryptoHives.Foundation.Security.Cryptography** - Clean-room cryptographic implementations
+**CryptoHives.Foundation.Security.Cryptography** - Specification-based cryptographic implementations
 
 Comprehensive suite of hash algorithms and MACs implemented as fully managed code without OS dependencies.
 

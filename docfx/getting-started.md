@@ -1,4 +1,4 @@
-﻿## Getting Started with CryptoHives.Foundation libraries
+## Getting Started with CryptoHives.Foundation libraries
 
 Welcome to the CryptoHives .NET Foundation libraries! This guide will help you get started with the Memory, Threading, and Security.Cryptography packages.
 
@@ -53,7 +53,7 @@ Install-Package CryptoHives.Foundation.Threading.Analyzers
 
 > **Note:** This package is currently in development and not yet published to NuGet.
 
-The Cryptography package provides clean-room implementations of cryptographic hash algorithms and MACs.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms and MACs.
 
 Install via NuGet Package Manager (when available):
 
@@ -105,7 +105,7 @@ using (await lockInstance.LockAsync())
 
 ### Security.Cryptography Package
 
-The Cryptography package provides clean-room hash algorithm and MAC implementations:
+The Cryptography package provides specification-based hash algorithm and MAC implementations:
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;

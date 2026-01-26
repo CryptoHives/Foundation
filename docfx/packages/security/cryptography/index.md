@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Cryptography package provides clean-room implementations of cryptographic hash algorithms and message authentication codes (MACs) for .NET applications. All implementations are fully managed code that does not rely on OS or hardware cryptographic APIs, ensuring deterministic and consistent behavior across all platforms.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms and message authentication codes (MACs) for .NET applications. All implementations are fully managed code that does not rely on OS or hardware cryptographic APIs, ensuring deterministic and consistent behavior across all platforms.
 
 ## Key Features
 
-- **Clean-Room Implementations**: Written from scratch based on official specifications
+- **Specification-Based Implementations**: Written based on official specifications (NIST, RFC, ISO)
 - **No OS Dependencies**: Works identically on all platforms without calling OS crypto APIs
 - **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, and many more
 - **Variable Output**: XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3

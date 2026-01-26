@@ -1,6 +1,6 @@
 # CryptoHives.Foundation.Security Packages
 
-The Security package family provides clean-room cryptographic implementations for .NET applications.
+The Security package family provides specification-based cryptographic implementations for .NET applications.
 
 ## Overview
 
@@ -75,12 +75,13 @@ The following packages are planned for future development:
 
 ## Design Principles
 
-### Clean-Room Implementation
+### Development Policy
 
 All cryptographic code is written from scratch based on official specifications:
-- No reverse engineering or derived code from existing proprietary libraries
-- Implementations verified against public test vectors and reference implementations
-- Peer review and formal algorithm validation
+- Implementations are written from official public specifications and standards (NIST, RFC, ISO)
+- Development may use AI-assisted tooling; no guarantee of clean-room provenance is claimed
+- All algorithms are verified against official test vectors from specification documents
+- Review process includes algorithm validation against reference implementations
 
 ### No OS Dependencies
 
@@ -88,7 +89,7 @@ Unlike `System.Security.Cryptography`, these implementations:
 - Do not call into OS cryptographic APIs (CNG, OpenSSL, etc.)
 - Work identically across all platforms and .NET versions
 - Produce deterministic output regardless of the host system
-- Are optimized with hardware acceleration when available, but can always fall back to pure managed code
+- Are optimized with .NET intrinsic hardware acceleration when available, but can always fall back to pure managed code
 
 ### Standards Compliance
 

@@ -142,13 +142,14 @@ public class Example
 
 ---
 
-## 🧪 Clean-Room Policy
+## 🧪 Development Policy
 
-All code within the **CryptoHives .NET Foundation** is written and validated under **strict clean-room conditions**:
+All code within the **CryptoHives .NET Foundation** is developed with attention to correctness and security:
 
-- No reverse engineering or derived code from existing proprietary libraries
-- Implementations are verified against public specifications and test vectors  
-- Review process includes formal algorithm validation and peer verification  
+- Implementations are written from official public specifications and standards (NIST, RFC, ISO)
+- All algorithms are verified against official test vectors from specification documents
+- Review process includes algorithm validation against reference implementations
+- Development may use AI-assisted tooling; no guarantee of clean-room provenance is claimed
 
 ---
 
