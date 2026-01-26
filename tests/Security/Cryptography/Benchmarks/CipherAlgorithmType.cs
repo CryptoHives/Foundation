@@ -148,12 +148,10 @@ public sealed class CipherAlgorithmType : IFormattable
     /// <summary>
     /// Returns ChaCha20 implementations for benchmarking.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> ChaCha20()
+    public static IEnumerable<CipherAlgorithmType> ChaCha20Impl()
     {
-        // CryptoHives managed implementation (to be added in Phase 3)
-        // yield return new CipherAlgorithmType("ChaCha", "ChaCha20 (Managed)", () => ChaCha20.Create());
-
-        yield break;
+        // CryptoHives managed implementation
+        yield return new CipherAlgorithmType("ChaCha", "ChaCha20 (Managed)", () => ChaCha20.Create());
     }
 
     /// <summary>
@@ -169,7 +167,7 @@ public sealed class CipherAlgorithmType : IFormattable
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> ChaCha()
     {
-        foreach (var alg in ChaCha20()) yield return alg;
+        foreach (var alg in ChaCha20Impl()) yield return alg;
         foreach (var alg in XChaCha20()) yield return alg;
     }
 
