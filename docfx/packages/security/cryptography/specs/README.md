@@ -40,13 +40,37 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | ParallelHash128 | 128 bits | ⬜ Not implemented | - |
 | ParallelHash256 | 256 bits | ⬜ Not implemented | - |
 
+### RFC 9861 (TurboSHAKE and KangarooTwelve)
+
+| Algorithm | Security | Status | Class |
+|-----------|----------|--------|-------|
+| TurboSHAKE128 | 128 bits | ✅ Implemented | `TurboShake128` |
+| TurboSHAKE256 | 256 bits | ✅ Implemented | `TurboShake256` |
+| KT128 | 128 bits | ✅ Implemented | `KT128` |
+| KT256 | 256 bits | ✅ Implemented | `KT256` |
+
+> **Note:** KT128 and KT256 (formerly KangarooTwelve and MarsupilamiFourteen) are defined in RFC 9861.
+> They use reduced-round Keccak (12 rounds) for ~2× faster performance than SHAKE.
+
+### NIST FIPS 207 (Ascon Lightweight Cryptography)
+
+| Algorithm | Hash Size | Status | Class |
+|-----------|-----------|--------|-------|
+| Ascon-Hash256 | 256 bits | ✅ Implemented | `AsconHash256` |
+| Ascon-XOF128 | Variable | ✅ Implemented | `AsconXof128` |
+
+> **Note:** Ascon was selected as the NIST Lightweight Cryptography standard in 2023.
+> It is designed for constrained environments (IoT, embedded systems).
+
 ### Keccak (Original Algorithm)
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
 | Keccak-256 | 256 bits | ✅ Implemented | `Keccak256` |
+| Keccak-384 | 384 bits | ✅ Implemented | `Keccak384` |
+| Keccak-512 | 512 bits | ✅ Implemented | `Keccak512` |
 
-> **Note:** Keccak-256 uses the original Keccak padding (0x01) as used in Ethereum.
+> **Note:** Keccak uses the original Keccak padding (0x01) as used in Ethereum.
 > SHA-3 uses different padding (0x06). Use `SHA3_256` for NIST SHA-3 compliance.
 
 ### RFC 7693 (BLAKE2)
@@ -236,7 +260,10 @@ specs/
 ├── SHA2-vectors.md        # SHA-2 family test vectors
 ├── SHA3-vectors.md        # SHA-3 family test vectors
 ├── SHAKE-vectors.md       # SHAKE128, SHAKE256 test vectors
-├── Keccak-vectors.md      # Keccak-256 test vectors (Ethereum)
+├── Keccak-vectors.md      # Keccak-256, Keccak-384, Keccak-512 test vectors
+├── KT-vectors.md          # KT128, KT256 (KangarooTwelve) test vectors
+├── TurboSHAKE-vectors.md  # TurboSHAKE128, TurboSHAKE256 test vectors
+├── Ascon-vectors.md       # Ascon-Hash256, Ascon-XOF128 test vectors
 ├── BLAKE2-vectors.md      # BLAKE2b, BLAKE2s test vectors
 ├── BLAKE3-vectors.md      # BLAKE3 test vectors
 ├── RIPEMD-160-vectors.md  # RIPEMD-160 test vectors

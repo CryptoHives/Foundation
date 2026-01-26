@@ -681,6 +681,63 @@ byte[] hash = streebog256.ComputeHash(data);
 
 ---
 
+## Ascon
+
+Lightweight cryptographic hash and XOF from NIST Lightweight Cryptography Standardization (FIPS 207).
+
+### AsconHash256
+
+```csharp
+public sealed class AsconHash256 : HashAlgorithm
+```
+
+**Properties:**
+- Hash Size: 256 bits (32 bytes)
+- Security: 128 bits
+- Rate: 8 bytes
+- Standard: NIST FIPS 207
+
+**Key Features:**
+- Designed for constrained environments (IoT, embedded systems)
+- Low memory footprint
+- Efficient in software and hardware implementations
+
+**Usage:**
+```csharp
+using var ascon = AsconHash256.Create();
+byte[] hash = ascon.ComputeHash(data);
+```
+
+### AsconXof128
+
+```csharp
+public sealed class AsconXof128 : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: Variable (specify at creation)
+- Security: 128 bits
+- Rate: 8 bytes
+- Standard: NIST FIPS 207
+
+**Key Features:**
+- Extendable-output function (XOF)
+- Lightweight and suitable for constrained environments
+- Arbitrary-length output
+
+**Usage:**
+```csharp
+// Default 32-byte output
+using var ascon = AsconXof128.Create();
+byte[] hash = ascon.ComputeHash(data);
+
+// Custom output size
+using var ascon = AsconXof128.Create(outputBytes: 64);
+byte[] longHash = ascon.ComputeHash(data);
+```
+
+---
+
 ## Legacy
 
 ?? **Warning:** These algorithms are cryptographically broken and should NOT be used for security purposes.
@@ -744,6 +801,7 @@ Supported names:
 - TurboSHAKE: `TURBOSHAKE128`, `TURBOSHAKE256`
 - KT (RFC 9861): `KT128` (formerly `KANGAROOTWELVE`), `KT256`
 - Keccak: `KECCAK-256`, `KECCAK-384`, `KECCAK-512`
+- Ascon: `ASCON-HASH256`, `ASCON-XOF128`
 - BLAKE: `BLAKE2B`, `BLAKE2S`, `BLAKE3`
 - Others: `RIPEMD-160`, `SM3`, `WHIRLPOOL`, `STREEBOG-256`, `STREEBOG-512`, `MD5`
 
@@ -757,4 +815,4 @@ Supported names:
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

@@ -1,4 +1,4 @@
-﻿# Impressum
+# Impressum
 
 ---
 
@@ -15,7 +15,6 @@ Schwarzer Gundweg 10
 87509 Immenstadt im Allgäu  
 Germany
 
-**Contact:** 
 Email: info@cryptohives.org
 
 ---
