@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 /// <summary>
@@ -108,11 +109,8 @@ public sealed class CipherAlgorithmType : IFormattable
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AES128()
     {
-        // CryptoHives managed implementation (to be added in Phase 2)
-        // yield return new CipherAlgorithmType("AES", "AES-128 (Managed)", () => Aes128.Create());
-
-        // Placeholder until implementations are added
-        yield break;
+        // CryptoHives managed implementation
+        yield return new CipherAlgorithmType("AES", "AES-128 (Managed)", () => Aes128.Create());
     }
 
     /// <summary>
@@ -120,7 +118,8 @@ public sealed class CipherAlgorithmType : IFormattable
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AES192()
     {
-        yield break;
+        // CryptoHives managed implementation
+        yield return new CipherAlgorithmType("AES", "AES-192 (Managed)", () => Aes192.Create());
     }
 
     /// <summary>
@@ -128,7 +127,8 @@ public sealed class CipherAlgorithmType : IFormattable
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AES256()
     {
-        yield break;
+        // CryptoHives managed implementation
+        yield return new CipherAlgorithmType("AES", "AES-256 (Managed)", () => Aes256.Create());
     }
 
     /// <summary>
