@@ -180,15 +180,18 @@ public sealed class CipherAlgorithmType : IFormattable
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AesGcm()
     {
-        yield break;
+        // CryptoHives managed implementations
+        yield return new CipherAlgorithmType("AES-GCM", "AES-128-GCM (Managed)", () => Aes128.Create());
+        yield return new CipherAlgorithmType("AES-GCM", "AES-256-GCM (Managed)", () => Aes256.Create());
     }
 
     /// <summary>
     /// Returns ChaCha20-Poly1305 implementations for benchmarking.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> ChaCha20Poly1305()
+    public static IEnumerable<CipherAlgorithmType> ChaCha20Poly1305Impl()
     {
-        yield break;
+        // CryptoHives managed implementation
+        yield return new CipherAlgorithmType("ChaCha20-Poly1305", "ChaCha20-Poly1305 (Managed)", () => ChaCha20.Create());
     }
 
     /// <summary>
@@ -197,7 +200,7 @@ public sealed class CipherAlgorithmType : IFormattable
     public static IEnumerable<CipherAlgorithmType> AEAD()
     {
         foreach (var alg in AesGcm()) yield return alg;
-        foreach (var alg in ChaCha20Poly1305()) yield return alg;
+        foreach (var alg in ChaCha20Poly1305Impl()) yield return alg;
     }
 
     // ========================================================================
