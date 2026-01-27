@@ -77,14 +77,16 @@ public async Task AccessResourceAsync(CancellationToken ct)
 
 ### Security Packages
 
-**CryptoHives.Foundation.Security.Cryptography** - Clean-room cryptographic implementations
+**CryptoHives.Foundation.Security.Cryptography** - Specification-based cryptographic implementations
 
 Comprehensive suite of hash algorithms and MACs implemented as fully managed code without OS dependencies.
 
 **Key Features:**
 - SHA-1, SHA-2, SHA-3 family implementations
 - SHAKE and cSHAKE extendable-output functions
+- TurboSHAKE and KangarooTwelve (KT128/KT256) high-performance XOFs
 - KMAC (Keccak Message Authentication Code)
+- Ascon lightweight hashing (NIST FIPS 207)
 - BLAKE2 and BLAKE3 high-performance hashing
 - International standards: SM3, Streebog, Whirlpool
 - Legacy algorithms: MD5, RIPEMD-160
@@ -185,4 +187,4 @@ Analyzers target .NET Standard 2.0 for maximum compatibility with all IDE and bu
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

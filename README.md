@@ -1,4 +1,4 @@
-﻿## 🛡️ CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven cryptography and performance library collection for the .NET ecosystem.
 
@@ -26,6 +26,7 @@ Each package is designed for security, interoperability, and clarity — making 
 |----------|--------------|--------|---------------|
 | `CryptoHives.Foundation.Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
 | `CryptoHives.Foundation.Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `CryptoHives.Foundation.Security.Cryptography` | Hash & MAC algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
 
 More packages will be published under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages?q=CryptoHives) for details.
 
@@ -63,11 +64,13 @@ More packages will be published under the `CryptoHives.*` namespace — see the 
 ### 🧪 Tests and Benchmarks
 - Comprehensive tests and benchmarks are available to evaluate performance across various scenarios.
 
-### 🔐 Clean-Room Cryptography (planned)
-- Fully managed implementations of symmetric and asymmetric algorithms
+### 🔐 Managed Code Cryptography
+- Fully managed implementations of cryptographic hash algorithms and MACs
+- SHA-1, SHA-2, SHA-3, SHAKE, cSHAKE, TurboSHAKE, KangarooTwelve (KT128/KT256)
+- KMAC, BLAKE2, BLAKE3, Ascon, Keccak (Ethereum compatible)
+- International standards: SM3 (Chinese), Streebog (Russian), Whirlpool (ISO)
 - No dependency on OS or hardware cryptographic APIs
 - Deterministic behavior across all platforms and runtimes
-- Support for both classical and modern primitives (AES, ChaCha20, SHA-2/3, etc.)
 
 ### 🔒 Fuzzed APIs (planned)
 - All libraries and public-facing APIs are planned to be fuzzed 
@@ -139,13 +142,14 @@ public class Example
 
 ---
 
-## 🧪 Clean-Room Policy
+## 🧪 Development Policy
 
-All code within the **CryptoHives .NET Foundation** is written and validated under **strict clean-room conditions**:
+All code within the **CryptoHives .NET Foundation** is developed with attention to correctness and security:
 
-- No reverse engineering or derived code from existing proprietary libraries
-- Implementations are verified against public specifications and test vectors  
-- Review process includes formal algorithm validation and peer verification  
+- Implementations are written from official public specifications and standards (NIST, RFC, ISO)
+- All algorithms are verified against official test vectors from specification documents
+- Review process includes algorithm validation against reference implementations
+- Development may use AI-assisted tooling; no guarantee of clean-room provenance is claimed
 
 ---
 

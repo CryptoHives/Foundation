@@ -45,16 +45,18 @@ The Threading package provides high-performance async synchronization primitives
 
 ### 🔐 [Security.Cryptography Package](packages/security/cryptography/index.md)
 
-The Cryptography package provides clean-room implementations of cryptographic hash algorithms and message authentication codes (MACs), all implemented as fully managed code without OS dependencies.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms and message authentication codes (MACs), all implemented as fully managed code without OS dependencies.
 
-> **Note:** This package is currently in development and not yet published to NuGet.
+> **Note:** This package is currently in development and yet contains only hash and MAC algorithms.
 
 **Key Features:**
 - SHA-1, SHA-2, SHA-3 family implementations with full test vector validation
 - SHAKE and cSHAKE extendable-output functions (XOF) for variable-length output
+- TurboSHAKE and KangarooTwelve (KT128/KT256) high-performance XOFs
 - KMAC (Keccak Message Authentication Code) for authenticated hashing
+- Ascon lightweight hashing (NIST FIPS 207) for constrained environments
 - BLAKE2b, BLAKE2s, and BLAKE3 high-performance hashing with keyed modes
-- Keccak-256 for Ethereum compatibility
+- Keccak-256, Keccak-384, Keccak-512 for Ethereum compatibility
 - International standards: SM3 (Chinese), Streebog/GOST (Russian), Whirlpool (ISO)
 - Legacy algorithms: MD5, SHA-1, RIPEMD-160 (for compatibility only)
 - Cross-platform consistency without OS crypto API dependencies

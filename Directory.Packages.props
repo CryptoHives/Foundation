@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AsyncKeyedLock" Version="8.0.0" />
+    <PackageVersion Include="AsyncKeyedLock" Version="8.0.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Blake3" Version="2.2.0" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
