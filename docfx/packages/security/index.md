@@ -1,6 +1,6 @@
 # CryptoHives.Foundation.Security Packages
 
-The Security package family provides clean-room cryptographic implementations for .NET applications.
+The Security package family provides specification-based cryptographic implementations for .NET applications.
 
 ## Overview
 
@@ -15,7 +15,7 @@ The CryptoHives Security packages deliver fully managed, cross-platform cryptogr
 
 ### Cryptography Package
 
-**CryptoHives.Foundation.Security.Cryptography** - Clean-room hash and MAC implementations
+**CryptoHives.Foundation.Security.Cryptography** - Hash and MAC implementations
 
 Comprehensive suite of cryptographic hash algorithms and message authentication codes (MACs), all implemented as fully managed code without OS dependencies.
 
@@ -23,6 +23,8 @@ Comprehensive suite of cryptographic hash algorithms and message authentication 
 - SHA-1, SHA-2, SHA-3 family implementations
 - SHAKE and cSHAKE extendable-output functions (XOF)
 - KMAC (Keccak Message Authentication Code)
+- Keccak (Ethereum), TurboShake and KangarooTwelve
+- Ascon hashing and MAC
 - BLAKE2 and BLAKE3 high-performance hashing
 - Legacy algorithms (MD5, RIPEMD-160)
 - International standards (SM3, Streebog, Whirlpool)
@@ -57,8 +59,8 @@ The following packages are planned for future development:
 
 **CryptoHives.Foundation.Security.Certificates** - Certificate handling and validation
 
-- X.509 certificate parsing and validation
-- Certificate chain building
+- X.509 certificate building, parsing and validation
+- Certificate chain building and validation
 - CRL and OCSP support
 
 ### Encryption (Planned)
@@ -73,19 +75,21 @@ The following packages are planned for future development:
 
 ## Design Principles
 
-### Clean-Room Implementation
+### Development Policy
 
 All cryptographic code is written from scratch based on official specifications:
-- No reverse engineering or derived code from existing proprietary libraries
-- Implementations verified against public test vectors
-- Peer review and formal algorithm validation
+- Implementations are written from official public specifications and standards (NIST, RFC, ISO)
+- Development may use AI-assisted tooling; no guarantee of clean-room provenance is claimed
+- All algorithms are verified against official test vectors from specification documents
+- Review process includes algorithm validation against reference implementations
 
 ### No OS Dependencies
 
 Unlike `System.Security.Cryptography`, these implementations:
 - Do not call into OS cryptographic APIs (CNG, OpenSSL, etc.)
-- Work identically across all platforms
+- Work identically across all platforms and .NET versions
 - Produce deterministic output regardless of the host system
+- Are optimized with .NET intrinsic hardware acceleration when available, but can always fall back to pure managed code
 
 ### Standards Compliance
 
@@ -117,4 +121,4 @@ All Security packages support:
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives
