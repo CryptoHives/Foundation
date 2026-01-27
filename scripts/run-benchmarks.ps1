@@ -15,7 +15,7 @@ param(
 
     [Parameter(HelpMessage = "Algorithm family to benchmark (Cryptography only)")]
     [ValidateSet(
-        # Individual algorithms (each creates its own output table)
+        # Hash algorithms (individual)
         "SHA224", "SHA256", "SHA384", "SHA512", "SHA512_224", "SHA512_256",
         "SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512",
         "Keccak256", "Keccak384", "Keccak512",
@@ -30,10 +30,15 @@ param(
         "SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160",
         "AsconHash256", "AsconXof128",
         "Kmac128", "Kmac256",
+        # Cipher algorithms (individual)
+        "AesGcm128", "AesGcm256",
+        "ChaCha20Poly1305", "XChaCha20Poly1305",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
         "Legacy", "Regional", "Ascon", "KMAC",
+        "AES-GCM", "ChaCha",
+        "Cipher", "AEAD",
         "All"
     )]
     [string]$Family,
@@ -121,8 +126,16 @@ $AlgorithmBenchmarkMap = @{
     # KMAC
     "Kmac128"     = "Kmac128"
     "Kmac256"     = "Kmac256"
+    # Ciphers - AES-GCM
+    "AesGcm128"   = "AesGcm128"
+    "AesGcm256"   = "AesGcm256"
+    # Ciphers - ChaCha
+    "ChaCha20Poly1305" = "ChaCha20Poly1305"
+    "XChaCha20Poly1305" = "XChaCha20Poly1305"
     # Group Aliases
     "All"         = "Hash"
+    "Cipher"      = "Cipher"
+    "AEAD"        = "AEAD"
 }
 
 # Group aliases expand to multiple individual benchmarks
@@ -142,6 +155,9 @@ $GroupAliases = @{
     "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160")
     "Ascon"       = @("AsconHash256", "AsconXof128")
     "KMAC"        = @("Kmac128", "Kmac256")
+    "AES-GCM"     = @("AesGcm128", "AesGcm256")
+    "ChaCha"      = @("ChaCha20Poly1305", "XChaCha20Poly1305")
+    "AEAD"        = @("AesGcm128", "AesGcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
 }
 
 # Get repository root
@@ -199,7 +215,7 @@ Write-Host "  Path:          $testProject"
 Write-Host ""
 
 if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
-    Write-Host "Available algorithm families (each creates its own output table):" -ForegroundColor Yellow
+    Write-Host "Available hash algorithm families (each creates its own output table):" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  SHA-2:         -Family SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
     Write-Host "  SHA-3:         -Family SHA3_224, SHA3_256, SHA3_384, SHA3_512"
@@ -216,6 +232,11 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  Ascon:         -Family AsconHash256, AsconXof128"
     Write-Host "  KMAC:          -Family Kmac128, Kmac256"
     Write-Host ""
+    Write-Host "Available cipher algorithm families:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  AES-GCM:       -Family AesGcm128, AesGcm256"
+    Write-Host "  ChaCha:        -Family ChaCha20Poly1305, XChaCha20Poly1305"
+    Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
     Write-Host "  -Family SHA3       runs: SHA3_224, SHA3_256, SHA3_384, SHA3_512"
@@ -231,6 +252,9 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
     Write-Host "  -Family KMAC       runs: Kmac128, Kmac256"
+    Write-Host "  -Family AES-GCM    runs: AesGcm128, AesGcm256"
+    Write-Host "  -Family ChaCha     runs: ChaCha20Poly1305, XChaCha20Poly1305"
+    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
     Write-Host "  -Family All        runs: All Hash benchmarks"
     Write-Host ""
 }

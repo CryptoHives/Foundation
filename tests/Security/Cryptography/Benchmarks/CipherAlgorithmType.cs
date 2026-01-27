@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1050 // Declare types in namespaces
@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
+using Cryptography.Tests.Cipher;
 using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 /// <summary>
@@ -14,9 +16,8 @@ using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class provides a BenchmarkDotNet-friendly wrapper for cipher implementations.
-/// Each method returns implementations for a single algorithm family only,
-/// ensuring no overlap between benchmark classes.
+/// This class provides a BenchmarkDotNet-friendly wrapper for cipher implementations
+/// from <see cref="CipherAlgorithmRegistry"/>.
 /// </para>
 /// <para>
 /// Similar to <see cref="HashAlgorithmType"/>, this supports multiple implementations
@@ -25,21 +26,24 @@ using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher;
 /// </remarks>
 public sealed class CipherAlgorithmType : IFormattable
 {
-    private readonly Func<CHCipher.SymmetricCipher> _factory;
+    private readonly Func<object> _factory;
     private readonly Func<bool>? _isSupported;
+    private readonly bool _isAead;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CipherAlgorithmType"/> class.
     /// </summary>
-    /// <param name="category">The algorithm category (e.g., "AES", "ChaCha").</param>
+    /// <param name="category">The algorithm category (e.g., "AES-GCM", "ChaCha20-Poly1305").</param>
     /// <param name="name">The display name for this implementation.</param>
     /// <param name="factory">Factory function to create cipher instances.</param>
+    /// <param name="isAead">Whether this is an AEAD cipher (vs traditional block cipher).</param>
     /// <param name="isSupported">Optional function to check platform support.</param>
-    public CipherAlgorithmType(string category, string name, Func<CHCipher.SymmetricCipher> factory, Func<bool>? isSupported = null)
+    public CipherAlgorithmType(string category, string name, Func<object> factory, bool isAead, Func<bool>? isSupported = null)
     {
         Category = category;
         Name = name;
         _factory = factory;
+        _isAead = isAead;
         _isSupported = isSupported;
     }
 
@@ -54,6 +58,11 @@ public sealed class CipherAlgorithmType : IFormattable
     public string Category { get; }
 
     /// <summary>
+    /// Gets whether this is an AEAD cipher.
+    /// </summary>
+    public bool IsAead => _isAead;
+
+    /// <summary>
     /// Gets whether this implementation is supported on the current platform.
     /// </summary>
     public bool IsSupported => _isSupported?.Invoke() ?? true;
@@ -62,7 +71,7 @@ public sealed class CipherAlgorithmType : IFormattable
     /// Creates an instance of the cipher algorithm.
     /// </summary>
     /// <exception cref="PlatformNotSupportedException">Thrown if the algorithm is not supported.</exception>
-    public CHCipher.SymmetricCipher Create()
+    public object Create()
     {
         if (!IsSupported)
             throw new PlatformNotSupportedException($"Cipher algorithm '{Name}' is not supported on this platform.");
@@ -74,7 +83,7 @@ public sealed class CipherAlgorithmType : IFormattable
     /// </summary>
     /// <param name="algorithm">The created cipher, or null if not supported.</param>
     /// <returns>True if the cipher was created successfully.</returns>
-    public bool TryCreate(out CHCipher.SymmetricCipher? algorithm)
+    public bool TryCreate(out object? algorithm)
     {
         if (!IsSupported)
         {
@@ -101,97 +110,91 @@ public sealed class CipherAlgorithmType : IFormattable
     public override string ToString() => Name;
 
     // ========================================================================
-    // AES Family
+    // Factory Methods Using CipherAlgorithmRegistry
     // ========================================================================
 
     /// <summary>
-    /// Returns AES-128 implementations for benchmarking.
+    /// Returns AES-128-GCM implementations for benchmarking.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> AES128()
+    public static IEnumerable<CipherAlgorithmType> AesGcm128()
     {
-        // CryptoHives managed implementation
-        yield return new CipherAlgorithmType("AES", "AES-128 (Managed)", () => Aes128.Create());
+        return FromRegistry("AES-128-GCM", CipherAlgorithmRegistry.Mode.GCM, 128);
     }
 
     /// <summary>
-    /// Returns AES-192 implementations for benchmarking.
+    /// Returns AES-192-GCM implementations for benchmarking.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> AES192()
+    public static IEnumerable<CipherAlgorithmType> AesGcm192()
     {
-        // CryptoHives managed implementation
-        yield return new CipherAlgorithmType("AES", "AES-192 (Managed)", () => Aes192.Create());
+        return FromRegistry("AES-192-GCM", CipherAlgorithmRegistry.Mode.GCM, 192);
     }
 
     /// <summary>
-    /// Returns AES-256 implementations for benchmarking.
+    /// Returns AES-256-GCM implementations for benchmarking.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> AES256()
+    public static IEnumerable<CipherAlgorithmType> AesGcm256()
     {
-        // CryptoHives managed implementation
-        yield return new CipherAlgorithmType("AES", "AES-256 (Managed)", () => Aes256.Create());
+        return FromRegistry("AES-256-GCM", CipherAlgorithmRegistry.Mode.GCM, 256);
     }
 
     /// <summary>
-    /// Returns all AES implementations for benchmarking.
-    /// </summary>
-    public static IEnumerable<CipherAlgorithmType> AES()
-    {
-        foreach (var alg in AES128()) yield return alg;
-        foreach (var alg in AES192()) yield return alg;
-        foreach (var alg in AES256()) yield return alg;
-    }
-
-    // ========================================================================
-    // ChaCha Family
-    // ========================================================================
-
-    /// <summary>
-    /// Returns ChaCha20 implementations for benchmarking.
-    /// </summary>
-    public static IEnumerable<CipherAlgorithmType> ChaCha20Impl()
-    {
-        // CryptoHives managed implementation
-        yield return new CipherAlgorithmType("ChaCha", "ChaCha20 (Managed)", () => ChaCha20.Create());
-    }
-
-    /// <summary>
-    /// Returns XChaCha20 implementations for benchmarking.
-    /// </summary>
-    public static IEnumerable<CipherAlgorithmType> XChaCha20()
-    {
-        yield break;
-    }
-
-    /// <summary>
-    /// Returns all ChaCha implementations for benchmarking.
-    /// </summary>
-    public static IEnumerable<CipherAlgorithmType> ChaCha()
-    {
-        foreach (var alg in ChaCha20Impl()) yield return alg;
-        foreach (var alg in XChaCha20()) yield return alg;
-    }
-
-    // ========================================================================
-    // AEAD Family
-    // ========================================================================
-
-    /// <summary>
-    /// Returns AES-GCM implementations for benchmarking.
+    /// Returns all AES-GCM implementations for benchmarking.
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AesGcm()
     {
-        // CryptoHives managed implementations
-        yield return new CipherAlgorithmType("AES-GCM", "AES-128-GCM (Managed)", () => Aes128.Create());
-        yield return new CipherAlgorithmType("AES-GCM", "AES-256-GCM (Managed)", () => Aes256.Create());
+        foreach (var alg in AesGcm128()) yield return alg;
+        foreach (var alg in AesGcm192()) yield return alg;
+        foreach (var alg in AesGcm256()) yield return alg;
+    }
+
+    /// <summary>
+    /// Returns AES-128-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesCcm128()
+    {
+        return FromRegistry("AES-128-CCM", CipherAlgorithmRegistry.Mode.CCM, 128);
+    }
+
+    /// <summary>
+    /// Returns AES-192-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesCcm192()
+    {
+        return FromRegistry("AES-192-CCM", CipherAlgorithmRegistry.Mode.CCM, 192);
+    }
+
+    /// <summary>
+    /// Returns AES-256-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesCcm256()
+    {
+        return FromRegistry("AES-256-CCM", CipherAlgorithmRegistry.Mode.CCM, 256);
+    }
+
+    /// <summary>
+    /// Returns all AES-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesCcm()
+    {
+        foreach (var alg in AesCcm128()) yield return alg;
+        foreach (var alg in AesCcm192()) yield return alg;
+        foreach (var alg in AesCcm256()) yield return alg;
     }
 
     /// <summary>
     /// Returns ChaCha20-Poly1305 implementations for benchmarking.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> ChaCha20Poly1305Impl()
+    public static IEnumerable<CipherAlgorithmType> ChaCha20Poly1305()
     {
-        // CryptoHives managed implementation
-        yield return new CipherAlgorithmType("ChaCha20-Poly1305", "ChaCha20-Poly1305 (Managed)", () => ChaCha20.Create());
+        return FromRegistry("ChaCha20-Poly1305", CipherAlgorithmRegistry.Mode.ChaCha20Poly1305, 256);
+    }
+
+    /// <summary>
+    /// Returns XChaCha20-Poly1305 implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> XChaCha20Poly1305()
+    {
+        return FromRegistry("XChaCha20-Poly1305", CipherAlgorithmRegistry.Mode.XChaCha20Poly1305, 256);
     }
 
     /// <summary>
@@ -200,42 +203,70 @@ public sealed class CipherAlgorithmType : IFormattable
     public static IEnumerable<CipherAlgorithmType> AEAD()
     {
         foreach (var alg in AesGcm()) yield return alg;
-        foreach (var alg in ChaCha20Poly1305Impl()) yield return alg;
+        foreach (var alg in AesCcm()) yield return alg;
+        foreach (var alg in ChaCha20Poly1305()) yield return alg;
+        foreach (var alg in XChaCha20Poly1305()) yield return alg;
     }
 
     // ========================================================================
-    // Regional Standards
+    // Helper Methods
     // ========================================================================
 
     /// <summary>
-    /// Returns SM4 implementations for benchmarking (Chinese standard).
+    /// Creates cipher algorithm types from the registry.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> SM4()
+    private static IEnumerable<CipherAlgorithmType> FromRegistry(
+        string familyName,
+        CipherAlgorithmRegistry.Mode mode,
+        int keySizeBits)
     {
-        yield break;
+        var implementations = CipherAlgorithmRegistry.All
+            .Where(impl =>
+                impl.AlgorithmFamily == familyName &&
+                impl.CipherMode == mode &&
+                impl.KeySizeBits == keySizeBits &&
+                impl.IsSupported &&
+                !impl.ExcludeFromBenchmark)
+            .ToList();
+
+        foreach (var impl in implementations)
+        {
+            string displayName = $"{familyName} ({SourceToString(impl.Source)})";
+            bool isAead = IsAeadMode(mode);
+
+            yield return new CipherAlgorithmType(
+                familyName,
+                displayName,
+                impl.Factory,
+                isAead,
+                impl.SupportCheck
+            );
+        }
     }
 
     /// <summary>
-    /// Returns Camellia implementations for benchmarking (Japanese/EU standard).
+    /// Converts source enum to display string.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> Camellia()
+    private static string SourceToString(CipherAlgorithmRegistry.Source source)
     {
-        yield break;
+        return source switch
+        {
+            CipherAlgorithmRegistry.Source.Managed => "Managed",
+            CipherAlgorithmRegistry.Source.OS => "OS",
+            CipherAlgorithmRegistry.Source.BouncyCastle => "BouncyCastle",
+            CipherAlgorithmRegistry.Source.Regional => "Regional",
+            _ => "Unknown"
+        };
     }
 
-    // ========================================================================
-    // All Ciphers
-    // ========================================================================
-
     /// <summary>
-    /// Returns all cipher implementations for benchmarking.
+    /// Checks if a mode is AEAD.
     /// </summary>
-    public static IEnumerable<CipherAlgorithmType> All()
+    private static bool IsAeadMode(CipherAlgorithmRegistry.Mode mode)
     {
-        foreach (var alg in AES()) yield return alg;
-        foreach (var alg in ChaCha()) yield return alg;
-        foreach (var alg in AEAD()) yield return alg;
-        foreach (var alg in SM4()) yield return alg;
-        foreach (var alg in Camellia()) yield return alg;
+        return mode == CipherAlgorithmRegistry.Mode.GCM ||
+               mode == CipherAlgorithmRegistry.Mode.CCM ||
+               mode == CipherAlgorithmRegistry.Mode.ChaCha20Poly1305 ||
+               mode == CipherAlgorithmRegistry.Mode.XChaCha20Poly1305;
     }
 }

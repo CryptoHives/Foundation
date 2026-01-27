@@ -56,8 +56,8 @@ public sealed class ChaCha20 : SymmetricCipher
     /// </summary>
     public const int NonceSizeConst = 12;
 
-    private static readonly KeySizes[] s_legalKeySizes = [new KeySizes(256, 256, 0)];
-    private static readonly KeySizes[] s_legalBlockSizes = [new KeySizes(512, 512, 0)];
+    private static readonly KeySizes[] _legalKeySizes = [new KeySizes(256, 256, 0)];
+    private static readonly KeySizes[] _legalBlockSizes = [new KeySizes(512, 512, 0)];
 
     private uint _initialCounter;
 
@@ -80,10 +80,10 @@ public sealed class ChaCha20 : SymmetricCipher
     public override int KeySize => KeySizeBits;
 
     /// <inheritdoc/>
-    public override KeySizes[] LegalKeySizes => s_legalKeySizes;
+    public override KeySizes[] LegalKeySizes => _legalKeySizes;
 
     /// <inheritdoc/>
-    public override KeySizes[] LegalBlockSizes => s_legalBlockSizes;
+    public override KeySizes[] LegalBlockSizes => _legalBlockSizes;
 
     /// <inheritdoc/>
     public override int IVSize => NonceSizeConst;

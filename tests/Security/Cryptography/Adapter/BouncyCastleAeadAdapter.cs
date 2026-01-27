@@ -76,7 +76,8 @@ internal sealed class BouncyCastleAeadAdapter : CHCipher
         if (tag.Length < TagSizeBytes)
             throw new ArgumentException("Tag buffer too small.", nameof(tag));
 
-        // Initialize for encryption
+        // BouncyCastle GCM requires re-initialization after each DoFinal()
+        // Always initialize even if nonce is the same (each encryption is a new operation)
         var parameters = new AeadParameters(
             new KeyParameter(_key),
             _tagSizeBits,

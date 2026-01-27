@@ -1,6 +1,6 @@
 # Cryptography Benchmarks
 
-This page collects the BenchmarkDotNet measurements for every hash implementation that ships with `CryptoHives.Foundation.Security.Cryptography`. Each algorithm family has its own benchmark, measuring performance across representative payload sizes (128 bytes through 128 KiB) to capture both latency and throughput characteristics.
+This page collects the BenchmarkDotNet measurements for every cryptographic algorithm implementation that ships with `CryptoHives.Foundation.Security.Cryptography`. Each algorithm family has its own benchmark, measuring performance across representative payload sizes (128 bytes through 128 KiB) to capture both latency and throughput characteristics.
 
 ## Updating benchmark documentation
 
@@ -11,6 +11,9 @@ This page collects the BenchmarkDotNet measurements for every hash implementatio
 
    # Run a single algorithm
    .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
+
+   # Run cipher benchmarks
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family AesGcm128
 
    # Direct invocation
    cd tests/Security/Cryptography
@@ -37,6 +40,8 @@ This page collects the BenchmarkDotNet measurements for every hash implementatio
 | **Streebog** | Managed | 1.4–1.9× faster than OpenGost/BouncyCastle |
 | **KMAC** | .NET 9+ | OS KMAC fastest; managed beats BouncyCastle at larger sizes |
 | **Ascon** | Managed | Slightly faster than BouncyCastle (~2–3%) |
+| **AES-GCM** | OS (AES-NI) | Hardware AES-NI + PCLMULQDQ gives OS significant advantage |
+| **ChaCha20-Poly1305** | Managed/OS | Software-friendly; no hardware dependency |
 
 ## Benchmark results by algorithm family
 
@@ -229,8 +234,47 @@ On .NET 9+, the OS provides native KMAC support which is fastest for small input
 #### KMAC256
 [!INCLUDE[](benchmarks/kmac256.md)]
 
+---
+
+## AEAD Cipher Benchmarks
+
+Authenticated Encryption with Associated Data (AEAD) ciphers provide both confidentiality and authenticity in a single operation. Performance comparisons include managed implementations, BouncyCastle wrappers, and OS-provided implementations (.NET 8+/9+).
+
+### AES-GCM Family
+
+AES-GCM combines AES block cipher with GMAC authentication. The OS implementation leverages **AES-NI** and **PCLMULQDQ** hardware instructions for significant performance advantages.
+
+**Key observations:**
+- **OS** implementation is fastest with hardware acceleration
+- AES-256-GCM is ~40% slower than AES-128-GCM (14 vs 10 rounds)
+- Managed and BouncyCastle implementations have similar performance
+- Performance scales linearly with message size
+
+#### AES-128-GCM
+[!INCLUDE[](benchmarks/aesgcm128.md)]
+
+#### AES-256-GCM
+[!INCLUDE[](benchmarks/aesgcm256.md)]
+
+### ChaCha20-Poly1305 Family
+
+ChaCha20-Poly1305 is a software-friendly AEAD cipher that excels without hardware acceleration. It's the preferred choice for mobile devices, embedded systems, and platforms without AES-NI.
+
+**Key observations:**
+- Consistent performance across all platforms (no hardware dependency)
+- Competitive with AES-GCM on systems without AES-NI
+- Faster than AES-GCM on ARM and older x86 CPUs
+- XChaCha20-Poly1305 has negligible overhead for extended nonce
+
+#### ChaCha20-Poly1305
+[!INCLUDE[](benchmarks/chacha20poly1305.md)]
+
+#### XChaCha20-Poly1305
+[!INCLUDE[](benchmarks/xchacha20poly1305.md)]
+
 ## See also
 
 - [Hash algorithms overview](hash-algorithms.md)
+- [Cipher algorithms overview](cipher-algorithms.md)
 - [MAC algorithms overview](mac-algorithms.md)
 - [NIST SP 800-185 (cSHAKE/KMAC)](specs/NIST-SP-800-185.md)

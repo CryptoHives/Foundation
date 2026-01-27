@@ -2,6 +2,8 @@
   href: index.md
 - name: Hash Algorithms
   href: hash-algorithms.md
+- name: Cipher Algorithms
+  href: cipher-algorithms.md
 - name: MAC Algorithms
   href: mac-algorithms.md
 - name: Benchmarks
