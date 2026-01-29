@@ -9,7 +9,6 @@ using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
-using System;
 using System.Text;
 
 /// <summary>
