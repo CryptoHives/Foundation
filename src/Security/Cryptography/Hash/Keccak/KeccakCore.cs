@@ -23,14 +23,17 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 /// </remarks>
 public abstract class KeccakCore : HashAlgorithm
 {
+    // KeccakCoreState is a struct and shall never be readonly
     private protected KeccakCoreState _keccakCore;
     private protected readonly byte[] _buffer;
+    private protected readonly int _rateBytes;
     private protected int _bufferLength;
 
     internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.KeccakDefault)
     {
         _keccakCore = new KeccakCoreState(simdSupport);
         _buffer = new byte[rateBytes];
+        _rateBytes = rateBytes;
     }
 
     /// <inheritdoc/>

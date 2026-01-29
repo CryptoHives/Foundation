@@ -13,44 +13,24 @@ using System;
 /// Keccak variants, eliminating code duplication across SHA3-224, SHA3-256, SHA3-384,
 /// SHA3-512, Keccak-256, Keccak-384, and Keccak-512.
 /// </remarks>
-public abstract class KeccakFixedHashCore : HashAlgorithm
+public abstract class KeccakHashCore : KeccakCore
 {
-    // KeccakCoreState is a struct and shall never be readonly
-    private protected KeccakCoreState _keccakCore;
-    private protected readonly byte[] _buffer;
-    private protected readonly int _rateBytes;
     private protected readonly int _outputBytes;
     private protected readonly byte _domainSeparator;
-    private protected int _bufferLength;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeccakFixedHashCore"/> class.
+    /// Initializes a new instance of the <see cref="KeccakHashCore"/> class.
     /// </summary>
     /// <param name="rateBytes">The rate in bytes for the sponge construction.</param>
     /// <param name="outputBytes">The output size of the hash in bytes for this variant.</param>
     /// <param name="domainSeparator">The domain separation byte for this variant.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    internal KeccakFixedHashCore(int rateBytes, int outputBytes, byte domainSeparator, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+    internal KeccakHashCore(int rateBytes, int outputBytes, byte domainSeparator, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+        : base(rateBytes, simdSupport)
     {
-        _keccakCore = new KeccakCoreState(simdSupport);
-        _buffer = new byte[rateBytes];
-        _rateBytes = rateBytes;
         _outputBytes = outputBytes;
         _domainSeparator = domainSeparator;
     }
-
-    /// <inheritdoc/>
-    public sealed override void Initialize()
-    {
-        _keccakCore.Reset();
-        ClearBuffer(_buffer);
-        _bufferLength = 0;
-    }
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport => KeccakCoreState.SimdSupport;
 
     /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
@@ -116,16 +96,5 @@ public abstract class KeccakFixedHashCore : HashAlgorithm
 
         bytesWritten = _outputBytes;
         return true;
-    }
-
-    /// <inheritdoc/>
-    protected sealed override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _keccakCore.Reset();
-            ClearBuffer(_buffer);
-        }
-        base.Dispose(disposing);
     }
 }
