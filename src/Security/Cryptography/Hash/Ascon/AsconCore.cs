@@ -43,12 +43,24 @@ internal static class AsconCore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void Round(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4, ulong c)
     {
+        // Addition of constants
         ulong sx = s2 ^ c;
-        ulong t0 = s0 ^ s1 ^ sx ^ s3 ^ (s1 & (s0 ^ sx ^ s4));
-        ulong t1 = s0 ^ sx ^ s3 ^ s4 ^ ((s1 ^ sx) & (s1 ^ s3));
-        ulong t2 = s1 ^ sx ^ s4 ^ (s3 & s4);
-        ulong t3 = s0 ^ s1 ^ sx ^ (~s0 & (s3 ^ s4));
-        ulong t4 = s1 ^ s3 ^ s4 ^ ((s0 ^ s4) & s1);
+
+        // Pre-compute common subexpressions to reduce redundant XORs
+        ulong s0_sx = s0 ^ sx;
+        ulong s1_sx = s1 ^ sx;
+        ulong s1_s3 = s1 ^ s3;
+        ulong s0_s1 = s0 ^ s1;
+        ulong s3_s4 = s3 ^ s4;
+
+        // Substitution layer with optimized operations
+        ulong t0 = s0_s1 ^ s3 ^ (s1 & (s0_sx ^ s4));
+        ulong t1 = s0 ^ s3 ^ s4 ^ sx ^ (s1_sx & s1_s3);
+        ulong t2 = s1_sx ^ s4 ^ (s3 & s4);
+        ulong t3 = s0_s1 ^ (~s0 & s3_s4);
+        ulong t4 = s1_s3 ^ s4 ^ ((s0 ^ s4) & s1);
+
+        // Linear diffusion layer
         s0 = t0 ^ BitOperations.RotateRight(t0, 19) ^ BitOperations.RotateRight(t0, 28);
         s1 = t1 ^ BitOperations.RotateRight(t1, 39) ^ BitOperations.RotateRight(t1, 61);
         s2 = ~(t2 ^ BitOperations.RotateRight(t2, 1) ^ BitOperations.RotateRight(t2, 6));

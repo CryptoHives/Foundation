@@ -18,7 +18,7 @@ using System.Diagnostics;
 /// implementations of HashCore, TryHashFinal, and Dispose. Derived classes only need to
 /// provide initialization values, block processing, and output formatting.
 /// </remarks>
-public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
+internal abstract class Sha2HashAlgorithm<T> : HashAlgorithm
     where T : struct
 {
     private protected readonly T[] _state;
