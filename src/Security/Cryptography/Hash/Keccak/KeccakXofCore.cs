@@ -21,19 +21,15 @@ public abstract class KeccakXofCore : KeccakCore
     private protected int _squeezeOffset;
 
     /// <summary>
-    /// Gets the starting round for the permutation. Override to return 12 for TurboShake variants.
-    /// </summary>
-    protected virtual int StartRound => 0;
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="KeccakXofCore"/> class.
     /// </summary>
     /// <param name="rateBytes">The rate in bytes for the sponge construction.</param>
     /// <param name="outputBytes">The output size in bytes for this variant.</param>
     /// <param name="domainSeparator">The domain separation byte for this variant.</param>
+    /// <param name="startRound">The starting round for the sponge construction. 12 for some implementations, 0 otherwise.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    internal KeccakXofCore(int rateBytes, int outputBytes, byte domainSeparator, SimdSupport simdSupport = SimdSupport.KeccakDefault)
-        : base(rateBytes, simdSupport)
+    internal KeccakXofCore(int rateBytes, int outputBytes, byte domainSeparator, int startRound = 0, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+        : base(rateBytes, startRound, simdSupport)
     {
         _outputBytes = outputBytes;
         _domainSeparator = domainSeparator;
@@ -55,36 +51,7 @@ public abstract class KeccakXofCore : KeccakCore
             throw new InvalidOperationException("Cannot add more data after output has been read.");
         }
 
-        int offset = 0;
-
-        // If we have data in buffer, fill it first
-        if (_bufferLength > 0)
-        {
-            int toCopy = Math.Min(_rateBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            if (_bufferLength == _rateBytes)
-            {
-                _keccakCore.Absorb(_buffer, _rateBytes, StartRound);
-                _bufferLength = 0;
-            }
-        }
-
-        // Process full blocks
-        while (offset + _rateBytes <= source.Length)
-        {
-            _keccakCore.Absorb(source.Slice(offset, _rateBytes), _rateBytes, StartRound);
-            offset += _rateBytes;
-        }
-
-        // Store remaining bytes
-        if (offset < source.Length)
-        {
-            source.Slice(offset).CopyTo(_buffer.AsSpan());
-            _bufferLength = source.Length - offset;
-        }
+        base.HashCore(source);
     }
 
     /// <inheritdoc/>
@@ -124,13 +91,13 @@ public abstract class KeccakXofCore : KeccakCore
             _buffer[_rateBytes - 1] |= 0x80;
 
             // Absorb final block
-            _keccakCore.Absorb(_buffer, _rateBytes, StartRound);
+            _keccakCore.Absorb(_buffer, _rateBytes);
             _finalized = true;
             _squeezeOffset = 0;
         }
 
         // Squeeze output
-        _keccakCore.SqueezeXof(output, _rateBytes, ref _squeezeOffset, StartRound);
+        _keccakCore.SqueezeXof(output, _rateBytes, ref _squeezeOffset);
     }
 
     /// <summary>

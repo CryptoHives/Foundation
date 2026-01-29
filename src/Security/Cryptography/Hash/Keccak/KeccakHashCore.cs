@@ -33,41 +33,6 @@ public abstract class KeccakHashCore : KeccakCore
     }
 
     /// <inheritdoc/>
-    protected override void HashCore(ReadOnlySpan<byte> source)
-    {
-        int offset = 0;
-
-        // If we have data in buffer, fill it first
-        if (_bufferLength > 0)
-        {
-            int toCopy = Math.Min(_rateBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            if (_bufferLength == _rateBytes)
-            {
-                _keccakCore.Absorb(_buffer, _rateBytes);
-                _bufferLength = 0;
-            }
-        }
-
-        // Process full blocks
-        while (offset + _rateBytes <= source.Length)
-        {
-            _keccakCore.Absorb(source.Slice(offset, _rateBytes), _rateBytes);
-            offset += _rateBytes;
-        }
-
-        // Store remaining bytes
-        if (offset < source.Length)
-        {
-            source.Slice(offset).CopyTo(_buffer.AsSpan());
-            _bufferLength = source.Length - offset;
-        }
-    }
-
-    /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < _outputBytes)
