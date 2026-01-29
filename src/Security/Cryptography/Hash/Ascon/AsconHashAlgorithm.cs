@@ -138,7 +138,7 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
         base.Dispose(disposing);
     }
 
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void AbsorbBlock(ReadOnlySpan<byte> block)
     {
         // XOR block into x0 (rate portion) - little-endian
@@ -148,7 +148,7 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
         P12();
     }
 
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void PadAndAbsorb()
     {
         // NIST SP 800-232 padding: pad with 0x01 at bit position
@@ -164,14 +164,10 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
     /// <summary>
     /// Applies the Ascon permutation p^12.
     /// </summary>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void P12()
     {
-        ulong s0 = _x0;
-        ulong s1 = _x1;
-        ulong s2 = _x2;
-        ulong s3 = _x3;
-        ulong s4 = _x4;
+        ulong s0 = _x0; ulong s1 = _x1; ulong s2 = _x2; ulong s3 = _x3; ulong s4 = _x4;
         Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xf0UL);
         Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xe1UL);
         Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xd2UL);
