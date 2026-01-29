@@ -22,7 +22,7 @@ using System;
 /// SHAKE128 provides 128-bit security strength against all attacks.
 /// </para>
 /// </remarks>
-public sealed class Shake128 : KeccakCore
+public sealed class Shake128 : KeccakXofCore
 {
     /// <summary>
     /// The default output size in bits.
@@ -44,10 +44,6 @@ public sealed class Shake128 : KeccakCore
     /// </summary>
     private const byte DomainSeparator = 0x1F;
 
-    private readonly int _outputBytes;
-    private bool _finalized;
-    private int _squeezeOffset;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="Shake128"/> class with default output size.
     /// </summary>
@@ -63,14 +59,13 @@ public sealed class Shake128 : KeccakCore
     {
     }
 
-    internal Shake128(SimdSupport simdSupport, int outputBytes) : base(RateBytes, simdSupport)
+    internal Shake128(SimdSupport simdSupport, int outputBytes) : base(RateBytes, outputBytes, DomainSeparator, simdSupport)
     {
         if (outputBytes <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
         }
 
-        _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
         Initialize();
     }
@@ -95,83 +90,5 @@ public sealed class Shake128 : KeccakCore
     public static Shake128 Create(int outputBytes) => new(outputBytes);
 
     internal static Shake128 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8) => new(simdSupport, outputBytes);
-
-    /// <inheritdoc/>
-    public override void Initialize()
-    {
-        base.Initialize();
-        _finalized = false;
-        _squeezeOffset = 0;
-    }
-
-    /// <inheritdoc/>
-    protected override void HashCore(ReadOnlySpan<byte> source)
-    {
-        if (_finalized)
-        {
-            throw new InvalidOperationException("Cannot add data after finalization.");
-        }
-
-        int offset = 0;
-
-        if (_bufferLength > 0)
-        {
-            int toCopy = Math.Min(RateBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            if (_bufferLength == RateBytes)
-            {
-                _keccakCore.Absorb(_buffer, RateBytes);
-                _bufferLength = 0;
-            }
-        }
-
-        while (offset + RateBytes <= source.Length)
-        {
-            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
-            offset += RateBytes;
-        }
-
-        if (offset < source.Length)
-        {
-            source.Slice(offset).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += source.Length - offset;
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
-    {
-        bytesWritten = _outputBytes;
-        Squeeze(destination);
-        return true;
-    }
-
-    /// <summary>
-    /// Squeezes output bytes from the XOF state.
-    /// </summary>
-    /// <param name="output">The buffer to receive the output.</param>
-    public void Squeeze(Span<byte> output)
-    {
-        if (!_finalized)
-        {
-            // Pad with SHAKE domain separation
-            _buffer[_bufferLength++] = DomainSeparator;
-
-            while (_bufferLength < RateBytes - 1)
-            {
-                _buffer[_bufferLength++] = 0x00;
-            }
-
-            _buffer[RateBytes - 1] |= 0x80;
-
-            _keccakCore.Absorb(_buffer, RateBytes);
-            _finalized = true;
-            _squeezeOffset = 0;
-        }
-
-        _keccakCore.SqueezeXof(output, RateBytes, ref _squeezeOffset);
-    }
 }
+
