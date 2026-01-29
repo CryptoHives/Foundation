@@ -20,7 +20,7 @@ using System;
 /// SHA3-224 produces a 224-bit (28-byte) hash value.
 /// </para>
 /// </remarks>
-public sealed class SHA3_224 : KeccakCore
+public sealed class SHA3_224 : KeccakFixedHashCore
 {
     /// <summary>
     /// The hash size in bits.
@@ -45,7 +45,7 @@ public sealed class SHA3_224 : KeccakCore
     /// <summary>
     /// The SHA-3 domain separation byte.
     /// </summary>
-    private const byte DomainSeparator = 0x06;
+    public const byte DomainSeparator = 0x06;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_224"/> class.
@@ -58,7 +58,7 @@ public sealed class SHA3_224 : KeccakCore
     /// Initializes a new instance of the <see cref="SHA3_224"/> class with specified SIMD support.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal SHA3_224(SimdSupport simdSupport) : base(RateBytes, simdSupport)
+    internal SHA3_224(SimdSupport simdSupport) : base(RateBytes, HashSizeBytes, DomainSeparator, simdSupport)
     {
         HashSizeValue = HashSizeBits;
         Initialize();
@@ -82,67 +82,4 @@ public sealed class SHA3_224 : KeccakCore
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <returns>A new SHA3-224 hash algorithm instance.</returns>
     internal static SHA3_224 Create(SimdSupport simdSupport) => new(simdSupport);
-
-    /// <inheritdoc/>
-    public override void Initialize()
-    {
-        base.Initialize();
-    }
-
-    /// <inheritdoc/>
-    protected override void HashCore(ReadOnlySpan<byte> source)
-    {
-        int offset = 0;
-
-        if (_bufferLength > 0)
-        {
-            int toCopy = Math.Min(RateBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            if (_bufferLength == RateBytes)
-            {
-                _keccakCore.Absorb(_buffer, RateBytes);
-                _bufferLength = 0;
-            }
-        }
-
-        while (offset + RateBytes <= source.Length)
-        {
-            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
-            offset += RateBytes;
-        }
-
-        if (offset < source.Length)
-        {
-            source.Slice(offset).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += source.Length - offset;
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
-    {
-        if (destination.Length < HashSizeBytes)
-        {
-            bytesWritten = 0;
-            return false;
-        }
-
-        _buffer[_bufferLength++] = DomainSeparator;
-
-        while (_bufferLength < RateBytes - 1)
-        {
-            _buffer[_bufferLength++] = 0x00;
-        }
-
-        _buffer[RateBytes - 1] |= 0x80;
-
-        _keccakCore.Absorb(_buffer, RateBytes);
-        _keccakCore.Squeeze(destination, HashSizeBytes);
-
-        bytesWritten = HashSizeBytes;
-        return true;
-    }
 }
