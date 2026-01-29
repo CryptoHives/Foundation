@@ -59,7 +59,8 @@ public sealed class Shake128 : KeccakXofCore
     {
     }
 
-    internal Shake128(SimdSupport simdSupport, int outputBytes) : base(RateBytes, outputBytes, DomainSeparator, simdSupport)
+    internal Shake128(SimdSupport simdSupport, int outputBytes)
+        : base(RateBytes, outputBytes, DomainSeparator, 0, simdSupport)
     {
         if (outputBytes <= 0)
         {

@@ -95,6 +95,11 @@ internal unsafe struct KeccakCoreState
     private readonly SimdSupport _simdSupport;
 
     /// <summary>
+    /// The starting round for the permutation (default 0). Use 12 for TurboSHAKE.
+    /// </summary>
+    private readonly int _startRound;
+
+    /// <summary>
     /// Initializes a new instance of the KeccakCoreStruct structure with the specified SIMD support configuration.
     /// </summary>
     /// <remarks>
@@ -103,10 +108,12 @@ internal unsafe struct KeccakCoreState
     /// </remarks>
     /// <param name="simdSupport">The SIMD support option to choose from. Unsupported bits are masked out.
     /// </param>
-    public KeccakCoreState(SimdSupport simdSupport = SimdSupport.None)
+    /// <param name="startRound">The starting round for the permutation (default 0). Use 12 for TurboSHAKE.</param>
+    public KeccakCoreState(SimdSupport simdSupport = SimdSupport.None, int startRound = 0)
     {
         // mask unsupported bits
         _simdSupport = simdSupport & SimdSupport;
+        _startRound = startRound;
         Reset();
     }
 
@@ -126,21 +133,21 @@ internal unsafe struct KeccakCoreState
     /// Performs the Keccak-f[1600] permutation on the given statePtr with explicit SIMD control.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Permute(int startRound = 0)
+    public void Permute()
     {
 #if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.Avx512F) != 0)
         {
-            PermuteAvx512F(startRound);
+            PermuteAvx512F();
             return;
         }
         if ((_simdSupport & SimdSupport.Avx2) != 0)
         {
-            PermuteAvx2(startRound);
+            PermuteAvx2();
             return;
         }
 #endif
-        PermuteScalar(startRound);
+        PermuteScalar();
     }
 
     #region AVX512F Implementation
@@ -212,7 +219,7 @@ internal unsafe struct KeccakCoreState
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void PermuteAvx512F(int startRound = 0)
+    public void PermuteAvx512F()
     {
         const byte xorThreeOperands = 0x96;
         const byte chiNonlinearity = 0xD2;
@@ -240,7 +247,7 @@ internal unsafe struct KeccakCoreState
                 Avx512F.TernaryLogic(ab, ag, ak, xorThreeOperands),
                 am, @as, xorThreeOperands);
 
-            for (int round = startRound; round < Rounds; round += 2)
+            for (int round = _startRound; round < Rounds; round += 2)
             {
                 // =================================================================
                 // ROUND 1 (A -> E) - Uses pre-computed caeiou
@@ -445,10 +452,9 @@ internal unsafe struct KeccakCoreState
     /// those are faster than variable shifts on each target CPU. Results are written back
     /// to the scalar state array at the end of the permutation.
     /// </summary>
-    /// <param name="startRound">The starting round (0 for SHA-3/SHAKE, 12 for TurboSHAKE/K12).</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void PermuteAvx2(int startRound = 0)
+    public void PermuteAvx2()
     {
         // Vector variables naming convention:
         // [State][Plane][Lanes]
@@ -498,7 +504,7 @@ internal unsafe struct KeccakCoreState
             caeio = Avx2.Xor(abaeio, Avx2.Xor(agaeio, Avx2.Xor(akaeio, Avx2.Xor(amaeio, asaeio))));
             cu = Avx2.Xor(abu, Avx2.Xor(agu, Avx2.Xor(aku, Avx2.Xor(amu, asu))));
 
-            for (int round = startRound; round < Rounds; round += 2)
+            for (int round = _startRound; round < Rounds; round += 2)
             {
                 // =================================================================================
                 // ROUND 1 (A -> E)
@@ -900,10 +906,9 @@ internal unsafe struct KeccakCoreState
     /// all SIMD variants in this class including the native Windows 11 OS SHA3
     /// implementation. ARM and linux results may vary and need to be benchmarked as well.
     /// </remarks>
-    /// <param name="startRound">Set the round start to 12 for TurboShake and KT</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void PermuteScalar(int startRound = 0)
+    public void PermuteScalar()
     {
         ulong aba, abe, abi, abo, abu;
         ulong aga, age, agi, ago, agu;
@@ -926,7 +931,7 @@ internal unsafe struct KeccakCoreState
             agu = state[9]; ago = state[8]; agi = state[7]; age = state[6]; aga = state[5];
             abu = state[4]; abo = state[3]; abi = state[2]; abe = state[1]; aba = state[0];
 
-            for (int round = startRound; round < Rounds; round += 2)
+            for (int round = _startRound; round < Rounds; round += 2)
             {
                 // prepareTheta
                 ce = abe ^ age ^ ake ^ ame ^ ase;
@@ -1083,9 +1088,8 @@ internal unsafe struct KeccakCoreState
     /// </summary>
     /// <param name="block">The block to absorb (must be exactly rateBytes long).</param>
     /// <param name="rateBytes">The rate in bytes (determines how many bytes to XOR).</param>
-    /// <param name="startRound">The starting round for the permutation (default 0). Use 12 for TurboSHAKE.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Absorb(ReadOnlySpan<byte> block, int rateBytes, int startRound = 0)
+    public void Absorb(ReadOnlySpan<byte> block, int rateBytes)
     {
         int rateLanes = rateBytes / 8;
         Debug.Assert(rateLanes <= StateSize);
@@ -1111,7 +1115,7 @@ internal unsafe struct KeccakCoreState
             }
         }
 
-        Permute(startRound);
+        Permute();
     }
 
     /// <summary>
@@ -1164,9 +1168,8 @@ internal unsafe struct KeccakCoreState
     /// <param name="squeezeOffset">
     /// The current offset within the rate portion. Updated after the operation.
     /// </param>
-    /// <param name="startRound">The starting round for the permutation (default 0). Use 12 for TurboSHAKE.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void SqueezeXof(Span<byte> output, int rateBytes, ref int squeezeOffset, int startRound = 0)
+    public void SqueezeXof(Span<byte> output, int rateBytes, ref int squeezeOffset)
     {
         int outputOffset = 0;
 
@@ -1176,7 +1179,7 @@ internal unsafe struct KeccakCoreState
             {
                 if (squeezeOffset >= rateBytes)
                 {
-                    Permute(startRound);
+                    Permute();
                     squeezeOffset = 0;
                 }
 

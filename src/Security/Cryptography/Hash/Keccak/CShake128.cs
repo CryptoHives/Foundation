@@ -143,34 +143,7 @@ public sealed class CShake128 : KeccakCore
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
         if (_finalized) throw new InvalidOperationException("Cannot add data after finalization.");
-
-        int offset = 0;
-
-        if (_bufferLength > 0)
-        {
-            int toCopy = Math.Min(RateBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            if (_bufferLength == RateBytes)
-            {
-                _keccakCore.Absorb(_buffer, RateBytes);
-                _bufferLength = 0;
-            }
-        }
-
-        while (offset + RateBytes <= source.Length)
-        {
-            _keccakCore.Absorb(source.Slice(offset, RateBytes), RateBytes);
-            offset += RateBytes;
-        }
-
-        if (offset < source.Length)
-        {
-            source.Slice(offset).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += source.Length - offset;
-        }
+        base.HashCore(source);
     }
 
     /// <inheritdoc/>

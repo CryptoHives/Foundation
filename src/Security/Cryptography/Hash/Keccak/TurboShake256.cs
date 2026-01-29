@@ -48,7 +48,12 @@ public sealed class TurboShake256 : KeccakXofCore
     /// <summary>
     /// The TurboShake domain separation byte.
     /// </summary>
-    private const byte DomainSeparator = 0x1F;
+    public const byte DomainSeparator = 0x1F;
+
+    /// <summary>
+    /// The start round for the sponge construction.
+    /// </summary>
+    public const int StartRound = 12;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TurboShake256"/> class with default output size.
@@ -78,7 +83,8 @@ public sealed class TurboShake256 : KeccakXofCore
     {
     }
 
-    internal TurboShake256(SimdSupport simdSupport, int outputBytes, byte domainSeparator) : base(RateBytes, outputBytes, domainSeparator, simdSupport)
+    internal TurboShake256(SimdSupport simdSupport, int outputBytes, byte domainSeparator)
+        : base(RateBytes, outputBytes, domainSeparator, StartRound, simdSupport)
     {
         if (outputBytes <= 0)
         {
@@ -99,9 +105,6 @@ public sealed class TurboShake256 : KeccakXofCore
 
     /// <inheritdoc/>
     public override int BlockSize => RateBytes;
-
-    /// <inheritdoc/>
-    protected override int StartRound => 12;
 
     /// <summary>
     /// Creates a new instance of the <see cref="TurboShake256"/> class with default output size.

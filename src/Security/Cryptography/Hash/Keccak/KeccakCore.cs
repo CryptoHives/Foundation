@@ -3,6 +3,8 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
+using System;
+
 /// <summary>
 /// All algorithms based on the Keccak permutation should derive from this class.
 /// Provides the derived implementations with the core Keccak-f[1600] permutation,
@@ -30,8 +32,13 @@ public abstract class KeccakCore : HashAlgorithm
     private protected int _bufferLength;
 
     internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+        : this (rateBytes, 0, simdSupport)
     {
-        _keccakCore = new KeccakCoreState(simdSupport);
+    }
+
+    internal KeccakCore(int rateBytes, int startRound, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+    {
+        _keccakCore = new KeccakCoreState(simdSupport, startRound);
         _buffer = new byte[rateBytes];
         _rateBytes = rateBytes;
     }
@@ -48,6 +55,41 @@ public abstract class KeccakCore : HashAlgorithm
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
     internal static SimdSupport SimdSupport => KeccakCoreState.SimdSupport;
+
+    /// <inheritdoc/>
+    protected override void HashCore(ReadOnlySpan<byte> source)
+    {
+        int offset = 0;
+
+        // If we have data in buffer, fill it first
+        if (_bufferLength > 0)
+        {
+            int toCopy = Math.Min(_rateBytes - _bufferLength, source.Length);
+            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
+            _bufferLength += toCopy;
+            offset += toCopy;
+
+            if (_bufferLength == _rateBytes)
+            {
+                _keccakCore.Absorb(_buffer, _rateBytes);
+                _bufferLength = 0;
+            }
+        }
+
+        // Process full blocks
+        while (offset + _rateBytes <= source.Length)
+        {
+            _keccakCore.Absorb(source.Slice(offset, _rateBytes), _rateBytes);
+            offset += _rateBytes;
+        }
+
+        // Store remaining bytes
+        if (offset < source.Length)
+        {
+            source.Slice(offset).CopyTo(_buffer.AsSpan());
+            _bufferLength = source.Length - offset;
+        }
+    }
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
