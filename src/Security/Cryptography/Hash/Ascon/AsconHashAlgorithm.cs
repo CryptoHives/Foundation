@@ -15,7 +15,7 @@ using System.Runtime.CompilerServices;
 /// by providing common implementations of HashCore, Initialize, and Dispose.
 /// Derived classes only need to provide IV constants and output squeezing logic.
 /// </remarks>
-internal abstract class AsconHashAlgorithm : HashAlgorithm
+public abstract class AsconHashAlgorithm : HashAlgorithm
 {
     /// <summary>
     /// The rate in bytes (64 bits = 8 bytes) for all Ascon variants.
