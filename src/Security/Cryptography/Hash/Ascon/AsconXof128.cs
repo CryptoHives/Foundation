@@ -121,7 +121,7 @@ public sealed class AsconXof128 : AsconHashAlgorithm
 
             if (remaining > 0)
             {
-                AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+                P12();
             }
         }
     }

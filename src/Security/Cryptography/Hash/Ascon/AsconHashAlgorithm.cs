@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -137,16 +138,17 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
         base.Dispose(disposing);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void AbsorbBlock(ReadOnlySpan<byte> block)
     {
         // XOR block into x0 (rate portion) - little-endian
         _x0 ^= BinaryPrimitives.ReadUInt64LittleEndian(block);
 
         // Apply permutation p^12
-        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        P12();
     }
 
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void PadAndAbsorb()
     {
         // NIST SP 800-232 padding: pad with 0x01 at bit position
@@ -156,6 +158,59 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
         paddedBlock ^= 0x01UL << finalBits;
 
         _x0 ^= paddedBlock;
-        AsconCore.P12(ref _x0, ref _x1, ref _x2, ref _x3, ref _x4);
+        P12();
+    }
+
+    /// <summary>
+    /// Applies the Ascon permutation p^12.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public void P12()
+    {
+        ulong s0 = _x0;
+        ulong s1 = _x1;
+        ulong s2 = _x2;
+        ulong s3 = _x3;
+        ulong s4 = _x4;
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xf0UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xe1UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xd2UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xc3UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xb4UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0xa5UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0x96UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0x87UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0x78UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0x69UL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0x5aUL);
+        Round(ref s0, ref s1, ref s2, ref s3, ref s4, 0x4bUL);
+        _x0 = s0; _x1 = s1; _x2 = s2; _x3 = s3; _x4 = s4;
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void Round(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4, ulong c)
+    {
+        // Addition of constants
+        ulong sx = s2 ^ c;
+
+        // Pre-compute common subexpressions
+        ulong s1_x_sx = s1 ^ sx;
+        ulong s1_x_s3 = s1 ^ s3;
+        ulong s0_x_sx = s0 ^ sx;
+        ulong s3_x_s4 = s3 ^ s4;
+
+        // Interleaved substitution layer with precomputed operations
+        ulong t0 = s0_x_sx ^ s1_x_s3 ^ (s1 & (s0_x_sx ^ s4));
+        ulong t1 = s0_x_sx ^ s3_x_s4 ^ ((s1_x_sx) & (s1_x_s3));
+        ulong t2 = s1_x_sx ^ s4 ^ (s3 & s4);
+        ulong t3 = s0_x_sx ^ s1 ^ (~s0 & (s3_x_s4));
+        ulong t4 = s1_x_s3 ^ s4 ^ ((s0 ^ s4) & s1);
+
+        // Linear diffusion layer
+        s0 = t0 ^ BitOperations.RotateRight(t0, 19) ^ BitOperations.RotateRight(t0, 28);
+        s1 = t1 ^ BitOperations.RotateRight(t1, 39) ^ BitOperations.RotateRight(t1, 61);
+        s2 = ~(t2 ^ BitOperations.RotateRight(t2, 1) ^ BitOperations.RotateRight(t2, 6));
+        s3 = t3 ^ BitOperations.RotateRight(t3, 10) ^ BitOperations.RotateRight(t3, 17);
+        s4 = t4 ^ BitOperations.RotateRight(t4, 7) ^ BitOperations.RotateRight(t4, 41);
     }
 }
