@@ -9,6 +9,7 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Shared compression function and constants for SHA-256 family algorithms.
@@ -23,6 +24,11 @@ using System.Runtime.CompilerServices;
 /// </remarks>
 internal static class SHA256Core
 {
+    /// <summary>
+    /// The number of rounds in the SHA-256 compression function.
+    /// </summary>
+    public const int Rounds = 64;
+
     /// <summary>
     /// The block size in bytes for all SHA-256 family algorithms.
     /// </summary>
@@ -53,7 +59,7 @@ internal static class SHA256Core
     /// <param name="state">The 8-element state array to update.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ProcessBlock(ReadOnlySpan<byte> block, uint[] state)
+    public static void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
         Span<uint> w = stackalloc uint[64];
 
@@ -85,86 +91,36 @@ internal static class SHA256Core
             uint g = state[6];
             uint h = state[7];
 
-            // 64 rounds - fully unrolled with hardcoded K constants
-            // Rounds 0-7
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0x428a2f98, w[0]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0x71374491, w[1]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0xb5c0fbcf, w[2]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0xe9b5dba5, w[3]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0x3956c25b, w[4]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0x59f111f1, w[5]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0x923f82a4, w[6]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0xab1c5ed5, w[7]);
+            // 8 Unrolled compression rounds with implicit variable rotation
+#if NET8_0_OR_GREATER
+            ref uint kPtr = ref MemoryMarshal.GetArrayDataReference(K);
+            ref uint wPtr = ref MemoryMarshal.GetReference(w);
 
-            // Rounds 8-15
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0xd807aa98, w[8]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0x12835b01, w[9]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0x243185be, w[10]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0x550c7dc3, w[11]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0x72be5d74, w[12]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0x80deb1fe, w[13]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0x9bdc06a7, w[14]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0xc19bf174, w[15]);
-
-            // Rounds 16-23
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0xe49b69c1, w[16]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0xefbe4786, w[17]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0x0fc19dc6, w[18]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0x240ca1cc, w[19]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0x2de92c6f, w[20]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0x4a7484aa, w[21]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0x5cb0a9dc, w[22]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0x76f988da, w[23]);
-
-            // Rounds 24-31
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0x983e5152, w[24]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0xa831c66d, w[25]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0xb00327c8, w[26]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0xbf597fc7, w[27]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0xc6e00bf3, w[28]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0xd5a79147, w[29]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0x06ca6351, w[30]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0x14292967, w[31]);
-
-            // Rounds 32-39
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0x27b70a85, w[32]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0x2e1b2138, w[33]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0x4d2c6dfc, w[34]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0x53380d13, w[35]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0x650a7354, w[36]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0x766a0abb, w[37]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0x81c2c92e, w[38]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0x92722c85, w[39]);
-
-            // Rounds 40-47
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0xa2bfe8a1, w[40]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0xa81a664b, w[41]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0xc24b8b70, w[42]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0xc76c51a3, w[43]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0xd192e819, w[44]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0xd6990624, w[45]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0xf40e3585, w[46]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0x106aa070, w[47]);
-
-            // Rounds 48-55
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0x19a4c116, w[48]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0x1e376c08, w[49]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0x2748774c, w[50]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0x34b0bcb5, w[51]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0x391c0cb3, w[52]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0x4ed8aa4a, w[53]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0x5b9cca4f, w[54]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0x682e6ff3, w[55]);
-
-            // Rounds 56-63
-            Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, 0x748f82ee, w[56]);
-            Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, 0x78a5636f, w[57]);
-            Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, 0x84c87814, w[58]);
-            Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, 0x8cc70208, w[59]);
-            Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, 0x90befffa, w[60]);
-            Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, 0xa4506ceb, w[61]);
-            Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, 0xbef9a3f7, w[62]);
-            Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, 0xc67178f2, w[63]);
+            // notes: unroll only a single round of variable rotation to improve IL generation and cache locality
+            for (int i = 0; i < Rounds; i += 8)
+            {
+                Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, Unsafe.Add(ref kPtr, i + 0), Unsafe.Add(ref wPtr, i + 0));
+                Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, Unsafe.Add(ref kPtr, i + 1), Unsafe.Add(ref wPtr, i + 1));
+                Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, Unsafe.Add(ref kPtr, i + 2), Unsafe.Add(ref wPtr, i + 2));
+                Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, Unsafe.Add(ref kPtr, i + 3), Unsafe.Add(ref wPtr, i + 3));
+                Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, Unsafe.Add(ref kPtr, i + 4), Unsafe.Add(ref wPtr, i + 4));
+                Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, Unsafe.Add(ref kPtr, i + 5), Unsafe.Add(ref wPtr, i + 5));
+                Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, Unsafe.Add(ref kPtr, i + 6), Unsafe.Add(ref wPtr, i + 6));
+                Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, Unsafe.Add(ref kPtr, i + 7), Unsafe.Add(ref wPtr, i + 7));
+            }
+#else
+            for (int i = 0; i < Rounds; i += 8)
+            {
+                Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, K[i + 0], w[i + 0]);
+                Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, K[i + 1], w[i + 1]);
+                Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, K[i + 2], w[i + 2]);
+                Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, K[i + 3], w[i + 3]);
+                Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, K[i + 4], w[i + 4]);
+                Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, K[i + 5], w[i + 5]);
+                Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, K[i + 6], w[i + 6]);
+                Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, K[i + 7], w[i + 7]);
+            }
+#endif
 
             // Add compressed chunk to current hash value
             state[0] += a;
@@ -186,17 +142,23 @@ internal static class SHA256Core
     {
         unchecked
         {
-            uint S1 = BitOperations.RotateRight(e, 6) ^ BitOperations.RotateRight(e, 11) ^ BitOperations.RotateRight(e, 25);
-            uint ch = (e & f) ^ (~e & g);
-            uint temp1 = h + S1 + ch + k + w;
-            uint S0 = BitOperations.RotateRight(a, 2) ^ BitOperations.RotateRight(a, 13) ^ BitOperations.RotateRight(a, 22);
-            uint maj = (a & b) ^ (a & c) ^ (b & c);
-            uint temp2 = S0 + maj;
+            // h = h + Σ1(e) + Ch(e,f,g) + Kt + Wt
+            h += k + w;
 
-            // Only update d->e and compute new a
-            // The rotation is handled by rotating ref parameters in calls
-            d += temp1;
-            h = temp1 + temp2;
+            // Σ1(e) = ROTR^6(e) XOR ROTR^11(e) XOR ROTR^25(e)
+            h += BitOperations.RotateRight(e, 6) ^ BitOperations.RotateRight(e, 11) ^ BitOperations.RotateRight(e, 25);
+
+            // Ch(e,f,g) = (e AND f) XOR (NOT e AND g)
+            h += (e & f) ^ (~e & g);
+
+            d += h;
+
+            // h = h + Σ0(a) + Ma(a,b,c)
+            // Σ0(a) = ROTR^2(a) XOR ROTR^13(a) XOR ROTR^22(a)
+            h += BitOperations.RotateRight(a, 2) ^ BitOperations.RotateRight(a, 13) ^ BitOperations.RotateRight(a, 22);
+
+            // Ma(a,b,c) = (a AND b) XOR (a AND c) XOR (b AND c)
+            h += (a & b) ^ (a & c) ^ (b & c);
         }
     }
 
@@ -207,7 +169,7 @@ internal static class SHA256Core
     /// <param name="bufferLength">Current position in the buffer.</param>
     /// <param name="bytesProcessed">Total bytes processed before this buffer.</param>
     /// <param name="state">The state array to update.</param>
-    public static void PadAndFinalize(byte[] buffer, int bufferLength, long bytesProcessed, uint[] state)
+    public static void PadAndFinalize(Span<byte> buffer, int bufferLength, long bytesProcessed, Span<uint> state)
     {
         unchecked
         {
@@ -227,13 +189,13 @@ internal static class SHA256Core
                 bufferLength = 0;
             }
 
-            while (bufferLength < 56)
+            if (bufferLength < 56)
             {
-                buffer[bufferLength++] = 0x00;
+                buffer.Slice(bufferLength, 56 - bufferLength).Clear();
             }
 
             // Append length in bits (big-endian)
-            BinaryPrimitives.WriteInt64BigEndian(buffer.AsSpan(56), totalBits);
+            BinaryPrimitives.WriteInt64BigEndian(buffer.Slice(56), totalBits);
 
             ProcessBlock(buffer, state);
         }

@@ -9,6 +9,7 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Shared compression function and constants for SHA-512 family algorithms.
@@ -23,6 +24,11 @@ using System.Runtime.CompilerServices;
 /// </remarks>
 internal static class SHA512Core
 {
+    /// <summary>
+    /// The number of rounds in the SHA-512 compression function.
+    /// </summary>
+    public const int Rounds = 80;
+
     /// <summary>
     /// The block size in bytes for all SHA-512 family algorithms.
     /// </summary>
@@ -64,9 +70,9 @@ internal static class SHA512Core
     /// <param name="block">The 128-byte block to process.</param>
     /// <param name="state">The 8-element state array to update.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ProcessBlock(ReadOnlySpan<byte> block, ulong[] state)
+    public static void ProcessBlock(ReadOnlySpan<byte> block, Span<ulong> state)
     {
-        Span<ulong> w = stackalloc ulong[80];
+        Span<ulong> w = stackalloc ulong[Rounds];
 
         unchecked
         {
@@ -77,7 +83,7 @@ internal static class SHA512Core
             }
 
             // Extend message schedule W[16..79]
-            for (int i = 16; i < 80; i++)
+            for (int i = 16; i < Rounds; i++)
             {
                 ulong w15 = w[i - 15];
                 ulong w2 = w[i - 2];
@@ -101,9 +107,24 @@ internal static class SHA512Core
             ulong g = state[6];
             ulong h = state[7];
 
+            // 8 Unrolled compression rounds with implicit variable rotation
 #if NET8_0_OR_GREATER
-            // Unrolled compression rounds for better instruction-level parallelism
-            for (int i = 0; i < 80; i += 8)
+            ref ulong kPtr = ref MemoryMarshal.GetArrayDataReference(K);
+            ref ulong wPtr = ref MemoryMarshal.GetReference(w);
+
+            for (int i = 0; i < Rounds; i += 8)
+            {
+                Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, Unsafe.Add(ref kPtr, i + 0), Unsafe.Add(ref wPtr, i + 0));
+                Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, Unsafe.Add(ref kPtr, i + 1), Unsafe.Add(ref wPtr, i + 1));
+                Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, Unsafe.Add(ref kPtr, i + 2), Unsafe.Add(ref wPtr, i + 2));
+                Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, Unsafe.Add(ref kPtr, i + 3), Unsafe.Add(ref wPtr, i + 3));
+                Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, Unsafe.Add(ref kPtr, i + 4), Unsafe.Add(ref wPtr, i + 4));
+                Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, Unsafe.Add(ref kPtr, i + 5), Unsafe.Add(ref wPtr, i + 5));
+                Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, Unsafe.Add(ref kPtr, i + 6), Unsafe.Add(ref wPtr, i + 6));
+                Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, Unsafe.Add(ref kPtr, i + 7), Unsafe.Add(ref wPtr, i + 7));
+            }
+#else
+            for (int i = 0; i < Rounds; i += 8)
             {
                 Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, K[i + 0], w[i + 0]);
                 Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, K[i + 1], w[i + 1]);
@@ -113,26 +134,6 @@ internal static class SHA512Core
                 Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, K[i + 5], w[i + 5]);
                 Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, K[i + 6], w[i + 6]);
                 Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, K[i + 7], w[i + 7]);
-            }
-#else
-            // Standard compression loop
-            for (int i = 0; i < 80; i++)
-            {
-                ulong S1 = BitOperations.RotateRight(e, 14) ^ BitOperations.RotateRight(e, 18) ^ BitOperations.RotateRight(e, 41);
-                ulong ch = (e & f) ^ (~e & g);
-                ulong temp1 = h + S1 + ch + K[i] + w[i];
-                ulong S0 = BitOperations.RotateRight(a, 28) ^ BitOperations.RotateRight(a, 34) ^ BitOperations.RotateRight(a, 39);
-                ulong maj = (a & b) ^ (a & c) ^ (b & c);
-                ulong temp2 = S0 + maj;
-
-                h = g;
-                g = f;
-                f = e;
-                e = d + temp1;
-                d = c;
-                c = b;
-                b = a;
-                a = temp1 + temp2;
             }
 #endif
 
@@ -162,28 +163,27 @@ internal static class SHA512Core
     {
         unchecked
         {
+            // h = h + Σ1(e) + Ch(e,f,g) + Kt + Wt
+            h += k + w;
+
             // Σ1(e) = ROTR^14(e) XOR ROTR^18(e) XOR ROTR^41(e)
-            ulong S1 = BitOperations.RotateRight(e, 14) ^
-                       BitOperations.RotateRight(e, 18) ^
-                       BitOperations.RotateRight(e, 41);
+            h += BitOperations.RotateRight(e, 14) ^
+                 BitOperations.RotateRight(e, 18) ^
+                 BitOperations.RotateRight(e, 41);
 
             // Ch(e,f,g) = (e AND f) XOR (NOT e AND g)
-            ulong ch = (e & f) ^ (~e & g);
+            h += (e & f) ^ (~e & g);
 
-            ulong temp1 = h + S1 + ch + k + w;
+            d += h;
 
+            // h = h + Σ0(a) + Ma(a,b,c)
             // Σ0(a) = ROTR^28(a) XOR ROTR^34(a) XOR ROTR^39(a)
-            ulong S0 = BitOperations.RotateRight(a, 28) ^
-                       BitOperations.RotateRight(a, 34) ^
-                       BitOperations.RotateRight(a, 39);
+            h += BitOperations.RotateRight(a, 28) ^
+                 BitOperations.RotateRight(a, 34) ^
+                 BitOperations.RotateRight(a, 39);
 
-            // Maj(a,b,c) = (a AND b) XOR (a AND c) XOR (b AND c)
-            ulong maj = (a & b) ^ (a & c) ^ (b & c);
-
-            ulong temp2 = S0 + maj;
-
-            d += temp1;
-            h = temp1 + temp2;
+            // Ma(a,b,c) = (a AND b) XOR (a AND c) XOR (b AND c)
+            h += (a & b) ^ (a & c) ^ (b & c);
         }
     }
 
@@ -194,7 +194,7 @@ internal static class SHA512Core
     /// <param name="bufferLength">The number of valid bytes in the buffer.</param>
     /// <param name="bytesProcessed">Total bytes processed before this finalization.</param>
     /// <param name="state">The state array to update.</param>
-    public static void PadAndFinalize(byte[] buffer, int bufferLength, long bytesProcessed, ulong[] state)
+    public static void PadAndFinalize(Span<byte> buffer, int bufferLength, long bytesProcessed, Span<ulong> state)
     {
         unchecked
         {
@@ -205,23 +205,22 @@ internal static class SHA512Core
             // Pad to 112 bytes (896 bits) mod 128
             if (bufferLength > 112)
             {
-                while (bufferLength < BlockSizeBytes)
+                if (bufferLength < BlockSizeBytes)
                 {
-                    buffer[bufferLength++] = 0x00;
+                    buffer.Slice(bufferLength, BlockSizeBytes - bufferLength).Clear();
                 }
                 ProcessBlock(buffer, state);
                 bufferLength = 0;
             }
 
-            while (bufferLength < 112)
+            // High 64 bits are zero for our implementation
+            if (bufferLength < 120)
             {
-                buffer[bufferLength++] = 0x00;
+                buffer.Slice(bufferLength, 120 - bufferLength).Clear();
             }
 
             // Append length in bits (big-endian, 128-bit)
-            // High 64 bits are zero for our implementation
-            BinaryPrimitives.WriteInt64BigEndian(buffer.AsSpan(112), 0L);
-            BinaryPrimitives.WriteInt64BigEndian(buffer.AsSpan(120), totalBits);
+            BinaryPrimitives.WriteInt64BigEndian(buffer.Slice(120), totalBits);
 
             ProcessBlock(buffer, state);
         }

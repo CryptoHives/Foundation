@@ -20,7 +20,7 @@ using System.Buffers.Binary;
 /// with different initial values and truncated output.
 /// </para>
 /// </remarks>
-public sealed class SHA224 : HashAlgorithm
+public sealed class SHA224 : Sha2HashAlgorithm<uint>
 {
     /// <summary>
     /// The hash size in bits.
@@ -33,31 +33,24 @@ public sealed class SHA224 : HashAlgorithm
     public const int HashSizeBytes = HashSizeBits / 8;
 
     /// <summary>
-    /// The block size in bytes.
-    /// </summary>
-    public const int BlockSizeBytes = SHA256Core.BlockSizeBytes;
-
-    private readonly byte[] _buffer;
-    private readonly uint[] _state;
-    private long _bytesProcessed;
-    private int _bufferLength;
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="SHA224"/> class.
     /// </summary>
     public SHA224()
     {
         HashSizeValue = HashSizeBits;
-        _buffer = new byte[BlockSizeBytes];
-        _state = new uint[8];
-        Initialize();
     }
 
     /// <inheritdoc/>
     public override string AlgorithmName => "SHA-224";
 
     /// <inheritdoc/>
-    public override int BlockSize => BlockSizeBytes;
+    public override int BlockSize => SHA256Core.BlockSizeBytes;
+
+    /// <inheritdoc/>
+    protected override int BlockSizeBytes => SHA256Core.BlockSizeBytes;
+
+    /// <inheritdoc/>
+    protected override int OutputSizeBytes => HashSizeBytes;
 
     /// <summary>
     /// Creates a new instance of the <see cref="SHA224"/> class.
@@ -66,7 +59,7 @@ public sealed class SHA224 : HashAlgorithm
     public static new SHA224 Create() => new();
 
     /// <inheritdoc/>
-    public override void Initialize()
+    protected override void InitializeState()
     {
         // SHA-224 uses different IV than SHA-256 (FIPS 180-4 Section 5.3.2)
         _state[0] = 0xc1059ed8;
@@ -77,75 +70,27 @@ public sealed class SHA224 : HashAlgorithm
         _state[5] = 0x68581511;
         _state[6] = 0x64f98fa7;
         _state[7] = 0xbefa4fa4;
-
-        _bytesProcessed = 0;
-        _bufferLength = 0;
-        ClearBuffer(_buffer);
     }
 
     /// <inheritdoc/>
-    protected override void HashCore(ReadOnlySpan<byte> source)
+    protected override void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
-        int offset = 0;
-
-        if (_bufferLength > 0)
-        {
-            int toCopy = Math.Min(BlockSizeBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            if (_bufferLength == BlockSizeBytes)
-            {
-                SHA256Core.ProcessBlock(_buffer, _state);
-                _bytesProcessed += BlockSizeBytes;
-                _bufferLength = 0;
-            }
-        }
-
-        while (offset + BlockSizeBytes <= source.Length)
-        {
-            SHA256Core.ProcessBlock(source.Slice(offset, BlockSizeBytes), _state);
-            _bytesProcessed += BlockSizeBytes;
-            offset += BlockSizeBytes;
-        }
-
-        if (offset < source.Length)
-        {
-            source.Slice(offset).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += source.Length - offset;
-        }
+        SHA256Core.ProcessBlock(block, state);
     }
 
     /// <inheritdoc/>
-    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
+    protected override void PadAndFinalize(Span<byte> buffer, int bufferLength, long bytesProcessed, Span<uint> state)
     {
-        if (destination.Length < HashSizeBytes)
-        {
-            bytesWritten = 0;
-            return false;
-        }
+        SHA256Core.PadAndFinalize(buffer, bufferLength, bytesProcessed, state);
+    }
 
-        SHA256Core.PadAndFinalize(_buffer, _bufferLength, _bytesProcessed, _state);
-
+    /// <inheritdoc/>
+    protected override void OutputHash(Span<byte> destination, uint[] state)
+    {
         // Output first 7 words (28 bytes) in big-endian
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < HashSizeBytes / sizeof(UInt32); i++)
         {
-            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * 4), _state[i]);
+            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * sizeof(UInt32)), state[i]);
         }
-
-        bytesWritten = HashSizeBytes;
-        return true;
-    }
-
-    /// <inheritdoc/>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            ClearBuffer(_buffer);
-            Array.Clear(_state, 0, _state.Length);
-        }
-        base.Dispose(disposing);
     }
 }
