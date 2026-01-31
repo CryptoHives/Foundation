@@ -585,31 +585,28 @@ public sealed class Blake2b : HashAlgorithm
             }
 
             // 12 rounds
-            for (int round = 0; round < Rounds; round++)
+            for (int gatherIndex = 0; gatherIndex < Rounds << 1; gatherIndex++)
             {
-                int gatherIdx = round * 2;
-
                 // Column step - use gather for message words
-                var mx0 = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIdx], 1).AsUInt64();
-                var my0 = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIdx], 1).AsUInt64();
+                var mx = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIndex], 1).AsUInt64();
+                GRoundX(ref row0, ref row1, ref row2, ref row3, mx);
 
-                GRound(ref row0, ref row1, ref row2, ref row3, mx0, my0);
+                var my = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIndex], 1).AsUInt64();
+                GRoundY(ref row0, ref row1, ref row2, ref row3, my);
 
                 // Diagonal permutations
-                row1 = Avx2.Permute4x64(row1, 0b00_11_10_01);
-                row2 = Avx2.Permute4x64(row2, 0b01_00_11_10);
-                row3 = Avx2.Permute4x64(row3, 0b10_01_00_11);
+                Permute(ref row1, ref row2, ref row3);
 
                 // Diagonal step
-                var mx1 = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIdx + 1], 1).AsUInt64();
-                var my1 = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIdx + 1], 1).AsUInt64();
+                gatherIndex++;
+                mx = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIndex], 1).AsUInt64();
+                GRoundX(ref row0, ref row1, ref row2, ref row3, mx);
 
-                GRound(ref row0, ref row1, ref row2, ref row3, mx1, my1);
+                my = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIndex], 1).AsUInt64();
+                GRoundY(ref row0, ref row1, ref row2, ref row3, my);
 
                 // Un-rotate
-                row1 = Avx2.Permute4x64(row1, 0b10_01_00_11);
-                row2 = Avx2.Permute4x64(row2, 0b01_00_11_10);
-                row3 = Avx2.Permute4x64(row3, 0b00_11_10_01);
+                Permute(ref row3, ref row2, ref row1);
             }
 
             // Finalize: state ^= row0 ^ row2, state ^= row1 ^ row3
@@ -619,34 +616,59 @@ public sealed class Blake2b : HashAlgorithm
     }
 
     /// <summary>
-    /// Performs one G round on 4 parallel lanes using AVX2.
+    /// Performs one Gx round on 4 parallel lanes using AVX2.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void GRound(
+    private static void GRoundX(
         ref Vector256<ulong> a,
         ref Vector256<ulong> b,
         ref Vector256<ulong> c,
         ref Vector256<ulong> d,
-        Vector256<ulong> x,
-        Vector256<ulong> y)
+        Vector256<ulong> x)
     {
         // a = a + b + x
         a = Avx2.Add(a, Avx2.Add(b, x));
         // d = ror(d ^ a, 32)
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateMask32).AsUInt64();
+        d = Avx2.Shuffle(Avx2.Xor(d, a).AsUInt32(), 0b_10_11_00_01).AsUInt64();
+
         // c = c + d
         c = Avx2.Add(c, d);
         // b = ror(b ^ c, 24)
         b = Avx2.Shuffle(Avx2.Xor(b, c).AsByte(), RotateMask24).AsUInt64();
+    }
+
+    /// <summary>
+    /// Performs one Gy round on 4 parallel lanes using AVX2.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void GRoundY(
+        ref Vector256<ulong> a,
+        ref Vector256<ulong> b,
+        ref Vector256<ulong> c,
+        ref Vector256<ulong> d,
+        Vector256<ulong> y)
+    {
         // a = a + b + y
         a = Avx2.Add(a, Avx2.Add(b, y));
         // d = ror(d ^ a, 16)
         d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateMask16).AsUInt64();
+
         // c = c + d
         c = Avx2.Add(c, d);
         // b = ror(b ^ c, 63) - must use shift+or
         var t = Avx2.Xor(b, c);
-        b = Avx2.Or(Avx2.ShiftRightLogical(t, 63), Avx2.ShiftLeftLogical(t, 1));
+        b = Avx2.Or(Avx2.ShiftRightLogical(t, 63), Avx2.Add(t, t));
+    }
+
+    /// <summary>
+    /// Performs diagonal permutations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void Permute(ref Vector256<ulong> a, ref Vector256<ulong> b, ref Vector256<ulong> c)
+    {
+        a = Avx2.Permute4x64(a, 0b00_11_10_01);
+        b = Avx2.Permute4x64(b, 0b01_00_11_10);
+        c = Avx2.Permute4x64(c, 0b10_01_00_11);
     }
 #endif
 }
