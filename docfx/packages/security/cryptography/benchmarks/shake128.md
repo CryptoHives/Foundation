@@ -1,37 +1,37 @@
 ﻿| Description                                      | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 128B         |     279.6 ns |     2.94 ns |     2.75 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 128B         |     347.8 ns |     4.65 ns |     4.12 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 128B         |     351.4 ns |     4.65 ns |     4.35 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 128B         |     369.7 ns |     3.57 ns |     3.34 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 128B         |     383.7 ns |     1.65 ns |     1.46 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 128B         |     271.0 ns |     2.28 ns |     2.02 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 128B         |     344.1 ns |     6.04 ns |     5.35 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 128B         |     350.4 ns |     0.92 ns |     0.86 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 128B         |     357.7 ns |     1.73 ns |     1.62 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 128B         |     380.4 ns |     1.55 ns |     1.38 ns |     112 B |
 |                                                  |              |              |             |             |           |
-| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 137B         |     276.9 ns |     1.68 ns |     1.57 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 137B         |     342.2 ns |     4.43 ns |     3.93 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 137B         |     353.3 ns |     1.07 ns |     0.95 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 137B         |     364.5 ns |     3.24 ns |     2.71 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 137B         |     383.9 ns |     3.60 ns |     3.36 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 137B         |     262.7 ns |     1.31 ns |     1.10 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 137B         |     338.3 ns |     1.00 ns |     0.83 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 137B         |     345.5 ns |     1.14 ns |     1.01 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 137B         |     358.5 ns |     1.52 ns |     1.42 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 137B         |     380.0 ns |     3.14 ns |     2.93 ns |     112 B |
 |                                                  |              |              |             |             |           |
-| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 1KB          |   1,559.0 ns |    11.65 ns |    10.90 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 1KB          |   1,846.7 ns |    15.80 ns |    14.00 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 1KB          |   2,033.8 ns |     9.44 ns |     7.88 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 1KB          |   2,104.3 ns |     7.07 ns |     6.62 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 1KB          |   2,232.8 ns |    26.62 ns |    24.90 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 1KB          |   1,493.2 ns |     7.43 ns |     6.95 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 1KB          |   1,801.5 ns |     7.20 ns |     6.01 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 1KB          |   2,008.2 ns |     5.40 ns |     4.21 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 1KB          |   2,070.2 ns |     7.62 ns |     6.76 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 1KB          |   2,189.9 ns |    11.70 ns |    10.37 ns |     112 B |
 |                                                  |              |              |             |             |           |
-| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 1025B        |   1,555.5 ns |     6.37 ns |     5.96 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 1025B        |   1,836.2 ns |     9.19 ns |     8.59 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 1025B        |   2,042.3 ns |     9.30 ns |     7.77 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 1025B        |   2,149.1 ns |     8.57 ns |     8.02 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 1025B        |   2,227.7 ns |    18.13 ns |    15.14 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 1025B        |   1,508.4 ns |    11.02 ns |    10.31 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 1025B        |   1,809.9 ns |     9.63 ns |     9.01 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 1025B        |   2,006.6 ns |     5.29 ns |     4.13 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 1025B        |   2,072.3 ns |     5.12 ns |     4.79 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 1025B        |   2,200.3 ns |    22.01 ns |    20.58 ns |     112 B |
 |                                                  |              |              |             |             |           |
-| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 8KB          |  10,149.0 ns |    58.39 ns |    51.77 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 8KB          |  11,955.8 ns |    76.53 ns |    63.90 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 8KB          |  13,559.2 ns |    72.68 ns |    64.43 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 8KB          |  13,951.4 ns |    41.08 ns |    34.30 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 8KB          |  15,250.0 ns |    60.48 ns |    50.51 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 8KB          |   9,834.4 ns |    59.29 ns |    55.46 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 8KB          |  11,781.9 ns |   102.61 ns |    95.98 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 8KB          |  13,357.8 ns |    45.97 ns |    38.39 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 8KB          |  13,786.3 ns |    37.65 ns |    35.22 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 8KB          |  15,016.2 ns |    80.83 ns |    75.61 ns |     112 B |
 |                                                  |              |              |             |             |           |
-| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 128KB        | 160,461.6 ns | 1,273.29 ns | 1,191.03 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 128KB        | 188,681.9 ns | 1,111.37 ns | 1,039.58 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 128KB        | 213,457.2 ns |   969.31 ns |   809.42 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 128KB        | 226,149.9 ns |   552.81 ns |   490.05 ns |     112 B |
-| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 128KB        | 241,816.2 ns | 1,211.74 ns | 1,133.47 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (Managed)      | 128KB        | 155,478.8 ns | 1,598.49 ns | 1,495.23 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (OS)           | 128KB        | 185,115.7 ns |   699.16 ns |   583.83 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX2)         | 128KB        | 212,114.4 ns |   483.13 ns |   451.92 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (AVX512F)      | 128KB        | 217,869.7 ns |   480.75 ns |   426.17 ns |     112 B |
+| ComputeHash · SHAKE128 · SHAKE128 (BouncyCastle) | 128KB        | 239,320.1 ns | 1,263.94 ns | 1,182.29 ns |     112 B |

@@ -236,7 +236,7 @@ public sealed class Blake2s : HashAlgorithm
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
     /// <returns>Flags indicating which SIMD instruction sets are available.</returns>
-    internal static SimdSupport SimdSupport
+    internal static new SimdSupport SimdSupport
     {
         get
         {

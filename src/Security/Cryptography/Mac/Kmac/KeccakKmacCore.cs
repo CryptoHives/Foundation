@@ -118,9 +118,15 @@ public abstract class KeccakKmacCore : KeccakCore
     {
         if (!_finalized)
         {
+            Span<byte> rightEncodedL = stackalloc byte[CShake128.EncodeBufferLength];
+
             // Append right_encode(L) where L is output length in bits
-            byte[] rightEncodedL = CShake128.RightEncode(_outputBytes * 8L);
-            foreach (byte b in rightEncodedL)
+            if (!CShake128.TryRightEncode(rightEncodedL, _outputBytes * 8L, out int rightEncodedBytes))
+            {
+                throw new InvalidOperationException("Failed to encode output length.");
+            }
+
+            foreach (byte b in rightEncodedL.Slice(0, rightEncodedBytes))
             {
                 _buffer[_bufferLength++] = b;
                 if (_bufferLength == _rateBytes)
@@ -163,16 +169,20 @@ public abstract class KeccakKmacCore : KeccakCore
         // bytepad(encode_string(N) || encode_string(S), rate) where N = "KMAC"
         byte[] encodedN = CShake128.EncodeString(KmacFunctionName);
         byte[] encodedS = CShake128.EncodeString(_customization);
-        byte[] leftEncodedRate = CShake128.LeftEncode(_rateBytes);
+        Span<byte> leftEncodedRate = stackalloc byte[CShake128.EncodeBufferLength];
+        if (!CShake128.TryLeftEncode(leftEncodedRate, _rateBytes, out int leftEncodedBytes))
+        {
+            throw new InvalidOperationException("Failed to encode left rate.");
+        }
 
-        int totalLen = leftEncodedRate.Length + encodedN.Length + encodedS.Length;
+        int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        byte[] bytePadded = new byte[totalLen + padLen];
-        int offset = 0;
+        byte[] bytePadded = new byte[_rateBytes];
 
-        Array.Copy(leftEncodedRate, 0, bytePadded, offset, leftEncodedRate.Length);
-        offset += leftEncodedRate.Length;
+        int offset = 0;
+        leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(bytePadded.AsSpan(offset));
+        offset += leftEncodedBytes;
 
         Array.Copy(encodedN, 0, bytePadded, offset, encodedN.Length);
         offset += encodedN.Length;
@@ -189,16 +199,20 @@ public abstract class KeccakKmacCore : KeccakCore
     {
         // bytepad(encode_string(K), rate)
         byte[] encodedK = CShake128.EncodeString(_key);
-        byte[] leftEncodedRate = CShake128.LeftEncode(_rateBytes);
+        Span<byte> leftEncodedRate = stackalloc byte[CShake128.EncodeBufferLength];
+        if (!CShake128.TryLeftEncode(leftEncodedRate, _rateBytes, out int leftEncodedBytes))
+        {
+            throw new InvalidOperationException("Failed to encode left rate.");
+        }
 
-        int totalLen = leftEncodedRate.Length + encodedK.Length;
+        int totalLen = leftEncodedBytes + encodedK.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        byte[] bytePadded = new byte[totalLen + padLen];
-        int offset = 0;
+        byte[] bytePadded = new byte[_rateBytes];
 
-        Array.Copy(leftEncodedRate, 0, bytePadded, offset, leftEncodedRate.Length);
-        offset += leftEncodedRate.Length;
+        int offset = 0;
+        leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(bytePadded.AsSpan(offset));
+        offset += leftEncodedBytes;
 
         Array.Copy(encodedK, 0, bytePadded, offset, encodedK.Length);
 

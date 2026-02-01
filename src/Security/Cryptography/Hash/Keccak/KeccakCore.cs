@@ -19,9 +19,6 @@ using System;
 /// <para>
 /// The Keccak state is a 5×5×64 = 1600-bit array organized as 25 64-bit lanes.
 /// </para>
-/// <para>
-/// On platforms with AVX512F support (.NET 8+), an optimized SIMD implementation can be used.
-/// </para>
 /// </remarks>
 public abstract class KeccakCore : HashAlgorithm
 {
@@ -54,7 +51,7 @@ public abstract class KeccakCore : HashAlgorithm
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
-    internal static SimdSupport SimdSupport => KeccakCoreState.SimdSupport;
+    internal static new SimdSupport SimdSupport => KeccakCoreState.SimdSupport;
 
     /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)

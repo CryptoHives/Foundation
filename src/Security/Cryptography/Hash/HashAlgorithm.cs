@@ -231,6 +231,11 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     }
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport => SimdSupport.None;
+
+    /// <summary>
     /// Clears sensitive data from a byte array.
     /// </summary>
     /// <param name="data">The data to clear.</param>

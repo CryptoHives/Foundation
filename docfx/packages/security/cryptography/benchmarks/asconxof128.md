@@ -1,19 +1,19 @@
 ﻿| Description                                              | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |--------------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 128B         |     624.7 ns |     3.87 ns |     3.23 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 128B         |     791.7 ns |     8.17 ns |     7.25 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 128B         |     633.2 ns |    12.43 ns |    16.59 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 128B         |     795.5 ns |    10.50 ns |     9.31 ns |     112 B |
 |                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 137B         |     646.0 ns |     3.93 ns |     3.68 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 137B         |     827.6 ns |     3.06 ns |     2.86 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 137B         |     648.3 ns |     5.88 ns |     5.50 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 137B         |     841.4 ns |     7.34 ns |     6.51 ns |     112 B |
 |                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 1KB          |   3,802.2 ns |    30.32 ns |    26.87 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 1KB          |   4,943.5 ns |    31.63 ns |    29.59 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 1KB          |   3,782.6 ns |    23.52 ns |    20.85 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 1KB          |   4,951.2 ns |    38.81 ns |    36.30 ns |     112 B |
 |                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 1025B        |   3,804.8 ns |    31.06 ns |    29.06 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 1025B        |   4,939.3 ns |    33.77 ns |    31.59 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 1025B        |   3,786.4 ns |    29.30 ns |    27.41 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 1025B        |   4,947.9 ns |    37.08 ns |    34.68 ns |     112 B |
 |                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 8KB          |  29,129.7 ns |   189.42 ns |   167.92 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 8KB          |  38,164.7 ns |   150.84 ns |   141.10 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 8KB          |  29,174.7 ns |   251.44 ns |   222.90 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 8KB          |  38,209.5 ns |   301.89 ns |   282.39 ns |     112 B |
 |                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 128KB        | 463,517.4 ns | 1,340.98 ns | 1,188.75 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 128KB        | 607,601.6 ns | 2,797.22 ns | 2,335.80 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 128KB        | 464,911.2 ns | 3,515.98 ns | 3,288.85 ns |     112 B |
+| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 128KB        | 611,489.5 ns | 7,359.10 ns | 6,523.65 ns |     112 B |

@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers.Binary;
 using System.Text;
 
 /// <summary>
@@ -39,6 +40,11 @@ public sealed class CShake128 : KeccakCore
     /// The capacity in bytes (256 bits for cSHAKE128).
     /// </summary>
     public const int CapacityBytes = 32;
+
+    /// <summary>
+    /// The minimum buffer size needed to call a TryEncodeLeft or TryEncodeRight function.
+    /// </summary>
+    public const int EncodeBufferLength = 9;
 
     private readonly int _outputBytes;
     private readonly byte[] _functionName;
@@ -188,16 +194,20 @@ public sealed class CShake128 : KeccakCore
         byte[] encodedS = EncodeString(_customization);
 
         // left_encode(rate)
-        byte[] leftEncodedRate = LeftEncode(RateBytes);
+        Span<byte> leftEncodedRate = stackalloc byte[EncodeBufferLength];
+        if (!CShake128.TryLeftEncode(leftEncodedRate, RateBytes, out int leftEncodedBytes))
+        {
+            throw new InvalidOperationException("Failed to encode left rate.");
+        }
 
-        int totalLen = leftEncodedRate.Length + encodedN.Length + encodedS.Length;
+        int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (RateBytes - (totalLen % RateBytes)) % RateBytes;
 
         byte[] bytePadded = new byte[totalLen + padLen];
         int offset = 0;
 
-        Array.Copy(leftEncodedRate, 0, bytePadded, offset, leftEncodedRate.Length);
-        offset += leftEncodedRate.Length;
+        leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(bytePadded.AsSpan(offset));
+        offset += leftEncodedBytes;
 
         Array.Copy(encodedN, 0, bytePadded, offset, encodedN.Length);
         offset += encodedN.Length;
@@ -229,88 +239,114 @@ public sealed class CShake128 : KeccakCore
     {
         // Length in bits - use long to avoid overflow
         long lengthInBits = (long)s.Length * 8L;
-        byte[] lenEncoded = LeftEncode(lengthInBits);
-        byte[] result = new byte[lenEncoded.Length + s.Length];
-        Array.Copy(lenEncoded, 0, result, 0, lenEncoded.Length);
-        Array.Copy(s, 0, result, lenEncoded.Length, s.Length);
+        Span<byte> lenEncoded = stackalloc byte[EncodeBufferLength];
+        if (!TryLeftEncode(lenEncoded, lengthInBits, out int lenBytesWritten))
+        {
+            throw new InvalidOperationException("Failed to encode string length.");
+        }
+        byte[] result = new byte[lenBytesWritten + s.Length];
+        lenEncoded.Slice(0, lenBytesWritten).CopyTo(result);
+        Array.Copy(s, 0, result, lenBytesWritten, s.Length);
         return result;
     }
 
     /// <summary>
     /// Left-encodes an integer (left_encode from SP 800-185).
     /// </summary>
-    /// <param name="x">The value to encode (must be non-negative).</param>
-    /// <returns>The encoded bytes.</returns>
-    internal static byte[] LeftEncode(long x)
+    internal static bool TryLeftEncode(Span<byte> destination, long x, out int bytesWritten)
     {
         if (x < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(x), "Value must be non-negative.");
         }
 
+        if (destination.Length < 2)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         if (x == 0)
         {
-            return [1, 0];
+            destination[0] = 1;
+            destination[1] = 0;
+            bytesWritten = 2;
+            return true;
         }
+
+        Span<byte> tempBytes = stackalloc byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(tempBytes, x);
 
         // Count how many bytes we need
-        int n = 0;
-        long temp = x;
-        while (temp > 0)
+        byte n = 0;
+        while (x > 0)
         {
             n++;
-            temp >>= 8;
-        }
-
-        byte[] result = new byte[n + 1];
-        result[0] = unchecked((byte)n);
-
-        // Fill bytes in big-endian order
-        for (int i = n; i >= 1; i--)
-        {
-            result[i] = unchecked((byte)x);
             x >>= 8;
         }
 
-        return result;
+        if (destination.Length < n + 1)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        tempBytes.Slice(sizeof(long) - n, n).CopyTo(destination.Slice(1));
+
+        // Write the length byte
+        destination[0] = n;
+        bytesWritten = n + 1;
+
+        return true;
     }
 
     /// <summary>
     /// Right-encodes an integer (right_encode from SP 800-185).
     /// </summary>
-    /// <param name="x">The value to encode (must be non-negative).</param>
-    /// <returns>The encoded bytes.</returns>
-    internal static byte[] RightEncode(long x)
+    internal static bool TryRightEncode(Span<byte> destination, long x, out int bytesWritten)
     {
         if (x < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(x), "Value must be non-negative.");
         }
 
+        if (destination.Length < sizeof(long) + 1)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         if (x == 0)
         {
-            return [0, 1];
+            destination[0] = 0;
+            destination[1] = 1;
+            bytesWritten = 2;
+            return true;
         }
+
+        Span<byte> tempBytes = stackalloc byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(tempBytes, x);
 
         // Count how many bytes we need
-        int n = 0;
-        long temp = x;
-        while (temp > 0)
+        byte n = 0;
+        while (x > 0)
         {
             n++;
-            temp >>= 8;
-        }
-
-        byte[] result = new byte[n + 1];
-        result[n] = unchecked((byte)n);
-
-        // Fill bytes in big-endian order
-        for (int i = n - 1; i >= 0; i--)
-        {
-            result[i] = unchecked((byte)x);
             x >>= 8;
         }
 
-        return result;
+        if (destination.Length < n + 1)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        tempBytes.Slice(sizeof(long) - n, n).CopyTo(destination);
+
+        // Write the length byte
+        destination[n] = n;
+        bytesWritten = n + 1;
+
+        return true;
     }
 }

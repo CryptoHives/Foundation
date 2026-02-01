@@ -32,7 +32,7 @@ using System.Runtime.Intrinsics.X86;
 /// BLAKE2b supports an optional key for keyed hashing (MAC mode) with keys up to 64 bytes.
 /// </para>
 /// </remarks>
-public sealed class Blake2b : HashAlgorithm
+public sealed partial class Blake2b : HashAlgorithm
 {
     /// <summary>
     /// The maximum hash size in bits.
@@ -93,72 +93,6 @@ public sealed class Blake2b : HashAlgorithm
         14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3
     };
 
-#if NET8_0_OR_GREATER
-    // Pre-computed shuffle masks for byte-aligned rotations (static to avoid recreation)
-    private static readonly Vector256<byte> RotateMask32 = Vector256.Create(
-        (byte)4, 5, 6, 7, 0, 1, 2, 3,
-        12, 13, 14, 15, 8, 9, 10, 11,
-        20, 21, 22, 23, 16, 17, 18, 19,
-        28, 29, 30, 31, 24, 25, 26, 27);
-
-    private static readonly Vector256<byte> RotateMask24 = Vector256.Create(
-        (byte)3, 4, 5, 6, 7, 0, 1, 2,
-        11, 12, 13, 14, 15, 8, 9, 10,
-        19, 20, 21, 22, 23, 16, 17, 18,
-        27, 28, 29, 30, 31, 24, 25, 26);
-
-    private static readonly Vector256<byte> RotateMask16 = Vector256.Create(
-        (byte)2, 3, 4, 5, 6, 7, 0, 1,
-        10, 11, 12, 13, 14, 15, 8, 9,
-        18, 19, 20, 21, 22, 23, 16, 17,
-        26, 27, 28, 29, 30, 31, 24, 25);
-
-    // Pre-computed IV vectors for AVX2 path
-    private static readonly Vector256<ulong> IVLow = Vector256.Create(
-        0x6a09e667f3bcc908UL, 0xbb67ae8584caa73bUL,
-        0x3c6ef372fe94f82bUL, 0xa54ff53a5f1d36f1UL);
-
-    private static readonly Vector256<ulong> IVHigh = Vector256.Create(
-        0x510e527fade682d1UL, 0x9b05688c2b3e6c1fUL,
-        0x1f83d9abfb41bd6bUL, 0x5be0cd19137e2179UL);
-
-    // Finalization mask for inverting element 2 of row3
-    private static readonly Vector256<ulong> FinalMask = Vector256.Create(0UL, 0UL, ~0UL, 0UL);
-
-    // Pre-computed Vector128<int> indices for gather operations (scaled by 8 for ulong stride)
-    private static readonly Vector128<int>[] GatherIndicesX = new Vector128<int>[Rounds * 2];
-    private static readonly Vector128<int>[] GatherIndicesY = new Vector128<int>[Rounds * 2];
-
-    // Vector state for AVX2 path
-    private Vector256<ulong> _stateVec0;
-    private Vector256<ulong> _stateVec1;
-    private readonly bool _useAvx2;
-
-    static Blake2b()
-    {
-        for (int round = 0; round < Rounds; round++)
-        {
-            int offset = round * ScratchSize;
-
-            // Column step indices (multiply by 8 for byte offset of ulong)
-            GatherIndicesX[round * 2] = Vector128.Create(
-                Sigma[offset + 0] * 8, Sigma[offset + 2] * 8,
-                Sigma[offset + 4] * 8, Sigma[offset + 6] * 8);
-            GatherIndicesY[round * 2] = Vector128.Create(
-                Sigma[offset + 1] * 8, Sigma[offset + 3] * 8,
-                Sigma[offset + 5] * 8, Sigma[offset + 7] * 8);
-
-            // Diagonal step indices
-            GatherIndicesX[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 8] * 8, Sigma[offset + 10] * 8,
-                Sigma[offset + 12] * 8, Sigma[offset + 14] * 8);
-            GatherIndicesY[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 9] * 8, Sigma[offset + 11] * 8,
-                Sigma[offset + 13] * 8, Sigma[offset + 15] * 8);
-        }
-    }
-#endif
-
     // Scalar state for non-AVX2 path and output extraction
     private readonly ulong[] _state;
     private readonly byte[] _buffer;
@@ -217,7 +151,7 @@ public sealed class Blake2b : HashAlgorithm
         _buffer = new byte[BlockSizeBytes];
 
 #if NET8_0_OR_GREATER
-        _useAvx2 = (simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported;
+        _useAvx2 = (simdSupport & Blake2b.SimdSupport) == SimdSupport.Avx2;
 #endif
 
         if (key != null && key.Length > 0)
@@ -239,22 +173,6 @@ public sealed class Blake2b : HashAlgorithm
     /// Gets a value indicating whether this instance is configured for keyed hashing (MAC mode).
     /// </summary>
     public bool IsKeyed => _key != null;
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
-    /// </summary>
-    /// <returns>Flags indicating which SIMD instruction sets are available.</returns>
-    internal static SimdSupport SimdSupport
-    {
-        get
-        {
-            var support = SimdSupport.None;
-#if NET8_0_OR_GREATER
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
-#endif
-            return support;
-        }
-    }
 
     /// <summary>
     /// Creates a new instance of the <see cref="Blake2b"/> class with default output size.
@@ -426,31 +344,6 @@ public sealed class Blake2b : HashAlgorithm
         return true;
     }
 
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ExtractOutputAvx2(Span<byte> destination)
-    {
-        // Store vectors to stack, then copy required bytes
-        Span<ulong> temp = stackalloc ulong[8];
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[0]), _stateVec0);
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[4]), _stateVec1);
-
-        int fullWords = _outputBytes / 8;
-        for (int i = 0; i < fullWords; i++)
-        {
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * 8), temp[i]);
-        }
-
-        int remainingBytes = _outputBytes % 8;
-        if (remainingBytes > 0)
-        {
-            Span<byte> tempBytes = stackalloc byte[8];
-            BinaryPrimitives.WriteUInt64LittleEndian(tempBytes, temp[fullWords]);
-            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 8));
-        }
-    }
-#endif
-
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
@@ -493,7 +386,6 @@ public sealed class Blake2b : HashAlgorithm
 
         // Parse message block into 16 64-bit words (little-endian)
         // On little-endian platforms, directly reinterpret the byte span as ulong.
-        // This avoids 16 individual BinaryPrimitives.ReadUInt64LittleEndian calls.
         if (BitConverter.IsLittleEndian)
         {
             MemoryMarshal.Cast<byte, ulong>(block).CopyTo(m);
@@ -559,94 +451,4 @@ public sealed class Blake2b : HashAlgorithm
             b = BitOperations.RotateRight(b ^ c, 63);
         }
     }
-
-#if NET8_0_OR_GREATER
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
-    {
-        _bytesCompressed += (ulong)_bufferLength;
-
-        // Pin the message block for gather operations
-        fixed (byte* mPtr = block)
-        {
-            // Initialize rows from vector state
-            var row0 = _stateVec0;
-            var row1 = _stateVec1;
-            var row2 = IVLow;
-
-            // row3 = IVHigh with counter/finalization applied
-            var counterVec = Vector256.Create(_bytesCompressed, 0UL, 0UL, 0UL);
-            var row3 = Avx2.Xor(IVHigh, counterVec);
-
-            if (isFinal)
-            {
-                // Invert element 2 (the finalization flag)
-                row3 = Avx2.Xor(row3, FinalMask);
-            }
-
-            // 12 rounds
-            for (int round = 0; round < Rounds; round++)
-            {
-                int gatherIdx = round * 2;
-
-                // Column step - use gather for message words
-                var mx0 = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIdx], 1).AsUInt64();
-                var my0 = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIdx], 1).AsUInt64();
-
-                GRound(ref row0, ref row1, ref row2, ref row3, mx0, my0);
-
-                // Diagonal permutations
-                row1 = Avx2.Permute4x64(row1, 0b00_11_10_01);
-                row2 = Avx2.Permute4x64(row2, 0b01_00_11_10);
-                row3 = Avx2.Permute4x64(row3, 0b10_01_00_11);
-
-                // Diagonal step
-                var mx1 = Avx2.GatherVector256((long*)mPtr, GatherIndicesX[gatherIdx + 1], 1).AsUInt64();
-                var my1 = Avx2.GatherVector256((long*)mPtr, GatherIndicesY[gatherIdx + 1], 1).AsUInt64();
-
-                GRound(ref row0, ref row1, ref row2, ref row3, mx1, my1);
-
-                // Un-rotate
-                row1 = Avx2.Permute4x64(row1, 0b10_01_00_11);
-                row2 = Avx2.Permute4x64(row2, 0b01_00_11_10);
-                row3 = Avx2.Permute4x64(row3, 0b00_11_10_01);
-            }
-
-            // Finalize: state ^= row0 ^ row2, state ^= row1 ^ row3
-            _stateVec0 = Avx2.Xor(_stateVec0, Avx2.Xor(row0, row2));
-            _stateVec1 = Avx2.Xor(_stateVec1, Avx2.Xor(row1, row3));
-        }
-    }
-
-    /// <summary>
-    /// Performs one G round on 4 parallel lanes using AVX2.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void GRound(
-        ref Vector256<ulong> a,
-        ref Vector256<ulong> b,
-        ref Vector256<ulong> c,
-        ref Vector256<ulong> d,
-        Vector256<ulong> x,
-        Vector256<ulong> y)
-    {
-        // a = a + b + x
-        a = Avx2.Add(a, Avx2.Add(b, x));
-        // d = ror(d ^ a, 32)
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateMask32).AsUInt64();
-        // c = c + d
-        c = Avx2.Add(c, d);
-        // b = ror(b ^ c, 24)
-        b = Avx2.Shuffle(Avx2.Xor(b, c).AsByte(), RotateMask24).AsUInt64();
-        // a = a + b + y
-        a = Avx2.Add(a, Avx2.Add(b, y));
-        // d = ror(d ^ a, 16)
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateMask16).AsUInt64();
-        // c = c + d
-        c = Avx2.Add(c, d);
-        // b = ror(b ^ c, 63) - must use shift+or
-        var t = Avx2.Xor(b, c);
-        b = Avx2.Or(Avx2.ShiftRightLogical(t, 63), Avx2.ShiftLeftLogical(t, 1));
-    }
-#endif
 }
