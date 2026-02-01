@@ -174,16 +174,21 @@ public sealed class CShake256 : KeccakCore
     {
         byte[] encodedN = CShake128.EncodeString(_functionName);
         byte[] encodedS = CShake128.EncodeString(_customization);
-        byte[] leftEncodedRate = CShake128.LeftEncode(RateBytes);
 
-        int totalLen = leftEncodedRate.Length + encodedN.Length + encodedS.Length;
+        Span<byte> leftEncodedRate = stackalloc byte[CShake128.EncodeBufferLength];
+        if (!CShake128.TryLeftEncode(leftEncodedRate, RateBytes, out int leftEncodedBytes))
+        {
+            throw new InvalidOperationException("Failed to encode left rate.");
+        }
+
+        int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (RateBytes - (totalLen % RateBytes)) % RateBytes;
 
         byte[] bytePadded = new byte[totalLen + padLen];
         int offset = 0;
 
-        Array.Copy(leftEncodedRate, 0, bytePadded, offset, leftEncodedRate.Length);
-        offset += leftEncodedRate.Length;
+        leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(bytePadded.AsSpan(offset));
+        offset += leftEncodedBytes;
 
         Array.Copy(encodedN, 0, bytePadded, offset, encodedN.Length);
         offset += encodedN.Length;
