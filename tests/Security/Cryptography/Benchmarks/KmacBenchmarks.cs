@@ -4,6 +4,7 @@
 namespace Cryptography.Tests.Benchmarks;
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Loggers;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -71,13 +72,14 @@ public class Kmac128Benchmark
 
     #region KMAC128 Benchmarks
 
+    [Test, Repeat(5)]
     [Benchmark]
-    public byte[] Kmac128_CryptoHives()
+    public void Kmac128_CryptoHives()
     {
-        using var kmac = CHKmac128.Create(_key, 32, _customizationString);
-        return kmac.ComputeHash(_data);
+        _ = _chkmac128.ComputeHash(_data);
     }
 
+    [Test, Repeat(5)]
     [Benchmark]
     public void Kmac128_BouncyCastle()
     {
@@ -86,6 +88,7 @@ public class Kmac128Benchmark
     }
 
 #if NET9_0_OR_GREATER
+    [Test, Repeat(5)]
     [Benchmark]
     public void Kmac128_DotNet()
     {
@@ -154,14 +157,15 @@ public class Kmac256Benchmark
     }
 
 
+    [Test, Repeat(5)]
     [Benchmark]
     [BenchmarkCategory("KMAC256")]
     public void Kmac256_CryptoHives()
     {
-        using var kmac = CHKmac256.Create(_key, 64, _customizationString);
-        kmac.ComputeHash(_data);
+        _ = _chkmac256.ComputeHash(_data);
     }
 
+    [Test, Repeat(5)]
     [Benchmark]
     [BenchmarkCategory("KMAC", "KMAC256")]
     public void Kmac256_BouncyCastle()
@@ -171,6 +175,7 @@ public class Kmac256Benchmark
     }
 
 #if NET9_0_OR_GREATER
+    [Test, Repeat(5)]
     [Benchmark]
     [BenchmarkCategory("KMAC", "KMAC256")]
     public void Kmac256_DotNet()
@@ -183,9 +188,11 @@ public class Kmac256Benchmark
 /// <summary>
 /// Benchmarks for KMAC with varying output sizes.
 /// </summary>
-[MemoryDiagnoser]
-[MinColumn, MaxColumn, MeanColumn, MedianColumn]
+[TestFixture]
 [Config(typeof(HashConfig))]
+[MemoryDiagnoser]
+[HideColumns("Namespace")]
+[BenchmarkCategory("KMac", "KMac256", "KMac128")]
 public class KmacOutputSizeBenchmark
 {
     private static readonly Random RandomInstance = new(42);
@@ -195,10 +202,13 @@ public class KmacOutputSizeBenchmark
     private byte[] _customization = null!;
     private string _customizationString = null!;
 
-    [Params(16, 32, 64, 128)]
-    public int OutputSize { get; set; }
+    private CHKmac128 _chKmac128 = null!;
+    private CHKmac256 _chKmac256 = null!;
 
-    [GlobalSetup]
+    [Params(16, 32, 64, 128)]
+    public int OutputSize { get; set; } = 128;
+
+    [GlobalSetup, OneTimeSetUp]
     public void Setup()
     {
         _key = new byte[32];
@@ -209,19 +219,30 @@ public class KmacOutputSizeBenchmark
 
         _customizationString = "OutputTest";
         _customization = Encoding.UTF8.GetBytes(_customizationString);
+
+        _chKmac128 = CHKmac128.Create(_key, OutputSize, _customizationString);
+        _chKmac256 = CHKmac256.Create(_key, OutputSize, _customizationString);
     }
 
+    [GlobalCleanup, OneTimeTearDown]
+    public void Teardown()
+    {
+        _chKmac128?.Dispose();
+        _chKmac256?.Dispose();
+    }
+
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC128 CryptoHives")]
     [BenchmarkCategory("KMAC128")]
-    public byte[] Kmac128_CryptoHives()
+    public void Kmac128_CryptoHives()
     {
-        using var kmac = CHKmac128.Create(_key, OutputSize, _customizationString);
-        return kmac.ComputeHash(_data);
+        _ = _chKmac128.ComputeHash(_data);
     }
 
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC128 BouncyCastle")]
     [BenchmarkCategory("KMAC128")]
-    public byte[] Kmac128_BouncyCastle()
+    public void Kmac128_BouncyCastle()
     {
         var kmac = new KMac(128, _customization);
         kmac.Init(new KeyParameter(_key));
@@ -234,33 +255,31 @@ public class KmacOutputSizeBenchmark
         // internal mac size.
         int engineSize = kmac.GetMacSize();
         byte[] temp = new byte[Math.Max(engineSize, OutputSize)];
-        kmac.DoFinal(temp, 0);
-        if (OutputSize == temp.Length) return temp;
-        byte[] result = new byte[OutputSize];
-        Array.Copy(temp, 0, result, 0, OutputSize);
-        return result;
+        int bytesWritten = kmac.DoFinal(temp, 0);
     }
 
 #if NET9_0_OR_GREATER
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC128 .NET")]
     [BenchmarkCategory("KMAC128")]
-    public byte[] Kmac128_DotNet()
+    public void Kmac128_DotNet()
     {
-        return System.Security.Cryptography.Kmac128.HashData(_key, _data, OutputSize, _customization);
+        _ = Kmac128.HashData(_key, _data, OutputSize, _customization);
     }
 #endif
 
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC256 CryptoHives")]
     [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_CryptoHives()
+    public void Kmac256_CryptoHives()
     {
-        using var kmac = CHKmac256.Create(_key, OutputSize, _customizationString);
-        return kmac.ComputeHash(_data);
+        _ = _chKmac256.ComputeHash(_data);
     }
 
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC256 BouncyCastle")]
     [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_BouncyCastle()
+    public void Kmac256_BouncyCastle()
     {
         var kmac = new KMac(256, _customization);
         kmac.Init(new KeyParameter(_key));
@@ -268,19 +287,16 @@ public class KmacOutputSizeBenchmark
 
         int engineSize = kmac.GetMacSize();
         byte[] temp = new byte[Math.Max(engineSize, OutputSize)];
-        kmac.DoFinal(temp, 0);
-        if (OutputSize == temp.Length) return temp;
-        byte[] result = new byte[OutputSize];
-        Array.Copy(temp, 0, result, 0, OutputSize);
-        return result;
+        int bytesWritten = kmac.DoFinal(temp, 0);
     }
 
 #if NET9_0_OR_GREATER
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC256 .NET")]
     [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_DotNet()
+    public void Kmac256_DotNet()
     {
-        return System.Security.Cryptography.Kmac256.HashData(_key, _data, OutputSize, _customization);
+        _ = Kmac256.HashData(_key, _data, OutputSize, _customization);
     }
 #endif
 }
@@ -288,9 +304,11 @@ public class KmacOutputSizeBenchmark
 /// <summary>
 /// Benchmarks for KMAC incremental hashing.
 /// </summary>
+[TestFixture]
 [MemoryDiagnoser]
-[MinColumn, MaxColumn, MeanColumn, MedianColumn]
+[HideColumns("Namespace")]
 [Config(typeof(HashConfig))]
+[BenchmarkCategory("KMac", "KMac256", "KMac128")]
 public class KmacIncrementalBenchmark
 {
     private static readonly Random RandomInstance = new(42);
@@ -301,8 +319,10 @@ public class KmacIncrementalBenchmark
     private byte[] _chunk3 = null!;
     private byte[] _customization = null!;
     private string _customizationString = null!;
+    private CHKmac128 _chKmac128 = null!;
+    private CHKmac256 _chKmac256 = null!;
 
-    [GlobalSetup]
+    [GlobalSetup, OneTimeSetUp]
     public void Setup()
     {
         _key = new byte[32];
@@ -317,22 +337,33 @@ public class KmacIncrementalBenchmark
 
         _customizationString = "Incremental";
         _customization = Encoding.UTF8.GetBytes(_customizationString);
+
+        _chKmac128 = CHKmac128.Create(_key, 32, _customizationString);
+        _chKmac256 = CHKmac256.Create(_key, 32, _customizationString);
     }
 
+    [GlobalCleanup, OneTimeTearDown]
+    public void Teardown()
+    {
+        _chKmac128?.Dispose();
+        _chKmac256?.Dispose();
+    }
+
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC128 CryptoHives Incremental")]
     [BenchmarkCategory("KMAC128")]
-    public byte[] Kmac128_CryptoHives_Incremental()
+    public void Kmac128_CryptoHives_Incremental()
     {
-        using var kmac = CHKmac128.Create(_key, 32, _customizationString);
-        kmac.TransformBlock(_chunk1, 0, _chunk1.Length, null, 0);
-        kmac.TransformBlock(_chunk2, 0, _chunk2.Length, null, 0);
-        kmac.TransformFinalBlock(_chunk3, 0, _chunk3.Length);
-        return kmac.Hash!;
+        _chKmac128.TransformBlock(_chunk1, 0, _chunk1.Length, null, 0);
+        _chKmac128.TransformBlock(_chunk2, 0, _chunk2.Length, null, 0);
+        _chKmac128.TransformFinalBlock(_chunk3, 0, _chunk3.Length);
+        _ = _chKmac128.Hash!;
     }
 
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC128 BouncyCastle Incremental")]
     [BenchmarkCategory("KMAC128")]
-    public byte[] Kmac128_BouncyCastle_Incremental()
+    public void Kmac128_BouncyCastle_Incremental()
     {
         var kmac = new KMac(128, _customization);
         kmac.Init(new KeyParameter(_key));
@@ -340,24 +371,24 @@ public class KmacIncrementalBenchmark
         kmac.BlockUpdate(_chunk2, 0, _chunk2.Length);
         kmac.BlockUpdate(_chunk3, 0, _chunk3.Length);
         byte[] result = new byte[32];
-        kmac.DoFinal(result, 0);
-        return result;
+        int bytesWritten = kmac.DoFinal(result, 0);
     }
 
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC256 CryptoHives Incremental")]
     [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_CryptoHives_Incremental()
+    public void Kmac256_CryptoHives_Incremental()
     {
-        using var kmac = CHKmac256.Create(_key, 64, _customizationString);
-        kmac.TransformBlock(_chunk1, 0, _chunk1.Length, null, 0);
-        kmac.TransformBlock(_chunk2, 0, _chunk2.Length, null, 0);
-        kmac.TransformFinalBlock(_chunk3, 0, _chunk3.Length);
-        return kmac.Hash!;
+        _chKmac256.TransformBlock(_chunk1, 0, _chunk1.Length, null, 0);
+        _chKmac256.TransformBlock(_chunk2, 0, _chunk2.Length, null, 0);
+        _chKmac256.TransformFinalBlock(_chunk3, 0, _chunk3.Length);
+        _ = _chKmac256.Hash!;
     }
 
+    [Test, Repeat(5)]
     [Benchmark(Description = "KMAC256 BouncyCastle Incremental")]
     [BenchmarkCategory("KMAC256")]
-    public byte[] Kmac256_BouncyCastle_Incremental()
+    public void Kmac256_BouncyCastle_Incremental()
     {
         var kmac = new KMac(256, _customization);
         kmac.Init(new KeyParameter(_key));
@@ -365,7 +396,6 @@ public class KmacIncrementalBenchmark
         kmac.BlockUpdate(_chunk2, 0, _chunk2.Length);
         kmac.BlockUpdate(_chunk3, 0, _chunk3.Length);
         byte[] result = new byte[64];
-        kmac.DoFinal(result, 0);
-        return result;
+        int bytesWritten = kmac.DoFinal(result, 0);
     }
 }

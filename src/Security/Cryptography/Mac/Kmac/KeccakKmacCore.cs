@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Buffers;
 using System.Text;
 
 /// <summary>
@@ -25,11 +26,12 @@ using System.Text;
 /// </remarks>
 public abstract class KeccakKmacCore : KeccakCore
 {
-    private static readonly byte[] KmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
+    private static readonly byte[] _kmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
+    private static readonly byte[] _encodedKmacFunctionName = CShake128.EncodeString(_kmacFunctionName);
 
     private readonly int _outputBytes;
-    private readonly byte[] _key;
-    private readonly byte[] _customization;
+    private readonly byte[] _encodedKey;
+    private readonly byte[] _encodedCustomization;
     private bool _finalized;
     private int _squeezeOffset;
 
@@ -41,8 +43,8 @@ public abstract class KeccakKmacCore : KeccakCore
     /// <param name="key">The secret key.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
-    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, string customization)
-        : this(rateBytes, simdSupport, key, outputBytes, Encoding.UTF8.GetBytes(customization ?? ""))
+    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, string? customization)
+        : this(rateBytes, simdSupport, key, outputBytes, string.IsNullOrEmpty(customization) ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(customization))
     {
     }
 
@@ -54,7 +56,7 @@ public abstract class KeccakKmacCore : KeccakCore
     /// <param name="key">The secret key.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization bytes S.</param>
-    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, byte[] customization)
+    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, byte[]? customization)
         : base(rateBytes, simdSupport)
     {
         if (key is null || key.Length == 0)
@@ -67,9 +69,9 @@ public abstract class KeccakKmacCore : KeccakCore
             throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
         }
 
-        _key = (byte[])key.Clone();
         _outputBytes = outputBytes;
-        _customization = customization ?? [];
+        _encodedKey = CShake128.EncodeString(key);
+        _encodedCustomization = CShake128.EncodeString(customization ?? Array.Empty<byte>());
 
         HashSizeValue = outputBytes * 8;
         Initialize();
@@ -159,7 +161,7 @@ public abstract class KeccakKmacCore : KeccakCore
     {
         if (disposing)
         {
-            ClearBuffer(_key);
+            ClearBuffer(_encodedKey);
         }
         base.Dispose(disposing);
     }
@@ -167,8 +169,8 @@ public abstract class KeccakKmacCore : KeccakCore
     private void AbsorbCShakePreamble()
     {
         // bytepad(encode_string(N) || encode_string(S), rate) where N = "KMAC"
-        byte[] encodedN = CShake128.EncodeString(KmacFunctionName);
-        byte[] encodedS = CShake128.EncodeString(_customization);
+        byte[] encodedN = _encodedKmacFunctionName;
+        byte[] encodedS = _encodedCustomization;
         Span<byte> leftEncodedRate = stackalloc byte[CShake128.EncodeBufferLength];
         if (!CShake128.TryLeftEncode(leftEncodedRate, _rateBytes, out int leftEncodedBytes))
         {
@@ -178,27 +180,42 @@ public abstract class KeccakKmacCore : KeccakCore
         int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        byte[] bytePadded = new byte[_rateBytes];
+        // Create a padded buffer
+        int paddedLength = totalLen + padLen;
+        byte[]? pooledBuffer = null;
+        Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
+            stackalloc byte[_rateBytes] :
+            (pooledBuffer = ArrayPool<byte>.Shared.Rent(paddedLength));
 
-        int offset = 0;
-        leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(bytePadded.AsSpan(offset));
-        offset += leftEncodedBytes;
-
-        Array.Copy(encodedN, 0, bytePadded, offset, encodedN.Length);
-        offset += encodedN.Length;
-
-        Array.Copy(encodedS, 0, bytePadded, offset, encodedS.Length);
-
-        for (int i = 0; i < bytePadded.Length; i += _rateBytes)
+        try
         {
-            _keccakCore.Absorb(bytePadded.AsSpan(i, _rateBytes), _rateBytes);
+            int offset = 0;
+            leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(paddedBuffer.Slice(offset));
+            offset += leftEncodedBytes;
+
+            encodedN.AsSpan(0, encodedN.Length).CopyTo(paddedBuffer.Slice(offset));
+            offset += encodedN.Length;
+
+            encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
+
+            for (int i = 0; i < paddedLength; i += _rateBytes)
+            {
+                _keccakCore.Absorb(paddedBuffer.Slice(i, _rateBytes), _rateBytes);
+            }
+        }
+        finally
+        {
+            if (pooledBuffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(pooledBuffer);
+            }
         }
     }
 
     private void AbsorbKeyPad()
     {
         // bytepad(encode_string(K), rate)
-        byte[] encodedK = CShake128.EncodeString(_key);
+        byte[] encodedK = _encodedKey;
         Span<byte> leftEncodedRate = stackalloc byte[CShake128.EncodeBufferLength];
         if (!CShake128.TryLeftEncode(leftEncodedRate, _rateBytes, out int leftEncodedBytes))
         {
@@ -208,17 +225,32 @@ public abstract class KeccakKmacCore : KeccakCore
         int totalLen = leftEncodedBytes + encodedK.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        byte[] bytePadded = new byte[_rateBytes];
+        // Create a padded buffer
+        int paddedLength = totalLen + padLen;
+        byte[]? pooledBuffer = null;
+        Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
+            stackalloc byte[_rateBytes] :
+            (pooledBuffer = ArrayPool<byte>.Shared.Rent(paddedLength));
 
-        int offset = 0;
-        leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(bytePadded.AsSpan(offset));
-        offset += leftEncodedBytes;
-
-        Array.Copy(encodedK, 0, bytePadded, offset, encodedK.Length);
-
-        for (int i = 0; i < bytePadded.Length; i += _rateBytes)
+        try
         {
-            _keccakCore.Absorb(bytePadded.AsSpan(i, _rateBytes), _rateBytes);
+            int offset = 0;
+            leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(paddedBuffer.Slice(offset));
+            offset += leftEncodedBytes;
+
+            encodedK.AsSpan(0, encodedK.Length).CopyTo(paddedBuffer.Slice(offset));
+
+            for (int i = 0; i < paddedLength; i += _rateBytes)
+            {
+                _keccakCore.Absorb(paddedBuffer.Slice(i, _rateBytes), _rateBytes);
+            }
+        }
+        finally
+        {
+            if (pooledBuffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(pooledBuffer);
+            }
         }
     }
 }

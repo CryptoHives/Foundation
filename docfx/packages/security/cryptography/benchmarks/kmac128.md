@@ -1,25 +1,25 @@
-﻿| Description          | TestDataSize | Mean         | Error       | StdDev    | Allocated |
-|--------------------- |------------- |-------------:|------------:|----------:|----------:|
-| Kmac128_DotNet       | 128B         |     982.0 ns |    10.09 ns |   8.42 ns |      32 B |
-| Kmac128_CryptoHives  | 128B         |   1,242.3 ns |     5.66 ns |   5.30 ns |    2088 B |
-| Kmac128_BouncyCastle | 128B         |   1,317.4 ns |    13.82 ns |  12.92 ns |     160 B |
-|                      |              |              |             |           |           |
-| Kmac128_DotNet       | 137B         |     980.1 ns |     7.83 ns |   7.32 ns |      32 B |
-| Kmac128_CryptoHives  | 137B         |   1,241.0 ns |     5.09 ns |   4.76 ns |    2088 B |
-| Kmac128_BouncyCastle | 137B         |   1,314.7 ns |     6.89 ns |   6.10 ns |     160 B |
-|                      |              |              |             |           |           |
-| Kmac128_DotNet       | 1KB          |   2,371.8 ns |    11.39 ns |   9.51 ns |      32 B |
-| Kmac128_CryptoHives  | 1KB          |   2,489.0 ns |    19.24 ns |  17.99 ns |    2088 B |
-| Kmac128_BouncyCastle | 1KB          |   3,149.2 ns |    16.03 ns |  15.00 ns |     160 B |
-|                      |              |              |             |           |           |
-| Kmac128_DotNet       | 1025B        |   2,382.8 ns |    15.14 ns |  13.42 ns |      32 B |
-| Kmac128_CryptoHives  | 1025B        |   2,482.7 ns |    12.36 ns |  10.96 ns |    2088 B |
-| Kmac128_BouncyCastle | 1025B        |   3,160.7 ns |    15.20 ns |  13.47 ns |     160 B |
-|                      |              |              |             |           |           |
-| Kmac128_CryptoHives  | 8KB          |  10,827.5 ns |    72.26 ns |  67.59 ns |    2088 B |
-| Kmac128_DotNet       | 8KB          |  12,388.5 ns |    81.11 ns |  71.90 ns |      32 B |
-| Kmac128_BouncyCastle | 8KB          |  15,995.3 ns |    84.67 ns |  75.06 ns |     160 B |
-|                      |              |              |             |           |           |
-| Kmac128_CryptoHives  | 128KB        | 155,877.3 ns |   696.12 ns | 617.09 ns |    2088 B |
-| Kmac128_DotNet       | 128KB        | 186,083.6 ns | 1,004.61 ns | 890.56 ns |      32 B |
-| Kmac128_BouncyCastle | 128KB        | 239,811.0 ns | 1,036.16 ns | 969.22 ns |     160 B |
+﻿| Description          | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|--------------------- |------------- |-------------:|------------:|------------:|----------:|
+| Kmac128_CryptoHives  | 128B         |     700.5 ns |     9.96 ns |     8.83 ns |     112 B |
+| Kmac128_DotNet       | 128B         |     981.5 ns |     9.83 ns |     9.20 ns |      32 B |
+| Kmac128_BouncyCastle | 128B         |   1,356.2 ns |    27.10 ns |    27.83 ns |     160 B |
+|                      |              |              |             |             |           |
+| Kmac128_CryptoHives  | 137B         |     693.4 ns |     4.47 ns |     4.18 ns |     112 B |
+| Kmac128_DotNet       | 137B         |     995.7 ns |    15.32 ns |    14.33 ns |      32 B |
+| Kmac128_BouncyCastle | 137B         |   1,327.6 ns |    13.29 ns |    11.78 ns |     160 B |
+|                      |              |              |             |             |           |
+| Kmac128_CryptoHives  | 1KB          |   1,938.0 ns |    16.85 ns |    15.76 ns |     112 B |
+| Kmac128_DotNet       | 1KB          |   2,407.4 ns |    16.75 ns |    15.67 ns |      32 B |
+| Kmac128_BouncyCastle | 1KB          |   3,184.1 ns |    35.09 ns |    32.82 ns |     160 B |
+|                      |              |              |             |             |           |
+| Kmac128_CryptoHives  | 1025B        |   1,940.1 ns |    16.02 ns |    14.20 ns |     112 B |
+| Kmac128_DotNet       | 1025B        |   2,423.0 ns |    29.62 ns |    26.26 ns |      32 B |
+| Kmac128_BouncyCastle | 1025B        |   3,172.4 ns |    17.44 ns |    15.46 ns |     160 B |
+|                      |              |              |             |             |           |
+| Kmac128_CryptoHives  | 8KB          |  10,278.2 ns |    79.72 ns |    66.57 ns |     112 B |
+| Kmac128_DotNet       | 8KB          |  12,437.2 ns |    87.31 ns |    81.67 ns |      32 B |
+| Kmac128_BouncyCastle | 8KB          |  16,262.1 ns |   249.89 ns |   233.75 ns |     160 B |
+|                      |              |              |             |             |           |
+| Kmac128_CryptoHives  | 128KB        | 155,910.8 ns |   819.48 ns |   684.30 ns |     112 B |
+| Kmac128_DotNet       | 128KB        | 186,836.6 ns | 1,266.61 ns | 1,122.82 ns |      32 B |
+| Kmac128_BouncyCastle | 128KB        | 240,238.3 ns | 1,664.59 ns | 1,557.06 ns |     160 B |

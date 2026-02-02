@@ -112,6 +112,8 @@ $packageConfigurations = @{
             # KMAC
             @{ Source = "Kmac128Benchmark-report.md"; Target = "kmac128.md" }
             @{ Source = "Kmac256Benchmark-report.md"; Target = "kmac256.md" }
+            @{ Source = "KmacIncrementalBenchmark-report.md"; Target = "kmacincremental.md" }
+            @{ Source = "KmacOutputSizeBenchmark-report.md"; Target = "kmacoutputsize.md" }
         )
     }
 }

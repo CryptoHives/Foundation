@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 
@@ -47,8 +48,8 @@ public sealed class CShake128 : KeccakCore
     public const int EncodeBufferLength = 9;
 
     private readonly int _outputBytes;
-    private readonly byte[] _functionName;
-    private readonly byte[] _customization;
+    private readonly byte[] _encodedFunctionName;
+    private readonly byte[] _encodedCustomization;
     private readonly bool _isCustomized;
     private bool _finalized;
     private int _squeezeOffset;
@@ -60,7 +61,9 @@ public sealed class CShake128 : KeccakCore
     /// <param name="functionName">The function name string N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S.</param>
     public CShake128(int outputBytes = DefaultOutputBits / 8, string? functionName = null, string? customization = null)
-        : this(SimdSupport.KeccakDefault, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization))
+        : this(SimdSupport.KeccakDefault, outputBytes,
+              functionName == null ? [] : Encoding.UTF8.GetBytes(functionName),
+              customization == null ? [] : Encoding.UTF8.GetBytes(customization))
     {
     }
 
@@ -70,7 +73,7 @@ public sealed class CShake128 : KeccakCore
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="functionName">The function name bytes N.</param>
     /// <param name="customization">The customization bytes S.</param>
-    public CShake128(int outputBytes, byte[] functionName, byte[] customization)
+    public CShake128(int outputBytes, byte[]? functionName, byte[]? customization)
         : this(SimdSupport.KeccakDefault, outputBytes, functionName, customization)
     {
     }
@@ -81,9 +84,9 @@ public sealed class CShake128 : KeccakCore
         if (outputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
 
         _outputBytes = outputBytes;
-        _functionName = functionName ?? [];
-        _customization = customization ?? [];
-        _isCustomized = _functionName.Length > 0 || _customization.Length > 0;
+        _encodedFunctionName = CShake128.EncodeString(functionName ?? Array.Empty<byte>());
+        _encodedCustomization = CShake128.EncodeString(customization ?? Array.Empty<byte>());
+        _isCustomized = functionName?.Length > 0 || customization?.Length > 0;
 
         HashSizeValue = outputBytes * 8;
         Initialize();
@@ -113,9 +116,6 @@ public sealed class CShake128 : KeccakCore
     public static CShake128 Create(int outputBytes, byte[]? functionName = null, byte[]? customization = null)
         => new(SimdSupport.KeccakDefault, outputBytes, functionName, customization);
 
-    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8, byte[]? functionName = null, byte[]? customization = null)
-        => new(simdSupport, outputBytes, functionName, customization);
-
     /// <summary>
     /// Creates a new instance of the <see cref="CShake128"/> class with specified parameters.
     /// </summary>
@@ -125,11 +125,13 @@ public sealed class CShake128 : KeccakCore
     public static CShake128 Create(int outputBytes, string functionName, string? customization = null)
         => new(outputBytes, functionName, customization);
 
-    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes)
-        => new(simdSupport, outputBytes, [], []);
+    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8, byte[]? functionName = null, byte[]? customization = null)
+        => new(simdSupport, outputBytes, functionName, customization);
 
     internal static CShake128 Create(SimdSupport simdSupport, int outputBytes, string functionName, string? customization = null)
-        => new(simdSupport, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization));
+        => new(simdSupport, outputBytes,
+            Encoding.UTF8.GetBytes(functionName),
+            customization == null ? null : Encoding.UTF8.GetBytes(customization));
 
     /// <inheritdoc/>
     public override void Initialize()
@@ -190,8 +192,8 @@ public sealed class CShake128 : KeccakCore
     private void AbsorbBytePad()
     {
         // bytepad(encode_string(N) || encode_string(S), rate)
-        byte[] encodedN = EncodeString(_functionName);
-        byte[] encodedS = EncodeString(_customization);
+        byte[] encodedN = _encodedFunctionName;
+        byte[] encodedS = _encodedCustomization;
 
         // left_encode(rate)
         Span<byte> leftEncodedRate = stackalloc byte[EncodeBufferLength];
@@ -201,31 +203,47 @@ public sealed class CShake128 : KeccakCore
         }
 
         int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
-        int padLen = (RateBytes - (totalLen % RateBytes)) % RateBytes;
+        int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        byte[] bytePadded = new byte[totalLen + padLen];
-        int offset = 0;
+        // Create a padded buffer
+        int paddedLength = totalLen + padLen;
+        byte[]? pooledBuffer = null;
+        Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
+            stackalloc byte[_rateBytes] :
+            (pooledBuffer = ArrayPool<byte>.Shared.Rent(paddedLength));
 
-        leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(bytePadded.AsSpan(offset));
-        offset += leftEncodedBytes;
-
-        Array.Copy(encodedN, 0, bytePadded, offset, encodedN.Length);
-        offset += encodedN.Length;
-
-        Array.Copy(encodedS, 0, bytePadded, offset, encodedS.Length);
-
-        // Absorb the bytepad data
-        for (int i = 0; i < bytePadded.Length; i += RateBytes)
+        try
         {
-            int blockLen = Math.Min(RateBytes, bytePadded.Length - i);
-            if (blockLen == RateBytes)
+            int offset = 0;
+            leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(paddedBuffer.Slice(offset));
+            offset += leftEncodedBytes;
+
+            encodedN.AsSpan(0, encodedN.Length).CopyTo(paddedBuffer.Slice(offset));
+            offset += encodedN.Length;
+
+            encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
+            offset += encodedS.Length;
+
+            // Absorb the bytepad data
+            for (int i = 0; i < paddedLength; i += RateBytes)
             {
-                _keccakCore.Absorb(bytePadded.AsSpan(i, RateBytes), RateBytes);
+                int blockLen = Math.Min(RateBytes, paddedBuffer.Length - i);
+                if (blockLen == RateBytes)
+                {
+                    _keccakCore.Absorb(paddedBuffer.Slice(i, RateBytes), RateBytes);
+                }
+                else
+                {
+                    paddedBuffer.Slice(i, blockLen).CopyTo(_buffer.AsSpan(_bufferLength));
+                    _bufferLength += blockLen;
+                }
             }
-            else
+        }
+        finally
+        {
+            if (pooledBuffer != null)
             {
-                bytePadded.AsSpan(i, blockLen).CopyTo(_buffer.AsSpan(_bufferLength));
-                _bufferLength += blockLen;
+                ArrayPool<byte>.Shared.Return(pooledBuffer, true);
             }
         }
     }

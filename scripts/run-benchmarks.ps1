@@ -29,7 +29,7 @@ param(
         "MD5", "SHA1",
         "SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160",
         "AsconHash256", "AsconXof128",
-        "Kmac128", "Kmac256",
+        "KMac128", "KMac256", "KMacIncremental", "KMacOutputSize",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
@@ -121,6 +121,8 @@ $AlgorithmBenchmarkMap = @{
     # KMAC
     "Kmac128"     = "Kmac128"
     "Kmac256"     = "Kmac256"
+    "KmacIncremental" = "KmacIncremental"
+    "KmacOutputSize" = "KmacOutputSize"
     # Group Aliases
     "All"         = "Hash"
 }
@@ -141,7 +143,7 @@ $GroupAliases = @{
     "Legacy"      = @("MD5", "SHA1")
     "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160")
     "Ascon"       = @("AsconHash256", "AsconXof128")
-    "KMAC"        = @("Kmac128", "Kmac256")
+    "KMAC"        = @("Kmac128", "Kmac256", "KmacIncremental", "KmacOutputSize")
 }
 
 # Get repository root
