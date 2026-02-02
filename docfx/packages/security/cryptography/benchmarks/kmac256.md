@@ -1,25 +1,25 @@
 ﻿| Description          | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |--------------------- |------------- |-------------:|------------:|------------:|----------:|
-| Kmac256_CryptoHives  | 128B         |     702.8 ns |     8.63 ns |     8.07 ns |     176 B |
-| Kmac256_DotNet       | 128B         |     978.2 ns |    13.19 ns |    12.34 ns |      32 B |
-| Kmac256_BouncyCastle | 128B         |   1,306.1 ns |    15.12 ns |    14.15 ns |     160 B |
+| Kmac256_CryptoHives  | 128B         |     717.7 ns |     3.26 ns |     3.05 ns |     176 B |
+| Kmac256_DotNet       | 128B         |   1,005.9 ns |     4.30 ns |     3.59 ns |      32 B |
+| Kmac256_BouncyCastle | 128B         |   1,346.0 ns |     6.79 ns |     6.02 ns |     160 B |
 |                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 137B         |     943.6 ns |     5.27 ns |     4.12 ns |     176 B |
-| Kmac256_DotNet       | 137B         |   1,218.8 ns |     6.49 ns |     5.76 ns |      32 B |
-| Kmac256_BouncyCastle | 137B         |   1,629.9 ns |    31.68 ns |    33.89 ns |     160 B |
+| Kmac256_CryptoHives  | 137B         |     970.6 ns |     5.36 ns |     4.48 ns |     176 B |
+| Kmac256_DotNet       | 137B         |   1,257.0 ns |     8.71 ns |     7.72 ns |      32 B |
+| Kmac256_BouncyCastle | 137B         |   1,640.7 ns |     6.47 ns |     5.41 ns |     160 B |
 |                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 1KB          |   2,102.9 ns |    12.08 ns |    10.71 ns |     176 B |
-| Kmac256_DotNet       | 1KB          |   2,615.5 ns |    19.81 ns |    18.53 ns |      32 B |
-| Kmac256_BouncyCastle | 1KB          |   3,461.5 ns |    52.12 ns |    46.20 ns |     160 B |
+| Kmac256_CryptoHives  | 1KB          |   2,168.2 ns |    36.98 ns |    48.08 ns |     176 B |
+| Kmac256_DotNet       | 1KB          |   2,712.5 ns |    27.34 ns |    25.57 ns |      32 B |
+| Kmac256_BouncyCastle | 1KB          |   3,573.0 ns |    22.01 ns |    18.38 ns |     160 B |
 |                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 1025B        |   2,100.6 ns |    10.70 ns |     8.94 ns |     176 B |
-| Kmac256_DotNet       | 1025B        |   2,631.1 ns |    22.22 ns |    20.78 ns |      32 B |
-| Kmac256_BouncyCastle | 1025B        |   3,438.0 ns |    21.03 ns |    18.64 ns |     160 B |
+| Kmac256_CryptoHives  | 1025B        |   2,157.2 ns |     8.17 ns |     6.82 ns |     176 B |
+| Kmac256_DotNet       | 1025B        |   2,691.7 ns |     6.26 ns |     5.86 ns |      32 B |
+| Kmac256_BouncyCastle | 1025B        |   3,518.4 ns |     7.34 ns |     5.73 ns |     160 B |
 |                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 8KB          |  12,579.1 ns |    51.26 ns |    45.44 ns |     176 B |
-| Kmac256_DotNet       | 8KB          |  15,119.6 ns |   127.73 ns |   119.48 ns |      32 B |
-| Kmac256_BouncyCastle | 8KB          |  19,514.5 ns |   109.20 ns |    96.81 ns |     160 B |
+| Kmac256_CryptoHives  | 8KB          |  12,894.7 ns |    46.75 ns |    43.73 ns |     176 B |
+| Kmac256_DotNet       | 8KB          |  15,526.9 ns |    68.42 ns |    60.65 ns |      32 B |
+| Kmac256_BouncyCastle | 8KB          |  19,966.9 ns |    57.80 ns |    51.24 ns |     160 B |
 |                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 128KB        | 191,798.2 ns | 1,694.12 ns | 1,501.79 ns |     176 B |
-| Kmac256_DotNet       | 128KB        | 227,899.1 ns |   884.37 ns |   783.97 ns |      32 B |
-| Kmac256_BouncyCastle | 128KB        | 294,184.9 ns | 2,122.19 ns | 1,985.10 ns |     160 B |
+| Kmac256_CryptoHives  | 128KB        | 196,367.8 ns |   715.34 ns |   669.13 ns |     176 B |
+| Kmac256_DotNet       | 128KB        | 233,885.1 ns | 1,140.20 ns | 1,010.75 ns |      32 B |
+| Kmac256_BouncyCastle | 128KB        | 302,226.0 ns | 1,006.63 ns |   892.35 ns |     160 B |
