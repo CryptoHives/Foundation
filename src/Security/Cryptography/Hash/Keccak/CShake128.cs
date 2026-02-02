@@ -222,7 +222,6 @@ public sealed class CShake128 : KeccakCore
             offset += encodedN.Length;
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
-            offset += encodedS.Length;
 
             // Absorb the bytepad data
             for (int i = 0; i < paddedLength; i += RateBytes)
