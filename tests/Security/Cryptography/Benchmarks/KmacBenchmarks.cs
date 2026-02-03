@@ -250,8 +250,7 @@ public class Kmac128OutputSizeBenchmark
         int engineSize = _kmac.GetMacSize();
         _result = new byte[Math.Max(engineSize, OutputSize)];
 
-        _computeMac = Implementation switch
-        {
+        _computeMac = Implementation switch {
             KmacImplementation.CryptoHives => CryptoHivesImpl,
             KmacImplementation.BouncyCastle => BouncyCastleImpl,
 #if NET9_0_OR_GREATER
@@ -342,8 +341,7 @@ public class Kmac256OutputSizeBenchmark
         int engineSize = _kmac.GetMacSize();
         _result = new byte[Math.Max(engineSize, OutputSize)];
 
-        _computeMac = Implementation switch
-        {
+        _computeMac = Implementation switch {
             KmacImplementation.CryptoHives => CryptoHivesImpl,
             KmacImplementation.BouncyCastle => BouncyCastleImpl,
 #if NET9_0_OR_GREATER
@@ -432,8 +430,7 @@ public class Kmac128IncrementalBenchmark
         _kmac = new KMac(128, _customization);
         _kmac.Init(new KeyParameter(_key));
 
-        _incrementalHash = Implementation switch
-        {
+        _incrementalHash = Implementation switch {
             KmacImplementation.CryptoHives => CryptoHivesImpl,
             KmacImplementation.BouncyCastle => BouncyCastleImpl,
             _ => throw new NotSupportedException($"Implementation {Implementation} not supported")
@@ -525,8 +522,7 @@ public class Kmac256IncrementalBenchmark
         _kmac = new KMac(256, _customization);
         _kmac.Init(new KeyParameter(_key));
 
-        _incrementalHash = Implementation switch
-        {
+        _incrementalHash = Implementation switch {
             KmacImplementation.CryptoHives => CryptoHivesImpl,
             KmacImplementation.BouncyCastle => BouncyCastleImpl,
             _ => throw new NotSupportedException($"Implementation {Implementation} not supported")

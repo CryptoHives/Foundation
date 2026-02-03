@@ -29,7 +29,7 @@ public abstract class KeccakCore : HashAlgorithm
     private protected int _bufferLength;
 
     internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.KeccakDefault)
-        : this (rateBytes, 0, simdSupport)
+        : this(rateBytes, 0, simdSupport)
     {
     }
 

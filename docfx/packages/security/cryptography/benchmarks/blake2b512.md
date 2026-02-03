@@ -1,25 +1,25 @@
 ﻿| Description                                            | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |------------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 128B         |     129.6 ns |     0.43 ns |     0.40 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 128B         |     135.6 ns |     1.24 ns |     1.16 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 128B         |     395.4 ns |     1.94 ns |     1.72 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 128B         |     130.0 ns |     0.56 ns |     0.50 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 128B         |     135.9 ns |     0.69 ns |     0.54 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 128B         |     400.8 ns |     0.97 ns |     0.86 ns |     176 B |
 |                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 137B         |     209.6 ns |     0.56 ns |     0.52 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 137B         |     238.2 ns |     1.06 ns |     0.99 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 137B         |     747.9 ns |     4.89 ns |     4.57 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 137B         |     209.1 ns |     0.55 ns |     0.49 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 137B         |     232.1 ns |     0.55 ns |     0.52 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 137B         |     749.5 ns |     2.81 ns |     2.63 ns |     176 B |
 |                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 1KB          |     749.8 ns |     1.30 ns |     1.08 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 1KB          |     814.7 ns |     2.11 ns |     1.98 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 1KB          |   2,890.2 ns |    19.05 ns |    16.89 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 1KB          |     748.5 ns |     5.52 ns |     4.61 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 1KB          |     814.0 ns |     2.31 ns |     2.16 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 1KB          |   2,859.3 ns |    11.13 ns |    10.41 ns |     176 B |
 |                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 1025B        |     833.1 ns |     3.14 ns |     2.45 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 1025B        |     917.9 ns |     3.23 ns |     3.02 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 1025B        |   3,235.2 ns |    12.38 ns |    10.98 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 1025B        |     833.9 ns |     2.06 ns |     1.83 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 1025B        |     918.1 ns |     1.95 ns |     1.82 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 1025B        |   3,229.9 ns |    16.71 ns |    15.63 ns |     176 B |
 |                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 8KB          |   5,635.7 ns |    14.18 ns |    12.57 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 8KB          |   6,295.7 ns |    50.59 ns |    47.32 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 8KB          |  22,596.8 ns |   141.86 ns |   125.76 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 8KB          |   5,631.0 ns |    19.24 ns |    18.00 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 8KB          |   6,291.8 ns |    33.77 ns |    28.20 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 8KB          |  22,625.1 ns |    79.06 ns |    70.09 ns |     176 B |
 |                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 128KB        |  89,224.1 ns |   240.98 ns |   213.62 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 128KB        | 100,040.5 ns |   379.68 ns |   336.57 ns |     176 B |
-| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 128KB        | 360,331.6 ns | 1,381.95 ns | 1,225.06 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (BouncyCastle) | 128KB        |  89,024.8 ns |   269.60 ns |   210.49 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (AVX2)         | 128KB        | 100,577.4 ns |   885.76 ns |   785.20 ns |     176 B |
+| ComputeHash · BLAKE2b-512 · BLAKE2b-512 (Managed)      | 128KB        | 369,019.0 ns | 2,771.83 ns | 2,592.77 ns |     176 B |
