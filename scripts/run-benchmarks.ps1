@@ -29,10 +29,7 @@ param(
         "MD5", "SHA1",
         "SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160",
         "AsconHash256", "AsconXof128",
-        "Kmac128", "Kmac256",
-        # Cipher algorithms (individual)
-        "AesGcm128", "AesGcm256",
-        "ChaCha20Poly1305", "XChaCha20Poly1305",
+        "KMac128", "KMac256", "KMac128Incremental", "KMac128OutputSize", "KMac256Incremental", "KMac256OutputSize",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
@@ -126,6 +123,10 @@ $AlgorithmBenchmarkMap = @{
     # KMAC
     "Kmac128"     = "Kmac128"
     "Kmac256"     = "Kmac256"
+    "Kmac128Incremental" = "Kmac128Incremental"
+    "Kmac128OutputSize" = "Kmac128OutputSize"
+    "Kmac256Incremental" = "Kmac256Incremental"
+    "Kmac256OutputSize" = "Kmac256OutputSize"
     # Ciphers - AES-GCM
     "AesGcm128"   = "AesGcm128"
     "AesGcm256"   = "AesGcm256"
@@ -142,7 +143,7 @@ $AlgorithmBenchmarkMap = @{
 $GroupAliases = @{
     "SHA2"        = @("SHA224", "SHA256", "SHA384", "SHA512", "SHA512_224", "SHA512_256")
     "SHA3"        = @("SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512")
-    "Keccak"      = @("Keccak")
+    "Keccak"      = @("Keccak256", "Keccak384", "Keccak512")
     "SHAKE"       = @("Shake128", "Shake256")
     "cSHAKE"      = @("CShake128", "CShake256")
     "KT"          = @("KT128", "KT256")
@@ -154,7 +155,7 @@ $GroupAliases = @{
     "Legacy"      = @("MD5", "SHA1")
     "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160")
     "Ascon"       = @("AsconHash256", "AsconXof128")
-    "KMAC"        = @("Kmac128", "Kmac256")
+    "KMAC"        = @("Kmac128", "Kmac256", "Kmac128Incremental", "Kmac128OutputSize", "Kmac256Incremental", "Kmac256OutputSize")
     "AES-GCM"     = @("AesGcm128", "AesGcm256")
     "ChaCha"      = @("ChaCha20Poly1305", "XChaCha20Poly1305")
     "AEAD"        = @("AesGcm128", "AesGcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
@@ -230,7 +231,7 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  Legacy:        -Family MD5, SHA1"
     Write-Host "  Regional:      -Family SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
     Write-Host "  Ascon:         -Family AsconHash256, AsconXof128"
-    Write-Host "  KMAC:          -Family Kmac128, Kmac256"
+    Write-Host "  KMAC:          -Family Kmac128, Kmac256, Kmac128Incremental, Kmac128OutputSize, Kmac256Incremental, Kmac256OutputSize"
     Write-Host ""
     Write-Host "Available cipher algorithm families:" -ForegroundColor Yellow
     Write-Host ""
@@ -251,7 +252,7 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family Legacy     runs: MD5, SHA1"
     Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
-    Write-Host "  -Family KMAC       runs: Kmac128, Kmac256"
+    Write-Host "  -Family KMAC       runs: Kmac128, Kmac256, Kmac128Incremental, Kmac128OutputSize, Kmac256Incremental, Kmac256OutputSize"
     Write-Host "  -Family AES-GCM    runs: AesGcm128, AesGcm256"
     Write-Host "  -Family ChaCha     runs: ChaCha20Poly1305, XChaCha20Poly1305"
     Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"

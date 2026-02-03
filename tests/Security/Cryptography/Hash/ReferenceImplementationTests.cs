@@ -9,7 +9,6 @@ using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
-using System;
 using System.Text;
 
 /// <summary>
@@ -591,7 +590,7 @@ public class ReferenceImplementationTests
         bcDigest.DoFinal(bcHash, 0);
 
         // Our implementation
-        using var ourDigest = CryptoHives.Foundation.Security.Cryptography.Hash.SM3.Create();
+        using var ourDigest = SM3.Create();
         byte[] ourHash = ourDigest.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(bcHash), $"SM3 mismatch for: \"{message}\"");
@@ -617,7 +616,7 @@ public class ReferenceImplementationTests
         bcDigest.DoFinal(bcHash, 0);
 
         // Our implementation
-        using var ourDigest = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var ourDigest = Whirlpool.Create();
         byte[] ourHash = ourDigest.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(bcHash), $"Whirlpool mismatch for: \"{message}\"");

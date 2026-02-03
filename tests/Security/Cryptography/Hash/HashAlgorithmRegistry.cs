@@ -512,7 +512,14 @@ public static class HashAlgorithmRegistry
 
     private static void AddBlake3(List<HashImplementation> list)
     {
-        list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(32), Source.Managed));
+        var blake3Simd = CH.Blake3.SimdSupport;
+        if ((blake3Simd & CH.SimdSupport.Ssse3) != 0)
+        {
+            list.Add(new HashImplementation("BLAKE3", "SSSE3", 256,
+                () => CH.Blake3.Create(32, CH.SimdSupport.Ssse3), Source.Simd,
+                () => (CH.Blake3.SimdSupport & CH.SimdSupport.Ssse3) != 0));
+        }
+        list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(32, CH.SimdSupport.None), Source.Managed));
         list.Add(new("BLAKE3", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake3Digest(256)), Source.BouncyCastle));
 

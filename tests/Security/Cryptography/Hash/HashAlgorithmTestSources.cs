@@ -608,3 +608,21 @@ public static class AsconXof128Implementations
 }
 
 #endregion
+
+#region All CryptoHives Implementations
+
+/// <summary>
+/// Provides test case sources for all CryptoHives managed (non-SIMD) implementations.
+/// </summary>
+public static class CryptoHivesManagedImplementations
+{
+    /// <summary>
+    /// Gets all managed CryptoHives implementations for factory testing.
+    /// </summary>
+    public static IEnumerable All => HashAlgorithmRegistry
+        .CryptoHivesOnly
+        .Where(h => h.IsSupported)
+        .Select(HashAlgorithmFactory.FromImplementation);
+}
+
+#endregion
