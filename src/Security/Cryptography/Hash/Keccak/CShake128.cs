@@ -4,6 +4,8 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Text;
 
 /// <summary>
@@ -40,9 +42,14 @@ public sealed class CShake128 : KeccakCore
     /// </summary>
     public const int CapacityBytes = 32;
 
+    /// <summary>
+    /// The minimum buffer size needed to call a TryEncodeLeft or TryEncodeRight function.
+    /// </summary>
+    public const int EncodeBufferLength = 9;
+
     private readonly int _outputBytes;
-    private readonly byte[] _functionName;
-    private readonly byte[] _customization;
+    private readonly byte[] _encodedFunctionName;
+    private readonly byte[] _encodedCustomization;
     private readonly bool _isCustomized;
     private bool _finalized;
     private int _squeezeOffset;
@@ -54,7 +61,9 @@ public sealed class CShake128 : KeccakCore
     /// <param name="functionName">The function name string N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S.</param>
     public CShake128(int outputBytes = DefaultOutputBits / 8, string? functionName = null, string? customization = null)
-        : this(SimdSupport.KeccakDefault, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization))
+        : this(SimdSupport.KeccakDefault, outputBytes,
+              functionName == null ? [] : Encoding.UTF8.GetBytes(functionName),
+              customization == null ? [] : Encoding.UTF8.GetBytes(customization))
     {
     }
 
@@ -64,7 +73,7 @@ public sealed class CShake128 : KeccakCore
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="functionName">The function name bytes N.</param>
     /// <param name="customization">The customization bytes S.</param>
-    public CShake128(int outputBytes, byte[] functionName, byte[] customization)
+    public CShake128(int outputBytes, byte[]? functionName, byte[]? customization)
         : this(SimdSupport.KeccakDefault, outputBytes, functionName, customization)
     {
     }
@@ -75,9 +84,9 @@ public sealed class CShake128 : KeccakCore
         if (outputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
 
         _outputBytes = outputBytes;
-        _functionName = functionName ?? [];
-        _customization = customization ?? [];
-        _isCustomized = _functionName.Length > 0 || _customization.Length > 0;
+        _encodedFunctionName = CShake128.EncodeString(functionName ?? Array.Empty<byte>());
+        _encodedCustomization = CShake128.EncodeString(customization ?? Array.Empty<byte>());
+        _isCustomized = functionName?.Length > 0 || customization?.Length > 0;
 
         HashSizeValue = outputBytes * 8;
         Initialize();
@@ -107,9 +116,6 @@ public sealed class CShake128 : KeccakCore
     public static CShake128 Create(int outputBytes, byte[]? functionName = null, byte[]? customization = null)
         => new(SimdSupport.KeccakDefault, outputBytes, functionName, customization);
 
-    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8, byte[]? functionName = null, byte[]? customization = null)
-        => new(simdSupport, outputBytes, functionName, customization);
-
     /// <summary>
     /// Creates a new instance of the <see cref="CShake128"/> class with specified parameters.
     /// </summary>
@@ -119,11 +125,13 @@ public sealed class CShake128 : KeccakCore
     public static CShake128 Create(int outputBytes, string functionName, string? customization = null)
         => new(outputBytes, functionName, customization);
 
-    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes)
-        => new(simdSupport, outputBytes, [], []);
+    internal static CShake128 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8, byte[]? functionName = null, byte[]? customization = null)
+        => new(simdSupport, outputBytes, functionName, customization);
 
     internal static CShake128 Create(SimdSupport simdSupport, int outputBytes, string functionName, string? customization = null)
-        => new(simdSupport, outputBytes, functionName == null ? [] : Encoding.UTF8.GetBytes(functionName), customization == null ? [] : Encoding.UTF8.GetBytes(customization));
+        => new(simdSupport, outputBytes,
+            Encoding.UTF8.GetBytes(functionName),
+            customization == null ? null : Encoding.UTF8.GetBytes(customization));
 
     /// <inheritdoc/>
     public override void Initialize()
@@ -184,38 +192,57 @@ public sealed class CShake128 : KeccakCore
     private void AbsorbBytePad()
     {
         // bytepad(encode_string(N) || encode_string(S), rate)
-        byte[] encodedN = EncodeString(_functionName);
-        byte[] encodedS = EncodeString(_customization);
+        byte[] encodedN = _encodedFunctionName;
+        byte[] encodedS = _encodedCustomization;
 
         // left_encode(rate)
-        byte[] leftEncodedRate = LeftEncode(RateBytes);
-
-        int totalLen = leftEncodedRate.Length + encodedN.Length + encodedS.Length;
-        int padLen = (RateBytes - (totalLen % RateBytes)) % RateBytes;
-
-        byte[] bytePadded = new byte[totalLen + padLen];
-        int offset = 0;
-
-        Array.Copy(leftEncodedRate, 0, bytePadded, offset, leftEncodedRate.Length);
-        offset += leftEncodedRate.Length;
-
-        Array.Copy(encodedN, 0, bytePadded, offset, encodedN.Length);
-        offset += encodedN.Length;
-
-        Array.Copy(encodedS, 0, bytePadded, offset, encodedS.Length);
-
-        // Absorb the bytepad data
-        for (int i = 0; i < bytePadded.Length; i += RateBytes)
+        Span<byte> leftEncodedRate = stackalloc byte[EncodeBufferLength];
+        if (!CShake128.TryLeftEncode(leftEncodedRate, RateBytes, out int leftEncodedBytes))
         {
-            int blockLen = Math.Min(RateBytes, bytePadded.Length - i);
-            if (blockLen == RateBytes)
+            throw new InvalidOperationException("Failed to encode left rate.");
+        }
+
+        int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
+        int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
+
+        // Create a padded buffer
+        int paddedLength = totalLen + padLen;
+        byte[]? pooledBuffer = null;
+        Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
+            stackalloc byte[_rateBytes] :
+            (pooledBuffer = ArrayPool<byte>.Shared.Rent(paddedLength));
+
+        try
+        {
+            int offset = 0;
+            leftEncodedRate.Slice(0, leftEncodedBytes).CopyTo(paddedBuffer.Slice(offset));
+            offset += leftEncodedBytes;
+
+            encodedN.AsSpan(0, encodedN.Length).CopyTo(paddedBuffer.Slice(offset));
+            offset += encodedN.Length;
+
+            encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
+
+            // Absorb the bytepad data
+            for (int i = 0; i < paddedLength; i += RateBytes)
             {
-                _keccakCore.Absorb(bytePadded.AsSpan(i, RateBytes), RateBytes);
+                int blockLen = Math.Min(RateBytes, paddedBuffer.Length - i);
+                if (blockLen == RateBytes)
+                {
+                    _keccakCore.Absorb(paddedBuffer.Slice(i, RateBytes), RateBytes);
+                }
+                else
+                {
+                    paddedBuffer.Slice(i, blockLen).CopyTo(_buffer.AsSpan(_bufferLength));
+                    _bufferLength += blockLen;
+                }
             }
-            else
+        }
+        finally
+        {
+            if (pooledBuffer != null)
             {
-                bytePadded.AsSpan(i, blockLen).CopyTo(_buffer.AsSpan(_bufferLength));
-                _bufferLength += blockLen;
+                ArrayPool<byte>.Shared.Return(pooledBuffer, true);
             }
         }
     }
@@ -229,88 +256,114 @@ public sealed class CShake128 : KeccakCore
     {
         // Length in bits - use long to avoid overflow
         long lengthInBits = (long)s.Length * 8L;
-        byte[] lenEncoded = LeftEncode(lengthInBits);
-        byte[] result = new byte[lenEncoded.Length + s.Length];
-        Array.Copy(lenEncoded, 0, result, 0, lenEncoded.Length);
-        Array.Copy(s, 0, result, lenEncoded.Length, s.Length);
+        Span<byte> lenEncoded = stackalloc byte[EncodeBufferLength];
+        if (!TryLeftEncode(lenEncoded, lengthInBits, out int lenBytesWritten))
+        {
+            throw new InvalidOperationException("Failed to encode string length.");
+        }
+        byte[] result = new byte[lenBytesWritten + s.Length];
+        lenEncoded.Slice(0, lenBytesWritten).CopyTo(result);
+        Array.Copy(s, 0, result, lenBytesWritten, s.Length);
         return result;
     }
 
     /// <summary>
     /// Left-encodes an integer (left_encode from SP 800-185).
     /// </summary>
-    /// <param name="x">The value to encode (must be non-negative).</param>
-    /// <returns>The encoded bytes.</returns>
-    internal static byte[] LeftEncode(long x)
+    internal static bool TryLeftEncode(Span<byte> destination, long x, out int bytesWritten)
     {
         if (x < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(x), "Value must be non-negative.");
         }
 
+        if (destination.Length < 2)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         if (x == 0)
         {
-            return [1, 0];
+            destination[0] = 1;
+            destination[1] = 0;
+            bytesWritten = 2;
+            return true;
         }
+
+        Span<byte> tempBytes = stackalloc byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(tempBytes, x);
 
         // Count how many bytes we need
-        int n = 0;
-        long temp = x;
-        while (temp > 0)
+        byte n = 0;
+        while (x > 0)
         {
             n++;
-            temp >>= 8;
-        }
-
-        byte[] result = new byte[n + 1];
-        result[0] = unchecked((byte)n);
-
-        // Fill bytes in big-endian order
-        for (int i = n; i >= 1; i--)
-        {
-            result[i] = unchecked((byte)x);
             x >>= 8;
         }
 
-        return result;
+        if (destination.Length < n + 1)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        tempBytes.Slice(sizeof(long) - n, n).CopyTo(destination.Slice(1));
+
+        // Write the length byte
+        destination[0] = n;
+        bytesWritten = n + 1;
+
+        return true;
     }
 
     /// <summary>
     /// Right-encodes an integer (right_encode from SP 800-185).
     /// </summary>
-    /// <param name="x">The value to encode (must be non-negative).</param>
-    /// <returns>The encoded bytes.</returns>
-    internal static byte[] RightEncode(long x)
+    internal static bool TryRightEncode(Span<byte> destination, long x, out int bytesWritten)
     {
         if (x < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(x), "Value must be non-negative.");
         }
 
+        if (destination.Length < sizeof(long) + 1)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         if (x == 0)
         {
-            return [0, 1];
+            destination[0] = 0;
+            destination[1] = 1;
+            bytesWritten = 2;
+            return true;
         }
+
+        Span<byte> tempBytes = stackalloc byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(tempBytes, x);
 
         // Count how many bytes we need
-        int n = 0;
-        long temp = x;
-        while (temp > 0)
+        byte n = 0;
+        while (x > 0)
         {
             n++;
-            temp >>= 8;
-        }
-
-        byte[] result = new byte[n + 1];
-        result[n] = unchecked((byte)n);
-
-        // Fill bytes in big-endian order
-        for (int i = n - 1; i >= 0; i--)
-        {
-            result[i] = unchecked((byte)x);
             x >>= 8;
         }
 
-        return result;
+        if (destination.Length < n + 1)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        tempBytes.Slice(sizeof(long) - n, n).CopyTo(destination);
+
+        // Write the length byte
+        destination[n] = n;
+        bytesWritten = n + 1;
+
+        return true;
     }
 }

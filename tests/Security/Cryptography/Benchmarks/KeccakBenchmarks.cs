@@ -18,42 +18,13 @@ using System.Linq;
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "SHA3", "SHA3_224")]
 [NonParallelizable]
-public class SHA3_224Benchmark : HashBenchmarkBase
+public class SHA3_224Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.SHA3_224();
 
-    public SHA3_224Benchmark() => TestDataSize = DataSize.K8;
-    public SHA3_224Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public SHA3_224Benchmark() { }
+    public SHA3_224Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -66,42 +37,13 @@ public class SHA3_224Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "SHA3", "SHA3_256")]
 [NonParallelizable]
-public class SHA3_256Benchmark : HashBenchmarkBase
+public class SHA3_256Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.SHA3_256();
 
-    public SHA3_256Benchmark() => TestDataSize = DataSize.K8;
-    public SHA3_256Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public SHA3_256Benchmark() { }
+    public SHA3_256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -114,42 +56,13 @@ public class SHA3_256Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "SHA3", "SHA3_384")]
 [NonParallelizable]
-public class SHA3_384Benchmark : HashBenchmarkBase
+public class SHA3_384Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.SHA3_384();
 
-    public SHA3_384Benchmark() => TestDataSize = DataSize.K8;
-    public SHA3_384Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public SHA3_384Benchmark() { }
+    public SHA3_384Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -162,42 +75,13 @@ public class SHA3_384Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "SHA3", "SHA3_512")]
 [NonParallelizable]
-public class SHA3_512Benchmark : HashBenchmarkBase
+public class SHA3_512Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.SHA3_512();
 
-    public SHA3_512Benchmark() => TestDataSize = DataSize.K8;
-    public SHA3_512Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public SHA3_512Benchmark() { }
+    public SHA3_512Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -210,42 +94,13 @@ public class SHA3_512Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "Keccak", "Keccak256")]
 [NonParallelizable]
-public class Keccak256Benchmark : HashBenchmarkBase
+public class Keccak256Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Keccak256();
 
-    public Keccak256Benchmark() => TestDataSize = DataSize.K8;
-    public Keccak256Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public Keccak256Benchmark() { }
+    public Keccak256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -258,42 +113,13 @@ public class Keccak256Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "Keccak", "Keccak384")]
 [NonParallelizable]
-public class Keccak384Benchmark : HashBenchmarkBase
+public class Keccak384Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Keccak384();
 
-    public Keccak384Benchmark() => TestDataSize = DataSize.K8;
-    public Keccak384Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public Keccak384Benchmark() { }
+    public Keccak384Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -306,42 +132,13 @@ public class Keccak384Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "Keccak", "Keccak512")]
 [NonParallelizable]
-public class Keccak512Benchmark : HashBenchmarkBase
+public class Keccak512Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Keccak512();
 
-    public Keccak512Benchmark() => TestDataSize = DataSize.K8;
-    public Keccak512Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public Keccak512Benchmark() { }
+    public Keccak512Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -354,42 +151,13 @@ public class Keccak512Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "SHAKE", "SHAKE128")]
 [NonParallelizable]
-public class Shake128Benchmark : HashBenchmarkBase
+public class Shake128Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Shake128();
 
-    public Shake128Benchmark() => TestDataSize = DataSize.K8;
-    public Shake128Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public Shake128Benchmark() { }
+    public Shake128Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -402,42 +170,13 @@ public class Shake128Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "SHAKE", "SHAKE256")]
 [NonParallelizable]
-public class Shake256Benchmark : HashBenchmarkBase
+public class Shake256Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Shake256();
 
-    public Shake256Benchmark() => TestDataSize = DataSize.K8;
-    public Shake256Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public Shake256Benchmark() { }
+    public Shake256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -450,42 +189,13 @@ public class Shake256Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "cSHAKE", "cSHAKE128")]
 [NonParallelizable]
-public class CShake128Benchmark : HashBenchmarkBase
+public class CShake128Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.CShake128();
 
-    public CShake128Benchmark() => TestDataSize = DataSize.K8;
-    public CShake128Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public CShake128Benchmark() { }
+    public CShake128Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -498,42 +208,13 @@ public class CShake128Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "cSHAKE", "cSHAKE256")]
 [NonParallelizable]
-public class CShake256Benchmark : HashBenchmarkBase
+public class CShake256Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.CShake256();
 
-    public CShake256Benchmark() => TestDataSize = DataSize.K8;
-    public CShake256Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public CShake256Benchmark() { }
+    public CShake256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -546,42 +227,13 @@ public class CShake256Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "KT", "KT128")]
 [NonParallelizable]
-public class KT128Benchmark : HashBenchmarkBase
+public class KT128Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.KT128();
 
-    public KT128Benchmark() => TestDataSize = DataSize.K8;
-    public KT128Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public KT128Benchmark() { }
+    public KT128Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -594,42 +246,13 @@ public class KT128Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "KT", "KT256")]
 [NonParallelizable]
-public class KT256Benchmark : HashBenchmarkBase
+public class KT256Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.KT256();
 
-    public KT256Benchmark() => TestDataSize = DataSize.K8;
-    public KT256Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public KT256Benchmark() { }
+    public KT256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -642,42 +265,13 @@ public class KT256Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "TurboSHAKE", "TurboSHAKE128")]
 [NonParallelizable]
-public class TurboShake128Benchmark : HashBenchmarkBase
+public class TurboShake128Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.TurboShake128();
 
-    public TurboShake128Benchmark() => TestDataSize = DataSize.K8;
-    public TurboShake128Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public TurboShake128Benchmark() { }
+    public TurboShake128Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
 
 /// <summary>
@@ -690,40 +284,11 @@ public class TurboShake128Benchmark : HashBenchmarkBase
 [HideColumns("Namespace")]
 [BenchmarkCategory("Hash", "TurboSHAKE", "TurboSHAKE256")]
 [NonParallelizable]
-public class TurboShake256Benchmark : HashBenchmarkBase
+public class TurboShake256Benchmark : ParameterizedHashBenchmark
 {
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
-
-    [ParamsSource(nameof(Sizes))]
-    public DataSize TestDataSize { get; set; } = DataSize.K8;
-
-    [ParamsSource(nameof(Algorithms))]
-    public HashAlgorithmType TestHashAlgorithm { get; set; } = null!;
-
-    public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.TurboShake256();
 
-    public TurboShake256Benchmark() => TestDataSize = DataSize.K8;
-    public TurboShake256Benchmark(HashAlgorithmType hashAlgorithm) => TestHashAlgorithm = hashAlgorithm;
-
-    public override void GlobalSetup()
-    {
-        Bytes = TestDataSize.Bytes;
-        HashAlgorithm = TestHashAlgorithm.Create();
-        base.GlobalSetup();
-    }
-
-    [Test]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
-    public void TestComputeHash(DataSize dataSize)
-    {
-        TestDataSize = dataSize;
-        GlobalSetup();
-        var result = ComputeHash();
-        Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
-    }
-
-    [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+    public TurboShake256Benchmark() { }
+    public TurboShake256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }

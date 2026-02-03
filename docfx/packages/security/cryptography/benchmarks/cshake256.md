@@ -1,31 +1,31 @@
-﻿| Description                                        | TestDataSize | Mean         | Error       | StdDev      | Median       | Allocated |
-|--------------------------------------------------- |------------- |-------------:|------------:|------------:|-------------:|----------:|
-| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 128B         |     289.7 ns |     5.79 ns |     5.41 ns |     289.8 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 128B         |     344.1 ns |     5.11 ns |     4.78 ns |     344.8 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 128B         |     355.6 ns |     4.57 ns |     4.05 ns |     356.2 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 128B         |     370.8 ns |     4.58 ns |     4.28 ns |     369.5 ns |     176 B |
-|                                                    |              |              |             |             |              |           |
-| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 137B         |     543.6 ns |     5.03 ns |     4.71 ns |     542.9 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 137B         |     686.1 ns |     7.48 ns |     6.63 ns |     684.9 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 137B         |     686.9 ns |     9.51 ns |     8.89 ns |     684.0 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 137B         |     693.1 ns |     2.43 ns |     2.03 ns |     693.6 ns |     176 B |
-|                                                    |              |              |             |             |              |           |
-| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 1KB          |   1,711.3 ns |     9.67 ns |     9.05 ns |   1,711.5 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 1KB          |   2,383.8 ns |    31.96 ns |    29.89 ns |   2,375.4 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 1KB          |   2,395.2 ns |    39.97 ns |    79.83 ns |   2,351.6 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 1KB          |   2,516.4 ns |    24.36 ns |    22.78 ns |   2,518.8 ns |     176 B |
-|                                                    |              |              |             |             |              |           |
-| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 1025B        |   1,723.2 ns |     7.18 ns |     6.36 ns |   1,723.1 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 1025B        |   2,280.3 ns |    11.30 ns |    10.57 ns |   2,278.2 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 1025B        |   2,354.2 ns |    10.38 ns |     8.10 ns |   2,355.1 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 1025B        |   2,497.8 ns |    14.86 ns |    13.90 ns |   2,499.1 ns |     176 B |
-|                                                    |              |              |             |             |              |           |
-| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 8KB          |  12,491.2 ns |    86.85 ns |    76.99 ns |  12,478.1 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 8KB          |  16,818.6 ns |   107.46 ns |   100.52 ns |  16,780.0 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 8KB          |  17,363.2 ns |    75.35 ns |    62.92 ns |  17,358.8 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 8KB          |  18,655.1 ns |   121.55 ns |   113.70 ns |  18,674.9 ns |     176 B |
-|                                                    |              |              |             |             |              |           |
-| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 128KB        | 195,786.1 ns | 1,444.73 ns | 1,280.71 ns | 195,665.7 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 128KB        | 263,931.9 ns | 3,669.63 ns | 3,432.58 ns | 262,384.5 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 128KB        | 273,308.2 ns | 5,349.95 ns | 4,467.45 ns | 271,628.9 ns |     176 B |
-| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 128KB        | 295,015.3 ns | 1,296.73 ns | 1,212.96 ns | 294,882.3 ns |     176 B |
+﻿| Description                                        | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|--------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 128B         |     279.7 ns |     2.38 ns |     2.23 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 128B         |     356.5 ns |     3.02 ns |     2.82 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 128B         |     360.4 ns |     2.41 ns |     2.26 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 128B         |     361.3 ns |     5.57 ns |     5.21 ns |     176 B |
+|                                                    |              |              |             |             |           |
+| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 137B         |     524.8 ns |     4.45 ns |     3.94 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 137B         |     657.5 ns |     3.29 ns |     3.08 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 137B         |     670.9 ns |     1.28 ns |     1.07 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 137B         |     690.4 ns |     3.66 ns |     3.25 ns |     176 B |
+|                                                    |              |              |             |             |           |
+| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 1KB          |   1,685.4 ns |    10.79 ns |     9.57 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 1KB          |   2,272.9 ns |     8.79 ns |     8.22 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 1KB          |   2,356.8 ns |     9.39 ns |     7.33 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 1KB          |   2,495.7 ns |    14.90 ns |    13.21 ns |     176 B |
+|                                                    |              |              |             |             |           |
+| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 1025B        |   1,682.2 ns |     6.80 ns |     6.36 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 1025B        |   2,265.8 ns |     6.84 ns |     5.34 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 1025B        |   2,354.1 ns |     5.40 ns |     4.79 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 1025B        |   2,494.2 ns |    13.58 ns |    12.70 ns |     176 B |
+|                                                    |              |              |             |             |           |
+| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 8KB          |  12,178.7 ns |    44.62 ns |    34.84 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 8KB          |  16,602.1 ns |    50.65 ns |    44.90 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 8KB          |  17,294.8 ns |    32.61 ns |    27.23 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 8KB          |  18,659.2 ns |   121.54 ns |   107.74 ns |     176 B |
+|                                                    |              |              |             |             |           |
+| ComputeHash · cSHAKE256 · cSHAKE256 (Managed)      | 128KB        | 190,443.6 ns | 1,593.98 ns | 1,413.02 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX2)         | 128KB        | 260,159.4 ns |   834.66 ns |   696.98 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (AVX512F)      | 128KB        | 270,869.2 ns | 1,321.04 ns | 1,031.38 ns |     176 B |
+| ComputeHash · cSHAKE256 · cSHAKE256 (BouncyCastle) | 128KB        | 293,720.8 ns | 1,845.03 ns | 1,725.84 ns |     176 B |

@@ -15,7 +15,7 @@ using CryptoHivesHash = CryptoHives.Foundation.Security.Cryptography.Hash;
 /// </summary>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class CryptoHivesHashAlgorithmTests
+public class CreateHashAlgorithmTests
 {
     /// <summary>
     /// Test that Create returns correct types for SHA-2 family.
@@ -106,21 +106,21 @@ public class CryptoHivesHashAlgorithmTests
     /// <summary>
     /// Test that Create returns correct types for SM3.
     /// </summary>
-    [Test]
-    public void CreateReturnsSM3Type()
+    [TestCase("SM3", typeof(CryptoHivesHash.SM3))]
+    public void CreateReturnsSM3Types(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create("SM3");
-        Assert.That(hash, Is.InstanceOf<CryptoHivesHash.SM3>());
+        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
     /// <summary>
     /// Test that Create returns correct types for Whirlpool.
     /// </summary>
-    [Test]
-    public void CreateReturnsWhirlpoolType()
+    [TestCase("WHIRLPOOL", typeof(CryptoHivesHash.Whirlpool))]
+    public void CreateReturnsWhirlpoolTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create("WHIRLPOOL");
-        Assert.That(hash, Is.InstanceOf<CryptoHivesHash.Whirlpool>());
+        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
     /// <summary>
@@ -143,23 +143,13 @@ public class CryptoHivesHashAlgorithmTests
     /// <summary>
     /// Test that Create returns correct types for legacy algorithms.
     /// </summary>
-    [TestCase("SHA1")]
-    [TestCase("SHA-1")]
-
-    public void CreateReturnsSHA1ForLegacy(string name)
+    [TestCase("SHA1", typeof(CryptoHivesHash.SHA1))]
+    [TestCase("SHA-1", typeof(CryptoHivesHash.SHA1))]
+    [TestCase("MD5", typeof(CryptoHivesHash.MD5))]
+    public void CreateReturnsLegacyTypes(string name, Type expectedType)
     {
         using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
-        Assert.That(hash, Is.InstanceOf<CryptoHivesHash.SHA1>());
-    }
-
-    /// <summary>
-    /// Test that Create returns MD5 for legacy support.
-    /// </summary>
-    [Test]
-    public void CreateReturnsMD5ForLegacy()
-    {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create("MD5");
-        Assert.That(hash, Is.InstanceOf<CryptoHivesHash.MD5>());
+        Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
     /// <summary>

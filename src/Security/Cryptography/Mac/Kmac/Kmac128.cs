@@ -49,7 +49,7 @@ public sealed class Kmac128 : KeccakKmacCore
     /// <param name="key">The secret key.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
-    public Kmac128(byte[] key, int outputBytes = DefaultOutputBits / 8, string customization = "")
+    public Kmac128(byte[] key, int outputBytes = DefaultOutputBits / 8, string? customization = null)
         : base(RateBytes, SimdSupport.KeccakDefault, key, outputBytes, customization)
     {
     }
@@ -77,10 +77,10 @@ public sealed class Kmac128 : KeccakKmacCore
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
     /// <returns>A new KMAC128 instance.</returns>
-    public static Kmac128 Create(byte[] key, int outputBytes = DefaultOutputBits / 8, string customization = "")
+    public static Kmac128 Create(byte[] key, int outputBytes = DefaultOutputBits / 8, string? customization = null)
         => new(key, outputBytes, customization);
 
-    internal static Kmac128 Create(SimdSupport simdSupport, byte[] key, int outputBytes, string customization)
-        => new(simdSupport, key, outputBytes, Encoding.UTF8.GetBytes(customization ?? ""));
+    internal static Kmac128 Create(SimdSupport simdSupport, byte[] key, int outputBytes, string? customization)
+        => new(simdSupport, key, outputBytes, string.IsNullOrEmpty(customization) ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(customization));
 }
 

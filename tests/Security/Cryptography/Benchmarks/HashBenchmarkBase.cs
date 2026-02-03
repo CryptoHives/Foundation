@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Benchmarks;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 
 /// <summary>
@@ -44,5 +45,4 @@ public abstract class HashBenchmarkBase
         HashAlgorithm?.Dispose();
     }
 }
-
 
