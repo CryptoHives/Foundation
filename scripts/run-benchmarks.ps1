@@ -310,35 +310,10 @@ try {
     Write-Host "  $testProject\BenchmarkDotNet.Artifacts\results\"
     Write-Host ""
     
-    # Generate custom grouped charts if R is available
-    $rscript = Get-Command Rscript -ErrorAction SilentlyContinue
-    if ($rscript -and $Project -eq "Cryptography") {
-        Write-Host "Generating custom grouped charts..." -ForegroundColor Cyan
-        $resultsDir = Join-Path $testProject "BenchmarkDotNet.Artifacts\results"
-        $mdFiles = Get-ChildItem -Path $resultsDir -Filter "*-report.md" -ErrorAction SilentlyContinue
-
-        if ($mdFiles) {
-            $chartScript = Join-Path $PSScriptRoot "generate-grouped-charts.R"
-            foreach ($md in $mdFiles) {
-                $outputPng = $md.FullName -replace "-report\.md$", "-grouped.png"
-                Write-Host "  Processing: $($md.Name)" -ForegroundColor Gray
-
-                try {
-                    & Rscript $chartScript $md.FullName $outputPng 2>&1 | Out-Null
-                    if ($LASTEXITCODE -eq 0 -and (Test-Path $outputPng)) {
-                        Write-Host "  ✓ Generated: $(Split-Path $outputPng -Leaf)" -ForegroundColor Green
-                    } else {
-                        Write-Host "  ! Failed to generate chart for $($md.Name)" -ForegroundColor Yellow
-                    }
-                } catch {
-                    Write-Host "  ! Failed to generate chart for $($md.Name)" -ForegroundColor Yellow
-                }
-            }
-            Write-Host ""
-        }
-    }
-    
     if ($Project -eq "Cryptography") {
+        Write-Host "To generate benchmark charts, run:"
+        Write-Host "  .\scripts\generate-benchmark-charts.ps1"
+        Write-Host ""
         Write-Host "To update documentation, run:"
         Write-Host "  .\scripts\update-benchmark-docs.ps1 -Package Cryptography"
         Write-Host ""

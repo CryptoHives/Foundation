@@ -39,8 +39,9 @@ if (length(table_lines) == 0) {
 
 # Parse table rows
 parse_row <- function(line) {
-  # Remove leading/trailing pipes and split
-  cells <- strsplit(gsub("^\\|(.*)\\|$", "\\1", line), "\\|")[[1]]
+  # Remove leading/trailing pipes and split by pipe (using fixed = TRUE to treat | literally)
+  cleaned <- gsub("^\\|(.*)\\|$", "\\1", line)
+  cells <- strsplit(cleaned, "|", fixed = TRUE)[[1]]
   cells <- trimws(cells)
   return(cells)
 }
@@ -110,11 +111,29 @@ if (!is.na(size_col)) {
   df$DataSize <- "Unknown"
 }
 
+# Parse data size to bytes for throughput calculation
+parse_size_bytes <- function(size_str) {
+  size_str <- trimws(size_str)
+  number <- as.numeric(gsub("[^0-9.]", "", size_str))
+
+  if (grepl("KB", size_str, ignore.case = TRUE)) {
+    return(number * 1024)
+  } else if (grepl("MB", size_str, ignore.case = TRUE)) {
+    return(number * 1024 * 1024)
+  } else if (grepl("B", size_str, ignore.case = TRUE)) {
+    return(number)
+  } else {
+    return(number)  # Assume bytes
+  }
+}
+
+df$SizeBytes <- sapply(df$DataSize, parse_size_bytes)
+
 # Parse Mean column - handle format like "129.3 ns", "2.69 μs", etc.
-# Convert everything to nanoseconds to avoid negative log values for sub-microsecond times
+# Convert everything to nanoseconds for consistent comparison
 mean_col <- grep("^Mean$", colnames(df), value = TRUE)[1]
 if (!is.na(mean_col)) {
-  parse_mean <- function(val) {
+  parse_mean_ns <- function(val) {
     val <- trimws(val)
     # Extract number and unit
     number <- as.numeric(gsub("[^0-9.,]", "", gsub(",", "", val)))
@@ -130,18 +149,35 @@ if (!is.na(mean_col)) {
     }
   }
 
-  df$MeanNanoseconds <- sapply(df[[mean_col]], parse_mean)
+  df$MeanNanoseconds <- sapply(df[[mean_col]], parse_mean_ns)
 } else {
   stop("Could not find Mean column")
 }
 
 # Filter valid data
 df <- df[!is.na(df$MeanNanoseconds) & df$MeanNanoseconds > 0, ]
+df <- df[!is.na(df$SizeBytes) & df$SizeBytes > 0, ]
 df <- df[df$Implementation != "Unknown", ]
 
 if (nrow(df) == 0) {
   stop("No valid data after filtering")
 }
+
+# Calculate throughput: bytes per second = bytes / (ns * 1e-9) = bytes * 1e9 / ns
+# Then convert to MB/s for readability
+df$ThroughputMBps <- (df$SizeBytes / df$MeanNanoseconds) * 1000  # MB/s
+
+# Determine best throughput unit based on max value
+max_throughput <- max(df$ThroughputMBps)
+if (max_throughput >= 1000) {
+  df$Throughput <- df$ThroughputMBps / 1000
+  throughput_unit <- "GB/s"
+} else {
+  df$Throughput <- df$ThroughputMBps
+  throughput_unit <- "MB/s"
+}
+
+cat(sprintf("Using throughput unit: %s (max: %.2f MB/s)\n", throughput_unit, max_throughput))
 
 # Order data size naturally
 size_order <- c("128B", "137B", "1KB", "1025B", "8KB", "128KB", "1MB", "16MB")
@@ -163,16 +199,13 @@ cat(sprintf("Generating chart with %d data points\n", nrow(df)))
 cat(sprintf("Data sizes: %s\n", paste(unique(df$DataSize), collapse = ", ")))
 cat(sprintf("Implementations: %s\n", paste(unique(df$Implementation), collapse = ", ")))
 
-# Create grouped bar chart
-p <- ggplot(df, aes(x = DataSize, y = MeanNanoseconds, fill = Implementation)) +
+# Create grouped bar chart with throughput (linear scale, higher is better)
+p <- ggplot(df, aes(x = DataSize, y = Throughput, fill = Implementation)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.9), width = 0.8) +
 
-  # Use logarithmic scale for Y-axis to make small values visible
-  scale_y_log10(
-    breaks = scales::trans_breaks("log10", function(x) 10^x),
-    labels = scales::trans_format("log10", scales::math_format(10^.x))
-  ) +
-  
+  # Linear scale for throughput - no log needed since throughput is normalized
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+
   # Color scheme - extended for all implementations
   scale_fill_manual(
     values = c(
@@ -189,13 +222,13 @@ p <- ggplot(df, aes(x = DataSize, y = MeanNanoseconds, fill = Implementation)) +
     ),
     drop = FALSE
   ) +
-  
+
   # Labels and theme
   labs(
-    title = "Performance Comparison by Data Size",
-    subtitle = "Grouped by implementation - Lower is better (logarithmic scale)",
+    title = "Throughput Comparison by Data Size",
+    subtitle = "Grouped by implementation - Higher is better",
     x = "Input Data Size",
-    y = "Mean Time (ns, log scale)",
+    y = paste0("Throughput (", throughput_unit, ")"),
     fill = "Implementation"
   ) +
   
