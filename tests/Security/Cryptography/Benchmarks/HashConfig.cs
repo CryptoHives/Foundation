@@ -73,8 +73,7 @@ public class HashConfig : ManualConfig
                 var parts = method.Split('_');
                 if (parts.Length >= 2)
                 {
-                    string algo = parts[0] switch
-                    {
+                    string algo = parts[0] switch {
                         "Kmac128" => "KMAC-128",
                         "Kmac256" => "KMAC-256",
                         _ => parts[0]

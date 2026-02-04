@@ -111,29 +111,32 @@ if (!is.na(size_col)) {
 }
 
 # Parse Mean column - handle format like "129.3 ns", "2.69 μs", etc.
+# Convert everything to nanoseconds to avoid negative log values for sub-microsecond times
 mean_col <- grep("^Mean$", colnames(df), value = TRUE)[1]
 if (!is.na(mean_col)) {
   parse_mean <- function(val) {
     val <- trimws(val)
     # Extract number and unit
     number <- as.numeric(gsub("[^0-9.,]", "", gsub(",", "", val)))
-    
+
     if (grepl("ns", val, fixed = TRUE)) {
-      return(number / 1000)  # Convert to μs
+      return(number)  # Already in ns
     } else if (grepl("ms", val, fixed = TRUE)) {
-      return(number * 1000)  # Convert to μs
+      return(number * 1000000)  # Convert ms to ns
+    } else if (grepl("μs", val, fixed = TRUE) || grepl("us", val, fixed = TRUE)) {
+      return(number * 1000)  # Convert μs to ns
     } else {
-      return(number)  # Assume μs or unit-less
+      return(number * 1000)  # Assume μs, convert to ns
     }
   }
-  
-  df$MeanMicroseconds <- sapply(df[[mean_col]], parse_mean)
+
+  df$MeanNanoseconds <- sapply(df[[mean_col]], parse_mean)
 } else {
   stop("Could not find Mean column")
 }
 
 # Filter valid data
-df <- df[!is.na(df$MeanMicroseconds) & df$MeanMicroseconds > 0, ]
+df <- df[!is.na(df$MeanNanoseconds) & df$MeanNanoseconds > 0, ]
 df <- df[df$Implementation != "Unknown", ]
 
 if (nrow(df) == 0) {
@@ -161,9 +164,9 @@ cat(sprintf("Data sizes: %s\n", paste(unique(df$DataSize), collapse = ", ")))
 cat(sprintf("Implementations: %s\n", paste(unique(df$Implementation), collapse = ", ")))
 
 # Create grouped bar chart
-p <- ggplot(df, aes(x = DataSize, y = MeanMicroseconds, fill = Implementation)) +
+p <- ggplot(df, aes(x = DataSize, y = MeanNanoseconds, fill = Implementation)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.9), width = 0.8) +
-  
+
   # Use logarithmic scale for Y-axis to make small values visible
   scale_y_log10(
     breaks = scales::trans_breaks("log10", function(x) 10^x),
@@ -192,7 +195,7 @@ p <- ggplot(df, aes(x = DataSize, y = MeanMicroseconds, fill = Implementation)) 
     title = "Performance Comparison by Data Size",
     subtitle = "Grouped by implementation - Lower is better (logarithmic scale)",
     x = "Input Data Size",
-    y = "Mean Time (μs, log scale)",
+    y = "Mean Time (ns, log scale)",
     fill = "Implementation"
   ) +
   
