@@ -98,6 +98,15 @@ public class Kmac128Benchmark
 
 #if NET9_0_OR_GREATER
     [Test, Repeat(5)]
+    public void ComputeHashTest_DotNet()
+    {
+        if (!Kmac128.IsSupported)
+        {
+            Assert.Ignore("KMac128 is not supported on this platform.");
+        }
+        ComputeHash_DotNet();
+    }
+
     [Benchmark]
     public void ComputeHash_DotNet()
     {
@@ -166,7 +175,6 @@ public class Kmac256Benchmark
 
     [Test, Repeat(5)]
     [Benchmark]
-    [BenchmarkCategory("KMAC256")]
     public void ComputeHash_CryptoHives()
     {
         _ = _chkmac256.ComputeHash(_data);
@@ -174,7 +182,6 @@ public class Kmac256Benchmark
 
     [Test, Repeat(5)]
     [Benchmark]
-    [BenchmarkCategory("KMAC", "KMAC256")]
     public void ComputeHash_BouncyCastle()
     {
         _bckmac256.BlockUpdate(_data, 0, _data.Length);
@@ -183,8 +190,16 @@ public class Kmac256Benchmark
 
 #if NET9_0_OR_GREATER
     [Test, Repeat(5)]
+    public void ComputeHashTest_DotNet()
+    {
+        if (!Kmac256.IsSupported)
+        {
+            Assert.Ignore("KMac256 is not supported on this platform.");
+        }
+        ComputeHash_DotNet();
+    }
+
     [Benchmark]
-    [BenchmarkCategory("KMAC", "KMAC256")]
     public void ComputeHash_DotNet()
     {
         Kmac256.HashData(_key, _data, _result, _customization);
@@ -220,15 +235,6 @@ public class Kmac128OutputSizeBenchmark
 
     [Params(16, 32, 64, 128)]
     public int OutputSize { get; set; } = 128;
-
-    public static IEnumerable<KmacImplementation> Implementations()
-    {
-        yield return KmacImplementation.CryptoHives;
-        yield return KmacImplementation.BouncyCastle;
-#if NET9_0_OR_GREATER
-        yield return KmacImplementation.DotNet;
-#endif
-    }
 
     [GlobalSetup, OneTimeSetUp]
     public void Setup()
