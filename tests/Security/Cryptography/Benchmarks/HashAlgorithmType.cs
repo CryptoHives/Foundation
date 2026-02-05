@@ -272,7 +272,7 @@ public sealed class HashAlgorithmType : IFormattable
     #region KMAC Algorithms
 
     // Shared key for KMAC benchmarks (32 bytes)
-    private static readonly byte[] SharedKmacKey =
+    private static readonly byte[] _sharedKmacKey =
     [
         0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
         0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
@@ -280,22 +280,22 @@ public sealed class HashAlgorithmType : IFormattable
         0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f
     ];
 
-    private static readonly byte[] SharedKmacCustomization = Encoding.UTF8.GetBytes("Benchmark");
+    private static readonly byte[] _sharedKmacCustomization = Encoding.UTF8.GetBytes("Benchmark");
 
     /// <summary>KMAC-128 implementations.</summary>
     public static IEnumerable<HashAlgorithmType> Kmac128()
     {
         yield return new("KMAC-128", "KMAC-128 (Managed)",
-            () => CHMac.Kmac128.Create(SharedKmacKey, 32, "Benchmark"));
+            () => CHMac.Kmac128.Create(_sharedKmacKey, 32, "Benchmark"));
 
         yield return new("KMAC-128", "KMAC-128 (BouncyCastle)",
-            () => new BouncyCastleKmacAdapter(128, SharedKmacKey, SharedKmacCustomization, 32));
+            () => new BouncyCastleKmacAdapter(128, _sharedKmacKey, _sharedKmacCustomization, 32));
 
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac128.IsSupported)
         {
             yield return new("KMAC-128", "KMAC-128 (OS)",
-                () => new Kmac128HashAdapter(SharedKmacKey, 32, SharedKmacCustomization),
+                () => new Kmac128HashAdapter(_sharedKmacKey, 32, _sharedKmacCustomization),
                 () => System.Security.Cryptography.Kmac128.IsSupported);
         }
 #endif
@@ -305,16 +305,16 @@ public sealed class HashAlgorithmType : IFormattable
     public static IEnumerable<HashAlgorithmType> Kmac256()
     {
         yield return new("KMAC-256", "KMAC-256 (Managed)",
-            () => CHMac.Kmac256.Create(SharedKmacKey, 64, "Benchmark"));
+            () => CHMac.Kmac256.Create(_sharedKmacKey, 64, "Benchmark"));
 
         yield return new("KMAC-256", "KMAC-256 (BouncyCastle)",
-            () => new BouncyCastleKmacAdapter(256, SharedKmacKey, SharedKmacCustomization, 64));
+            () => new BouncyCastleKmacAdapter(256, _sharedKmacKey, _sharedKmacCustomization, 64));
 
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac256.IsSupported)
         {
             yield return new("KMAC-256", "KMAC-256 (OS)",
-                () => new Kmac256HashAdapter(SharedKmacKey, 64, SharedKmacCustomization),
+                () => new Kmac256HashAdapter(_sharedKmacKey, 64, _sharedKmacCustomization),
                 () => System.Security.Cryptography.Kmac256.IsSupported);
         }
 #endif

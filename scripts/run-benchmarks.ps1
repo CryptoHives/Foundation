@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # run-benchmarks.ps1
@@ -309,7 +309,11 @@ try {
     Write-Host "Results saved to:"
     Write-Host "  $testProject\BenchmarkDotNet.Artifacts\results\"
     Write-Host ""
+    
     if ($Project -eq "Cryptography") {
+        Write-Host "To generate benchmark charts, run:"
+        Write-Host "  .\scripts\generate-benchmark-charts.ps1"
+        Write-Host ""
         Write-Host "To update documentation, run:"
         Write-Host "  .\scripts\update-benchmark-docs.ps1 -Package Cryptography"
         Write-Host ""
