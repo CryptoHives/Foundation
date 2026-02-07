@@ -223,7 +223,7 @@ public class ArrayPoolMemoryStreamTests
                     }
                     break;
                 default:
-                    writer.ReadExactly(buffer.AsSpan(0, chunkSize));               
+                    writer.ReadExactly(buffer.AsSpan(0, chunkSize));
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));

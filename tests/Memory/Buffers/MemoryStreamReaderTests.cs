@@ -294,8 +294,7 @@ public class MemoryStreamReaderTests
 
     #region Helpers
 
-    private MemoryStream CreateStream(params byte[][] segments) => _streamType switch
-    {
+    private MemoryStream CreateStream(params byte[][] segments) => _streamType switch {
         "ArrayPool" => CreateArrayPoolStream(segments),
         "ReadOnlySequence" => CreateReadOnlySequenceStream(segments),
         _ => throw new NotSupportedException($"Unknown stream type: {_streamType}")
