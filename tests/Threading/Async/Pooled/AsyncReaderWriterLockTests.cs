@@ -15,7 +15,7 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncReaderWriterLockUnitTests
+public class AsyncReaderWriterLockTests
 {
     [Test]
     public async Task SingleReaderAcquiresImmediately()

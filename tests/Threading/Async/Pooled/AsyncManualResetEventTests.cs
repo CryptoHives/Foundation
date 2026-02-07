@@ -15,7 +15,7 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncManualResetEventUnitTests
+public class AsyncManualResetEventTests
 {
     [Test]
     public void IsSetReflectsEventState()

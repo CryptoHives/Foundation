@@ -86,7 +86,7 @@ When working with the `*.Analyzers` projects:
 
 ## Testing conventions
 
-- Tests use NUnit. Test classes live under `tests/*` with corresponding project names which end in `.Tests`. File names end in `UnitTests.cs` or `Benchmark.cs`.
+- Tests use NUnit. Test classes live under `tests/*` with corresponding project names which end in `.Tests`. File names end in `Tests.cs` or `Benchmarks.cs`.
 - Use `[TestFixture]` on classes and `[Test]` or `[Theory]` on methods. Async tests should return `Task` and use `async/await`.
 - Try to use `[TestCaseSource]` and `[TestFixtureSource]` to increase the number of tests with a smaller code base.
 - Prefer `[Parallelizable(ParallelScope.All)]` on test fixtures for parallel execution.
