@@ -1,21 +1,16 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if !NETFRAMEWORK
-#define STREAM_WITH_READEXACTLY_SUPPORT
-#endif
-
 namespace Memory.Tests.Buffers;
 
 using CryptoHives.Foundation.Memory.Buffers;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 using System;
 using System.Buffers;
 using System.IO;
 
 /// <summary>
-/// Tests for <see cref="ArrayPoolBufferWriter{T}"/> where T is <see cref="byte"/>.
+/// Tests for <see cref="ArrayPoolMemoryStream"/>.
 /// </summary>
 [Parallelizable(ParallelScope.All)]
 public class ArrayPoolMemoryStreamTests
@@ -26,16 +21,13 @@ public class ArrayPoolMemoryStreamTests
     [Test]
     public void ArrayPoolMemoryStreamWhenConstructedWithDefaultOptionsShouldNotThrow()
     {
-        // Arrange
         using ArrayPoolMemoryStream stream = new();
 
-        // Act
         Action act = stream.Dispose;
         byte[] buffer = "U"u8.ToArray();
 
         using (Assert.EnterMultipleScope())
         {
-            // Assert
             Assert.That(stream.CanSeek, Is.True);
             Assert.That(stream.CanRead, Is.True);
             Assert.That(stream.CanWrite, Is.True);
@@ -125,7 +117,7 @@ public class ArrayPoolMemoryStreamTests
     }
 
     /// <summary>
-    /// Test the default behavior of <see cref="ArrayPoolBufferWriter{T}"/>.
+    /// Test the write and read behavior of <see cref="ArrayPoolMemoryStream"/>.
     /// </summary>
     [Theory]
     public void ArrayPoolMemoryStreamWrite(
@@ -137,10 +129,8 @@ public class ArrayPoolMemoryStreamTests
         ReadOnlySequence<byte> sequence;
         byte[] buffer = new byte[chunkSize];
 
-        // Arrange
         using var writer = new ArrayPoolMemoryStream(defaultBufferSize);
 
-        // Act
         for (int i = 0; i <= byte.MaxValue; i++)
         {
             // fill chunk with a byte
@@ -173,7 +163,6 @@ public class ArrayPoolMemoryStreamTests
 
         using (Assert.EnterMultipleScope())
         {
-            // Assert sequence properties
             Assert.That(buffer, Has.Length.EqualTo(length));
             Assert.That(sequence.Length, Is.EqualTo(length));
         }
@@ -227,22 +216,14 @@ public class ArrayPoolMemoryStreamTests
                     }
                     break;
                 case 1:
-#if STREAM_WITH_READEXACTLY_SUPPORT
                     writer.ReadExactly(buffer, 0, chunkSize);
-#else
-                    writer.Read(buffer, 0, chunkSize);
-#endif
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));
                     }
                     break;
                 default:
-#if STREAM_WITH_READEXACTLY_SUPPORT
-                    writer.ReadExactly(buffer.AsSpan(0, chunkSize));
-#else
-                    writer.Read(buffer.AsSpan(0, chunkSize));
-#endif                    
+                    writer.ReadExactly(buffer.AsSpan(0, chunkSize));               
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));
@@ -275,22 +256,14 @@ public class ArrayPoolMemoryStreamTests
                     }
                     break;
                 case 1:
-#if STREAM_WITH_READEXACTLY_SUPPORT
                     reader.ReadExactly(buffer, 0, chunkSize);
-#else
-                    reader.Read(buffer, 0, chunkSize);
-#endif
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));
                     }
                     break;
                 default:
-#if STREAM_WITH_READEXACTLY_SUPPORT
                     reader.ReadExactly(buffer.AsSpan(0, chunkSize));
-#else
-                    reader.Read(buffer.AsSpan(0, chunkSize));
-#endif              
                     for (int v = 0; v < chunkSize; v++)
                     {
                         Assert.That(buffer[v], Is.EqualTo((byte)i));

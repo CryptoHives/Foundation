@@ -1,11 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1859 // Use concrete types when possible for improved performance
+
 namespace Memory.Tests.Buffers;
 
 using CryptoHives.Foundation.Memory.Buffers;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 using System;
 using System.Buffers;
 
@@ -21,10 +22,8 @@ public class ArrayPoolBufferWriterTests
     [Test]
     public void ArrayPoolBufferWriterWhenConstructedWithDefaultOptionsShouldNotThrow()
     {
-        // Arrange
         using ArrayPoolBufferWriter<byte> writer = new();
 
-        // Act
         void Act() => writer.Dispose();
         byte[] buffer = new byte[1];
 
@@ -34,7 +33,6 @@ public class ArrayPoolBufferWriterTests
         writer.Write(buffer);
         ReadOnlySequence<byte> sequence = writer.GetReadOnlySequence();
 
-        // Assert
         Assert.Throws<ArgumentOutOfRangeException>(() => writer.GetMemory(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => writer.GetSpan(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => writer.Advance(-1));
@@ -49,7 +47,7 @@ public class ArrayPoolBufferWriterTests
     }
 
     /// <summary>
-    /// Test the default behavior of <see cref="ArrayPoolBufferWriter{T}"/>.
+    /// Test the chunking behavior of <see cref="ArrayPoolBufferWriter{T}"/>.
     /// </summary>
     [Theory]
     public void ArrayPoolBufferWriterChunking(
@@ -62,10 +60,8 @@ public class ArrayPoolBufferWriterTests
         ReadOnlySequence<byte> sequence;
         byte[] buffer;
 
-        // Arrange
         using var writer = new ArrayPoolBufferWriter<byte>(true, defaultChunkSize, maxChunkSize);
 
-        // Act
         for (int i = 0; i <= byte.MaxValue; i++)
         {
             Span<byte> span;
@@ -74,7 +70,6 @@ public class ArrayPoolBufferWriterTests
             int repeats = random.Next(3);
             do
             {
-                // get a new chunk
                 if (random.Next(2) == 0)
                 {
                     Memory<byte> memory = writer.GetMemory(randomGetChunkSize);
@@ -90,7 +85,6 @@ public class ArrayPoolBufferWriterTests
             }
             while (repeats-- > 0);
 
-            // fill chunk with a byte
             for (int v = 0; v < chunkSize; v++)
             {
                 span[v] = (byte)i;
@@ -98,7 +92,6 @@ public class ArrayPoolBufferWriterTests
 
             writer.Advance(chunkSize);
 
-            // Assert interim projections
             if (random.Next(10) == 0)
             {
                 length = chunkSize * (i + 1);
@@ -107,7 +100,6 @@ public class ArrayPoolBufferWriterTests
 
                 using (Assert.EnterMultipleScope())
                 {
-                    // Assert
                     Assert.That(buffer, Has.Length.EqualTo(length));
                     Assert.That(sequence.Length, Is.EqualTo(length));
                 }
@@ -120,7 +112,6 @@ public class ArrayPoolBufferWriterTests
 
         using (Assert.EnterMultipleScope())
         {
-            // Assert
             Assert.That(buffer, Has.Length.EqualTo(length));
             Assert.That(sequence.Length, Is.EqualTo(length));
         }
@@ -128,6 +119,87 @@ public class ArrayPoolBufferWriterTests
         for (int i = 0; i < buffer.Length; i++)
         {
             Assert.That(buffer[i], Is.EqualTo((byte)(i / chunkSize)));
+        }
+    }
+
+    /// <summary>
+    /// Fuzzer-style test that writes random chunks via <see cref="BuildChunkBuffer"/>
+    /// and verifies the resulting <see cref="ReadOnlySequence{T}"/> integrity.
+    /// </summary>
+    [Theory]
+    public void ArrayPoolBufferWriterFuzzer(
+        [Values(1, 64, 512)] int chunkSize,
+        [Values(256, 4096)] int defaultChunkSize,
+        [Values(0, 4096)] int maxChunkSize,
+        [Values(0, 42, 9876)] int seed)
+    {
+        using var writer = new ArrayPoolBufferWriter<byte>(true, defaultChunkSize, maxChunkSize);
+
+        BuildChunkBuffer(writer, new Random(seed), chunkSize, maxChunkSize);
+
+        int expectedLength = (byte.MaxValue + 1) * chunkSize;
+        ReadOnlySequence<byte> sequence = writer.GetReadOnlySequence();
+        byte[] buffer = sequence.ToArray();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(sequence.Length, Is.EqualTo(expectedLength));
+            Assert.That(buffer, Has.Length.EqualTo(expectedLength));
+        }
+
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            Assert.That(buffer[i], Is.EqualTo((byte)(i / chunkSize)));
+        }
+    }
+
+    /// <summary>
+    /// Fuzzer-style test that performs random <see cref="IBufferWriter{T}"/> operations
+    /// and verifies the accumulated output matches expectations.
+    /// </summary>
+    [Theory]
+    public void ArrayPoolBufferWriterRandomOperations(
+        [Values(42, 1337, 99999)] int seed,
+        [Values(256, 4096)] int defaultChunkSize,
+        [Values(0, 8192)] int maxChunkSize)
+    {
+        var random = new Random(seed);
+        using var writer = new ArrayPoolBufferWriter<byte>(true, defaultChunkSize, maxChunkSize);
+        using var expected = new System.IO.MemoryStream();
+
+        for (int round = 0; round < 500; round++)
+        {
+            int size = random.Next(0, 1024);
+            byte[] data = new byte[size];
+            random.NextBytes(data);
+
+            switch (random.Next(3))
+            {
+                case 0:
+                    Memory<byte> memory = writer.GetMemory(size);
+                    data.CopyTo(memory);
+                    writer.Advance(size);
+                    break;
+                case 1:
+                    Span<byte> span = writer.GetSpan(size);
+                    data.CopyTo(span);
+                    writer.Advance(size);
+                    break;
+                default:
+                    writer.Write(data);
+                    break;
+            }
+
+            expected.Write(data, 0, data.Length);
+        }
+
+        byte[] expectedBytes = expected.ToArray();
+        byte[] actualBytes = writer.GetReadOnlySequence().ToArray();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(actualBytes, Has.Length.EqualTo(expectedBytes.Length));
+            Assert.That(actualBytes, Is.EqualTo(expectedBytes));
         }
     }
 
@@ -148,7 +220,6 @@ public class ArrayPoolBufferWriterTests
             int repeats = random.Next(3);
             do
             {
-                // get a new chunk
                 if (random.Next(2) == 0)
                 {
                     Memory<byte> memory = writer.GetMemory(randomGetChunkSize);
@@ -164,7 +235,6 @@ public class ArrayPoolBufferWriterTests
             }
             while (repeats-- > 0);
 
-            // fill chunk with a byte
             for (int v = 0; v < chunkSize; v++)
             {
                 span[v] = (byte)i;

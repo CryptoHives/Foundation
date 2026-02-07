@@ -13,7 +13,7 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncLockUnitTests
+public class AsyncLockTests
 {
     [Test]
     public void AsyncLockUnlockedSynchronouslyPermitsLock()

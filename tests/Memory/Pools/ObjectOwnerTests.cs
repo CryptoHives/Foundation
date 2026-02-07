@@ -8,7 +8,11 @@ using Microsoft.Extensions.ObjectPool;
 using NUnit.Framework;
 using System.Text;
 
+/// <summary>
+/// Tests for <see cref="ObjectOwner{T}"/>.
+/// </summary>
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class ObjectOwnerTests
 {
     [Test]
@@ -22,10 +26,12 @@ public class ObjectOwnerTests
             // Copy the struct (implicit field copy)
             ObjectOwner<StringBuilder> owner2 = owner1;
 
-            // Assert - copies that reference same pool and same object are equal
-            Assert.That(owner1, Is.EqualTo(owner2));
-            Assert.That(((object)owner1), Is.EqualTo(owner2), "Equals(object) should recognize a boxed ObjectOwner");
-            Assert.That(owner1.GetHashCode(), Is.EqualTo(owner2.GetHashCode()), "Equal instances must have equal hash codes");
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(owner1, Is.EqualTo(owner2));
+                Assert.That(((object)owner1), Is.EqualTo(owner2), "Equals(object) should recognize a boxed ObjectOwner");
+                Assert.That(owner1.GetHashCode(), Is.EqualTo(owner2.GetHashCode()), "Equal instances must have equal hash codes");
+            }
         }
         finally
         {
@@ -42,8 +48,11 @@ public class ObjectOwnerTests
         using var owner1 = new ObjectOwner<StringBuilder>(pool);
         using var owner2 = new ObjectOwner<StringBuilder>(pool);
 
-        Assert.That(owner1, Is.Not.EqualTo(owner2), "Distinct pooled objects should not be equal even if from same pool");
-        Assert.That(((object)owner1), Is.Not.EqualTo(owner2), "Equals(object) should return false for a different ObjectOwner");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(owner1, Is.Not.EqualTo(owner2), "Distinct pooled objects should not be equal even if from same pool");
+            Assert.That(((object)owner1), Is.Not.EqualTo(owner2), "Equals(object) should return false for a different ObjectOwner");
+        }
     }
 
     [Test]
