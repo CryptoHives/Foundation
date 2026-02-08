@@ -26,7 +26,7 @@ using System.Text;
 /// This implementation is specified in RFC 9861 Section 3.2.
 /// </para>
 /// </remarks>
-public sealed class KT128 : HashAlgorithm
+public sealed class KT128 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
     /// The rate in bytes for KT128 (1344 bits = 168 bytes, same as TurboSHAKE128).
@@ -161,6 +161,18 @@ public sealed class KT128 : HashAlgorithm
         _finalized = false;
     }
 
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
+    }
+
     /// <summary>
     /// Absorbs a block of input data into the hash state.
     /// </summary>
@@ -201,7 +213,10 @@ public sealed class KT128 : HashAlgorithm
         {
             FinalizeInternal(output);
             _finalized = true;
+            return;
         }
+
+        _turbo.Squeeze(output);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

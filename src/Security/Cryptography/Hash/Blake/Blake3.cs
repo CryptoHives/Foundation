@@ -47,7 +47,7 @@ public enum Blake3Mode
 /// BLAKE3 supports three modes: standard hashing, keyed hashing (MAC), and key derivation.
 /// </para>
 /// </remarks>
-public sealed partial class Blake3 : HashAlgorithm
+public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
     /// The default hash size in bits.
@@ -279,6 +279,9 @@ public sealed partial class Blake3 : HashAlgorithm
         _chunkCounter = 0;
         _blocksCompressed = 0;
         _cvStackDepth = 0;
+        _squeezed = false;
+        _outputCounter = 0;
+        _squeezeOffset = 0;
         ClearBuffer(_chunkBuffer);
     }
 
@@ -311,94 +314,8 @@ public sealed partial class Blake3 : HashAlgorithm
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         bytesWritten = _outputBytes;
-        FinalizeAndSqueeze(destination);
+        Squeeze(destination);
         return true;
-    }
-
-    /// <summary>
-    /// Finalizes the hash and produces output of the specified length.
-    /// </summary>
-    /// <param name="output">The buffer to receive the output.</param>
-    public void FinalizeAndSqueeze(Span<byte> output)
-    {
-        if (_cvStackDepth == 0 && _chunkCounter == 0)
-        {
-            // Single chunk case - finalize with root flag
-            Span<uint> rootOutput = stackalloc uint[16];
-            FinalizeChunkAsRoot(rootOutput);
-            ExtractOutput(rootOutput, output);
-        }
-        else
-        {
-            // Multi-chunk case - finalize current chunk and push onto stack
-            FinalizeChunk(_cvStackBuf.AsSpan(_cvStackDepth * 8, 8));
-            _cvStackDepth++;
-
-            // Now merge all CVs in the stack
-            while (_cvStackDepth > 1)
-            {
-                ReadOnlySpan<uint> left = _cvStackBuf.AsSpan((_cvStackDepth - 2) * 8, 8);
-                ReadOnlySpan<uint> right = _cvStackBuf.AsSpan((_cvStackDepth - 1) * 8, 8);
-
-                if (_cvStackDepth == 2)
-                {
-                    // This is the final merge - use ROOT flag and full output
-                    Span<uint> rootOutput = stackalloc uint[16];
-                    ParentOutput(left, right, rootOutput);
-                    ExtractOutput(rootOutput, output);
-                    return;
-                }
-
-                // Not the final merge - merge into left's slot
-                ComputeParentCv(left, right, _cvStackBuf.AsSpan((_cvStackDepth - 2) * 8, 8));
-                _cvStackDepth--;
-            }
-
-            // Single CV remaining after merges
-            if (_cvStackDepth == 1)
-            {
-                ExtractCvAsOutput(_cvStackBuf.AsSpan(0, 8), output);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Produces full output from a parent node with ROOT flag (for XOF output).
-    /// </summary>
-    private void ParentOutput(ReadOnlySpan<uint> left, ReadOnlySpan<uint> right, Span<uint> result)
-    {
-        // Concatenate left and right CVs as block input
-        Span<byte> block = stackalloc byte[BlockSizeBytes];
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * 4), left[i]);
-        }
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * 4), right[i]);
-        }
-
-        uint flags = _baseFlags | FlagParent | FlagRoot;
-        Span<uint> m = stackalloc uint[BlockSizeWords];
-        CopyBlockUInt32LittleEndian(block, m);
-
-        // Initialize state with key words
-        Span<uint> v = stackalloc uint[BlockSizeWords];
-        v[0] = _keyWords[0]; v[1] = _keyWords[1]; v[2] = _keyWords[2]; v[3] = _keyWords[3];
-        v[4] = _keyWords[4]; v[5] = _keyWords[5]; v[6] = _keyWords[6]; v[7] = _keyWords[7];
-        v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
-        v[12] = 0;
-        v[13] = 0;
-        v[14] = BlockSizeBytes;
-        v[15] = flags;
-
-        Compress(v, m);
-
-        for (int i = 0; i < 8; i++)
-        {
-            result[i] = v[i] ^ v[i + 8];
-            result[i + 8] = v[i + 8] ^ _keyWords[i];
-        }
     }
 
     /// <inheritdoc/>
@@ -410,6 +327,9 @@ public sealed partial class Blake3 : HashAlgorithm
             Array.Clear(_cv, 0, _cv.Length);
             ClearBuffer(_chunkBuffer);
             Array.Clear(_cvStackBuf, 0, _cvStackBuf.Length);
+            Array.Clear(_rootBlock, 0, _rootBlock.Length);
+            Array.Clear(_rootCv, 0, _rootCv.Length);
+            ClearBuffer(_squeezeBuf);
             _cvStackDepth = 0;
         }
         base.Dispose(disposing);
@@ -439,56 +359,6 @@ public sealed partial class Blake3 : HashAlgorithm
         }
 
         _cv.AsSpan(0, 8).CopyTo(destination);
-    }
-
-    private void FinalizeChunkAsRoot(Span<uint> result)
-    {
-        int offset = 0;
-        int lastBlockOffset = 0;
-        int lastBlockLen = _chunkBufferLength;
-
-        if (_chunkBufferLength == 0)
-        {
-            lastBlockLen = 0;
-        }
-        else
-        {
-            while (lastBlockLen > BlockSizeBytes)
-            {
-                lastBlockOffset += BlockSizeBytes;
-                lastBlockLen -= BlockSizeBytes;
-            }
-        }
-
-        Span<byte> block = stackalloc byte[BlockSizeBytes];
-
-        // Process all blocks except the last
-        while (offset < lastBlockOffset)
-        {
-            bool isStart = _blocksCompressed == 0;
-
-            uint flags = _baseFlags;
-            if (isStart) flags |= FlagChunkStart;
-
-            block.Clear();
-            _chunkBuffer.AsSpan(offset, BlockSizeBytes).CopyTo(block);
-
-            CompressBlock(block, BlockSizeBytes, _chunkCounter, flags);
-            _blocksCompressed++;
-            offset += BlockSizeBytes;
-        }
-
-        // Process the last block with root flag
-        uint finalFlags = _baseFlags | FlagChunkEnd | FlagRoot;
-        if (_blocksCompressed == 0) finalFlags |= FlagChunkStart;
-
-        block.Clear();
-        if (lastBlockLen > 0)
-        {
-            _chunkBuffer.AsSpan(lastBlockOffset, lastBlockLen).CopyTo(block);
-        }
-
-        CompressBlockFull(block, (uint)lastBlockLen, _chunkCounter, finalFlags, result);
     }
 
     private void AddChunkToTree()
@@ -698,52 +568,6 @@ public sealed partial class Blake3 : HashAlgorithm
             d = BitOperations.RotateRight(d ^ a, 8);
             c = c + d;
             b = BitOperations.RotateRight(b ^ c, 7);
-        }
-    }
-
-    private static void ExtractOutput(ReadOnlySpan<uint> cv, Span<byte> output)
-    {
-        int offset = 0;
-        int wordIndex = 0;
-        Span<byte> temp = stackalloc byte[sizeof(UInt32)];
-
-        while (offset < output.Length && wordIndex < cv.Length)
-        {
-            int bytesToCopy = Math.Min(sizeof(UInt32), output.Length - offset);
-            if (bytesToCopy == sizeof(UInt32))
-            {
-                BinaryPrimitives.WriteUInt32LittleEndian(output.Slice(offset), cv[wordIndex]);
-                offset += 4;
-            }
-            else
-            {
-                BinaryPrimitives.WriteUInt32LittleEndian(temp, cv[wordIndex]);
-                temp.Slice(0, bytesToCopy).CopyTo(output.Slice(offset));
-                offset += bytesToCopy;
-            }
-            wordIndex++;
-        }
-    }
-
-    private static void ExtractCvAsOutput(ReadOnlySpan<uint> cv, Span<byte> output)
-    {
-        int offset = 0;
-        Span<byte> temp = stackalloc byte[sizeof(UInt32)];
-
-        for (int i = 0; i < 8 && offset < output.Length; i++)
-        {
-            int bytesToCopy = Math.Min(sizeof(UInt32), output.Length - offset);
-            if (bytesToCopy == sizeof(UInt32))
-            {
-                BinaryPrimitives.WriteUInt32LittleEndian(output.Slice(offset), cv[i]);
-                offset += sizeof(UInt32);
-            }
-            else
-            {
-                BinaryPrimitives.WriteUInt32LittleEndian(temp, cv[i]);
-                temp.Slice(0, bytesToCopy).CopyTo(output.Slice(offset));
-                offset += bytesToCopy;
-            }
         }
     }
 }

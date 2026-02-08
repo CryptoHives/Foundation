@@ -13,7 +13,7 @@ using System;
 /// eliminating code duplication across SHAKE128, SHAKE256, TurboShake128, TurboShake256,
 /// cSHAKE128, and cSHAKE256.
 /// </remarks>
-public abstract class KeccakXofCore : KeccakCore
+public abstract class KeccakXofCore : KeccakCore, IExtendableOutput
 {
     private protected readonly int _outputBytes;
     private protected byte _domainSeparator;
@@ -112,6 +112,18 @@ public abstract class KeccakXofCore : KeccakCore
 
         // Squeeze output
         _keccakCore.SqueezeXof(output, _rateBytes, ref _squeezeOffset);
+    }
+
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
     }
 
     /// <summary>

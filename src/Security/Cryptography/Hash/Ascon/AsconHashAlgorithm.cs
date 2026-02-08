@@ -147,7 +147,7 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
         P12();
     }
 
-    private void PadAndAbsorb()
+    private protected void PadAndAbsorb()
     {
         // NIST SP 800-232 padding: pad with 0x01 at bit position
         int finalBits = _bufferLength << 3;

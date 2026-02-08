@@ -26,7 +26,7 @@ using System.Text;
 /// This implementation is specified in RFC 9861 Section 3.4.
 /// </para>
 /// </remarks>
-public sealed class KT256 : HashAlgorithm
+public sealed class KT256 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
     /// The rate in bytes for KT256 (1088 bits = 136 bytes, same as TurboSHAKE256).
@@ -162,6 +162,18 @@ public sealed class KT256 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
+    }
+
+    /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
         if (_finalized)
@@ -192,7 +204,10 @@ public sealed class KT256 : HashAlgorithm
         {
             FinalizeInternal(output);
             _finalized = true;
+            return;
         }
+
+        _turbo.Squeeze(output);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
