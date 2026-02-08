@@ -1,25 +1,25 @@
-﻿| Description                                        | TestDataSize | Mean         | Error      | StdDev     | Allocated |
-|--------------------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|
-| ComputeHash · Whirlpool · Whirlpool (Managed)      | 128B         |     1.383 μs |  0.0132 μs |  0.0117 μs |     176 B |
-| ComputeHash · Whirlpool · Whirlpool (HashifyNET)   | 128B         |     2.054 μs |  0.0227 μs |  0.0212 μs |    6424 B |
-| ComputeHash · Whirlpool · Whirlpool (BouncyCastle) | 128B         |     5.073 μs |  0.0368 μs |  0.0344 μs |     232 B |
-|                                                    |              |              |            |            |           |
-| ComputeHash · Whirlpool · Whirlpool (Managed)      | 137B         |     1.383 μs |  0.0123 μs |  0.0115 μs |     176 B |
-| ComputeHash · Whirlpool · Whirlpool (HashifyNET)   | 137B         |     2.019 μs |  0.0234 μs |  0.0219 μs |    6416 B |
-| ComputeHash · Whirlpool · Whirlpool (BouncyCastle) | 137B         |     5.088 μs |  0.0307 μs |  0.0272 μs |     232 B |
-|                                                    |              |              |            |            |           |
-| ComputeHash · Whirlpool · Whirlpool (Managed)      | 1KB          |     7.593 μs |  0.0448 μs |  0.0419 μs |     176 B |
-| ComputeHash · Whirlpool · Whirlpool (HashifyNET)   | 1KB          |    10.301 μs |  0.0981 μs |  0.0918 μs |   12120 B |
-| ComputeHash · Whirlpool · Whirlpool (BouncyCastle) | 1KB          |    31.199 μs |  0.4793 μs |  0.4483 μs |     232 B |
-|                                                    |              |              |            |            |           |
-| ComputeHash · Whirlpool · Whirlpool (Managed)      | 1025B        |     7.608 μs |  0.0892 μs |  0.0791 μs |     176 B |
-| ComputeHash · Whirlpool · Whirlpool (HashifyNET)   | 1025B        |    10.412 μs |  0.2031 μs |  0.2339 μs |   12128 B |
-| ComputeHash · Whirlpool · Whirlpool (BouncyCastle) | 1025B        |    31.247 μs |  0.3792 μs |  0.3547 μs |     232 B |
-|                                                    |              |              |            |            |           |
-| ComputeHash · Whirlpool · Whirlpool (Managed)      | 8KB          |    56.414 μs |  0.2967 μs |  0.2775 μs |     176 B |
-| ComputeHash · Whirlpool · Whirlpool (HashifyNET)   | 8KB          |    76.151 μs |  0.7294 μs |  0.6823 μs |   58712 B |
-| ComputeHash · Whirlpool · Whirlpool (BouncyCastle) | 8KB          |   240.202 μs |  3.2886 μs |  3.0762 μs |     232 B |
-|                                                    |              |              |            |            |           |
-| ComputeHash · Whirlpool · Whirlpool (Managed)      | 128KB        |   909.366 μs |  8.3483 μs |  7.8090 μs |     176 B |
-| ComputeHash · Whirlpool · Whirlpool (HashifyNET)   | 128KB        | 1,247.440 μs |  6.1447 μs |  5.1311 μs |  857446 B |
-| ComputeHash · Whirlpool · Whirlpool (BouncyCastle) | 128KB        | 3,846.057 μs | 34.4628 μs | 32.2365 μs |     232 B |
+﻿| Description                               | TestDataSize | Mean         | Error      | StdDev     | Allocated |
+|------------------------------------------ |------------- |-------------:|-----------:|-----------:|----------:|
+| TryComputeHash · Whirlpool · Managed      | 128B         |     1.331 μs |  0.0048 μs |  0.0042 μs |         - |
+| TryComputeHash · Whirlpool · Hashify .NET | 128B         |     2.014 μs |  0.0202 μs |  0.0189 μs |    6336 B |
+| TryComputeHash · Whirlpool · BouncyCastle | 128B         |     5.046 μs |  0.0346 μs |  0.0323 μs |      56 B |
+|                                           |              |              |            |            |           |
+| TryComputeHash · Whirlpool · Managed      | 137B         |     1.345 μs |  0.0079 μs |  0.0074 μs |         - |
+| TryComputeHash · Whirlpool · Hashify .NET | 137B         |     2.011 μs |  0.0202 μs |  0.0189 μs |    6328 B |
+| TryComputeHash · Whirlpool · BouncyCastle | 137B         |     5.028 μs |  0.0311 μs |  0.0291 μs |      56 B |
+|                                           |              |              |            |            |           |
+| TryComputeHash · Whirlpool · Managed      | 1KB          |     7.552 μs |  0.0378 μs |  0.0354 μs |         - |
+| TryComputeHash · Whirlpool · Hashify .NET | 1KB          |    10.253 μs |  0.0684 μs |  0.0640 μs |   12032 B |
+| TryComputeHash · Whirlpool · BouncyCastle | 1KB          |    31.014 μs |  0.2705 μs |  0.2530 μs |      56 B |
+|                                           |              |              |            |            |           |
+| TryComputeHash · Whirlpool · Managed      | 1025B        |     7.443 μs |  0.0324 μs |  0.0303 μs |         - |
+| TryComputeHash · Whirlpool · Hashify .NET | 1025B        |    10.232 μs |  0.0769 μs |  0.0681 μs |   12040 B |
+| TryComputeHash · Whirlpool · BouncyCastle | 1025B        |    31.039 μs |  0.2415 μs |  0.2259 μs |      56 B |
+|                                           |              |              |            |            |           |
+| TryComputeHash · Whirlpool · Managed      | 8KB          |    56.265 μs |  0.2283 μs |  0.2136 μs |         - |
+| TryComputeHash · Whirlpool · Hashify .NET | 8KB          |    75.972 μs |  0.5555 μs |  0.4924 μs |   58624 B |
+| TryComputeHash · Whirlpool · BouncyCastle | 8KB          |   238.152 μs |  1.4179 μs |  1.3263 μs |      56 B |
+|                                           |              |              |            |            |           |
+| TryComputeHash · Whirlpool · Managed      | 128KB        |   907.956 μs |  5.2726 μs |  4.9320 μs |         - |
+| TryComputeHash · Whirlpool · Hashify .NET | 128KB        | 1,249.177 μs |  5.7231 μs |  4.4682 μs |  857372 B |
+| TryComputeHash · Whirlpool · BouncyCastle | 128KB        | 3,795.729 μs | 17.2025 μs | 15.2495 μs |      56 B |

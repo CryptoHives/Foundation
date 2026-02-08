@@ -186,7 +186,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Performs one Gx round on 4 parallel lanes using AVX2.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRoundX(
         ref Vector256<ulong> a,
         ref Vector256<ulong> b,
@@ -208,7 +208,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Performs one Gy round on 4 parallel lanes using AVX2.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRoundY(
         ref Vector256<ulong> a,
         ref Vector256<ulong> b,
@@ -231,7 +231,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Performs diagonal permutations.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Permute(ref Vector256<ulong> a, ref Vector256<ulong> b, ref Vector256<ulong> c)
     {
         a = Avx2.Permute4x64(a, 0b00_11_10_01);

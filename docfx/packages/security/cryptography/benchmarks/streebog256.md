@@ -1,25 +1,25 @@
-﻿| Description                                              | TestDataSize | Mean         | Error      | StdDev    | Allocated |
-|--------------------------------------------------------- |------------- |-------------:|-----------:|----------:|----------:|
-| ComputeHash · Streebog-256 · Streebog-256 (Managed)      | 128B         |     2.289 μs |  0.0059 μs | 0.0055 μs |     112 B |
-| ComputeHash · Streebog-256 · Streebog-256 (OpenGost)     | 128B         |     3.441 μs |  0.0160 μs | 0.0142 μs |     464 B |
-| ComputeHash · Streebog-256 · Streebog-256 (BouncyCastle) | 128B         |     4.284 μs |  0.0157 μs | 0.0146 μs |     200 B |
-|                                                          |              |              |            |           |           |
-| ComputeHash · Streebog-256 · Streebog-256 (Managed)      | 137B         |     2.299 μs |  0.0061 μs | 0.0054 μs |     112 B |
-| ComputeHash · Streebog-256 · Streebog-256 (OpenGost)     | 137B         |     3.441 μs |  0.0167 μs | 0.0156 μs |     464 B |
-| ComputeHash · Streebog-256 · Streebog-256 (BouncyCastle) | 137B         |     4.285 μs |  0.0228 μs | 0.0213 μs |     200 B |
-|                                                          |              |              |            |           |           |
-| ComputeHash · Streebog-256 · Streebog-256 (Managed)      | 1KB          |     8.609 μs |  0.0328 μs | 0.0274 μs |     112 B |
-| ComputeHash · Streebog-256 · Streebog-256 (OpenGost)     | 1KB          |    12.679 μs |  0.0803 μs | 0.0670 μs |     464 B |
-| ComputeHash · Streebog-256 · Streebog-256 (BouncyCastle) | 1KB          |    16.256 μs |  0.0834 μs | 0.0780 μs |     200 B |
-|                                                          |              |              |            |           |           |
-| ComputeHash · Streebog-256 · Streebog-256 (Managed)      | 1025B        |     8.733 μs |  0.0134 μs | 0.0125 μs |     112 B |
-| ComputeHash · Streebog-256 · Streebog-256 (OpenGost)     | 1025B        |    12.633 μs |  0.0675 μs | 0.0631 μs |     464 B |
-| ComputeHash · Streebog-256 · Streebog-256 (BouncyCastle) | 1025B        |    16.236 μs |  0.1810 μs | 0.1604 μs |     200 B |
-|                                                          |              |              |            |           |           |
-| ComputeHash · Streebog-256 · Streebog-256 (Managed)      | 8KB          |    60.902 μs |  0.2536 μs | 0.2248 μs |     112 B |
-| ComputeHash · Streebog-256 · Streebog-256 (OpenGost)     | 8KB          |    86.616 μs |  0.4070 μs | 0.3608 μs |     464 B |
-| ComputeHash · Streebog-256 · Streebog-256 (BouncyCastle) | 8KB          |   113.132 μs |  0.3068 μs | 0.2562 μs |     200 B |
-|                                                          |              |              |            |           |           |
-| ComputeHash · Streebog-256 · Streebog-256 (Managed)      | 128KB        |   936.780 μs |  3.1806 μs | 2.9751 μs |     112 B |
-| ComputeHash · Streebog-256 · Streebog-256 (OpenGost)     | 128KB        | 1,357.672 μs | 10.6010 μs | 9.9162 μs |     464 B |
-| ComputeHash · Streebog-256 · Streebog-256 (BouncyCastle) | 128KB        | 1,764.027 μs |  9.5928 μs | 8.0105 μs |     200 B |
+﻿| Description                                  | TestDataSize | Mean         | Error     | StdDev    | Allocated |
+|--------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
+| TryComputeHash · Streebog-256 · Managed      | 128B         |     2.277 μs | 0.0056 μs | 0.0050 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost     | 128B         |     3.423 μs | 0.0157 μs | 0.0147 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle | 128B         |     4.248 μs | 0.0194 μs | 0.0181 μs |         - |
+|                                              |              |              |           |           |           |
+| TryComputeHash · Streebog-256 · Managed      | 137B         |     2.459 μs | 0.0068 μs | 0.0064 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost     | 137B         |     3.438 μs | 0.0174 μs | 0.0163 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle | 137B         |     4.292 μs | 0.0239 μs | 0.0212 μs |         - |
+|                                              |              |              |           |           |           |
+| TryComputeHash · Streebog-256 · Managed      | 1KB          |     8.584 μs | 0.0181 μs | 0.0169 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost     | 1KB          |    12.768 μs | 0.0523 μs | 0.0489 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle | 1KB          |    16.109 μs | 0.0867 μs | 0.0811 μs |         - |
+|                                              |              |              |           |           |           |
+| TryComputeHash · Streebog-256 · Managed      | 1025B        |     9.006 μs | 0.0275 μs | 0.0243 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost     | 1025B        |    12.731 μs | 0.0444 μs | 0.0416 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle | 1025B        |    16.191 μs | 0.1067 μs | 0.0946 μs |         - |
+|                                              |              |              |           |           |           |
+| TryComputeHash · Streebog-256 · Managed      | 8KB          |    62.877 μs | 0.1655 μs | 0.1548 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost     | 8KB          |    87.304 μs | 0.3928 μs | 0.3674 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle | 8KB          |   111.589 μs | 0.3256 μs | 0.2887 μs |         - |
+|                                              |              |              |           |           |           |
+| TryComputeHash · Streebog-256 · Managed      | 128KB        |   991.216 μs | 2.3330 μs | 2.0682 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost     | 128KB        | 1,363.034 μs | 5.4350 μs | 5.0839 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle | 128KB        | 1,746.268 μs | 7.3003 μs | 6.8287 μs |         - |

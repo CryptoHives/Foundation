@@ -1,25 +1,25 @@
-﻿| Description          | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|--------------------- |------------- |-------------:|------------:|------------:|----------:|
-| Kmac256_CryptoHives  | 128B         |     697.6 ns |     3.64 ns |     3.40 ns |     176 B |
-| Kmac256_DotNet       | 128B         |     964.1 ns |     5.07 ns |     4.24 ns |      32 B |
-| Kmac256_BouncyCastle | 128B         |   1,300.0 ns |    10.87 ns |    10.17 ns |     160 B |
-|                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 137B         |     939.5 ns |     3.75 ns |     3.33 ns |     176 B |
-| Kmac256_DotNet       | 137B         |   1,215.1 ns |     8.74 ns |     8.17 ns |      32 B |
-| Kmac256_BouncyCastle | 137B         |   1,597.4 ns |     5.80 ns |     5.42 ns |     160 B |
-|                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 1KB          |   2,093.0 ns |    14.83 ns |    13.87 ns |     176 B |
-| Kmac256_DotNet       | 1KB          |   2,610.7 ns |    14.61 ns |    13.67 ns |      32 B |
-| Kmac256_BouncyCastle | 1KB          |   3,440.8 ns |    19.99 ns |    17.72 ns |     160 B |
-|                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 1025B        |   2,103.6 ns |    14.53 ns |    13.59 ns |     176 B |
-| Kmac256_DotNet       | 1025B        |   2,611.4 ns |    14.24 ns |    12.62 ns |      32 B |
-| Kmac256_BouncyCastle | 1025B        |   3,420.1 ns |    14.94 ns |    13.98 ns |     160 B |
-|                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 8KB          |  12,842.3 ns |    43.08 ns |    38.19 ns |     176 B |
-| Kmac256_DotNet       | 8KB          |  15,023.8 ns |    59.50 ns |    52.74 ns |      32 B |
-| Kmac256_BouncyCastle | 8KB          |  19,451.5 ns |   115.69 ns |   108.22 ns |     160 B |
-|                      |              |              |             |             |           |
-| Kmac256_CryptoHives  | 128KB        | 190,622.4 ns |   960.04 ns |   851.05 ns |     176 B |
-| Kmac256_DotNet       | 128KB        | 226,444.0 ns | 1,436.04 ns | 1,343.28 ns |      32 B |
-| Kmac256_BouncyCastle | 128KB        | 291,536.7 ns | 1,685.97 ns | 1,577.06 ns |     160 B |
+﻿| Description                             | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|---------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| ComputeMac · ComputeHash · Managed      | 128B         |     698.5 ns |     4.38 ns |     4.09 ns |     176 B |
+| ComputeMac · ComputeHash · OS Native    | 128B         |     968.6 ns |     5.18 ns |     4.60 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 128B         |   1,312.6 ns |     6.21 ns |     5.81 ns |     160 B |
+|                                         |              |              |             |             |           |
+| ComputeMac · ComputeHash · Managed      | 137B         |     945.3 ns |     5.78 ns |     5.40 ns |     176 B |
+| ComputeMac · ComputeHash · OS Native    | 137B         |   1,210.4 ns |     6.34 ns |     5.62 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 137B         |   1,594.7 ns |     6.62 ns |     6.19 ns |     160 B |
+|                                         |              |              |             |             |           |
+| ComputeMac · ComputeHash · Managed      | 1KB          |   2,101.9 ns |    11.14 ns |    10.42 ns |     176 B |
+| ComputeMac · ComputeHash · OS Native    | 1KB          |   2,609.6 ns |    17.29 ns |    16.17 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 1KB          |   3,437.2 ns |     8.42 ns |     7.03 ns |     160 B |
+|                                         |              |              |             |             |           |
+| ComputeMac · ComputeHash · Managed      | 1025B        |   2,097.0 ns |    13.26 ns |    12.40 ns |     176 B |
+| ComputeMac · ComputeHash · OS Native    | 1025B        |   2,636.3 ns |    38.34 ns |    33.98 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 1025B        |   3,426.9 ns |     7.01 ns |     5.85 ns |     160 B |
+|                                         |              |              |             |             |           |
+| ComputeMac · ComputeHash · Managed      | 8KB          |  12,655.2 ns |   136.04 ns |   127.25 ns |     176 B |
+| ComputeMac · ComputeHash · OS Native    | 8KB          |  15,101.3 ns |   107.00 ns |   100.09 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 8KB          |  19,705.6 ns |   244.26 ns |   228.48 ns |     160 B |
+|                                         |              |              |             |             |           |
+| ComputeMac · ComputeHash · Managed      | 128KB        | 190,237.2 ns |   994.18 ns |   929.96 ns |     176 B |
+| ComputeMac · ComputeHash · OS Native    | 128KB        | 226,940.5 ns |   683.66 ns |   639.49 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 128KB        | 294,631.7 ns | 1,909.41 ns | 1,786.07 ns |     160 B |

@@ -1,25 +1,25 @@
-﻿| Description                                | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash · SHA-1 · SHA-1 (OS)           | 128B         |     259.1 ns |     0.78 ns |     0.73 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (BouncyCastle) | 128B         |     459.9 ns |     1.86 ns |     1.65 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (Managed)      | 128B         |     485.3 ns |     3.12 ns |     2.92 ns |      96 B |
-|                                            |              |              |             |             |           |
-| ComputeHash · SHA-1 · SHA-1 (OS)           | 137B         |     251.4 ns |     1.30 ns |     1.15 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (BouncyCastle) | 137B         |     462.2 ns |     2.37 ns |     2.10 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (Managed)      | 137B         |     484.9 ns |     3.32 ns |     2.94 ns |      96 B |
-|                                            |              |              |             |             |           |
-| ComputeHash · SHA-1 · SHA-1 (OS)           | 1KB          |   1,123.1 ns |     4.53 ns |     4.24 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (BouncyCastle) | 1KB          |   2,429.6 ns |     9.00 ns |     7.98 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (Managed)      | 1KB          |   2,471.3 ns |    11.25 ns |     9.39 ns |      96 B |
-|                                            |              |              |             |             |           |
-| ComputeHash · SHA-1 · SHA-1 (OS)           | 1025B        |   1,121.4 ns |     4.23 ns |     3.53 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (BouncyCastle) | 1025B        |   2,428.5 ns |    12.79 ns |    11.34 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (Managed)      | 1025B        |   2,472.5 ns |     7.67 ns |     7.17 ns |      96 B |
-|                                            |              |              |             |             |           |
-| ComputeHash · SHA-1 · SHA-1 (OS)           | 8KB          |   8,064.9 ns |    35.15 ns |    31.16 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (BouncyCastle) | 8KB          |  18,130.9 ns |    94.53 ns |    88.43 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (Managed)      | 8KB          |  18,484.3 ns |   186.30 ns |   174.26 ns |      96 B |
-|                                            |              |              |             |             |           |
-| ComputeHash · SHA-1 · SHA-1 (OS)           | 128KB        | 127,425.3 ns |   709.58 ns |   629.02 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (BouncyCastle) | 128KB        | 286,788.2 ns | 1,124.15 ns |   996.53 ns |      96 B |
-| ComputeHash · SHA-1 · SHA-1 (Managed)      | 128KB        | 291,498.6 ns | 1,883.09 ns | 1,761.44 ns |      96 B |
+﻿| Description                           | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|-------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| TryComputeHash · SHA-1 · OS Native    | 128B         |     227.6 ns |     1.15 ns |     1.08 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle | 128B         |     438.5 ns |     2.07 ns |     1.93 ns |         - |
+| TryComputeHash · SHA-1 · Managed      | 128B         |     456.8 ns |     1.57 ns |     1.39 ns |         - |
+|                                       |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native    | 137B         |     227.6 ns |     1.02 ns |     0.95 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle | 137B         |     436.3 ns |     1.51 ns |     1.41 ns |         - |
+| TryComputeHash · SHA-1 · Managed      | 137B         |     454.4 ns |     1.21 ns |     1.13 ns |         - |
+|                                       |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native    | 1KB          |   1,100.3 ns |     5.20 ns |     4.86 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle | 1KB          |   2,422.6 ns |    11.57 ns |    10.82 ns |         - |
+| TryComputeHash · SHA-1 · Managed      | 1KB          |   2,450.0 ns |     7.56 ns |     6.70 ns |         - |
+|                                       |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native    | 1025B        |   1,098.2 ns |     4.44 ns |     4.16 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle | 1025B        |   2,412.4 ns |     6.99 ns |     6.54 ns |         - |
+| TryComputeHash · SHA-1 · Managed      | 1025B        |   2,445.6 ns |    10.55 ns |     9.35 ns |         - |
+|                                       |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native    | 8KB          |   8,074.5 ns |    40.21 ns |    35.65 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle | 8KB          |  18,300.1 ns |   125.33 ns |   117.23 ns |         - |
+| TryComputeHash · SHA-1 · Managed      | 8KB          |  18,365.9 ns |    94.27 ns |    88.18 ns |         - |
+|                                       |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native    | 128KB        | 127,604.9 ns |   586.09 ns |   548.23 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle | 128KB        | 289,428.4 ns | 1,139.04 ns | 1,065.46 ns |         - |
+| TryComputeHash · SHA-1 · Managed      | 128KB        | 291,174.8 ns | 1,719.10 ns | 1,608.05 ns |         - |

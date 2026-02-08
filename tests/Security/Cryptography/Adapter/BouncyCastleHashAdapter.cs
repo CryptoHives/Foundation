@@ -8,16 +8,22 @@ using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;
-using System.Security.Cryptography;
+#if NET6_0_OR_GREATER
+using HA = CryptoHives.Foundation.Security.Cryptography.Hash;
+#else
+using HA = System.Security.Cryptography;
+#endif
 
 /// <summary>
 /// Wraps a BouncyCastle <see cref="IDigest"/> as a <see cref="HashAlgorithm"/>.
 /// </summary>
 /// <remarks>
 /// This adapter allows BouncyCastle digest implementations to be used interchangeably
-/// with .NET <see cref="HashAlgorithm"/> implementations in tests.
+/// with .NET <see cref="System.Security.Cryptography.HashAlgorithm"/> implementations in tests.
+/// On .NET 6.0+ it derives from the CryptoHives base class to enable allocation-free
+/// <c>TryComputeHash</c> via Span-based APIs.
 /// </remarks>
-internal sealed class BouncyCastleHashAdapter : HashAlgorithm
+internal sealed class BouncyCastleHashAdapter : HA.HashAlgorithm
 {
     private readonly IDigest _digest;
     private readonly int _hashSizeBytes;
@@ -33,12 +39,23 @@ internal sealed class BouncyCastleHashAdapter : HashAlgorithm
         HashSizeValue = _hashSizeBytes * 8;
     }
 
+#if NET6_0_OR_GREATER
     /// <inheritdoc/>
-    public override void Initialize()
-    {
-        _digest.Reset();
-    }
+    public override string AlgorithmName => _digest.AlgorithmName;
 
+    /// <inheritdoc/>
+    public override int BlockSize => _digest.GetByteLength();
+
+    /// <inheritdoc/>
+    protected override void HashCore(ReadOnlySpan<byte> source) => _digest.BlockUpdate(source);
+
+    /// <inheritdoc/>
+    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
+    {
+        bytesWritten = _digest.DoFinal(destination);
+        return true;
+    }
+#else
     /// <inheritdoc/>
     protected override void HashCore(byte[] array, int ibStart, int cbSize)
     {
@@ -52,6 +69,10 @@ internal sealed class BouncyCastleHashAdapter : HashAlgorithm
         _digest.DoFinal(hash, 0);
         return hash;
     }
+#endif
+
+    /// <inheritdoc/>
+    public override void Initialize() => _digest.Reset();
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
@@ -69,9 +90,9 @@ internal sealed class BouncyCastleHashAdapter : HashAlgorithm
 /// </summary>
 /// <remarks>
 /// This adapter allows BouncyCastle XOF implementations (SHAKE, etc.) to be used interchangeably
-/// with .NET <see cref="HashAlgorithm"/> implementations in tests.
+/// with .NET <see cref="System.Security.Cryptography.HashAlgorithm"/> implementations in tests.
 /// </remarks>
-internal sealed class BouncyCastleXofAdapter : HashAlgorithm
+internal sealed class BouncyCastleXofAdapter : HA.HashAlgorithm
 {
     private readonly ShakeDigest _digest;
     private readonly int _outputBytes;
@@ -88,12 +109,24 @@ internal sealed class BouncyCastleXofAdapter : HashAlgorithm
         HashSizeValue = outputBytes * 8;
     }
 
+#if NET6_0_OR_GREATER
     /// <inheritdoc/>
-    public override void Initialize()
-    {
-        _digest.Reset();
-    }
+    public override string AlgorithmName => _digest.AlgorithmName;
 
+    /// <inheritdoc/>
+    public override int BlockSize => _digest.GetByteLength();
+
+    /// <inheritdoc/>
+    protected override void HashCore(ReadOnlySpan<byte> source) => _digest.BlockUpdate(source);
+
+    /// <inheritdoc/>
+    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
+    {
+        _digest.OutputFinal(destination[.._outputBytes]);
+        bytesWritten = _outputBytes;
+        return true;
+    }
+#else
     /// <inheritdoc/>
     protected override void HashCore(byte[] array, int ibStart, int cbSize)
     {
@@ -107,6 +140,10 @@ internal sealed class BouncyCastleXofAdapter : HashAlgorithm
         _digest.OutputFinal(hash, 0, _outputBytes);
         return hash;
     }
+#endif
+
+    /// <inheritdoc/>
+    public override void Initialize() => _digest.Reset();
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
@@ -120,9 +157,9 @@ internal sealed class BouncyCastleXofAdapter : HashAlgorithm
 }
 
 /// <summary>
-/// Wraps a BouncyCastle cSHAKE digest as a <see cref="HashAlgorithm"/>.
+/// Wraps a BouncyCastle cSHAKE digest as a <see cref="HashAlgorithmBase"/>.
 /// </summary>
-internal sealed class BouncyCastleCShakeAdapter : HashAlgorithm
+internal sealed class BouncyCastleCShakeAdapter : HA.HashAlgorithm
 {
     private readonly CShakeDigest _digest;
     private readonly int _outputBytes;
@@ -141,12 +178,24 @@ internal sealed class BouncyCastleCShakeAdapter : HashAlgorithm
         HashSizeValue = outputBytes * 8;
     }
 
+#if NET6_0_OR_GREATER
     /// <inheritdoc/>
-    public override void Initialize()
-    {
-        _digest.Reset();
-    }
+    public override string AlgorithmName => _digest.AlgorithmName;
 
+    /// <inheritdoc/>
+    public override int BlockSize => _digest.GetByteLength();
+
+    /// <inheritdoc/>
+    protected override void HashCore(ReadOnlySpan<byte> source) => _digest.BlockUpdate(source);
+
+    /// <inheritdoc/>
+    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
+    {
+        _digest.OutputFinal(destination[.._outputBytes]);
+        bytesWritten = _outputBytes;
+        return true;
+    }
+#else
     /// <inheritdoc/>
     protected override void HashCore(byte[] array, int ibStart, int cbSize)
     {
@@ -160,6 +209,10 @@ internal sealed class BouncyCastleCShakeAdapter : HashAlgorithm
         _digest.OutputFinal(hash, 0, _outputBytes);
         return hash;
     }
+#endif
+
+    /// <inheritdoc/>
+    public override void Initialize() => _digest.Reset();
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
@@ -175,19 +228,19 @@ internal sealed class BouncyCastleCShakeAdapter : HashAlgorithm
 /// <summary>
 /// Wraps a BouncyCastle KMAC as a keyed hash algorithm adapter.
 /// </summary>
-internal sealed class BouncyCastleKmacAdapter : HashAlgorithm
+internal sealed class BouncyCastleKMacAdapter : HA.HashAlgorithm
 {
     private readonly KMac _kmac;
     private readonly int _outputBytes;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="BouncyCastleKmacAdapter"/> class.
+    /// Initializes a new instance of the <see cref="BouncyCastleKMacAdapter"/> class.
     /// </summary>
     /// <param name="bitStrength">The bit strength (128 or 256).</param>
     /// <param name="key">The key.</param>
     /// <param name="customization">The customization string (S).</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public BouncyCastleKmacAdapter(int bitStrength, byte[] key, byte[]? customization, int outputBytes)
+    public BouncyCastleKMacAdapter(int bitStrength, byte[] key, byte[]? customization, int outputBytes)
     {
         _kmac = new KMac(bitStrength, customization ?? []);
         _kmac.Init(new KeyParameter(key));
@@ -195,12 +248,24 @@ internal sealed class BouncyCastleKmacAdapter : HashAlgorithm
         HashSizeValue = outputBytes * 8;
     }
 
+#if NET6_0_OR_GREATER
     /// <inheritdoc/>
-    public override void Initialize()
-    {
-        _kmac.Reset();
-    }
+    public override string AlgorithmName => _kmac.AlgorithmName;
 
+    /// <inheritdoc/>
+    public override int BlockSize => _kmac.GetByteLength();
+
+    /// <inheritdoc/>
+    protected override void HashCore(ReadOnlySpan<byte> source) => _kmac.BlockUpdate(source);
+
+    /// <inheritdoc/>
+    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
+    {
+        _kmac.DoFinal(destination[.._outputBytes]);
+        bytesWritten = _outputBytes;
+        return true;
+    }
+#else
     /// <inheritdoc/>
     protected override void HashCore(byte[] array, int ibStart, int cbSize)
     {
@@ -214,6 +279,10 @@ internal sealed class BouncyCastleKmacAdapter : HashAlgorithm
         _kmac.DoFinal(hash, 0);
         return hash;
     }
+#endif
+
+    /// <inheritdoc/>
+    public override void Initialize() => _kmac.Reset();
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
@@ -231,9 +300,9 @@ internal sealed class BouncyCastleKmacAdapter : HashAlgorithm
 /// </summary>
 /// <remarks>
 /// This adapter allows any BouncyCastle XOF implementations (Ascon-Xof, etc.) to be used interchangeably
-/// with .NET <see cref="HashAlgorithm"/> implementations in tests.
+/// with .NET <see cref="System.Security.Cryptography.HashAlgorithm"/> implementations in tests.
 /// </remarks>
-internal sealed class BouncyCastleGenericXofAdapter : HashAlgorithm
+internal sealed class BouncyCastleGenericXofAdapter : HA.HashAlgorithm
 {
     private readonly IXof _xof;
     private readonly int _outputBytes;
@@ -250,12 +319,24 @@ internal sealed class BouncyCastleGenericXofAdapter : HashAlgorithm
         HashSizeValue = outputBytes * 8;
     }
 
+#if NET6_0_OR_GREATER
     /// <inheritdoc/>
-    public override void Initialize()
-    {
-        _xof.Reset();
-    }
+    public override string AlgorithmName => _xof.AlgorithmName;
 
+    /// <inheritdoc/>
+    public override int BlockSize => _xof.GetByteLength();
+
+    /// <inheritdoc/>
+    protected override void HashCore(ReadOnlySpan<byte> source) => _xof.BlockUpdate(source);
+
+    /// <inheritdoc/>
+    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
+    {
+        _xof.OutputFinal(destination[.._outputBytes]);
+        bytesWritten = _outputBytes;
+        return true;
+    }
+#else
     /// <inheritdoc/>
     protected override void HashCore(byte[] array, int ibStart, int cbSize)
     {
@@ -269,6 +350,10 @@ internal sealed class BouncyCastleGenericXofAdapter : HashAlgorithm
         _xof.OutputFinal(hash, 0, _outputBytes);
         return hash;
     }
+#endif
+
+    /// <inheritdoc/>
+    public override void Initialize() => _xof.Reset();
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
@@ -280,8 +365,4 @@ internal sealed class BouncyCastleGenericXofAdapter : HashAlgorithm
         base.Dispose(disposing);
     }
 }
-
-// Note: BouncyCastle 2.6.2 does not include KangarooTwelve (K12).
-// Tests use XKCP reference test vectors for verification.
-
 

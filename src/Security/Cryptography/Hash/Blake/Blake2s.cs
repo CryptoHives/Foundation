@@ -556,7 +556,7 @@ public sealed class Blake2s : HashAlgorithm
     /// <summary>
     /// BLAKE2s mixing function G (uses 32-bit rotations).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void G(ref uint a, ref uint b, ref uint c, ref uint d, uint x, uint y)
     {
         unchecked
@@ -807,7 +807,7 @@ public sealed class Blake2s : HashAlgorithm
     /// <remarks>
     /// Uses shift+or for all rotations to avoid SSSE3 dependency.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRoundSse2(
         ref Vector128<uint> a,
         ref Vector128<uint> b,
@@ -844,7 +844,7 @@ public sealed class Blake2s : HashAlgorithm
     /// <remarks>
     /// Uses SSSE3 byte shuffle for 16-bit and 8-bit rotations (faster than shift+or).
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRoundSsse3(
         ref Vector128<uint> a,
         ref Vector128<uint> b,

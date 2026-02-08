@@ -11,8 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
-using CHKmac128 = CryptoHives.Foundation.Security.Cryptography.Mac.Kmac128;
-using CHKmac256 = CryptoHives.Foundation.Security.Cryptography.Mac.Kmac256;
+using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
 
 /// <summary>
 /// KMAC implementation types for benchmark parameterization.
@@ -50,7 +49,7 @@ public class Kmac128Benchmark
     private byte[] _result = null!;
     private byte[] _customization = null!;
     private string _customizationString = null!;
-    private CHKmac128 _chkmac128 = null!;
+    private CHMac.KMac128 _chkmac128 = null!;
     private KMac _bckmac128 = null!;
 
     [GlobalSetup, OneTimeSetUp]
@@ -70,7 +69,7 @@ public class Kmac128Benchmark
         _bckmac128 = new KMac(128, _customization);
         _bckmac128.Init(new KeyParameter(_key));
 
-        _chkmac128 = CHKmac128.Create(_key, 32, _customizationString);
+        _chkmac128 = CHMac.KMac128.Create(_key, 32, _customizationString);
     }
 
     [GlobalCleanup, OneTimeTearDown]
@@ -143,7 +142,7 @@ public class Kmac256Benchmark
     private byte[] _result = null!;
     private byte[] _customization = null!;
     private string _customizationString = null!;
-    private CHKmac256 _chkmac256 = null!;
+    private CHMac.KMac256 _chkmac256 = null!;
     private KMac _bckmac256 = null!;
 
     [GlobalSetup, OneTimeSetUp]
@@ -163,7 +162,7 @@ public class Kmac256Benchmark
         _bckmac256 = new KMac(256, _customization);
         _bckmac256.Init(new KeyParameter(_key));
 
-        _chkmac256 = CHKmac256.Create(_key, 64, _customizationString);
+        _chkmac256 = CHMac.KMac256.Create(_key, 64, _customizationString);
     }
 
     [GlobalCleanup, OneTimeTearDown]
@@ -226,7 +225,7 @@ public class Kmac128OutputSizeBenchmark
     private byte[] _customization = null!;
     private string _customizationString = null!;
 
-    private CHKmac128 _chKmac128 = null!;
+    private CHMac.KMac128 _chKmac128 = null!;
     private KMac _kmac = null!;
 
     [ParamsSource(nameof(Sizes))]
@@ -248,7 +247,7 @@ public class Kmac128OutputSizeBenchmark
         _customizationString = "OutputTest";
         _customization = Encoding.UTF8.GetBytes(_customizationString);
 
-        _chKmac128 = CHKmac128.Create(_key, OutputSize, _customizationString);
+        _chKmac128 = CHMac.KMac128.Create(_key, OutputSize, _customizationString);
 
         _kmac = new KMac(128, _customization);
         _kmac.Init(new KeyParameter(_key));
@@ -317,7 +316,7 @@ public class Kmac256OutputSizeBenchmark
     private byte[] _customization = null!;
     private string _customizationString = null!;
 
-    private CHKmac256 _chKmac256 = null!;
+    private CHMac.KMac256 _chKmac256 = null!;
     private KMac _kmac = null!;
 
     [ParamsSource(nameof(Sizes))]
@@ -326,15 +325,6 @@ public class Kmac256OutputSizeBenchmark
 
     [Params(16, 32, 64, 128)]
     public int OutputSize { get; set; } = 128;
-
-    public static IEnumerable<KmacImplementation> Implementations()
-    {
-        yield return KmacImplementation.CryptoHives;
-        yield return KmacImplementation.BouncyCastle;
-#if NET9_0_OR_GREATER
-        yield return KmacImplementation.DotNet;
-#endif
-    }
 
     [GlobalSetup, OneTimeSetUp]
     public void Setup()
@@ -348,7 +338,7 @@ public class Kmac256OutputSizeBenchmark
         _customizationString = "OutputTest";
         _customization = Encoding.UTF8.GetBytes(_customizationString);
 
-        _chKmac256 = CHKmac256.Create(_key, OutputSize, _customizationString);
+        _chKmac256 = CHMac.KMac256.Create(_key, OutputSize, _customizationString);
 
         _kmac = new KMac(256, _customization);
         _kmac.Init(new KeyParameter(_key));
@@ -418,7 +408,7 @@ public class Kmac128IncrementalBenchmark
     private byte[] _result = null!;
     private byte[] _customization = null!;
     private string _customizationString = null!;
-    private CHKmac128 _chKmac128 = null!;
+    private CHMac.KMac128 _chKmac128 = null!;
     private KMac _kmac = null!;
 #if NET9_0_OR_GREATER
     private Kmac128? _dotnetKmac128;
@@ -446,7 +436,7 @@ public class Kmac128IncrementalBenchmark
         _customizationString = "Incremental";
         _customization = Encoding.UTF8.GetBytes(_customizationString);
 
-        _chKmac128 = CHKmac128.Create(_key, 32, _customizationString);
+        _chKmac128 = CHMac.KMac128.Create(_key, 32, _customizationString);
 
         _kmac = new KMac(128, _customization);
         _kmac.Init(new KeyParameter(_key));
@@ -538,21 +528,12 @@ public class Kmac256IncrementalBenchmark
     private byte[] _result = null!;
     private byte[] _customization = null!;
     private string _customizationString = null!;
-    private CHKmac256 _chKmac256 = null!;
+    private CHMac.KMac256 _chKmac256 = null!;
     private KMac _kmac = null!;
 
     [ParamsSource(nameof(Sizes))]
     public DataSize TestDataSize { get; set; } = DataSize.K8;
     public static IEnumerable<DataSize> Sizes() => DataSize.AllSizes;
-
-    public static IEnumerable<KmacImplementation> Implementations()
-    {
-        yield return KmacImplementation.CryptoHives;
-        yield return KmacImplementation.BouncyCastle;
-#if NET9_0_OR_GREATER
-        yield return KmacImplementation.DotNet;
-#endif
-    }
 
 #if NET9_0_OR_GREATER
     private Kmac256? _dotnetKmac256;
@@ -577,7 +558,7 @@ public class Kmac256IncrementalBenchmark
         _customizationString = "Incremental";
         _customization = Encoding.UTF8.GetBytes(_customizationString);
 
-        _chKmac256 = CHKmac256.Create(_key, 32, _customizationString);
+        _chKmac256 = CHMac.KMac256.Create(_key, 32, _customizationString);
         _kmac = new KMac(256, _customization);
         _kmac.Init(new KeyParameter(_key));
 
