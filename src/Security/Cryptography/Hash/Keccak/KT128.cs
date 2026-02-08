@@ -63,6 +63,7 @@ public sealed class KT128 : HashAlgorithm
     private readonly int _outputBytes;
     private readonly byte[] _customization;
     private readonly SimdSupport _simdSupport;
+    private readonly TurboShake128 _turbo;
     private byte[] _buffer;
     private int _bufferLength;
     private bool _finalized;
@@ -109,6 +110,7 @@ public sealed class KT128 : HashAlgorithm
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
         _simdSupport = simdSupport;
+        _turbo = new TurboShake128(simdSupport, ChainingValueSize, DomainSingleNode);
         // Rent initial buffer from shared pool to reduce allocations under benchmarks
         _buffer = ArrayPool<byte>.Shared.Rent(InitialBufferSize);
         _bufferLength = 0;
@@ -257,9 +259,9 @@ public sealed class KT128 : HashAlgorithm
 
     private void ComputeTurboShake128(ReadOnlySpan<byte> input, Span<byte> output, byte domainSeparator)
     {
-        using var turbo = TurboShake128.Create(_simdSupport, output.Length, domainSeparator);
-        turbo.TransformBlock(input);
-        turbo.Squeeze(output);
+        _turbo.ResetWithDomainSeparator(domainSeparator);
+        _turbo.TransformBlock(input);
+        _turbo.Squeeze(output);
     }
 
     private void ComputeTreeHash(ReadOnlySpan<byte> s, Span<byte> output)
@@ -358,11 +360,16 @@ public sealed class KT128 : HashAlgorithm
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
-        if (disposing && _buffer != null)
+        if (disposing)
         {
-            // Clear and return to pool to avoid leaking sensitive data
-            ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
-            _buffer = null!;
+            _turbo.Dispose();
+
+            if (_buffer != null)
+            {
+                // Clear and return to pool to avoid leaking sensitive data
+                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                _buffer = null!;
+            }
         }
         base.Dispose(disposing);
     }

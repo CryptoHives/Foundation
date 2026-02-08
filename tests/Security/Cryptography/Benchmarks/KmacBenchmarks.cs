@@ -14,16 +14,6 @@ using System.Text;
 using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
 
 /// <summary>
-/// KMAC implementation types for benchmark parameterization.
-/// </summary>
-public enum KmacImplementation
-{
-    CryptoHives,
-    BouncyCastle,
-    DotNet
-}
-
-/// <summary>
 /// Benchmarks for KMAC128 and KMAC256 implementations.
 /// Compares CryptoHives managed implementation against BouncyCastle and .NET 9+ native.
 /// </summary>
@@ -82,10 +72,17 @@ public class Kmac128Benchmark
 
     [Test, Repeat(5)]
     [Benchmark]
+#if NET5_0_OR_GREATER
+    public void TryComputeHash_CryptoHives()
+    {
+        _chkmac128.TryComputeHash(_data, _result, out _);
+    }
+#else
     public void ComputeHash_CryptoHives()
     {
         _ = _chkmac128.ComputeHash(_data);
     }
+#endif
 
     [Test, Repeat(5)]
     [Benchmark]
@@ -174,10 +171,17 @@ public class Kmac256Benchmark
 
     [Test, Repeat(5)]
     [Benchmark]
+#if NET5_0_OR_GREATER
+    public void TryComputeHash_CryptoHives()
+    {
+        _chkmac256.TryComputeHash(_data, _result, out _);
+    }
+#else
     public void ComputeHash_CryptoHives()
     {
         _ = _chkmac256.ComputeHash(_data);
     }
+#endif
 
     [Test, Repeat(5)]
     [Benchmark]
@@ -263,10 +267,17 @@ public class Kmac128OutputSizeBenchmark
 
     [Test, Repeat(5)]
     [Benchmark]
+#if NET5_0_OR_GREATER
+    public void TryComputeSizedHash_CryptoHives()
+    {
+        _chKmac128.TryComputeHash(_data, _result, out _);
+    }
+#else
     public void ComputeSizedHash_CryptoHives()
     {
         _ = _chKmac128.ComputeHash(_data);
     }
+#endif
 
     [Test, Repeat(5)]
     [Benchmark]
@@ -292,7 +303,7 @@ public class Kmac128OutputSizeBenchmark
     [Benchmark]
     public void ComputeSizedHash_DotNet()
     {
-        _ = Kmac128.HashData(_key, _data, OutputSize, _customization);
+        Kmac128.HashData(_key, _data, _result.AsSpan(0, OutputSize), _customization);
     }
 #endif
 }
@@ -354,10 +365,17 @@ public class Kmac256OutputSizeBenchmark
 
     [Test, Repeat(5)]
     [Benchmark]
+#if NET5_0_OR_GREATER
+    public void TryComputeSizedHash_CryptoHives()
+    {
+        _chKmac256.TryComputeHash(_data, _result, out _);
+    }
+#else
     public void ComputeSizedHash_CryptoHives()
     {
         _ = _chKmac256.ComputeHash(_data);
     }
+#endif
 
     [Test, Repeat(5)]
     [Benchmark]
@@ -383,7 +401,7 @@ public class Kmac256OutputSizeBenchmark
     [Benchmark]
     public void ComputeSizedHash_DotNet()
     {
-        _ = Kmac256.HashData(_key, _data, OutputSize, _customization);
+        Kmac256.HashData(_key, _data, _result.AsSpan(0, OutputSize), _customization);
     }
 #endif
 }

@@ -16,7 +16,7 @@ using System;
 public abstract class KeccakXofCore : KeccakCore
 {
     private protected readonly int _outputBytes;
-    private protected readonly byte _domainSeparator;
+    private protected byte _domainSeparator;
     private protected bool _finalized;
     private protected int _squeezeOffset;
 
@@ -41,6 +41,20 @@ public abstract class KeccakXofCore : KeccakCore
         base.Initialize();
         _finalized = false;
         _squeezeOffset = 0;
+    }
+
+    /// <summary>
+    /// Resets the XOF state and changes the domain separator byte.
+    /// </summary>
+    /// <remarks>
+    /// This allows reusing an existing XOF instance with a different domain separator
+    /// without allocating a new object. The Keccak state is fully cleared.
+    /// </remarks>
+    /// <param name="domainSeparator">The new domain separation byte for the next hash operation.</param>
+    public void ResetWithDomainSeparator(byte domainSeparator)
+    {
+        _domainSeparator = domainSeparator;
+        Initialize();
     }
 
     /// <inheritdoc/>
