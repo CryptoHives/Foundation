@@ -46,9 +46,6 @@ public sealed partial class Blake3 : HashAlgorithm
     private static readonly Vector128<uint> IVLow = Vector128.Create(
         0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU);
 
-    private static readonly Vector128<uint> IVHigh = Vector128.Create(
-        0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U);
-
     private readonly bool _useSsse3;
 
     /// <summary>
@@ -65,42 +62,16 @@ public sealed partial class Blake3 : HashAlgorithm
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ParseBlock(ReadOnlySpan<byte> block, Span<uint> m)
-    {
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < 16; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
-            }
-        }
-    }
-
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CompressBlockSsse3(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
         // Parse message block
         Span<uint> m = stackalloc uint[16];
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < 16; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
-            }
-        }
+        CopyBlockUInt32LittleEndian(block, m);
 
         // Initialize rows
-        var row0 = Vector128.Create(_cv[0], _cv[1], _cv[2], _cv[3]);
-        var row1 = Vector128.Create(_cv[4], _cv[5], _cv[6], _cv[7]);
+        var row0 = Vector128.Create<uint>(_cv.AsSpan(0, 4));
+        var row1 = Vector128.Create<uint>(_cv.AsSpan(4, 4));
         var row2 = IVLow;
         var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
 
@@ -177,15 +148,9 @@ public sealed partial class Blake3 : HashAlgorithm
 
         // Finalize: cv = row0 ^ row2, cv = row1 ^ row3
         row0 = Sse2.Xor(row0, row2);
-        _cv[0] = row0.GetElement(0);
-        _cv[1] = row0.GetElement(1);
-        _cv[2] = row0.GetElement(2);
-        _cv[3] = row0.GetElement(3);
+        row0.CopyTo(_cv.AsSpan(0, 4));
         row1 = Sse2.Xor(row1, row3);
-        _cv[4] = row1.GetElement(0);
-        _cv[5] = row1.GetElement(1);
-        _cv[6] = row1.GetElement(2);
-        _cv[7] = row1.GetElement(3);
+        row1.CopyTo(_cv.AsSpan(4, 4));
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]

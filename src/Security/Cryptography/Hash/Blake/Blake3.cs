@@ -7,6 +7,7 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -79,6 +80,16 @@ public sealed partial class Blake3 : HashAlgorithm
     // Max tree depth (2^54 chunks × 1024 bytes = 16 exabytes)
     private const int MaxStackDepth = 54;
 
+    /// <summary>
+    /// The required key size in uint words for internal usage.
+    /// </summary>
+    private const int KeySizeWords = KeySizeBytes / sizeof(uint);
+
+    /// <summary>
+    /// The block size in uint words for internal usage.
+    /// </summary>
+    private const int BlockSizeWords = BlockSizeBytes / sizeof(uint);
+
     // BLAKE3 flags
     private const uint FlagChunkStart = 1 << 0;
     private const uint FlagChunkEnd = 1 << 1;
@@ -134,8 +145,8 @@ public sealed partial class Blake3 : HashAlgorithm
         _outputBytes = outputBytes;
         _mode = Blake3Mode.Hash;
         _baseFlags = 0;
-        _keyWords = new uint[8];
-        _cv = new uint[8];
+        _keyWords = new uint[KeySizeWords];
+        _cv = new uint[KeySizeWords];
         _chunkBuffer = new byte[ChunkSizeBytes];
         _cvStackBuf = new uint[MaxStackDepth * 8];
 
@@ -163,21 +174,18 @@ public sealed partial class Blake3 : HashAlgorithm
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     private Blake3(byte[] key, int outputBytes, SimdSupport simdSupport)
     {
-        if (key == null)
-            throw new ArgumentNullException(nameof(key));
+        if (key == null) throw new ArgumentNullException(nameof(key));
 
-        if (key.Length != KeySizeBytes)
-            throw new ArgumentException($"Key must be exactly {KeySizeBytes} bytes.", nameof(key));
+        if (key.Length != KeySizeBytes) throw new ArgumentException($"Key must be exactly {KeySizeBytes} bytes.", nameof(key));
 
-        if (outputBytes < 1)
-            throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
+        if (outputBytes < 1) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
 
         _outputBytes = outputBytes;
         _mode = Blake3Mode.KeyedHash;
         _baseFlags = FlagKeyedHash;
         HashSizeValue = outputBytes * 8;
-        _keyWords = new uint[8];
-        _cv = new uint[8];
+        _keyWords = new uint[KeySizeWords];
+        _cv = new uint[KeySizeWords];
         _chunkBuffer = new byte[ChunkSizeBytes];
         _cvStackBuf = new uint[MaxStackDepth * 8];
 
@@ -186,9 +194,9 @@ public sealed partial class Blake3 : HashAlgorithm
 #endif
 
         // Parse key as little-endian uint32 words
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < KeySizeWords; i++)
         {
-            _keyWords[i] = BinaryPrimitives.ReadUInt32LittleEndian(key.AsSpan(i * 4));
+            _keyWords[i] = BinaryPrimitives.ReadUInt32LittleEndian(key.AsSpan(i * sizeof(UInt32)));
         }
 
         Initialize();
@@ -259,12 +267,12 @@ public sealed partial class Blake3 : HashAlgorithm
     {
         if (_mode == Blake3Mode.KeyedHash)
         {
-            Array.Copy(_keyWords, _cv, 8);
+            Array.Copy(_keyWords, _cv, KeySizeWords);
         }
         else
         {
-            Array.Copy(IV, _keyWords, 8);
-            Array.Copy(IV, _cv, 8);
+            Array.Copy(IV, _keyWords, KeySizeWords);
+            Array.Copy(IV, _cv, KeySizeWords);
         }
 
         _chunkBufferLength = 0;
@@ -289,7 +297,7 @@ public sealed partial class Blake3 : HashAlgorithm
                 _chunkCounter++;
                 _chunkBufferLength = 0;
                 _blocksCompressed = 0;
-                Array.Copy(_keyWords, _cv, 8);
+                Array.Copy(_keyWords, _cv, KeySizeWords);
             }
 
             int toCopy = Math.Min(ChunkSizeBytes - _chunkBufferLength, source.Length - offset);
@@ -371,12 +379,11 @@ public sealed partial class Blake3 : HashAlgorithm
         }
 
         uint flags = _baseFlags | FlagParent | FlagRoot;
-
-        Span<uint> v = stackalloc uint[16];
-        Span<uint> m = stackalloc uint[16];
-        ParseBlock(block, m);
+        Span<uint> m = stackalloc uint[BlockSizeWords];
+        CopyBlockUInt32LittleEndian(block, m);
 
         // Initialize state with key words
+        Span<uint> v = stackalloc uint[BlockSizeWords];
         v[0] = _keyWords[0]; v[1] = _keyWords[1]; v[2] = _keyWords[2]; v[3] = _keyWords[3];
         v[4] = _keyWords[4]; v[5] = _keyWords[5]; v[6] = _keyWords[6]; v[7] = _keyWords[7];
         v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
@@ -508,7 +515,6 @@ public sealed partial class Blake3 : HashAlgorithm
         {
             BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * 4), left[i]);
         }
-
         for (int i = 0; i < 8; i++)
         {
             BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * 4), right[i]);
@@ -516,10 +522,10 @@ public sealed partial class Blake3 : HashAlgorithm
 
         uint flags = _baseFlags | FlagParent;
 
-        Span<uint> v = stackalloc uint[16];
-        Span<uint> m = stackalloc uint[16];
-        ParseBlock(block, m);
+        Span<uint> m = stackalloc uint[BlockSizeWords];
+        CopyBlockUInt32LittleEndian(block, m);
 
+        Span<uint> v = stackalloc uint[BlockSizeWords];
         v[0] = _keyWords[0]; v[1] = _keyWords[1]; v[2] = _keyWords[2]; v[3] = _keyWords[3];
         v[4] = _keyWords[4]; v[5] = _keyWords[5]; v[6] = _keyWords[6]; v[7] = _keyWords[7];
         v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
@@ -546,10 +552,10 @@ public sealed partial class Blake3 : HashAlgorithm
         }
 #endif
 
-        Span<uint> v = stackalloc uint[16];
-        Span<uint> m = stackalloc uint[16];
-        ParseBlock(block, m);
+        Span<uint> m = stackalloc uint[BlockSizeWords];
+        CopyBlockUInt32LittleEndian(block, m);
 
+        Span<uint> v = stackalloc uint[BlockSizeWords];
         v[0] = _cv[0]; v[1] = _cv[1]; v[2] = _cv[2]; v[3] = _cv[3];
         v[4] = _cv[4]; v[5] = _cv[5]; v[6] = _cv[6]; v[7] = _cv[7];
         v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
@@ -569,10 +575,10 @@ public sealed partial class Blake3 : HashAlgorithm
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CompressBlockFull(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags, Span<uint> result)
     {
-        Span<uint> m = stackalloc uint[16];
-        ParseBlock(block, m);
+        Span<uint> m = stackalloc uint[BlockSizeWords];
+        CopyBlockUInt32LittleEndian(block, m);
 
-        Span<uint> v = stackalloc uint[16];
+        Span<uint> v = stackalloc uint[BlockSizeWords];
         _cv.AsSpan().Slice(0, 8).CopyTo(v);
         IV.AsSpan().Slice(0, 4).CopyTo(v.Slice(8));
         v[12] = (uint)counter;
@@ -589,16 +595,21 @@ public sealed partial class Blake3 : HashAlgorithm
         }
     }
 
-#if !NET8_0_OR_GREATER
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ParseBlock(ReadOnlySpan<byte> block, Span<uint> m)
+    private static void CopyBlockUInt32LittleEndian(ReadOnlySpan<byte> block, Span<uint> m)
     {
-        for (int i = 0; i < 16; i++)
+        if (BitConverter.IsLittleEndian)
         {
-            m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
+            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
+        }
+        else
+        {
+            for (int i = 0; i < BlockSizeWords; i++)
+            {
+                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * sizeof(UInt32)));
+            }
         }
     }
-#endif
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void Compress(Span<uint> v, Span<uint> m)
@@ -694,12 +705,12 @@ public sealed partial class Blake3 : HashAlgorithm
     {
         int offset = 0;
         int wordIndex = 0;
-        Span<byte> temp = stackalloc byte[4];
+        Span<byte> temp = stackalloc byte[sizeof(UInt32)];
 
         while (offset < output.Length && wordIndex < cv.Length)
         {
-            int bytesToCopy = Math.Min(4, output.Length - offset);
-            if (bytesToCopy == 4)
+            int bytesToCopy = Math.Min(sizeof(UInt32), output.Length - offset);
+            if (bytesToCopy == sizeof(UInt32))
             {
                 BinaryPrimitives.WriteUInt32LittleEndian(output.Slice(offset), cv[wordIndex]);
                 offset += 4;
@@ -717,15 +728,15 @@ public sealed partial class Blake3 : HashAlgorithm
     private static void ExtractCvAsOutput(ReadOnlySpan<uint> cv, Span<byte> output)
     {
         int offset = 0;
-        Span<byte> temp = stackalloc byte[4];
+        Span<byte> temp = stackalloc byte[sizeof(UInt32)];
 
         for (int i = 0; i < 8 && offset < output.Length; i++)
         {
-            int bytesToCopy = Math.Min(4, output.Length - offset);
-            if (bytesToCopy == 4)
+            int bytesToCopy = Math.Min(sizeof(UInt32), output.Length - offset);
+            if (bytesToCopy == sizeof(UInt32))
             {
                 BinaryPrimitives.WriteUInt32LittleEndian(output.Slice(offset), cv[i]);
-                offset += 4;
+                offset += sizeof(UInt32);
             }
             else
             {

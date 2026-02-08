@@ -63,6 +63,7 @@ public sealed class Streebog : HashAlgorithm
         0x59, 0xA6, 0x74, 0xD2, 0xE6, 0xF4, 0xB4, 0xC0, 0xD1, 0x66, 0xAF, 0xC2, 0x39, 0x4B, 0x63, 0xB6
     ];
 
+#if NOT_USED
     // Tau permutation - RFC 6986 Section 6.3
     // Transposes the 8x8 byte matrix (column-major to row-major).
     private static readonly byte[] Tau =
@@ -76,6 +77,7 @@ public sealed class Streebog : HashAlgorithm
         6, 14, 22, 30, 38, 46, 54, 62,
         7, 15, 23, 31, 39, 47, 55, 63
     ];
+#endif
 
     // Linear transformation matrix A - RFC 6986 Section 6.4
     // Each entry represents an element of GF(2^64), applied row-by-row.
@@ -98,6 +100,11 @@ public sealed class Streebog : HashAlgorithm
         0x70a6a56e2440598eUL, 0x3853dc371220a247UL, 0x1ca76e95091051adUL, 0x0edd37c48a08a6d8UL,
         0x07e095624504536cUL, 0x8d70c431ac02a736UL, 0xc83862965601dd1bUL, 0x641c314b2b8ee083UL
     ];
+
+    /// <summary>
+    /// The block size in ulong words.
+    /// </summary>
+    private const int BlockSizeWords = BlockSizeBytes / sizeof(ulong);
 
     // Combined LPS lookup tables: T[row][byte_value] -> ulong contribution
     // These tables precompute S-box substitution, P permutation, and L linear transformation
@@ -176,20 +183,20 @@ public sealed class Streebog : HashAlgorithm
         }
 
         // Initialize round constants as ulong arrays
-        CU = new ulong[12][];
-        for (int round = 0; round < 12; round++)
+        CU = new ulong[Rounds][];
+        for (int round = 0; round < Rounds; round++)
         {
             CU[round] = new ulong[8];
             for (int i = 0; i < 8; i++)
             {
-                CU[round][i] = BinaryPrimitives.ReadUInt64LittleEndian(C[round].AsSpan(i * 8, 8));
+                CU[round][i] = BinaryPrimitives.ReadUInt64LittleEndian(C[round].AsSpan(i * sizeof(UInt64), sizeof(UInt64)));
             }
         }
 
 #if NET8_0_OR_GREATER
         // Initialize round constants as Vector512 for SIMD
-        CV = new Vector512<ulong>[12];
-        for (int round = 0; round < 12; round++)
+        CV = new Vector512<ulong>[Rounds];
+        for (int round = 0; round < Rounds; round++)
         {
             CV[round] = Vector512.Create(
                 CU[round][0], CU[round][1], CU[round][2], CU[round][3],
@@ -238,9 +245,9 @@ public sealed class Streebog : HashAlgorithm
 
         _hashSizeBytes = hashSizeBytes;
         HashSizeValue = hashSizeBytes * 8;
-        _h = new ulong[8];
-        _n = new ulong[8];
-        _sigma = new ulong[8];
+        _h = new ulong[BlockSizeWords];
+        _n = new ulong[BlockSizeWords];
+        _sigma = new ulong[BlockSizeWords];
         _buffer = new byte[BlockSizeBytes];
         Initialize();
     }
@@ -276,10 +283,8 @@ public sealed class Streebog : HashAlgorithm
 
         _h[0] = iv; _h[1] = iv; _h[2] = iv; _h[3] = iv;
         _h[4] = iv; _h[5] = iv; _h[6] = iv; _h[7] = iv;
-        _n[0] = 0; _n[1] = 0; _n[2] = 0; _n[3] = 0;
-        _n[4] = 0; _n[5] = 0; _n[6] = 0; _n[7] = 0;
-        _sigma[0] = 0; _sigma[1] = 0; _sigma[2] = 0; _sigma[3] = 0;
-        _sigma[4] = 0; _sigma[5] = 0; _sigma[6] = 0; _sigma[7] = 0;
+        Array.Clear(_n, 0, BlockSizeWords);
+        Array.Clear(_sigma, 0, BlockSizeWords);
 
         ClearBuffer(_buffer);
         _bufferLength = 0;
@@ -327,25 +332,8 @@ public sealed class Streebog : HashAlgorithm
     private void ProcessBlock(ReadOnlySpan<byte> m)
     {
         // Convert message to ulong array
-        Span<ulong> mn = stackalloc ulong[8];
-
-        // On little-endian platforms, directly reinterpret the byte span as ulong.
-        // This avoids 16 individual BinaryPrimitives.ReadUInt64LittleEndian calls.
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, ulong>(m).CopyTo(mn);
-        }
-        else
-        {
-            mn[0] = BinaryPrimitives.ReadUInt64LittleEndian(m);
-            mn[1] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(8));
-            mn[2] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(16));
-            mn[3] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(24));
-            mn[4] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(32));
-            mn[5] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(40));
-            mn[6] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(48));
-            mn[7] = BinaryPrimitives.ReadUInt64LittleEndian(m.Slice(56));
-        }
+        Span<ulong> mn = stackalloc ulong[BlockSizeWords];
+        CopyBlockAsUInt64LittleEndian(m, mn);
 
         // g_N(h, m)
         GN(_h, _n, mn);
@@ -374,22 +362,8 @@ public sealed class Streebog : HashAlgorithm
         paddedBlock[_bufferLength] = 0x01;
 
         // Convert padded block to ulongs
-        Span<ulong> p = stackalloc ulong[8];
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, ulong>(paddedBlock).CopyTo(p);
-        }
-        else
-        {
-            p[0] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock);
-            p[1] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(8));
-            p[2] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(16));
-            p[3] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(24));
-            p[4] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(32));
-            p[5] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(40));
-            p[6] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(48));
-            p[7] = BinaryPrimitives.ReadUInt64LittleEndian(paddedBlock.Slice(56));
-        }
+        Span<ulong> p = stackalloc ulong[BlockSizeWords];
+        CopyBlockAsUInt64LittleEndian(paddedBlock, p);
 
         // Stage 3: Process padded block
         GN(_h, _n, p);
@@ -439,15 +413,15 @@ public sealed class Streebog : HashAlgorithm
     private static void GN(Span<ulong> h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
         // Load h, n, m as Vector512
-        Vector512<ulong> hV = Vector512.Create(h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
-        Vector512<ulong> nV = Vector512.Create(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7]);
-        Vector512<ulong> mV = Vector512.Create(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]);
+        Vector512<ulong> hV = Vector512.Create<ulong>(h);
+        Vector512<ulong> nV = Vector512.Create<ulong>(n);
+        Vector512<ulong> mV = Vector512.Create<ulong>(m);
 
         // k = h ^ N
         Vector512<ulong> kV = Vector512.Xor(hV, nV);
 
         // k = LPS(k)
-        Span<ulong> k = stackalloc ulong[8];
+        Span<ulong> k = stackalloc ulong[BlockSizeWords];
         kV.CopyTo(k);
         ApplyLPS(k);
 
@@ -459,14 +433,7 @@ public sealed class Streebog : HashAlgorithm
         Vector512<ulong> resultV = Vector512.Xor(Vector512.Xor(hV, kV), mV);
 
         // Store result back to h
-        h[0] = resultV.GetElement(0);
-        h[1] = resultV.GetElement(1);
-        h[2] = resultV.GetElement(2);
-        h[3] = resultV.GetElement(3);
-        h[4] = resultV.GetElement(4);
-        h[5] = resultV.GetElement(5);
-        h[6] = resultV.GetElement(6);
-        h[7] = resultV.GetElement(7);
+        resultV.CopyTo(h);
     }
 
     /// <summary>
@@ -477,11 +444,11 @@ public sealed class Streebog : HashAlgorithm
     private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, ref Vector512<ulong> resultV)
     {
         // Initialize state and key as Vector512
-        Vector512<ulong> stateV = Vector512.Create(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]);
-        Vector512<ulong> keyV = Vector512.Create(k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7]);
+        Vector512<ulong> stateV = Vector512.Create<ulong>(m);
+        Vector512<ulong> keyV = Vector512.Create<ulong>(k);
 
-        Span<ulong> state = stackalloc ulong[8];
-        Span<ulong> key = stackalloc ulong[8];
+        Span<ulong> state = stackalloc ulong[BlockSizeWords];
+        Span<ulong> key = stackalloc ulong[BlockSizeWords];
 
         for (int round = 0; round < Rounds; round++)
         {
@@ -491,13 +458,13 @@ public sealed class Streebog : HashAlgorithm
             // LPS transform on state (needs scalar for table lookups)
             stateV.CopyTo(state);
             ApplyLPS(state);
-            stateV = Vector512.Create(state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
+            stateV = Vector512.Create<ulong>(state);
 
             // Key schedule: key = LPS(key ^ C[round]) (SIMD for XOR)
             keyV = Vector512.Xor(keyV, CV[round]);
             keyV.CopyTo(key);
             ApplyLPS(key);
-            keyV = Vector512.Create(key[0], key[1], key[2], key[3], key[4], key[5], key[6], key[7]);
+            keyV = Vector512.Create<ulong>(key);
         }
 
         // Final AddRoundKey (SIMD)
@@ -511,8 +478,8 @@ public sealed class Streebog : HashAlgorithm
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
-        Span<ulong> k = stackalloc ulong[8];
-        Span<ulong> t = stackalloc ulong[8];
+        Span<ulong> k = stackalloc ulong[BlockSizeWords];
+        Span<ulong> t = stackalloc ulong[BlockSizeWords];
 
         // k = h ^ N
         k[0] = h[0] ^ n[0]; k[1] = h[1] ^ n[1]; k[2] = h[2] ^ n[2]; k[3] = h[3] ^ n[3];
@@ -535,8 +502,8 @@ public sealed class Streebog : HashAlgorithm
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, Span<ulong> result)
     {
-        Span<ulong> state = stackalloc ulong[8];
-        Span<ulong> key = stackalloc ulong[8];
+        Span<ulong> state = stackalloc ulong[BlockSizeWords];
+        Span<ulong> key = stackalloc ulong[BlockSizeWords];
 
         m.CopyTo(state);
         k.CopyTo(key);
@@ -604,32 +571,29 @@ public sealed class Streebog : HashAlgorithm
     /// </summary>
     internal static void ApplyLPS(Span<byte> data)
     {
+        Span<ulong> r = stackalloc ulong[BlockSizeWords];
         // Row 0: Tau indices 0,8,16,24,32,40,48,56
-        ulong r0 = T7[data[0]] ^ T6[data[8]] ^ T5[data[16]] ^ T4[data[24]] ^ T3[data[32]] ^ T2[data[40]] ^ T1[data[48]] ^ T0[data[56]];
+        r[0] = T7[data[0]] ^ T6[data[8]] ^ T5[data[16]] ^ T4[data[24]] ^ T3[data[32]] ^ T2[data[40]] ^ T1[data[48]] ^ T0[data[56]];
         // Row 1: Tau indices 1,9,17,25,33,41,49,57
-        ulong r1 = T7[data[1]] ^ T6[data[9]] ^ T5[data[17]] ^ T4[data[25]] ^ T3[data[33]] ^ T2[data[41]] ^ T1[data[49]] ^ T0[data[57]];
+        r[1] = T7[data[1]] ^ T6[data[9]] ^ T5[data[17]] ^ T4[data[25]] ^ T3[data[33]] ^ T2[data[41]] ^ T1[data[49]] ^ T0[data[57]];
         // Row 2: Tau indices 2,10,18,26,34,42,50,58
-        ulong r2 = T7[data[2]] ^ T6[data[10]] ^ T5[data[18]] ^ T4[data[26]] ^ T3[data[34]] ^ T2[data[42]] ^ T1[data[50]] ^ T0[data[58]];
+        r[2] = T7[data[2]] ^ T6[data[10]] ^ T5[data[18]] ^ T4[data[26]] ^ T3[data[34]] ^ T2[data[42]] ^ T1[data[50]] ^ T0[data[58]];
         // Row 3: Tau indices 3,11,19,27,35,43,51,59
-        ulong r3 = T7[data[3]] ^ T6[data[11]] ^ T5[data[19]] ^ T4[data[27]] ^ T3[data[35]] ^ T2[data[43]] ^ T1[data[51]] ^ T0[data[59]];
+        r[3] = T7[data[3]] ^ T6[data[11]] ^ T5[data[19]] ^ T4[data[27]] ^ T3[data[35]] ^ T2[data[43]] ^ T1[data[51]] ^ T0[data[59]];
         // Row 4: Tau indices 4,12,20,28,36,44,52,60
-        ulong r4 = T7[data[4]] ^ T6[data[12]] ^ T5[data[20]] ^ T4[data[28]] ^ T3[data[36]] ^ T2[data[44]] ^ T1[data[52]] ^ T0[data[60]];
+        r[4] = T7[data[4]] ^ T6[data[12]] ^ T5[data[20]] ^ T4[data[28]] ^ T3[data[36]] ^ T2[data[44]] ^ T1[data[52]] ^ T0[data[60]];
         // Row 5: Tau indices 5,13,21,29,37,45,53,61
-        ulong r5 = T7[data[5]] ^ T6[data[13]] ^ T5[data[21]] ^ T4[data[29]] ^ T3[data[37]] ^ T2[data[45]] ^ T1[data[53]] ^ T0[data[61]];
+        r[5] = T7[data[5]] ^ T6[data[13]] ^ T5[data[21]] ^ T4[data[29]] ^ T3[data[37]] ^ T2[data[45]] ^ T1[data[53]] ^ T0[data[61]];
         // Row 6: Tau indices 6,14,22,30,38,46,54,62
-        ulong r6 = T7[data[6]] ^ T6[data[14]] ^ T5[data[22]] ^ T4[data[30]] ^ T3[data[38]] ^ T2[data[46]] ^ T1[data[54]] ^ T0[data[62]];
+        r[6] = T7[data[6]] ^ T6[data[14]] ^ T5[data[22]] ^ T4[data[30]] ^ T3[data[38]] ^ T2[data[46]] ^ T1[data[54]] ^ T0[data[62]];
         // Row 7: Tau indices 7,15,23,31,39,47,55,63
-        ulong r7 = T7[data[7]] ^ T6[data[15]] ^ T5[data[23]] ^ T4[data[31]] ^ T3[data[39]] ^ T2[data[47]] ^ T1[data[55]] ^ T0[data[63]];
+        r[7] = T7[data[7]] ^ T6[data[15]] ^ T5[data[23]] ^ T4[data[31]] ^ T3[data[39]] ^ T2[data[47]] ^ T1[data[55]] ^ T0[data[63]];
 
         // Write result back to data in little-endian order
-        BinaryPrimitives.WriteUInt64LittleEndian(data, r0);
-        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(8), r1);
-        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(16), r2);
-        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(24), r3);
-        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(32), r4);
-        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(40), r5);
-        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(48), r6);
-        BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(56), r7);
+        for (int i = 0; i < BlockSizeWords; i++)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(i * sizeof(UInt64)), r[i]);
+        }
     }
 
     /// <summary>
@@ -712,11 +676,27 @@ public sealed class Streebog : HashAlgorithm
     {
         if (disposing)
         {
-            Array.Clear(_h, 0, 8);
-            Array.Clear(_n, 0, 8);
-            Array.Clear(_sigma, 0, 8);
+            Array.Clear(_h, 0, BlockSizeWords);
+            Array.Clear(_n, 0, BlockSizeWords);
+            Array.Clear(_sigma, 0, BlockSizeWords);
             ClearBuffer(_buffer);
         }
         base.Dispose(disposing);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void CopyBlockAsUInt64LittleEndian(ReadOnlySpan<byte> src, Span<ulong> dst)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, ulong>(src).CopyTo(dst);
+        }
+        else
+        {
+            for (int i = 0; i < BlockSizeWords; i++)
+            {
+                dst[i] = BinaryPrimitives.ReadUInt64LittleEndian(src.Slice(i * sizeof(UInt64)));
+            }
+        }
     }
 }

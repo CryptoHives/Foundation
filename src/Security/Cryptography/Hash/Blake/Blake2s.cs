@@ -9,8 +9,8 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-#if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 #endif
@@ -424,8 +424,8 @@ public sealed class Blake2s : HashAlgorithm
     {
         // Store vectors to stack, then copy required bytes
         Span<uint> temp = stackalloc uint[8];
-        Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref temp[0]), _stateVec0);
-        Unsafe.WriteUnaligned(ref Unsafe.As<uint, byte>(ref temp[4]), _stateVec1);
+        _stateVec0.CopyTo(temp[..4]);
+        _stateVec1.CopyTo(temp[4..]);
 
         int fullWords = _outputBytes / 4;
         for (int i = 0; i < fullWords; i++)
@@ -489,26 +489,12 @@ public sealed class Blake2s : HashAlgorithm
         // Update counter
         _bytesCompressed += (ulong)_bufferLength;
 
-        // Use stackalloc for working vectors to avoid heap allocations
-        Span<uint> v = stackalloc uint[ScratchSize];
-        Span<uint> m = stackalloc uint[ScratchSize];
-
         // Parse message block into 16 32-bit words (little-endian)
-#if NET8_0_OR_GREATER
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
-        }
-        else
-#endif
-        {
-            for (int i = 0; i < ScratchSize; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
-            }
-        }
+        Span<uint> m = stackalloc uint[ScratchSize];
+        CopyBlockUInt32LittleEndian(block, m);
 
         // Initialize working vector
+        Span<uint> v = stackalloc uint[ScratchSize];
         v[0] = _state[0];
         v[1] = _state[1];
         v[2] = _state[2];
@@ -572,6 +558,22 @@ public sealed class Blake2s : HashAlgorithm
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void CopyBlockUInt32LittleEndian(ReadOnlySpan<byte> block, Span<uint> m)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
+        }
+        else
+        {
+            for (int i = 0; i < ScratchSize; i++)
+            {
+                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * sizeof(UInt32)));
+            }
+        }
+    }
+
 #if NET8_0_OR_GREATER
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private unsafe void CompressSse2(ReadOnlySpan<byte> block, bool isFinal)
@@ -598,17 +600,7 @@ public sealed class Blake2s : HashAlgorithm
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < ScratchSize; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
-            }
-        }
+        CopyBlockUInt32LittleEndian(block, m);
 
         // Get base references (avoids bounds checking in loop)
         ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);
@@ -681,17 +673,7 @@ public sealed class Blake2s : HashAlgorithm
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < ScratchSize; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
-            }
-        }
+        CopyBlockUInt32LittleEndian(block, m);
 
         // Get base references (avoids bounds checking in loop)
         ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);

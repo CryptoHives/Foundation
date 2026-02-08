@@ -110,21 +110,21 @@ public sealed partial class Blake2b : HashAlgorithm
     {
         // Store vectors to stack, then copy required bytes
         Span<ulong> temp = stackalloc ulong[8];
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[0]), _stateVec0);
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[4]), _stateVec1);
+        _stateVec0.CopyTo(temp[..4]);
+        _stateVec1.CopyTo(temp[4..]);
 
         int fullWords = _outputBytes / 8;
         for (int i = 0; i < fullWords; i++)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * 8), temp[i]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * sizeof(UInt64)), temp[i]);
         }
 
-        int remainingBytes = _outputBytes % 8;
+        int remainingBytes = _outputBytes & 7;
         if (remainingBytes > 0)
         {
-            Span<byte> tempBytes = stackalloc byte[8];
+            Span<byte> tempBytes = stackalloc byte[sizeof(UInt64)];
             BinaryPrimitives.WriteUInt64LittleEndian(tempBytes, temp[fullWords]);
-            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 8));
+            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt64)));
         }
     }
 

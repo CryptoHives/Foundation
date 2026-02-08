@@ -1099,7 +1099,7 @@ internal unsafe struct KeccakCoreState
             if (BitConverter.IsLittleEndian)
             {
                 // Fast path: direct memory XOR on little-endian systems
-                ReadOnlySpan<ulong> blockLanes = MemoryMarshal.Cast<byte, ulong>(block.Slice(0, rateLanes * 8));
+                ReadOnlySpan<ulong> blockLanes = MemoryMarshal.Cast<byte, ulong>(block.Slice(0, rateLanes * sizeof(ulong)));
                 for (int i = 0; i < rateLanes; i++)
                 {
                     statePtr[i] ^= blockLanes[i];
@@ -1110,7 +1110,7 @@ internal unsafe struct KeccakCoreState
                 // Big-endian: convert each ulong individually
                 for (int i = 0; i < rateLanes; i++)
                 {
-                    statePtr[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+                    statePtr[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * sizeof(ulong)));
                 }
             }
         }
