@@ -16,16 +16,13 @@ public abstract class HashBenchmarkBase
 {
     private const int RandomSeed = 0x43727970;
 
-    private byte[] _inputData;
-
-    private byte[] _outputData;
+    private protected byte[] _inputData;
+    private protected byte[] _outputData;
+    private protected int _outputSize;
 
     protected int Bytes { get; set; } = DataSize.K8.Bytes;
 
     protected HashAlgorithm HashAlgorithm { get; set; }
-
-    protected byte[] InputData => _inputData!;
-    protected byte[] OutputData => _outputData!;
 
     [OneTimeSetUp]
     [GlobalSetup]

@@ -74,7 +74,7 @@ public class HashAlgorithmFactoryTests
     public void Kmac128ForwardsConstructorParameters()
     {
         byte[] key = Encoding.UTF8.GetBytes("test-key-12345678");
-        using var kmac = CryptoHivesMac.Kmac128.Create(key, 64, "custom");
+        using var kmac = CryptoHivesMac.KMac128.Create(key, 64, "custom");
 
         Assert.That(kmac.HashSize, Is.EqualTo(512)); // 64 bytes = 512 bits
     }

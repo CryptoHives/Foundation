@@ -515,7 +515,7 @@ public class ReferenceImplementationTests
         bcMac.DoFinal(bcHash, 0);
 
         // Our implementation
-        using var ourMac = Kmac128.Create(key, 32, "");
+        using var ourMac = KMac128.Create(key, 32, "");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(bcHash), "KMAC128 mismatch");
@@ -538,7 +538,7 @@ public class ReferenceImplementationTests
         bcMac.DoFinal(bcHash, 0);
 
         // Our implementation
-        using var ourMac = Kmac256.Create(key, 64, "");
+        using var ourMac = KMac256.Create(key, 64, "");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(bcHash), "KMAC256 mismatch");

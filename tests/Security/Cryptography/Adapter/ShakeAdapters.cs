@@ -11,7 +11,7 @@ using System;
 /// </summary>
 internal sealed class Shake128HashAdapter : HashAlgorithm
 {
-    private readonly int _outputLength;
+    private int _outputLength;
     private byte[] _output;
 
     public Shake128HashAdapter(int outputLength)
@@ -28,7 +28,11 @@ internal sealed class Shake128HashAdapter : HashAlgorithm
     public override void Initialize() => Array.Clear(_output);
 
     protected override void HashCore(ReadOnlySpan<byte> source)
-        => System.Security.Cryptography.Shake128.HashData(source, _output);
+    {
+        Span<byte> destination = _output;
+        System.Security.Cryptography.Shake128.HashData(source, destination);
+        _outputLength = destination.Length;
+    }
 
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
@@ -37,8 +41,9 @@ internal sealed class Shake128HashAdapter : HashAlgorithm
             bytesWritten = 0;
             return false;
         }
-        bytesWritten = HashSizeValue;
-        _output.CopyTo(destination);
+
+        bytesWritten = _outputLength;
+        _output.AsSpan().Slice(0, _outputLength).CopyTo(destination);
         return true;
     }
 }
@@ -48,7 +53,7 @@ internal sealed class Shake128HashAdapter : HashAlgorithm
 /// </summary>
 internal sealed class Shake256HashAdapter : HashAlgorithm
 {
-    private readonly int _outputLength;
+    private int _outputLength;
     private byte[] _output;
 
     public Shake256HashAdapter(int outputLength)
@@ -65,7 +70,11 @@ internal sealed class Shake256HashAdapter : HashAlgorithm
     public override void Initialize() => Array.Clear(_output);
 
     protected override void HashCore(ReadOnlySpan<byte> source)
-        => System.Security.Cryptography.Shake256.HashData(source, _output);
+    {
+        Span<byte> destination = _output;
+        System.Security.Cryptography.Shake256.HashData(source, destination);
+        _outputLength = destination.Length;
+    }
 
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
@@ -74,8 +83,9 @@ internal sealed class Shake256HashAdapter : HashAlgorithm
             bytesWritten = 0;
             return false;
         }
-        bytesWritten = HashSizeValue;
-        _output.CopyTo(destination);
+
+        bytesWritten = _outputLength;
+        _output.AsSpan().Slice(0, _outputLength).CopyTo(destination);
         return true;
     }
 }

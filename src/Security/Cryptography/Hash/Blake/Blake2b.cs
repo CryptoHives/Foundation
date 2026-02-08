@@ -436,7 +436,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// BLAKE2b mixing function G.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void G(ref ulong a, ref ulong b, ref ulong c, ref ulong d, ulong x, ulong y)
     {
         unchecked

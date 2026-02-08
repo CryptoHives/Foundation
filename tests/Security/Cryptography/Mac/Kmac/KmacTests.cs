@@ -16,14 +16,14 @@ using NetKmac256 = System.Security.Cryptography.Kmac256;
 #endif
 
 /// <summary>
-/// Tests for <see cref="Kmac128"/> and <see cref="Kmac256"/> hash algorithms.
+/// Tests for <see cref="KMac128"/> and <see cref="KMac256"/> hash algorithms.
 /// </summary>
 /// <remarks>
 /// On .NET 9+, validation against the built-in KMAC implementation is available.
 /// </remarks>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class KmacTests
+public class KMacTests
 {
     #region Output Size Tests
 
@@ -36,7 +36,7 @@ public class KmacTests
     public void Kmac128ProducesCorrectOutputSize(int outputBytes)
     {
         byte[] key = new byte[32];
-        using var kmac = Kmac128.Create(key, outputBytes, "");
+        using var kmac = KMac128.Create(key, outputBytes, "");
         Assert.That(kmac.HashSize, Is.EqualTo(outputBytes * 8));
     }
 
@@ -49,7 +49,7 @@ public class KmacTests
     public void Kmac256ProducesCorrectOutputSize(int outputBytes)
     {
         byte[] key = new byte[32];
-        using var kmac = Kmac256.Create(key, outputBytes, "");
+        using var kmac = KMac256.Create(key, outputBytes, "");
         Assert.That(kmac.HashSize, Is.EqualTo(outputBytes * 8));
     }
 
@@ -64,7 +64,7 @@ public class KmacTests
     public void Kmac128AlgorithmName()
     {
         byte[] key = new byte[32];
-        using var kmac = Kmac128.Create(key, 32, "");
+        using var kmac = KMac128.Create(key, 32, "");
         Assert.That(kmac.AlgorithmName, Is.EqualTo("KMAC128"));
     }
 
@@ -75,7 +75,7 @@ public class KmacTests
     public void Kmac256AlgorithmName()
     {
         byte[] key = new byte[32];
-        using var kmac = Kmac256.Create(key, 64, "");
+        using var kmac = KMac256.Create(key, 64, "");
         Assert.That(kmac.AlgorithmName, Is.EqualTo("KMAC256"));
     }
 
@@ -94,7 +94,7 @@ public class KmacTests
         byte[] data = TestHelpers.FromHexString("00010203");
         byte[] expected = TestHelpers.FromHexString("e5780b0d3ea6f7d3a429c5706aa43a00fadbd7d49628839e3187243f456ee14e");
 
-        using var kmac = Kmac128.Create(key, 32, "");
+        using var kmac = KMac128.Create(key, 32, "");
         byte[] actual = kmac.ComputeHash(data);
 
         Assert.That(actual, Is.EqualTo(expected));
@@ -112,7 +112,7 @@ public class KmacTests
         string customization = "My Tagged Application";
         byte[] expected = TestHelpers.FromHexString("3b1fba963cd8b0b59e8c1a6d71888b7143651af8ba0a7070c0979e2811324aa5");
 
-        using var kmac = Kmac128.Create(key, 32, customization);
+        using var kmac = KMac128.Create(key, 32, customization);
         byte[] actual = kmac.ComputeHash(data);
 
         Assert.That(actual, Is.EqualTo(expected));
@@ -131,7 +131,7 @@ public class KmacTests
         string customization = "My Tagged Application";
         byte[] expected = TestHelpers.FromHexString("20c570c31346f703c9ac36c61c03cb64c3970d0cfc787e9b79599d273a68d2f7f69d4cc3de9d104a351689f27cf6f5951f0103f33f4f24871024d9c27773a8dd");
 
-        using var kmac = Kmac256.Create(key, 64, customization);
+        using var kmac = KMac256.Create(key, 64, customization);
         byte[] actual = kmac.ComputeHash(data);
 
         Assert.That(actual, Is.EqualTo(expected));
@@ -161,7 +161,7 @@ public class KmacTests
         bcMac.DoFinal(expected, 0);
 
         // Our implementation
-        using var kmac = Kmac256.Create(key, 64, customization);
+        using var kmac = KMac256.Create(key, 64, customization);
         byte[] actual = kmac.ComputeHash(data);
 
         Assert.That(actual, Is.EqualTo(expected));
@@ -190,7 +190,7 @@ public class KmacTests
         bcMac.DoFinal(bcHash, 0);
 
         // Our implementation
-        using var ourMac = Kmac128.Create(key, 32, customization);
+        using var ourMac = KMac128.Create(key, 32, customization);
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(bcHash));
@@ -215,7 +215,7 @@ public class KmacTests
         bcMac.DoFinal(bcHash, 0);
 
         // Our implementation
-        using var ourMac = Kmac256.Create(key, 64, customization);
+        using var ourMac = KMac256.Create(key, 64, customization);
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(bcHash));
@@ -247,7 +247,7 @@ public class KmacTests
         byte[] netHash = NetKmac128.HashData(key, input, 32, customization);
 
         // Our implementation
-        using var ourMac = Kmac128.Create(key, 32, "My App");
+        using var ourMac = KMac128.Create(key, 32, "My App");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash), $"KMAC128 mismatch for: \"{message}\"");
@@ -274,7 +274,7 @@ public class KmacTests
         byte[] netHash = NetKmac256.HashData(key, input, 64, customization);
 
         // Our implementation
-        using var ourMac = Kmac256.Create(key, 64, "My App");
+        using var ourMac = KMac256.Create(key, 64, "My App");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash), $"KMAC256 mismatch for: \"{message}\"");
@@ -298,7 +298,7 @@ public class KmacTests
         byte[] netHash = NetKmac128.HashData(key, input, 32, Array.Empty<byte>());
 
         // Our implementation
-        using var ourMac = Kmac128.Create(key, 32, "");
+        using var ourMac = KMac128.Create(key, 32, "");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash));
@@ -322,7 +322,7 @@ public class KmacTests
         byte[] netHash = NetKmac256.HashData(key, input, 64, Array.Empty<byte>());
 
         // Our implementation
-        using var ourMac = Kmac256.Create(key, 64, "");
+        using var ourMac = KMac256.Create(key, 64, "");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash));
@@ -350,7 +350,7 @@ public class KmacTests
         byte[] netHash = NetKmac128.HashData(key, input, outputBytes, customization);
 
         // Our implementation
-        using var ourMac = Kmac128.Create(key, outputBytes, "test");
+        using var ourMac = KMac128.Create(key, outputBytes, "test");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash));
@@ -378,7 +378,7 @@ public class KmacTests
         byte[] netHash = NetKmac256.HashData(key, input, outputBytes, customization);
 
         // Our implementation
-        using var ourMac = Kmac256.Create(key, outputBytes, "test");
+        using var ourMac = KMac256.Create(key, outputBytes, "test");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash));
@@ -409,7 +409,7 @@ public class KmacTests
         byte[] netHash = NetKmac128.HashData(key, input, 32, customization);
 
         // Our implementation
-        using var ourMac = Kmac128.Create(key, 32, "");
+        using var ourMac = KMac128.Create(key, 32, "");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash), $"KMAC128 mismatch for input length {inputLength}");
@@ -440,7 +440,7 @@ public class KmacTests
         byte[] netHash = NetKmac256.HashData(key, input, 64, customization);
 
         // Our implementation
-        using var ourMac = Kmac256.Create(key, 64, "");
+        using var ourMac = KMac256.Create(key, 64, "");
         byte[] ourHash = ourMac.ComputeHash(input);
 
         Assert.That(ourHash, Is.EqualTo(netHash), $"KMAC256 mismatch for input length {inputLength}");
@@ -512,10 +512,10 @@ public class KmacTests
         byte[] key = new byte[32];
         byte[] input = Encoding.UTF8.GetBytes("Hello, World!");
 
-        using var kmac1 = Kmac128.Create(key, 32, "");
+        using var kmac1 = KMac128.Create(key, 32, "");
         byte[] hash1 = kmac1.ComputeHash(input);
 
-        using var kmac2 = Kmac128.Create(key, 32, "");
+        using var kmac2 = KMac128.Create(key, 32, "");
         kmac2.TransformBlock(input, 0, 7, null, 0);
         kmac2.TransformFinalBlock(input, 7, input.Length - 7);
         byte[] hash2 = kmac2.Hash!;
@@ -532,10 +532,10 @@ public class KmacTests
         byte[] key = new byte[32];
         byte[] input = Encoding.UTF8.GetBytes("Hello, World!");
 
-        using var kmac1 = Kmac256.Create(key, 64, "");
+        using var kmac1 = KMac256.Create(key, 64, "");
         byte[] hash1 = kmac1.ComputeHash(input);
 
-        using var kmac2 = Kmac256.Create(key, 64, "");
+        using var kmac2 = KMac256.Create(key, 64, "");
         kmac2.TransformBlock(input, 0, 7, null, 0);
         kmac2.TransformFinalBlock(input, 7, input.Length - 7);
         byte[] hash2 = kmac2.Hash!;
@@ -559,8 +559,8 @@ public class KmacTests
 
         byte[] input = Encoding.UTF8.GetBytes("test");
 
-        using var kmac1 = Kmac128.Create(key1, 32, "");
-        using var kmac2 = Kmac128.Create(key2, 32, "");
+        using var kmac1 = KMac128.Create(key1, 32, "");
+        using var kmac2 = KMac128.Create(key2, 32, "");
 
         byte[] hash1 = kmac1.ComputeHash(input);
         byte[] hash2 = kmac2.ComputeHash(input);
@@ -577,8 +577,8 @@ public class KmacTests
         byte[] key = new byte[32];
         byte[] input = Encoding.UTF8.GetBytes("test");
 
-        using var kmac1 = Kmac256.Create(key, 64, "App1");
-        using var kmac2 = Kmac256.Create(key, 64, "App2");
+        using var kmac1 = KMac256.Create(key, 64, "App1");
+        using var kmac2 = KMac256.Create(key, 64, "App2");
 
         byte[] hash1 = kmac1.ComputeHash(input);
         byte[] hash2 = kmac2.ComputeHash(input);
