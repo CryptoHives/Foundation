@@ -8,6 +8,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using System.Linq;
 
 /// <summary>
 /// Base class for parameterized hash algorithm benchmarks.
@@ -64,15 +65,7 @@ public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
         Assert.That(result.Length, Is.GreaterThan(0), "Hash output should not be empty.");
         Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
 #endif
-        bool allZeros = true;
-        foreach (var b in result)
-        {
-            if (b != 0)
-            {
-                allZeros = false;
-                break;
-            }
-        }
+        bool allZeros = result.All(b => b == 0);
         Assert.That(allZeros, Is.False, "Hash output should not be all zeros.");
     }
 
