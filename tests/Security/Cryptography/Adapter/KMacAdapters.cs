@@ -9,14 +9,14 @@ using System;
 /// <summary>
 /// Adapter to wrap .NET 9+ Kmac128 as a <see cref="HashAlgorithm"/> for testing and benchmarking.
 /// </summary>
-internal sealed class Kmac128HashAdapter : HashAlgorithm
+internal sealed class KMac128HashAdapter : HashAlgorithm
 {
     private readonly byte[] _key;
     private readonly byte[] _customization;
     private readonly int _outputLength;
     private readonly System.IO.MemoryStream _buffer = new();
 
-    public Kmac128HashAdapter(byte[] key, int outputLength, string customization = "")
+    public KMac128HashAdapter(byte[] key, int outputLength, string customization = "")
     {
         _key = key ?? throw new ArgumentNullException(nameof(key));
         _customization = System.Text.Encoding.UTF8.GetBytes(customization ?? "");
@@ -24,7 +24,7 @@ internal sealed class Kmac128HashAdapter : HashAlgorithm
         HashSizeValue = outputLength * 8;
     }
 
-    public Kmac128HashAdapter(byte[] key, int outputLength, byte[] customization)
+    public KMac128HashAdapter(byte[] key, int outputLength, byte[] customization)
     {
         _key = key ?? throw new ArgumentNullException(nameof(key));
         _customization = customization ?? [];
@@ -68,14 +68,14 @@ internal sealed class Kmac128HashAdapter : HashAlgorithm
 /// <summary>
 /// Adapter to wrap .NET 9+ Kmac256 as a <see cref="HashAlgorithm"/> for testing and benchmarking.
 /// </summary>
-internal sealed class Kmac256HashAdapter : HashAlgorithm
+internal sealed class KMac256HashAdapter : HashAlgorithm
 {
     private readonly byte[] _key;
     private readonly byte[] _customization;
     private readonly int _outputLength;
     private readonly System.IO.MemoryStream _buffer = new();
 
-    public Kmac256HashAdapter(byte[] key, int outputLength, string customization = "")
+    public KMac256HashAdapter(byte[] key, int outputLength, string customization = "")
     {
         _key = key ?? throw new ArgumentNullException(nameof(key));
         _customization = System.Text.Encoding.UTF8.GetBytes(customization ?? "");
@@ -83,7 +83,7 @@ internal sealed class Kmac256HashAdapter : HashAlgorithm
         HashSizeValue = outputLength * 8;
     }
 
-    public Kmac256HashAdapter(byte[] key, int outputLength, byte[] customization)
+    public KMac256HashAdapter(byte[] key, int outputLength, byte[] customization)
     {
         _key = key ?? throw new ArgumentNullException(nameof(key));
         _customization = customization ?? [];

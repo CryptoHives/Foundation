@@ -295,7 +295,7 @@ public sealed class HashAlgorithmType : IFormattable
         if (System.Security.Cryptography.Kmac128.IsSupported)
         {
             yield return new("KMAC-128", "KMAC-128 (OS)",
-                () => new Kmac128HashAdapter(_sharedKmacKey, 32, _sharedKmacCustomization),
+                () => new KMac128HashAdapter(_sharedKmacKey, 32, _sharedKmacCustomization),
                 () => System.Security.Cryptography.Kmac128.IsSupported);
         }
 #endif
@@ -314,7 +314,7 @@ public sealed class HashAlgorithmType : IFormattable
         if (System.Security.Cryptography.Kmac256.IsSupported)
         {
             yield return new("KMAC-256", "KMAC-256 (OS)",
-                () => new Kmac256HashAdapter(_sharedKmacKey, 64, _sharedKmacCustomization),
+                () => new KMac256HashAdapter(_sharedKmacKey, 64, _sharedKmacCustomization),
                 () => System.Security.Cryptography.Kmac256.IsSupported);
         }
 #endif

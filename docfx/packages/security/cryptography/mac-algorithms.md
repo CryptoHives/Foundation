@@ -32,7 +32,7 @@ KMAC128 is the Keccak Message Authentication Code with 128-bit security, defined
 ### Class Declaration
 
 ```csharp
-public sealed class Kmac128 : HashAlgorithm
+public sealed class KMac128 : HashAlgorithm
 ```
 
 ### Properties
@@ -47,7 +47,7 @@ public sealed class Kmac128 : HashAlgorithm
 ### Constructor
 
 ```csharp
-public Kmac128(byte[] key, int outputBytes = 32, string customization = "")
+public KMac128(byte[] key, int outputBytes = 32, string customization = "")
 ```
 
 **Parameters:**
@@ -58,7 +58,7 @@ public Kmac128(byte[] key, int outputBytes = 32, string customization = "")
 ### Factory Method
 
 ```csharp
-public static Kmac128 Create(byte[] key, int outputBytes = 32, string customization = "")
+public static KMac128 Create(byte[] key, int outputBytes = 32, string customization = "")
 ```
 
 ### Usage Examples
@@ -69,22 +69,22 @@ RandomNumberGenerator.Fill(key);
 byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
 
 // Basic KMAC128
-using var kmac = Kmac128.Create(key, outputBytes: 32);
+using var kmac = KMac128.Create(key, outputBytes: 32);
 byte[] mac = kmac.ComputeHash(message);
 
 // With customization string
-using var kmac = Kmac128.Create(key, outputBytes: 32, customization: "MyApp v1.0");
+using var kmac = KMac128.Create(key, outputBytes: 32, customization: "MyApp v1.0");
 byte[] mac = kmac.ComputeHash(message);
 
 // Variable output length
-using var kmac = Kmac128.Create(key, outputBytes: 64);
+using var kmac = KMac128.Create(key, outputBytes: 64);
 byte[] longMac = kmac.ComputeHash(message);
 ```
 
 ### Incremental Usage
 
 ```csharp
-using var kmac = Kmac128.Create(key, outputBytes: 32, customization: "");
+using var kmac = KMac128.Create(key, outputBytes: 32, customization: "");
 
 // Process data in chunks
 kmac.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
@@ -103,7 +103,7 @@ KMAC256 is the Keccak Message Authentication Code with 256-bit security, defined
 ### Class Declaration
 
 ```csharp
-public sealed class Kmac256 : HashAlgorithm
+public sealed class KMac256 : HashAlgorithm
 ```
 
 ### Properties
@@ -118,7 +118,7 @@ public sealed class Kmac256 : HashAlgorithm
 ### Constructor
 
 ```csharp
-public Kmac256(byte[] key, int outputBytes = 64, string customization = "")
+public KMac256(byte[] key, int outputBytes = 64, string customization = "")
 ```
 
 **Parameters:**
@@ -129,7 +129,7 @@ public Kmac256(byte[] key, int outputBytes = 64, string customization = "")
 ### Factory Method
 
 ```csharp
-public static Kmac256 Create(byte[] key, int outputBytes = 64, string customization = "")
+public static KMac256 Create(byte[] key, int outputBytes = 64, string customization = "")
 ```
 
 ### Usage Examples
@@ -140,11 +140,11 @@ RandomNumberGenerator.Fill(key);
 byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
 
 // Basic KMAC256
-using var kmac = Kmac256.Create(key, outputBytes: 64);
+using var kmac = KMac256.Create(key, outputBytes: 64);
 byte[] mac = kmac.ComputeHash(message);
 
 // With customization string for domain separation
-using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "Session Authentication");
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: "Session Authentication");
 byte[] mac = kmac.ComputeHash(message);
 ```
 
@@ -301,8 +301,8 @@ Use customization strings (KMAC) or different contexts (BLAKE3) to separate diff
 
 ```csharp
 // Authentication for different message types
-using var kmacAuth = Kmac256.Create(key, customization: "Auth");
-using var kmacEncrypt = Kmac256.Create(key, customization: "Encrypt");
+using var kmacAuth = KMac256.Create(key, customization: "Auth");
+using var kmacEncrypt = KMac256.Create(key, customization: "Encrypt");
 
 // BLAKE3 key derivation with context
 using var authKey = Blake3.CreateDeriveKey("MyApp Auth Key");
@@ -340,7 +340,7 @@ public class AuthenticatedMessage
         byte[] ciphertext = Encrypt(plaintext);
         
         // Authenticate
-        using var kmac = Kmac256.Create(key, customization: "Auth");
+        using var kmac = KMac256.Create(key, customization: "Auth");
         byte[] mac = kmac.ComputeHash(ciphertext);
         
         return new AuthenticatedMessage { Ciphertext = ciphertext, Mac = mac };
@@ -348,7 +348,7 @@ public class AuthenticatedMessage
     
     public bool Verify(byte[] key)
     {
-        using var kmac = Kmac256.Create(key, customization: "Auth");
+        using var kmac = KMac256.Create(key, customization: "Auth");
         byte[] expectedMac = kmac.ComputeHash(Ciphertext);
         return CryptographicOperations.FixedTimeEquals(Mac, expectedMac);
     }

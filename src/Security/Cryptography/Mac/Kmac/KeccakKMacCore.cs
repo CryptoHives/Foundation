@@ -24,7 +24,7 @@ using System.Text;
 /// output length).
 /// </para>
 /// </remarks>
-public abstract class KeccakKmacCore : KeccakCore, IExtendableOutput
+public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
 {
     private static readonly byte[] _kmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
     private static readonly byte[] _encodedKmacFunctionName = CShake128.EncodeString(_kmacFunctionName);
@@ -36,27 +36,27 @@ public abstract class KeccakKmacCore : KeccakCore, IExtendableOutput
     private int _squeezeOffset;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeccakKmacCore"/> class.
+    /// Initializes a new instance of the <see cref="KeccakKMacCore"/> class.
     /// </summary>
     /// <param name="rateBytes">The rate in bytes for this variant.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="key">The secret key.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
-    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, string? customization)
+    internal KeccakKMacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, string? customization)
         : this(rateBytes, simdSupport, key, outputBytes, string.IsNullOrEmpty(customization) ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(customization))
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeccakKmacCore"/> class.
+    /// Initializes a new instance of the <see cref="KeccakKMacCore"/> class.
     /// </summary>
     /// <param name="rateBytes">The rate in bytes for this variant.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="key">The secret key.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization bytes S.</param>
-    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, byte[]? customization)
+    internal KeccakKMacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, byte[]? customization)
         : base(rateBytes, simdSupport)
     {
         if (key is null || key.Length == 0)

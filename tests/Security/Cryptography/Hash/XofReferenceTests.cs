@@ -3,7 +3,6 @@
 
 namespace Cryptography.Tests.Hash;
 
-using CH = CryptoHives.Foundation.Security.Cryptography;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
@@ -11,6 +10,7 @@ using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Text;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Tests that validate XOF (extendable-output) implementations against BouncyCastle

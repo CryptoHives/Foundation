@@ -25,7 +25,7 @@ using System.Text;
 /// pseudorandom function (XOF mode with arbitrary output length).
 /// </para>
 /// </remarks>
-public sealed class KMac128 : KeccakKmacCore
+public sealed class KMac128 : KeccakKMacCore
 {
     /// <summary>
     /// The default output size in bits.

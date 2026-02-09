@@ -123,7 +123,7 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 byte[] key = new byte[32]; // Your secret key
 
 // KMAC256
-using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "MyApp");
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
 byte[] mac = kmac.ComputeHash(message);
 ```
 
