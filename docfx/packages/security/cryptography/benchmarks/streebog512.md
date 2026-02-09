@@ -1,25 +1,25 @@
 ﻿| Description                                  | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |--------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · Streebog-512 · Managed      | 128B         |     2.406 μs | 0.0044 μs | 0.0039 μs |         - |
-| TryComputeHash · Streebog-512 · OpenGost     | 128B         |     3.350 μs | 0.0152 μs | 0.0142 μs |     176 B |
-| TryComputeHash · Streebog-512 · BouncyCastle | 128B         |     4.235 μs | 0.0246 μs | 0.0230 μs |         - |
+| TryComputeHash · Streebog-512 · Managed      | 128B         |     2.421 μs | 0.0053 μs | 0.0050 μs |         - |
+| TryComputeHash · Streebog-512 · OpenGost     | 128B         |     3.381 μs | 0.0203 μs | 0.0190 μs |     176 B |
+| TryComputeHash · Streebog-512 · BouncyCastle | 128B         |     4.238 μs | 0.0164 μs | 0.0153 μs |         - |
 |                                              |              |              |           |           |           |
-| TryComputeHash · Streebog-512 · Managed      | 137B         |     2.327 μs | 0.0055 μs | 0.0049 μs |         - |
-| TryComputeHash · Streebog-512 · OpenGost     | 137B         |     3.366 μs | 0.0221 μs | 0.0207 μs |     176 B |
-| TryComputeHash · Streebog-512 · BouncyCastle | 137B         |     4.238 μs | 0.0157 μs | 0.0139 μs |         - |
+| TryComputeHash · Streebog-512 · Managed      | 137B         |     2.417 μs | 0.0028 μs | 0.0025 μs |         - |
+| TryComputeHash · Streebog-512 · OpenGost     | 137B         |     3.374 μs | 0.0237 μs | 0.0210 μs |     176 B |
+| TryComputeHash · Streebog-512 · BouncyCastle | 137B         |     4.245 μs | 0.0289 μs | 0.0241 μs |         - |
 |                                              |              |              |           |           |           |
-| TryComputeHash · Streebog-512 · Managed      | 1KB          |     9.178 μs | 0.0288 μs | 0.0269 μs |         - |
-| TryComputeHash · Streebog-512 · OpenGost     | 1KB          |    12.619 μs | 0.0569 μs | 0.0532 μs |     176 B |
-| TryComputeHash · Streebog-512 · BouncyCastle | 1KB          |    16.111 μs | 0.0704 μs | 0.0588 μs |         - |
+| TryComputeHash · Streebog-512 · Managed      | 1KB          |     9.224 μs | 0.0209 μs | 0.0174 μs |         - |
+| TryComputeHash · Streebog-512 · OpenGost     | 1KB          |    12.623 μs | 0.0502 μs | 0.0469 μs |     176 B |
+| TryComputeHash · Streebog-512 · BouncyCastle | 1KB          |    16.161 μs | 0.0470 μs | 0.0392 μs |         - |
 |                                              |              |              |           |           |           |
-| TryComputeHash · Streebog-512 · Managed      | 1025B        |     8.700 μs | 0.0166 μs | 0.0155 μs |         - |
-| TryComputeHash · Streebog-512 · OpenGost     | 1025B        |    12.626 μs | 0.0443 μs | 0.0414 μs |     176 B |
-| TryComputeHash · Streebog-512 · BouncyCastle | 1025B        |    16.106 μs | 0.0688 μs | 0.0574 μs |         - |
+| TryComputeHash · Streebog-512 · Managed      | 1025B        |     8.996 μs | 0.0170 μs | 0.0151 μs |         - |
+| TryComputeHash · Streebog-512 · OpenGost     | 1025B        |    12.620 μs | 0.0469 μs | 0.0438 μs |     176 B |
+| TryComputeHash · Streebog-512 · BouncyCastle | 1025B        |    16.171 μs | 0.0523 μs | 0.0436 μs |         - |
 |                                              |              |              |           |           |           |
-| TryComputeHash · Streebog-512 · Managed      | 8KB          |    59.625 μs | 0.1634 μs | 0.1528 μs |         - |
-| TryComputeHash · Streebog-512 · OpenGost     | 8KB          |    87.050 μs | 0.8585 μs | 0.8030 μs |     176 B |
-| TryComputeHash · Streebog-512 · BouncyCastle | 8KB          |   112.060 μs | 0.7953 μs | 0.7439 μs |         - |
+| TryComputeHash · Streebog-512 · Managed      | 8KB          |    63.743 μs | 0.1720 μs | 0.1609 μs |         - |
+| TryComputeHash · Streebog-512 · OpenGost     | 8KB          |    86.514 μs | 0.3106 μs | 0.2905 μs |     176 B |
+| TryComputeHash · Streebog-512 · BouncyCastle | 8KB          |   112.461 μs | 0.4861 μs | 0.4309 μs |         - |
 |                                              |              |              |           |           |           |
-| TryComputeHash · Streebog-512 · Managed      | 128KB        | 1,015.577 μs | 2.8507 μs | 2.5270 μs |         - |
-| TryComputeHash · Streebog-512 · OpenGost     | 128KB        | 1,360.808 μs | 6.2221 μs | 5.8202 μs |     176 B |
-| TryComputeHash · Streebog-512 · BouncyCastle | 128KB        | 1,736.226 μs | 6.2932 μs | 5.2551 μs |         - |
+| TryComputeHash · Streebog-512 · Managed      | 128KB        |   978.931 μs | 3.1155 μs | 2.7618 μs |         - |
+| TryComputeHash · Streebog-512 · OpenGost     | 128KB        | 1,361.326 μs | 4.9066 μs | 4.3496 μs |     176 B |
+| TryComputeHash · Streebog-512 · BouncyCastle | 128KB        | 1,742.975 μs | 6.3171 μs | 5.9090 μs |         - |

@@ -3,8 +3,7 @@
 
 namespace Cryptography.Tests.Hash;
 
-using CryptoHives.Foundation.Security.Cryptography.Hash;
-using CryptoHives.Foundation.Security.Cryptography.Mac;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
@@ -43,7 +42,7 @@ public class XofReferenceTests
             byte[] expected = new byte[outputSize];
             bc.OutputFinal(expected, 0, outputSize);
 
-            using var xof = Shake128.Create(outputSize);
+            using var xof = CH.Hash.Shake128.Create(outputSize);
             xof.Absorb(input);
             byte[] actual = new byte[outputSize];
             xof.Squeeze(actual);
@@ -61,7 +60,7 @@ public class XofReferenceTests
     {
         AssertStreamingSqueeze(
             () => new ShakeDigest(128),
-            () => Shake128.Create(128),
+            () => CH.Hash.Shake128.Create(128),
             ShortInput, 64);
     }
 
@@ -73,7 +72,7 @@ public class XofReferenceTests
     {
         AssertNonAlignedStreaming(
             () => new ShakeDigest(128),
-            () => Shake128.Create(128),
+            () => CH.Hash.Shake128.Create(128),
             MediumInput);
     }
 
@@ -97,7 +96,7 @@ public class XofReferenceTests
             byte[] expected = new byte[outputSize];
             bc.OutputFinal(expected, 0, outputSize);
 
-            using var xof = Shake256.Create(outputSize);
+            using var xof = CH.Hash.Shake256.Create(outputSize);
             xof.Absorb(input);
             byte[] actual = new byte[outputSize];
             xof.Squeeze(actual);
@@ -115,7 +114,7 @@ public class XofReferenceTests
     {
         AssertStreamingSqueeze(
             () => new ShakeDigest(256),
-            () => Shake256.Create(128),
+            () => CH.Hash.Shake256.Create(128),
             ShortInput, 64);
     }
 
@@ -127,7 +126,7 @@ public class XofReferenceTests
     {
         AssertNonAlignedStreaming(
             () => new ShakeDigest(256),
-            () => Shake256.Create(128),
+            () => CH.Hash.Shake256.Create(128),
             MediumInput);
     }
 
@@ -152,7 +151,7 @@ public class XofReferenceTests
         byte[] expected = new byte[outputSize];
         bc.OutputFinal(expected, 0, outputSize);
 
-        using var xof = CShake128.Create(outputSize, "", "XOF Test");
+        using var xof = CH.Hash.CShake128.Create(outputSize, "", "XOF Test");
         xof.Absorb(input);
         byte[] actual = new byte[outputSize];
         xof.Squeeze(actual);
@@ -171,7 +170,7 @@ public class XofReferenceTests
 
         AssertStreamingSqueeze(
             () => new CShakeDigest(128, null, customization),
-            () => CShake128.Create(128, "", "XOF Test"),
+            () => CH.Hash.CShake128.Create(128, "", "XOF Test"),
             ShortInput, 64);
     }
 
@@ -196,7 +195,7 @@ public class XofReferenceTests
         byte[] expected = new byte[outputSize];
         bc.OutputFinal(expected, 0, outputSize);
 
-        using var xof = CShake256.Create(outputSize, "", "XOF Test");
+        using var xof = CH.Hash.CShake256.Create(outputSize, "", "XOF Test");
         xof.Absorb(input);
         byte[] actual = new byte[outputSize];
         xof.Squeeze(actual);
@@ -215,7 +214,7 @@ public class XofReferenceTests
 
         AssertStreamingSqueeze(
             () => new CShakeDigest(256, null, customization),
-            () => CShake256.Create(128, "", "XOF Test"),
+            () => CH.Hash.CShake256.Create(128, "", "XOF Test"),
             ShortInput, 64);
     }
 
@@ -234,12 +233,12 @@ public class XofReferenceTests
     {
         foreach (byte[] input in new[] { EmptyInput, ShortInput, MediumInput })
         {
-            var bc = (IXof)new Blake3Digest(256);
+            var bc = new Blake3Digest(256);
             bc.BlockUpdate(input, 0, input.Length);
             byte[] expected = new byte[outputSize];
             bc.OutputFinal(expected, 0, outputSize);
 
-            using var xof = Blake3.Create(outputSize);
+            using var xof = CH.Hash.Blake3.Create(outputSize);
             xof.Absorb(input);
             byte[] actual = new byte[outputSize];
             xof.Squeeze(actual);
@@ -256,8 +255,8 @@ public class XofReferenceTests
     public void Blake3StreamingSqueezeMatchesBouncyCastle()
     {
         AssertStreamingSqueezeXof(
-            () => (IXof)new Blake3Digest(256),
-            () => Blake3.Create(256),
+            () => new Blake3Digest(256),
+            () => CH.Hash.Blake3.Create(256),
             ShortInput, 64);
     }
 
@@ -269,7 +268,7 @@ public class XofReferenceTests
     {
         AssertNonAlignedStreamingXof(
             () => (IXof)new Blake3Digest(256),
-            () => Blake3.Create(256),
+            () => CH.Hash.Blake3.Create(256),
             MediumInput);
     }
 
@@ -286,12 +285,12 @@ public class XofReferenceTests
     {
         byte[] input = GenerateTestInput(inputLength);
 
-        var bc = (IXof)new Blake3Digest(256);
+        var bc = new Blake3Digest(256);
         bc.BlockUpdate(input, 0, input.Length);
         byte[] expected = new byte[512];
         bc.OutputFinal(expected, 0, 512);
 
-        using var xof = Blake3.Create(512);
+        using var xof = CH.Hash.Blake3.Create(512);
         xof.Absorb(input);
         byte[] actual = new byte[512];
         xof.Squeeze(actual);
@@ -315,12 +314,12 @@ public class XofReferenceTests
     {
         foreach (byte[] input in new[] { EmptyInput, ShortInput, MediumInput })
         {
-            var bc = (IXof)new Org.BouncyCastle.Crypto.Digests.AsconXof128();
+            var bc = new Org.BouncyCastle.Crypto.Digests.AsconXof128();
             bc.BlockUpdate(input, 0, input.Length);
             byte[] expected = new byte[outputSize];
             bc.OutputFinal(expected, 0, outputSize);
 
-            using var xof = CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Create(outputSize);
+            using var xof = CH.Hash.AsconXof128.Create(outputSize);
             xof.Absorb(input);
             byte[] actual = new byte[outputSize];
             xof.Squeeze(actual);
@@ -338,7 +337,7 @@ public class XofReferenceTests
     {
         AssertStreamingSqueezeXof(
             () => (IXof)new Org.BouncyCastle.Crypto.Digests.AsconXof128(),
-            () => CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Create(128),
+            () => CH.Hash.AsconXof128.Create(128),
             ShortInput, 32);
     }
 
@@ -350,7 +349,7 @@ public class XofReferenceTests
     {
         AssertNonAlignedStreamingXof(
             () => (IXof)new Org.BouncyCastle.Crypto.Digests.AsconXof128(),
-            () => CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Create(128),
+            () => CH.Hash.AsconXof128.Create(128),
             MediumInput);
     }
 
@@ -376,7 +375,7 @@ public class XofReferenceTests
         byte[] expected = new byte[outputSize];
         ((IXof)bc).OutputFinal(expected, 0, outputSize);
 
-        using var xof = KMac128.Create(key, outputSize, "");
+        using var xof = CH.Mac.KMac128.Create(key, outputSize, "");
         xof.Absorb(input);
         byte[] actual = new byte[outputSize];
         xof.Squeeze(actual);
@@ -407,7 +406,7 @@ public class XofReferenceTests
         byte[] expected = new byte[outputSize];
         ((IXof)bc).OutputFinal(expected, 0, outputSize);
 
-        using var xof = KMac256.Create(key, outputSize, "");
+        using var xof = CH.Mac.KMac256.Create(key, outputSize, "");
         xof.Absorb(input);
         byte[] actual = new byte[outputSize];
         xof.Squeeze(actual);
@@ -438,7 +437,7 @@ public class XofReferenceTests
             byte[] expected = new byte[outputSize];
             System.Security.Cryptography.Shake128.HashData(input, expected);
 
-            using var xof = Shake128.Create(outputSize);
+            using var xof = CH.Hash.Shake128.Create(outputSize);
             xof.Absorb(input);
             byte[] actual = new byte[outputSize];
             xof.Squeeze(actual);
@@ -468,7 +467,7 @@ public class XofReferenceTests
             byte[] expected = new byte[outputSize];
             System.Security.Cryptography.Shake256.HashData(input, expected);
 
-            using var xof = Shake256.Create(outputSize);
+            using var xof = CH.Hash.Shake256.Create(outputSize);
             xof.Absorb(input);
             byte[] actual = new byte[outputSize];
             xof.Squeeze(actual);
@@ -503,7 +502,7 @@ public class XofReferenceTests
             byte[] expected = new byte[outputSize];
             hasher.Finalize(expected);
 
-            using var xof = CryptoHives.Foundation.Security.Cryptography.Hash.Blake3.Create(outputSize);
+            using var xof = CH.Hash.Blake3.Create(outputSize);
             xof.Absorb(input);
             byte[] actual = new byte[outputSize];
             xof.Squeeze(actual);
@@ -530,7 +529,7 @@ public class XofReferenceTests
         byte[] expected = new byte[512];
         hasher.Finalize(expected);
 
-        using var xof = CryptoHives.Foundation.Security.Cryptography.Hash.Blake3.Create(512);
+        using var xof = CH.Hash.Blake3.Create(512);
         xof.Absorb(input);
         byte[] actual = new byte[512];
         xof.Squeeze(actual);
@@ -550,7 +549,7 @@ public class XofReferenceTests
     /// </summary>
     private static void AssertStreamingSqueeze(
         Func<ShakeDigest> bcFactory,
-        Func<IExtendableOutput> chFactory,
+        Func<CH.Hash.IExtendableOutput> chFactory,
         byte[] input,
         int halfSize)
     {
@@ -564,7 +563,7 @@ public class XofReferenceTests
 
         // Our streaming
         using var ch = (IDisposable)chFactory();
-        var xof = (IExtendableOutput)ch;
+        var xof = (CH.Hash.IExtendableOutput)ch;
         xof.Absorb(input);
         byte[] ourPart1 = new byte[halfSize];
         byte[] ourPart2 = new byte[halfSize];
@@ -580,7 +579,7 @@ public class XofReferenceTests
     /// </summary>
     private static void AssertNonAlignedStreaming(
         Func<ShakeDigest> bcFactory,
-        Func<IExtendableOutput> chFactory,
+        Func<CH.Hash.IExtendableOutput> chFactory,
         byte[] input)
     {
         int[] sizes = [10, 15, 12, 7, 19];
@@ -597,7 +596,7 @@ public class XofReferenceTests
 
         // Our streaming
         using var ch = (IDisposable)chFactory();
-        var xof = (IExtendableOutput)ch;
+        var xof = (CH.Hash.IExtendableOutput)ch;
         xof.Absorb(input);
         for (int i = 0; i < sizes.Length; i++)
         {
@@ -612,7 +611,7 @@ public class XofReferenceTests
     /// </summary>
     private static void AssertStreamingSqueezeXof(
         Func<IXof> bcFactory,
-        Func<IExtendableOutput> chFactory,
+        Func<CH.Hash.IExtendableOutput> chFactory,
         byte[] input,
         int halfSize)
     {
@@ -624,7 +623,7 @@ public class XofReferenceTests
         bc.Output(bcPart2, 0, halfSize);
 
         using var ch = (IDisposable)chFactory();
-        var xof = (IExtendableOutput)ch;
+        var xof = (CH.Hash.IExtendableOutput)ch;
         xof.Absorb(input);
         byte[] ourPart1 = new byte[halfSize];
         byte[] ourPart2 = new byte[halfSize];
@@ -640,7 +639,7 @@ public class XofReferenceTests
     /// </summary>
     private static void AssertNonAlignedStreamingXof(
         Func<IXof> bcFactory,
-        Func<IExtendableOutput> chFactory,
+        Func<CH.Hash.IExtendableOutput> chFactory,
         byte[] input)
     {
         int[] sizes = [10, 15, 12, 7, 19];
@@ -655,7 +654,7 @@ public class XofReferenceTests
         }
 
         using var ch = (IDisposable)chFactory();
-        var xof = (IExtendableOutput)ch;
+        var xof = (CH.Hash.IExtendableOutput)ch;
         xof.Absorb(input);
         for (int i = 0; i < sizes.Length; i++)
         {

@@ -1,25 +1,25 @@
 ﻿| Description                             | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |---------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeMac · ComputeHash · Managed      | 128B         |     696.0 ns |     2.99 ns |     2.80 ns |     112 B |
-| ComputeMac · ComputeHash · OS Native    | 128B         |     970.0 ns |     3.56 ns |     3.33 ns |      32 B |
-| ComputeMac · ComputeHash · BouncyCastle | 128B         |   1,324.0 ns |     5.05 ns |     4.48 ns |     160 B |
+| ComputeMac · TryComputeHash · Managed   | 128B         |     684.1 ns |     2.77 ns |     2.17 ns |         - |
+| ComputeMac · ComputeHash · OS Native    | 128B         |     979.2 ns |     7.54 ns |     7.06 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 128B         |   1,317.1 ns |     7.89 ns |     7.38 ns |     160 B |
 |                                         |              |              |             |             |           |
-| ComputeMac · ComputeHash · Managed      | 137B         |     689.3 ns |     3.65 ns |     3.42 ns |     112 B |
-| ComputeMac · ComputeHash · OS Native    | 137B         |     979.4 ns |     3.99 ns |     3.33 ns |      32 B |
-| ComputeMac · ComputeHash · BouncyCastle | 137B         |   1,314.4 ns |     6.45 ns |     5.72 ns |     160 B |
+| ComputeMac · TryComputeHash · Managed   | 137B         |     681.5 ns |     2.98 ns |     2.64 ns |         - |
+| ComputeMac · ComputeHash · OS Native    | 137B         |     999.1 ns |     6.96 ns |     6.17 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 137B         |   1,313.4 ns |     6.31 ns |     5.60 ns |     160 B |
 |                                         |              |              |             |             |           |
-| ComputeMac · ComputeHash · Managed      | 1KB          |   1,929.2 ns |    12.47 ns |    11.66 ns |     112 B |
-| ComputeMac · ComputeHash · OS Native    | 1KB          |   2,379.8 ns |     8.19 ns |     7.26 ns |      32 B |
-| ComputeMac · ComputeHash · BouncyCastle | 1KB          |   3,161.1 ns |    13.01 ns |    12.17 ns |     160 B |
+| ComputeMac · TryComputeHash · Managed   | 1KB          |   1,913.4 ns |    12.64 ns |    11.21 ns |         - |
+| ComputeMac · ComputeHash · OS Native    | 1KB          |   2,387.7 ns |     9.57 ns |     7.99 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 1KB          |   3,144.8 ns |    17.82 ns |    16.67 ns |     160 B |
 |                                         |              |              |             |             |           |
-| ComputeMac · ComputeHash · Managed      | 1025B        |   1,923.6 ns |     7.77 ns |     6.88 ns |     112 B |
-| ComputeMac · ComputeHash · OS Native    | 1025B        |   2,406.3 ns |    21.05 ns |    19.69 ns |      32 B |
-| ComputeMac · ComputeHash · BouncyCastle | 1025B        |   3,159.6 ns |     8.48 ns |     7.08 ns |     160 B |
+| ComputeMac · TryComputeHash · Managed   | 1025B        |   1,917.9 ns |    15.19 ns |    14.21 ns |         - |
+| ComputeMac · ComputeHash · OS Native    | 1025B        |   2,404.8 ns |    11.15 ns |    10.43 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 1025B        |   3,141.0 ns |    12.15 ns |    11.37 ns |     160 B |
 |                                         |              |              |             |             |           |
-| ComputeMac · ComputeHash · Managed      | 8KB          |  10,270.2 ns |    79.64 ns |    74.50 ns |     112 B |
-| ComputeMac · ComputeHash · OS Native    | 8KB          |  12,412.5 ns |   100.34 ns |    93.86 ns |      32 B |
-| ComputeMac · ComputeHash · BouncyCastle | 8KB          |  15,958.4 ns |    37.83 ns |    29.54 ns |     160 B |
+| ComputeMac · TryComputeHash · Managed   | 8KB          |  10,210.1 ns |    62.72 ns |    58.66 ns |         - |
+| ComputeMac · ComputeHash · OS Native    | 8KB          |  12,302.0 ns |    59.27 ns |    55.44 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 8KB          |  16,053.3 ns |    86.60 ns |    81.00 ns |     160 B |
 |                                         |              |              |             |             |           |
-| ComputeMac · ComputeHash · Managed      | 128KB        | 156,042.4 ns |   842.02 ns |   703.13 ns |     112 B |
-| ComputeMac · ComputeHash · OS Native    | 128KB        | 186,234.2 ns | 1,282.79 ns | 1,199.92 ns |      32 B |
-| ComputeMac · ComputeHash · BouncyCastle | 128KB        | 239,234.5 ns | 1,151.46 ns | 1,077.08 ns |     160 B |
+| ComputeMac · TryComputeHash · Managed   | 128KB        | 155,508.1 ns |   692.57 ns |   647.83 ns |         - |
+| ComputeMac · ComputeHash · OS Native    | 128KB        | 185,262.8 ns | 1,187.57 ns | 1,110.86 ns |      32 B |
+| ComputeMac · ComputeHash · BouncyCastle | 128KB        | 239,918.3 ns |   755.69 ns |   706.87 ns |     160 B |

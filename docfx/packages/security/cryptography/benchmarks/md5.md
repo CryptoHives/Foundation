@@ -1,25 +1,25 @@
-﻿| Description                         | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|------------------------------------ |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · MD5 · OS Native    | 128B         |     268.7 ns |     0.69 ns |     0.64 ns |         - |
-| TryComputeHash · MD5 · Managed      | 128B         |     339.0 ns |     2.40 ns |     2.25 ns |         - |
-| TryComputeHash · MD5 · BouncyCastle | 128B         |     368.9 ns |     0.69 ns |     0.61 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · MD5 · OS Native    | 137B         |     267.0 ns |     0.63 ns |     0.59 ns |         - |
-| TryComputeHash · MD5 · Managed      | 137B         |     329.8 ns |     1.83 ns |     1.63 ns |         - |
-| TryComputeHash · MD5 · BouncyCastle | 137B         |     369.2 ns |     1.04 ns |     0.97 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · MD5 · OS Native    | 1KB          |   1,365.7 ns |     0.98 ns |     0.87 ns |         - |
-| TryComputeHash · MD5 · Managed      | 1KB          |   1,804.2 ns |     9.07 ns |     8.49 ns |         - |
-| TryComputeHash · MD5 · BouncyCastle | 1KB          |   2,008.5 ns |     4.73 ns |     4.42 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · MD5 · OS Native    | 1025B        |   1,367.6 ns |     1.17 ns |     1.03 ns |         - |
-| TryComputeHash · MD5 · Managed      | 1025B        |   1,796.2 ns |     7.84 ns |     6.95 ns |         - |
-| TryComputeHash · MD5 · BouncyCastle | 1025B        |   2,007.7 ns |     5.39 ns |     4.78 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · MD5 · OS Native    | 8KB          |  10,170.8 ns |    15.62 ns |    14.61 ns |         - |
-| TryComputeHash · MD5 · Managed      | 8KB          |  13,605.4 ns |    90.85 ns |    84.99 ns |         - |
-| TryComputeHash · MD5 · BouncyCastle | 8KB          |  15,139.4 ns |    32.68 ns |    30.57 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · MD5 · OS Native    | 128KB        | 160,854.7 ns |   250.41 ns |   234.24 ns |         - |
-| TryComputeHash · MD5 · Managed      | 128KB        | 215,004.8 ns | 1,739.32 ns | 1,626.96 ns |         - |
-| TryComputeHash · MD5 · BouncyCastle | 128KB        | 240,146.1 ns |   341.42 ns |   319.36 ns |         - |
+﻿| Description                         | TestDataSize | Mean         | Error     | StdDev    | Allocated |
+|------------------------------------ |------------- |-------------:|----------:|----------:|----------:|
+| TryComputeHash · MD5 · OS Native    | 128B         |     268.8 ns |   0.51 ns |   0.48 ns |         - |
+| TryComputeHash · MD5 · Managed      | 128B         |     326.0 ns |   1.94 ns |   1.81 ns |         - |
+| TryComputeHash · MD5 · BouncyCastle | 128B         |     368.9 ns |   0.49 ns |   0.41 ns |         - |
+|                                     |              |              |           |           |           |
+| TryComputeHash · MD5 · OS Native    | 137B         |     268.0 ns |   0.66 ns |   0.62 ns |         - |
+| TryComputeHash · MD5 · Managed      | 137B         |     328.9 ns |   1.11 ns |   0.92 ns |         - |
+| TryComputeHash · MD5 · BouncyCastle | 137B         |     368.7 ns |   0.85 ns |   0.79 ns |         - |
+|                                     |              |              |           |           |           |
+| TryComputeHash · MD5 · OS Native    | 1KB          |   1,371.9 ns |   2.61 ns |   2.44 ns |         - |
+| TryComputeHash · MD5 · Managed      | 1KB          |   1,792.5 ns |   6.46 ns |   6.04 ns |         - |
+| TryComputeHash · MD5 · BouncyCastle | 1KB          |   2,010.4 ns |   3.58 ns |   3.35 ns |         - |
+|                                     |              |              |           |           |           |
+| TryComputeHash · MD5 · OS Native    | 1025B        |   1,367.8 ns |   1.75 ns |   1.55 ns |         - |
+| TryComputeHash · MD5 · Managed      | 1025B        |   1,797.9 ns |   4.34 ns |   3.62 ns |         - |
+| TryComputeHash · MD5 · BouncyCastle | 1025B        |   2,008.4 ns |   4.30 ns |   3.82 ns |         - |
+|                                     |              |              |           |           |           |
+| TryComputeHash · MD5 · OS Native    | 8KB          |  10,158.8 ns |   9.82 ns |   9.19 ns |         - |
+| TryComputeHash · MD5 · Managed      | 8KB          |  13,507.9 ns |  39.10 ns |  32.65 ns |         - |
+| TryComputeHash · MD5 · BouncyCastle | 8KB          |  15,114.1 ns |  19.00 ns |  16.84 ns |         - |
+|                                     |              |              |           |           |           |
+| TryComputeHash · MD5 · OS Native    | 128KB        | 160,881.9 ns | 129.41 ns | 114.72 ns |         - |
+| TryComputeHash · MD5 · Managed      | 128KB        | 214,550.2 ns | 588.02 ns | 521.26 ns |         - |
+| TryComputeHash · MD5 · BouncyCastle | 128KB        | 240,087.5 ns | 311.72 ns | 291.58 ns |         - |

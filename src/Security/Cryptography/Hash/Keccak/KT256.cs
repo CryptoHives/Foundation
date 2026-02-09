@@ -62,7 +62,6 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
 
     private readonly int _outputBytes;
     private readonly byte[] _customization;
-    private readonly SimdSupport _simdSupport;
     private readonly TurboShake256 _turbo;
     private byte[] _buffer;
     private int _bufferLength;
@@ -109,7 +108,6 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
-        _simdSupport = simdSupport;
         _turbo = new TurboShake256(simdSupport, ChainingValueSize, DomainSingleNode);
         // Rent initial buffer from shared pool to reduce allocations under benchmarks
         _buffer = ArrayPool<byte>.Shared.Rent(InitialBufferSize);

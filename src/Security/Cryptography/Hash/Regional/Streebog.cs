@@ -379,24 +379,18 @@ public sealed class Streebog : HashAlgorithm
         GN(_h, _zeroArray, _sigma);
 
         // Output: convert ulong array back to bytes
+        int index = 0;
         if (_hashSizeBytes == 32)
         {
             // For 256-bit, take the last 32 bytes (h[4..7])
-            BinaryPrimitives.WriteUInt64LittleEndian(destination, _h[4]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(8), _h[5]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(16), _h[6]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(24), _h[7]);
+            index = BlockSizeWords / 2;
         }
-        else
+
+        int offset = 0;
+        for (int i = index; i < BlockSizeWords; i++)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(destination, _h[0]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(8), _h[1]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(16), _h[2]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(24), _h[3]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(32), _h[4]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(40), _h[5]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(48), _h[6]);
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(56), _h[7]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(offset), _h[i]);
+            offset += sizeof(UInt64);
         }
 
         bytesWritten = _hashSizeBytes;
