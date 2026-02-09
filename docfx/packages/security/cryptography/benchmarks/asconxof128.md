@@ -1,19 +1,19 @@
-﻿| Description                                              | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|--------------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 128B         |     616.9 ns |     4.68 ns |     4.38 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 128B         |     793.9 ns |     9.18 ns |     8.59 ns |     112 B |
-|                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 137B         |     643.2 ns |     6.25 ns |     5.54 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 137B         |     829.0 ns |     6.76 ns |     5.65 ns |     112 B |
-|                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 1KB          |   3,812.7 ns |    32.03 ns |    29.96 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 1KB          |   4,951.8 ns |    46.77 ns |    43.75 ns |     112 B |
-|                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 1025B        |   3,807.0 ns |    23.16 ns |    19.34 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 1025B        |   4,960.2 ns |    56.53 ns |    50.12 ns |     112 B |
-|                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 8KB          |  29,117.6 ns |   187.78 ns |   175.65 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 8KB          |  38,494.6 ns |   397.77 ns |   352.61 ns |     112 B |
-|                                                          |              |              |             |             |           |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (Managed)      | 128KB        | 464,103.3 ns | 1,366.55 ns | 1,211.41 ns |     112 B |
-| ComputeHash · Ascon-XOF128 · Ascon-XOF128 (BouncyCastle) | 128KB        | 611,430.3 ns | 6,845.22 ns | 6,403.02 ns |     112 B |
+﻿| Description                                  | TestDataSize | Mean         | Error        | StdDev       | Allocated |
+|--------------------------------------------- |------------- |-------------:|-------------:|-------------:|----------:|
+| TryComputeHash · Ascon-XOF128 · Managed      | 128B         |     573.9 ns |      5.01 ns |      4.18 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle | 128B         |     764.9 ns |     11.42 ns |     10.13 ns |         - |
+|                                              |              |              |              |              |           |
+| TryComputeHash · Ascon-XOF128 · Managed      | 137B         |     608.9 ns |     10.42 ns |      9.75 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle | 137B         |     801.8 ns |      6.42 ns |      5.69 ns |         - |
+|                                              |              |              |              |              |           |
+| TryComputeHash · Ascon-XOF128 · Managed      | 1KB          |   3,741.9 ns |     70.22 ns |     65.68 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle | 1KB          |   4,954.6 ns |     83.53 ns |     78.14 ns |         - |
+|                                              |              |              |              |              |           |
+| TryComputeHash · Ascon-XOF128 · Managed      | 1025B        |   3,747.0 ns |     50.01 ns |     46.78 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle | 1025B        |   4,926.9 ns |     46.99 ns |     41.65 ns |         - |
+|                                              |              |              |              |              |           |
+| TryComputeHash · Ascon-XOF128 · Managed      | 8KB          |  28,987.4 ns |    505.25 ns |    447.89 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle | 8KB          |  38,618.1 ns |    744.02 ns |    695.96 ns |         - |
+|                                              |              |              |              |              |           |
+| TryComputeHash · Ascon-XOF128 · Managed      | 128KB        | 457,370.8 ns |  5,060.83 ns |  4,226.02 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle | 128KB        | 618,939.6 ns | 11,905.87 ns | 11,693.16 ns |         - |

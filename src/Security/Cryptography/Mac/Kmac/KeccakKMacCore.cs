@@ -24,7 +24,7 @@ using System.Text;
 /// output length).
 /// </para>
 /// </remarks>
-public abstract class KeccakKmacCore : KeccakCore
+public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
 {
     private static readonly byte[] _kmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
     private static readonly byte[] _encodedKmacFunctionName = CShake128.EncodeString(_kmacFunctionName);
@@ -36,27 +36,27 @@ public abstract class KeccakKmacCore : KeccakCore
     private int _squeezeOffset;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeccakKmacCore"/> class.
+    /// Initializes a new instance of the <see cref="KeccakKMacCore"/> class.
     /// </summary>
     /// <param name="rateBytes">The rate in bytes for this variant.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="key">The secret key.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
-    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, string? customization)
+    internal KeccakKMacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, string? customization)
         : this(rateBytes, simdSupport, key, outputBytes, string.IsNullOrEmpty(customization) ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(customization))
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeccakKmacCore"/> class.
+    /// Initializes a new instance of the <see cref="KeccakKMacCore"/> class.
     /// </summary>
     /// <param name="rateBytes">The rate in bytes for this variant.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="key">The secret key.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization bytes S.</param>
-    internal KeccakKmacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, byte[]? customization)
+    internal KeccakKMacCore(int rateBytes, SimdSupport simdSupport, byte[] key, int outputBytes, byte[]? customization)
         : base(rateBytes, simdSupport)
     {
         if (key is null || key.Length == 0)
@@ -94,6 +94,18 @@ public abstract class KeccakKmacCore : KeccakCore
     }
 
     /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
+    }
+
+    /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
         if (_finalized)
@@ -108,7 +120,7 @@ public abstract class KeccakKmacCore : KeccakCore
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         bytesWritten = _outputBytes;
-        FinalizeAndSqueeze(destination);
+        Squeeze(destination);
         return true;
     }
 
@@ -116,7 +128,7 @@ public abstract class KeccakKmacCore : KeccakCore
     /// Finalizes the MAC computation and squeezes output bytes.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
-    public void FinalizeAndSqueeze(Span<byte> output)
+    public void Squeeze(Span<byte> output)
     {
         if (!_finalized)
         {

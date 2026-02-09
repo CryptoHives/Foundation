@@ -286,16 +286,16 @@ public sealed class HashAlgorithmType : IFormattable
     public static IEnumerable<HashAlgorithmType> Kmac128()
     {
         yield return new("KMAC-128", "KMAC-128 (Managed)",
-            () => CHMac.Kmac128.Create(_sharedKmacKey, 32, "Benchmark"));
+            () => CHMac.KMac128.Create(_sharedKmacKey, 32, "Benchmark"));
 
         yield return new("KMAC-128", "KMAC-128 (BouncyCastle)",
-            () => new BouncyCastleKmacAdapter(128, _sharedKmacKey, _sharedKmacCustomization, 32));
+            () => new BouncyCastleKMacAdapter(128, _sharedKmacKey, _sharedKmacCustomization, 32));
 
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac128.IsSupported)
         {
             yield return new("KMAC-128", "KMAC-128 (OS)",
-                () => new Kmac128HashAdapter(_sharedKmacKey, 32, _sharedKmacCustomization),
+                () => new KMac128HashAdapter(_sharedKmacKey, 32, _sharedKmacCustomization),
                 () => System.Security.Cryptography.Kmac128.IsSupported);
         }
 #endif
@@ -305,16 +305,16 @@ public sealed class HashAlgorithmType : IFormattable
     public static IEnumerable<HashAlgorithmType> Kmac256()
     {
         yield return new("KMAC-256", "KMAC-256 (Managed)",
-            () => CHMac.Kmac256.Create(_sharedKmacKey, 64, "Benchmark"));
+            () => CHMac.KMac256.Create(_sharedKmacKey, 64, "Benchmark"));
 
         yield return new("KMAC-256", "KMAC-256 (BouncyCastle)",
-            () => new BouncyCastleKmacAdapter(256, _sharedKmacKey, _sharedKmacCustomization, 64));
+            () => new BouncyCastleKMacAdapter(256, _sharedKmacKey, _sharedKmacCustomization, 64));
 
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac256.IsSupported)
         {
             yield return new("KMAC-256", "KMAC-256 (OS)",
-                () => new Kmac256HashAdapter(_sharedKmacKey, 64, _sharedKmacCustomization),
+                () => new KMac256HashAdapter(_sharedKmacKey, 64, _sharedKmacCustomization),
                 () => System.Security.Cryptography.Kmac256.IsSupported);
         }
 #endif

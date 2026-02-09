@@ -102,6 +102,8 @@ using var blake3 = Blake3.Create(outputBytes: 128);
 byte[] longHash = blake3.ComputeHash(data);
 ```
 
+For allocation-free streaming XOF using `Absorb` / `Squeeze`, see [XOF Mode](xof-mode.md).
+
 ### Customizable Hash (cSHAKE)
 
 ```csharp
@@ -121,7 +123,7 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 byte[] key = new byte[32]; // Your secret key
 
 // KMAC256
-using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "MyApp");
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
 byte[] mac = kmac.ComputeHash(message);
 ```
 
@@ -255,6 +257,7 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 
 - [Hash Algorithms Reference](hash-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
+- [XOF Mode (Extendable-Output)](xof-mode.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

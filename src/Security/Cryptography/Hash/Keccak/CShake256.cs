@@ -24,7 +24,7 @@ using System.Text;
 /// When both N and S are empty, cSHAKE256 is equivalent to SHAKE256.
 /// </para>
 /// </remarks>
-public sealed class CShake256 : KeccakCore
+public sealed class CShake256 : KeccakCore, IExtendableOutput
 {
     /// <summary>
     /// The default output size in bits.
@@ -183,6 +183,18 @@ public sealed class CShake256 : KeccakCore
         }
 
         _keccakCore.SqueezeXof(output, RateBytes, ref _squeezeOffset);
+    }
+
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
     }
 
     private void AbsorbBytePad()

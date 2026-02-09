@@ -26,7 +26,7 @@ using System.Text;
 /// This implementation is specified in RFC 9861 Section 3.4.
 /// </para>
 /// </remarks>
-public sealed class KT256 : HashAlgorithm
+public sealed class KT256 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
     /// The rate in bytes for KT256 (1088 bits = 136 bytes, same as TurboSHAKE256).
@@ -62,7 +62,7 @@ public sealed class KT256 : HashAlgorithm
 
     private readonly int _outputBytes;
     private readonly byte[] _customization;
-    private readonly SimdSupport _simdSupport;
+    private readonly TurboShake256 _turbo;
     private byte[] _buffer;
     private int _bufferLength;
     private bool _finalized;
@@ -108,7 +108,7 @@ public sealed class KT256 : HashAlgorithm
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
-        _simdSupport = simdSupport;
+        _turbo = new TurboShake256(simdSupport, ChainingValueSize, DomainSingleNode);
         // Rent initial buffer from shared pool to reduce allocations under benchmarks
         _buffer = ArrayPool<byte>.Shared.Rent(InitialBufferSize);
         _bufferLength = 0;
@@ -160,6 +160,18 @@ public sealed class KT256 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
+    }
+
+    /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
         if (_finalized)
@@ -190,7 +202,10 @@ public sealed class KT256 : HashAlgorithm
         {
             FinalizeInternal(output);
             _finalized = true;
+            return;
         }
+
+        _turbo.Squeeze(output);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -204,11 +219,13 @@ public sealed class KT256 : HashAlgorithm
         int newSize = _buffer.Length;
         while (newSize < requiredCapacity)
         {
-            newSize *= 2;
+            newSize = Math.Max(newSize * 2, requiredCapacity);
         }
 
-        byte[] newBuffer = new byte[newSize];
-        _buffer.AsSpan(0, _bufferLength).CopyTo(newBuffer);
+        byte[] newBuffer = ArrayPool<byte>.Shared.Rent(newSize);
+        Array.Copy(_buffer, 0, newBuffer, 0, _bufferLength);
+        // Return old buffer to pool and clear to avoid leaking sensitive data
+        ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
         _buffer = newBuffer;
     }
 
@@ -246,9 +263,9 @@ public sealed class KT256 : HashAlgorithm
 
     private void ComputeTurboShake256(ReadOnlySpan<byte> input, Span<byte> output, byte domainSeparator)
     {
-        using var turbo = TurboShake256.Create(_simdSupport, output.Length, domainSeparator);
-        turbo.TransformBlock(input);
-        turbo.Squeeze(output);
+        _turbo.ResetWithDomainSeparator(domainSeparator);
+        _turbo.TransformBlock(input);
+        _turbo.Squeeze(output);
     }
 
     private void ComputeTreeHash(ReadOnlySpan<byte> s, Span<byte> output)
@@ -344,7 +361,14 @@ public sealed class KT256 : HashAlgorithm
     {
         if (disposing)
         {
-            Array.Clear(_buffer, 0, _buffer.Length);
+            _turbo.Dispose();
+
+            if (_buffer != null)
+            {
+                // Clear and return to pool to avoid leaking sensitive data
+                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                _buffer = null!;
+            }
         }
         base.Dispose(disposing);
     }

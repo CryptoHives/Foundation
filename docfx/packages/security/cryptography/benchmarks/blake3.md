@@ -1,31 +1,31 @@
-﻿| Description                                  | TestDataSize | Mean           | Error       | StdDev      | Allocated |
-|--------------------------------------------- |------------- |---------------:|------------:|------------:|----------:|
-| ComputeHash · BLAKE3 · BLAKE3 (Native)       | 128B         |       113.4 ns |     0.21 ns |     0.19 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (SSSE3)        | 128B         |       387.8 ns |     2.77 ns |     2.59 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (Managed)      | 128B         |       574.7 ns |     1.64 ns |     1.45 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (BouncyCastle) | 128B         |     1,256.8 ns |     5.59 ns |     4.66 ns |     112 B |
-|                                              |              |                |             |             |           |
-| ComputeHash · BLAKE3 · BLAKE3 (Native)       | 137B         |       159.8 ns |     0.37 ns |     0.32 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (SSSE3)        | 137B         |       447.0 ns |     1.41 ns |     1.31 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (Managed)      | 137B         |       837.1 ns |     2.76 ns |     2.58 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (BouncyCastle) | 137B         |     1,910.5 ns |     8.91 ns |     8.34 ns |     112 B |
-|                                              |              |                |             |             |           |
-| ComputeHash · BLAKE3 · BLAKE3 (Native)       | 1KB          |       764.5 ns |     1.29 ns |     1.20 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (SSSE3)        | 1KB          |     1,307.3 ns |     3.42 ns |     3.20 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (Managed)      | 1KB          |     4,310.1 ns |    13.92 ns |    13.02 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (BouncyCastle) | 1KB          |     9,802.4 ns |    48.23 ns |    40.28 ns |     112 B |
-|                                              |              |                |             |             |           |
-| ComputeHash · BLAKE3 · BLAKE3 (Native)       | 1025B        |       869.7 ns |     3.62 ns |     3.03 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (SSSE3)        | 1025B        |     1,457.9 ns |     3.95 ns |     3.69 ns |     224 B |
-| ComputeHash · BLAKE3 · BLAKE3 (Managed)      | 1025B        |     4,792.9 ns |    22.15 ns |    20.72 ns |     224 B |
-| ComputeHash · BLAKE3 · BLAKE3 (BouncyCastle) | 1025B        |    10,715.8 ns |    33.38 ns |    31.23 ns |     168 B |
-|                                              |              |                |             |             |           |
-| ComputeHash · BLAKE3 · BLAKE3 (Native)       | 8KB          |     1,189.1 ns |     4.73 ns |     3.95 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (SSSE3)        | 8KB          |    10,365.8 ns |    15.47 ns |    13.71 ns |     896 B |
-| ComputeHash · BLAKE3 · BLAKE3 (Managed)      | 8KB          |    35,442.7 ns |    79.81 ns |    74.65 ns |     896 B |
-| ComputeHash · BLAKE3 · BLAKE3 (BouncyCastle) | 8KB          |    79,372.6 ns |   373.50 ns |   331.10 ns |     504 B |
-|                                              |              |                |             |             |           |
-| ComputeHash · BLAKE3 · BLAKE3 (Native)       | 128KB        |    14,322.3 ns |    18.89 ns |    14.75 ns |     112 B |
-| ComputeHash · BLAKE3 · BLAKE3 (SSSE3)        | 128KB        |   168,857.9 ns |   485.94 ns |   454.55 ns |   14336 B |
-| ComputeHash · BLAKE3 · BLAKE3 (Managed)      | 128KB        |   570,692.6 ns | 1,288.26 ns | 1,075.75 ns |   14336 B |
-| ComputeHash · BLAKE3 · BLAKE3 (BouncyCastle) | 128KB        | 1,370,440.2 ns | 3,535.86 ns | 2,952.60 ns |    7224 B |
+﻿| Description                            | TestDataSize | Mean            | Error         | StdDev        | Allocated |
+|--------------------------------------- |------------- |----------------:|--------------:|--------------:|----------:|
+| TryComputeHash · BLAKE3 · Native       | 128B         |        99.79 ns |      1.112 ns |      0.868 ns |         - |
+| TryComputeHash · BLAKE3 · Ssse3        | 128B         |       379.11 ns |      7.604 ns |      9.051 ns |         - |
+| TryComputeHash · BLAKE3 · Managed      | 128B         |       584.88 ns |     11.454 ns |     16.789 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle | 128B         |     1,334.07 ns |     25.219 ns |     23.590 ns |         - |
+|                                        |              |                 |               |               |           |
+| TryComputeHash · BLAKE3 · Native       | 137B         |       150.95 ns |      1.716 ns |      1.433 ns |         - |
+| TryComputeHash · BLAKE3 · Ssse3        | 137B         |       441.05 ns |      8.458 ns |     10.697 ns |         - |
+| TryComputeHash · BLAKE3 · Managed      | 137B         |       852.27 ns |     16.735 ns |     16.436 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle | 137B         |     1,965.43 ns |     37.173 ns |     39.774 ns |         - |
+|                                        |              |                 |               |               |           |
+| TryComputeHash · BLAKE3 · Native       | 1KB          |       755.42 ns |      8.744 ns |      7.751 ns |         - |
+| TryComputeHash · BLAKE3 · Ssse3        | 1KB          |     1,311.29 ns |     25.746 ns |     27.548 ns |         - |
+| TryComputeHash · BLAKE3 · Managed      | 1KB          |     4,333.70 ns |     72.239 ns |     60.323 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle | 1KB          |     9,584.57 ns |    182.460 ns |    195.230 ns |         - |
+|                                        |              |                 |               |               |           |
+| TryComputeHash · BLAKE3 · Native       | 1025B        |       860.81 ns |     12.394 ns |     11.593 ns |         - |
+| TryComputeHash · BLAKE3 · Ssse3        | 1025B        |     1,469.12 ns |     28.477 ns |     25.244 ns |         - |
+| TryComputeHash · BLAKE3 · Managed      | 1025B        |     4,932.61 ns |     98.400 ns |    124.445 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle | 1025B        |    11,098.59 ns |    174.493 ns |    163.221 ns |      56 B |
+|                                        |              |                 |               |               |           |
+| TryComputeHash · BLAKE3 · Native       | 8KB          |     1,176.63 ns |      8.662 ns |      7.233 ns |         - |
+| TryComputeHash · BLAKE3 · Ssse3        | 8KB          |    10,523.20 ns |    205.128 ns |    219.484 ns |         - |
+| TryComputeHash · BLAKE3 · Managed      | 8KB          |    36,938.11 ns |    737.981 ns |    849.860 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle | 8KB          |    82,697.85 ns |  1,404.112 ns |  1,313.408 ns |     392 B |
+|                                        |              |                 |               |               |           |
+| TryComputeHash · BLAKE3 · Native       | 128KB        |    14,497.73 ns |    274.336 ns |    256.614 ns |         - |
+| TryComputeHash · BLAKE3 · Ssse3        | 128KB        |   172,362.88 ns |  3,298.001 ns |  3,239.078 ns |         - |
+| TryComputeHash · BLAKE3 · Managed      | 128KB        |   588,453.37 ns |  9,500.941 ns | 10,941.298 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle | 128KB        | 1,352,162.81 ns | 22,567.347 ns | 21,109.511 ns |    7112 B |

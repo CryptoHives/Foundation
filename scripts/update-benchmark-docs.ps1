@@ -110,12 +110,12 @@ $packageConfigurations = @{
             @{ Source = "AsconXof128Benchmark-report.md"; Target = "asconxof128.md" }
 
             # KMAC
-            @{ Source = "Kmac128Benchmark-report.md"; Target = "kmac128.md" }
-            @{ Source = "Kmac256Benchmark-report.md"; Target = "kmac256.md" }
-            @{ Source = "Kmac128IncrementalBenchmark-report.md"; Target = "kmac128incremental.md" }
-            @{ Source = "Kmac128OutputSizeBenchmark-report.md"; Target = "kmac128outputsize.md" }
-            @{ Source = "Kmac256IncrementalBenchmark-report.md"; Target = "kmac256incremental.md" }
-            @{ Source = "Kmac256OutputSizeBenchmark-report.md"; Target = "kmac256outputsize.md" }
+            @{ Source = "KMac128Benchmark-report.md"; Target = "kmac128.md" }
+            @{ Source = "KMac256Benchmark-report.md"; Target = "kmac256.md" }
+            @{ Source = "KMac128IncrementalBenchmark-report.md"; Target = "kmac128incremental.md" }
+            @{ Source = "KMac128OutputSizeBenchmark-report.md"; Target = "kmac128outputsize.md" }
+            @{ Source = "KMac256IncrementalBenchmark-report.md"; Target = "kmac256incremental.md" }
+            @{ Source = "KMac256OutputSizeBenchmark-report.md"; Target = "kmac256outputsize.md" }
         )
     }
 }
