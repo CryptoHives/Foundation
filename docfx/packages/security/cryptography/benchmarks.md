@@ -158,7 +158,7 @@ BouncyCastle leads the BLAKE2 benchmarks due to highly optimized native code. Th
 
 BLAKE3 is a modern hash function designed for extreme parallelism and speed. It can leverage tree hashing to process multiple chunks simultaneously, making it ideal for hashing large files. The **Native (Rust)** variant uses `blake3-dotnet`, which wraps the official Rust implementation via P/Invoke—this is the fastest option and recommended when native dependencies are acceptable.
 
-The managed CryptoHives implementation uses SSSE3 SIMD instructions and significantly outperforms BouncyCastle (3–7×), but trails the native Rust version by ~3× because the managed implementation does not yet exploit BLAKE3's parallel tree structure. For most use cases, the managed version provides excellent performance without native dependencies.
+The managed CryptoHives implementation uses SSSE3 SIMD instructions and significantly outperforms BouncyCastle (3–7×), but trails the native Rust version by ~3× because the managed implementation does not yet parallelize chunk processing across threads. Tree finalization and counter-mode XOF output are fully implemented. For most use cases, the managed version provides excellent performance without native dependencies.
 
 [!INCLUDE[](benchmarks/blake3.md)]
 
@@ -229,8 +229,51 @@ On .NET 9+, the OS provides native KMAC support which is fastest for small input
 #### KMAC256
 [!INCLUDE[](benchmarks/kmac256.md)]
 
+### XOF Mode Benchmarks
+
+The XOF (extendable-output function) benchmarks measure squeeze throughput via the `IExtendableOutput` interface. Each iteration absorbs a fixed **2 KB** of input (two 1 KB blocks), then squeezes a variable number of output bytes (128 B to 128 KB). This isolates the squeeze permutation cost from absorb overhead, which is the defining performance characteristic of XOF algorithms. The fixed-output hash benchmarks above measure `TryComputeHash` with a small fixed digest; these benchmarks focus on the extendable output path.
+
+Implementations include CryptoHives managed, BouncyCastle, OS native, and native Rust (BLAKE3) where available.
+
+#### SHAKE128 XOF
+[!INCLUDE[](benchmarks/xof-shake128.md)]
+
+#### SHAKE256 XOF
+[!INCLUDE[](benchmarks/xof-shake256.md)]
+
+#### cSHAKE128 XOF
+[!INCLUDE[](benchmarks/xof-cshake128.md)]
+
+#### cSHAKE256 XOF
+[!INCLUDE[](benchmarks/xof-cshake256.md)]
+
+#### TurboSHAKE128 XOF
+[!INCLUDE[](benchmarks/xof-turboshake128.md)]
+
+#### TurboSHAKE256 XOF
+[!INCLUDE[](benchmarks/xof-turboshake256.md)]
+
+#### KT128 XOF
+[!INCLUDE[](benchmarks/xof-kt128.md)]
+
+#### KT256 XOF
+[!INCLUDE[](benchmarks/xof-kt256.md)]
+
+#### KMAC128 XOF
+[!INCLUDE[](benchmarks/xof-kmac128.md)]
+
+#### KMAC256 XOF
+[!INCLUDE[](benchmarks/xof-kmac256.md)]
+
+#### BLAKE3 XOF
+[!INCLUDE[](benchmarks/xof-blake3.md)]
+
+#### Ascon-XOF128 XOF
+[!INCLUDE[](benchmarks/xof-asconxof128.md)]
+
 ## See also
 
 - [Hash algorithms overview](hash-algorithms.md)
 - [MAC algorithms overview](mac-algorithms.md)
+- [XOF Mode (Extendable-Output)](xof-mode.md)
 - [NIST SP 800-185 (cSHAKE/KMAC)](specs/NIST-SP-800-185.md)

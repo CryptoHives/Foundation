@@ -112,10 +112,20 @@ $packageConfigurations = @{
             # KMAC
             @{ Source = "KMac128Benchmark-report.md"; Target = "kmac128.md" }
             @{ Source = "KMac256Benchmark-report.md"; Target = "kmac256.md" }
-            @{ Source = "KMac128IncrementalBenchmark-report.md"; Target = "kmac128incremental.md" }
-            @{ Source = "KMac128OutputSizeBenchmark-report.md"; Target = "kmac128outputsize.md" }
-            @{ Source = "KMac256IncrementalBenchmark-report.md"; Target = "kmac256incremental.md" }
-            @{ Source = "KMac256OutputSizeBenchmark-report.md"; Target = "kmac256outputsize.md" }
+
+            # XOF (Absorb/Squeeze)
+            @{ Source = "Shake128XofBenchmark-report.md"; Target = "xof-shake128.md" }
+            @{ Source = "Shake256XofBenchmark-report.md"; Target = "xof-shake256.md" }
+            @{ Source = "CShake128XofBenchmark-report.md"; Target = "xof-cshake128.md" }
+            @{ Source = "CShake256XofBenchmark-report.md"; Target = "xof-cshake256.md" }
+            @{ Source = "TurboShake128XofBenchmark-report.md"; Target = "xof-turboshake128.md" }
+            @{ Source = "TurboShake256XofBenchmark-report.md"; Target = "xof-turboshake256.md" }
+            @{ Source = "KT128XofBenchmark-report.md"; Target = "xof-kt128.md" }
+            @{ Source = "KT256XofBenchmark-report.md"; Target = "xof-kt256.md" }
+            @{ Source = "KMac128XofBenchmark-report.md"; Target = "xof-kmac128.md" }
+            @{ Source = "KMac256XofBenchmark-report.md"; Target = "xof-kmac256.md" }
+            @{ Source = "Blake3XofBenchmark-report.md"; Target = "xof-blake3.md" }
+            @{ Source = "AsconXof128XofBenchmark-report.md"; Target = "xof-asconxof128.md" }
         )
     }
 }
@@ -149,9 +159,10 @@ Write-Host ""
 
 if (-not (Test-Path $SourceDir)) {
     Write-Host "ERROR: Source directory does not exist." -ForegroundColor Red
+    $testProjectDir = Split-Path (Split-Path $SourceDir)
     Write-Host "Please run benchmarks first:"
-    Write-Host "  cd tests/Threading"
-    Write-Host "  dotnet run -c Release -- --filter `"*Benchmark*`"" 
+    Write-Host "  cd $testProjectDir"
+    Write-Host "  dotnet run -c Release -- --filter `"*Benchmark*`""
     exit 1
 }
 

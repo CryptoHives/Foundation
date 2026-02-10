@@ -502,7 +502,7 @@ public class ReferenceImplementationTests
     /// Validate KMAC128 implementation against BouncyCastle.
     /// </summary>
     [Test]
-    public void Kmac128MatchesBouncyCastle()
+    public void KMac128MatchesBouncyCastle()
     {
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] input = TestHelpers.FromHexString("00010203");
@@ -525,7 +525,7 @@ public class ReferenceImplementationTests
     /// Validate KMAC256 implementation against BouncyCastle.
     /// </summary>
     [Test]
-    public void Kmac256MatchesBouncyCastle()
+    public void KMac256MatchesBouncyCastle()
     {
         byte[] key = TestHelpers.FromHexString("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
         byte[] input = TestHelpers.FromHexString("00010203");

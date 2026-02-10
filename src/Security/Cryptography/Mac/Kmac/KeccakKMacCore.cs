@@ -27,7 +27,7 @@ using System.Text;
 public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
 {
     private static readonly byte[] _kmacFunctionName = Encoding.ASCII.GetBytes("KMAC");
-    private static readonly byte[] _encodedKmacFunctionName = CShake128.EncodeString(_kmacFunctionName);
+    private static readonly byte[] _encodedKMacFunctionName = CShake128.EncodeString(_kmacFunctionName);
 
     private readonly int _outputBytes;
     private readonly byte[] _encodedKey;
@@ -181,7 +181,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
     private void AbsorbCShakePreamble()
     {
         // bytepad(encode_string(N) || encode_string(S), rate) where N = "KMAC"
-        byte[] encodedN = _encodedKmacFunctionName;
+        byte[] encodedN = _encodedKMacFunctionName;
         byte[] encodedS = _encodedCustomization;
         Span<byte> leftEncodedRate = stackalloc byte[CShake128.EncodeBufferLength];
         if (!CShake128.TryLeftEncode(leftEncodedRate, _rateBytes, out int leftEncodedBytes))
