@@ -34,7 +34,7 @@ public class HashConfig : ManualConfig
 
         Orderer = new CategoryThenDataSizeOrderer();
         AddColumn(new DescriptionColumn());
-        HideColumns("Method", "TestHashAlgorithm");
+        HideColumns("Method", "TestHashAlgorithm", "TestXofAlgorithm");
 
         // Export formats: markdown for docfx (custom R script generates grouped charts from it)
         AddExporter(ShortExporter);
@@ -67,20 +67,11 @@ public class HashConfig : ManualConfig
                 return $"{method} · {hashAlgorithm.Category} · {implType}";
             }
 
-            // Fallback: Parse method name pattern like "Kmac128_CryptoHives" -> "ComputeMac · KMAC-128 · CryptoHives"
-            if (method.Contains('_'))
+            var xofAlgorithm = benchmarkCase.Parameters["TestXofAlgorithm"] as XofAlgorithmType;
+            if (xofAlgorithm != null)
             {
-                var parts = method.Split('_');
-                if (parts.Length >= 2)
-                {
-                    string algo = parts[0] switch {
-                        "Kmac128" => "KMAC-128",
-                        "Kmac256" => "KMAC-256",
-                        _ => parts[0]
-                    };
-                    string impl = GetImplementationType($"({parts[^1]})");
-                    return $"ComputeMac · {algo} · {impl}";
-                }
+                var implType = GetImplementationType(xofAlgorithm.Name);
+                return $"{method} · {xofAlgorithm.Category} · {implType}";
             }
 
             return method;
@@ -167,7 +158,8 @@ public class HashConfig : ManualConfig
                     // Then by data size bytes
                     var parts = g.Key.Split('|');
                     var sizeName = parts.Length > 1 ? parts[1].Trim() : "";
-                    var size = DataSize.AllSizes.FirstOrDefault(s => s.Name == sizeName);
+                    var size = (DataSize?)DataSize.AllSizes.FirstOrDefault(s => s.Name == sizeName)
+                        ?? XofDataSize.AllSizes.FirstOrDefault(s => s.Name == sizeName);
                     return size?.Bytes ?? int.MaxValue;
                 });
 
@@ -182,7 +174,9 @@ public class HashConfig : ManualConfig
         private static string GetCategory(BenchmarkCase benchmark)
         {
             var hashAlgorithm = benchmark.Parameters["TestHashAlgorithm"] as HashAlgorithmType;
-            return hashAlgorithm?.Category ?? "Unknown";
+            if (hashAlgorithm != null) return hashAlgorithm.Category;
+            var xofAlgorithm = benchmark.Parameters["TestXofAlgorithm"] as XofAlgorithmType;
+            return xofAlgorithm?.Category ?? "Unknown";
         }
     }
 

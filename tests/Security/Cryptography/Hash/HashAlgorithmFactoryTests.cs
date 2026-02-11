@@ -71,7 +71,7 @@ public class HashAlgorithmFactoryTests
     /// Verifies that KMAC properly forwards constructor parameters.
     /// </summary>
     [Test]
-    public void Kmac128ForwardsConstructorParameters()
+    public void KMac128ForwardsConstructorParameters()
     {
         byte[] key = Encoding.UTF8.GetBytes("test-key-12345678");
         using var kmac = CryptoHivesMac.KMac128.Create(key, 64, "custom");

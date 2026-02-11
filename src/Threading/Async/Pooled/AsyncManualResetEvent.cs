@@ -103,7 +103,7 @@ public sealed class AsyncManualResetEvent
     /// </summary>
     public bool IsSet
     {
-        get { lock (_mutex) return _signaled; }
+        get => _signaled;
     }
 
     /// <summary>

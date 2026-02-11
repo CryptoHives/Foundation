@@ -1,6 +1,6 @@
-| Method                       | Mean      | Ratio | Allocated | Alloc Ratio |
-|----------------------------- |----------:|------:|----------:|------------:|
-| ReadLockReaderWriterLockSlim |  6.181 ns |  0.35 |         - |          NA |
-| ReaderLockRefImplAsync       | 16.246 ns |  0.92 |         - |          NA |
-| ReaderLockPooledAsync        | 17.633 ns |  1.00 |         - |          NA |
-| ReaderLockNitoAsync          | 41.139 ns |  2.33 |     320 B |          NA |
+﻿| Method                       | Mean      | Ratio | Allocated | 
+|----------------------------- |----------:|------:|----------:|
+| ReadLockReaderWriterLockSlim |  5.949 ns |  0.37 |         - | 
+| ReaderLockPooledAsync        | 16.219 ns |  1.00 |         - | 
+| ReaderLockRefImplAsync       | 16.825 ns |  1.04 |         - | 
+| ReaderLockNitoAsync          | 39.086 ns |  2.41 |     320 B |

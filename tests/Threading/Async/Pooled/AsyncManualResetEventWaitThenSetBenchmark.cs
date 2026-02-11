@@ -8,7 +8,6 @@ namespace Threading.Tests.Async.Pooled;
 #pragma warning disable CA1062 // Validate arguments of public methods
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -62,9 +61,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [BenchmarkCategory("AsyncManualResetEvent")]
 [NonParallelizable]
 public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBaseBenchmark

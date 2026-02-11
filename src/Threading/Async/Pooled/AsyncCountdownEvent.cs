@@ -91,7 +91,7 @@ public sealed class AsyncCountdownEvent
     /// </summary>
     public int CurrentCount
     {
-        get { lock (_mutex) return _currentCount; }
+        get => Volatile.Read(ref _currentCount);
     }
 
     /// <summary>
@@ -99,7 +99,7 @@ public sealed class AsyncCountdownEvent
     /// </summary>
     public int InitialCount
     {
-        get { lock (_mutex) return _initialCount; }
+        get => Volatile.Read(ref _initialCount);
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public sealed class AsyncCountdownEvent
     /// </summary>
     public bool IsSet
     {
-        get { lock (_mutex) return _currentCount == 0; }
+        get => Volatile.Read(ref _currentCount) == 0;
     }
 
     /// <summary>

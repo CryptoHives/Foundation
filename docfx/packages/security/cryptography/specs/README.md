@@ -33,8 +33,8 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 |-----------|----------|--------|-------|
 | cSHAKE128 | 128 bits | ✅ Implemented | `CShake128` |
 | cSHAKE256 | 256 bits | ✅ Implemented | `CShake256` |
-| KMAC128 | 128 bits | ✅ Implemented | `Kmac128` |
-| KMAC256 | 256 bits | ✅ Implemented | `Kmac256` |
+| KMAC128 | 128 bits | ✅ Implemented | `KMac128` |
+| KMAC256 | 256 bits | ✅ Implemented | `KMac256` |
 | TupleHash128 | 128 bits | ⬜ Not implemented | - |
 | TupleHash256 | 256 bits | ⬜ Not implemented | - |
 | ParallelHash128 | 128 bits | ⬜ Not implemented | - |

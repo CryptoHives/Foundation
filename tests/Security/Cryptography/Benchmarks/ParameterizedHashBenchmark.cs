@@ -7,8 +7,8 @@ using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Linq;
+using System.Security.Cryptography;
 
 /// <summary>
 /// Base class for parameterized hash algorithm benchmarks.

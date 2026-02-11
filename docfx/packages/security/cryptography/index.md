@@ -233,7 +233,7 @@ All implementations use fixed-size internal buffers based on their block size. N
 |---------|-------------|------------------------------|
 | OS dependency | None | Uses CNG/OpenSSL |
 | Cross-platform consistency | Guaranteed | May vary |
-| Hardware acceleration | No | Yes (when available) |
+| Hardware acceleration | Managed SIMD (SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL) |
 | SHA-3 support | Full | .NET 8+ only |
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |
