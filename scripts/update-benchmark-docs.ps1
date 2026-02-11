@@ -3,13 +3,13 @@
 
 # update-benchmark-docs.ps1
 # Copies BenchmarkDotNet results to docfx benchmark documentation folder
-# Usage: .\scripts\update-benchmark-docs.ps1 [-SourceDir <path>] [-DestDir <path>] [-DryRun]
+# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>] [-DryRun]
 
 [CmdletBinding()]
 param(
-    [Parameter(HelpMessage = "Benchmark package to update (Threading or Cryptography)")]
+    [Parameter(HelpMessage = "Project to update (Threading or Cryptography)")]
     [ValidateSet("Threading", "Cryptography")]
-    [string]$Package = "Threading",
+    [string]$Project = "Threading",
 
     [Parameter(HelpMessage = "Source directory containing BenchmarkDotNet results")]
     [string]$SourceDir,
@@ -28,19 +28,19 @@ $packageConfigurations = @{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
         DestDir   = "docfx/packages/threading/benchmarks"
         Files     = @(
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncLockSingleBenchmark-report-github.md"; Target = "asynclock-single.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncLockMultipleBenchmark-report-github.md"; Target = "asynclock-multiple.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventSetBenchmark-report-github.md"; Target = "asyncautoresetevent-set.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventSetThenWaitBenchmark-report-github.md"; Target = "asyncautoresetevent-setthenw.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventWaitThenSetBenchmark-report-github.md"; Target = "asyncautoresetevent-waitthenset.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventSetResetBenchmark-report-github.md"; Target = "asyncmanualresetevent-setreset.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventSetThenWaitBenchmark-report-github.md"; Target = "asyncmanualresetevent-setthenw.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventWaitThenSetBenchmark-report-github.md"; Target = "asyncmanualresetevent-waitthenset.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncSemaphoreSingleBenchmark-report-github.md"; Target = "asyncsemaphore-single.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncCountdownEventSignalBenchmark-report-github.md"; Target = "asynccountdownevent-signal.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncBarrierSignalAndWaitBenchmark-report-github.md"; Target = "asyncbarrier-signalandwait.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncReaderWriterLockReaderBenchmark-report-github.md"; Target = "asyncreaderwriterlock-reader.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncReaderWriterLockWriterBenchmark-report-github.md"; Target = "asyncreaderwriterlock-writer.md" }
+            @{ Source = "AsyncLockSingleBenchmark-report.md"; Target = "asynclock-single.md" }
+            @{ Source = "AsyncLockMultipleBenchmark-report.md"; Target = "asynclock-multiple.md" }
+            @{ Source = "AsyncAutoResetEventSetBenchmark-report.md"; Target = "asyncautoresetevent-set.md" }
+            @{ Source = "AsyncAutoResetEventSetThenWaitBenchmark-report.md"; Target = "asyncautoresetevent-setthenw.md" }
+            @{ Source = "AsyncAutoResetEventWaitThenSetBenchmark-report.md"; Target = "asyncautoresetevent-waitthenset.md" }
+            @{ Source = "AsyncManualResetEventSetResetBenchmark-report.md"; Target = "asyncmanualresetevent-setreset.md" }
+            @{ Source = "AsyncManualResetEventSetThenWaitBenchmark-report.md"; Target = "asyncmanualresetevent-setthenw.md" }
+            @{ Source = "AsyncManualResetEventWaitThenSetBenchmark-report.md"; Target = "asyncmanualresetevent-waitthenset.md" }
+            @{ Source = "AsyncSemaphoreSingleBenchmark-report.md"; Target = "asyncsemaphore-single.md" }
+            @{ Source = "AsyncCountdownEventSignalBenchmark-report.md"; Target = "asynccountdownevent-signal.md" }
+            @{ Source = "AsyncBarrierSignalAndWaitBenchmark-report.md"; Target = "asyncbarrier-signalandwait.md" }
+            @{ Source = "AsyncReaderWriterLockReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-reader.md" }
+            @{ Source = "AsyncReaderWriterLockWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-writer.md" }
         )
     }
 
@@ -130,12 +130,12 @@ $packageConfigurations = @{
     }
 }
 
-if (-not $packageConfigurations.ContainsKey($Package)) {
-    Write-Host "ERROR: Unknown package '$Package'." -ForegroundColor Red
+if (-not $packageConfigurations.ContainsKey($Project)) {
+    Write-Host "ERROR: Unknown project '$Project'." -ForegroundColor Red
     exit 1
 }
 
-$selectedConfig = $packageConfigurations[$Package]
+$selectedConfig = $packageConfigurations[$Project]
 
 if (-not $PSBoundParameters.ContainsKey('SourceDir') -or [string]::IsNullOrWhiteSpace($SourceDir)) {
     $SourceDir = $selectedConfig.SourceDir
@@ -152,7 +152,7 @@ Write-Host "========================================"
 Write-Host " Updating Benchmark Documentation"
 Write-Host "========================================"
 Write-Host ""
-Write-Host "Package: $Package"
+Write-Host "Project: $Project"
 Write-Host "Source: $SourceDir"
 Write-Host "Destination: $DestDir"
 Write-Host ""

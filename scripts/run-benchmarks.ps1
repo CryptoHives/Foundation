@@ -310,8 +310,10 @@ Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
 Write-Host ""
 
 if ($DryRun) {
-    Write-Host "[DRY RUN] Command would be executed in: $testProject" -ForegroundColor Yellow
-    exit 0
+    $dotnetArgs += "--job"
+    $dotnetArgs += "Dry"
+    Write-Host "[DRY RUN] Running all benchmarks with minimal iterations (Job.Dry)" -ForegroundColor Yellow
+    Write-Host ""
 }
 
 # Change to test project directory and run

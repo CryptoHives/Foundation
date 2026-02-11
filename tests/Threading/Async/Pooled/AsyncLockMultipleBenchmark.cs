@@ -8,7 +8,6 @@ namespace Threading.Tests.Async.Pooled;
 #pragma warning disable CA1062 // Validate arguments of public methods
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
@@ -44,9 +43,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [NonParallelizable]
 [BenchmarkCategory("AsyncLock")]
 public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
