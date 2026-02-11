@@ -5,8 +5,6 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,7 +50,7 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncCountdownEvent
 {
-    private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
+    private WaiterQueue<bool> _waiters;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
 #if NET9_0_OR_GREATER
     private readonly Lock _mutex;
@@ -82,7 +80,7 @@ public sealed class AsyncCountdownEvent
         _initialCount = initialCount;
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _mutex = new();
-        _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
+        _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
 
@@ -192,8 +190,7 @@ public sealed class AsyncCountdownEvent
             throw new ArgumentOutOfRangeException(nameof(signalCount), signalCount, "Signal count must be at least 1.");
         }
 
-        int count;
-        ManualResetValueTaskSource<bool>[]? toRelease = null;
+        ManualResetValueTaskSource<bool>? chain = null;
 
         lock (_mutex)
         {
@@ -211,16 +208,7 @@ public sealed class AsyncCountdownEvent
 
             if (_currentCount == 0)
             {
-                count = _waiters.Count;
-                if (count > 0)
-                {
-                    toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(count);
-                    for (int i = 0; i < count; i++)
-                    {
-                        toRelease[i] = _waiters.Dequeue();
-                    }
-                    Debug.Assert(_waiters.Count == 0);
-                }
+                chain = _waiters.DetachAll(out _);
             }
             else
             {
@@ -228,19 +216,12 @@ public sealed class AsyncCountdownEvent
             }
         }
 
-        if (toRelease is not null)
+        while (chain is not null)
         {
-            try
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    toRelease[i].SetResult(true);
-                }
-            }
-            finally
-            {
-                ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
-            }
+            var next = chain.Next;
+            chain.Next = null;
+            chain.SetResult(true);
+            chain = next;
         }
     }
 
@@ -353,21 +334,13 @@ public sealed class AsyncCountdownEvent
         }
 #endif
 
-        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
-        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
+        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
         lock (_mutex)
         {
-            int count = _waiters.Count;
-            while (count-- > 0)
+            if (_waiters.Remove(waiter))
             {
-                var dequeued = _waiters.Dequeue();
-                if (ReferenceEquals(dequeued, waiter))
-                {
-                    toCancel = waiter;
-                    continue;
-                }
-                _waiters.Enqueue(dequeued);
+                toCancel = waiter;
             }
         }
 

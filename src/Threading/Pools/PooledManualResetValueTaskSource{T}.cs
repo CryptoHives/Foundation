@@ -81,6 +81,8 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
         _ownerPool = null;
         _core.Reset();
         _cancellationTokenRegistration = default;
+        Next = null;
+        Prev = null;
         return true;
     }
 

@@ -117,8 +117,6 @@ using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
 byte[] mac = kmac.ComputeHash(message);
 ```
 
-> **Note:** This package is currently in development and not yet published to NuGet.
-
 ---
 
 ### Threading Analyzers Package (Standalone)

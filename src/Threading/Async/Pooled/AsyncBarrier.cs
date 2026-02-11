@@ -7,8 +7,6 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,7 +65,7 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncBarrier
 {
-    private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
+    private WaiterQueue<bool> _waiters;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private readonly Action<AsyncBarrier>? _postPhaseAction;
 #if NET9_0_OR_GREATER
@@ -116,7 +114,7 @@ public sealed class AsyncBarrier
         _postPhaseAction = postPhaseAction;
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _mutex = new();
-        _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : participantCount);
+        _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
 
@@ -170,8 +168,7 @@ public sealed class AsyncBarrier
     /// <exception cref="BarrierPostPhaseException">Thrown when the post-phase action throws an exception.</exception>
     public ValueTask SignalAndWaitAsync(CancellationToken cancellationToken = default)
     {
-        int count;
-        ManualResetValueTaskSource<bool>[]? toRelease = null;
+        ManualResetValueTaskSource<bool>? chain = null;
         Exception? postPhaseException = null;
 
         lock (_mutex)
@@ -231,49 +228,16 @@ public sealed class AsyncBarrier
             _participantsRemaining = _participantCount;
             _currentPhase++;
 
-            count = _waiters.Count;
-            if (count > 0)
-            {
-                toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(count);
-                for (int i = 0; i < count; i++)
-                {
-                    toRelease[i] = _waiters.Dequeue();
-                }
-                Debug.Assert(_waiters.Count == 0);
-            }
+            chain = _waiters.DetachAll(out _);
         }
 
-        if (toRelease is not null)
-        {
-            try
-            {
-                if (postPhaseException is not null)
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        toRelease[i].SetException(postPhaseException);
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        toRelease[i].SetResult(true);
-                    }
-                }
-            }
-            finally
-            {
-                ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
-            }
-        }
-
-        // The last participant (caller) also needs to see the exception
         if (postPhaseException is not null)
         {
+            SetChainException(chain, postPhaseException);
             return new ValueTask(Task.FromException(postPhaseException));
         }
 
+        SetChainResult(chain);
         return default;
     }
 
@@ -331,8 +295,7 @@ public sealed class AsyncBarrier
     {
         if (participantCount < 1) throw new ArgumentOutOfRangeException(nameof(participantCount), participantCount, "The participantCount argument must be a positive value.");
 
-        int count;
-        ManualResetValueTaskSource<bool>[]? toRelease = null;
+        ManualResetValueTaskSource<bool>? chain = null;
         Exception? postPhaseException = null;
 
         lock (_mutex)
@@ -369,31 +332,13 @@ public sealed class AsyncBarrier
                 _currentPhase++;
                 _participantsRemaining = _participantCount;
 
-                count = _waiters.Count;
-                if (count > 0)
-                {
-                    toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(count);
-                    for (int i = 0; i < count; i++)
-                    {
-                        toRelease[i] = _waiters.Dequeue();
-                    }
-                    Debug.Assert(_waiters.Count == 0);
-                }
+                chain = _waiters.DetachAll(out _);
             }
             else if (_participantCount == 0)
             {
                 // All participants removed - release any waiters without advancing phase
-                count = _waiters.Count;
-                if (count > 0)
-                {
-                    toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(count);
-                    for (int i = 0; i < count; i++)
-                    {
-                        toRelease[i] = _waiters.Dequeue();
-                    }
-                    Debug.Assert(_waiters.Count == 0);
-                }
-                else
+                chain = _waiters.DetachAll(out int detachedCount);
+                if (detachedCount == 0)
                 {
                     return;
                 }
@@ -404,35 +349,34 @@ public sealed class AsyncBarrier
             }
         }
 
-        if (toRelease is not null)
-        {
-            try
-            {
-                if (postPhaseException is not null)
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        toRelease[i].SetException(postPhaseException);
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        toRelease[i].SetResult(true);
-                    }
-                }
-            }
-            finally
-            {
-                ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
-            }
-        }
-
-        // Throw for the caller of RemoveParticipants if post-phase action failed
         if (postPhaseException is not null)
         {
+            SetChainException(chain, postPhaseException);
             throw postPhaseException;
+        }
+
+        SetChainResult(chain);
+    }
+
+    private static void SetChainResult(ManualResetValueTaskSource<bool>? chain)
+    {
+        while (chain is not null)
+        {
+            var next = chain.Next;
+            chain.Next = null;
+            chain.SetResult(true);
+            chain = next;
+        }
+    }
+
+    private static void SetChainException(ManualResetValueTaskSource<bool>? chain, Exception exception)
+    {
+        while (chain is not null)
+        {
+            var next = chain.Next;
+            chain.Next = null;
+            chain.SetException(exception);
+            chain = next;
         }
     }
 
@@ -455,22 +399,14 @@ public sealed class AsyncBarrier
         }
 #endif
 
-        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
-        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
+        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
         lock (_mutex)
         {
-            int count = _waiters.Count;
-            while (count-- > 0)
+            if (_waiters.Remove(waiter))
             {
-                var dequeued = _waiters.Dequeue();
-                if (ReferenceEquals(dequeued, waiter))
-                {
-                    toCancel = waiter;
-                    _participantsRemaining++;
-                    continue;
-                }
-                _waiters.Enqueue(dequeued);
+                toCancel = waiter;
+                _participantsRemaining++;
             }
         }
 

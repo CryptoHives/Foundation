@@ -22,6 +22,16 @@ using System.Threading.Tasks.Sources;
 public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
     /// <summary>
+    /// Link to the next node in the intrusive <see cref="WaiterQueue{T}"/>.
+    /// </summary>
+    internal ManualResetValueTaskSource<T>? Next;
+
+    /// <summary>
+    /// Link to the previous node in the intrusive <see cref="WaiterQueue{T}"/>.
+    /// </summary>
+    internal ManualResetValueTaskSource<T>? Prev;
+
+    /// <summary>
     /// Gets the version number of the current instance.
     /// </summary>
     public abstract short Version { get; }

@@ -7,7 +7,6 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -48,7 +47,7 @@ using System.Threading.Tasks;
 /// </remarks>
 public sealed class AsyncLock
 {
-    private readonly Queue<ManualResetValueTaskSource<Releaser>> _waiters;
+    private WaiterQueue<Releaser> _waiters;
     private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
 #if NET9_0_OR_GREATER
@@ -65,7 +64,7 @@ public sealed class AsyncLock
     /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     public AsyncLock(int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
-        _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
+        _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _mutex = new();
         _taken = 0;
@@ -251,21 +250,13 @@ public sealed class AsyncLock
         }
 #endif
 
-        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
-        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
+        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<Releaser>? toCancel = null;
         lock (_mutex)
         {
-            int count = _waiters.Count;
-            while (count-- > 0)
+            if (_waiters.Remove(waiter))
             {
-                var dequeued = _waiters.Dequeue();
-                if (ReferenceEquals(dequeued, waiter))
-                {
-                    toCancel = waiter;
-                    continue;
-                }
-                _waiters.Enqueue(dequeued);
+                toCancel = waiter;
             }
         }
 

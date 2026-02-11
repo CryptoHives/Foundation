@@ -5,8 +5,6 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -56,7 +54,7 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncSemaphore
 {
-    private readonly Queue<ManualResetValueTaskSource<bool>> _waiters;
+    private WaiterQueue<bool> _waiters;
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
 #if NET9_0_OR_GREATER
@@ -85,7 +83,7 @@ public sealed class AsyncSemaphore
         _currentCount = initialCount;
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _mutex = new();
-        _waiters = new(defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize);
+        _waiters = new();
         _localWaiter = new(this);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
@@ -189,8 +187,7 @@ public sealed class AsyncSemaphore
             throw new ArgumentOutOfRangeException(nameof(releaseCount), releaseCount, "Release count must be at least 1.");
         }
 
-        ManualResetValueTaskSource<bool>[]? toRelease = null;
-        int toReleaseCount = 0;
+        ManualResetValueTaskSource<bool>? chain = null;
 
         lock (_mutex)
         {
@@ -199,30 +196,18 @@ public sealed class AsyncSemaphore
 
             if (waitersToRelease > 0)
             {
-                toRelease = ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Rent(waitersToRelease);
-                for (int i = 0; i < waitersToRelease; i++)
-                {
-                    toRelease[i] = _waiters.Dequeue();
-                }
-                toReleaseCount = waitersToRelease;
+                chain = _waiters.DetachFirst(waitersToRelease, out _);
             }
 
             _currentCount += remainingReleases;
         }
 
-        if (toRelease is not null)
+        while (chain is not null)
         {
-            try
-            {
-                for (int i = 0; i < toReleaseCount; i++)
-                {
-                    toRelease[i].SetResult(true);
-                }
-            }
-            finally
-            {
-                ArrayPool<ManualResetValueTaskSource<bool>>.Shared.Return(toRelease);
-            }
+            var next = chain.Next;
+            chain.Next = null;
+            chain.SetResult(true);
+            chain = next;
         }
     }
 
@@ -249,21 +234,13 @@ public sealed class AsyncSemaphore
         }
 #endif
 
-        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
-        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
+        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
         lock (_mutex)
         {
-            int count = _waiters.Count;
-            while (count-- > 0)
+            if (_waiters.Remove(waiter))
             {
-                var dequeued = _waiters.Dequeue();
-                if (ReferenceEquals(dequeued, waiter))
-                {
-                    toCancel = waiter;
-                    continue;
-                }
-                _waiters.Enqueue(dequeued);
+                toCancel = waiter;
             }
         }
 

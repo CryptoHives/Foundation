@@ -86,6 +86,8 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     {
         _core.Reset();
         _cancellationTokenRegistration = default;
+        Next = null;
+        Prev = null;
         return Interlocked.Exchange(ref _inUse, 0) == 1;
     }
 
