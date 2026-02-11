@@ -65,7 +65,7 @@ public sealed class XofAlgorithmType : IFormattable
     public static IEnumerable<XofAlgorithmType> Shake128()
     {
         yield return new("SHAKE128", "SHAKE128 (Managed)", () => new CHHash.Shake128(32));
-        yield return new("SHAKE128", "SHAKE128 (BouncyCastle)", () => new BouncyCastleIXofXofAdapter(new ShakeDigest(128)));
+        yield return new("SHAKE128", "SHAKE128 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new ShakeDigest(128)));
 #if NET8_0_OR_GREATER
         if (System.Security.Cryptography.Shake128.IsSupported)
             yield return new("SHAKE128", "SHAKE128 (OS)", () => new OsShakeXofAdapter(128));
@@ -76,7 +76,7 @@ public sealed class XofAlgorithmType : IFormattable
     public static IEnumerable<XofAlgorithmType> Shake256()
     {
         yield return new("SHAKE256", "SHAKE256 (Managed)", () => new CHHash.Shake256(64));
-        yield return new("SHAKE256", "SHAKE256 (BouncyCastle)", () => new BouncyCastleIXofXofAdapter(new ShakeDigest(256)));
+        yield return new("SHAKE256", "SHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new ShakeDigest(256)));
 #if NET8_0_OR_GREATER
         if (System.Security.Cryptography.Shake256.IsSupported)
             yield return new("SHAKE256", "SHAKE256 (OS)", () => new OsShakeXofAdapter(256));
@@ -91,14 +91,14 @@ public sealed class XofAlgorithmType : IFormattable
     public static IEnumerable<XofAlgorithmType> CShake128()
     {
         yield return new("cSHAKE128", "cSHAKE128 (Managed)", () => new CHHash.CShake128(32));
-        yield return new("cSHAKE128", "cSHAKE128 (BouncyCastle)", () => new BouncyCastleIXofXofAdapter(new CShakeDigest(128, null, null)));
+        yield return new("cSHAKE128", "cSHAKE128 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new CShakeDigest(128, null, null)));
     }
 
     /// <summary>cSHAKE256 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> CShake256()
     {
         yield return new("cSHAKE256", "cSHAKE256 (Managed)", () => new CHHash.CShake256(64));
-        yield return new("cSHAKE256", "cSHAKE256 (BouncyCastle)", () => new BouncyCastleIXofXofAdapter(new CShakeDigest(256, null, null)));
+        yield return new("cSHAKE256", "cSHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new CShakeDigest(256, null, null)));
     }
 
     #endregion
@@ -177,7 +177,7 @@ public sealed class XofAlgorithmType : IFormattable
     public static IEnumerable<XofAlgorithmType> Blake3()
     {
         yield return new("BLAKE3", "BLAKE3 (Managed)", () => new CHHash.Blake3(32));
-        yield return new("BLAKE3", "BLAKE3 (BouncyCastle)", () => new BouncyCastleIXofXofAdapter(new Blake3Digest(256)));
+        yield return new("BLAKE3", "BLAKE3 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Blake3Digest(256)));
 #if BLAKE3_NATIVE
         yield return new("BLAKE3", "BLAKE3 (Native)", () => new Blake3NativeXofAdapter());
 #endif
@@ -192,7 +192,7 @@ public sealed class XofAlgorithmType : IFormattable
     {
         yield return new("Ascon-XOF128", "Ascon-XOF128 (Managed)", () => new CHHash.AsconXof128(32));
         yield return new("Ascon-XOF128", "Ascon-XOF128 (BouncyCastle)",
-            () => new BouncyCastleIXofXofAdapter(new Org.BouncyCastle.Crypto.Digests.AsconXof128()));
+            () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.AsconXof128()));
     }
 
     #endregion

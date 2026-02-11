@@ -3,11 +3,12 @@
 
 namespace Cryptography.Tests.Adapter;
 
-using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;
+using System.Security.Cryptography;
 
 /// <summary>
 /// Wraps a BouncyCastle <see cref="IXof"/> as an <see cref="IExtendableOutput"/> for XOF benchmarking.
@@ -17,11 +18,11 @@ using System;
 /// Works for <c>ShakeDigest</c>, <c>CShakeDigest</c>, <c>Blake3Digest</c>, <c>AsconXof128</c>,
 /// and any other BouncyCastle type implementing <see cref="IXof"/>.
 /// </remarks>
-internal sealed class BouncyCastleIXofXofAdapter : IExtendableOutput, IDisposable
+internal sealed class BouncyCastleIXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 {
     private readonly IXof _xof;
 
-    public BouncyCastleIXofXofAdapter(IXof xof) => _xof = xof ?? throw new ArgumentNullException(nameof(xof));
+    public BouncyCastleIXofAdapter(IXof xof) => _xof = xof ?? throw new ArgumentNullException(nameof(xof));
 
     /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
@@ -60,16 +61,14 @@ internal sealed class BouncyCastleIXofXofAdapter : IExtendableOutput, IDisposabl
 /// Requires key initialization via constructor. Casts <see cref="KMac"/> to <see cref="IXof"/>
 /// for squeeze output.
 /// </remarks>
-internal sealed class BouncyCastleKMacXofAdapter : IExtendableOutput, IDisposable
+internal sealed class BouncyCastleKMacXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 {
     private readonly KMac _kmac;
-    private readonly IXof _xof;
 
     public BouncyCastleKMacXofAdapter(int bitStrength, byte[] key, byte[] customization)
     {
         _kmac = new KMac(bitStrength, customization);
         _kmac.Init(new KeyParameter(key));
-        _xof = (IXof)_kmac;
     }
 
     /// <inheritdoc/>
@@ -87,10 +86,10 @@ internal sealed class BouncyCastleKMacXofAdapter : IExtendableOutput, IDisposabl
     public void Squeeze(Span<byte> output)
     {
 #if NET6_0_OR_GREATER
-        _xof.OutputFinal(output);
+        _kmac.OutputFinal(output);
 #else
         var arr = new byte[output.Length];
-        _xof.OutputFinal(arr, 0, arr.Length);
+        _kmac.OutputFinal(arr, 0, arr.Length);
         arr.AsSpan().CopyTo(output);
 #endif
     }
@@ -104,15 +103,15 @@ internal sealed class BouncyCastleKMacXofAdapter : IExtendableOutput, IDisposabl
 
 #if NET8_0_OR_GREATER
 /// <summary>
-/// Wraps .NET <see cref="System.Security.Cryptography.Shake128"/> or
-/// <see cref="System.Security.Cryptography.Shake256"/> static one-shot API
+/// Wraps .NET <see cref="Shake128"/> or
+/// <see cref="Shake256"/> static one-shot API
 /// as an <see cref="IExtendableOutput"/> for XOF benchmarking.
 /// </summary>
 /// <remarks>
 /// Buffers absorbed input and calls the static <c>HashData</c> method during squeeze.
 /// The buffer is allocated once during warmup and reused across benchmark iterations.
 /// </remarks>
-internal sealed class OsShakeXofAdapter : IExtendableOutput, IDisposable
+internal sealed class OsShakeXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 {
     private readonly int _bitStrength;
     private byte[] _buffer;
@@ -129,7 +128,10 @@ internal sealed class OsShakeXofAdapter : IExtendableOutput, IDisposable
     {
         int required = _absorbed + input.Length;
         if (_buffer.Length < required)
+        {
             Array.Resize(ref _buffer, required);
+        }
+
         input.CopyTo(_buffer.AsSpan(_absorbed));
         _absorbed += input.Length;
     }
@@ -139,9 +141,13 @@ internal sealed class OsShakeXofAdapter : IExtendableOutput, IDisposable
     {
         var input = _buffer.AsSpan(0, _absorbed);
         if (_bitStrength == 128)
-            System.Security.Cryptography.Shake128.HashData(input, output);
+        {
+            Shake128.HashData(input, output);
+        }
         else
-            System.Security.Cryptography.Shake256.HashData(input, output);
+        {
+            Shake256.HashData(input, output);
+        }
     }
 
     /// <inheritdoc/>
@@ -154,15 +160,15 @@ internal sealed class OsShakeXofAdapter : IExtendableOutput, IDisposable
 
 #if NET9_0_OR_GREATER
 /// <summary>
-/// Wraps .NET <see cref="System.Security.Cryptography.Kmac128"/> or
-/// <see cref="System.Security.Cryptography.Kmac256"/> static one-shot API
+/// Wraps .NET <see cref="Kmac128"/> or
+/// <see cref="Kmac256"/> static one-shot API
 /// as an <see cref="IExtendableOutput"/> for XOF benchmarking.
 /// </summary>
 /// <remarks>
 /// Buffers absorbed input and calls the static <c>HashData</c> method during squeeze.
 /// The buffer is allocated once during warmup and reused across benchmark iterations.
 /// </remarks>
-internal sealed class OsKmacXofAdapter : IExtendableOutput, IDisposable
+internal sealed class OsKmacXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 {
     private readonly int _bitStrength;
     private readonly byte[] _key;
@@ -183,7 +189,10 @@ internal sealed class OsKmacXofAdapter : IExtendableOutput, IDisposable
     {
         int required = _absorbed + input.Length;
         if (_buffer.Length < required)
+        {
             Array.Resize(ref _buffer, required);
+        }
+
         input.CopyTo(_buffer.AsSpan(_absorbed));
         _absorbed += input.Length;
     }
@@ -193,9 +202,13 @@ internal sealed class OsKmacXofAdapter : IExtendableOutput, IDisposable
     {
         var input = _buffer.AsSpan(0, _absorbed);
         if (_bitStrength == 128)
-            System.Security.Cryptography.Kmac128.HashData(_key, input, output, _customization);
+        {
+            Kmac128.HashData(_key, input, output, _customization);
+        }
         else
-            System.Security.Cryptography.Kmac256.HashData(_key, input, output, _customization);
+        {
+            Kmac256.HashData(_key, input, output, _customization);
+        }
     }
 
     /// <inheritdoc/>
@@ -215,11 +228,11 @@ internal sealed class OsKmacXofAdapter : IExtendableOutput, IDisposable
 /// Uses <c>Blake3.Hasher.Update</c> for absorb and <c>Blake3.Hasher.Finalize</c> for
 /// variable-length squeeze output. The Rust backend supports arbitrary output length natively.
 /// </remarks>
-internal sealed class Blake3NativeXofAdapter : IExtendableOutput, IDisposable
+internal sealed class Blake3NativeXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 {
-    private global::Blake3.Hasher _hasher;
+    private Blake3.Hasher _hasher;
 
-    public Blake3NativeXofAdapter() => _hasher = global::Blake3.Hasher.New();
+    public Blake3NativeXofAdapter() => _hasher = Blake3.Hasher.New();
 
     /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input) => _hasher.Update(input);
