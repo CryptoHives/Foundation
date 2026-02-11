@@ -1,6 +1,6 @@
-| Method                        | Mean      | Ratio | Allocated | Alloc Ratio |
-|------------------------------ |----------:|------:|----------:|------------:|
-| WriteLockReaderWriterLockSlim |  6.223 ns |  0.37 |         - |          NA |
-| WriterLockPooledAsync         | 16.653 ns |  1.00 |         - |          NA |
-| WriterLockRefImplAsync        | 19.192 ns |  1.15 |         - |          NA |
-| WriterLockNitoAsync           | 55.601 ns |  3.34 |     496 B |          NA |
+﻿| Method                        | Mean      | Ratio | Allocated | 
+|------------------------------ |----------:|------:|----------:|
+| WriteLockReaderWriterLockSlim |  7.466 ns |  0.49 |         - | 
+| WriterLockPooledAsync         | 15.287 ns |  1.00 |         - | 
+| WriterLockRefImplAsync        | 18.999 ns |  1.24 |         - | 
+| WriterLockNitoAsync           | 51.303 ns |  3.36 |     496 B |

@@ -1,13 +1,13 @@
-| Method                             | Mean       | Ratio | Allocated | Alloc Ratio |
-|----------------------------------- |-----------:|------:|----------:|------------:|
-| IncrementSingle                    |  0.0050 ns | 0.000 |         - |          NA |
-| InterlockedIncrementSingle         |  0.2035 ns | 0.015 |         - |          NA |
-| LockEnterScopeSingle               |  3.3816 ns | 0.257 |         - |          NA |
-| LockUnlockSingle                   |  3.4124 ns | 0.260 |         - |          NA |
-| ObjectLockUnlockSingle             |  4.1796 ns | 0.318 |         - |          NA |
-| LockUnlockPooledSingleAsync        | 13.1516 ns | 1.000 |         - |          NA |
-| LockUnlockSemaphoreSlimSingleAsync | 18.8173 ns | 1.431 |         - |          NA |
-| LockUnlockRefImplSingleAsync       | 20.2174 ns | 1.537 |         - |          NA |
-| LockUnlockNonKeyedSingleAsync      | 23.1732 ns | 1.762 |         - |          NA |
-| LockUnlockNitoSingleAsync          | 41.2909 ns | 3.140 |     320 B |          NA |
-| LockUnlockNeoSmartSingleAsync      | 60.1140 ns | 4.571 |     208 B |          NA |
+﻿| Method                             | Mean       | Ratio | Allocated | 
+|----------------------------------- |-----------:|------:|----------:|
+| IncrementSingle                    |  0.0051 ns | 0.000 |         - | 
+| InterlockedIncrementSingle         |  0.1780 ns | 0.015 |         - | 
+| LockEnterScopeSingle               |  3.1498 ns | 0.261 |         - | 
+| LockUnlockSingle                   |  3.2406 ns | 0.269 |         - | 
+| ObjectLockUnlockSingle             |  3.9122 ns | 0.324 |         - | 
+| LockUnlockPooledSingleAsync        | 12.0646 ns | 1.000 |         - | 
+| LockUnlockSemaphoreSlimSingleAsync | 17.4482 ns | 1.446 |         - | 
+| LockUnlockRefImplSingleAsync       | 18.6123 ns | 1.543 |         - | 
+| LockUnlockNonKeyedSingleAsync      | 21.8188 ns | 1.809 |         - | 
+| LockUnlockNitoSingleAsync          | 38.0193 ns | 3.152 |     320 B | 
+| LockUnlockNeoSmartSingleAsync      | 55.4943 ns | 4.600 |     208 B |
