@@ -95,7 +95,7 @@ public sealed class AsyncSemaphore
     /// </summary>
     public int CurrentCount
     {
-        get { lock (_mutex) return _currentCount; }
+        get => Volatile.Read(ref _currentCount);
     }
 
     /// <summary>

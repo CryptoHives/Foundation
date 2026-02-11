@@ -129,7 +129,7 @@ public sealed class AsyncBarrier
     /// </remarks>
     public int ParticipantCount
     {
-        get { lock (_mutex) return _participantCount; }
+        get => Volatile.Read(ref _participantCount);
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public sealed class AsyncBarrier
     /// </summary>
     public int ParticipantsRemaining
     {
-        get { lock (_mutex) return _participantsRemaining; }
+        get => Volatile.Read(ref _participantsRemaining);
     }
 
     /// <summary>
@@ -145,7 +145,7 @@ public sealed class AsyncBarrier
     /// </summary>
     public long CurrentPhase
     {
-        get { lock (_mutex) return _currentPhase; }
+        get => Volatile.Read(ref _currentPhase);
     }
 
     /// <summary>
