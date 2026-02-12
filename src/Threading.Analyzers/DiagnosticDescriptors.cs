@@ -25,7 +25,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "A ValueTask should only be awaited once. Awaiting it multiple times can cause undefined behavior or InvalidOperationException. Consider using .AsTask() if you need to await multiple times, or use .Preserve() to safely consume the ValueTask.",
         helpLinkUri: HelpLinkBase + "CHT001.md",
-        customTags: WellKnownDiagnosticTags.NotConfigurable);
+        customTags: WellKnownDiagnosticTags.Telemetry);
 
     /// <summary>
     /// CHT002: ValueTask.GetAwaiter().GetResult() used (blocking).
@@ -67,7 +67,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Calling AsTask() multiple times on the same ValueTask is undefined behavior and may throw InvalidOperationException. Store the result of AsTask() if you need to use it multiple times.",
         helpLinkUri: HelpLinkBase + "CHT004.md",
-        customTags: WellKnownDiagnosticTags.NotConfigurable);
+        customTags: WellKnownDiagnosticTags.Telemetry);
 
     /// <summary>
     /// CHT005: ValueTask.Result accessed directly.
