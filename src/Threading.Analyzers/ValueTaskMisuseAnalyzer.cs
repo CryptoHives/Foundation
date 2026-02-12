@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 
 /// <summary>
 /// Analyzer that detects common ValueTask misuse patterns.
@@ -342,12 +343,9 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                 case ForStatementSyntax forStatement:
                     if (forStatement.Declaration is not null)
                     {
-                        foreach (VariableDeclaratorSyntax variable in forStatement.Declaration.Variables)
+                        foreach (VariableDeclaratorSyntax variable in forStatement.Declaration.Variables.Where(v => v.Initializer is not null))
                         {
-                            if (variable.Initializer is not null)
-                            {
-                                AnalyzeExpressionRecursive(variable.Initializer.Value, isConsumed: false);
-                            }
+                            AnalyzeExpressionRecursive(variable.Initializer!.Value, isConsumed: false);
                         }
                     }
                     if (forStatement.Condition is not null)
