@@ -178,3 +178,60 @@ public class AsconXof128Benchmark : ParameterizedHashBenchmark
     public AsconXof128Benchmark() { }
     public AsconXof128Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
+
+/// <summary>
+/// Benchmark for Kupyna-256 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "Regional", "Kupyna256")]
+[NonParallelizable]
+public class Kupyna256Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Kupyna256();
+
+    public Kupyna256Benchmark() { }
+    public Kupyna256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}
+
+/// <summary>
+/// Benchmark for Kupyna-384 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "Regional", "Kupyna384")]
+[NonParallelizable]
+public class Kupyna384Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Kupyna384();
+
+    public Kupyna384Benchmark() { }
+    public Kupyna384Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}
+
+/// <summary>
+/// Benchmark for Kupyna-512 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "Regional", "Kupyna512")]
+[NonParallelizable]
+public class Kupyna512Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Kupyna512();
+
+    public Kupyna512Benchmark() { }
+    public Kupyna512Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}

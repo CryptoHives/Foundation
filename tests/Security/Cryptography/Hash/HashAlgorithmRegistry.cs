@@ -225,6 +225,9 @@ public static class HashAlgorithmRegistry
         // Streebog (GOST)
         AddStreebog(list);
 
+        // Kupyna (DSTU 7564 - Ukrainian)
+        AddKupyna(list);
+
         // KangarooTwelve / TurboSHAKE
         AddKangarooTwelve(list);
         AddTurboShake(list);
@@ -681,6 +684,31 @@ public static class HashAlgorithmRegistry
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_512Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-512", "OpenGost", 512,
             () => OpenGost.Security.Cryptography.Streebog512.Create(), Source.OpenGost));
+    }
+
+    #endregion
+
+    #region Kupyna
+
+    private static void AddKupyna(List<HashImplementation> list)
+    {
+        // Kupyna-256
+        list.Add(new("Kupyna-256", "Managed", 256,
+            () => CH.Kupyna.Create(32), Source.Managed));
+        list.Add(new("Kupyna-256", "BouncyCastle", 256,
+            () => new BouncyCastleHashAdapter(new BC.Dstu7564Digest(256)), Source.BouncyCastle));
+
+        // Kupyna-384
+        list.Add(new("Kupyna-384", "Managed", 384,
+            () => CH.Kupyna.Create(48), Source.Managed));
+        list.Add(new("Kupyna-384", "BouncyCastle", 384,
+            () => new BouncyCastleHashAdapter(new BC.Dstu7564Digest(384)), Source.BouncyCastle));
+
+        // Kupyna-512
+        list.Add(new("Kupyna-512", "Managed", 512,
+            () => CH.Kupyna.Create(64), Source.Managed));
+        list.Add(new("Kupyna-512", "BouncyCastle", 512,
+            () => new BouncyCastleHashAdapter(new BC.Dstu7564Digest(512)), Source.BouncyCastle));
     }
 
     #endregion

@@ -186,6 +186,10 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             // Streebog / GOST R 34.11-2012
             "STREEBOG-256" or "STREEBOG256" or "GOST3411-2012-256" => Streebog.Create(32),
             "STREEBOG-512" or "STREEBOG512" or "GOST3411-2012-512" or "STREEBOG" => Streebog.Create(64),
+            // Kupyna / DSTU 7564:2014
+            "KUPYNA-256" or "KUPYNA256" or "DSTU7564-256" => Kupyna.Create(32),
+            "KUPYNA-384" or "KUPYNA384" or "DSTU7564-384" => Kupyna.Create(48),
+            "KUPYNA-512" or "KUPYNA512" or "DSTU7564-512" or "KUPYNA" => Kupyna.Create(64),
             // Legacy (deprecated)
 #pragma warning disable CS0618 // SHA-1 obsolete warning - intentionally supported for legacy compatibility
             "SHA1" or "SHA-1" => SHA1.Create(),
