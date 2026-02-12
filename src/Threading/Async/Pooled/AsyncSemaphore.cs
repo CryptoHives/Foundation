@@ -186,7 +186,7 @@ public sealed class AsyncSemaphore
             throw new ArgumentOutOfRangeException(nameof(releaseCount), releaseCount, "Release count must be at least 1.");
         }
 
-        ManualResetValueTaskSource<bool>? chain = null;
+        ManualResetValueTaskSource<bool>? toReleaseChain = null;
 
         lock (_mutex)
         {
@@ -195,19 +195,13 @@ public sealed class AsyncSemaphore
 
             if (waitersToRelease > 0)
             {
-                chain = _waiters.DetachFirst(waitersToRelease, out _);
+                toReleaseChain = _waiters.DetachFirst(waitersToRelease, out _);
             }
 
             _currentCount += remainingReleases;
         }
 
-        while (chain is not null)
-        {
-            var next = chain.Next;
-            chain.Next = null;
-            chain.SetResult(true);
-            chain = next;
-        }
+        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
     }
 
     /// <summary>

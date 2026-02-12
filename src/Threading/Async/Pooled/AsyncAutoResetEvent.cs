@@ -253,7 +253,7 @@ public sealed class AsyncAutoResetEvent
     /// </summary>
     public void SetAll()
     {
-        ManualResetValueTaskSource<bool>? chain;
+        ManualResetValueTaskSource<bool>? toReleaseChain;
 
         lock (_mutex)
         {
@@ -263,16 +263,10 @@ public sealed class AsyncAutoResetEvent
                 return;
             }
 
-            chain = _waiters.DetachAll(out _);
+            toReleaseChain = _waiters.DetachAll(out _);
         }
 
-        while (chain is not null)
-        {
-            var next = chain.Next;
-            chain.Next = null;
-            chain.SetResult(true);
-            chain = next;
-        }
+        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
     }
 
 #if NET6_0_OR_GREATER

@@ -166,7 +166,7 @@ public sealed class AsyncBarrier
     /// <exception cref="BarrierPostPhaseException">Thrown when the post-phase action throws an exception.</exception>
     public ValueTask SignalAndWaitAsync(CancellationToken cancellationToken = default)
     {
-        ManualResetValueTaskSource<bool>? chain = null;
+        ManualResetValueTaskSource<bool>? toReleaseChain = null;
         Exception? postPhaseException = null;
 
         lock (_mutex)
@@ -226,16 +226,16 @@ public sealed class AsyncBarrier
             _participantsRemaining = _participantCount;
             _currentPhase++;
 
-            chain = _waiters.DetachAll(out _);
+            toReleaseChain = _waiters.DetachAll(out _);
         }
 
         if (postPhaseException is not null)
         {
-            SetChainException(chain, postPhaseException);
+            WaiterQueue<bool>.SetChainException(toReleaseChain, postPhaseException);
             return new ValueTask(Task.FromException(postPhaseException));
         }
 
-        SetChainResult(chain);
+        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
         return default;
     }
 
@@ -293,7 +293,7 @@ public sealed class AsyncBarrier
     {
         if (participantCount < 1) throw new ArgumentOutOfRangeException(nameof(participantCount), participantCount, "The participantCount argument must be a positive value.");
 
-        ManualResetValueTaskSource<bool>? chain = null;
+        ManualResetValueTaskSource<bool>? toRelease = null;
         Exception? postPhaseException = null;
 
         lock (_mutex)
@@ -330,12 +330,12 @@ public sealed class AsyncBarrier
                 _currentPhase++;
                 _participantsRemaining = _participantCount;
 
-                chain = _waiters.DetachAll(out _);
+                toRelease = _waiters.DetachAll(out _);
             }
             else if (_participantCount == 0)
             {
                 // All participants removed - release any waiters without advancing phase
-                chain = _waiters.DetachAll(out int detachedCount);
+                toRelease = _waiters.DetachAll(out int detachedCount);
                 if (detachedCount == 0)
                 {
                     return;
@@ -349,33 +349,11 @@ public sealed class AsyncBarrier
 
         if (postPhaseException is not null)
         {
-            SetChainException(chain, postPhaseException);
+            WaiterQueue<bool>.SetChainException(toRelease, postPhaseException);
             throw postPhaseException;
         }
 
-        SetChainResult(chain);
-    }
-
-    private static void SetChainResult(ManualResetValueTaskSource<bool>? chain)
-    {
-        while (chain is not null)
-        {
-            var next = chain.Next;
-            chain.Next = null;
-            chain.SetResult(true);
-            chain = next;
-        }
-    }
-
-    private static void SetChainException(ManualResetValueTaskSource<bool>? chain, Exception exception)
-    {
-        while (chain is not null)
-        {
-            var next = chain.Next;
-            chain.Next = null;
-            chain.SetException(exception);
-            chain = next;
-        }
+        WaiterQueue<bool>.SetChainResult(toRelease, true);
     }
 
 #if NET6_0_OR_GREATER

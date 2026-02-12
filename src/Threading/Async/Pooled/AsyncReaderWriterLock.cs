@@ -378,13 +378,7 @@ public sealed class AsyncReaderWriterLock
         }
         else
         {
-            while (readerChain is not null)
-            {
-                var next = readerChain.Next;
-                readerChain.Next = null;
-                readerChain.SetResult(new Releaser(this, false));
-                readerChain = next;
-            }
+            WaiterQueue<Releaser>.SetChainResult(readerChain, new Releaser(this, false));
         }
     }
 

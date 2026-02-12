@@ -189,7 +189,7 @@ public sealed class AsyncCountdownEvent
             throw new ArgumentOutOfRangeException(nameof(signalCount), signalCount, "Signal count must be at least 1.");
         }
 
-        ManualResetValueTaskSource<bool>? chain = null;
+        ManualResetValueTaskSource<bool>? toReleaseChain = null;
 
         lock (_mutex)
         {
@@ -207,7 +207,7 @@ public sealed class AsyncCountdownEvent
 
             if (_currentCount == 0)
             {
-                chain = _waiters.DetachAll(out _);
+                toReleaseChain = _waiters.DetachAll(out _);
             }
             else
             {
@@ -215,13 +215,7 @@ public sealed class AsyncCountdownEvent
             }
         }
 
-        while (chain is not null)
-        {
-            var next = chain.Next;
-            chain.Next = null;
-            chain.SetResult(true);
-            chain = next;
-        }
+        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
     }
 
     /// <summary>

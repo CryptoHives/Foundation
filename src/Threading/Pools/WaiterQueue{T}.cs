@@ -3,6 +3,7 @@
 
 namespace CryptoHives.Foundation.Threading.Pools;
 
+using System;
 using System.Diagnostics;
 
 /// <summary>
@@ -213,5 +214,47 @@ internal struct WaiterQueue<T>
         // Clear Prev on head (it was tail's prev before, but head.Prev is already null for head node).
         // head.Prev is already null since it was the queue head.
         return head;
+    }
+
+    /// <summary>
+    /// Walks a detached chain calling <see cref="ManualResetValueTaskSource{T}.SetResult"/> on each node.
+    /// </summary>
+    /// <remarks>
+    /// Clears the <see cref="ManualResetValueTaskSource{T}.Next"/> link on each node after processing.
+    /// Must be called outside the caller's lock since <see cref="ManualResetValueTaskSource{T}.SetResult"/>
+    /// may invoke continuations synchronously.
+    /// </remarks>
+    /// <param name="chain">The head of the detached chain, or <see langword="null"/>.</param>
+    /// <param name="value">The result value to set on each node.</param>
+    public static void SetChainResult(ManualResetValueTaskSource<T>? chain, T value)
+    {
+        while (chain is not null)
+        {
+            var next = chain.Next;
+            chain.Next = null;
+            chain.SetResult(value);
+            chain = next;
+        }
+    }
+
+    /// <summary>
+    /// Walks a detached chain calling <see cref="ManualResetValueTaskSource{T}.SetException"/> on each node.
+    /// </summary>
+    /// <remarks>
+    /// Clears the <see cref="ManualResetValueTaskSource{T}.Next"/> link on each node after processing.
+    /// Must be called outside the caller's lock since <see cref="ManualResetValueTaskSource{T}.SetException"/>
+    /// may invoke continuations synchronously.
+    /// </remarks>
+    /// <param name="chain">The head of the detached chain, or <see langword="null"/>.</param>
+    /// <param name="exception">The exception to set on each node.</param>
+    public static void SetChainException(ManualResetValueTaskSource<T>? chain, Exception exception)
+    {
+        while (chain is not null)
+        {
+            var next = chain.Next;
+            chain.Next = null;
+            chain.SetException(exception);
+            chain = next;
+        }
     }
 }

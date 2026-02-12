@@ -212,7 +212,7 @@ public sealed class AsyncManualResetEvent
     /// </remarks>
     public void Set()
     {
-        ManualResetValueTaskSource<bool>? chain;
+        ManualResetValueTaskSource<bool>? toReleaseChain;
 
         lock (_mutex)
         {
@@ -222,16 +222,10 @@ public sealed class AsyncManualResetEvent
             }
 
             _signaled = true;
-            chain = _waiters.DetachAll(out _);
+            toReleaseChain = _waiters.DetachAll(out _);
         }
 
-        while (chain is not null)
-        {
-            var next = chain.Next;
-            chain.Next = null;
-            chain.SetResult(true);
-            chain = next;
-        }
+        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
     }
 
     /// <summary>
