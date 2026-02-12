@@ -11,8 +11,7 @@ using System.Diagnostics;
 /// <remarks>
 /// <para>
 /// Unlike <see cref="System.Collections.Generic.Queue{T}"/>, this structure supports O(1) removal
-/// of any node by reference, eliminating the O(n) drain-and-re-enqueue pattern previously required
-/// for cancellation callbacks.
+/// of any node by reference allowing for efficient removal of cancellation callbacks.
 /// </para>
 /// <para>
 /// The link fields (<see cref="ManualResetValueTaskSource{T}.Next"/> and
