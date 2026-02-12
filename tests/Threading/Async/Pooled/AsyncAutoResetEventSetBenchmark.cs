@@ -46,7 +46,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Set", "Standard")]
+    [BenchmarkCategory("Set", "Standard", "AutoResetEvent")]
     public void AutoResetEventSet()
     {
         _eventStandard.Set();
