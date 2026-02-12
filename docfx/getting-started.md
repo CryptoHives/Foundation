@@ -51,8 +51,6 @@ Install-Package CryptoHives.Foundation.Threading.Analyzers
 
 ### CryptoHives.Foundation.Security.Cryptography
 
-> **Note:** This package is currently in development and not yet published to NuGet.
-
 The Cryptography package provides specification-based implementations of cryptographic hash algorithms and MACs.
 
 Install via NuGet Package Manager (when available):

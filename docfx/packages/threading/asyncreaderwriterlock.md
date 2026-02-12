@@ -74,14 +74,12 @@ public async Task<T> GetOrAddAsync<T>(string key, Func<Task<T>> factory, Cancell
 ```csharp
 public AsyncReaderWriterLock(
     bool runContinuationAsynchronously = true,
-    int defaultEventQueueSize = 0,
     IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `runContinuationAsynchronously` | If true (default), continuations run on the thread pool. |
-| `defaultEventQueueSize` | Initial capacity for waiter queues. |
 | `pool` | Optional custom pool for ValueTaskSource instances used by both readers and writers. |
 
 ## Properties

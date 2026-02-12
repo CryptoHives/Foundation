@@ -67,6 +67,7 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "Standard", "Barrier")]
     public async Task SignalAndWaitBarrierStandard()
     {
         for (int i = 0; i < ParticipantCount; i++)
@@ -84,6 +85,7 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SignalAndWait", "Pooled")]
     public async Task SignalAndWaitPooledAsync()
     {
         for (int i = 0; i < ParticipantCount; i++)
@@ -101,6 +103,7 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "RefImpl")]
     public async Task SignalAndWaitRefImplAsync()
     {
         for (int i = 0; i < ParticipantCount; i++)

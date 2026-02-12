@@ -44,7 +44,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetThenWait", "Standard")]
+    [BenchmarkCategory("SetThenWait", "Standard", "AutoResetEvent")]
     public void AutoResetEventSetThenWait()
     {
         _ = _eventStandard.Set();
@@ -60,7 +60,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Test]
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("SetThenWait", "Pooled")]
+    [BenchmarkCategory("SetThenWait", "Pooled (ValueTask)")]
     public async Task PooledAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventPooled.Set();
@@ -77,7 +77,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SetThenWait", "PooledAsTask")]
+    [BenchmarkCategory("SetThenWait", "Pooled (AsTask)")]
     public async Task PooledAsTaskAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventPooled.Set();

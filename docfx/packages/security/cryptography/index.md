@@ -19,7 +19,6 @@ The Cryptography package provides specification-based implementations of cryptog
 dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```
 
-> **Note:** This package is currently in development and not yet published to NuGet.
 > The focus is currently on stability and validation of the algorithms against test
 > vectors and other implementations.
 > Once stabilized, perf improvements and zero allocation support become the next priority.

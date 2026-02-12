@@ -42,6 +42,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("ReaderLock", "RWLockSlim", "ReaderWriterLockSlim")]
     public void ReadLockReaderWriterLockSlim()
     {
         _rwLockSlim.EnterReadLock();
@@ -60,6 +61,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("ReaderLock", "Pooled")]
     public async Task ReaderLockPooledAsync()
     {
         using (await _rwLockPooled.ReaderLockAsync().ConfigureAwait(false))
@@ -74,6 +76,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("ReaderLock", "Nito.AsyncEx")]
     public async Task ReaderLockNitoAsync()
     {
         using (await _rwLockNitoAsync.ReaderLockAsync().ConfigureAwait(false))
@@ -88,6 +91,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("ReaderLock", "RefImpl")]
     public async Task ReaderLockRefImplAsync()
     {
         using (await _rwLockRefImp.ReaderLockAsync().ConfigureAwait(false))

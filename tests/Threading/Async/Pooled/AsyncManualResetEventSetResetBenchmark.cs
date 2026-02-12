@@ -46,7 +46,7 @@ public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseB
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SetReset", "Standard")]
+    [BenchmarkCategory("SetReset", "Standard", "ManualResetEvent")]
     public void ManualResetEventSetReset()
     {
         _eventStandard.Set();
@@ -61,7 +61,7 @@ public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseB
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SetReset", "Slim")]
+    [BenchmarkCategory("SetReset", "Slim", "ManualResetEventSlim")]
     public void ManualResetEventSlimSetReset()
     {
         _eventSlim.Set();

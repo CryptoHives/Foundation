@@ -51,6 +51,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// Measures the performance of the increment operation.
     /// </remarks>
     [Benchmark]
+    [BenchmarkCategory("Lock", "Increment", "Baseline")]
     public void IncrementSingle()
     {
         // simulate work
@@ -67,6 +68,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("Lock", "System.Lock", "Lock")]
     public void LockUnlockSingle()
     {
         lock (_lock)
@@ -85,6 +87,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("Lock", "Lock.EnterScope", "Lock")]
     public void LockEnterScopeSingle()
     {
         using (_lock.EnterScope())
@@ -104,6 +107,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("Lock", "Monitor", "Monitor")]
     public void ObjectLockUnlockSingle()
     {
         lock (_objectLock)
@@ -118,6 +122,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("Lock", "Interlocked", "Interlocked")]
     public void InterlockedIncrementSingle()
     {
         Interlocked.Increment(ref _counter);
@@ -128,6 +133,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("LockAsync", "SemaphoreSlim", "SemaphoreSlim")]
     public async Task LockUnlockSemaphoreSlimSingleAsync()
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
@@ -151,6 +157,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("LockAsync", "Pooled")]
     public async Task LockUnlockPooledSingleAsync()
     {
         using (await _lockPooled.LockAsync().ConfigureAwait(false))
@@ -170,6 +177,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("LockAsync", "Nito.AsyncEx")]
     public async Task LockUnlockNitoSingleAsync()
     {
         using (await _lockNitoAsync.LockAsync().ConfigureAwait(false))
@@ -189,6 +197,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("LockAsync", "NonKeyed")]
     public async Task LockUnlockNonKeyedSingleAsync()
     {
         using (await _lockNonKeyed.LockAsync().ConfigureAwait(false))
@@ -207,6 +216,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("LockAsync", "NeoSmart")]
     public async Task LockUnlockNeoSmartSingleAsync()
     {
         using (await _lockNeoSmart.LockAsync().ConfigureAwait(false))
@@ -226,6 +236,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("LockAsync", "RefImpl")]
     public async Task LockUnlockRefImplSingleAsync()
     {
         using (await _lockRefImp.LockAsync().ConfigureAwait(false))

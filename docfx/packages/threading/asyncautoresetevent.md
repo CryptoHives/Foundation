@@ -28,15 +28,13 @@ public sealed class AsyncAutoResetEvent
 ## Known Issues
 
 - When `RunContinuationAsynchronously` is `true`, storing the `Task` from `AsTask()` before signaling causes significant performance degradation due to forced asynchronous completion. Always await the `ValueTask` directly when possible.
-- When cancelling tokens, removing the token from the waiter queue requires a full O(n) scan of the queue to preserve order of released waiters.
 
 ## Constructor
 
 ```csharp
 public AsyncAutoResetEvent(
-    bool initialState = false, 
-    bool runContinuationAsynchronously = true, 
-    int defaultEventQueueSize = 0, 
+    bool initialState = false,
+    bool runContinuationAsynchronously = true,
     IGetPooledManualResetValueTaskSource<bool>? pool = null)
 ```
 
@@ -44,7 +42,6 @@ public AsyncAutoResetEvent(
 
 - `initialState`: The initial state of the event (default: `false`)
 - `runContinuationAsynchronously`: Controls whether continuations are forced to run asynchronously (default: `true`)
-- `defaultEventQueueSize`: The default waiter queue capacity (default: `8` when 0 is supplied)
 - `pool`: Optional custom source provider implementing `IGetPooledManualResetValueTaskSource<bool>` which supplies pooled `PooledManualResetValueTaskSource<bool>` instances (helps avoid allocations under contention). You may pass a `ValueTaskSourceObjectPool<bool>` or a custom provider that implements the interface.
 
 ## Properties

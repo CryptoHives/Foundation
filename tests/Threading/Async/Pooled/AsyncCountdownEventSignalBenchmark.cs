@@ -60,6 +60,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "Standard", "CountdownEvent")]
     public void SignalAndWaitCountdownEventStandard()
     {
         _countdownStandard.Reset();
@@ -76,6 +77,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SignalAndWait", "Pooled")]
     public async Task SignalAndWaitPooledAsync()
     {
         _countdownPooled.Reset();
@@ -92,6 +94,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark]
+    [BenchmarkCategory("WaitAndSignal", "Pooled")]
     public async Task WaitAndSignalPooledAsync()
     {
         _countdownPooled.Reset();
@@ -108,6 +111,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     /// Benchmark for Nito.AsyncEx async countdown event.
     /// </summary>
     [Test]
+    [BenchmarkCategory("SignalAndWait", "Nito.AsyncEx")]
     public async Task SignalAndWaitNitoAsync()
     {
         Task task = _countdownNitoAsync.WaitAsync(_cancellationToken);
@@ -125,6 +129,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "RefImpl")]
     public async Task SignalAndWaitRefImplAsync()
     {
         _countdownRefImp.Reset();

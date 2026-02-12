@@ -45,6 +45,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("WaitRelease", "SemaphoreSlim", "SemaphoreSlim")]
     public async Task WaitReleaseSemaphoreSlimSingleAsync()
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
@@ -63,6 +64,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("WaitRelease", "Pooled")]
     public async Task WaitReleasePooledSingleAsync()
     {
         await _semaphorePooled.WaitAsync().ConfigureAwait(false);
@@ -82,6 +84,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("WaitRelease", "Nito.AsyncEx")]
     public async Task WaitReleaseNitoSingleAsync()
     {
         await _semaphoreNitoAsync.WaitAsync().ConfigureAwait(false);
@@ -101,6 +104,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("WaitRelease", "RefImpl")]
     public async Task WaitReleaseRefImplSingleAsync()
     {
         await _semaphoreRefImp.WaitAsync().ConfigureAwait(false);

@@ -62,6 +62,7 @@
     <None Include="..\..\..\docfx\packages\security\cryptography\*.yml" Link="docfx\cryptography\%(Filename)%(Extension)" />
     <None Include="..\..\..\docfx\packages\security\cryptography\specs\*.md" Link="specs\%(Filename)%(Extension)" />
     <None Include="..\..\..\docfx\packages\security\cryptography\specs\*.yml" Link="specs\%(Filename)%(Extension)" />
+    <None Include="..\..\..\docfx\packages\security\cryptography\benchmarks\*.md" Link="docfx\benchmarks\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
