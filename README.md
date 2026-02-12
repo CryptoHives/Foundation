@@ -74,7 +74,7 @@ Nuget package contains a C# analyzer to avoid common ValueTask usage mistakes.
 
 ### 🔐 Managed Code Cryptography
 Fully managed implementations of cryptographic hash algorithms and MACs, written from NIST/RFC/ISO specifications and verified against official test vectors.
-No OS crypto dependency — deterministic results on every platform.
+No OS crypto dependency — deterministic results on every platform, in some cases even outperforming OS implementations.
 
 **Algorithms:**
 
@@ -134,7 +134,8 @@ blake3.TryComputeHash(data, hash, out _);
 
 // XOF streaming (variable-length output)
 using var shake = Shake256.Create(64);
-shake.Absorb(data);
+shake.Absorb(data1);
+shake.Absorb(data2);
 Span<byte> output = stackalloc byte[128];
 shake.Squeeze(output);
 ```
@@ -144,12 +145,12 @@ shake.Squeeze(output);
 ```csharp
 using CryptoHives.Foundation.Threading.Async.Pooled;
 
-// Allocation-free async lock
+// Allocation-free async lock, even with cancellation token
 private readonly AsyncLock _lock = new();
 
 public async Task DoWorkAsync(CancellationToken ct)
 {
-    using await _lock(ct).ConfigureAwait(false);
+    using await _lock.LockAsync(ct).ConfigureAwait(false);
     // critical section
 }
 ```
