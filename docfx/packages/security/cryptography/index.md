@@ -19,7 +19,6 @@ The Cryptography package provides specification-based implementations of cryptog
 dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```
 
-> **Note:** This package is currently in development and not yet published to NuGet.
 > The focus is currently on stability and validation of the algorithms against test
 > vectors and other implementations.
 > Once stabilized, perf improvements and zero allocation support become the next priority.
@@ -102,6 +101,8 @@ using var blake3 = Blake3.Create(outputBytes: 128);
 byte[] longHash = blake3.ComputeHash(data);
 ```
 
+For allocation-free streaming XOF using `Absorb` / `Squeeze`, see [XOF Mode](xof-mode.md).
+
 ### Customizable Hash (cSHAKE)
 
 ```csharp
@@ -121,7 +122,7 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 byte[] key = new byte[32]; // Your secret key
 
 // KMAC256
-using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "MyApp");
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
 byte[] mac = kmac.ComputeHash(message);
 ```
 
@@ -231,7 +232,7 @@ All implementations use fixed-size internal buffers based on their block size. N
 |---------|-------------|------------------------------|
 | OS dependency | None | Uses CNG/OpenSSL |
 | Cross-platform consistency | Guaranteed | May vary |
-| Hardware acceleration | No | Yes (when available) |
+| Hardware acceleration | Managed SIMD (SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL) |
 | SHA-3 support | Full | .NET 8+ only |
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |
@@ -255,6 +256,7 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 
 - [Hash Algorithms Reference](hash-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
+- [XOF Mode (Extendable-Output)](xof-mode.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

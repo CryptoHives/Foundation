@@ -13,12 +13,12 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncLockUnitTests
+public class AsyncLockTests
 {
     [Test]
     public void AsyncLockUnlockedSynchronouslyPermitsLock()
     {
-        var mutex = new AsyncLock(defaultEventQueueSize: 8);
+        var mutex = new AsyncLock();
 
         Task<AsyncLock.Releaser> lockTask = mutex.LockAsync().AsTask();
 
@@ -30,8 +30,8 @@ public class AsyncLockUnitTests
     [Test]
     public async Task AsyncLockLockedPreventsLockUntilUnlocked()
     {
-        var mutex = new AsyncLock(defaultEventQueueSize: 8);
-        TaskCompletionSource<object?> task1HasLock = CreateAsyncTaskSource<object?>();
+        var mutex = new AsyncLock();
+        TaskCompletionSource<object?> task1HasLock= CreateAsyncTaskSource<object?>();
         TaskCompletionSource<object?> task1Continue = CreateAsyncTaskSource<object?>();
 
         var task1 = Task.Run(async () => {

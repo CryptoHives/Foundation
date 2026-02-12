@@ -4,7 +4,6 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
@@ -33,9 +32,7 @@ using System.Threading.Tasks;
 /// </para>
 /// </remarks>
 [TestFixture]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [BenchmarkCategory("AsyncManualResetEvent")]
 public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBaseBenchmark
 {
@@ -47,7 +44,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetThenWait", "Standard")]
+    [BenchmarkCategory("SetThenWait", "Standard", "ManualResetEvent")]
     public void ManualResetEventSetThenWait()
     {
         _ = _eventStandard.Set();
@@ -63,7 +60,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetThenWait", "Slim")]
+    [BenchmarkCategory("SetThenWait", "Slim", "ManualResetEventSlim")]
     public void ManualResetEventSlimSetThenWait()
     {
         _eventSlim.Set();
@@ -80,7 +77,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// </remarks>
     [Test]
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("SetThenWait", "Pooled")]
+    [BenchmarkCategory("SetThenWait", "Pooled (ValueTask)")]
     public async Task PooledAsyncManualResetEventSetThenWaitAsync()
     {
         _eventPooled.Set();
@@ -98,7 +95,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SetThenWait", "PooledAsTask")]
+    [BenchmarkCategory("SetThenWait", "Pooled (AsTask)")]
     public async Task PooledAsTaskAsyncManualResetEventSetThenWaitAsync()
     {
         _eventPooled.Set();

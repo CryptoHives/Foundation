@@ -13,10 +13,10 @@ using System;
 /// eliminating code duplication across SHAKE128, SHAKE256, TurboShake128, TurboShake256,
 /// cSHAKE128, and cSHAKE256.
 /// </remarks>
-public abstract class KeccakXofCore : KeccakCore
+public abstract class KeccakXofCore : KeccakCore, IExtendableOutput
 {
     private protected readonly int _outputBytes;
-    private protected readonly byte _domainSeparator;
+    private protected byte _domainSeparator;
     private protected bool _finalized;
     private protected int _squeezeOffset;
 
@@ -41,6 +41,20 @@ public abstract class KeccakXofCore : KeccakCore
         base.Initialize();
         _finalized = false;
         _squeezeOffset = 0;
+    }
+
+    /// <summary>
+    /// Resets the XOF state and changes the domain separator byte.
+    /// </summary>
+    /// <remarks>
+    /// This allows reusing an existing XOF instance with a different domain separator
+    /// without allocating a new object. The Keccak state is fully cleared.
+    /// </remarks>
+    /// <param name="domainSeparator">The new domain separation byte for the next hash operation.</param>
+    public void ResetWithDomainSeparator(byte domainSeparator)
+    {
+        _domainSeparator = domainSeparator;
+        Initialize();
     }
 
     /// <inheritdoc/>
@@ -98,6 +112,18 @@ public abstract class KeccakXofCore : KeccakCore
 
         // Squeeze output
         _keccakCore.SqueezeXof(output, _rateBytes, ref _squeezeOffset);
+    }
+
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
     }
 
     /// <summary>

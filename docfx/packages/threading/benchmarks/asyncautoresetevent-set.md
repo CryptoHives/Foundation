@@ -1,6 +1,6 @@
-| Method                        | Mean       | Ratio | Allocated | Alloc Ratio |
-|------------------------------ |-----------:|------:|----------:|------------:|
-| PooledAsyncAutoResetEventSet  |   3.922 ns |  1.00 |         - |          NA |
-| RefImplAsyncAutoResetEventSet |   4.449 ns |  1.13 |         - |          NA |
-| NitoAsyncAutoResetEventSet    |   4.527 ns |  1.15 |         - |          NA |
-| AutoResetEventSet             | 230.080 ns | 58.66 |         - |          NA |
+﻿| Description                         | Mean       | Ratio | Allocated | 
+|------------------------------------ |-----------:|------:|----------:|
+| Set · AsyncAutoReset · RefImpl      |   4.129 ns |  0.33 |         - | 
+| Set · AsyncAutoReset · Nito.AsyncEx |   4.242 ns |  0.34 |         - | 
+| Set · AsyncAutoReset · Pooled       |  12.376 ns |  1.00 |         - | 
+| Set · AutoResetEvent · Standard     | 220.138 ns | 17.79 |         - |

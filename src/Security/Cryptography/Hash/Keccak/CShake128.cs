@@ -25,7 +25,7 @@ using System.Text;
 /// When both N and S are empty, cSHAKE128 is equivalent to SHAKE128.
 /// </para>
 /// </remarks>
-public sealed class CShake128 : KeccakCore
+public sealed class CShake128 : KeccakCore, IExtendableOutput
 {
     /// <summary>
     /// The default output size in bits.
@@ -187,6 +187,18 @@ public sealed class CShake128 : KeccakCore
         }
 
         _keccakCore.SqueezeXof(output, RateBytes, ref _squeezeOffset);
+    }
+
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
     }
 
     private void AbsorbBytePad()

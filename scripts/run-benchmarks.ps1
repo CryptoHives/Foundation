@@ -29,11 +29,19 @@ param(
         "MD5", "SHA1",
         "SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160",
         "AsconHash256", "AsconXof128",
-        "KMac128", "KMac256", "KMac128Incremental", "KMac128OutputSize", "KMac256Incremental", "KMac256OutputSize",
+        "KMac128", "KMac256",
+        # XOF (Absorb/Squeeze) benchmarks
+        "Shake128Xof", "Shake256Xof",
+        "CShake128Xof", "CShake256Xof",
+        "TurboShake128Xof", "TurboShake256Xof",
+        "KT128Xof", "KT256Xof",
+        "KMac128Xof", "KMac256Xof",
+        "Blake3Xof", "AsconXof128Xof",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
         "Legacy", "Regional", "Ascon", "KMAC",
+        "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
         "All"
     )]
     [string]$Family,
@@ -119,12 +127,21 @@ $AlgorithmBenchmarkMap = @{
     "AsconHash256" = "AsconHash256"
     "AsconXof128" = "AsconXof128"
     # KMAC
-    "Kmac128"     = "Kmac128"
-    "Kmac256"     = "Kmac256"
-    "Kmac128Incremental" = "Kmac128Incremental"
-    "Kmac128OutputSize" = "Kmac128OutputSize"
-    "Kmac256Incremental" = "Kmac256Incremental"
-    "Kmac256OutputSize" = "Kmac256OutputSize"
+    "KMac128"     = "KMac128"
+    "KMac256"     = "KMac256"
+    # XOF (Absorb/Squeeze)
+    "Shake128Xof"      = "Shake128Xof"
+    "Shake256Xof"      = "Shake256Xof"
+    "CShake128Xof"     = "CShake128Xof"
+    "CShake256Xof"     = "CShake256Xof"
+    "TurboShake128Xof" = "TurboShake128Xof"
+    "TurboShake256Xof" = "TurboShake256Xof"
+    "KT128Xof"         = "KT128Xof"
+    "KT256Xof"         = "KT256Xof"
+    "KMac128Xof"       = "KMac128Xof"
+    "KMac256Xof"       = "KMac256Xof"
+    "Blake3Xof"        = "Blake3Xof"
+    "AsconXof128Xof"   = "AsconXof128Xof"
     # Group Aliases
     "All"         = "Hash"
 }
@@ -145,7 +162,12 @@ $GroupAliases = @{
     "Legacy"      = @("MD5", "SHA1")
     "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160")
     "Ascon"       = @("AsconHash256", "AsconXof128")
-    "KMAC"        = @("Kmac128", "Kmac256", "Kmac128Incremental", "Kmac128OutputSize", "Kmac256Incremental", "Kmac256OutputSize")
+    "KMAC"        = @("KMac128", "KMac256")
+    "XOF"         = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof", "KMac128Xof", "KMac256Xof", "Blake3Xof", "AsconXof128Xof")
+    "KeccakXOF"   = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof")
+    "BlakeXOF"    = @("Blake3Xof")
+    "MacXOF"      = @("KMac128Xof", "KMac256Xof")
+    "AsconXOF"    = @("AsconXof128Xof")
 }
 
 # Get repository root
@@ -218,7 +240,9 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  Legacy:        -Family MD5, SHA1"
     Write-Host "  Regional:      -Family SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
     Write-Host "  Ascon:         -Family AsconHash256, AsconXof128"
-    Write-Host "  KMAC:          -Family Kmac128, Kmac256, Kmac128Incremental, Kmac128OutputSize, Kmac256Incremental, Kmac256OutputSize"
+    Write-Host "  KMAC:          -Family KMac128, KMac256"
+    Write-Host "  XOF:           -Family Shake128Xof, Shake256Xof, CShake128Xof, CShake256Xof, TurboShake128Xof, TurboShake256Xof"
+    Write-Host "                          KT128Xof, KT256Xof, KMac128Xof, KMac256Xof, Blake3Xof, AsconXof128Xof"
     Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -234,7 +258,12 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family Legacy     runs: MD5, SHA1"
     Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
-    Write-Host "  -Family KMAC       runs: Kmac128, Kmac256, Kmac128Incremental, Kmac128OutputSize, Kmac256Incremental, Kmac256OutputSize"
+    Write-Host "  -Family KMAC       runs: KMac128, KMac256"
+    Write-Host "  -Family XOF        runs: All XOF Absorb/Squeeze benchmarks (12 algorithms)"
+    Write-Host "  -Family KeccakXOF  runs: Shake128Xof, Shake256Xof, CShake128Xof, CShake256Xof, TurboShake128Xof, TurboShake256Xof, KT128Xof, KT256Xof"
+    Write-Host "  -Family BlakeXOF   runs: Blake3Xof"
+    Write-Host "  -Family MacXOF     runs: KMac128Xof, KMac256Xof"
+    Write-Host "  -Family AsconXOF   runs: AsconXof128Xof"
     Write-Host "  -Family All        runs: All Hash benchmarks"
     Write-Host ""
 }
@@ -281,8 +310,10 @@ Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
 Write-Host ""
 
 if ($DryRun) {
-    Write-Host "[DRY RUN] Command would be executed in: $testProject" -ForegroundColor Yellow
-    exit 0
+    $dotnetArgs += "--job"
+    $dotnetArgs += "Dry"
+    Write-Host "[DRY RUN] Running all benchmarks with minimal iterations (Job.Dry)" -ForegroundColor Yellow
+    Write-Host ""
 }
 
 # Change to test project directory and run
@@ -309,7 +340,11 @@ try {
     Write-Host "Results saved to:"
     Write-Host "  $testProject\BenchmarkDotNet.Artifacts\results\"
     Write-Host ""
+    
     if ($Project -eq "Cryptography") {
+        Write-Host "To generate benchmark charts, run:"
+        Write-Host "  .\scripts\generate-benchmark-charts.ps1"
+        Write-Host ""
         Write-Host "To update documentation, run:"
         Write-Host "  .\scripts\update-benchmark-docs.ps1 -Package Cryptography"
         Write-Host ""

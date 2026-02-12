@@ -31,7 +31,7 @@ using System.Buffers.Binary;
 /// </list>
 /// </para>
 /// </remarks>
-public sealed class AsconXof128 : AsconHashAlgorithm
+public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
 {
     /// <summary>
     /// The default output size in bits.
@@ -51,6 +51,8 @@ public sealed class AsconXof128 : AsconHashAlgorithm
     private const ulong IV4 = 0xe0547524db6f0bdeUL;
 
     private readonly int _outputSizeBytes;
+    private bool _finalized;
+    private int _squeezeOffset;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AsconXof128"/> class with default output size.
@@ -94,6 +96,77 @@ public sealed class AsconXof128 : AsconHashAlgorithm
     /// <param name="outputSizeBytes">The desired output size in bytes.</param>
     /// <returns>A new Ascon-XOF128 algorithm instance.</returns>
     public static AsconXof128 Create(int outputSizeBytes) => new(outputSizeBytes);
+
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
+        _finalized = false;
+        _squeezeOffset = 0;
+    }
+
+    /// <summary>
+    /// Squeezes output bytes from the Ascon-XOF128 state.
+    /// </summary>
+    /// <remarks>
+    /// After the first call, the hash is finalized and no more data can be absorbed.
+    /// May be called multiple times for streaming output.
+    /// </remarks>
+    /// <param name="output">The buffer to receive the output bytes.</param>
+    public void Squeeze(Span<byte> output)
+    {
+        if (!_finalized)
+        {
+            PadAndAbsorb();
+            _finalized = true;
+            _squeezeOffset = 0;
+        }
+
+        Span<byte> block = stackalloc byte[RateBytes];
+        int remaining = output.Length;
+        int destOffset = 0;
+
+        // Resume from partial block left by a previous Squeeze call
+        if (_squeezeOffset > 0 && remaining > 0)
+        {
+            int available = RateBytes - _squeezeOffset;
+            int toCopy = Math.Min(remaining, available);
+            BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
+            block.Slice(_squeezeOffset, toCopy).CopyTo(output.Slice(destOffset));
+            destOffset += toCopy;
+            remaining -= toCopy;
+            _squeezeOffset += toCopy;
+
+            if (_squeezeOffset == RateBytes)
+            {
+                P12();
+                _squeezeOffset = 0;
+            }
+        }
+
+        // Process full rate blocks
+        while (remaining >= RateBytes)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(destOffset), _x0);
+            destOffset += RateBytes;
+            remaining -= RateBytes;
+            P12();
+        }
+
+        // Handle trailing partial block
+        if (remaining > 0)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
+            block.Slice(0, remaining).CopyTo(output.Slice(destOffset));
+            _squeezeOffset = remaining;
+        }
+    }
 
     /// <inheritdoc/>
     protected override void SqueezeOutput(Span<byte> destination)

@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 
 /// <summary>
 /// Analyzer that detects common ValueTask misuse patterns.
@@ -339,6 +340,38 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                         AnalyzeBlock(tryStatement.Finally.Block);
                     }
                     break;
+                case ForStatementSyntax forStatement:
+                    if (forStatement.Declaration is not null)
+                    {
+                        foreach (VariableDeclaratorSyntax variable in forStatement.Declaration.Variables.Where(v => v.Initializer is not null))
+                        {
+                            AnalyzeExpressionRecursive(variable.Initializer!.Value, isConsumed: false);
+                        }
+                    }
+                    if (forStatement.Condition is not null)
+                    {
+                        AnalyzeExpressionRecursive(forStatement.Condition, isConsumed: true);
+                    }
+                    AnalyzeStatement(forStatement.Statement);
+                    break;
+                case DoStatementSyntax doStatement:
+                    AnalyzeStatement(doStatement.Statement);
+                    AnalyzeExpressionRecursive(doStatement.Condition, isConsumed: true);
+                    break;
+                case SwitchStatementSyntax switchStatement:
+                    AnalyzeExpressionRecursive(switchStatement.Expression, isConsumed: true);
+                    foreach (SwitchSectionSyntax section in switchStatement.Sections)
+                    {
+                        foreach (StatementSyntax sectionStatement in section.Statements)
+                        {
+                            AnalyzeStatement(sectionStatement);
+                        }
+                    }
+                    break;
+                case LockStatementSyntax lockStatement:
+                    AnalyzeExpressionRecursive(lockStatement.Expression, isConsumed: true);
+                    AnalyzeStatement(lockStatement.Statement);
+                    break;
             }
         }
 
@@ -371,7 +404,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                         }
                         else
                         {
-                            _usages[symbol] = new ValueTaskUsage(variable.GetLocation());
+                            _usages[symbol] = new ValueTaskUsage();
                         }
                     }
 
@@ -581,9 +614,10 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             string methodName = methodSymbol.Name;
             string? containingType = methodSymbol.ContainingType?.ToDisplayString();
 
-            // Check for Task.WhenAll, Task.WhenAny, etc.
+            // Check for Task.WhenAll, Task.WhenAny, Task.WaitAll, Task.WaitAny, etc.
             bool isUnsafeMethod = (containingType == "System.Threading.Tasks.Task" &&
-                                   (methodName == "WhenAll" || methodName == "WhenAny")) ||
+                                   (methodName == "WhenAll" || methodName == "WhenAny" ||
+                                    methodName == "WaitAll" || methodName == "WaitAny")) ||
                                   (containingType == "System.Threading.Tasks.ValueTask" &&
                                    (methodName == "WhenAll" || methodName == "WhenAny"));
 
@@ -772,14 +806,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private sealed class ValueTaskUsage
         {
-            public Location DeclarationLocation { get; }
             public int UsageCount { get; set; }
-
-            public ValueTaskUsage(Location declarationLocation)
-            {
-                DeclarationLocation = declarationLocation;
-                UsageCount = 0;
-            }
         }
     }
 }

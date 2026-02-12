@@ -1,37 +1,37 @@
-﻿| Description                                            | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|------------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (BouncyCastle) | 128B         |     188.2 ns |     0.47 ns |     0.44 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSSE3)        | 128B         |     188.9 ns |     1.16 ns |     1.03 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (AVX2)         | 128B         |     190.1 ns |     0.41 ns |     0.37 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSE2)         | 128B         |     193.8 ns |     0.99 ns |     0.88 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (Managed)      | 128B         |     618.8 ns |     1.83 ns |     1.71 ns |     112 B |
-|                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (BouncyCastle) | 137B         |     262.1 ns |     0.45 ns |     0.42 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (AVX2)         | 137B         |     267.8 ns |     1.04 ns |     0.97 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSSE3)        | 137B         |     272.7 ns |     0.57 ns |     0.53 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSE2)         | 137B         |     275.6 ns |     1.02 ns |     0.90 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (Managed)      | 137B         |     911.3 ns |     2.55 ns |     2.26 ns |     112 B |
-|                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (AVX2)         | 1KB          |   1,243.9 ns |     3.83 ns |     3.59 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSSE3)        | 1KB          |   1,251.8 ns |     1.92 ns |     1.60 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (BouncyCastle) | 1KB          |   1,260.8 ns |     6.31 ns |     4.93 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSE2)         | 1KB          |   1,281.7 ns |     4.90 ns |     4.34 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (Managed)      | 1KB          |   4,682.3 ns |    19.48 ns |    18.22 ns |     112 B |
-|                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (AVX2)         | 1025B        |   1,322.4 ns |     4.82 ns |     4.27 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSSE3)        | 1025B        |   1,333.9 ns |     2.22 ns |     1.97 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (BouncyCastle) | 1025B        |   1,336.2 ns |     4.35 ns |     3.63 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSE2)         | 1025B        |   1,365.6 ns |     3.03 ns |     2.83 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (Managed)      | 1025B        |   4,969.2 ns |    18.61 ns |    16.50 ns |     112 B |
-|                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (AVX2)         | 8KB          |   9,680.2 ns |    43.33 ns |    38.41 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (BouncyCastle) | 8KB          |   9,721.8 ns |    20.89 ns |    18.52 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSSE3)        | 8KB          |   9,741.9 ns |    19.80 ns |    17.55 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSE2)         | 8KB          |   9,979.4 ns |    18.39 ns |    17.20 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (Managed)      | 8KB          |  37,197.1 ns |   109.71 ns |   102.63 ns |     112 B |
-|                                                        |              |              |             |             |           |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (AVX2)         | 128KB        | 154,473.3 ns |   426.17 ns |   355.87 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (BouncyCastle) | 128KB        | 154,507.9 ns |   437.25 ns |   409.00 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSSE3)        | 128KB        | 155,312.1 ns |   263.31 ns |   246.30 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (SSE2)         | 128KB        | 158,827.5 ns |   520.73 ns |   487.10 ns |     112 B |
-| ComputeHash · BLAKE2s-256 · BLAKE2s-256 (Managed)      | 128KB        | 594,329.1 ns | 1,830.37 ns | 1,622.58 ns |     112 B |
+﻿| Description                                 | TestDataSize | Mean         | Error        | StdDev       | Allocated |
+|-------------------------------------------- |------------- |-------------:|-------------:|-------------:|----------:|
+| TryComputeHash · BLAKE2s-256 · BouncyCastle | 128B         |     163.6 ns |      2.62 ns |      2.45 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Ssse3        | 128B         |     167.0 ns |      2.29 ns |      2.03 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Sse2         | 128B         |     170.1 ns |      2.20 ns |      2.05 ns |         - |
+| TryComputeHash · BLAKE2s-256 · AVX2         | 128B         |     171.6 ns |      3.41 ns |      3.93 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Managed      | 128B         |     620.3 ns |     11.68 ns |     12.98 ns |         - |
+|                                             |              |              |              |              |           |
+| TryComputeHash · BLAKE2s-256 · BouncyCastle | 137B         |     245.8 ns |      4.93 ns |      6.41 ns |         - |
+| TryComputeHash · BLAKE2s-256 · AVX2         | 137B         |     248.6 ns |      4.64 ns |      4.34 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Ssse3        | 137B         |     252.2 ns |      4.90 ns |      4.58 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Sse2         | 137B         |     254.4 ns |      2.65 ns |      2.21 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Managed      | 137B         |     925.6 ns |     17.20 ns |     16.09 ns |         - |
+|                                             |              |              |              |              |           |
+| TryComputeHash · BLAKE2s-256 · BouncyCastle | 1KB          |   1,238.4 ns |      6.67 ns |      5.21 ns |         - |
+| TryComputeHash · BLAKE2s-256 · AVX2         | 1KB          |   1,249.6 ns |     16.04 ns |     14.22 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Ssse3        | 1KB          |   1,261.5 ns |     24.49 ns |     22.91 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Sse2         | 1KB          |   1,291.1 ns |     25.50 ns |     23.86 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Managed      | 1KB          |   4,847.6 ns |     96.28 ns |    141.12 ns |         - |
+|                                             |              |              |              |              |           |
+| TryComputeHash · BLAKE2s-256 · BouncyCastle | 1025B        |   1,323.2 ns |     18.23 ns |     17.05 ns |         - |
+| TryComputeHash · BLAKE2s-256 · AVX2         | 1025B        |   1,325.8 ns |     21.09 ns |     18.70 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Ssse3        | 1025B        |   1,329.7 ns |     17.24 ns |     15.28 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Sse2         | 1025B        |   1,352.8 ns |     11.58 ns |      9.04 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Managed      | 1025B        |   5,140.9 ns |    101.05 ns |    120.29 ns |         - |
+|                                             |              |              |              |              |           |
+| TryComputeHash · BLAKE2s-256 · AVX2         | 8KB          |  10,017.1 ns |    199.27 ns |    195.71 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Ssse3        | 8KB          |  10,065.4 ns |    200.26 ns |    205.65 ns |         - |
+| TryComputeHash · BLAKE2s-256 · BouncyCastle | 8KB          |  10,106.4 ns |    197.75 ns |    341.12 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Sse2         | 8KB          |  10,260.6 ns |    155.21 ns |    137.59 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Managed      | 8KB          |  39,579.9 ns |    776.06 ns |  1,338.67 ns |         - |
+|                                             |              |              |              |              |           |
+| TryComputeHash · BLAKE2s-256 · Ssse3        | 128KB        | 159,927.2 ns |  2,391.88 ns |  2,237.37 ns |         - |
+| TryComputeHash · BLAKE2s-256 · AVX2         | 128KB        | 160,064.2 ns |  3,163.61 ns |  2,959.24 ns |         - |
+| TryComputeHash · BLAKE2s-256 · BouncyCastle | 128KB        | 161,897.3 ns |  3,208.98 ns |  3,820.06 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Sse2         | 128KB        | 164,015.7 ns |  2,791.75 ns |  2,611.41 ns |         - |
+| TryComputeHash · BLAKE2s-256 · Managed      | 128KB        | 629,794.4 ns | 11,517.18 ns | 15,764.85 ns |         - |

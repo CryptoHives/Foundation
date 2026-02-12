@@ -218,6 +218,8 @@ using var shake = Shake128.Create(outputBytes: 64);
 byte[] longHash = shake.ComputeHash(data);
 ```
 
+> **XOF Mode:** SHAKE128 implements [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
+
 ### Shake256
 
 ```csharp
@@ -239,6 +241,8 @@ byte[] hash = shake.ComputeHash(data);
 using var shake = Shake256.Create(outputBytes: 128);
 byte[] longHash = shake.ComputeHash(data);
 ```
+
+> **XOF Mode:** SHAKE256 implements [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -289,6 +293,8 @@ byte[] hash = cshake.ComputeHash(data);
 ```
 
 **Note:** When both N and S are empty, cSHAKE is equivalent to SHAKE.
+
+> **XOF Mode:** cSHAKE128 and cSHAKE256 implement [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -342,6 +348,8 @@ using var ts = TurboShake256.Create();
 byte[] hash = ts.ComputeHash(data);
 ```
 
+> **XOF Mode:** TurboSHAKE128 and TurboSHAKE256 implement [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
+
 ---
 
 ## KangarooTwelve (KT)
@@ -390,6 +398,8 @@ public sealed class KT256 : HashAlgorithm
 using var kt = KT256.Create();
 byte[] hash = kt.ComputeHash(data);
 ```
+
+> **XOF Mode:** KT128 and KT256 implement [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -534,13 +544,14 @@ Modern, high-performance hash function.
 ### Blake3
 
 ```csharp
-public sealed class Blake3 : HashAlgorithm
+public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
 ```
 
 **Properties:**
 - Output Size: Variable (default 32 bytes)
 - Designed for parallelism
 - Supports: Hash, Keyed Hash, Derive Key modes
+- Implements [`IExtendableOutput`](xof-mode.md) for streaming XOF output
 
 **Modes:**
 
@@ -570,6 +581,8 @@ string context = "MyApp 2025 session key";
 using var blake3 = Blake3.CreateDeriveKey(context);
 byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 ```
+
+> **XOF Mode:** BLAKE3 implements [`IExtendableOutput`](xof-mode.md) using counter-mode output expansion for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -735,6 +748,8 @@ byte[] hash = ascon.ComputeHash(data);
 using var ascon = AsconXof128.Create(outputBytes: 64);
 byte[] longHash = ascon.ComputeHash(data);
 ```
+
+> **XOF Mode:** Ascon-XOF128 implements [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 

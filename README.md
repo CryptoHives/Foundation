@@ -52,25 +52,52 @@ More packages will be published under the `CryptoHives.*` namespace — see the 
 - CryptoHives provides a growing set of utilities designed to optimize high performance transformation pipelines and cryptography workloads.
 
 ### 🛠️ Memory Efficiency
+Pooled buffer management for transformation pipelines and high-frequency I/O:
 - **ArrayPool-based allocators** for common crypto and serialization scenarios
-- Pooled implementations of `MemoryStream` and `IBufferWriter<T>` for transformation pipelines
-- Primitives to handle ownership of pooled buffers using `ReadOnlySequence<T>` and `ArrayPool<T>`
-- Zero-copy, zero-allocation design for high-frequency cryptographic workloads and transformation pipelines
+- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`
+- `ReadOnlySequenceMemoryStream` — read from `ReadOnlySequence<byte>` without copying
+- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays
+- Ownership primitives for zero-copy handoff of pooled buffers
 
-### 🚀 Concurrency Tools
-- Lightweight Async-compatible synchronization primitives based on `ObjectPool` and `ValueTask<T>`
-- High-performance threading helpers designed to reduce allocations of `Task` and `TaskCompletionSource<T>`
+### 🚀 Concurrency Tools (Threading)
+Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`.
+Designed to eliminate `Task` / `TaskCompletionSource<T>` allocations on the hot path.
 
-### 🧪 Tests and Benchmarks
-- Comprehensive tests and benchmarks are available to evaluate performance across various scenarios.
+- `AsyncLock` — mutual exclusion
+- `AsyncSemaphore` — counting semaphore
+- `AsyncAutoResetEvent` / `AsyncManualResetEvent`
+- `AsyncReaderWriterLock`
+- `AsyncBarrier` / `AsyncCountdownEvent`
+
+All primitives support `CancellationToken` and `ConfigureAwait(false)` without the need for extra allocations.
+Nuget package contains a C# analyzer to avoid common ValueTask usage mistakes.
 
 ### 🔐 Managed Code Cryptography
-- Fully managed implementations of cryptographic hash algorithms and MACs
-- SHA-1, SHA-2, SHA-3, SHAKE, cSHAKE, TurboSHAKE, KangarooTwelve (KT128/KT256)
-- KMAC, BLAKE2, BLAKE3, Ascon, Keccak (Ethereum compatible)
-- International standards: SM3 (Chinese), Streebog (Russian), Whirlpool (ISO)
-- No dependency on OS or hardware cryptographic APIs
-- Deterministic behavior across all platforms and runtimes
+Fully managed implementations of cryptographic hash algorithms and MACs, written from NIST/RFC/ISO specifications and verified against official test vectors.
+No OS crypto dependency — deterministic results on every platform, in some cases even outperforming OS implementations.
+
+**Algorithms:**
+
+| Family | Algorithms |
+|--------|-----------|
+| SHA-2 | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256 |
+| SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 |
+| Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) |
+| SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
+| TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
+| BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
+| Ascon | Ascon-Hash256, Ascon-XOF128 (NIST lightweight) |
+| MAC | KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
+| Regional | SM3, Streebog-256/512, Whirlpool, RIPEMD-160 |
+| Legacy | SHA-1, MD5 (backward compatibility only) |
+
+All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
+BLAKE2b, BLAKE2s, and BLAKE3 use managed SIMD intrinsics (SSE2, SSSE3, AVX2) with scalar fallback.
+
+### 🧪 Package Benchmarks
+
+- [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, comparing pooled `ValueTask` vs. existing `Task`-based alternatives.
+- [Hash algorithm benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) — measured with BenchmarkDotNet across 128B–128KB payloads, comparing managed vs. BouncyCastle vs. OS implementations.
 
 ### 🔒 Fuzzed APIs (planned)
 - All libraries and public-facing APIs are planned to be fuzzed 
@@ -97,46 +124,34 @@ Install-Package CryptoHives.Foundation.Threading
 
 ---
 
-Here’s a minimal example using the `CryptoHives.Foundation.Memory` package:
-
 ```csharp
-using CryptoHives.Foundation.Memory;
-using System;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 
-public class ExampleWriter
-{
-    public string WritePooledChunk(ReadOnlySpan<byte> chunk)
-    {
-        // Use a MemoryStream backed by ArrayPool<byte> buffers
-        using var writer = new ArrayPoolMemoryStream();
+// Allocation-free hash
+using var blake3 = Blake3.Create();
+Span<byte> hash = stackalloc byte[32];
+blake3.TryComputeHash(data, hash, out _);
 
-        writer.Write(chunk);
-        ReadOnlySequence<byte> sequence = writer.GetReadOnlySequence();
-        return Encoding.UTF8.GetString(sequence);
-    }
-}
+// XOF streaming (variable-length output)
+using var shake = Shake256.Create(64);
+shake.Absorb(data1);
+shake.Absorb(data2);
+Span<byte> output = stackalloc byte[128];
+shake.Squeeze(output);
 ```
 
 ---
 
-Here’s a minimal example using the `CryptoHives.Foundation.Threading` package:
-
 ```csharp
 using CryptoHives.Foundation.Threading.Async.Pooled;
-using System;
 
-public class Example
+// Allocation-free async lock, even with cancellation token
+private readonly AsyncLock _lock = new();
+
+public async Task DoWorkAsync(CancellationToken ct)
 {
-    private AsyncLock _lock = new AsyncLock(); 
-
-    public async Task AccessSharedResourceAsync()
-    {
-        // Due to the use of ValueTask and ObjectPools, 
-        // this mutex is very fast and allocation free
-        // Acquire the lock asynchronously
-        using await _lock.ConfigureAwait(false);
-        // Access shared async resource here
-    }
+    using await _lock.LockAsync(ct).ConfigureAwait(false);
+    // critical section
 }
 ```
 
@@ -183,7 +198,7 @@ Open source thrives on respect, not just permissive licenses.
 
 ## ⚖️ License
 
-Each component of the CryptoHives Open Source Initiative is licensed under a SPDX-compatible license.  
+Each component of the CryptoHives Open Source Initiative is licensed under a SPDX-compatible MIT license.  
 By default, packages use the following license tags:
 
 ```csharp
@@ -210,6 +225,4 @@ Please see the [Contributing Guide](https://github.com/CryptoHives/.github/blob/
 
 ---
 
-**CryptoHives Open Source Initiative — Secure. Deterministic. Performant.**
-
-© 2025 The Keepers of the CryptoHives. All rights reserved.
+© 2026 The Keepers of the CryptoHives

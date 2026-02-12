@@ -185,6 +185,36 @@ public class TurboShake128Tests
     }
 
     /// <summary>
+    /// Test that <see cref="KeccakXofCore.ResetWithDomainSeparator"/> resets state
+    /// and produces correct output for the new domain separator.
+    /// </summary>
+    [Test]
+    public void ResetWithDomainSeparatorProducesCorrectOutput()
+    {
+        byte[] expectedD06 = HexToBytes("8E C9 C6 64 65 ED 0D 4A 6C 35 D1 35 06 71 8D 68 7A 25 CB 05 C7 4C CA 1E 42 50 1A BD 83 87 4A 67");
+        byte[] expectedD01 = HexToBytes("BF 32 3F 94 04 94 E8 8E E1 C5 40 FE 66 0B E8 A0 C9 3F 43 D1 5E C0 06 99 84 62 FA 99 4E ED 5D AB");
+
+        using var turbo = new TurboShake128(32, 0x1F);
+
+        // Compute with default domain separator first
+        turbo.ComputeHash(new byte[] { 0xFF });
+
+        // Reset with D=0x06 and verify against RFC 9861 vector
+        turbo.ResetWithDomainSeparator(0x06);
+        turbo.TransformBlock(new byte[] { 0xFF });
+        byte[] hashD06 = new byte[32];
+        turbo.Squeeze(hashD06);
+        Assert.That(hashD06, Is.EqualTo(expectedD06));
+
+        // Reset with D=0x01 and verify against RFC 9861 vector
+        turbo.ResetWithDomainSeparator(0x01);
+        turbo.TransformBlock(new byte[] { 0xFF, 0xFF, 0xFF });
+        byte[] hashD01 = new byte[32];
+        turbo.Squeeze(hashD01);
+        Assert.That(hashD01, Is.EqualTo(expectedD01));
+    }
+
+    /// <summary>
     /// Creates the pattern message per RFC 9861: ptn(n) = (0x00, 0x01, ..., 0xFA) repeated.
     /// </summary>
     private static byte[] CreatePattern(int length)

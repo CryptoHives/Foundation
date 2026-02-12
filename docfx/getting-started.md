@@ -51,8 +51,6 @@ Install-Package CryptoHives.Foundation.Threading.Analyzers
 
 ### CryptoHives.Foundation.Security.Cryptography
 
-> **Note:** This package is currently in development and not yet published to NuGet.
-
 The Cryptography package provides specification-based implementations of cryptographic hash algorithms and MACs.
 
 Install via NuGet Package Manager (when available):
@@ -125,7 +123,7 @@ byte[] longHash = blake3.ComputeHash(data);
 
 // KMAC256 authentication
 byte[] key = new byte[32];
-using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "MyApp");
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
 byte[] mac = kmac.ComputeHash(message);
 ```
 

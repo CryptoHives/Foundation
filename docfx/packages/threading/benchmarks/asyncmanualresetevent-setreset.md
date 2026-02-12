@@ -1,7 +1,7 @@
-| Method                               | Mean       | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |-----------:|------:|----------:|------------:|
-| ManualResetEventSlimSet              |   5.850 ns |  0.71 |         - |          NA |
-| PooledAsyncManualResetEventSetReset  |   8.243 ns |  1.00 |         - |          NA |
-| RefImplAsyncManualResetEventSetReset |  10.641 ns |  1.29 |      96 B |          NA |
-| NitoAsyncManualResetEventSetReset    |  19.161 ns |  2.32 |      96 B |          NA |
-| ManualResetEventSet                  | 453.439 ns | 55.01 |         - |          NA |
+﻿| Description                                | Mean       | Ratio | Allocated | 
+|------------------------------------------- |-----------:|------:|----------:|
+| SetReset · ManualResetEventSlim · Slim     |   5.617 ns |  0.76 |         - | 
+| SetReset · AsyncManualReset · Pooled       |   7.433 ns |  1.00 |         - | 
+| SetReset · AsyncManualReset · RefImpl      |   9.681 ns |  1.30 |      96 B | 
+| SetReset · AsyncManualReset · Nito.AsyncEx |  17.034 ns |  2.29 |      96 B | 
+| SetReset · ManualResetEvent · Standard     | 433.172 ns | 58.28 |         - |

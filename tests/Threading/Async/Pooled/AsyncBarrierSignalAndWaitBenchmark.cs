@@ -6,7 +6,6 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
@@ -32,9 +31,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [Description("Measures the performance of barrier synchronization operations.")]
 [NonParallelizable]
 [BenchmarkCategory("AsyncBarrier")]
@@ -70,6 +67,7 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "Standard", "Barrier")]
     public async Task SignalAndWaitBarrierStandard()
     {
         for (int i = 0; i < ParticipantCount; i++)
@@ -87,6 +85,7 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SignalAndWait", "Pooled")]
     public async Task SignalAndWaitPooledAsync()
     {
         for (int i = 0; i < ParticipantCount; i++)
@@ -104,6 +103,7 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "RefImpl")]
     public async Task SignalAndWaitRefImplAsync()
     {
         for (int i = 0; i < ParticipantCount; i++)

@@ -1,61 +1,61 @@
-| Method                               | Iterations | cancellationType | Mean         | Ratio | Allocated | Alloc Ratio |
-|------------------------------------- |----------- |----------------- |-------------:|------:|----------:|------------:|
-| LockUnlockPooledMultipleAsync        | 0          | None             |     13.89 ns |  1.00 |         - |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 0          | None             |     15.16 ns |  1.09 |         - |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 0          | None             |     19.86 ns |  1.43 |         - |          NA |
-| LockUnlockRefImplMultipleAsync       | 0          | None             |     20.94 ns |  1.51 |         - |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 0          | None             |     24.14 ns |  1.74 |         - |          NA |
-| LockUnlockNitoMultipleAsync          | 0          | None             |     41.99 ns |  3.02 |     320 B |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 0          | None             |     63.27 ns |  4.55 |     208 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| LockUnlockPooledMultipleAsync        | 0          | NotCancelled     |     14.41 ns |  1.00 |         - |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 0          | NotCancelled     |     14.67 ns |  1.02 |         - |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 0          | NotCancelled     |     19.94 ns |  1.38 |         - |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 0          | NotCancelled     |     24.20 ns |  1.68 |         - |          NA |
-| LockUnlockNitoMultipleAsync          | 0          | NotCancelled     |     42.97 ns |  2.98 |     320 B |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 0          | NotCancelled     |     62.77 ns |  4.36 |     208 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| LockUnlockPooledMultipleAsync        | 1          | None             |     44.73 ns |  1.00 |         - |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 1          | None             |     46.13 ns |  1.03 |      88 B |          NA |
-| LockUnlockRefImplMultipleAsync       | 1          | None             |     84.39 ns |  1.89 |     216 B |          NA |
-| LockUnlockNitoMultipleAsync          | 1          | None             |    105.63 ns |  2.36 |     728 B |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 1          | None             |    128.33 ns |  2.87 |     416 B |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 1          | None             |    446.45 ns |  9.98 |     272 B |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 1          | None             |    522.64 ns | 11.68 |     352 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| LockUnlockPooledMultipleAsync        | 1          | NotCancelled     |     59.50 ns |  1.00 |         - |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 1          | NotCancelled     |    126.93 ns |  2.13 |     416 B |          NA |
-| LockUnlockNitoMultipleAsync          | 1          | NotCancelled     |    425.70 ns |  7.15 |     968 B |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 1          | NotCancelled     |    543.58 ns |  9.14 |     504 B |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 1          | NotCancelled     |    568.54 ns |  9.56 |     272 B |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 1          | NotCancelled     |    675.11 ns | 11.35 |     640 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| LockUnlockSemaphoreSlimMultipleAsync | 10         | None             |    301.30 ns |  0.79 |     880 B |          NA |
-| LockUnlockPooledMultipleAsync        | 10         | None             |    381.45 ns |  1.00 |         - |          NA |
-| LockUnlockNitoMultipleAsync          | 10         | None             |    600.24 ns |  1.57 |    4400 B |          NA |
-| LockUnlockRefImplMultipleAsync       | 10         | None             |    688.36 ns |  1.80 |    2160 B |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 10         | None             |    721.33 ns |  1.89 |    2288 B |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 10         | None             |  3,121.59 ns |  8.18 |    1352 B |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 10         | None             |  3,276.16 ns |  8.59 |    2296 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| LockUnlockPooledMultipleAsync        | 10         | NotCancelled     |    544.83 ns |  1.00 |         - |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 10         | NotCancelled     |    703.24 ns |  1.29 |    2288 B |          NA |
-| LockUnlockNitoMultipleAsync          | 10         | NotCancelled     |  2,791.55 ns |  5.12 |    6800 B |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 10         | NotCancelled     |  3,600.68 ns |  6.61 |    1352 B |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 10         | NotCancelled     |  4,302.62 ns |  7.90 |    3888 B |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 10         | NotCancelled     |  5,174.97 ns |  9.50 |    5176 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| LockUnlockSemaphoreSlimMultipleAsync | 100        | None             |  2,786.80 ns |  0.82 |    8800 B |          NA |
-| LockUnlockPooledMultipleAsync        | 100        | None             |  3,379.56 ns |  1.00 |         - |          NA |
-| LockUnlockNitoMultipleAsync          | 100        | None             |  5,883.34 ns |  1.74 |   41120 B |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 100        | None             |  6,359.23 ns |  1.88 |   21008 B |          NA |
-| LockUnlockRefImplMultipleAsync       | 100        | None             |  6,504.34 ns |  1.92 |   21600 B |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 100        | None             | 32,973.46 ns |  9.76 |   12216 B |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 100        | None             | 35,043.55 ns | 10.37 |   21800 B |          NA |
-|                                      |            |                  |              |       |           |             |
-| LockUnlockPooledMultipleAsync        | 100        | NotCancelled     |  5,108.53 ns |  1.00 |         - |          NA |
-| LockUnlockNeoSmartMultipleAsync      | 100        | NotCancelled     |  6,551.25 ns |  1.28 |   21008 B |          NA |
-| LockUnlockNitoMultipleAsync          | 100        | NotCancelled     | 29,297.01 ns |  5.73 |   65120 B |          NA |
-| LockUnlockPooledTaskMultipleAsync    | 100        | NotCancelled     | 36,446.80 ns |  7.13 |   12216 B |          NA |
-| LockUnlockSemaphoreSlimMultipleAsync | 100        | NotCancelled     | 42,887.13 ns |  8.40 |   37792 B |          NA |
-| LockUnlockNonKeyedMultipleAsync      | 100        | NotCancelled     | 51,830.33 ns | 10.15 |   50600 B |          NA |
+﻿| Description                               | Iterations | cancellationType | Mean         | Ratio | Allocated | 
+|------------------------------------------ |----------- |----------------- |-------------:|------:|----------:|
+| Multiple · AsyncLock · Pooled (ValueTask) | 0          | None             |     13.16 ns |  1.00 |         - | 
+| Multiple · AsyncLock · Pooled (Task)      | 0          | None             |     13.63 ns |  1.04 |         - | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 0          | None             |     19.24 ns |  1.46 |         - | 
+| Multiple · AsyncLock · RefImpl            | 0          | None             |     19.70 ns |  1.50 |         - | 
+| Multiple · AsyncLock · NonKeyed           | 0          | None             |     22.70 ns |  1.72 |         - | 
+| Multiple · AsyncLock · Nito               | 0          | None             |     38.33 ns |  2.91 |     320 B | 
+| Multiple · AsyncLock · NeoSmart           | 0          | None             |     58.19 ns |  4.42 |     208 B | 
+|                                           |            |                  |              |       |           | 
+| Multiple · AsyncLock · Pooled (ValueTask) | 0          | NotCancelled     |     12.80 ns |  1.00 |         - | 
+| Multiple · AsyncLock · Pooled (Task)      | 0          | NotCancelled     |     13.94 ns |  1.09 |         - | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 0          | NotCancelled     |     19.73 ns |  1.54 |         - | 
+| Multiple · AsyncLock · NonKeyed           | 0          | NotCancelled     |     22.40 ns |  1.75 |         - | 
+| Multiple · AsyncLock · Nito               | 0          | NotCancelled     |     37.55 ns |  2.93 |     320 B | 
+| Multiple · AsyncLock · NeoSmart           | 0          | NotCancelled     |     57.40 ns |  4.48 |     208 B | 
+|                                           |            |                  |              |       |           | 
+| Multiple · AsyncLock · Pooled (ValueTask) | 1          | None             |     38.73 ns |  1.00 |         - | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 1          | None             |     41.75 ns |  1.08 |      88 B | 
+| Multiple · AsyncLock · RefImpl            | 1          | None             |     75.87 ns |  1.96 |     216 B | 
+| Multiple · AsyncLock · Nito               | 1          | None             |     95.66 ns |  2.47 |     728 B | 
+| Multiple · AsyncLock · NeoSmart           | 1          | None             |    133.56 ns |  3.45 |     416 B | 
+| Multiple · AsyncLock · Pooled (Task)      | 1          | None             |    489.32 ns | 12.63 |     272 B | 
+| Multiple · AsyncLock · NonKeyed           | 1          | None             |    501.05 ns | 12.94 |     352 B | 
+|                                           |            |                  |              |       |           | 
+| Multiple · AsyncLock · Pooled (ValueTask) | 1          | NotCancelled     |     55.37 ns |  1.00 |         - | 
+| Multiple · AsyncLock · NeoSmart           | 1          | NotCancelled     |    115.52 ns |  2.09 |     416 B | 
+| Multiple · AsyncLock · Nito               | 1          | NotCancelled     |    382.16 ns |  6.90 |     968 B | 
+| Multiple · AsyncLock · Pooled (Task)      | 1          | NotCancelled     |    534.78 ns |  9.66 |     272 B | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 1          | NotCancelled     |    585.39 ns | 10.57 |     504 B | 
+| Multiple · AsyncLock · NonKeyed           | 1          | NotCancelled     |    651.48 ns | 11.77 |     640 B | 
+|                                           |            |                  |              |       |           | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 10         | None             |    260.69 ns |  0.78 |     880 B | 
+| Multiple · AsyncLock · Pooled (ValueTask) | 10         | None             |    333.56 ns |  1.00 |         - | 
+| Multiple · AsyncLock · Nito               | 10         | None             |    548.46 ns |  1.64 |    4400 B | 
+| Multiple · AsyncLock · RefImpl            | 10         | None             |    631.03 ns |  1.89 |    2160 B | 
+| Multiple · AsyncLock · NeoSmart           | 10         | None             |    640.84 ns |  1.92 |    2288 B | 
+| Multiple · AsyncLock · Pooled (Task)      | 10         | None             |  3,192.44 ns |  9.57 |    1352 B | 
+| Multiple · AsyncLock · NonKeyed           | 10         | None             |  3,469.19 ns | 10.40 |    2296 B | 
+|                                           |            |                  |              |       |           | 
+| Multiple · AsyncLock · Pooled (ValueTask) | 10         | NotCancelled     |    516.65 ns |  1.00 |         - | 
+| Multiple · AsyncLock · NeoSmart           | 10         | NotCancelled     |    642.69 ns |  1.24 |    2288 B | 
+| Multiple · AsyncLock · Nito               | 10         | NotCancelled     |  3,124.91 ns |  6.05 |    6800 B | 
+| Multiple · AsyncLock · Pooled (Task)      | 10         | NotCancelled     |  3,362.27 ns |  6.51 |    1352 B | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 10         | NotCancelled     |  4,295.86 ns |  8.32 |    3888 B | 
+| Multiple · AsyncLock · NonKeyed           | 10         | NotCancelled     |  5,261.54 ns | 10.18 |    5176 B | 
+|                                           |            |                  |              |       |           | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 100        | None             |  2,502.49 ns |  0.79 |    8800 B | 
+| Multiple · AsyncLock · Pooled (ValueTask) | 100        | None             |  3,170.11 ns |  1.00 |         - | 
+| Multiple · AsyncLock · Nito               | 100        | None             |  5,090.40 ns |  1.61 |   41120 B | 
+| Multiple · AsyncLock · NeoSmart           | 100        | None             |  5,878.93 ns |  1.85 |   21008 B | 
+| Multiple · AsyncLock · RefImpl            | 100        | None             |  5,981.69 ns |  1.89 |   21600 B | 
+| Multiple · AsyncLock · Pooled (Task)      | 100        | None             | 32,406.42 ns | 10.22 |   12216 B | 
+| Multiple · AsyncLock · NonKeyed           | 100        | None             | 35,616.83 ns | 11.24 |   21800 B | 
+|                                           |            |                  |              |       |           | 
+| Multiple · AsyncLock · Pooled (ValueTask) | 100        | NotCancelled     |  4,933.30 ns |  1.00 |         - | 
+| Multiple · AsyncLock · NeoSmart           | 100        | NotCancelled     |  5,942.03 ns |  1.20 |   21008 B | 
+| Multiple · AsyncLock · Pooled (Task)      | 100        | NotCancelled     | 32,638.29 ns |  6.62 |   12216 B | 
+| Multiple · AsyncLock · Nito               | 100        | NotCancelled     | 32,766.09 ns |  6.64 |   65120 B | 
+| Multiple · SemaphoreSlim · SemaphoreSlim  | 100        | NotCancelled     | 43,292.92 ns |  8.78 |   37792 B | 
+| Multiple · AsyncLock · NonKeyed           | 100        | NotCancelled     | 49,933.40 ns | 10.12 |   50600 B |

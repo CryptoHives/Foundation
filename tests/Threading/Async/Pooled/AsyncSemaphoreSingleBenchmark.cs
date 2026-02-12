@@ -4,7 +4,6 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
@@ -33,9 +32,7 @@ using System.Threading.Tasks;
 /// </para>
 /// </remarks>
 [TestFixture]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [Description("Measures the performance of uncontended semaphore wait/release operations.")]
 [NonParallelizable]
 [BenchmarkCategory("AsyncSemaphore")]
@@ -48,6 +45,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("WaitRelease", "SemaphoreSlim", "SemaphoreSlim")]
     public async Task WaitReleaseSemaphoreSlimSingleAsync()
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
@@ -66,6 +64,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("WaitRelease", "Pooled")]
     public async Task WaitReleasePooledSingleAsync()
     {
         await _semaphorePooled.WaitAsync().ConfigureAwait(false);
@@ -85,6 +84,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("WaitRelease", "Nito.AsyncEx")]
     public async Task WaitReleaseNitoSingleAsync()
     {
         await _semaphoreNitoAsync.WaitAsync().ConfigureAwait(false);
@@ -104,6 +104,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("WaitRelease", "RefImpl")]
     public async Task WaitReleaseRefImplSingleAsync()
     {
         await _semaphoreRefImp.WaitAsync().ConfigureAwait(false);
