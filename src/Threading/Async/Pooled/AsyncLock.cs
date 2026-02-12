@@ -61,8 +61,7 @@ public sealed class AsyncLock
     /// Constructs a new AsyncLock instance with optional custom pool and custom default queue size.
     /// </summary>
     /// <param name="pool">Custom pool for this instance.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
-    public AsyncLock(int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
+    public AsyncLock(IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
         _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;

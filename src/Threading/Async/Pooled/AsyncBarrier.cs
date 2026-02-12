@@ -83,11 +83,10 @@ public sealed class AsyncBarrier
     /// </summary>
     /// <param name="participantCount">The number of participants required to release the barrier.</param>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size. Size default is participantCount.</param>
     /// <param name="pool">Custom pool for this instance.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="participantCount"/> is less than or equal to zero.</exception>
-    public AsyncBarrier(int participantCount, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<bool>? pool = null)
-        : this(participantCount, postPhaseAction: null, runContinuationAsynchronously, defaultEventQueueSize, pool)
+    public AsyncBarrier(int participantCount, bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource<bool>? pool = null)
+        : this(participantCount, postPhaseAction: null, runContinuationAsynchronously, pool)
     {
     }
 
@@ -101,10 +100,9 @@ public sealed class AsyncBarrier
     /// and thrown to all participants.
     /// </param>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for this instance.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="participantCount"/> is less than or equal to zero.</exception>
-    public AsyncBarrier(int participantCount, Action<AsyncBarrier>? postPhaseAction, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<bool>? pool = null)
+    public AsyncBarrier(int participantCount, Action<AsyncBarrier>? postPhaseAction, bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource<bool>? pool = null)
     {
         if (participantCount <= 0) throw new ArgumentOutOfRangeException(nameof(participantCount), participantCount, "Participant count must be greater than zero.");
 

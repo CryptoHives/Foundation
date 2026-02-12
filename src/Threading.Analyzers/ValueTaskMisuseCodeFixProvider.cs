@@ -8,7 +8,6 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Editing;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -29,6 +28,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
         DiagnosticIds.StoredInField,
         DiagnosticIds.MultipleAsTask,
         DiagnosticIds.DirectResultAccess,
+        DiagnosticIds.PassedToUnsafeMethod,
         DiagnosticIds.AsTaskStoredBeforeSignal,
         DiagnosticIds.NotConsumed);
 
@@ -51,36 +51,40 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
         switch (diagnostic.Id)
         {
             case DiagnosticIds.MultipleAwait:
-                RegisterMultipleAwaitFixes(context, root, node, diagnostic);
+                RegisterMultipleAwaitFixes(context, node, diagnostic);
                 break;
 
             case DiagnosticIds.BlockingGetResult:
-                RegisterBlockingGetResultFixes(context, root, node, diagnostic);
+                RegisterBlockingGetResultFixes(context, node, diagnostic);
                 break;
 
             case DiagnosticIds.StoredInField:
-                RegisterStoredInFieldFixes(context, root, node, diagnostic);
+                RegisterStoredInFieldFixes(context, node, diagnostic);
                 break;
 
             case DiagnosticIds.MultipleAsTask:
-                RegisterMultipleAsTaskFixes(context, root, node, diagnostic);
+                RegisterMultipleAsTaskFixes(context, node, diagnostic);
                 break;
 
             case DiagnosticIds.DirectResultAccess:
-                RegisterDirectResultAccessFixes(context, root, node, diagnostic);
+                RegisterDirectResultAccessFixes(context, node, diagnostic);
+                break;
+
+            case DiagnosticIds.PassedToUnsafeMethod:
+                RegisterPassedToUnsafeMethodFixes(context, node, diagnostic);
                 break;
 
             case DiagnosticIds.AsTaskStoredBeforeSignal:
-                RegisterAsTaskStoredFixes(context, root, node, diagnostic);
+                RegisterAsTaskStoredFixes(context, node, diagnostic);
                 break;
 
             case DiagnosticIds.NotConsumed:
-                RegisterNotConsumedFixes(context, root, node, diagnostic);
+                RegisterNotConsumedFixes(context, node, diagnostic);
                 break;
         }
     }
 
-    private static void RegisterMultipleAwaitFixes(CodeFixContext context, SyntaxNode root, SyntaxNode node, Diagnostic diagnostic)
+    private static void RegisterMultipleAwaitFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix 1: Convert to AsTask() at declaration
         context.RegisterCodeFix(
@@ -99,7 +103,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterBlockingGetResultFixes(CodeFixContext context, SyntaxNode root, SyntaxNode node, Diagnostic diagnostic)
+    private static void RegisterBlockingGetResultFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix 1: Convert to await
         context.RegisterCodeFix(
@@ -118,7 +122,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterStoredInFieldFixes(CodeFixContext context, SyntaxNode root, SyntaxNode node, Diagnostic diagnostic)
+    private static void RegisterStoredInFieldFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix: Change field type to Task
         context.RegisterCodeFix(
@@ -129,7 +133,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterMultipleAsTaskFixes(CodeFixContext context, SyntaxNode root, SyntaxNode node, Diagnostic diagnostic)
+    private static void RegisterMultipleAsTaskFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix: Store AsTask() result in variable
         context.RegisterCodeFix(
@@ -140,7 +144,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterDirectResultAccessFixes(CodeFixContext context, SyntaxNode root, SyntaxNode node, Diagnostic diagnostic)
+    private static void RegisterDirectResultAccessFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix 1: Convert to await
         context.RegisterCodeFix(
@@ -159,7 +163,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterAsTaskStoredFixes(CodeFixContext context, SyntaxNode root, SyntaxNode node, Diagnostic diagnostic)
+    private static void RegisterAsTaskStoredFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix: Await ValueTask directly
         context.RegisterCodeFix(
@@ -170,7 +174,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterNotConsumedFixes(CodeFixContext context, SyntaxNode root, SyntaxNode node, Diagnostic diagnostic)
+    private static void RegisterNotConsumedFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix 1: Add await
         context.RegisterCodeFix(
@@ -186,6 +190,17 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
                 title: "Explicitly discard with _ =",
                 createChangedDocument: c => AddDiscardAsync(context.Document, node, c),
                 equivalenceKey: "AddDiscard"),
+            diagnostic);
+    }
+
+    private static void RegisterPassedToUnsafeMethodFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
+    {
+        // Fix: Wrap the ValueTask argument with .AsTask()
+        context.RegisterCodeFix(
+            CodeAction.Create(
+                title: "Convert to AsTask() before passing",
+                createChangedDocument: c => WrapArgumentWithAsTaskAsync(context.Document, node, c),
+                equivalenceKey: "WrapArgWithAsTask"),
             diagnostic);
     }
 
@@ -440,8 +455,86 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
 
     private static async Task<Document> StoreAsTaskResultAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        // This is complex refactoring - for now, just add a comment suggesting manual fix
-        return document;
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null)
+        {
+            return document;
+        }
+
+        // Find the identifier that represents the second AsTask() usage
+        var identifier = node as IdentifierNameSyntax ?? node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
+        if (identifier is null)
+        {
+            return document;
+        }
+
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (semanticModel is null)
+        {
+            return document;
+        }
+
+        var symbolInfo = semanticModel.GetSymbolInfo(identifier, cancellationToken);
+        if (symbolInfo.Symbol is not ILocalSymbol localSymbol)
+        {
+            return document;
+        }
+
+        // Find the variable declaration and add .AsTask() to the initializer, storing it as Task
+        var syntaxReference = localSymbol.DeclaringSyntaxReferences.FirstOrDefault();
+        if (syntaxReference is null)
+        {
+            return document;
+        }
+
+        var declaringSyntax = await syntaxReference.GetSyntaxAsync(cancellationToken).ConfigureAwait(false);
+        if (declaringSyntax is not VariableDeclaratorSyntax variableDeclarator ||
+            variableDeclarator.Initializer is null)
+        {
+            return document;
+        }
+
+        // Add .AsTask() to the initializer
+        var newInitializer = SyntaxFactory.InvocationExpression(
+            SyntaxFactory.MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                variableDeclarator.Initializer.Value,
+                SyntaxFactory.IdentifierName("AsTask")));
+
+        var newVariableDeclarator = variableDeclarator.WithInitializer(
+            variableDeclarator.Initializer.WithValue(newInitializer));
+
+        // Change the type to Task if it's explicit
+        if (variableDeclarator.Parent is VariableDeclarationSyntax declaration &&
+            declaration.Type is not null &&
+            !declaration.Type.IsVar)
+        {
+            var typeInfo = semanticModel.GetTypeInfo(variableDeclarator.Initializer.Value, cancellationToken);
+            TypeSyntax newType;
+            if (typeInfo.Type is INamedTypeSymbol namedType && namedType.IsGenericType)
+            {
+                var typeArg = namedType.TypeArguments.First();
+                newType = SyntaxFactory.GenericName("Task")
+                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
+                        SyntaxFactory.SingletonSeparatedList(
+                            SyntaxFactory.ParseTypeName(typeArg.ToDisplayString()))));
+            }
+            else
+            {
+                newType = SyntaxFactory.ParseTypeName("Task");
+            }
+
+            var newDeclaration = declaration.WithType(newType).WithVariables(
+                SyntaxFactory.SingletonSeparatedList(newVariableDeclarator));
+
+            root = root.ReplaceNode(declaration, newDeclaration);
+        }
+        else
+        {
+            root = root.ReplaceNode(variableDeclarator, newVariableDeclarator);
+        }
+
+        return document.WithSyntaxRoot(root);
     }
 
     private static async Task<Document> ConvertResultToAwaitAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
@@ -593,6 +686,32 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             .WithTrailingTrivia(expressionStatement.GetTrailingTrivia());
 
         root = root.ReplaceNode(expressionStatement, newStatement);
+        return document.WithSyntaxRoot(root);
+    }
+
+    private static async Task<Document> WrapArgumentWithAsTaskAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null)
+        {
+            return document;
+        }
+
+        var argument = node.AncestorsAndSelf().OfType<ArgumentSyntax>().FirstOrDefault();
+        if (argument is null)
+        {
+            return document;
+        }
+
+        // Wrap the argument expression with .AsTask()
+        var asTaskCall = SyntaxFactory.InvocationExpression(
+            SyntaxFactory.MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                argument.Expression,
+                SyntaxFactory.IdentifierName("AsTask")));
+
+        var newArgument = argument.WithExpression(asTaskCall);
+        root = root.ReplaceNode(argument, newArgument);
         return document.WithSyntaxRoot(root);
     }
 }

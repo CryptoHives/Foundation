@@ -84,9 +84,8 @@ public sealed class AsyncAutoResetEvent
     /// </summary>
     /// <param name="initialState">The initial state of the event.</param>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for this instance.</param>
-    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<bool>? pool = null)
+    public AsyncAutoResetEvent(bool initialState = false, bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource<bool>? pool = null)
     {
         _signaled = initialState ? 1 : 0;
         _runContinuationAsynchronously = runContinuationAsynchronously;

@@ -84,9 +84,8 @@ public sealed class AsyncManualResetEvent
     /// </summary>
     /// <param name="set">The initial state of the event.</param>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for this instance.</param>
-    public AsyncManualResetEvent(bool set = false, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<bool>? pool = null)
+    public AsyncManualResetEvent(bool set = false, bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource<bool>? pool = null)
     {
         _mutex = new();
         _signaled = set;

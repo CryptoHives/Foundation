@@ -66,10 +66,9 @@ public sealed class AsyncCountdownEvent
     /// </summary>
     /// <param name="initialCount">The initial count for the countdown event.</param>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for this instance.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="initialCount"/> is less than or equal to zero.</exception>
-    public AsyncCountdownEvent(int initialCount, bool runContinuationAsynchronously = true, int defaultEventQueueSize = 0, IGetPooledManualResetValueTaskSource<bool>? pool = null)
+    public AsyncCountdownEvent(int initialCount, bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource<bool>? pool = null)
     {
         if (initialCount <= 0)
         {

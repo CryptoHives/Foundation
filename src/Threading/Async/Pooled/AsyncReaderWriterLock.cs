@@ -148,11 +148,9 @@ public sealed class AsyncReaderWriterLock
     /// Constructs a new AsyncReaderWriterLock instance.
     /// </summary>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for waiters.</param>
     public AsyncReaderWriterLock(
         bool runContinuationAsynchronously = true,
-        int defaultEventQueueSize = 0,
         IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
         _runContinuationAsynchronously = runContinuationAsynchronously;

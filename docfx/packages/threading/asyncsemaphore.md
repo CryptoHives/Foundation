@@ -55,7 +55,6 @@ public async Task<T> RateLimitedOperationAsync<T>(Func<Task<T>> operation, Cance
 public AsyncSemaphore(
     int initialCount,
     bool runContinuationAsynchronously = true,
-    int defaultEventQueueSize = 0,
     IGetPooledManualResetValueTaskSource<bool>? pool = null)
 ```
 
@@ -63,7 +62,6 @@ public AsyncSemaphore(
 |-----------|-------------|
 | `initialCount` | The initial number of available permits. Must be non-negative. |
 | `runContinuationAsynchronously` | If true (default), continuations run on the thread pool. |
-| `defaultEventQueueSize` | Initial capacity for the waiter queue. |
 | `pool` | Optional custom pool for ValueTaskSource instances. |
 
 ## Properties

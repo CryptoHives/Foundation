@@ -34,7 +34,7 @@ public class AsyncManualResetEventTests
     [Test]
     public void RunContinuationAsynchronouslyPropertyWorks()
     {
-        var mre = new AsyncManualResetEvent(defaultEventQueueSize: 8);
+        var mre = new AsyncManualResetEvent();
         Assert.That(mre.RunContinuationAsynchronously, Is.True);
 
         mre = new AsyncManualResetEvent(runContinuationAsynchronously: false);

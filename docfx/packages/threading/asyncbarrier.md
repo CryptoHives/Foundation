@@ -89,26 +89,24 @@ Console.WriteLine($"Participants: {barrier.ParticipantCount}"); // 4
 
 ## Constructors
 
-### AsyncBarrier(int, bool, int, IGetPooledManualResetValueTaskSource<bool>?)
+### AsyncBarrier(int, bool, IGetPooledManualResetValueTaskSource<bool>?)
 
 ```csharp
 public AsyncBarrier(
     int participantCount,
     bool runContinuationAsynchronously = true,
-    int defaultEventQueueSize = 0,
     IGetPooledManualResetValueTaskSource<bool>? pool = null)
 ```
 
 Creates a barrier without a post-phase action.
 
-### AsyncBarrier(int, Action<AsyncBarrier>?, bool, int, IGetPooledManualResetValueTaskSource<bool>?)
+### AsyncBarrier(int, Action<AsyncBarrier>?, bool, IGetPooledManualResetValueTaskSource<bool>?)
 
 ```csharp
 public AsyncBarrier(
     int participantCount,
     Action<AsyncBarrier>? postPhaseAction,
     bool runContinuationAsynchronously = true,
-    int defaultEventQueueSize = 0,
     IGetPooledManualResetValueTaskSource<bool>? pool = null)
 ```
 
@@ -119,7 +117,6 @@ Creates a barrier with an optional post-phase action. The post-phase action is i
 | `participantCount` | The number of participants. Must be greater than zero. |
 | `postPhaseAction` | An action to execute after each phase when all participants have arrived. If this action throws, all participants receive a `BarrierPostPhaseException`. |
 | `runContinuationAsynchronously` | If true (default), continuations run on the thread pool. |
-| `defaultEventQueueSize` | Initial capacity for the waiter queue. |
 | `pool` | Optional custom pool for ValueTaskSource instances. |
 
 ## Properties
