@@ -1,11 +1,11 @@
-﻿| Method                              | ParticipantCount | Mean       | Ratio | Allocated | 
-|------------------------------------ |----------------- |-----------:|------:|----------:|
-| SignalAndWaitCountdownEventStandard | 1                |   6.776 ns |  0.38 |         - | 
-| SignalAndWaitRefImplAsync           | 1                |  17.113 ns |  0.96 |      96 B | 
-| SignalAndWaitPooledAsync            | 1                |  17.839 ns |  1.00 |         - | 
-| WaitAndSignalPooledAsync            | 1                |  58.850 ns |  3.30 |         - | 
-|                                     |                  |            |       |           | 
-| SignalAndWaitCountdownEventStandard | 10               |  20.122 ns |  0.34 |         - | 
-| SignalAndWaitRefImplAsync           | 10               |  28.387 ns |  0.48 |      96 B | 
-| SignalAndWaitPooledAsync            | 10               |  58.640 ns |  1.00 |         - | 
-| WaitAndSignalPooledAsync            | 10               | 104.738 ns |  1.79 |         - |
+﻿| Description                                | ParticipantCount | Mean      | Ratio | Allocated | 
+|------------------------------------------- |----------------- |----------:|------:|----------:|
+| SignalAndWait · CountdownEvent · Standard  | 1                |  6.657 ns |  0.38 |         - | 
+| SignalAndWait · AsyncCountdownEv · RefImpl | 1                | 15.799 ns |  0.90 |      96 B | 
+| SignalAndWait · AsyncCountdownEv · Pooled  | 1                | 17.462 ns |  1.00 |         - | 
+| WaitAndSignal · AsyncCountdownEv · Pooled  | 1                | 46.495 ns |  2.66 |         - | 
+|                                            |                  |           |       |           | 
+| SignalAndWait · CountdownEvent · Standard  | 10               | 20.122 ns |  0.40 |         - | 
+| SignalAndWait · AsyncCountdownEv · RefImpl | 10               | 27.920 ns |  0.55 |      96 B | 
+| SignalAndWait · AsyncCountdownEv · Pooled  | 10               | 50.758 ns |  1.00 |         - | 
+| WaitAndSignal · AsyncCountdownEv · Pooled  | 10               | 85.093 ns |  1.68 |         - |

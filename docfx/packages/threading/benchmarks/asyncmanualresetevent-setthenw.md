@@ -1,6 +1,6 @@
-﻿| Method                                            | Mean     | Ratio | Allocated | 
-|-------------------------------------------------- |---------:|------:|----------:|
-| RefImplAsyncManualResetEventSetThenWaitAsync      | 13.32 ns |  0.81 |      96 B | 
-| PooledAsyncManualResetEventSetThenWaitAsync       | 16.47 ns |  1.00 |         - | 
-| PooledAsTaskAsyncManualResetEventSetThenWaitAsync | 17.12 ns |  1.04 |         - | 
-| NitoAsyncManualResetEventSetThenWaitAsync         | 24.06 ns |  1.46 |      96 B |
+﻿| Description                                         | Mean     | Ratio | Allocated | 
+|---------------------------------------------------- |---------:|------:|----------:|
+| SetThenWait · AsyncManualReset · RefImpl            | 13.30 ns |  0.85 |      96 B | 
+| SetThenWait · AsyncManualReset · Pooled (ValueTask) | 15.72 ns |  1.00 |         - | 
+| SetThenWait · AsyncManualReset · Pooled (AsTask)    | 16.11 ns |  1.02 |         - | 
+| SetThenWait · AsyncManualReset · Nito.AsyncEx       | 23.46 ns |  1.49 |      96 B |
