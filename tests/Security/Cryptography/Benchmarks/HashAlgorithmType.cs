@@ -268,6 +268,19 @@ public sealed class HashAlgorithmType : IFormattable
 
     #endregion
 
+    #region LSH Individual Algorithms
+
+    /// <summary>LSH-256-256 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> Lsh256_256() => FromFamily("LSH-256-256");
+
+    /// <summary>LSH-512-256 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> Lsh512_256() => FromFamily("LSH-512-256");
+
+    /// <summary>LSH-512-512 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> Lsh512_512() => FromFamily("LSH-512-512");
+
+    #endregion
+
     #region Ascon Individual Algorithms
 
     /// <summary>Ascon-Hash256 implementations.</summary>

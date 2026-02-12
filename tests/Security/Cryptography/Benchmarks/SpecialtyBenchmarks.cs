@@ -235,3 +235,60 @@ public class Kupyna512Benchmark : ParameterizedHashBenchmark
     public Kupyna512Benchmark() { }
     public Kupyna512Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
+
+/// <summary>
+/// Benchmark for LSH-256-256 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "Regional", "LSH-256-256")]
+[NonParallelizable]
+public class Lsh256_256Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Lsh256_256();
+
+    public Lsh256_256Benchmark() { }
+    public Lsh256_256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}
+
+/// <summary>
+/// Benchmark for LSH-512-256 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "Regional", "LSH-512-256")]
+[NonParallelizable]
+public class Lsh512_256Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Lsh512_256();
+
+    public Lsh512_256Benchmark() { }
+    public Lsh512_256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}
+
+/// <summary>
+/// Benchmark for LSH-512-512 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "Regional", "LSH-512-512")]
+[NonParallelizable]
+public class Lsh512_512Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Lsh512_512();
+
+    public Lsh512_512Benchmark() { }
+    public Lsh512_512Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}

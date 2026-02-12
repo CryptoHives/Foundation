@@ -228,6 +228,9 @@ public static class HashAlgorithmRegistry
         // Kupyna (DSTU 7564 - Ukrainian)
         AddKupyna(list);
 
+        // LSH (KS X 3262 - Korean)
+        AddLsh(list);
+
         // KangarooTwelve / TurboSHAKE
         AddKangarooTwelve(list);
         AddTurboShake(list);
@@ -709,6 +712,25 @@ public static class HashAlgorithmRegistry
             () => CH.Kupyna.Create(64), Source.Managed));
         list.Add(new("Kupyna-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Dstu7564Digest(512)), Source.BouncyCastle));
+    }
+
+    #endregion
+
+    #region LSH
+
+    private static void AddLsh(List<HashImplementation> list)
+    {
+        // LSH-256-256
+        list.Add(new("LSH-256-256", "Managed", 256,
+            () => CH.Lsh256.Create(32), Source.Managed));
+
+        // LSH-512-256
+        list.Add(new("LSH-512-256", "Managed", 256,
+            () => CH.Lsh512.Create(32), Source.Managed));
+
+        // LSH-512-512
+        list.Add(new("LSH-512-512", "Managed", 512,
+            () => CH.Lsh512.Create(64), Source.Managed));
     }
 
     #endregion
