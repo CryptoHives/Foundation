@@ -45,5 +45,7 @@
           href: specs/Whirlpool-vectors.md
         - name: Streebog (GOST)
           href: specs/Streebog-vectors.md
+        - name: Kupyna (DSTU 7564)
+          href: specs/Kupyna-vectors.md
         - name: MD5 (Legacy)
           href: specs/MD5-vectors.md

@@ -694,6 +694,38 @@ byte[] hash = streebog256.ComputeHash(data);
 
 ---
 
+## Kupyna
+
+Ukrainian national standard hash function (DSTU 7564:2014).
+
+### Kupyna
+
+```csharp
+public sealed class Kupyna : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: 256, 384, or 512 bits
+- Block Size: 64 bytes (256-bit) or 128 bytes (384/512-bit)
+- Standard: DSTU 7564:2014
+
+**Usage:**
+```csharp
+// Kupyna-512 (default)
+using var kupyna = Kupyna.Create();
+byte[] hash = kupyna.ComputeHash(data);
+
+// Kupyna-256
+using var kupyna256 = Kupyna.Create(hashSizeBytes: 32);
+byte[] hash = kupyna256.ComputeHash(data);
+
+// Kupyna-384
+using var kupyna384 = Kupyna.Create(hashSizeBytes: 48);
+byte[] hash = kupyna384.ComputeHash(data);
+```
+
+---
+
 ## Ascon
 
 Lightweight cryptographic hash and XOF from NIST Lightweight Cryptography Standardization (FIPS 207).

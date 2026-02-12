@@ -105,6 +105,11 @@ $packageConfigurations = @{
             @{ Source = "WhirlpoolBenchmark-report.md"; Target = "whirlpool.md" }
             @{ Source = "Ripemd160Benchmark-report.md"; Target = "ripemd160.md" }
 
+            # Kupyna (DSTU 7564) individual algorithms
+            @{ Source = "Kupyna256Benchmark-report.md"; Target = "kupyna256.md" }
+            @{ Source = "Kupyna384Benchmark-report.md"; Target = "kupyna384.md" }
+            @{ Source = "Kupyna512Benchmark-report.md"; Target = "kupyna512.md" }
+
             # Ascon individual algorithms
             @{ Source = "AsconHash256Benchmark-report.md"; Target = "asconhash256.md" }
             @{ Source = "AsconXof128Benchmark-report.md"; Target = "asconxof128.md" }

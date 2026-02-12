@@ -251,6 +251,15 @@ public sealed class HashAlgorithmType : IFormattable
     /// <summary>Streebog-512 implementations.</summary>
     public static IEnumerable<HashAlgorithmType> Streebog512() => FromFamily("Streebog-512");
 
+    /// <summary>Kupyna-256 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> Kupyna256() => FromFamily("Kupyna-256");
+
+    /// <summary>Kupyna-384 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> Kupyna384() => FromFamily("Kupyna-384");
+
+    /// <summary>Kupyna-512 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> Kupyna512() => FromFamily("Kupyna-512");
+
     /// <summary>Whirlpool implementations.</summary>
     public static IEnumerable<HashAlgorithmType> Whirlpool() => FromFamily("Whirlpool");
 

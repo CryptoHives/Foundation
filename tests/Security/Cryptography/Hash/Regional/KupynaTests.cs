@@ -71,11 +71,7 @@ public class KupynaTests
     /// <summary>
     /// Validate Kupyna-256 correctly hashes empty input.
     /// </summary>
-    /// <remarks>
-    /// This test is currently expected to fail as the managed implementation is WIP.
-    /// </remarks>
     [Test]
-    [Ignore("WIP: Managed Kupyna implementation needs debugging")]
     public void Kupyna256EmptyInput()
     {
         using var kupyna = Kupyna.Create(32);
@@ -86,11 +82,7 @@ public class KupynaTests
     /// <summary>
     /// Validate Kupyna-512 correctly hashes empty input.
     /// </summary>
-    /// <remarks>
-    /// This test is currently expected to fail as the managed implementation is WIP.
-    /// </remarks>
     [Test]
-    [Ignore("WIP: Managed Kupyna implementation needs debugging")]
     public void Kupyna512EmptyInput()
     {
         using var kupyna = Kupyna.Create(64);
@@ -101,11 +93,7 @@ public class KupynaTests
     /// <summary>
     /// Validate Kupyna-256 correctly hashes "The quick brown fox..." message.
     /// </summary>
-    /// <remarks>
-    /// This test is currently expected to fail as the managed implementation is WIP.
-    /// </remarks>
     [Test]
-    [Ignore("WIP: Managed Kupyna implementation needs debugging")]
     public void Kupyna256QuickBrownFox()
     {
         using var kupyna = Kupyna.Create(32);
@@ -155,11 +143,7 @@ public class KupynaTests
     /// <summary>
     /// Validate that our implementation matches BouncyCastle for Kupyna-256.
     /// </summary>
-    /// <remarks>
-    /// This test is currently expected to fail as the managed implementation is WIP.
-    /// </remarks>
     [Test]
-    [Ignore("WIP: Managed Kupyna implementation needs debugging")]
     [TestCase(0)]     // Empty
     [TestCase(1)]     // Single byte
     [TestCase(32)]    // Exactly half block
@@ -186,11 +170,7 @@ public class KupynaTests
     /// <summary>
     /// Validate that our implementation matches BouncyCastle for Kupyna-384.
     /// </summary>
-    /// <remarks>
-    /// This test is currently expected to fail as the managed implementation is WIP.
-    /// </remarks>
     [Test]
-    [Ignore("WIP: Managed Kupyna implementation needs debugging")]
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(64)]
@@ -216,11 +196,7 @@ public class KupynaTests
     /// <summary>
     /// Validate that our implementation matches BouncyCastle for Kupyna-512.
     /// </summary>
-    /// <remarks>
-    /// This test is currently expected to fail as the managed implementation is WIP.
-    /// </remarks>
     [Test]
-    [Ignore("WIP: Managed Kupyna implementation needs debugging")]
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(64)]
@@ -284,4 +260,132 @@ public class KupynaTests
 
         Assert.That(hash2, Is.EqualTo(hash1));
     }
+
+    // Official reference test vectors from DSTU 7564:2014 (main.c by Kiianchuk, Mordvinov, Oliynykov).
+    // Input: sequential bytes 0x00..0xFF (256 bytes total, used at various bit lengths).
+    private static byte[] SequentialTestInput()
+    {
+        byte[] data = new byte[256];
+        for (int i = 0; i < 256; i++)
+            data[i] = (byte)i;
+        return data;
+    }
+
+    private static byte[] Take(byte[] source, int count)
+    {
+        byte[] result = new byte[count];
+        Array.Copy(source, result, count);
+        return result;
+    }
+
+    /// <summary>
+    /// Official DSTU 7564 test: Kupyna-256 with 512 bits (64 bytes) of sequential input.
+    /// </summary>
+    [Test]
+    public void Kupyna256OfficialVector512Bits()
+    {
+        byte[] input = SequentialTestInput();
+        byte[] expected = TestHelpers.FromHexString(
+            "08F4EE6F1BE6903B324C4E27990CB24EF69DD58DBE84813EE0A52F6631239875");
+
+        using var kupyna = Kupyna.Create(32);
+        byte[] hash = kupyna.ComputeHash(Take(input, 64));
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Official DSTU 7564 test: Kupyna-256 with 1024 bits (128 bytes) of sequential input.
+    /// </summary>
+    [Test]
+    public void Kupyna256OfficialVector1024Bits()
+    {
+        byte[] input = SequentialTestInput();
+        byte[] expected = TestHelpers.FromHexString(
+            "0A9474E645A7D25E255E9E89FFF42EC7EB31349007059284F0B182E452BDA882");
+
+        using var kupyna = Kupyna.Create(32);
+        byte[] hash = kupyna.ComputeHash(Take(input, 128));
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Official DSTU 7564 test: Kupyna-256 with 2048 bits (256 bytes) of sequential input.
+    /// </summary>
+    [Test]
+    public void Kupyna256OfficialVector2048Bits()
+    {
+        byte[] input = SequentialTestInput();
+        byte[] expected = TestHelpers.FromHexString(
+            "D305A32B963D149DC765F68594505D4077024F836C1BF03806E1624CE176C08F");
+
+        using var kupyna = Kupyna.Create(32);
+        byte[] hash = kupyna.ComputeHash(input);
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Official DSTU 7564 test: Kupyna-512 with 512 bits (64 bytes) of sequential input.
+    /// </summary>
+    [Test]
+    public void Kupyna512OfficialVector512Bits()
+    {
+        byte[] input = SequentialTestInput();
+        byte[] expected = TestHelpers.FromHexString(
+            "3813E2109118CDFB5A6D5E72F7208DCCC80A2DFB3AFDFB02F46992B5EDBE536B" +
+            "3560DD1D7E29C6F53978AF58B444E37BA685C0DD910533BA5D78EFFFC13DE62A");
+
+        using var kupyna = Kupyna.Create(64);
+        byte[] hash = kupyna.ComputeHash(Take(input, 64));
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Official DSTU 7564 test: Kupyna-512 with 1024 bits (128 bytes) of sequential input.
+    /// </summary>
+    [Test]
+    public void Kupyna512OfficialVector1024Bits()
+    {
+        byte[] input = SequentialTestInput();
+        byte[] expected = TestHelpers.FromHexString(
+            "76ED1AC28B1D0143013FFA87213B4090B356441263C13E03FA060A8CADA32B97" +
+            "9635657F256B15D5FCA4A174DE029F0B1B4387C878FCC1C00E8705D783FD7FFE");
+
+        using var kupyna = Kupyna.Create(64);
+        byte[] hash = kupyna.ComputeHash(Take(input, 128));
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Official DSTU 7564 test: Kupyna-512 with 2048 bits (256 bytes) of sequential input.
+    /// </summary>
+    [Test]
+    public void Kupyna512OfficialVector2048Bits()
+    {
+        byte[] input = SequentialTestInput();
+        byte[] expected = TestHelpers.FromHexString(
+            "0DD03D7350C409CB3C29C25893A0724F6B133FA8B9EB90A64D1A8FA93B565566" +
+            "11EB187D715A956B107E3BFC76482298133A9CE8CBC0BD5E1436A5B197284F7E");
+
+        using var kupyna = Kupyna.Create(64);
+        byte[] hash = kupyna.ComputeHash(input);
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Official DSTU 7564 test: Kupyna-384 with 760 bits (95 bytes) of sequential input.
+    /// </summary>
+    [Test]
+    public void Kupyna384OfficialVector760Bits()
+    {
+        byte[] input = SequentialTestInput();
+        byte[] expected = TestHelpers.FromHexString(
+            "D9021692D84E5175735654846BA751E6D0ED0FAC36DFBC0841287DCB0B5584C7" +
+            "5016C3DECC2A6E47C50B2F3811E351B8");
+
+        using var kupyna = Kupyna.Create(48);
+        byte[] hash = kupyna.ComputeHash(Take(input, 95));
+        Assert.That(hash, Is.EqualTo(expected));
+    }
 }
+
+

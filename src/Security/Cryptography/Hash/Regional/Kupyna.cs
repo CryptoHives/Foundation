@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -12,10 +12,6 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <strong>WARNING: This implementation is a work-in-progress and does not produce correct output.</strong>
-/// Use BouncyCastle's <c>Dstu7564Digest</c> for production use until this is fixed.
-/// </para>
-/// <para>
 /// This is a fully managed implementation of Kupyna that does not rely on
 /// OS or hardware cryptographic APIs, ensuring deterministic behavior across
 /// all platforms and runtimes.
@@ -25,30 +21,40 @@ using System.Runtime.CompilerServices;
 /// It supports output sizes of 256, 384, or 512 bits.
 /// </para>
 /// <para>
-/// The algorithm uses a Davies-Meyer compression function with permutations derived from
-/// the Kalyna block cipher (DSTU 7624:2014). It is structurally similar to Grøstl.
+/// The algorithm uses a Davies-Meyer compression function with two fixed permutations
+/// T⊕ (P) and T+ (Q), derived from the Kalyna block cipher (DSTU 7624:2014).
+/// Each round applies AddRoundConstant, SubBytes, ShiftBytes, and MixColumns.
+/// </para>
+/// <para>
+/// Implementation follows the specification in the IACR ePrint 2015/885 paper and the
+/// official reference by Kiianchuk, Mordvinov, and Oliynykov.
 /// </para>
 /// </remarks>
-/// TODO: Debug and fix the implementation - round constants, shift patterns, or MDS matrix may be incorrect.
 public sealed class Kupyna : HashAlgorithm
 {
     /// <summary>
-    /// Block size in bytes for 256-bit hash (512-bit state).
+    /// Number of 64-bit columns in the state for hash sizes up to 256 bits.
     /// </summary>
-    private const int BlockSize256 = 64;
+    private const int Nb512 = 8;
 
     /// <summary>
-    /// Block size in bytes for 384/512-bit hash (1024-bit state).
+    /// Number of 64-bit columns in the state for hash sizes up to 512 bits.
     /// </summary>
-    private const int BlockSize512 = 128;
+    private const int Nb1024 = 16;
 
     /// <summary>
-    /// Number of rows in the state matrix.
+    /// Number of rounds for the 512-bit state.
     /// </summary>
-    private const int Rows = 8;
+    private const int Nr512 = 10;
 
-    // S-boxes from DSTU 7564:2014
-    private static readonly byte[] S0 =
+    /// <summary>
+    /// Number of rounds for the 1024-bit state.
+    /// </summary>
+    private const int Nr1024 = 14;
+
+    // S-boxes from DSTU 7564:2014 (official reference tables by Kiianchuk, Mordvinov, Oliynykov).
+    // Row i of the state uses sbox[i % 4]: rows 0,4 → S0; rows 1,5 → S1; rows 2,6 → S2; rows 3,7 → S3.
+    private static ReadOnlySpan<byte> S0 =>
     [
         0xa8, 0x43, 0x5f, 0x06, 0x6b, 0x75, 0x6c, 0x59, 0x71, 0xdf, 0x87, 0x95, 0x17, 0xf0, 0xd8, 0x09,
         0x6d, 0xf3, 0x1d, 0xcb, 0xc9, 0x4d, 0x2c, 0xaf, 0x79, 0xe0, 0x97, 0xfd, 0x6f, 0x4b, 0x45, 0x39,
@@ -68,7 +74,7 @@ public sealed class Kupyna : HashAlgorithm
         0x81, 0x54, 0xc0, 0xed, 0x4e, 0x44, 0xa7, 0x2a, 0x85, 0x25, 0xe6, 0xca, 0x7c, 0x8b, 0x56, 0x80
     ];
 
-    private static readonly byte[] S1 =
+    private static ReadOnlySpan<byte> S1 =>
     [
         0xce, 0xbb, 0xeb, 0x92, 0xea, 0xcb, 0x13, 0xc1, 0xe9, 0x3a, 0xd6, 0xb2, 0xd2, 0x90, 0x17, 0xf8,
         0x42, 0x15, 0x56, 0xb4, 0x65, 0x1c, 0x88, 0x43, 0xc5, 0x5c, 0x36, 0xba, 0xf5, 0x57, 0x67, 0x8d,
@@ -80,75 +86,112 @@ public sealed class Kupyna : HashAlgorithm
         0x30, 0xdc, 0xb7, 0x6c, 0x4a, 0xb5, 0x3f, 0x97, 0xd4, 0x62, 0x2d, 0x06, 0xa4, 0xa5, 0x83, 0x5f,
         0x2a, 0xda, 0xc9, 0x00, 0x7e, 0xa2, 0x55, 0xbf, 0x11, 0xd5, 0x9c, 0xcf, 0x0e, 0x0a, 0x3d, 0x51,
         0x7d, 0x93, 0x1b, 0xfe, 0xc4, 0x47, 0x09, 0x86, 0x0b, 0x8f, 0x9d, 0x6a, 0x07, 0xb9, 0xb0, 0x98,
-        0x18, 0x32, 0x71, 0x29, 0xc3, 0x3b, 0xf0, 0xe1, 0xa3, 0x78, 0xf1, 0x35, 0x1f, 0xb3, 0x1d, 0xac,
-        0xe0, 0x23, 0xf2, 0xa6, 0x4b, 0xd0, 0x2c, 0xa8, 0x87, 0xe2, 0x76, 0x66, 0x7f, 0x39, 0x99, 0xcd,
-        0x04, 0x82, 0xd3, 0x28, 0x84, 0x38, 0xc0, 0xa7, 0xa9, 0x53, 0x52, 0x8a, 0xec, 0x72, 0x50, 0x05,
-        0x1e, 0xff, 0x85, 0x24, 0x70, 0xe4, 0xed, 0xb8, 0x77, 0x80, 0xe8, 0xad, 0x01, 0xef, 0x59, 0xb6,
-        0xc6, 0xe6, 0x9a, 0x03, 0xfb, 0x6e, 0x27, 0xc2, 0x5e, 0x8b, 0x0c, 0x25, 0xde, 0x94, 0x74, 0xdb,
-        0x40, 0xc7, 0x2f, 0x5a, 0x34, 0x46, 0x7a, 0x4f, 0xdd, 0xa0, 0xaf, 0x61, 0xd7, 0xbe, 0xcc, 0x3a
+        0x18, 0x32, 0x71, 0x4b, 0xef, 0x3b, 0x70, 0xa0, 0xe4, 0x40, 0xff, 0xc3, 0xa9, 0xe6, 0x78, 0xf9,
+        0x8b, 0x46, 0x80, 0x1e, 0x38, 0xe1, 0xb8, 0xa8, 0xe0, 0x0c, 0x23, 0x76, 0x1d, 0x25, 0x24, 0x05,
+        0xf1, 0x6e, 0x94, 0x28, 0x9a, 0x84, 0xe8, 0xa3, 0x4f, 0x77, 0xd3, 0x85, 0xe2, 0x52, 0xf2, 0x82,
+        0x50, 0x7a, 0x2f, 0x74, 0x53, 0xb3, 0x61, 0xaf, 0x39, 0x35, 0xde, 0xcd, 0x1f, 0x99, 0xac, 0xad,
+        0x72, 0x2c, 0xdd, 0xd0, 0x87, 0xbe, 0x5e, 0xa6, 0xec, 0x04, 0xc6, 0x03, 0x34, 0xfb, 0xdb, 0x59,
+        0xb6, 0xc2, 0x01, 0xf0, 0x5a, 0xed, 0xa7, 0x66, 0x21, 0x7f, 0x8a, 0x27, 0xc7, 0xc0, 0x29, 0xd7
     ];
 
-    private static readonly byte[] S2 =
+    private static ReadOnlySpan<byte> S2 =>
     [
-        0x1e, 0x6d, 0x5a, 0x85, 0x72, 0x8c, 0x61, 0xf6, 0xbe, 0xeb, 0x84, 0xd0, 0x63, 0xf4, 0x24, 0xab,
-        0x3a, 0x06, 0xed, 0x45, 0xb5, 0x92, 0x33, 0x90, 0xd8, 0xbc, 0x49, 0xbb, 0xea, 0x79, 0x6e, 0x9a,
-        0x01, 0x02, 0xf1, 0xb8, 0x36, 0xef, 0xa3, 0x51, 0x31, 0xe9, 0x1f, 0x78, 0x76, 0x4c, 0x4a, 0xf9,
-        0x1d, 0xe3, 0x93, 0x67, 0x44, 0x25, 0xae, 0xbf, 0x54, 0x57, 0xd1, 0xa2, 0xa4, 0x2c, 0xd4, 0xdf,
-        0x95, 0xc6, 0x2f, 0xd5, 0x00, 0x05, 0x70, 0x29, 0x9e, 0x55, 0xba, 0x0b, 0x74, 0xc2, 0x40, 0x18,
-        0x0c, 0x8a, 0x5f, 0x80, 0xf8, 0x3b, 0x68, 0xcd, 0x20, 0xad, 0xcf, 0x9c, 0x4b, 0x0a, 0x52, 0xe4,
-        0x8e, 0xd9, 0x38, 0xa9, 0xd7, 0x53, 0x3f, 0x22, 0x37, 0x46, 0x94, 0x73, 0xa0, 0x2b, 0x27, 0xcc,
-        0x3c, 0x4e, 0x30, 0x1b, 0x11, 0x65, 0xf0, 0x87, 0xc0, 0xec, 0xe2, 0x13, 0xe8, 0xc1, 0x5d, 0x58,
-        0xe0, 0x07, 0xb4, 0x10, 0x50, 0x09, 0x19, 0xfa, 0x0e, 0x08, 0xfb, 0x41, 0xc8, 0x16, 0xa1, 0x0f,
-        0x6a, 0x9b, 0x99, 0xca, 0x81, 0xb0, 0x4f, 0x14, 0x23, 0x5b, 0xce, 0x7b, 0x62, 0xee, 0x12, 0xdc,
-        0x75, 0x04, 0xfe, 0x42, 0x64, 0x98, 0xb1, 0xf3, 0xdd, 0xdb, 0xb2, 0xa7, 0xda, 0xb6, 0xfc, 0x88,
-        0xe7, 0x5e, 0x69, 0x56, 0x77, 0x2e, 0xac, 0x48, 0x28, 0x8b, 0x9d, 0x60, 0x03, 0xc5, 0xe1, 0x8d,
-        0x71, 0xbd, 0x89, 0xd2, 0x7c, 0xaf, 0xc3, 0x7e, 0x86, 0xff, 0x6f, 0xf2, 0xb9, 0xe5, 0xc7, 0x2a,
-        0xc4, 0x96, 0x59, 0x82, 0x7a, 0xcb, 0xf7, 0xaa, 0x7f, 0x6c, 0x47, 0x83, 0x0d, 0x91, 0x35, 0xfd,
-        0x43, 0x8f, 0x39, 0xa6, 0xd3, 0xd6, 0x17, 0xc9, 0xb3, 0x97, 0xde, 0x21, 0x32, 0x26, 0x34, 0x4d,
-        0x5c, 0x15, 0x1c, 0xb7, 0x1a, 0xa5, 0x3d, 0x7d, 0x3e, 0x6b, 0x66, 0xe6, 0xa8, 0x9f, 0xf5, 0x2d
+        0x93, 0xd9, 0x9a, 0xb5, 0x98, 0x22, 0x45, 0xfc, 0xba, 0x6a, 0xdf, 0x02, 0x9f, 0xdc, 0x51, 0x59,
+        0x4a, 0x17, 0x2b, 0xc2, 0x94, 0xf4, 0xbb, 0xa3, 0x62, 0xe4, 0x71, 0xd4, 0xcd, 0x70, 0x16, 0xe1,
+        0x49, 0x3c, 0xc0, 0xd8, 0x5c, 0x9b, 0xad, 0x85, 0x53, 0xa1, 0x7a, 0xc8, 0x2d, 0xe0, 0xd1, 0x72,
+        0xa6, 0x2c, 0xc4, 0xe3, 0x76, 0x78, 0xb7, 0xb4, 0x09, 0x3b, 0x0e, 0x41, 0x4c, 0xde, 0xb2, 0x90,
+        0x25, 0xa5, 0xd7, 0x03, 0x11, 0x00, 0xc3, 0x2e, 0x92, 0xef, 0x4e, 0x12, 0x9d, 0x7d, 0xcb, 0x35,
+        0x10, 0xd5, 0x4f, 0x9e, 0x4d, 0xa9, 0x55, 0xc6, 0xd0, 0x7b, 0x18, 0x97, 0xd3, 0x36, 0xe6, 0x48,
+        0x56, 0x81, 0x8f, 0x77, 0xcc, 0x9c, 0xb9, 0xe2, 0xac, 0xb8, 0x2f, 0x15, 0xa4, 0x7c, 0xda, 0x38,
+        0x1e, 0x0b, 0x05, 0xd6, 0x14, 0x6e, 0x6c, 0x7e, 0x66, 0xfd, 0xb1, 0xe5, 0x60, 0xaf, 0x5e, 0x33,
+        0x87, 0xc9, 0xf0, 0x5d, 0x6d, 0x3f, 0x88, 0x8d, 0xc7, 0xf7, 0x1d, 0xe9, 0xec, 0xed, 0x80, 0x29,
+        0x27, 0xcf, 0x99, 0xa8, 0x50, 0x0f, 0x37, 0x24, 0x28, 0x30, 0x95, 0xd2, 0x3e, 0x5b, 0x40, 0x83,
+        0xb3, 0x69, 0x57, 0x1f, 0x07, 0x1c, 0x8a, 0xbc, 0x20, 0xeb, 0xce, 0x8e, 0xab, 0xee, 0x31, 0xa2,
+        0x73, 0xf9, 0xca, 0x3a, 0x1a, 0xfb, 0x0d, 0xc1, 0xfe, 0xfa, 0xf2, 0x6f, 0xbd, 0x96, 0xdd, 0x43,
+        0x52, 0xb6, 0x08, 0xf3, 0xae, 0xbe, 0x19, 0x89, 0x32, 0x26, 0xb0, 0xea, 0x4b, 0x64, 0x84, 0x82,
+        0x6b, 0xf5, 0x79, 0xbf, 0x01, 0x5f, 0x75, 0x63, 0x1b, 0x23, 0x3d, 0x68, 0x2a, 0x65, 0xe8, 0x91,
+        0xf6, 0xff, 0x13, 0x58, 0xf1, 0x47, 0x0a, 0x7f, 0xc5, 0xa7, 0xe7, 0x61, 0x5a, 0x06, 0x46, 0x44,
+        0x42, 0x04, 0xa0, 0xdb, 0x39, 0x86, 0x54, 0xaa, 0x8c, 0x34, 0x21, 0x8b, 0xf8, 0x0c, 0x74, 0x67
     ];
 
-    private static readonly byte[] S3 =
+    private static ReadOnlySpan<byte> S3 =>
     [
-        0x6c, 0xda, 0xc3, 0x59, 0x09, 0xa0, 0x9f, 0x83, 0x5e, 0x3b, 0xf6, 0xf5, 0x10, 0x02, 0x4a, 0x01,
-        0x27, 0xc2, 0xcc, 0xfc, 0x9b, 0x6b, 0xba, 0x06, 0x75, 0x91, 0xab, 0xce, 0xe7, 0x64, 0x8e, 0x66,
-        0x3c, 0xae, 0x15, 0x5f, 0x94, 0xb6, 0x8d, 0xb5, 0x81, 0xa1, 0x87, 0x72, 0x0f, 0xbf, 0xd7, 0x8c,
-        0xf9, 0xf7, 0x56, 0xed, 0x9c, 0xdd, 0xfe, 0x69, 0xb7, 0x79, 0x7c, 0x0e, 0x7f, 0x98, 0xb2, 0x80,
-        0xe6, 0x60, 0xd2, 0x38, 0xdf, 0x53, 0xe9, 0x2e, 0x6a, 0xac, 0x4c, 0x7a, 0xd0, 0xa4, 0x96, 0x45,
-        0x8a, 0x50, 0xfb, 0x1e, 0xd5, 0xf8, 0x40, 0x4b, 0x13, 0x21, 0x0c, 0xe3, 0xf0, 0x67, 0x99, 0x1a,
-        0x89, 0x35, 0xcb, 0x24, 0x73, 0xca, 0x61, 0x8b, 0x41, 0xd8, 0x85, 0x76, 0xc0, 0x54, 0x17, 0xbc,
-        0x0a, 0x9e, 0x5b, 0x2d, 0xea, 0x44, 0xd4, 0x18, 0x05, 0x16, 0xb9, 0xbb, 0xa8, 0x3e, 0xf2, 0x7e,
-        0x78, 0x03, 0x2a, 0xa6, 0xf3, 0xef, 0x6f, 0x30, 0x42, 0xc6, 0x49, 0xec, 0x7d, 0x68, 0x1d, 0x92,
-        0xbd, 0xfa, 0x12, 0x93, 0x00, 0xc1, 0xe4, 0x57, 0x31, 0x25, 0x7b, 0x07, 0x5a, 0x4e, 0x77, 0xcd,
-        0xeb, 0x37, 0x2b, 0x71, 0xb4, 0x0d, 0xc7, 0xb3, 0xdc, 0x97, 0xdb, 0xd1, 0xe5, 0x8f, 0xe2, 0x2f,
-        0xe1, 0xd9, 0xd6, 0xb0, 0xaa, 0xf4, 0x84, 0x65, 0x52, 0xff, 0x1f, 0xa5, 0x20, 0x08, 0x86, 0x5d,
-        0x1b, 0xc4, 0x9d, 0x70, 0x88, 0x51, 0x34, 0xcf, 0x22, 0x3f, 0x0b, 0xb8, 0x29, 0x33, 0x4f, 0x19,
-        0x95, 0x1c, 0xfd, 0x63, 0xe8, 0xd3, 0x04, 0x6e, 0xa3, 0x28, 0x14, 0xee, 0x39, 0x5c, 0x90, 0x2c,
-        0xa2, 0x55, 0xbe, 0xa7, 0x48, 0x11, 0xc5, 0x26, 0x62, 0x82, 0x74, 0x47, 0x4d, 0xf1, 0xa9, 0xad,
-        0xde, 0xe0, 0x43, 0xc9, 0x36, 0x3a, 0x23, 0x46, 0x6d, 0xaf, 0xc8, 0x32, 0x3d, 0x58, 0x9a, 0xb1
+        0x68, 0x8d, 0xca, 0x4d, 0x73, 0x4b, 0x4e, 0x2a, 0xd4, 0x52, 0x26, 0xb3, 0x54, 0x1e, 0x19, 0x1f,
+        0x22, 0x03, 0x46, 0x3d, 0x2d, 0x4a, 0x53, 0x83, 0x13, 0x8a, 0xb7, 0xd5, 0x25, 0x79, 0xf5, 0xbd,
+        0x58, 0x2f, 0x0d, 0x02, 0xed, 0x51, 0x9e, 0x11, 0xf2, 0x3e, 0x55, 0x5e, 0xd1, 0x16, 0x3c, 0x66,
+        0x70, 0x5d, 0xf3, 0x45, 0x40, 0xcc, 0xe8, 0x94, 0x56, 0x08, 0xce, 0x1a, 0x3a, 0xd2, 0xe1, 0xdf,
+        0xb5, 0x38, 0x6e, 0x0e, 0xe5, 0xf4, 0xf9, 0x86, 0xe9, 0x4f, 0xd6, 0x85, 0x23, 0xcf, 0x32, 0x99,
+        0x31, 0x14, 0xae, 0xee, 0xc8, 0x48, 0xd3, 0x30, 0xa1, 0x92, 0x41, 0xb1, 0x18, 0xc4, 0x2c, 0x71,
+        0x72, 0x44, 0x15, 0xfd, 0x37, 0xbe, 0x5f, 0xaa, 0x9b, 0x88, 0xd8, 0xab, 0x89, 0x9c, 0xfa, 0x60,
+        0xea, 0xbc, 0x62, 0x0c, 0x24, 0xa6, 0xa8, 0xec, 0x67, 0x20, 0xdb, 0x7c, 0x28, 0xdd, 0xac, 0x5b,
+        0x34, 0x7e, 0x10, 0xf1, 0x7b, 0x8f, 0x63, 0xa0, 0x05, 0x9a, 0x43, 0x77, 0x21, 0xbf, 0x27, 0x09,
+        0xc3, 0x9f, 0xb6, 0xd7, 0x29, 0xc2, 0xeb, 0xc0, 0xa4, 0x8b, 0x8c, 0x1d, 0xfb, 0xff, 0xc1, 0xb2,
+        0x97, 0x2e, 0xf8, 0x65, 0xf6, 0x75, 0x07, 0x04, 0x49, 0x33, 0xe4, 0xd9, 0xb9, 0xd0, 0x42, 0xc7,
+        0x6c, 0x90, 0x00, 0x8e, 0x6f, 0x50, 0x01, 0xc5, 0xda, 0x47, 0x3f, 0xcd, 0x69, 0xa2, 0xe2, 0x7a,
+        0xa7, 0xc6, 0x93, 0x0f, 0x0a, 0x06, 0xe6, 0x2b, 0x96, 0xa3, 0x1c, 0xaf, 0x6a, 0x12, 0x84, 0x39,
+        0xe7, 0xb0, 0x82, 0xf7, 0xfe, 0x9d, 0x87, 0x5c, 0x81, 0x35, 0xde, 0xb4, 0xa5, 0xfc, 0x80, 0xef,
+        0xcb, 0xbb, 0x6b, 0x76, 0xba, 0x5a, 0x7d, 0x78, 0x0b, 0x95, 0xe3, 0xad, 0x74, 0x98, 0x3b, 0x36,
+        0x64, 0x6d, 0xdc, 0xf0, 0x59, 0xa9, 0x4c, 0x17, 0x7f, 0x91, 0xb8, 0xc9, 0x57, 0x1b, 0xe0, 0x61
     ];
 
-    // MDS matrix for MixColumns (from DSTU 7564:2014)
-    private static readonly byte[] MdsMatrix =
-    [
-        0x01, 0x01, 0x05, 0x01, 0x08, 0x06, 0x07, 0x04,
-        0x04, 0x01, 0x01, 0x05, 0x01, 0x08, 0x06, 0x07,
-        0x07, 0x04, 0x01, 0x01, 0x05, 0x01, 0x08, 0x06,
-        0x06, 0x07, 0x04, 0x01, 0x01, 0x05, 0x01, 0x08,
-        0x08, 0x06, 0x07, 0x04, 0x01, 0x01, 0x05, 0x01,
-        0x01, 0x08, 0x06, 0x07, 0x04, 0x01, 0x01, 0x05,
-        0x05, 0x01, 0x08, 0x06, 0x07, 0x04, 0x01, 0x01,
-        0x01, 0x05, 0x01, 0x08, 0x06, 0x07, 0x04, 0x01
-    ];
+    // Combined SubBytes + MixColumns lookup tables.
+    // T_k[b] for row k, input byte b: the ulong whose byte j = MDS[j][k] * S[k%4][b].
+    // This eliminates separate SubBytes and MixColumns steps — one table lookup per row per column.
+    private static readonly ulong[] T0, T1, T2, T3, T4, T5, T6, T7;
+
+    // ShiftBytes offsets per state size (integrated into T-table round via shifted source reads).
+    private static readonly int[] Shifts512 = [0, 1, 2, 3, 4, 5, 6, 7];
+    private static readonly int[] Shifts1024 = [0, 1, 2, 3, 4, 5, 6, 11];
+
+    static Kupyna()
+    {
+        // MDS circulant matrix first row from DSTU 7564:2014.
+        // MDS[j][k] = mds[(k - j) mod 8] for the 8×8 circulant.
+        ReadOnlySpan<byte> mds = [1, 1, 5, 1, 8, 6, 7, 4];
+
+        T0 = new ulong[256];
+        T1 = new ulong[256];
+        T2 = new ulong[256];
+        T3 = new ulong[256];
+        T4 = new ulong[256];
+        T5 = new ulong[256];
+        T6 = new ulong[256];
+        T7 = new ulong[256];
+
+        ulong[][] tables = [T0, T1, T2, T3, T4, T5, T6, T7];
+
+        for (int k = 0; k < 8; k++)
+        {
+            ReadOnlySpan<byte> sbox = (k & 3) switch { 0 => S0, 1 => S1, 2 => S2, _ => S3 };
+            ulong[] table = tables[k];
+
+            for (int b = 0; b < 256; b++)
+            {
+                byte sb = sbox[b];
+                ulong entry = 0;
+                for (int j = 0; j < 8; j++)
+                {
+                    entry |= (ulong)GfMul(mds[(k - j) & 7], sb) << (j * 8);
+                }
+
+                table[b] = entry;
+            }
+        }
+    }
 
     private readonly int _hashSizeBytes;
     private readonly int _blockSize;
     private readonly int _columns;
     private readonly int _rounds;
-    private readonly byte[] _state;
+    private readonly int _colMask;
+    private readonly int[] _shifts;
+    private readonly ulong[] _state;
+    private readonly ulong[] _tempState1;
+    private readonly ulong[] _tempState2;
+    private readonly ulong[] _scratch;
     private readonly byte[] _buffer;
     private int _bufferLength;
-    private ulong _totalLength;
+    private ulong _inputBlocks;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Kupyna"/> class with 512-bit output.
@@ -161,30 +204,37 @@ public sealed class Kupyna : HashAlgorithm
     /// Initializes a new instance of the <see cref="Kupyna"/> class.
     /// </summary>
     /// <param name="hashSizeBytes">The desired output size in bytes (32, 48, or 64).</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="hashSizeBytes"/> is not 32, 48, or 64.
+    /// </exception>
     public Kupyna(int hashSizeBytes)
     {
         if (hashSizeBytes != 32 && hashSizeBytes != 48 && hashSizeBytes != 64)
+        {
             throw new ArgumentException("Hash size must be 32 (256-bit), 48 (384-bit), or 64 (512-bit) bytes.", nameof(hashSizeBytes));
+        }
 
         _hashSizeBytes = hashSizeBytes;
         HashSizeValue = hashSizeBytes * 8;
 
-        // For 256-bit: 512-bit state (64 bytes), 8 columns, 10 rounds
-        // For 384/512-bit: 1024-bit state (128 bytes), 16 columns, 14 rounds
         if (hashSizeBytes <= 32)
         {
-            _blockSize = BlockSize256;
-            _columns = 8;
-            _rounds = 10;
+            _columns = Nb512;
+            _rounds = Nr512;
         }
         else
         {
-            _blockSize = BlockSize512;
-            _columns = 16;
-            _rounds = 14;
+            _columns = Nb1024;
+            _rounds = Nr1024;
         }
 
-        _state = new byte[_blockSize];
+        _blockSize = _columns << 3;
+        _colMask = _columns - 1;
+        _shifts = _columns == Nb512 ? Shifts512 : Shifts1024;
+        _state = new ulong[_columns];
+        _tempState1 = new ulong[_columns];
+        _tempState2 = new ulong[_columns];
+        _scratch = new ulong[_columns];
         _buffer = new byte[_blockSize];
         Initialize();
     }
@@ -198,27 +248,24 @@ public sealed class Kupyna : HashAlgorithm
     /// <summary>
     /// Creates a new instance with default 512-bit output.
     /// </summary>
+    /// <returns>A new <see cref="Kupyna"/> instance.</returns>
     public static new Kupyna Create() => new();
 
     /// <summary>
     /// Creates a new instance with specified output size.
     /// </summary>
     /// <param name="hashSizeBytes">The hash size in bytes (32, 48, or 64).</param>
+    /// <returns>A new <see cref="Kupyna"/> instance.</returns>
     public static Kupyna Create(int hashSizeBytes) => new(hashSizeBytes);
 
     /// <inheritdoc/>
     public override void Initialize()
     {
         Array.Clear(_state, 0, _state.Length);
-        // Set IV: state[0..7] = hash_size_in_bits (little-endian 64-bit value)
-        int hashSizeBits = _hashSizeBytes * 8;
-        _state[0] = unchecked((byte)hashSizeBits);
-        _state[1] = unchecked((byte)(hashSizeBits >> 8));
-        // Remaining bytes are already zero from Array.Clear
+        _state[0] = (ulong)_blockSize;
 
-        ClearBuffer(_buffer);
         _bufferLength = 0;
-        _totalLength = 0;
+        _inputBlocks = 0;
     }
 
     /// <inheritdoc/>
@@ -226,7 +273,6 @@ public sealed class Kupyna : HashAlgorithm
     {
         int offset = 0;
 
-        // Fill buffer if partially full
         if (_bufferLength > 0)
         {
             int toCopy = Math.Min(_blockSize - _bufferLength, source.Length);
@@ -237,20 +283,18 @@ public sealed class Kupyna : HashAlgorithm
             if (_bufferLength == _blockSize)
             {
                 ProcessBlock(_buffer);
-                _totalLength += (ulong)_blockSize;
                 _bufferLength = 0;
+                ++_inputBlocks;
             }
         }
 
-        // Process full blocks
         while (offset + _blockSize <= source.Length)
         {
             ProcessBlock(source.Slice(offset, _blockSize));
-            _totalLength += (ulong)_blockSize;
             offset += _blockSize;
+            ++_inputBlocks;
         }
 
-        // Buffer remainder
         int remaining = source.Length - offset;
         if (remaining > 0)
         {
@@ -270,45 +314,53 @@ public sealed class Kupyna : HashAlgorithm
 
         unchecked
         {
-            // Total message length in bits
-            ulong totalBits = (_totalLength + (ulong)_bufferLength) * 8;
-
-            // Pad with 0x80 followed by zeros
+            // Padding per DSTU 7564: append 0x80, zeros, then 96-bit message length in bits
+            int inputBytes = _bufferLength;
             _buffer[_bufferLength++] = 0x80;
 
-            // Check if we need an extra block for padding
-            int lengthFieldSize = _blockSize <= 64 ? 12 : 12; // 96 bits for message length
-            if (_bufferLength > _blockSize - lengthFieldSize)
+            int lenPos = _blockSize - 12;
+            if (_bufferLength > lenPos)
             {
-                // Fill rest with zeros and process
-                Array.Clear(_buffer, _bufferLength, _blockSize - _bufferLength);
-                ProcessBlock(_buffer);
+                while (_bufferLength < _blockSize)
+                {
+                    _buffer[_bufferLength++] = 0;
+                }
+
                 _bufferLength = 0;
+                ProcessBlock(_buffer);
             }
 
-            // Fill with zeros up to length field position
-            Array.Clear(_buffer, _bufferLength, _blockSize - lengthFieldSize - _bufferLength);
+            while (_bufferLength < lenPos)
+            {
+                _buffer[_bufferLength++] = 0;
+            }
 
-            // Write message length in bits (96-bit little-endian at end of block)
-            int lengthPos = _blockSize - lengthFieldSize;
-            BinaryPrimitives.WriteUInt64LittleEndian(_buffer.AsSpan(lengthPos), totalBits);
-            Array.Clear(_buffer, lengthPos + 8, 4); // Upper 32 bits of 96-bit length
+            // 96-bit message length in bits (little-endian: 32-bit low + 64-bit high)
+            ulong c = ((_inputBlocks & 0xFFFFFFFFUL) * (ulong)_blockSize + (uint)inputBytes) << 3;
+            BinaryPrimitives.WriteUInt32LittleEndian(_buffer.AsSpan(_bufferLength), (uint)c);
+            _bufferLength += 4;
+            c >>= 32;
+            c += ((_inputBlocks >> 32) * (ulong)_blockSize) << 3;
+            BinaryPrimitives.WriteUInt64LittleEndian(_buffer.AsSpan(_bufferLength), c);
 
             ProcessBlock(_buffer);
 
-            // Output truncation (Trunc function)
-            // Apply final permutation and XOR with state
-            Span<byte> finalState = stackalloc byte[_blockSize];
-            _state.AsSpan().CopyTo(finalState);
-            ApplyPermutationP(finalState);
-
-            for (int i = 0; i < _blockSize; i++)
+            // Output transformation: state ^= P(state)
+            Array.Copy(_state, 0, _tempState1, 0, _columns);
+            P(_tempState1);
+            for (int col = 0; col < _columns; ++col)
             {
-                finalState[i] ^= _state[i];
+                _state[col] ^= _tempState1[col];
             }
 
-            // Take last hashSizeBytes from the state
-            finalState.Slice(_blockSize - _hashSizeBytes, _hashSizeBytes).CopyTo(destination);
+            // Truncation: extract hash from the last columns
+            int neededColumns = _hashSizeBytes / 8;
+            int outOff = 0;
+            for (int col = _columns - neededColumns; col < _columns; ++col)
+            {
+                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(outOff, 8), _state[col]);
+                outOff += 8;
+            }
 
             bytesWritten = _hashSizeBytes;
             return true;
@@ -320,204 +372,191 @@ public sealed class Kupyna : HashAlgorithm
     {
         if (disposing)
         {
-            ClearBuffer(_state);
+            Array.Clear(_state, 0, _state.Length);
+            Array.Clear(_tempState1, 0, _tempState1.Length);
+            Array.Clear(_tempState2, 0, _tempState2.Length);
+            Array.Clear(_scratch, 0, _scratch.Length);
             ClearBuffer(_buffer);
         }
         base.Dispose(disposing);
     }
 
     /// <summary>
-    /// Processes a single block using the compression function.
+    /// Processes a single block using the compression function: h = P(h ⊕ m) ⊕ Q(m) ⊕ h.
     /// </summary>
-#if NET5_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
         unchecked
         {
-            Span<byte> t1 = stackalloc byte[_blockSize];
-            Span<byte> t2 = stackalloc byte[_blockSize];
-
-            // T⊕(h ⊕ m)
-            for (int i = 0; i < _blockSize; i++)
+            for (int col = 0; col < _columns; ++col)
             {
-                t1[i] = (byte)(_state[i] ^ block[i]);
+                ulong word = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(col << 3, 8));
+                _tempState1[col] = _state[col] ^ word;
+                _tempState2[col] = word;
             }
-            ApplyPermutationP(t1);
 
-            // T+(m)
-            block.CopyTo(t2);
-            ApplyPermutationQ(t2);
+            P(_tempState1);
+            Q(_tempState2);
 
-            // h = T⊕(h ⊕ m) ⊕ T+(m) ⊕ h
-            for (int i = 0; i < _blockSize; i++)
+            for (int col = 0; col < _columns; ++col)
             {
-                _state[i] ^= (byte)(t1[i] ^ t2[i]);
+                _state[col] ^= _tempState1[col] ^ _tempState2[col];
             }
         }
     }
 
     /// <summary>
-    /// Applies the T⊕ permutation (uses XOR for AddRoundConstant).
+    /// Applies the T⊕ (P) permutation with XOR-based round constants.
     /// </summary>
-#if NET5_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
-    private void ApplyPermutationP(Span<byte> state)
+    /// <remarks>
+    /// Uses precomputed T-tables to combine SubBytes, ShiftBytes, and MixColumns into a single
+    /// step of 8 table lookups and 7 XORs per column.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void P(ulong[] s)
     {
         unchecked
         {
-            Span<byte> temp = stackalloc byte[_blockSize];
-
-            for (int round = 0; round < _rounds; round++)
+            ulong[] src = s, dst = _scratch;
+            for (int round = 0; round < _rounds; ++round)
             {
-                // AddRoundConstant (XOR variant)
-                for (int col = 0; col < _columns; col++)
-                {
-                    state[col * Rows] ^= (byte)((col << 4) ^ round);
-                }
-
-                // SubBytes
-                ApplySubBytes(state);
-
-                // ShiftBytes
-                ApplyShiftBytes(state, temp);
-
-                // MixColumns
-                ApplyMixColumns(temp, state);
+                AddRoundConstantP(src, round);
+                SubShiftMix(src, dst);
+                (src, dst) = (dst, src);
             }
+
+            // Both Nr512 (10) and Nr1024 (14) are even, so the result is already in s.
         }
     }
 
     /// <summary>
-    /// Applies the T+ permutation (uses addition for AddRoundConstant).
+    /// Applies the T+ (Q) permutation with addition-based round constants.
     /// </summary>
-#if NET5_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
-    private void ApplyPermutationQ(Span<byte> state)
+    /// <remarks>
+    /// Uses precomputed T-tables to combine SubBytes, ShiftBytes, and MixColumns into a single
+    /// step of 8 table lookups and 7 XORs per column.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void Q(ulong[] s)
     {
         unchecked
         {
-            Span<byte> temp = stackalloc byte[_blockSize];
-
-            for (int round = 0; round < _rounds; round++)
+            ulong[] src = s, dst = _scratch;
+            for (int round = 0; round < _rounds; ++round)
             {
-                // AddRoundConstant (addition variant)
-                for (int col = 0; col < _columns; col++)
-                {
-                    // Add constant to each column (modular addition on 64-bit column)
-                    ulong constant = ((ulong)((_columns - 1 - col) << 4) ^ (ulong)round) << 56;
-                    constant |= 0x00F0F0F0F0F0F0F3UL ^ ((ulong)round << 56);
-
-                    int colOffset = col * Rows;
-                    ulong colValue = BinaryPrimitives.ReadUInt64LittleEndian(state.Slice(colOffset, 8));
-                    colValue += constant;
-                    BinaryPrimitives.WriteUInt64LittleEndian(state.Slice(colOffset, 8), colValue);
-                }
-
-                // SubBytes
-                ApplySubBytes(state);
-
-                // ShiftBytes
-                ApplyShiftBytes(state, temp);
-
-                // MixColumns
-                ApplyMixColumns(temp, state);
+                AddRoundConstantQ(src, round);
+                SubShiftMix(src, dst);
+                (src, dst) = (dst, src);
             }
         }
     }
 
     /// <summary>
-    /// Applies the SubBytes transformation using 4 S-boxes.
+    /// Adds XOR-based round constants to the state (P permutation).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ApplySubBytes(Span<byte> state)
+    /// <remarks>
+    /// Per DSTU 7564: only byte 0 of each column is modified.
+    /// <c>state[col][0] ^= (col * 0x10) ^ round</c>.
+    /// In little-endian ulong representation, byte 0 is the least significant byte.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void AddRoundConstantP(ulong[] s, int round)
     {
-        for (int i = 0; i < state.Length; i++)
+        unchecked
         {
-            int row = i % Rows;
-            state[i] = row switch
+            for (int col = 0; col < _columns; ++col)
             {
-                0 or 4 => S0[state[i]],
-                1 or 5 => S1[state[i]],
-                2 or 6 => S2[state[i]],
-                _ => S3[state[i]]
-            };
-        }
-    }
-
-    /// <summary>
-    /// Applies the ShiftBytes transformation (circular shift of rows).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ApplyShiftBytes(ReadOnlySpan<byte> input, Span<byte> output)
-    {
-        // Shift amounts depend on state size
-        ReadOnlySpan<int> shifts = _columns == 8
-            ? [0, 1, 2, 3, 4, 5, 6, 7]
-            : [0, 1, 2, 3, 4, 5, 6, 11];
-
-        for (int row = 0; row < Rows; row++)
-        {
-            int shift = shifts[row];
-            for (int col = 0; col < _columns; col++)
-            {
-                int srcCol = (col + shift) % _columns;
-                output[col * Rows + row] = input[srcCol * Rows + row];
+                s[col] ^= (ulong)((col << 4) ^ round);
             }
         }
     }
 
     /// <summary>
-    /// Applies the MixColumns transformation using the MDS matrix.
+    /// Adds addition-based round constants to the state (Q permutation).
     /// </summary>
-#if NET5_0_OR_GREATER
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-#endif
-    private void ApplyMixColumns(ReadOnlySpan<byte> input, Span<byte> output)
+    /// <remarks>
+    /// Per DSTU 7564: the 64-bit column word is added to a constant constructed as
+    /// <c>0x00F0F0F0F0F0F0F3 ^ (((columns - col - 1) * 0x10 ^ round) &lt;&lt; 56)</c>.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void AddRoundConstantQ(ulong[] s, int round)
     {
-        for (int col = 0; col < _columns; col++)
+        unchecked
         {
-            int colOffset = col * Rows;
-            for (int row = 0; row < Rows; row++)
+            for (int col = 0; col < _columns; ++col)
             {
-                byte result = 0;
-                for (int k = 0; k < Rows; k++)
-                {
-                    result ^= GfMul(MdsMatrix[row * Rows + k], input[colOffset + k]);
-                }
-                output[colOffset + row] = result;
+                ulong rc = 0x00F0F0F0F0F0F0F3UL ^ ((ulong)(((_columns - col - 1) << 4) ^ round) << 56);
+                s[col] += rc;
             }
         }
     }
 
     /// <summary>
-    /// Multiplication in GF(2^8) with reduction polynomial x^8 + x^4 + x^3 + x^2 + 1.
+    /// Combined SubBytes + ShiftBytes + MixColumns transformation using precomputed T-tables.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// <remarks>
+    /// <para>
+    /// For each output column, reads 8 bytes from shifted source columns (integrating ShiftBytes),
+    /// performs T-table lookups (combining SubBytes + MixColumns), and XORs the 8 results.
+    /// </para>
+    /// <para>
+    /// This replaces three separate passes with a single pass of 8 table lookups + 7 XORs per column.
+    /// </para>
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void SubShiftMix(ulong[] src, ulong[] dst)
+    {
+        unchecked
+        {
+            int cols = _columns;
+            int mask = _colMask;
+            int s1 = _shifts[1], s2 = _shifts[2], s3 = _shifts[3];
+            int s4 = _shifts[4], s5 = _shifts[5], s6 = _shifts[6], s7 = _shifts[7];
+
+            for (int col = 0; col < cols; ++col)
+            {
+                dst[col] = T0[(byte)src[col]]
+                         ^ T1[(byte)(src[(col - s1) & mask] >> 8)]
+                         ^ T2[(byte)(src[(col - s2) & mask] >> 16)]
+                         ^ T3[(byte)(src[(col - s3) & mask] >> 24)]
+                         ^ T4[(byte)(src[(col - s4) & mask] >> 32)]
+                         ^ T5[(byte)(src[(col - s5) & mask] >> 40)]
+                         ^ T6[(byte)(src[(col - s6) & mask] >> 48)]
+                         ^ T7[(byte)(src[(col - s7) & mask] >> 56)];
+            }
+        }
+    }
+
+    /// <summary>
+    /// Multiplies two elements in GF(2^8) with reduction polynomial x^8+x^4+x^3+x^2+1 (0x11D).
+    /// </summary>
+    /// <remarks>
+    /// Used only during static T-table initialization; not called at runtime.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static byte GfMul(byte a, byte b)
     {
         unchecked
         {
-            byte result = 0;
-            byte hi_bit;
-
-            for (int i = 0; i < 8; i++)
+            uint p = 0, aa = a, bb = b;
+            while (bb != 0)
             {
-                if ((b & 1) != 0)
-                    result ^= a;
+                if ((bb & 1) != 0)
+                {
+                    p ^= aa;
+                }
 
-                hi_bit = (byte)(a & 0x80);
-                a <<= 1;
-                if (hi_bit != 0)
-                    a ^= 0x1d; // Reduction polynomial: x^8 + x^4 + x^3 + x^2 + 1
+                aa <<= 1;
+                if ((aa & 0x100) != 0)
+                {
+                    aa ^= 0x11D;
+                }
 
-                b >>= 1;
+                bb >>= 1;
             }
 
-            return result;
+            return (byte)p;
         }
     }
 }
