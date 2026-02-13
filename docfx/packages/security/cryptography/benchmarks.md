@@ -33,7 +33,7 @@ This page collects the BenchmarkDotNet measurements for every hash implementatio
 | **SHA-2** | OS (SHA-NI) | Hardware SHA-NI gives OS ~4.5× advantage; managed beats BouncyCastle by ~13% |
 | **SHA-3/Keccak** | Managed | Scalar Keccak outperforms OS by ~30% and SIMD variants by 25–35% |
 | **BLAKE2b/2s** | BouncyCastle | Native optimizations give BouncyCastle ~15% edge; managed SIMD competitive |
-| **BLAKE3** | Native (Rust) | Rust interop ~6× faster at small inputs, ~40× at large; managed beats BouncyCastle by ~2× |
+| **BLAKE3** | Native (Rust) | Rust interop ~1.4× faster at small inputs, ~12× at large due to multi-chunk parallelism; SSSE3 managed ~4× faster than BouncyCastle |
 | **Streebog** | Managed | 1.4–1.8× faster than OpenGost/BouncyCastle |
 | **Kupyna** | Managed | T-table optimization beats BouncyCastle by 30–45% |
 | **LSH** | Managed | First .NET implementation; no BouncyCastle comparison available |
@@ -160,7 +160,7 @@ BouncyCastle leads the BLAKE2 benchmarks due to highly optimized native code. Th
 
 BLAKE3 is a modern hash function designed for extreme parallelism and speed. It can leverage tree hashing to process multiple chunks simultaneously, making it ideal for hashing large files. The **Native (Rust)** variant uses `blake3-dotnet`, which wraps the official Rust implementation via P/Invoke—this is the fastest option and recommended when native dependencies are acceptable.
 
-The managed CryptoHives implementation uses SSSE3 SIMD instructions and significantly outperforms BouncyCastle (~2× at small inputs), but trails the native Rust version by ~6× at small inputs and up to ~40× at large inputs because the managed implementation does not yet parallelize chunk processing across threads. Tree finalization and counter-mode XOF output are fully implemented. For most use cases, the managed version provides excellent performance without native dependencies.
+The managed CryptoHives implementation uses SSSE3 SIMD instructions with optimized state management (direct `Sse2.LoadVector128`/`Store` for chaining values, zero-copy message casting, and SSSE3-accelerated root squeeze). At small inputs (128B), the SSSE3 path achieves **139ns**—only ~1.4× slower than the native Rust implementation (102ns) and ~9× faster than BouncyCastle (1,282ns). At large inputs (128KB), the gap widens to ~12× because the native implementation parallelizes chunk compression across SIMD lanes (AVX2/AVX-512 `hash_many`), while the managed version processes chunks sequentially. The scalar managed fallback (~545ns at 128B) still outperforms BouncyCastle by ~2.4×.
 
 [!INCLUDE[](benchmarks/blake3.md)]
 

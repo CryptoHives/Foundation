@@ -104,7 +104,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2b"/> class with default output size (64 bytes).
     /// </summary>
-    public Blake2b() : this(MaxHashSizeBytes, null, SimdSupport.All)
+    public Blake2b() : this(SimdSupport.All, MaxHashSizeBytes, null)
     {
     }
 
@@ -112,7 +112,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2b"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    public Blake2b(int outputBytes) : this(outputBytes, null, SimdSupport.All)
+    public Blake2b(int outputBytes) : this(SimdSupport.All, outputBytes, null)
     {
     }
 
@@ -121,7 +121,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
     /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-64 bytes.</param>
-    public Blake2b(int outputBytes, byte[]? key) : this(outputBytes, key, SimdSupport.All)
+    public Blake2b(int outputBytes, byte[]? key) : this(SimdSupport.All, outputBytes, key)
     {
     }
 
@@ -131,7 +131,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
     /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-64 bytes.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal Blake2b(int outputBytes, byte[]? key, SimdSupport simdSupport)
+    internal Blake2b(SimdSupport simdSupport, int outputBytes, byte[]? key)
     {
         if (outputBytes < 1 || outputBytes > MaxHashSizeBytes)
         {
@@ -190,10 +190,10 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Creates a new instance of the <see cref="Blake2b"/> class with specified output size and SIMD support.
     /// </summary>
-    /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
     /// <returns>A new BLAKE2b instance.</returns>
-    internal static Blake2b Create(int outputBytes, SimdSupport simdSupport) => new(outputBytes, null, simdSupport);
+    internal static Blake2b Create(SimdSupport simdSupport, int outputBytes) => new(simdSupport, outputBytes, null);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake2b"/> class.
@@ -217,7 +217,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <param name="key">The key for keyed hashing (up to 64 bytes).</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <returns>A new BLAKE2b instance configured for keyed hashing.</returns>
-    internal static Blake2b CreateKeyed(int outputBytes, byte[] key, SimdSupport simdSupport) => new(outputBytes, key, simdSupport);
+    internal static Blake2b CreateKeyed(SimdSupport simdSupport, int outputBytes, byte[] key) => new(simdSupport, outputBytes, key);
 
     /// <inheritdoc/>
     public override void Initialize()
