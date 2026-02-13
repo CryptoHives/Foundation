@@ -31,7 +31,7 @@ public class AsyncLockTests
     public async Task AsyncLockLockedPreventsLockUntilUnlocked()
     {
         var mutex = new AsyncLock();
-        TaskCompletionSource<object?> task1HasLock= CreateAsyncTaskSource<object?>();
+        TaskCompletionSource<object?> task1HasLock = CreateAsyncTaskSource<object?>();
         TaskCompletionSource<object?> task1Continue = CreateAsyncTaskSource<object?>();
 
         var task1 = Task.Run(async () => {

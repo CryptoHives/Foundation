@@ -110,6 +110,11 @@ $packageConfigurations = @{
             @{ Source = "Kupyna384Benchmark-report.md"; Target = "kupyna384.md" }
             @{ Source = "Kupyna512Benchmark-report.md"; Target = "kupyna512.md" }
 
+            # LSH (KS X 3262) individual algorithms
+            @{ Source = "Lsh256_256Benchmark-report.md"; Target = "lsh256-256.md" }
+            @{ Source = "Lsh512_256Benchmark-report.md"; Target = "lsh512-256.md" }
+            @{ Source = "Lsh512_512Benchmark-report.md"; Target = "lsh512-512.md" }
+
             # Ascon individual algorithms
             @{ Source = "AsconHash256Benchmark-report.md"; Target = "asconhash256.md" }
             @{ Source = "AsconXof128Benchmark-report.md"; Target = "asconxof128.md" }

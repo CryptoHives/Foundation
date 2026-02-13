@@ -103,28 +103,49 @@ using (await lockInstance.LockAsync())
 
 ### Security.Cryptography Package
 
-The Cryptography package provides specification-based hash algorithm and MAC implementations:
+The Cryptography package provides specification-based hash algorithm and MAC implementations.
+All CryptoHives algorithms inherit from `System.Security.Cryptography.HashAlgorithm` and support two ways of computing a hash:
+
+#### Zero-allocation approach (recommended)
+
+Use `TryComputeHash` with a stack-allocated or reusable buffer to avoid heap allocations entirely.
+This is the preferred approach for performance-critical code such as tight loops, network packet processing, or blockchain validation.
+CryptoHives provides a polyfill so this API works on every target framework, including .NET Framework 4.x.
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 
-// SHA-256 hash
+// SHA-256 — zero allocations
 using var sha256 = SHA256.Create();
-byte[] hash = sha256.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+sha256.TryComputeHash(data, hash, out _);
 
-// SHA3-256 hash
+// SHA3-256 — zero allocations
 using var sha3 = SHA3_256.Create();
-byte[] sha3Hash = sha3.ComputeHash(data);
+Span<byte> sha3Hash = stackalloc byte[32];
+sha3.TryComputeHash(data, sha3Hash, out _);
 
-// BLAKE3 with variable output
+// BLAKE3 with variable output — zero allocations
 using var blake3 = Blake3.Create(outputBytes: 64);
-byte[] longHash = blake3.ComputeHash(data);
+Span<byte> longHash = stackalloc byte[64];
+blake3.TryComputeHash(data, longHash, out _);
 
-// KMAC256 authentication
+// KMAC256 authentication — zero allocations
 byte[] key = new byte[32];
 using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
-byte[] mac = kmac.ComputeHash(message);
+Span<byte> mac = stackalloc byte[64];
+kmac.TryComputeHash(message, mac, out _);
+```
+
+#### Simple approach
+
+Use `ComputeHash` when convenience matters more than performance.
+This allocates a new `byte[]` for every call, which adds GC pressure in hot paths.
+
+```csharp
+using var sha256 = SHA256.Create();
+byte[] hash = sha256.ComputeHash(data);
 ```
 
 [Learn more about the Security.Cryptography package](packages/security/cryptography/index.md)

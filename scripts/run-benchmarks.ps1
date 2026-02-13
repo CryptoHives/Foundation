@@ -29,6 +29,7 @@ param(
         "MD5", "SHA1",
         "SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160",
         "Kupyna256", "Kupyna384", "Kupyna512",
+        "Lsh256_256", "Lsh512_256", "Lsh512_512",
         "AsconHash256", "AsconXof128",
         "KMac128", "KMac256",
         # XOF (Absorb/Squeeze) benchmarks
@@ -41,7 +42,7 @@ param(
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
-        "Legacy", "Regional", "Kupyna", "Ascon", "KMAC",
+        "Legacy", "Regional", "Kupyna", "LSH", "Ascon", "KMAC",
         "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
         "All"
     )]
@@ -128,6 +129,10 @@ $AlgorithmBenchmarkMap = @{
     "Kupyna256"   = "Kupyna256"
     "Kupyna384"   = "Kupyna384"
     "Kupyna512"   = "Kupyna512"
+    # LSH (KS X 3262)
+    "Lsh256_256"  = "Lsh256_256"
+    "Lsh512_256"  = "Lsh512_256"
+    "Lsh512_512"  = "Lsh512_512"
     # Ascon
     "AsconHash256" = "AsconHash256"
     "AsconXof128" = "AsconXof128"
@@ -165,8 +170,9 @@ $GroupAliases = @{
     "BLAKE2s"     = @("Blake2s256", "Blake2s128")
     "BLAKE"       = @("Blake3", "Blake2s256", "Blake2b256", "Blake2s128", "Blake2b512")
     "Legacy"      = @("MD5", "SHA1")
-    "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160", "Kupyna256", "Kupyna384", "Kupyna512")
+    "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160", "Kupyna256", "Kupyna384", "Kupyna512", "Lsh256_256", "Lsh512_256", "Lsh512_512")
     "Kupyna"      = @("Kupyna256", "Kupyna384", "Kupyna512")
+    "LSH"         = @("Lsh256_256", "Lsh512_256", "Lsh512_512")
     "Ascon"       = @("AsconHash256", "AsconXof128")
     "KMAC"        = @("KMac128", "KMac256")
     "XOF"         = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof", "KMac128Xof", "KMac256Xof", "Blake3Xof", "AsconXof128Xof")
@@ -244,7 +250,8 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  BLAKE2s:       -Family Blake2s128, Blake2s256"
     Write-Host "  BLAKE3:        -Family Blake3"
     Write-Host "  Legacy:        -Family MD5, SHA1"
-    Write-Host "  Regional:      -Family SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512"
+    Write-Host "  Regional:      -Family SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512, Lsh256_256, Lsh512_256, Lsh512_512"
+    Write-Host "  LSH:           -Family Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  Kupyna:        -Family Kupyna256, Kupyna384, Kupyna512"
     Write-Host "  Ascon:         -Family AsconHash256, AsconXof128"
     Write-Host "  KMAC:          -Family KMac128, KMac256"
@@ -263,8 +270,9 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family BLAKE2s    runs: Blake2s128, Blake2s256"
     Write-Host "  -Family BLAKE      runs: Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3"
     Write-Host "  -Family Legacy     runs: MD5, SHA1"
-    Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512"
+    Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512, Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  -Family Kupyna     runs: Kupyna256, Kupyna384, Kupyna512"
+    Write-Host "  -Family LSH        runs: Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
     Write-Host "  -Family KMAC       runs: KMac128, KMac256"
     Write-Host "  -Family XOF        runs: All XOF Absorb/Squeeze benchmarks (12 algorithms)"

@@ -109,8 +109,7 @@ public class ThreadingConfig : ManualConfig
 
         public bool IsAvailable(Summary summary) => true;
 
-        private static string FormatPrimitive(string name) => name switch
-        {
+        private static string FormatPrimitive(string name) => name switch {
             "AsyncAutoResetEvent" => "AsyncAutoReset",
             "AsyncManualResetEvent" => "AsyncManualReset",
             "AsyncLock" => "AsyncLock",

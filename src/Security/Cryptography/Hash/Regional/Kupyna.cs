@@ -413,7 +413,7 @@ public sealed class Kupyna : HashAlgorithm
     /// Uses precomputed T-tables to combine SubBytes, ShiftBytes, and MixColumns into a single
     /// step of 8 table lookups and 7 XORs per column.
     /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void P(ulong[] s)
     {
         unchecked
@@ -437,7 +437,7 @@ public sealed class Kupyna : HashAlgorithm
     /// Uses precomputed T-tables to combine SubBytes, ShiftBytes, and MixColumns into a single
     /// step of 8 table lookups and 7 XORs per column.
     /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void Q(ulong[] s)
     {
         unchecked
