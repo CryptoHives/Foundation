@@ -181,7 +181,7 @@ public sealed class Lsh512 : HashAlgorithm
             28 => Iv224,
             32 => Iv256,
             48 => Iv384,
-            64 => Iv512
+            _ => Iv512
         };
 
         _cvL = new ulong[NumWords];
