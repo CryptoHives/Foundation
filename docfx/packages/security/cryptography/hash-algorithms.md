@@ -726,6 +726,64 @@ byte[] hash = kupyna384.ComputeHash(data);
 
 ---
 
+## LSH (KS X 3262)
+
+Korean national standard hash function designed by KISA (Korea Internet & Security Agency).
+
+### Lsh512
+
+```csharp
+public sealed class Lsh512 : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: 224, 256, 384, or 512 bits
+- Block Size: 256 bytes
+- Word Size: 64 bits
+- Steps: 28
+- Standard: KS X 3262
+
+**Usage:**
+```csharp
+// LSH-512-512 (default)
+using var lsh = Lsh512.Create();
+byte[] hash = lsh.ComputeHash(data);
+
+// LSH-512-256
+using var lsh256 = Lsh512.Create(hashSizeBytes: 32);
+byte[] hash = lsh256.ComputeHash(data);
+
+// LSH-512-384
+using var lsh384 = Lsh512.Create(hashSizeBytes: 48);
+byte[] hash = lsh384.ComputeHash(data);
+```
+
+### Lsh256
+
+```csharp
+public sealed class Lsh256 : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: 224 or 256 bits
+- Block Size: 128 bytes
+- Word Size: 32 bits
+- Steps: 26
+- Standard: KS X 3262
+
+**Usage:**
+```csharp
+// LSH-256-256 (default)
+using var lsh = Lsh256.Create();
+byte[] hash = lsh.ComputeHash(data);
+
+// LSH-256-224
+using var lsh224 = Lsh256.Create(hashSizeBytes: 28);
+byte[] hash = lsh224.ComputeHash(data);
+```
+
+---
+
 ## Ascon
 
 Lightweight cryptographic hash and XOF from NIST Lightweight Cryptography Standardization (FIPS 207).
