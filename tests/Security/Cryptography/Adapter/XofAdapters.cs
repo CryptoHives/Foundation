@@ -3,12 +3,12 @@
 
 namespace Cryptography.Tests.Adapter;
 
-using CH = CryptoHives.Foundation.Security.Cryptography;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Security.Cryptography;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Wraps a BouncyCastle <see cref="IXof"/> as an <see cref="IExtendableOutput"/> for XOF benchmarking.

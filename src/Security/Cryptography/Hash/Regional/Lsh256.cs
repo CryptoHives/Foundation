@@ -154,8 +154,7 @@ public sealed class Lsh256 : HashAlgorithm
         _hashSizeBytes = hashSizeBytes;
         HashSizeValue = hashSizeBytes * 8;
 
-        _iv = hashSizeBytes switch
-        {
+        _iv = hashSizeBytes switch {
             28 => Iv224,
             _ => Iv256
         };

@@ -177,8 +177,7 @@ public sealed class Lsh512 : HashAlgorithm
         _hashSizeBytes = hashSizeBytes;
         HashSizeValue = hashSizeBytes * 8;
 
-        _iv = hashSizeBytes switch
-        {
+        _iv = hashSizeBytes switch {
             28 => Iv224,
             32 => Iv256,
             48 => Iv384,
