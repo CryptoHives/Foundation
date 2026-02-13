@@ -218,12 +218,43 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     protected abstract void HashCore(ReadOnlySpan<byte> source);
 
     /// <summary>
-    /// 
+    /// When overridden in a derived class, finalizes the hash computation and writes the result
+    /// into the provided buffer.
     /// </summary>
     /// <param name="destination">The target buffer to write the hash to.</param>
     /// <param name="bytesWritten">The number of bytes written into the buffer.</param>
-    /// <returns></returns>
+    /// <returns><see langword="true"/> if the destination buffer was large enough; otherwise <see langword="false"/>.</returns>
     protected abstract bool TryHashFinal(Span<byte> destination, out int bytesWritten);
+
+    /// <summary>
+    /// Attempts to compute the hash value for the specified read-only byte span
+    /// and writes the result into the provided destination span.
+    /// </summary>
+    /// <param name="source">The input to compute the hash code for.</param>
+    /// <param name="destination">The buffer to receive the hash value.</param>
+    /// <param name="bytesWritten">
+    /// When this method returns, the total number of bytes written into <paramref name="destination"/>.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if <paramref name="destination"/> is long enough to receive the hash value;
+    /// otherwise, <see langword="false"/>.
+    /// </returns>
+    /// <remarks>
+    /// This polyfill enables zero-allocation hashing on .NET Framework and .NET Standard 2.0
+    /// where the base class does not provide this method.
+    /// </remarks>
+    public bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (destination.Length < HashSizeValue / 8)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        Initialize();
+        HashCore(source);
+        return TryHashFinal(destination, out bytesWritten);
+    }
 #endif
 
     /// <inheritdoc/>
