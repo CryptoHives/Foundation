@@ -65,9 +65,8 @@ public sealed partial class Blake3 : HashAlgorithm
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CompressBlockSsse3(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
-        // Parse message block
-        Span<uint> m = stackalloc uint[16];
-        CopyBlockUInt32LittleEndian(block, m);
+        // On x86 (always little-endian), cast directly — no copy needed
+        ReadOnlySpan<uint> m = MemoryMarshal.Cast<byte, uint>(block);
 
         // Initialize rows
         var row0 = Vector128.Create<uint>(_cv.AsSpan(0, 4));
@@ -75,6 +74,41 @@ public sealed partial class Blake3 : HashAlgorithm
         var row2 = IVLow;
         var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
 
+        GRounds(m, ref row0, ref row1, ref row2, ref row3);
+
+        // Finalize: cv = row0 ^ row2, cv = row1 ^ row3
+        row0 = Sse2.Xor(row0, row2);
+        row0.CopyTo(_cv.AsSpan(0, 4));
+        row1 = Sse2.Xor(row1, row3);
+        row1.CopyTo(_cv.AsSpan(4, 4));
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void SqueezeRootBlockSsse3(ulong counter, Span<byte> destination)
+    {
+        ReadOnlySpan<uint> m = _rootBlock;
+        var row0 = Vector128.Create<uint>(_rootCv.AsSpan(0, 4));
+        var row1 = Vector128.Create<uint>(_rootCv.AsSpan(4, 4));
+        var row2 = IVLow;
+        var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), _rootBlockLen, _rootFlags);
+
+        GRounds(m, ref row0, ref row1, ref row2, ref row3);
+
+        // Full 16-word output (x86 is always little-endian)
+        Sse2.Xor(row0, row2).AsByte().CopyTo(destination);
+        Sse2.Xor(row1, row3).AsByte().CopyTo(destination.Slice(16));
+        Sse2.Xor(row2, Vector128.Create<uint>(_rootCv.AsSpan(0, 4))).AsByte().CopyTo(destination.Slice(32));
+        Sse2.Xor(row3, Vector128.Create<uint>(_rootCv.AsSpan(4, 4))).AsByte().CopyTo(destination.Slice(48));
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void GRounds(
+        ReadOnlySpan<uint> m,
+        ref Vector128<uint> row0,
+        ref Vector128<uint> row1,
+        ref Vector128<uint> row2,
+        ref Vector128<uint> row3)
+    {
         // 7 rounds of mixing with BLAKE3's fixed message schedule
         // Round 1: 0,1,2,3,4,5,6,7 | 8,9,10,11,12,13,14,15
         GRound(ref row0, ref row1, ref row2, ref row3,
@@ -145,12 +179,6 @@ public sealed partial class Blake3 : HashAlgorithm
             Vector128.Create(m[14], m[2], m[3], m[7]),
             Vector128.Create(m[10], m[12], m[4], m[13]));
         DiagPermute(ref row3, ref row2, ref row1);
-
-        // Finalize: cv = row0 ^ row2, cv = row1 ^ row3
-        row0 = Sse2.Xor(row0, row2);
-        row0.CopyTo(_cv.AsSpan(0, 4));
-        row1 = Sse2.Xor(row1, row3);
-        row1.CopyTo(_cv.AsSpan(4, 4));
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]

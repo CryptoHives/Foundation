@@ -119,7 +119,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class with default output size (32 bytes).
     /// </summary>
-    public Blake3() : this(DefaultHashSizeBytes, SimdSupport.All)
+    public Blake3() : this(SimdSupport.All, DefaultHashSizeBytes)
     {
     }
 
@@ -127,7 +127,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// Initializes a new instance of the <see cref="Blake3"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public Blake3(int outputBytes) : this(outputBytes, SimdSupport.All)
+    public Blake3(int outputBytes) : this(SimdSupport.All, outputBytes)
     {
     }
 
@@ -136,7 +136,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal Blake3(int outputBytes, SimdSupport simdSupport)
+    internal Blake3(SimdSupport simdSupport, int outputBytes)
     {
         if (outputBytes < 1)
             throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
@@ -162,17 +162,17 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    private Blake3(byte[] key, int outputBytes) : this(key, outputBytes, SimdSupport.All)
+    private Blake3(byte[] key, int outputBytes) : this(SimdSupport.All, key, outputBytes)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class in keyed hash mode with SIMD support.
     /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    private Blake3(byte[] key, int outputBytes, SimdSupport simdSupport)
+    private Blake3(SimdSupport simdSupport, byte[] key, int outputBytes)
     {
         if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -233,10 +233,10 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <summary>
     /// Creates a new instance of the <see cref="Blake3"/> class with specified output size and SIMD support.
     /// </summary>
-    /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <returns>A new BLAKE3 instance.</returns>
-    internal static Blake3 Create(int outputBytes, SimdSupport simdSupport) => new(outputBytes, simdSupport);
+    internal static Blake3 Create(SimdSupport simdSupport, int outputBytes) => new(simdSupport, outputBytes);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake3"/> class.
@@ -256,11 +256,11 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake3"/> class with specified SIMD support.
     /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <returns>A new BLAKE3 instance configured for keyed hashing.</returns>
-    internal static Blake3 CreateKeyed(byte[] key, int outputBytes, SimdSupport simdSupport) => new(key, outputBytes, simdSupport);
+    internal static Blake3 CreateKeyed(SimdSupport simdSupport, byte[] key, int outputBytes) => new(simdSupport, key, outputBytes);
 
     /// <inheritdoc/>
     public override void Initialize()
@@ -282,7 +282,6 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         _squeezed = false;
         _outputCounter = 0;
         _squeezeOffset = 0;
-        ClearBuffer(_chunkBuffer);
     }
 
     /// <inheritdoc/>
@@ -314,6 +313,18 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         bytesWritten = _outputBytes;
+
+        if (!_squeezed && _outputBytes <= BlockSizeBytes)
+        {
+            // Fast path: output fits in a single squeeze block — write directly to destination
+            FinalizeRoot();
+            _squeezed = true;
+            Span<byte> buf = stackalloc byte[BlockSizeBytes];
+            SqueezeRootBlock(0, buf);
+            buf.Slice(0, _outputBytes).CopyTo(destination);
+            return true;
+        }
+
         Squeeze(destination);
         return true;
     }
@@ -350,10 +361,18 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
             if (isStart) flags |= FlagChunkStart;
             if (isEnd) flags |= FlagChunkEnd;
 
-            block.Clear();
-            _chunkBuffer.AsSpan(offset, blockLen).CopyTo(block);
+            if (blockLen == BlockSizeBytes)
+            {
+                // Full block: compress directly from chunk buffer — no copy needed
+                CompressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
+            }
+            else
+            {
+                // Partial last block: stackalloc is zero-initialized for padding
+                _chunkBuffer.AsSpan(offset, blockLen).CopyTo(block);
+                CompressBlock(block, (uint)blockLen, _chunkCounter, flags);
+            }
 
-            CompressBlock(block, (uint)blockLen, _chunkCounter, flags);
             _blocksCompressed++;
             offset += BlockSizeBytes;
         }
@@ -412,6 +431,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         }
     }
 
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CompressBlock(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER

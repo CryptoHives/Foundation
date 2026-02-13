@@ -137,37 +137,19 @@ public sealed partial class Blake3
     /// </summary>
     private void SaveChunkAsRoot()
     {
+        // Compute last block boundary via integer math
+        int lastBlockOffset = (_chunkBufferLength <= BlockSizeBytes) ? 0
+            : (_chunkBufferLength - 1) / BlockSizeBytes * BlockSizeBytes;
+        int lastBlockLen = _chunkBufferLength - lastBlockOffset;
+
+        // Process all blocks except the last — compress directly from chunk buffer
         int offset = 0;
-        int lastBlockOffset = 0;
-        int lastBlockLen = _chunkBufferLength;
-
-        if (_chunkBufferLength == 0)
-        {
-            lastBlockLen = 0;
-        }
-        else
-        {
-            while (lastBlockLen > BlockSizeBytes)
-            {
-                lastBlockOffset += BlockSizeBytes;
-                lastBlockLen -= BlockSizeBytes;
-            }
-        }
-
-        Span<byte> block = stackalloc byte[BlockSizeBytes];
-
-        // Process all blocks except the last
         while (offset < lastBlockOffset)
         {
-            bool isStart = _blocksCompressed == 0;
-
             uint flags = _baseFlags;
-            if (isStart) flags |= FlagChunkStart;
+            if (_blocksCompressed == 0) flags |= FlagChunkStart;
 
-            block.Clear();
-            _chunkBuffer.AsSpan(offset, BlockSizeBytes).CopyTo(block);
-
-            CompressBlock(block, BlockSizeBytes, _chunkCounter, flags);
+            CompressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
             _blocksCompressed++;
             offset += BlockSizeBytes;
         }
@@ -176,13 +158,23 @@ public sealed partial class Blake3
         uint finalFlags = _baseFlags | FlagChunkEnd | FlagRoot;
         if (_blocksCompressed == 0) finalFlags |= FlagChunkStart;
 
-        block.Clear();
-        if (lastBlockLen > 0)
+        if (lastBlockLen == BlockSizeBytes)
         {
-            _chunkBuffer.AsSpan(lastBlockOffset, lastBlockLen).CopyTo(block);
+            // Full last block: read directly from chunk buffer
+            CopyBlockUInt32LittleEndian(_chunkBuffer.AsSpan(lastBlockOffset, BlockSizeBytes), _rootBlock);
+        }
+        else
+        {
+            // Partial last block: stackalloc is zero-initialized for padding
+            Span<byte> block = stackalloc byte[BlockSizeBytes];
+            if (lastBlockLen > 0)
+            {
+                _chunkBuffer.AsSpan(lastBlockOffset, lastBlockLen).CopyTo(block);
+            }
+
+            CopyBlockUInt32LittleEndian(block, _rootBlock);
         }
 
-        CopyBlockUInt32LittleEndian(block, _rootBlock);
         Array.Copy(_cv, _rootCv, KeySizeWords);
         _rootBlockLen = (uint)lastBlockLen;
         _rootFlags = finalFlags;
@@ -214,6 +206,14 @@ public sealed partial class Blake3
     /// </summary>
     private void SqueezeRootBlock(ulong counter, Span<byte> destination)
     {
+#if NET8_0_OR_GREATER
+        if (_useSsse3)
+        {
+            SqueezeRootBlockSsse3(counter, destination);
+            return;
+        }
+#endif
+
         Span<uint> v = stackalloc uint[BlockSizeWords];
         v[0] = _rootCv[0]; v[1] = _rootCv[1]; v[2] = _rootCv[2]; v[3] = _rootCv[3];
         v[4] = _rootCv[4]; v[5] = _rootCv[5]; v[6] = _rootCv[6]; v[7] = _rootCv[7];
