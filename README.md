@@ -88,7 +88,7 @@ No OS crypto dependency — deterministic results on every platform, in some cas
 | BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST lightweight) |
 | MAC | KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
-| Regional | SM3, Streebog, Kupyna, Whirlpool, RIPEMD-160 |
+| Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5 (backward compatibility only) |
 
 All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.

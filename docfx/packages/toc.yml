@@ -1,8 +1,0 @@
-- name: Packages Overview
-  href: index.md
-- name: Memory
-  href: memory/index.md
-- name: Threading
-  href: threading/index.md
-- name: Threading Analyzers
-  href: threading.analyzers/index.md

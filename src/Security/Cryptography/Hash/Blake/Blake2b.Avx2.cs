@@ -66,7 +66,6 @@ public sealed partial class Blake2b : HashAlgorithm
     // Vector state for AVX2 path
     private Vector256<ulong> _stateVec0;
     private Vector256<ulong> _stateVec1;
-    private readonly bool _useAvx2;
 
     static Blake2b()
     {
@@ -106,6 +105,13 @@ public sealed partial class Blake2b : HashAlgorithm
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void InitializeStateAvx2(ulong paramBlock)
+    {
+        _stateVec0 = Avx2.Xor(IVLow, Vector256.Create(paramBlock, 0UL, 0UL, 0UL));
+        _stateVec1 = IVHigh;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ExtractOutputAvx2(Span<byte> destination)
     {
         // Store vectors to stack, then copy required bytes
@@ -129,9 +135,9 @@ public sealed partial class Blake2b : HashAlgorithm
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
+    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
-        _bytesCompressed += (ulong)_bufferLength;
+        _bytesCompressed += (ulong)bytesConsumed;
 
         // Pin the message block for gather operations
         fixed (byte* mPtr = block)

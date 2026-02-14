@@ -337,6 +337,8 @@ public sealed class AsyncCountdownEvent
             }
         }
 
+#pragma warning disable CA1508 // Avoid dead conditional code
         toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
+#pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

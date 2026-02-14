@@ -93,6 +93,15 @@ public sealed partial class Blake2b : HashAlgorithm
         14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3
     };
 
+    // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
+    private delegate void CompressAction(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal);
+    private delegate void InitializeStateAction(ulong paramBlock);
+    private delegate void ExtractOutputAction(Span<byte> destination);
+
+    private readonly CompressAction _compress;
+    private readonly InitializeStateAction _initializeState;
+    private readonly ExtractOutputAction _extractOutput;
+
     // Scalar state for non-AVX2 path and output extraction
     private readonly ulong[] _state;
     private readonly byte[] _buffer;
@@ -151,8 +160,19 @@ public sealed partial class Blake2b : HashAlgorithm
         _buffer = new byte[BlockSizeBytes];
 
 #if NET8_0_OR_GREATER
-        _useAvx2 = (simdSupport & Blake2b.SimdSupport) == SimdSupport.Avx2;
+        if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Avx2) != 0)
+        {
+            _compress = CompressAvx2;
+            _initializeState = InitializeStateAvx2;
+            _extractOutput = ExtractOutputAvx2;
+        }
+        else
 #endif
+        {
+            _compress = CompressScalar;
+            _initializeState = InitializeStateScalar;
+            _extractOutput = ExtractOutputScalar;
+        }
 
         if (key != null && key.Length > 0)
         {
@@ -225,20 +245,7 @@ public sealed partial class Blake2b : HashAlgorithm
         int keyLength = _key?.Length ?? 0;
         ulong paramBlock = 0x01010000UL | ((ulong)keyLength << 8) | (uint)_outputBytes;
 
-#if NET8_0_OR_GREATER
-        if (_useAvx2)
-        {
-            // Initialize vector state: IV with parameter XOR on first word
-            _stateVec0 = Avx2.Xor(IVLow, Vector256.Create(paramBlock, 0UL, 0UL, 0UL));
-            _stateVec1 = IVHigh;
-        }
-        else
-#endif
-        {
-            // Scalar initialization
-            Array.Copy(IV, _state, StateSize);
-            _state[0] ^= paramBlock;
-        }
+        _initializeState(paramBlock);
 
         _bytesCompressed = 0;
         _bufferLength = 0;
@@ -250,6 +257,12 @@ public sealed partial class Blake2b : HashAlgorithm
             Array.Copy(_key, _buffer, _key.Length);
             _bufferLength = BlockSizeBytes;
         }
+    }
+
+    private void InitializeStateScalar(ulong paramBlock)
+    {
+        Array.Copy(IV, _state, StateSize);
+        _state[0] ^= paramBlock;
     }
 
     /// <inheritdoc/>
@@ -269,7 +282,7 @@ public sealed partial class Blake2b : HashAlgorithm
             // (we need to keep the last block for finalization)
             if (_bufferLength == BlockSizeBytes && offset < source.Length)
             {
-                Compress(_buffer, false);
+                _compress(_buffer, BlockSizeBytes, false);
                 _bufferLength = 0;
             }
         }
@@ -277,7 +290,7 @@ public sealed partial class Blake2b : HashAlgorithm
         // Process full blocks, but always keep at least one block for finalization
         while (offset + BlockSizeBytes < source.Length)
         {
-            Compress(source.Slice(offset, BlockSizeBytes), false);
+            _compress(source.Slice(offset, BlockSizeBytes), BlockSizeBytes, false);
             offset += BlockSizeBytes;
         }
 
@@ -312,19 +325,17 @@ public sealed partial class Blake2b : HashAlgorithm
         _buffer.AsSpan(_bufferLength).Clear();
 
         // Compress final block
-        Compress(_buffer, true);
+        _compress(_buffer, _bufferLength, true);
 
-#if NET8_0_OR_GREATER
-        if (_useAvx2)
-        {
-            // Extract from vector state
-            ExtractOutputAvx2(destination);
-            bytesWritten = _outputBytes;
-            return true;
-        }
-#endif
+        // Extract output using dispatch delegate
+        _extractOutput(destination);
 
-        // Scalar output extraction
+        bytesWritten = _outputBytes;
+        return true;
+    }
+
+    private void ExtractOutputScalar(Span<byte> destination)
+    {
         int fullWords = _outputBytes / 8;
         for (int i = 0; i < fullWords; i++)
         {
@@ -339,9 +350,6 @@ public sealed partial class Blake2b : HashAlgorithm
             BinaryPrimitives.WriteUInt64LittleEndian(temp, _state[fullWords]);
             temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 8));
         }
-
-        bytesWritten = _outputBytes;
-        return true;
     }
 
     /// <inheritdoc/>
@@ -350,11 +358,8 @@ public sealed partial class Blake2b : HashAlgorithm
         if (disposing)
         {
 #if NET8_0_OR_GREATER
-            if (_useAvx2)
-            {
-                _stateVec0 = default;
-                _stateVec1 = default;
-            }
+            _stateVec0 = default;
+            _stateVec1 = default;
 #endif
             Array.Clear(_state, 0, _state.Length);
             ClearBuffer(_buffer);
@@ -367,18 +372,9 @@ public sealed partial class Blake2b : HashAlgorithm
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void Compress(ReadOnlySpan<byte> block, bool isFinal)
+    private void CompressScalar(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
-#if NET8_0_OR_GREATER
-        if (_useAvx2)
-        {
-            CompressAvx2(block, isFinal);
-            return;
-        }
-#endif
-
-        // Update counter
-        _bytesCompressed += (ulong)_bufferLength;
+        _bytesCompressed += (ulong)bytesConsumed;
 
         // Use stackalloc for working vectors to avoid heap allocations
         Span<ulong> v = stackalloc ulong[ScratchSize];

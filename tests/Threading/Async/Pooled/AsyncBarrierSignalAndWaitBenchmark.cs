@@ -67,7 +67,7 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SignalAndWait", "Standard", "Barrier")]
+    [BenchmarkCategory("SignalAndWait", "System", "Barrier")]
     public async Task SignalAndWaitBarrierStandard()
     {
         for (int i = 0; i < ParticipantCount; i++)

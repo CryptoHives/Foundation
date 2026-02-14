@@ -154,6 +154,12 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         bytesWritten = _outputBytes;
         Squeeze(destination);
         return true;
@@ -167,6 +173,8 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     {
         if (!_finalized)
         {
+            _buffer[RateBytes - 1] = 0x00;
+
             byte domainSep = _isCustomized ? (byte)0x04 : (byte)0x1F;
             _buffer[_bufferLength++] = domainSep;
 

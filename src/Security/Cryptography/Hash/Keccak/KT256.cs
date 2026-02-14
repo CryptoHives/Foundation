@@ -187,6 +187,12 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         bytesWritten = _outputBytes;
         Squeeze(destination.Slice(0, _outputBytes));
         return true;

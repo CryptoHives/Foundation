@@ -402,4 +402,59 @@ public class ExtendableOutputTests
 
         Assert.That(actual, Is.EqualTo(expected));
     }
+
+    [TestCaseSource(nameof(XofAlgorithms))]
+    public void SqueezeWithEmptySpanDoesNotThrow(string name, Func<IExtendableOutput> factory)
+    {
+        using var algo = (IDisposable)factory();
+        var xof = (IExtendableOutput)algo;
+
+        xof.Absorb(new byte[] { 0x01, 0x02, 0x03 });
+        Assert.DoesNotThrow(() => xof.Squeeze(Span<byte>.Empty), $"{name} Squeeze with empty span should not throw.");
+    }
+
+    [TestCaseSource(nameof(XofAlgorithms))]
+    public void AbsorbAfterSqueezeThrows(string name, Func<IExtendableOutput> factory)
+    {
+        using var algo = (IDisposable)factory();
+        var xof = (IExtendableOutput)algo;
+
+        xof.Absorb(new byte[] { 0x01, 0x02, 0x03 });
+        byte[] output = new byte[32];
+        xof.Squeeze(output);
+
+        Assert.Throws<InvalidOperationException>(
+            () => xof.Absorb(new byte[] { 0x04 }),
+            $"{name} Absorb after Squeeze should throw InvalidOperationException.");
+    }
+
+    [TestCaseSource(nameof(XofAlgorithms))]
+    public void AbsorbAfterResetDoesNotThrow(string name, Func<IExtendableOutput> factory)
+    {
+        using var algo = (IDisposable)factory();
+        var xof = (IExtendableOutput)algo;
+
+        xof.Absorb(new byte[] { 0x01, 0x02, 0x03 });
+        byte[] output = new byte[32];
+        xof.Squeeze(output);
+
+        xof.Reset();
+
+        Assert.DoesNotThrow(
+            () => xof.Absorb(new byte[] { 0x04 }),
+            $"{name} Absorb after Reset should not throw.");
+    }
+
+    [TestCaseSource(nameof(XofAlgorithms))]
+    public void SqueezeWithEmptyAbsorbProducesOutput(string name, Func<IExtendableOutput> factory)
+    {
+        using var algo = (IDisposable)factory();
+        var xof = (IExtendableOutput)algo;
+
+        byte[] output = new byte[32];
+        xof.Squeeze(output);
+
+        Assert.That(output, Is.Not.EqualTo(new byte[32]),
+            $"{name} Squeeze without Absorb should still produce non-zero output.");
+    }
 }

@@ -88,6 +88,7 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography.Tests", "tests\Security\Cryptography\Cryptography.Tests.csproj", "{BB62C54C-1437-206A-A79B-AFF23405B974}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "src\Security\Cryptography\Cryptography.csproj", "{ED53E1F7-E3C2-5E07-22F5-476CBD125D11}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341}"
 	ProjectSection(SolutionItems) = preProject
 		scripts\run-benchmarks.cmd = scripts\run-benchmarks.cmd
@@ -110,10 +111,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docfx", "docfx", "{B1C2D3E4
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "packages", "packages", "{D280C6CF-860C-4708-8D7B-D6620E6C662D}"
-	ProjectSection(SolutionItems) = preProject
-		docfx\packages\index.md = docfx\packages\index.md
-		docfx\packages\toc.yml = docfx\packages\toc.yml
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

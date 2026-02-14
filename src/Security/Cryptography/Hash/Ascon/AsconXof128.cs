@@ -100,6 +100,7 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
     /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
     {
+        if (_finalized) throw new InvalidOperationException("Cannot add data after finalization.");
         HashCore(input);
     }
 

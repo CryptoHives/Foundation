@@ -119,6 +119,12 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         bytesWritten = _outputBytes;
         Squeeze(destination);
         return true;
@@ -149,6 +155,8 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
                     _bufferLength = 0;
                 }
             }
+
+            _buffer[_rateBytes - 1] = 0x00;
 
             // cSHAKE domain separator (0x04 for customized)
             _buffer[_bufferLength++] = 0x04;

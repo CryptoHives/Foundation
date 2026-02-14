@@ -116,6 +116,13 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     private ulong _chunkCounter;
     private int _blocksCompressed;
 
+    // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
+    private delegate void CompressBlockAction(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags);
+    private delegate void SqueezeRootBlockAction(ulong counter, Span<byte> destination);
+
+    private readonly CompressBlockAction _compressBlock;
+    private readonly SqueezeRootBlockAction _squeezeRootBlock;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class with default output size (32 bytes).
     /// </summary>
@@ -151,8 +158,17 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         _cvStackBuf = new uint[MaxStackDepth * 8];
 
 #if NET8_0_OR_GREATER
-        _useSsse3 = (simdSupport & SimdSupport & SimdSupport.Ssse3) != 0;
+        if ((simdSupport & SimdSupport & SimdSupport.Ssse3) != 0)
+        {
+            _compressBlock = CompressBlockSsse3;
+            _squeezeRootBlock = SqueezeRootBlockSsse3;
+        }
+        else
 #endif
+        {
+            _compressBlock = CompressBlockScalar;
+            _squeezeRootBlock = SqueezeRootBlockScalar;
+        }
 
         Initialize();
     }
@@ -190,8 +206,17 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         _cvStackBuf = new uint[MaxStackDepth * 8];
 
 #if NET8_0_OR_GREATER
-        _useSsse3 = (simdSupport & SimdSupport & SimdSupport.Ssse3) != 0;
+        if ((simdSupport & SimdSupport & SimdSupport.Ssse3) != 0)
+        {
+            _compressBlock = CompressBlockSsse3;
+            _squeezeRootBlock = SqueezeRootBlockSsse3;
+        }
+        else
 #endif
+        {
+            _compressBlock = CompressBlockScalar;
+            _squeezeRootBlock = SqueezeRootBlockScalar;
+        }
 
         // Parse key as little-endian uint32 words
         for (int i = 0; i < KeySizeWords; i++)
@@ -312,6 +337,12 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         bytesWritten = _outputBytes;
 
         if (!_squeezed && _outputBytes <= BlockSizeBytes)
@@ -320,7 +351,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
             FinalizeRoot();
             _squeezed = true;
             Span<byte> buf = stackalloc byte[BlockSizeBytes];
-            SqueezeRootBlock(0, buf);
+            _squeezeRootBlock(0, buf);
             buf.Slice(0, _outputBytes).CopyTo(destination);
             return true;
         }
@@ -364,13 +395,13 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
             if (blockLen == BlockSizeBytes)
             {
                 // Full block: compress directly from chunk buffer — no copy needed
-                CompressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
+                _compressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
             }
             else
             {
                 // Partial last block: stackalloc is zero-initialized for padding
                 _chunkBuffer.AsSpan(offset, blockLen).CopyTo(block);
-                CompressBlock(block, (uint)blockLen, _chunkCounter, flags);
+                _compressBlock(block, (uint)blockLen, _chunkCounter, flags);
             }
 
             _blocksCompressed++;
@@ -432,16 +463,8 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressBlock(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
+    private void CompressBlockScalar(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
-#if NET8_0_OR_GREATER
-        if (_useSsse3)
-        {
-            CompressBlockSsse3(block, blockLen, counter, flags);
-            return;
-        }
-#endif
-
         Span<uint> m = stackalloc uint[BlockSizeWords];
         CopyBlockUInt32LittleEndian(block, m);
 

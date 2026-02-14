@@ -92,6 +92,9 @@ public abstract class KeccakXofCore : KeccakCore, IExtendableOutput
         // Finalize if not already done
         if (!_finalized)
         {
+            // Clear last byte to prevent stale buffer data from leaking into padding
+            _buffer[_rateBytes - 1] = 0x00;
+
             // Pad with domain separation byte
             _buffer[_bufferLength++] = _domainSeparator;
 
@@ -101,7 +104,7 @@ public abstract class KeccakXofCore : KeccakCore, IExtendableOutput
                 _buffer[_bufferLength++] = 0x00;
             }
 
-            // Set last bit
+            // Set last bit (OR preserves domain separator if it landed at this position)
             _buffer[_rateBytes - 1] |= 0x80;
 
             // Absorb final block

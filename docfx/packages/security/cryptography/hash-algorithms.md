@@ -805,7 +805,7 @@ kupyna384.TryComputeHash(data, hash384, out _);
 
 Korean national standard hash function designed by KISA (Korea Internet & Security Agency).
 
-### Lsh512
+### Lsh512 
 
 ```csharp
 public sealed class Lsh512 : HashAlgorithm
@@ -994,7 +994,7 @@ Supported names:
 - Keccak: `KECCAK-256`, `KECCAK-384`, `KECCAK-512`
 - Ascon: `ASCON-HASH256`, `ASCON-XOF128`
 - BLAKE: `BLAKE2B`, `BLAKE2S`, `BLAKE3`
-- Others: `RIPEMD-160`, `SM3`, `WHIRLPOOL`, `STREEBOG-256`, `STREEBOG-512`, `MD5`
+- Others: `RIPEMD-160`, `SM3`, `WHIRLPOOL`, `STREEBOG-256`, `STREEBOG-512`, `KUPYNA-256`, `KUPYNA-384`, `KUPYNA-512`, `LSH-256-224`, `LSH-256-256`, `LSH-512-256`, `LSH-512-384`, `LSH-512-512`, `MD5`
 
 ---
 

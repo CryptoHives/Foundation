@@ -64,7 +64,26 @@ public sealed class Whirlpool : HashAlgorithm
     ];
 
     // Round constants (precomputed from S-box)
-    private static readonly ulong[] RoundConstants;
+    private static readonly ulong[] RoundConstants = InitializeRoundConstants();
+
+    private static ulong[] InitializeRoundConstants()
+    {
+        unchecked
+        {
+            // Initialize round constants
+            var roundConstants = new ulong[Rounds];
+            for (int r = 0; r < Rounds; r++)
+            {
+                roundConstants[r] = 0;
+                for (int i = 0; i < 8; i++)
+                {
+                    int idx = 8 * r + i;
+                    roundConstants[r] |= (ulong)Sbox[idx] << (56 - 8 * i);
+                }
+            }
+            return roundConstants;
+        }
+    }
 
     // Precomputed tables for faster computation
     private static readonly ulong[] C0, C1, C2, C3, C4, C5, C6, C7;

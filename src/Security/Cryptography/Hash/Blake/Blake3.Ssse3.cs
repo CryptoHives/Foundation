@@ -46,8 +46,6 @@ public sealed partial class Blake3 : HashAlgorithm
     private static readonly Vector128<uint> IVLow = Vector128.Create(
         0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU);
 
-    private readonly bool _useSsse3;
-
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>

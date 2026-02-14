@@ -44,7 +44,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetThenWait", "Standard", "AutoResetEvent")]
+    [BenchmarkCategory("SetThenWait", "System", "AutoResetEvent")]
     public void AutoResetEventSetThenWait()
     {
         _ = _eventStandard.Set();

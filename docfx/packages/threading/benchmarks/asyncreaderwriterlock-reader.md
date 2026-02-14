@@ -1,6 +1,6 @@
-﻿| Description                                    | Mean      | Ratio | Allocated | 
-|----------------------------------------------- |----------:|------:|----------:|
-| ReaderLock · ReaderWriterLockSlim · RWLockSlim |  5.870 ns |  0.15 |         - | 
-| ReaderLock · AsyncRWLock · RefImpl             | 15.499 ns |  0.38 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx        | 36.934 ns |  0.91 |     320 B | 
-| ReaderLock · AsyncRWLock · Pooled              | 40.418 ns |  1.00 |         - |
+﻿| Description                                | Mean      | Ratio | Allocated | 
+|------------------------------------------- |----------:|------:|----------:|
+| ReaderLock · ReaderWriterLockSlim · System |  5.861 ns |  0.35 |         - | 
+| ReaderLock · AsyncRWLock · RefImpl         | 15.885 ns |  0.95 |         - | 
+| ReaderLock · AsyncRWLock · Pooled          | 16.649 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx    | 37.094 ns |  2.23 |     320 B |

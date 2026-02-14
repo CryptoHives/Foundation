@@ -51,7 +51,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// Measures the performance of the increment operation.
     /// </remarks>
     [Benchmark]
-    [BenchmarkCategory("Lock", "Increment", "Baseline")]
+    [BenchmarkCategory("Lock", "System", "Increment")]
     public void IncrementSingle()
     {
         // simulate work
@@ -68,7 +68,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System.Lock", "Lock")]
+    [BenchmarkCategory("Lock", "System", "Lock")]
     public void LockUnlockSingle()
     {
         lock (_lock)
@@ -87,7 +87,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "Lock.EnterScope", "Lock")]
+    [BenchmarkCategory("Lock", "System", "Lock.EnterScope")]
     public void LockEnterScopeSingle()
     {
         using (_lock.EnterScope())
@@ -107,7 +107,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "Monitor", "Monitor")]
+    [BenchmarkCategory("Lock", "System", "lock()")]
     public void ObjectLockUnlockSingle()
     {
         lock (_objectLock)
@@ -122,7 +122,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "Interlocked", "Interlocked")]
+    [BenchmarkCategory("Lock", "System", "Interlocked.Increment")]
     public void InterlockedIncrementSingle()
     {
         Interlocked.Increment(ref _counter);
@@ -133,7 +133,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("LockAsync", "SemaphoreSlim", "SemaphoreSlim")]
+    [BenchmarkCategory("LockAsync", "System", "SemaphoreSlim")]
     public async Task LockUnlockSemaphoreSlimSingleAsync()
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
