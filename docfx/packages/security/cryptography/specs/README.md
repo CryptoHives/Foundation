@@ -263,13 +263,14 @@ specs/
 ├── Keccak-vectors.md      # Keccak-256, Keccak-384, Keccak-512 test vectors
 ├── KT-vectors.md          # KT128, KT256 (KangarooTwelve) test vectors
 ├── TurboSHAKE-vectors.md  # TurboSHAKE128, TurboSHAKE256 test vectors
-├── Ascon-vectors.md       # Ascon-Hash256, Ascon-XOF128 test vectors
 ├── BLAKE2-vectors.md      # BLAKE2b, BLAKE2s test vectors
 ├── BLAKE3-vectors.md      # BLAKE3 test vectors
 ├── RIPEMD-160-vectors.md  # RIPEMD-160 test vectors
 ├── SM3-vectors.md         # SM3 test vectors
 ├── Whirlpool-vectors.md   # Whirlpool test vectors
 ├── Streebog-vectors.md    # Streebog (GOST) test vectors
+├── Kupyna-vectors.md      # Kupyna (DSTU 7564) test vectors
+├── LSH-vectors.md         # LSH (KS X 3262) test vectors
 └── MD5-vectors.md         # MD5 test vectors (legacy)
 ```
 

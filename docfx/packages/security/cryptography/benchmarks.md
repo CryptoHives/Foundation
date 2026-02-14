@@ -33,16 +33,17 @@ This page collects the BenchmarkDotNet measurements for every cryptographic algo
 
 | Family | Leader | Key Insight |
 |--------|--------|-------------|
-| **SHA-2** | OS (SHA-NI) | Hardware SHA-NI gives OS ~4–6× advantage; managed beats BouncyCastle by ~5% |
-| **SHA-3/Keccak** | Managed | Scalar Keccak outperforms OS and SIMD variants by 15–35% |
-| **BLAKE2b/2s** | BouncyCastle | Native optimizations give BouncyCastle ~20% edge; managed SIMD competitive |
-| **BLAKE3** | Native (Rust) | Rust interop ~3× faster; managed beats BouncyCastle by ~7× |
-| **Streebog** | Managed | 1.4–1.9× faster than OpenGost/BouncyCastle |
-| **KMAC** | .NET 9+ | OS KMAC fastest; managed beats BouncyCastle at larger sizes |
-| **Ascon** | Managed | Slightly faster than BouncyCastle (~2–3%) |
+| **SHA-2** | OS (SHA-NI) | Hardware SHA-NI gives OS ~4.5× advantage; managed beats BouncyCastle by ~13% |
+| **SHA-3/Keccak** | Managed | Scalar Keccak outperforms OS by ~30% and SIMD variants by 25–35% |
+| **BLAKE2b/2s** | Managed SIMD | BLAKE2s SIMD on parity with BouncyCastle; BLAKE2b AVX2 within ~20% |
+| **BLAKE3** | Native (Rust) | Rust interop ~1.4× faster at small inputs, ~12× at large due to multi-chunk parallelism; SSSE3 managed ~4× faster than BouncyCastle |
+| **Streebog** | Managed | 1.4–1.8× faster than OpenGost/BouncyCastle |
+| **Kupyna** | Managed | T-table optimization beats BouncyCastle by 30–45% |
+| **LSH** | Managed | First .NET implementation; no BouncyCastle comparison available |
+| **KMAC** | Managed | Managed beats OS by ~30% and BouncyCastle by ~48% at all sizes |
+| **Ascon** | Managed | ~33% faster than BouncyCastle across all input sizes |
 | **AES-GCM** | OS (AES-NI) | Hardware AES-NI + PCLMULQDQ gives OS significant advantage |
 | **ChaCha20-Poly1305** | Managed/OS | Software-friendly; no hardware dependency |
-
 ## Benchmark results by algorithm family
 
 ### SHA-2 Family
