@@ -26,7 +26,7 @@ using System.Text;
 /// This implementation is specified in RFC 9861 Section 3.2.
 /// </para>
 /// </remarks>
-public sealed class KT128 : HashAlgorithm
+public sealed class KT128 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
     /// The rate in bytes for KT128 (1344 bits = 168 bytes, same as TurboSHAKE128).
@@ -62,7 +62,7 @@ public sealed class KT128 : HashAlgorithm
 
     private readonly int _outputBytes;
     private readonly byte[] _customization;
-    private readonly SimdSupport _simdSupport;
+    private readonly TurboShake128 _turbo;
     private byte[] _buffer;
     private int _bufferLength;
     private bool _finalized;
@@ -108,7 +108,7 @@ public sealed class KT128 : HashAlgorithm
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
-        _simdSupport = simdSupport;
+        _turbo = new TurboShake128(simdSupport, ChainingValueSize, DomainSingleNode);
         // Rent initial buffer from shared pool to reduce allocations under benchmarks
         _buffer = ArrayPool<byte>.Shared.Rent(InitialBufferSize);
         _bufferLength = 0;
@@ -159,13 +159,16 @@ public sealed class KT128 : HashAlgorithm
         _finalized = false;
     }
 
-    /// <summary>
-    /// Absorbs a block of input data into the hash state.
-    /// </summary>
-    /// <param name="data">The data to absorb.</param>
-    internal void AbsorbData(ReadOnlySpan<byte> data)
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
     {
-        HashCore(data);
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
     }
 
     /// <inheritdoc/>
@@ -184,6 +187,12 @@ public sealed class KT128 : HashAlgorithm
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
         bytesWritten = _outputBytes;
         Squeeze(destination.Slice(0, _outputBytes));
         return true;
@@ -199,7 +208,10 @@ public sealed class KT128 : HashAlgorithm
         {
             FinalizeInternal(output);
             _finalized = true;
+            return;
         }
+
+        _turbo.Squeeze(output);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -257,9 +269,9 @@ public sealed class KT128 : HashAlgorithm
 
     private void ComputeTurboShake128(ReadOnlySpan<byte> input, Span<byte> output, byte domainSeparator)
     {
-        using var turbo = TurboShake128.Create(_simdSupport, output.Length, domainSeparator);
-        turbo.TransformBlock(input);
-        turbo.Squeeze(output);
+        _turbo.ResetWithDomainSeparator(domainSeparator);
+        _turbo.TransformBlock(input);
+        _turbo.Squeeze(output);
     }
 
     private void ComputeTreeHash(ReadOnlySpan<byte> s, Span<byte> output)
@@ -358,11 +370,16 @@ public sealed class KT128 : HashAlgorithm
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
-        if (disposing && _buffer != null)
+        if (disposing)
         {
-            // Clear and return to pool to avoid leaking sensitive data
-            ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
-            _buffer = null!;
+            _turbo.Dispose();
+
+            if (_buffer != null)
+            {
+                // Clear and return to pool to avoid leaking sensitive data
+                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                _buffer = null!;
+            }
         }
         base.Dispose(disposing);
     }

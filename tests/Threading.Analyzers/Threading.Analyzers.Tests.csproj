@@ -30,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\AssemblyInfo.cs" Link="Properties\AssemblyInfo.cs" />
     <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj" />
   </ItemGroup>
 

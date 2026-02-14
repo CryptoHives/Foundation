@@ -16,11 +16,22 @@ using System.Threading.Tasks.Sources;
 /// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
 /// and supports querying the status and retrieving the result. In addition, an implementation can set the owner
 /// instance to return the instance to the pool when it is no longer needed.
+/// This class is designed for direct use with <see cref="WaiterQueue{T}"/> to store the derived waiters allocation free.
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
 /// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
 public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
+    /// <summary>
+    /// Link to the next node in the intrusive <see cref="WaiterQueue{T}"/>.
+    /// </summary>
+    internal ManualResetValueTaskSource<T>? Next { get; set; }
+
+    /// <summary>
+    /// Link to the previous node in the intrusive <see cref="WaiterQueue{T}"/>.
+    /// </summary>
+    internal ManualResetValueTaskSource<T>? Prev { get; set; }
+
     /// <summary>
     /// Gets the version number of the current instance.
     /// </summary>

@@ -6,23 +6,24 @@ namespace Cryptography.Tests.Adapter;
 #if BLAKE3_NATIVE
 
 using System;
-using System.Security.Cryptography;
 using Blake3Native = Blake3;
 
 /// <summary>
-/// Wraps the Blake3.NET native implementation as a <see cref="HashAlgorithm"/>.
+/// Wraps the Blake3.NET native implementation as a
+/// <see cref="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm"/>.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This adapter allows the Blake3.NET native Rust-based implementation to be used
-/// interchangeably with .NET <see cref="HashAlgorithm"/> implementations in tests.
+/// interchangeably with .NET <see cref="System.Security.Cryptography.HashAlgorithm"/>
+/// implementations in tests.
 /// </para>
 /// <para>
 /// The Blake3.NET package provides SIMD-optimized native implementations for maximum
 /// performance, making it an excellent reference for correctness testing.
 /// </para>
 /// </remarks>
-internal sealed class Blake3NativeAdapter : HashAlgorithm
+internal sealed class Blake3NativeAdapter : CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm
 {
     private readonly int _outputBytes;
     private Blake3Native.Hasher _hasher;
@@ -44,23 +45,23 @@ internal sealed class Blake3NativeAdapter : HashAlgorithm
     }
 
     /// <inheritdoc/>
-    public override void Initialize()
-    {
-        _hasher.Reset();
-    }
+    public override string AlgorithmName => "BLAKE3";
 
     /// <inheritdoc/>
-    protected override void HashCore(byte[] array, int ibStart, int cbSize)
-    {
-        _hasher.Update(array.AsSpan(ibStart, cbSize));
-    }
+    public override int BlockSize => 64;
 
     /// <inheritdoc/>
-    protected override byte[] HashFinal()
+    public override void Initialize() => _hasher.Reset();
+
+    /// <inheritdoc/>
+    protected override void HashCore(ReadOnlySpan<byte> source) => _hasher.Update(source);
+
+    /// <inheritdoc/>
+    protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
-        byte[] hash = new byte[_outputBytes];
-        _hasher.Finalize(hash);
-        return hash;
+        _hasher.Finalize(destination[.._outputBytes]);
+        bytesWritten = _outputBytes;
+        return true;
     }
 
     /// <inheritdoc/>
@@ -75,5 +76,3 @@ internal sealed class Blake3NativeAdapter : HashAlgorithm
 }
 
 #endif
-
-

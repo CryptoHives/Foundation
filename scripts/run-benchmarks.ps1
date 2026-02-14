@@ -28,12 +28,22 @@ param(
         "Blake3",
         "MD5", "SHA1",
         "SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160",
+        "Kupyna256", "Kupyna384", "Kupyna512",
+        "Lsh256_256", "Lsh512_256", "Lsh512_512",
         "AsconHash256", "AsconXof128",
-        "KMac128", "KMac256", "KMac128Incremental", "KMac128OutputSize", "KMac256Incremental", "KMac256OutputSize",
+        "KMac128", "KMac256",
+        # XOF (Absorb/Squeeze) benchmarks
+        "Shake128Xof", "Shake256Xof",
+        "CShake128Xof", "CShake256Xof",
+        "TurboShake128Xof", "TurboShake256Xof",
+        "KT128Xof", "KT256Xof",
+        "KMac128Xof", "KMac256Xof",
+        "Blake3Xof", "AsconXof128Xof",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
-        "Legacy", "Regional", "Ascon", "KMAC",
+        "Legacy", "Regional", "Kupyna", "LSH", "Ascon", "KMAC",
+        "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
         "AES-GCM", "ChaCha",
         "Cipher", "AEAD",
         "All"
@@ -117,16 +127,33 @@ $AlgorithmBenchmarkMap = @{
     "Streebog512" = "Streebog512"
     "Whirlpool"   = "Whirlpool"
     "Ripemd160"   = "Ripemd160"
+    # Kupyna (DSTU 7564)
+    "Kupyna256"   = "Kupyna256"
+    "Kupyna384"   = "Kupyna384"
+    "Kupyna512"   = "Kupyna512"
+    # LSH (KS X 3262)
+    "Lsh256_256"  = "Lsh256_256"
+    "Lsh512_256"  = "Lsh512_256"
+    "Lsh512_512"  = "Lsh512_512"
     # Ascon
     "AsconHash256" = "AsconHash256"
     "AsconXof128" = "AsconXof128"
     # KMAC
-    "Kmac128"     = "Kmac128"
-    "Kmac256"     = "Kmac256"
-    "Kmac128Incremental" = "Kmac128Incremental"
-    "Kmac128OutputSize" = "Kmac128OutputSize"
-    "Kmac256Incremental" = "Kmac256Incremental"
-    "Kmac256OutputSize" = "Kmac256OutputSize"
+    "KMac128"     = "KMac128"
+    "KMac256"     = "KMac256"
+    # XOF (Absorb/Squeeze)
+    "Shake128Xof"      = "Shake128Xof"
+    "Shake256Xof"      = "Shake256Xof"
+    "CShake128Xof"     = "CShake128Xof"
+    "CShake256Xof"     = "CShake256Xof"
+    "TurboShake128Xof" = "TurboShake128Xof"
+    "TurboShake256Xof" = "TurboShake256Xof"
+    "KT128Xof"         = "KT128Xof"
+    "KT256Xof"         = "KT256Xof"
+    "KMac128Xof"       = "KMac128Xof"
+    "KMac256Xof"       = "KMac256Xof"
+    "Blake3Xof"        = "Blake3Xof"
+    "AsconXof128Xof"   = "AsconXof128Xof"
     # Ciphers - AES-GCM
     "AesGcm128"   = "AesGcm128"
     "AesGcm256"   = "AesGcm256"
@@ -153,12 +180,19 @@ $GroupAliases = @{
     "BLAKE2s"     = @("Blake2s256", "Blake2s128")
     "BLAKE"       = @("Blake3", "Blake2s256", "Blake2b256", "Blake2s128", "Blake2b512")
     "Legacy"      = @("MD5", "SHA1")
-    "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160")
+    "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160", "Kupyna256", "Kupyna384", "Kupyna512", "Lsh256_256", "Lsh512_256", "Lsh512_512")
+    "Kupyna"      = @("Kupyna256", "Kupyna384", "Kupyna512")
+    "LSH"         = @("Lsh256_256", "Lsh512_256", "Lsh512_512")
     "Ascon"       = @("AsconHash256", "AsconXof128")
-    "KMAC"        = @("Kmac128", "Kmac256", "Kmac128Incremental", "Kmac128OutputSize", "Kmac256Incremental", "Kmac256OutputSize")
+    "KMAC"        = @("KMac128", "KMac256")
+    "XOF"         = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof", "KMac128Xof", "KMac256Xof", "Blake3Xof", "AsconXof128Xof")
+    "KeccakXOF"   = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof")
+    "BlakeXOF"    = @("Blake3Xof")
+    "MacXOF"      = @("KMac128Xof", "KMac256Xof")
+    "AsconXOF"    = @("AsconXof128Xof")
     "AES-GCM"     = @("AesGcm128", "AesGcm256")
     "ChaCha"      = @("ChaCha20Poly1305", "XChaCha20Poly1305")
-    "AEAD"        = @("AesGcm128", "AesGcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "AEAD"        = @("AesGcm128", "AesGcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")>>>>>>> main
 }
 
 # Get repository root
@@ -229,9 +263,13 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  BLAKE2s:       -Family Blake2s128, Blake2s256"
     Write-Host "  BLAKE3:        -Family Blake3"
     Write-Host "  Legacy:        -Family MD5, SHA1"
-    Write-Host "  Regional:      -Family SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
+    Write-Host "  Regional:      -Family SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512, Lsh256_256, Lsh512_256, Lsh512_512"
+    Write-Host "  LSH:           -Family Lsh256_256, Lsh512_256, Lsh512_512"
+    Write-Host "  Kupyna:        -Family Kupyna256, Kupyna384, Kupyna512"
     Write-Host "  Ascon:         -Family AsconHash256, AsconXof128"
-    Write-Host "  KMAC:          -Family Kmac128, Kmac256, Kmac128Incremental, Kmac128OutputSize, Kmac256Incremental, Kmac256OutputSize"
+    Write-Host "  KMAC:          -Family KMac128, KMac256"
+    Write-Host "  XOF:           -Family Shake128Xof, Shake256Xof, CShake128Xof, CShake256Xof, TurboShake128Xof, TurboShake256Xof"
+    Write-Host "                          KT128Xof, KT256Xof, KMac128Xof, KMac256Xof, Blake3Xof, AsconXof128Xof"
     Write-Host ""
     Write-Host "Available cipher algorithm families:" -ForegroundColor Yellow
     Write-Host ""
@@ -250,9 +288,16 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family BLAKE2s    runs: Blake2s128, Blake2s256"
     Write-Host "  -Family BLAKE      runs: Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3"
     Write-Host "  -Family Legacy     runs: MD5, SHA1"
-    Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160"
+    Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512, Lsh256_256, Lsh512_256, Lsh512_512"
+    Write-Host "  -Family Kupyna     runs: Kupyna256, Kupyna384, Kupyna512"
+    Write-Host "  -Family LSH        runs: Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
-    Write-Host "  -Family KMAC       runs: Kmac128, Kmac256, Kmac128Incremental, Kmac128OutputSize, Kmac256Incremental, Kmac256OutputSize"
+    Write-Host "  -Family KMAC       runs: KMac128, KMac256"
+    Write-Host "  -Family XOF        runs: All XOF Absorb/Squeeze benchmarks (12 algorithms)"
+    Write-Host "  -Family KeccakXOF  runs: Shake128Xof, Shake256Xof, CShake128Xof, CShake256Xof, TurboShake128Xof, TurboShake256Xof, KT128Xof, KT256Xof"
+    Write-Host "  -Family BlakeXOF   runs: Blake3Xof"
+    Write-Host "  -Family MacXOF     runs: KMac128Xof, KMac256Xof"
+    Write-Host "  -Family AsconXOF   runs: AsconXof128Xof"
     Write-Host "  -Family AES-GCM    runs: AesGcm128, AesGcm256"
     Write-Host "  -Family ChaCha     runs: ChaCha20Poly1305, XChaCha20Poly1305"
     Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
@@ -302,8 +347,10 @@ Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
 Write-Host ""
 
 if ($DryRun) {
-    Write-Host "[DRY RUN] Command would be executed in: $testProject" -ForegroundColor Yellow
-    exit 0
+    $dotnetArgs += "--job"
+    $dotnetArgs += "Dry"
+    Write-Host "[DRY RUN] Running all benchmarks with minimal iterations (Job.Dry)" -ForegroundColor Yellow
+    Write-Host ""
 }
 
 # Change to test project directory and run
@@ -330,7 +377,11 @@ try {
     Write-Host "Results saved to:"
     Write-Host "  $testProject\BenchmarkDotNet.Artifacts\results\"
     Write-Host ""
+    
     if ($Project -eq "Cryptography") {
+        Write-Host "To generate benchmark charts, run:"
+        Write-Host "  .\scripts\generate-benchmark-charts.ps1"
+        Write-Host ""
         Write-Host "To update documentation, run:"
         Write-Host "  .\scripts\update-benchmark-docs.ps1 -Package Cryptography"
         Write-Host ""

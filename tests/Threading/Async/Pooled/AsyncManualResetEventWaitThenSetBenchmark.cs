@@ -8,7 +8,6 @@ namespace Threading.Tests.Async.Pooled;
 #pragma warning disable CA1062 // Validate arguments of public methods
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -62,9 +61,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [BenchmarkCategory("AsyncManualResetEvent")]
 [NonParallelizable]
 public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBaseBenchmark
@@ -149,7 +146,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </para>
     /// </remarks>
     [Benchmark]
-    [BenchmarkCategory("WaitThenSet", "Pooled")]
+    [BenchmarkCategory("WaitThenSet", "Pooled (SyncCont)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public Task PooledContSyncAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
@@ -181,7 +178,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </para>
     /// </remarks>
     [Benchmark]
-    [BenchmarkCategory("WaitThenSet", "PooledAsValueTask")]
+    [BenchmarkCategory("WaitThenSet", "Pooled (AsValueTask SyncCont)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public Task PooledAsValueTaskContSyncAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
@@ -215,8 +212,8 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// thread pool scheduling and degraded performance. Always await immediately or use ValueTask directly.
     /// </para>
     /// </remarks>
-    [Benchmark(Description = "PooledAsTaskContSync")]
-    [BenchmarkCategory("WaitThenSet", "PooledAsTask")]
+    [Benchmark]
+    [BenchmarkCategory("WaitThenSet", "Pooled (AsTask SyncCont)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public Task PooledAsTaskContSyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
@@ -252,7 +249,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </remarks>
     [Test]
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("WaitThenSet", "Pooled")]
+    [BenchmarkCategory("WaitThenSet", "Pooled (ValueTask)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task PooledAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
@@ -293,7 +290,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("WaitThenSet", "PooledAsValueTask")]
+    [BenchmarkCategory("WaitThenSet", "Pooled (AsValueTask)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task PooledAsValueTaskAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
@@ -338,7 +335,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("WaitThenSet", "PooledAsTask")]
+    [BenchmarkCategory("WaitThenSet", "Pooled (AsTask)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task PooledAsTaskManualResetEventWaitThenSetAsync(CancellationType cancellationType)

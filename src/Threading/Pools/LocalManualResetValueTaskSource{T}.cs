@@ -16,6 +16,7 @@ using System.Threading.Tasks.Sources;
 /// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
 /// and supports querying the status and retrieving the result. It is used as a local reusable value task source to
 /// minimize allocations.
+/// This class can be directly used with <see cref="WaiterQueue{T}"/> to store the waiters allocation free.
 /// </remarks>
 public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSource<T>
 {
@@ -86,6 +87,8 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     {
         _core.Reset();
         _cancellationTokenRegistration = default;
+        Next = null;
+        Prev = null;
         return Interlocked.Exchange(ref _inUse, 0) == 1;
     }
 

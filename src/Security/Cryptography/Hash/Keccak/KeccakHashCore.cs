@@ -41,6 +41,10 @@ public abstract class KeccakHashCore : KeccakCore
             return false;
         }
 
+        // Clear the last byte to prevent stale buffer data from leaking into the
+        // padding when the buffer was previously absorbed but not zeroed.
+        _buffer[_rateBytes - 1] = 0x00;
+
         // Pad with domain separation byte
         _buffer[_bufferLength++] = _domainSeparator;
 
@@ -50,7 +54,7 @@ public abstract class KeccakHashCore : KeccakCore
             _buffer[_bufferLength++] = 0x00;
         }
 
-        // Set last bit
+        // Set last bit (OR preserves domain separator if it landed at this position)
         _buffer[_rateBytes - 1] |= 0x80;
 
         // Absorb final block

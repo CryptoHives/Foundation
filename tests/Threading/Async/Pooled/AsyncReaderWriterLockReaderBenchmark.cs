@@ -4,7 +4,6 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
@@ -30,9 +29,7 @@ using System.Threading.Tasks;
 /// </list>
 /// </remarks>
 [TestFixture]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [Description("Measures the performance of uncontended reader lock operations.")]
 [NonParallelizable]
 [BenchmarkCategory("AsyncReaderWriterLock")]
@@ -45,6 +42,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("ReaderLock", "System", "ReaderWriterLockSlim")]
     public void ReadLockReaderWriterLockSlim()
     {
         _rwLockSlim.EnterReadLock();
@@ -63,6 +61,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("ReaderLock", "Pooled")]
     public async Task ReaderLockPooledAsync()
     {
         using (await _rwLockPooled.ReaderLockAsync().ConfigureAwait(false))
@@ -77,6 +76,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("ReaderLock", "Nito.AsyncEx")]
     public async Task ReaderLockNitoAsync()
     {
         using (await _rwLockNitoAsync.ReaderLockAsync().ConfigureAwait(false))
@@ -91,6 +91,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
+    [BenchmarkCategory("ReaderLock", "RefImpl")]
     public async Task ReaderLockRefImplAsync()
     {
         using (await _rwLockRefImp.ReaderLockAsync().ConfigureAwait(false))

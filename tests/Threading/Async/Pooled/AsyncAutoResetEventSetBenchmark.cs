@@ -4,7 +4,6 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 
 /// <summary>
@@ -34,9 +33,7 @@ using NUnit.Framework;
 /// </para>
 /// </remarks>
 [TestFixture]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
 {
@@ -49,7 +46,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Set", "Standard")]
+    [BenchmarkCategory("Set", "System", "AutoResetEvent")]
     public void AutoResetEventSet()
     {
         _eventStandard.Set();

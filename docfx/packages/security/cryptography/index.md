@@ -20,7 +20,6 @@ The Cryptography package provides specification-based implementations of cryptog
 dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```
 
-> **Note:** This package is currently in development and not yet published to NuGet.
 > The focus is currently on stability and validation of the algorithms against test
 > vectors and other implementations.
 > Once stabilized, perf improvements and zero allocation support become the next priority.
@@ -65,6 +64,8 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher;
 | SM3 | SM3 (Chinese standard) | [Details](hash-algorithms.md#sm3) |
 | Whirlpool | Whirlpool (ISO standard) | [Details](hash-algorithms.md#whirlpool) |
 | Streebog | Streebog-256, Streebog-512 (Russian standard) | [Details](hash-algorithms.md#streebog) |
+| Kupyna | Kupyna-256, Kupyna-384, Kupyna-512 (Ukrainian standard) | [Details](hash-algorithms.md#kupyna) |
+| LSH | LSH-256, LSH-512 (Korean standard) | [Details](hash-algorithms.md#lsh-ks-x-3262) |
 | Legacy | SHA-1, MD5 (deprecated) | [Details](hash-algorithms.md#legacy) |
 
 ### Message Authentication Codes (MAC)
@@ -86,9 +87,46 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher;
 | ChaCha20-Poly1305 | 256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#chacha20-poly1305) |
 | XChaCha20-Poly1305 | 256 bits | 24 bytes | 16 bytes | [Details](cipher-algorithms.md#xchacha20-poly1305) |
 
-## Quick Examples
+## Getting Started
 
-### Basic Hashing
+All CryptoHives algorithms inherit from `System.Security.Cryptography.HashAlgorithm` and support two ways of computing a hash.
+
+### Zero-allocation approach (recommended)
+
+Use `TryComputeHash` with a stack-allocated or reusable buffer to avoid heap allocations entirely.
+This is the preferred approach for performance-critical code such as tight loops, network packet processing, or blockchain validation.
+CryptoHives provides a polyfill so this API works on every target framework, including .NET Framework 4.x.
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+// SHA-256 — zero allocations
+using var sha256 = SHA256.Create();
+Span<byte> hash = stackalloc byte[32];
+sha256.TryComputeHash(data, hash, out _);
+
+// SHA3-256 — zero allocations
+using var sha3 = SHA3_256.Create();
+Span<byte> sha3Hash = stackalloc byte[32];
+sha3.TryComputeHash(data, sha3Hash, out _);
+
+// BLAKE3 with variable output — zero allocations
+using var blake3 = Blake3.Create(outputBytes: 64);
+Span<byte> longHash = stackalloc byte[64];
+blake3.TryComputeHash(data, longHash, out _);
+
+// KMAC256 authentication — zero allocations
+byte[] key = new byte[32];
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
+Span<byte> mac = stackalloc byte[64];
+kmac.TryComputeHash(message, mac, out _);
+```
+
+### Simple approach
+
+Use `ComputeHash` when convenience matters more than performance.
+This allocates a new `byte[]` for every call, which adds GC pressure in hot paths.
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -106,6 +144,8 @@ using var blake3 = Blake3.Create();
 byte[] blake3Hash = blake3.ComputeHash(data);
 ```
 
+## More Examples
+
 ### Variable-Length Output (XOF)
 
 ```csharp
@@ -117,6 +157,8 @@ byte[] output = shake.ComputeHash(data);
 using var blake3 = Blake3.Create(outputBytes: 128);
 byte[] longHash = blake3.ComputeHash(data);
 ```
+
+For allocation-free streaming XOF using `Absorb` / `Squeeze`, see [XOF Mode](xof-mode.md).
 
 ### Customizable Hash (cSHAKE)
 
@@ -137,7 +179,7 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 byte[] key = new byte[32]; // Your secret key
 
 // KMAC256
-using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "MyApp");
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
 byte[] mac = kmac.ComputeHash(message);
 ```
 
@@ -232,6 +274,8 @@ byte[] hash = sha256.Hash;
 | Bitcoin addresses | RIPEMD-160 | Combined with SHA-256 |
 | Chinese systems | SM3 | GB/T 32905-2016 |
 | Russian systems | Streebog | GOST R 34.11-2012 |
+| Ukrainian systems | Kupyna | DSTU 7564:2014 |
+| Korean systems | LSH | KS X 3262 |
 
 ## Standards Compliance
 
@@ -244,6 +288,8 @@ All implementations are verified against official test vectors:
 - **BLAKE3 Specification**: BLAKE3
 - **GB/T 32905-2016**: SM3
 - **GOST R 34.11-2012 / RFC 6986**: Streebog
+- **DSTU 7564:2014**: Kupyna
+- **KS X 3262**: LSH
 - **ISO/IEC 10118-3**: Whirlpool
 
 See the [Cryptographic Specifications](specs/README.md) for detailed test vectors and implementation status.
@@ -276,12 +322,12 @@ All implementations use fixed-size internal buffers based on their block size. N
 |---------|-------------|------------------------------|
 | OS dependency | None | Uses CNG/OpenSSL |
 | Cross-platform consistency | Guaranteed | May vary |
-| Hardware acceleration | No | Yes (when available) |
+| Hardware acceleration | Managed SIMD (SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL) |
 | SHA-3 support | Full | .NET 8+ only |
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |
 | KMAC support | Yes | .NET 9+ only |
-| SM3/Streebog/Whirlpool | Yes | No |
+| SM3/Streebog/Kupyna/LSH/Whirlpool | Yes | No |
 
 ## Thread Safety
 
@@ -300,6 +346,7 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 
 - [Hash Algorithms Reference](hash-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
+- [XOF Mode (Extendable-Output)](xof-mode.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

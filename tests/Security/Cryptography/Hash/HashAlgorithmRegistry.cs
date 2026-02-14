@@ -225,6 +225,12 @@ public static class HashAlgorithmRegistry
         // Streebog (GOST)
         AddStreebog(list);
 
+        // Kupyna (DSTU 7564 - Ukrainian)
+        AddKupyna(list);
+
+        // LSH (KS X 3262 - Korean)
+        AddLsh(list);
+
         // KangarooTwelve / TurboSHAKE
         AddKangarooTwelve(list);
         AddTurboShake(list);
@@ -430,11 +436,10 @@ public static class HashAlgorithmRegistry
         if ((blake2bSimd & CH.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2b-512", "AVX2", 512,
-                () => CH.Blake2b.Create(64, CH.SimdSupport.Avx2), Source.Simd,
-                () => (CH.Blake2b.SimdSupport & CH.SimdSupport.Avx2) != 0));
+                () => CH.Blake2b.Create(CH.SimdSupport.Avx2, 64), Source.Simd));
         }
         list.Add(new("BLAKE2b-512", "Managed", 512,
-            () => CH.Blake2b.Create(64, CH.SimdSupport.None), Source.Managed));
+            () => CH.Blake2b.Create(CH.SimdSupport.None, 64), Source.Managed));
         list.Add(new("BLAKE2b-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(512)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
@@ -445,11 +450,10 @@ public static class HashAlgorithmRegistry
         if ((blake2bSimd & CH.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2b-256", "AVX2", 256,
-                () => CH.Blake2b.Create(32, CH.SimdSupport.Avx2), Source.Simd,
-                () => (CH.Blake2b.SimdSupport & CH.SimdSupport.Avx2) != 0));
+                () => CH.Blake2b.Create(CH.SimdSupport.Avx2, 32), Source.Simd));
         }
         list.Add(new("BLAKE2b-256", "Managed", 256,
-            () => CH.Blake2b.Create(32, CH.SimdSupport.None), Source.Managed));
+            () => CH.Blake2b.Create(CH.SimdSupport.None, 32), Source.Managed));
         list.Add(new("BLAKE2b-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
@@ -461,23 +465,20 @@ public static class HashAlgorithmRegistry
         if ((blake2sSimd & CH.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2s-256", "AVX2", 256,
-                () => CH.Blake2s.Create(32, CH.SimdSupport.Avx2), Source.Simd,
-                () => (CH.Blake2s.SimdSupport & CH.SimdSupport.Avx2) != 0));
+                () => CH.Blake2s.Create(CH.SimdSupport.Avx2, 32), Source.Simd));
         }
         if ((blake2sSimd & CH.SimdSupport.Ssse3) != 0)
         {
             list.Add(new("BLAKE2s-256", "SSSE3", 256,
-                () => CH.Blake2s.Create(32, CH.SimdSupport.Ssse3), Source.Simd,
-                () => (CH.Blake2s.SimdSupport & CH.SimdSupport.Ssse3) != 0));
+                () => CH.Blake2s.Create(CH.SimdSupport.Ssse3, 32), Source.Simd));
         }
         if ((blake2sSimd & CH.SimdSupport.Sse2) != 0)
         {
             list.Add(new("BLAKE2s-256", "SSE2", 256,
-                () => CH.Blake2s.Create(32, CH.SimdSupport.Sse2), Source.Simd,
-                () => (CH.Blake2s.SimdSupport & CH.SimdSupport.Sse2) != 0));
+                () => CH.Blake2s.Create(CH.SimdSupport.Sse2, 32), Source.Simd));
         }
         list.Add(new("BLAKE2s-256", "Managed", 256,
-            () => CH.Blake2s.Create(32, CH.SimdSupport.None), Source.Managed));
+            () => CH.Blake2s.Create(CH.SimdSupport.None, 32), Source.Managed));
         list.Add(new("BLAKE2s-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(256)), Source.BouncyCastle));
 
@@ -485,23 +486,20 @@ public static class HashAlgorithmRegistry
         if ((blake2sSimd & CH.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2s-128", "AVX2", 128,
-                () => CH.Blake2s.Create(16, CH.SimdSupport.Avx2), Source.Simd,
-                () => (CH.Blake2s.SimdSupport & CH.SimdSupport.Avx2) != 0));
+                () => CH.Blake2s.Create(CH.SimdSupport.Avx2, 16), Source.Simd));
         }
         if ((blake2sSimd & CH.SimdSupport.Ssse3) != 0)
         {
             list.Add(new("BLAKE2s-128", "SSSE3", 128,
-                () => CH.Blake2s.Create(16, CH.SimdSupport.Ssse3), Source.Simd,
-                () => (CH.Blake2s.SimdSupport & CH.SimdSupport.Ssse3) != 0));
+                () => CH.Blake2s.Create(CH.SimdSupport.Ssse3, 16), Source.Simd));
         }
         if ((blake2sSimd & CH.SimdSupport.Sse2) != 0)
         {
             list.Add(new("BLAKE2s-128", "SSE2", 128,
-                () => CH.Blake2s.Create(16, CH.SimdSupport.Sse2), Source.Simd,
-                () => (CH.Blake2s.SimdSupport & CH.SimdSupport.Sse2) != 0));
+                () => CH.Blake2s.Create(CH.SimdSupport.Sse2, 16), Source.Simd));
         }
         list.Add(new("BLAKE2s-128", "Managed", 128,
-            () => CH.Blake2s.Create(16, CH.SimdSupport.None), Source.Managed));
+            () => CH.Blake2s.Create(CH.SimdSupport.None, 16), Source.Managed));
         list.Add(new("BLAKE2s-128", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(128)), Source.BouncyCastle));
     }
@@ -516,10 +514,9 @@ public static class HashAlgorithmRegistry
         if ((blake3Simd & CH.SimdSupport.Ssse3) != 0)
         {
             list.Add(new HashImplementation("BLAKE3", "SSSE3", 256,
-                () => CH.Blake3.Create(32, CH.SimdSupport.Ssse3), Source.Simd,
-                () => (CH.Blake3.SimdSupport & CH.SimdSupport.Ssse3) != 0));
+                () => CH.Blake3.Create(CH.SimdSupport.Ssse3, 32), Source.Simd));
         }
-        list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(32, CH.SimdSupport.None), Source.Managed));
+        list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(CH.SimdSupport.None, 32), Source.Managed));
         list.Add(new("BLAKE3", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake3Digest(256)), Source.BouncyCastle));
 
@@ -681,6 +678,50 @@ public static class HashAlgorithmRegistry
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_512Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-512", "OpenGost", 512,
             () => OpenGost.Security.Cryptography.Streebog512.Create(), Source.OpenGost));
+    }
+
+    #endregion
+
+    #region Kupyna
+
+    private static void AddKupyna(List<HashImplementation> list)
+    {
+        // Kupyna-256
+        list.Add(new("Kupyna-256", "Managed", 256,
+            () => CH.Kupyna.Create(32), Source.Managed));
+        list.Add(new("Kupyna-256", "BouncyCastle", 256,
+            () => new BouncyCastleHashAdapter(new BC.Dstu7564Digest(256)), Source.BouncyCastle));
+
+        // Kupyna-384
+        list.Add(new("Kupyna-384", "Managed", 384,
+            () => CH.Kupyna.Create(48), Source.Managed));
+        list.Add(new("Kupyna-384", "BouncyCastle", 384,
+            () => new BouncyCastleHashAdapter(new BC.Dstu7564Digest(384)), Source.BouncyCastle));
+
+        // Kupyna-512
+        list.Add(new("Kupyna-512", "Managed", 512,
+            () => CH.Kupyna.Create(64), Source.Managed));
+        list.Add(new("Kupyna-512", "BouncyCastle", 512,
+            () => new BouncyCastleHashAdapter(new BC.Dstu7564Digest(512)), Source.BouncyCastle));
+    }
+
+    #endregion
+
+    #region LSH
+
+    private static void AddLsh(List<HashImplementation> list)
+    {
+        // LSH-256-256
+        list.Add(new("LSH-256-256", "Managed", 256,
+            () => CH.Lsh256.Create(32), Source.Managed));
+
+        // LSH-512-256
+        list.Add(new("LSH-512-256", "Managed", 256,
+            () => CH.Lsh512.Create(32), Source.Managed));
+
+        // LSH-512-512
+        list.Add(new("LSH-512-512", "Managed", 512,
+            () => CH.Lsh512.Create(64), Source.Managed));
     }
 
     #endregion

@@ -157,6 +157,55 @@ public sealed class ReadOnlySequenceMemoryStream : MemoryStream
         return bytesRead;
     }
 
+#if !NET7_0_OR_GREATER
+    /// <summary>
+    /// Reads bytes from the current stream and advances the position within the stream until
+    /// the <paramref name="buffer"/> is filled.
+    /// </summary>
+    /// <param name="buffer">A region of memory. When this method returns, the contents of this region
+    /// are replaced by the bytes read from the current stream.</param>
+    /// <exception cref="EndOfStreamException">
+    /// The end of the stream is reached before filling the <paramref name="buffer"/>.
+    /// </exception>
+    public void ReadExactly(Span<byte> buffer)
+    {
+        int offset = 0;
+        while (offset < buffer.Length)
+        {
+            int read = Read(buffer.Slice(offset));
+            if (read == 0) throw new EndOfStreamException();
+            offset += read;
+        }
+    }
+
+    /// <summary>
+    /// Reads <paramref name="count"/> bytes from the current stream and advances the position
+    /// within the stream.
+    /// </summary>
+    /// <param name="buffer">
+    /// An array of bytes. When this method returns, the buffer contains the specified byte array
+    /// with the values between <paramref name="offset"/> and
+    /// (<paramref name="offset"/> + <paramref name="count"/> - 1) replaced by the bytes read
+    /// from the current source.
+    /// </param>
+    /// <param name="offset">The byte offset in <paramref name="buffer"/> at which to begin storing
+    /// the data read from the current stream.</param>
+    /// <param name="count">The number of bytes to be read from the current stream.</param>
+    /// <exception cref="EndOfStreamException">
+    /// The end of the stream is reached before reading <paramref name="count"/> bytes.
+    /// </exception>
+    public void ReadExactly(byte[] buffer, int offset, int count)
+    {
+        int totalRead = 0;
+        while (totalRead < count)
+        {
+            int read = Read(buffer, offset + totalRead, count - totalRead);
+            if (read == 0) throw new EndOfStreamException();
+            totalRead += read;
+        }
+    }
+#endif
+
 #if !MEMORYSTREAM_WITH_SPAN_SUPPORT
     /// <inheritdoc/>
     public void Write(ReadOnlySpan<byte> buffer)

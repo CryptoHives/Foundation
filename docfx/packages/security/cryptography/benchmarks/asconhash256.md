@@ -1,19 +1,19 @@
-﻿| Description                                                | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|----------------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (Managed)      | 128B         |     613.4 ns |    11.58 ns |    10.83 ns |     112 B |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (BouncyCastle) | 128B         |     797.1 ns |     9.22 ns |     8.63 ns |     112 B |
-|                                                            |              |              |             |             |           |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (Managed)      | 137B         |     634.5 ns |     3.42 ns |     3.03 ns |     112 B |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (BouncyCastle) | 137B         |     836.7 ns |     6.76 ns |     6.32 ns |     112 B |
-|                                                            |              |              |             |             |           |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (Managed)      | 1KB          |   3,793.9 ns |    31.09 ns |    29.09 ns |     112 B |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (BouncyCastle) | 1KB          |   5,013.9 ns |    41.25 ns |    36.57 ns |     112 B |
-|                                                            |              |              |             |             |           |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (Managed)      | 1025B        |   3,791.2 ns |    29.79 ns |    27.87 ns |     112 B |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (BouncyCastle) | 1025B        |   5,029.3 ns |    51.60 ns |    48.26 ns |     112 B |
-|                                                            |              |              |             |             |           |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (Managed)      | 8KB          |  29,193.9 ns |   206.87 ns |   183.38 ns |     112 B |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (BouncyCastle) | 8KB          |  38,583.0 ns |   345.60 ns |   323.27 ns |     112 B |
-|                                                            |              |              |             |             |           |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (Managed)      | 128KB        | 465,355.6 ns | 2,648.25 ns | 2,477.17 ns |     112 B |
-| ComputeHash · Ascon-Hash256 · Ascon-Hash256 (BouncyCastle) | 128KB        | 614,417.0 ns | 4,675.66 ns | 4,373.61 ns |     112 B |
+﻿| Description                                   | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|---------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| TryComputeHash · Ascon-Hash256 · Managed      | 128B         |     579.8 ns |    11.36 ns |    12.63 ns |         - |
+| TryComputeHash · Ascon-Hash256 · BouncyCastle | 128B         |     768.4 ns |    12.44 ns |    11.64 ns |         - |
+|                                               |              |              |             |             |           |
+| TryComputeHash · Ascon-Hash256 · Managed      | 137B         |     606.2 ns |     4.96 ns |     4.40 ns |         - |
+| TryComputeHash · Ascon-Hash256 · BouncyCastle | 137B         |     807.3 ns |     9.84 ns |     9.21 ns |         - |
+|                                               |              |              |             |             |           |
+| TryComputeHash · Ascon-Hash256 · Managed      | 1KB          |   3,756.6 ns |    61.14 ns |    57.19 ns |         - |
+| TryComputeHash · Ascon-Hash256 · BouncyCastle | 1KB          |   4,999.4 ns |    64.27 ns |    60.12 ns |         - |
+|                                               |              |              |             |             |           |
+| TryComputeHash · Ascon-Hash256 · Managed      | 1025B        |   3,747.6 ns |    67.41 ns |    63.05 ns |         - |
+| TryComputeHash · Ascon-Hash256 · BouncyCastle | 1025B        |   5,006.1 ns |    92.76 ns |    86.77 ns |         - |
+|                                               |              |              |             |             |           |
+| TryComputeHash · Ascon-Hash256 · Managed      | 8KB          |  29,138.6 ns |   449.13 ns |   420.12 ns |         - |
+| TryComputeHash · Ascon-Hash256 · BouncyCastle | 8KB          |  38,854.5 ns |   681.25 ns |   637.24 ns |         - |
+|                                               |              |              |             |             |           |
+| TryComputeHash · Ascon-Hash256 · Managed      | 128KB        | 462,274.4 ns | 8,182.51 ns | 7,653.93 ns |         - |
+| TryComputeHash · Ascon-Hash256 · BouncyCastle | 128KB        | 615,387.2 ns | 9,071.26 ns | 8,041.44 ns |         - |

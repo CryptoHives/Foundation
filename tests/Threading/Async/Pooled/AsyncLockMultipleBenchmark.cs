@@ -8,7 +8,6 @@ namespace Threading.Tests.Async.Pooled;
 #pragma warning disable CA1062 // Validate arguments of public methods
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
@@ -44,9 +43,7 @@ using System.Threading.Tasks;
 /// </remarks>
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [NonParallelizable]
 [BenchmarkCategory("AsyncLock")]
 public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
@@ -99,7 +96,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Benchmark for SemaphoreSlim used as async lock with multiple queued waiters.
     /// </summary>
     [Benchmark]
-    [BenchmarkCategory("Multiple", "SemaphoreSlim")]
+    [BenchmarkCategory("Multiple", "System", "SemaphoreSlim")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockSemaphoreSlimMultipleAsync(CancellationType cancellationType)
     {
@@ -147,7 +144,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// by reusing pooled IValueTaskSource instances for queued waiters.
     /// </remarks>
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Multiple", "Pooled")]
+    [BenchmarkCategory("Multiple", "Pooled (ValueTask)")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockPooledMultipleAsync(CancellationType cancellationType)
     {
@@ -188,7 +185,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// This pattern incurs Task allocation overhead compared to awaiting ValueTask directly.
     /// </remarks>
     [Benchmark]
-    [BenchmarkCategory("Multiple", "PooledTask")]
+    [BenchmarkCategory("Multiple", "Pooled (Task)")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockPooledTaskMultipleAsync(CancellationType cancellationType)
     {

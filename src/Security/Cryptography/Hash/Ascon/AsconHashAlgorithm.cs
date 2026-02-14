@@ -138,7 +138,6 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
         base.Dispose(disposing);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void AbsorbBlock(ReadOnlySpan<byte> block)
     {
         // XOR block into x0 (rate portion) - little-endian
@@ -148,8 +147,7 @@ public abstract class AsconHashAlgorithm : HashAlgorithm
         P12();
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void PadAndAbsorb()
+    private protected void PadAndAbsorb()
     {
         // NIST SP 800-232 padding: pad with 0x01 at bit position
         int finalBits = _bufferLength << 3;

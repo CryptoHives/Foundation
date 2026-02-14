@@ -6,6 +6,8 @@
   href: cipher-algorithms.md
 - name: MAC Algorithms
   href: mac-algorithms.md
+- name: XOF Mode
+  href: xof-mode.md
 - name: Benchmarks
   href: benchmarks.md
 - name: Specifications

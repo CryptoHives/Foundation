@@ -4,7 +4,6 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
@@ -37,9 +36,7 @@ using NitoAsyncEx = Nito.AsyncEx;
 /// </remarks>
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [Description("Measures the performance of countdown event signal operations.")]
 [NonParallelizable]
 [BenchmarkCategory("AsyncCountdownEvent")]
@@ -63,6 +60,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "System", "CountdownEvent")]
     public void SignalAndWaitCountdownEventStandard()
     {
         _countdownStandard.Reset();
@@ -79,6 +77,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SignalAndWait", "Pooled")]
     public async Task SignalAndWaitPooledAsync()
     {
         _countdownPooled.Reset();
@@ -95,6 +94,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark]
+    [BenchmarkCategory("WaitAndSignal", "Pooled")]
     public async Task WaitAndSignalPooledAsync()
     {
         _countdownPooled.Reset();
@@ -111,6 +111,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     /// Benchmark for Nito.AsyncEx async countdown event.
     /// </summary>
     [Test]
+    [BenchmarkCategory("SignalAndWait", "Nito.AsyncEx")]
     public async Task SignalAndWaitNitoAsync()
     {
         Task task = _countdownNitoAsync.WaitAsync(_cancellationToken);
@@ -128,6 +129,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "RefImpl")]
     public async Task SignalAndWaitRefImplAsync()
     {
         _countdownRefImp.Reset();

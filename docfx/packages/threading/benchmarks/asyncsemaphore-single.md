@@ -1,6 +1,6 @@
-| Method                              | Mean     | Ratio | Allocated | Alloc Ratio |
-|------------------------------------ |---------:|------:|----------:|------------:|
-| WaitReleaseNitoSingleAsync          | 17.32 ns |  0.98 |         - |          NA |
-| WaitReleasePooledSingleAsync        | 17.76 ns |  1.00 |         - |          NA |
-| WaitReleaseSemaphoreSlimSingleAsync | 19.07 ns |  1.07 |         - |          NA |
-| WaitReleaseRefImplSingleAsync       | 19.52 ns |  1.10 |         - |          NA |
+﻿| Description                                 | Mean     | Ratio | Allocated | 
+|-------------------------------------------- |---------:|------:|----------:|
+| WaitRelease · AsyncSemaphore · Pooled       | 15.55 ns |  1.00 |         - | 
+| WaitRelease · AsyncSemaphore · Nito.AsyncEx | 16.12 ns |  1.04 |         - | 
+| WaitRelease · AsyncSemaphore · RefImpl      | 17.35 ns |  1.12 |         - | 
+| WaitRelease · SemaphoreSlim · System        | 17.38 ns |  1.12 |         - |

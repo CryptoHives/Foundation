@@ -7,8 +7,6 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,10 +65,10 @@ public sealed class AsyncReaderWriterLock
 {
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
 
-    private readonly Queue<ManualResetValueTaskSource<Releaser>> _waitingWriters;
+    private WaiterQueue<Releaser> _waitingWriters;
     private readonly LocalManualResetValueTaskSource<Releaser> _localWriterWaiter;
 
-    private readonly Queue<ManualResetValueTaskSource<Releaser>> _waitingReaders;
+    private WaiterQueue<Releaser> _waitingReaders;
     private readonly LocalManualResetValueTaskSource<Releaser> _localReaderWaiter;
 
 #if NET9_0_OR_GREATER
@@ -150,22 +148,18 @@ public sealed class AsyncReaderWriterLock
     /// Constructs a new AsyncReaderWriterLock instance.
     /// </summary>
     /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
-    /// <param name="defaultEventQueueSize">The default waiter queue size.</param>
     /// <param name="pool">Custom pool for waiters.</param>
     public AsyncReaderWriterLock(
         bool runContinuationAsynchronously = true,
-        int defaultEventQueueSize = 0,
         IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _mutex = new();
 
-        int queueSize = defaultEventQueueSize > 0 ? defaultEventQueueSize : ValueTaskSourceObjectPools.DefaultEventQueueSize;
-
-        _waitingWriters = new(queueSize);
+        _waitingWriters = new();
         _localWriterWaiter = new(this);
 
-        _waitingReaders = new(queueSize);
+        _waitingReaders = new();
         _localReaderWaiter = new(this);
 
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncReaderWriterLockReleaser;
@@ -356,7 +350,7 @@ public sealed class AsyncReaderWriterLock
     private void ReleaseWriterLock()
     {
         ManualResetValueTaskSource<Releaser>? writerToWake = null;
-        ManualResetValueTaskSource<Releaser>[]? readersToWake = null;
+        ManualResetValueTaskSource<Releaser>? readerChain = null;
         int readerCount = 0;
 
         lock (_mutex)
@@ -369,12 +363,7 @@ public sealed class AsyncReaderWriterLock
             }
             else if (_waitingReaders.Count > 0)
             {
-                readerCount = _waitingReaders.Count;
-                readersToWake = ArrayPool<ManualResetValueTaskSource<Releaser>>.Shared.Rent(readerCount);
-                for (int i = 0; i < readerCount; i++)
-                {
-                    readersToWake[i] = _waitingReaders.Dequeue();
-                }
+                readerChain = _waitingReaders.DetachAll(out readerCount);
                 _status = readerCount;
             }
             else
@@ -387,19 +376,9 @@ public sealed class AsyncReaderWriterLock
         {
             writerToWake.SetResult(new Releaser(this, true));
         }
-        else if (readersToWake is not null)
+        else
         {
-            try
-            {
-                for (int i = 0; i < readerCount; i++)
-                {
-                    readersToWake[i].SetResult(new Releaser(this, false));
-                }
-            }
-            finally
-            {
-                ArrayPool<ManualResetValueTaskSource<Releaser>>.Shared.Return(readersToWake);
-            }
+            WaiterQueue<Releaser>.SetChainResult(readerChain, new Releaser(this, false));
         }
     }
 
@@ -422,25 +401,19 @@ public sealed class AsyncReaderWriterLock
         }
 #endif
 
-        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
-        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
+        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<Releaser>? toCancel = null;
         lock (_mutex)
         {
-            int count = _waitingReaders.Count;
-            while (count-- > 0)
+            if (_waitingReaders.Remove(waiter))
             {
-                var dequeued = _waitingReaders.Dequeue();
-                if (ReferenceEquals(dequeued, waiter))
-                {
-                    toCancel = waiter;
-                    continue;
-                }
-                _waitingReaders.Enqueue(dequeued);
+                toCancel = waiter;
             }
         }
 
+#pragma warning disable CA1508 // Avoid dead conditional code
         toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+#pragma warning restore CA1508 // Avoid dead conditional code
     }
 
 #if NET6_0_OR_GREATER
@@ -462,24 +435,18 @@ public sealed class AsyncReaderWriterLock
         }
 #endif
 
-        // TODO: Implement intrusive linked list to improve O(n) removal of cancelled waiters to O(1).
-        // Currently we must dequeue all items and re-enqueue non-cancelled ones.
+        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<Releaser>? toCancel = null;
         lock (_mutex)
         {
-            int count = _waitingWriters.Count;
-            while (count-- > 0)
+            if (_waitingWriters.Remove(waiter))
             {
-                var dequeued = _waitingWriters.Dequeue();
-                if (ReferenceEquals(dequeued, waiter))
-                {
-                    toCancel = waiter;
-                    continue;
-                }
-                _waitingWriters.Enqueue(dequeued);
+                toCancel = waiter;
             }
         }
 
+#pragma warning disable CA1508 // Avoid dead conditional code
         toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+#pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

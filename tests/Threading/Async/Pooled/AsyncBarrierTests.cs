@@ -15,7 +15,7 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncBarrierUnitTests
+public class AsyncBarrierTests
 {
     [Test]
     public void ConstructorWithZeroParticipantsThrows()

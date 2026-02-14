@@ -14,7 +14,7 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncSemaphoreUnitTests
+public class AsyncSemaphoreTests
 {
     [Test]
     public void ConstructorWithNegativeCountThrows()
