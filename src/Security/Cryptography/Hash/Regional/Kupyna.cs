@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -143,6 +144,7 @@ public sealed class Kupyna : HashAlgorithm
     private static readonly int[] Shifts512 = [0, 1, 2, 3, 4, 5, 6, 7];
     private static readonly int[] Shifts1024 = [0, 1, 2, 3, 4, 5, 6, 11];
 
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "Perf not critical for regional hash algorithms.")]
     static Kupyna()
     {
         // MDS circulant matrix first row from DSTU 7564:2014.

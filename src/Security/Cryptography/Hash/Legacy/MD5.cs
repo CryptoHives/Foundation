@@ -196,6 +196,7 @@ public sealed class MD5 : HashAlgorithm
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {

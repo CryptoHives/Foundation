@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// BLAKE3 XOF (extendable-output) implementation using counter-mode output expansion.
@@ -24,6 +25,7 @@ public sealed partial class Blake3
     /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
     {
+        if (_squeezed) throw new InvalidOperationException("Cannot add data after finalization.");
         HashCore(input);
     }
 
@@ -37,6 +39,7 @@ public sealed partial class Blake3
     /// Finalizes the hash and squeezes output of the specified length.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void Squeeze(Span<byte> output)
     {
         if (!_squeezed)
@@ -47,7 +50,7 @@ public sealed partial class Blake3
             _squeezeOffset = 0;
 
             // Fill the first squeeze buffer block (counter = 0)
-            SqueezeRootBlock(0, _squeezeBuf);
+            _squeezeRootBlock(0, _squeezeBuf);
         }
 
         int remaining = output.Length;
@@ -66,7 +69,7 @@ public sealed partial class Blake3
             if (_squeezeOffset == BlockSizeBytes)
             {
                 _outputCounter++;
-                SqueezeRootBlock(_outputCounter, _squeezeBuf);
+                _squeezeRootBlock(_outputCounter, _squeezeBuf);
                 _squeezeOffset = 0;
             }
         }
@@ -79,7 +82,7 @@ public sealed partial class Blake3
             remaining -= BlockSizeBytes;
 
             _outputCounter++;
-            SqueezeRootBlock(_outputCounter, _squeezeBuf);
+            _squeezeRootBlock(_outputCounter, _squeezeBuf);
             _squeezeOffset = 0;
         }
 
@@ -149,7 +152,7 @@ public sealed partial class Blake3
             uint flags = _baseFlags;
             if (_blocksCompressed == 0) flags |= FlagChunkStart;
 
-            CompressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
+            _compressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
             _blocksCompressed++;
             offset += BlockSizeBytes;
         }
@@ -201,19 +204,11 @@ public sealed partial class Blake3
         _rootFlags = _baseFlags | FlagParent | FlagRoot;
     }
 
-    /// <summary>
-    /// Produces a 64-byte output block by compressing the root node with the given counter.
-    /// </summary>
-    private void SqueezeRootBlock(ulong counter, Span<byte> destination)
-    {
-#if NET8_0_OR_GREATER
-        if (_useSsse3)
-        {
-            SqueezeRootBlockSsse3(counter, destination);
-            return;
-        }
-#endif
 
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void SqueezeRootBlockScalar(ulong counter, Span<byte> destination)
+    {
         Span<uint> v = stackalloc uint[BlockSizeWords];
         v[0] = _rootCv[0]; v[1] = _rootCv[1]; v[2] = _rootCv[2]; v[3] = _rootCv[3];
         v[4] = _rootCv[4]; v[5] = _rootCv[5]; v[6] = _rootCv[6]; v[7] = _rootCv[7];

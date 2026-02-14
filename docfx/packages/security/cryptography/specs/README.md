@@ -149,6 +149,18 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 > **Standard:** DSTU 7564:2014 (Ukraine)
 
+### LSH / KS X 3262 (Korean National Standard)
+
+| Algorithm | Hash Size | Status | Class |
+|-----------|-----------|--------|-------|
+| LSH-256-224 | 224 bits | ✅ Implemented | `Lsh256` |
+| LSH-256-256 | 256 bits | ✅ Implemented | `Lsh256` |
+| LSH-512-256 | 256 bits | ✅ Implemented | `Lsh512` |
+| LSH-512-384 | 384 bits | ✅ Implemented | `Lsh512` |
+| LSH-512-512 | 512 bits | ✅ Implemented | `Lsh512` |
+
+> **Standard:** KS X 3262 (South Korea), approved by KCMVP
+
 ### Legacy Algorithms
 
 | Algorithm | Hash Size | Status | Class |
@@ -257,6 +269,11 @@ BLAKE3 test vectors are from the official BLAKE3 specification:
 - **[Kupyna-vectors.md](Kupyna-vectors.md)** - Test vectors
 - IACR ePrint 2015/885: https://eprint.iacr.org/2015/885.pdf
 - Reference implementation: https://github.com/Roman-Oliynykov/Kupyna-reference
+
+### LSH (KS X 3262)
+
+- KS X 3262 specification (Korean standard)
+- Reference implementation: https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do
 
 ### MD5 (RFC 1321)
 

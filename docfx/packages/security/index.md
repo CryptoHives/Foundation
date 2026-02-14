@@ -27,7 +27,7 @@ Comprehensive suite of cryptographic hash algorithms and message authentication 
 - Ascon hashing and MAC
 - BLAKE2 and BLAKE3 high-performance hashing
 - Legacy algorithms (MD5, RIPEMD-160)
-- International standards (SM3, Streebog, Whirlpool)
+- International standards (SM3, Streebog, Kupyna, LSH, Whirlpool)
 
 **[Cryptography Package Documentation](cryptography/index.md)**
 

@@ -42,7 +42,7 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("WriterLock", "RWLockSlim", "ReaderWriterLockSlim")]
+    [BenchmarkCategory("WriterLock", "System", "ReaderWriterLockSlim")]
     public void WriteLockReaderWriterLockSlim()
     {
         _rwLockSlim.EnterWriteLock();

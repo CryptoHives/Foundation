@@ -206,6 +206,7 @@ public sealed class Ripemd160 : HashAlgorithm
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {

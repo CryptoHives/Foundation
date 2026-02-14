@@ -47,9 +47,6 @@ public sealed partial class Blake2s
     // Vector state for SSE path (2 x Vector128<uint> = 8 elements = full state)
     private Vector128<uint> _stateVec0;
     private Vector128<uint> _stateVec1;
-    private readonly bool _useSse2;
-    private readonly bool _useSsse3;
-    private readonly bool _useAvx2;
 
     static Blake2s()
     {
@@ -76,6 +73,13 @@ public sealed partial class Blake2s
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void InitializeStateSse2(uint paramBlock)
+    {
+        _stateVec0 = Sse2.Xor(IVLow, Vector128.Create(paramBlock, 0U, 0U, 0U));
+        _stateVec1 = IVHigh;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ExtractOutputSse2(Span<byte> destination)
     {
         // Store vectors to stack, then copy required bytes
@@ -98,10 +102,11 @@ public sealed partial class Blake2s
         }
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressSse2(ReadOnlySpan<byte> block, bool isFinal)
+    private unsafe void CompressSse2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
-        _bytesCompressed += (ulong)_bufferLength;
+        _bytesCompressed += (ulong)bytesConsumed;
 
         // Initialize rows from vector state
         // row0 = v[0..3] = state[0..3]
@@ -175,10 +180,11 @@ public sealed partial class Blake2s
         _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressSsse3(ReadOnlySpan<byte> block, bool isFinal)
+    private unsafe void CompressSsse3(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
-        _bytesCompressed += (ulong)_bufferLength;
+        _bytesCompressed += (ulong)bytesConsumed;
 
         // Initialize rows from vector state
         var row0 = _stateVec0;
@@ -246,10 +252,11 @@ public sealed partial class Blake2s
         _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
+    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
-        _bytesCompressed += (ulong)_bufferLength;
+        _bytesCompressed += (ulong)bytesConsumed;
 
         // Pin the message block for gather operations
         fixed (byte* mPtr = block)

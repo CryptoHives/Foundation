@@ -60,7 +60,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [Test]
     [Repeat(10)]
     [Benchmark]
-    [BenchmarkCategory("SignalAndWait", "Standard", "CountdownEvent")]
+    [BenchmarkCategory("SignalAndWait", "System", "CountdownEvent")]
     public void SignalAndWaitCountdownEventStandard()
     {
         _countdownStandard.Reset();

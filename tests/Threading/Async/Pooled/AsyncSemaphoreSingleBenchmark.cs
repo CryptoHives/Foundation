@@ -45,7 +45,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("WaitRelease", "SemaphoreSlim", "SemaphoreSlim")]
+    [BenchmarkCategory("WaitRelease", "System", "SemaphoreSlim")]
     public async Task WaitReleaseSemaphoreSlimSingleAsync()
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);

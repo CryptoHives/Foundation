@@ -62,7 +62,7 @@ public sealed class Lsh512 : HashAlgorithm
     /// <summary>
     /// Precomputed step constants for all 28 steps (28 × 8 values).
     /// </summary>
-    private static readonly ulong[] StepConstants;
+    private static readonly ulong[] StepConstants = InitializeStepConstants();
 
     /// <summary>
     /// Initial values for LSH-512-224.
@@ -108,11 +108,11 @@ public sealed class Lsh512 : HashAlgorithm
         0x4981F5E570147E80, 0xD00C4490CA7D3E30, 0x5D73940C0E4AE1EC, 0x894085E2EDB2D819
     ];
 
-    static Lsh512()
+    private static ulong[] InitializeStepConstants()
     {
         unchecked
         {
-            StepConstants = new ulong[NumSteps * NumWords];
+            var stepConstants = new ulong[NumSteps * NumWords];
 
             // SC[0]: initial step constant
             ReadOnlySpan<ulong> sc0 =
@@ -123,7 +123,7 @@ public sealed class Lsh512 : HashAlgorithm
 
             for (int l = 0; l < NumWords; l++)
             {
-                StepConstants[l] = sc0[l];
+                stepConstants[l] = sc0[l];
             }
 
             // SC[j][l] = SC[j-1][l] + rotL(SC[j-1][l], 8)
@@ -133,10 +133,12 @@ public sealed class Lsh512 : HashAlgorithm
                 int prev = (j - 1) * NumWords;
                 for (int l = 0; l < NumWords; l++)
                 {
-                    ulong p = StepConstants[prev + l];
-                    StepConstants[cur + l] = p + BitOperations.RotateLeft(p, 8);
+                    ulong p = stepConstants[prev + l];
+                    stepConstants[cur + l] = p + BitOperations.RotateLeft(p, 8);
                 }
             }
+
+            return stepConstants;
         }
     }
 

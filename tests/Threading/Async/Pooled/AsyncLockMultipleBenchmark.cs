@@ -96,7 +96,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Benchmark for SemaphoreSlim used as async lock with multiple queued waiters.
     /// </summary>
     [Benchmark]
-    [BenchmarkCategory("Multiple", "SemaphoreSlim", "SemaphoreSlim")]
+    [BenchmarkCategory("Multiple", "System", "SemaphoreSlim")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockSemaphoreSlimMultipleAsync(CancellationType cancellationType)
     {

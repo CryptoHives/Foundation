@@ -259,6 +259,8 @@ public sealed class AsyncLock
             }
         }
 
+#pragma warning disable CA1508 // Avoid dead conditional code
         toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+#pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

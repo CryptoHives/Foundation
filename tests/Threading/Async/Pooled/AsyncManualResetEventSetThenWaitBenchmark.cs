@@ -44,7 +44,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetThenWait", "Standard", "ManualResetEvent")]
+    [BenchmarkCategory("SetThenWait", "System", "ManualResetEvent")]
     public void ManualResetEventSetThenWait()
     {
         _ = _eventStandard.Set();
@@ -60,7 +60,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetThenWait", "Slim", "ManualResetEventSlim")]
+    [BenchmarkCategory("SetThenWait", "System", "ManualResetEventSlim")]
     public void ManualResetEventSlimSetThenWait()
     {
         _eventSlim.Set();

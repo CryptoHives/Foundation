@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
@@ -140,6 +141,7 @@ public sealed class Streebog : HashAlgorithm
 
     private static readonly ulong[] _zeroArray = [0, 0, 0, 0, 0, 0, 0, 0];
 
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "Perf not critical for regional hash algorithms.")]
     static Streebog()
     {
         // Initialize the 8 combined LPS lookup tables as flat arrays for better cache locality

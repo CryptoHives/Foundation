@@ -99,6 +99,15 @@ public sealed partial class Blake2s : HashAlgorithm
     private ulong _bytesCompressed;
     private int _bufferLength;
 
+    // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
+    private delegate void CompressAction(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal);
+    private delegate void InitializeStateAction(uint paramBlock);
+    private delegate void ExtractOutputAction(Span<byte> destination);
+
+    private readonly CompressAction _compress;
+    private readonly InitializeStateAction _initializeState;
+    private readonly ExtractOutputAction _extractOutput;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2s"/> class with default output size (32 bytes).
     /// </summary>
@@ -148,11 +157,33 @@ public sealed partial class Blake2s : HashAlgorithm
         _state = new uint[StateSize];
         _buffer = new byte[BlockSizeBytes];
 
+        simdSupport &= Blake2s.SimdSupport;
 #if NET8_0_OR_GREATER
-        _useAvx2 = (simdSupport & SimdSupport.Avx2) != 0 && Avx2.IsSupported && Ssse3.IsSupported && Sse2.IsSupported;
-        _useSsse3 = (_useAvx2 || ((simdSupport & SimdSupport.Ssse3) != 0) && Ssse3.IsSupported);
-        _useSse2 = (_useAvx2 || _useSsse3 || ((simdSupport & SimdSupport.Sse2) != 0) && Sse2.IsSupported);
+        if ((simdSupport & SimdSupport.Avx2) != 0)
+        {
+            _compress = CompressAvx2;
+            _initializeState = InitializeStateSse2;
+            _extractOutput = ExtractOutputSse2;
+        }
+        else if ((simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            _compress = CompressSsse3;
+            _initializeState = InitializeStateSse2;
+            _extractOutput = ExtractOutputSse2;
+        }
+        else if ((simdSupport & SimdSupport.Sse2) != 0)
+        {
+            _compress = CompressSse2;
+            _initializeState = InitializeStateSse2;
+            _extractOutput = ExtractOutputSse2;
+        }
+        else
 #endif
+        {
+            _compress = CompressScalar;
+            _initializeState = InitializeStateScalar;
+            _extractOutput = ExtractOutputScalar;
+        }
 
         if (key != null && key.Length > 0)
         {
@@ -243,20 +274,7 @@ public sealed partial class Blake2s : HashAlgorithm
         int keyLength = _key?.Length ?? 0;
         uint paramBlock = 0x01010000U | ((uint)keyLength << 8) | (uint)_outputBytes;
 
-#if NET8_0_OR_GREATER
-        if (_useSse2)
-        {
-            // Initialize vector state: IV with parameter XOR on first word
-            _stateVec0 = Sse2.Xor(IVLow, Vector128.Create(paramBlock, 0U, 0U, 0U));
-            _stateVec1 = IVHigh;
-        }
-        else
-#endif
-        {
-            // Scalar initialization
-            Array.Copy(IV, _state, StateSize);
-            _state[0] ^= paramBlock;
-        }
+        _initializeState(paramBlock);
 
         _bytesCompressed = 0;
         _bufferLength = 0;
@@ -268,6 +286,12 @@ public sealed partial class Blake2s : HashAlgorithm
             Array.Copy(_key, _buffer, _key.Length);
             _bufferLength = BlockSizeBytes;
         }
+    }
+
+    private void InitializeStateScalar(uint paramBlock)
+    {
+        Array.Copy(IV, _state, StateSize);
+        _state[0] ^= paramBlock;
     }
 
     /// <inheritdoc/>
@@ -286,7 +310,7 @@ public sealed partial class Blake2s : HashAlgorithm
             // Only compress if buffer is full AND there's more data coming
             if (_bufferLength == BlockSizeBytes && offset < source.Length)
             {
-                Compress(_buffer, false);
+                _compress(_buffer, BlockSizeBytes, false);
                 _bufferLength = 0;
             }
         }
@@ -294,7 +318,7 @@ public sealed partial class Blake2s : HashAlgorithm
         // Process full blocks, but always keep at least one block for finalization
         while (offset + BlockSizeBytes < source.Length)
         {
-            Compress(source.Slice(offset, BlockSizeBytes), false);
+            _compress(source.Slice(offset, BlockSizeBytes), BlockSizeBytes, false);
             offset += BlockSizeBytes;
         }
 
@@ -328,19 +352,17 @@ public sealed partial class Blake2s : HashAlgorithm
         _buffer.AsSpan(_bufferLength).Clear();
 
         // Compress final block
-        Compress(_buffer, true);
+        _compress(_buffer, _bufferLength, true);
 
-#if NET8_0_OR_GREATER
-        if (_useSse2)
-        {
-            // Extract from vector state
-            ExtractOutputSse2(destination);
-            bytesWritten = _outputBytes;
-            return true;
-        }
-#endif
+        // Extract output using dispatch delegate
+        _extractOutput(destination);
 
-        // Scalar output extraction
+        bytesWritten = _outputBytes;
+        return true;
+    }
+
+    private void ExtractOutputScalar(Span<byte> destination)
+    {
         int fullWords = _outputBytes / 4;
         for (int i = 0; i < fullWords; i++)
         {
@@ -355,9 +377,6 @@ public sealed partial class Blake2s : HashAlgorithm
             BinaryPrimitives.WriteUInt32LittleEndian(temp, _state[fullWords]);
             temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 4));
         }
-
-        bytesWritten = _outputBytes;
-        return true;
     }
 
     /// <inheritdoc/>
@@ -366,11 +385,8 @@ public sealed partial class Blake2s : HashAlgorithm
         if (disposing)
         {
 #if NET8_0_OR_GREATER
-            if (_useSse2)
-            {
-                _stateVec0 = default;
-                _stateVec1 = default;
-            }
+            _stateVec0 = default;
+            _stateVec1 = default;
 #endif
             Array.Clear(_state, 0, _state.Length);
             ClearBuffer(_buffer);
@@ -382,29 +398,12 @@ public sealed partial class Blake2s : HashAlgorithm
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void Compress(ReadOnlySpan<byte> block, bool isFinal)
+    private void CompressScalar(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
-#if NET8_0_OR_GREATER
-        if (_useAvx2)
-        {
-            CompressAvx2(block, isFinal);
-            return;
-        }
-        if (_useSsse3)
-        {
-            CompressSsse3(block, isFinal);
-            return;
-        }
-        if (_useSse2)
-        {
-            CompressSse2(block, isFinal);
-            return;
-        }
-#endif
-
         // Update counter
-        _bytesCompressed += (ulong)_bufferLength;
+        _bytesCompressed += (ulong)bytesConsumed;
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];

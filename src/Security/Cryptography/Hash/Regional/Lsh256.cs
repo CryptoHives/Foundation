@@ -61,7 +61,7 @@ public sealed class Lsh256 : HashAlgorithm
     /// <summary>
     /// Precomputed step constants for all 26 steps (26 × 8 values).
     /// </summary>
-    private static readonly uint[] StepConstants;
+    private static readonly uint[] StepConstants = InitializeStepConstants();
 
     /// <summary>
     /// Initial values for LSH-256-224.
@@ -85,11 +85,11 @@ public sealed class Lsh256 : HashAlgorithm
         0x8051357A, 0x138668C8, 0x47AA4484, 0xE01AFB41
     ];
 
-    static Lsh256()
+    private static uint[] InitializeStepConstants()
     {
         unchecked
         {
-            StepConstants = new uint[NumSteps * NumWords];
+            var stepConstants = new uint[NumSteps * NumWords];
 
             // SC[0]: initial step constant
             ReadOnlySpan<uint> sc0 =
@@ -100,7 +100,7 @@ public sealed class Lsh256 : HashAlgorithm
 
             for (int l = 0; l < NumWords; l++)
             {
-                StepConstants[l] = sc0[l];
+                stepConstants[l] = sc0[l];
             }
 
             // SC[j][l] = SC[j-1][l] + rotL(SC[j-1][l], 8)
@@ -110,10 +110,12 @@ public sealed class Lsh256 : HashAlgorithm
                 int prev = (j - 1) * NumWords;
                 for (int l = 0; l < NumWords; l++)
                 {
-                    uint p = StepConstants[prev + l];
-                    StepConstants[cur + l] = p + BitOperations.RotateLeft(p, 8);
+                    uint p = stepConstants[prev + l];
+                    stepConstants[cur + l] = p + BitOperations.RotateLeft(p, 8);
                 }
             }
+
+            return stepConstants;
         }
     }
 
