@@ -8,6 +8,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -402,6 +403,7 @@ internal unsafe struct KeccakCoreState
     /// Performs 64-bit rotation using AVX2 shift and OR operations.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "Caller uses always constants.")]
     private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, byte offset)
     {
         return Avx2.Or(Avx2.ShiftLeftLogical(a, offset), Avx2.ShiftRightLogical(a, (byte)(64 - offset)));

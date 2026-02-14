@@ -7,6 +7,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -88,6 +89,7 @@ public sealed class Whirlpool : HashAlgorithm
     // Precomputed tables for faster computation
     private static readonly ulong[] C0, C1, C2, C3, C4, C5, C6, C7;
 
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "Perf not critical for regional hash algorithms.")]
     static Whirlpool()
     {
         unchecked

@@ -75,7 +75,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     public const int ChunkSizeBytes = 1024;
 
     // Number of compression rounds
-    private const int Rounds = 7;
+    // private const int Rounds = 7;
 
     // Max tree depth (2^54 chunks × 1024 bytes = 16 exabytes)
     private const int MaxStackDepth = 54;

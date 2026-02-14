@@ -152,7 +152,7 @@ public sealed partial class Blake3
             uint flags = _baseFlags;
             if (_blocksCompressed == 0) flags |= FlagChunkStart;
 
-            CompressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
+            _compressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
             _blocksCompressed++;
             offset += BlockSizeBytes;
         }
