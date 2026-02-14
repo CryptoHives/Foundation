@@ -398,6 +398,7 @@ public sealed partial class Blake2s : HashAlgorithm
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CompressScalar(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {

@@ -205,6 +205,7 @@ public sealed partial class Blake3
     }
 
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void SqueezeRootBlockScalar(ulong counter, Span<byte> destination)
     {

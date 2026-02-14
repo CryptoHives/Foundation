@@ -462,6 +462,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         }
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CompressBlockScalar(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
@@ -485,6 +486,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         }
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CompressBlockFull(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags, Span<uint> result)
     {

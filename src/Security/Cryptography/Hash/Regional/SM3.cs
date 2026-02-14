@@ -175,6 +175,7 @@ public sealed class SM3 : HashAlgorithm
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {

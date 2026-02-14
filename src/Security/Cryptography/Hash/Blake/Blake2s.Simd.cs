@@ -102,6 +102,7 @@ public sealed partial class Blake2s
         }
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private unsafe void CompressSse2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
@@ -179,6 +180,7 @@ public sealed partial class Blake2s
         _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private unsafe void CompressSsse3(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
@@ -250,6 +252,7 @@ public sealed partial class Blake2s
         _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private unsafe void CompressAvx2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
