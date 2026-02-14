@@ -1,13 +1,13 @@
-| Method                             | Mean       | Ratio | Allocated | Alloc Ratio |
-|----------------------------------- |-----------:|------:|----------:|------------:|
-| IncrementSingle                    |  0.0050 ns | 0.000 |         - |          NA |
-| InterlockedIncrementSingle         |  0.2035 ns | 0.015 |         - |          NA |
-| LockEnterScopeSingle               |  3.3816 ns | 0.257 |         - |          NA |
-| LockUnlockSingle                   |  3.4124 ns | 0.260 |         - |          NA |
-| ObjectLockUnlockSingle             |  4.1796 ns | 0.318 |         - |          NA |
-| LockUnlockPooledSingleAsync        | 13.1516 ns | 1.000 |         - |          NA |
-| LockUnlockSemaphoreSlimSingleAsync | 18.8173 ns | 1.431 |         - |          NA |
-| LockUnlockRefImplSingleAsync       | 20.2174 ns | 1.537 |         - |          NA |
-| LockUnlockNonKeyedSingleAsync      | 23.1732 ns | 1.762 |         - |          NA |
-| LockUnlockNitoSingleAsync          | 41.2909 ns | 3.140 |     320 B |          NA |
-| LockUnlockNeoSmartSingleAsync      | 60.1140 ns | 4.571 |     208 B |          NA |
+﻿| Description                           | Mean       | Ratio | Allocated | 
+|-------------------------------------- |-----------:|------:|----------:|
+| Lock · Increment · System             |  0.0015 ns | 0.000 |         - | 
+| Lock · Interlocked.Increment · System |  0.1768 ns | 0.015 |         - | 
+| Lock · Lock.EnterScope · System       |  3.1452 ns | 0.267 |         - | 
+| Lock · Lock · System                  |  3.1464 ns | 0.267 |         - | 
+| Lock · lock() · System                |  3.8143 ns | 0.324 |         - | 
+| LockAsync · AsyncLock · Pooled        | 11.7767 ns | 1.000 |         - | 
+| LockAsync · SemaphoreSlim · System    | 16.7896 ns | 1.426 |         - | 
+| LockAsync · AsyncLock · RefImpl       | 18.2543 ns | 1.550 |         - | 
+| LockAsync · AsyncLock · NonKeyed      | 21.3334 ns | 1.812 |         - | 
+| LockAsync · AsyncLock · Nito.AsyncEx  | 41.8880 ns | 3.557 |     320 B | 
+| LockAsync · AsyncLock · NeoSmart      | 56.0962 ns | 4.763 |     208 B |

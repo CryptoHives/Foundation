@@ -15,7 +15,7 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncManualResetEventUnitTests
+public class AsyncManualResetEventTests
 {
     [Test]
     public void IsSetReflectsEventState()
@@ -34,7 +34,7 @@ public class AsyncManualResetEventUnitTests
     [Test]
     public void RunContinuationAsynchronouslyPropertyWorks()
     {
-        var mre = new AsyncManualResetEvent(defaultEventQueueSize: 8);
+        var mre = new AsyncManualResetEvent();
         Assert.That(mre.RunContinuationAsynchronously, Is.True);
 
         mre = new AsyncManualResetEvent(runContinuationAsynchronously: false);

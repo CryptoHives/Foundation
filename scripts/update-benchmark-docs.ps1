@@ -3,13 +3,13 @@
 
 # update-benchmark-docs.ps1
 # Copies BenchmarkDotNet results to docfx benchmark documentation folder
-# Usage: .\scripts\update-benchmark-docs.ps1 [-SourceDir <path>] [-DestDir <path>] [-DryRun]
+# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>] [-DryRun]
 
 [CmdletBinding()]
 param(
-    [Parameter(HelpMessage = "Benchmark package to update (Threading or Cryptography)")]
+    [Parameter(HelpMessage = "Project to update (Threading or Cryptography)")]
     [ValidateSet("Threading", "Cryptography")]
-    [string]$Package = "Threading",
+    [string]$Project = "Threading",
 
     [Parameter(HelpMessage = "Source directory containing BenchmarkDotNet results")]
     [string]$SourceDir,
@@ -28,19 +28,19 @@ $packageConfigurations = @{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
         DestDir   = "docfx/packages/threading/benchmarks"
         Files     = @(
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncLockSingleBenchmark-report-github.md"; Target = "asynclock-single.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncLockMultipleBenchmark-report-github.md"; Target = "asynclock-multiple.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventSetBenchmark-report-github.md"; Target = "asyncautoresetevent-set.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventSetThenWaitBenchmark-report-github.md"; Target = "asyncautoresetevent-setthenw.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncAutoResetEventWaitThenSetBenchmark-report-github.md"; Target = "asyncautoresetevent-waitthenset.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventSetResetBenchmark-report-github.md"; Target = "asyncmanualresetevent-setreset.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventSetThenWaitBenchmark-report-github.md"; Target = "asyncmanualresetevent-setthenw.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncManualResetEventWaitThenSetBenchmark-report-github.md"; Target = "asyncmanualresetevent-waitthenset.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncSemaphoreSingleBenchmark-report-github.md"; Target = "asyncsemaphore-single.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncCountdownEventSignalBenchmark-report-github.md"; Target = "asynccountdownevent-signal.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncBarrierSignalAndWaitBenchmark-report-github.md"; Target = "asyncbarrier-signalandwait.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncReaderWriterLockReaderBenchmark-report-github.md"; Target = "asyncreaderwriterlock-reader.md" }
-            @{ Source = "Threading.Tests.Async.Pooled.AsyncReaderWriterLockWriterBenchmark-report-github.md"; Target = "asyncreaderwriterlock-writer.md" }
+            @{ Source = "AsyncLockSingleBenchmark-report.md"; Target = "asynclock-single.md" }
+            @{ Source = "AsyncLockMultipleBenchmark-report.md"; Target = "asynclock-multiple.md" }
+            @{ Source = "AsyncAutoResetEventSetBenchmark-report.md"; Target = "asyncautoresetevent-set.md" }
+            @{ Source = "AsyncAutoResetEventSetThenWaitBenchmark-report.md"; Target = "asyncautoresetevent-setthenw.md" }
+            @{ Source = "AsyncAutoResetEventWaitThenSetBenchmark-report.md"; Target = "asyncautoresetevent-waitthenset.md" }
+            @{ Source = "AsyncManualResetEventSetResetBenchmark-report.md"; Target = "asyncmanualresetevent-setreset.md" }
+            @{ Source = "AsyncManualResetEventSetThenWaitBenchmark-report.md"; Target = "asyncmanualresetevent-setthenw.md" }
+            @{ Source = "AsyncManualResetEventWaitThenSetBenchmark-report.md"; Target = "asyncmanualresetevent-waitthenset.md" }
+            @{ Source = "AsyncSemaphoreSingleBenchmark-report.md"; Target = "asyncsemaphore-single.md" }
+            @{ Source = "AsyncCountdownEventSignalBenchmark-report.md"; Target = "asynccountdownevent-signal.md" }
+            @{ Source = "AsyncBarrierSignalAndWaitBenchmark-report.md"; Target = "asyncbarrier-signalandwait.md" }
+            @{ Source = "AsyncReaderWriterLockReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-reader.md" }
+            @{ Source = "AsyncReaderWriterLockWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-writer.md" }
         )
     }
 
@@ -105,27 +105,47 @@ $packageConfigurations = @{
             @{ Source = "WhirlpoolBenchmark-report.md"; Target = "whirlpool.md" }
             @{ Source = "Ripemd160Benchmark-report.md"; Target = "ripemd160.md" }
 
+            # Kupyna (DSTU 7564) individual algorithms
+            @{ Source = "Kupyna256Benchmark-report.md"; Target = "kupyna256.md" }
+            @{ Source = "Kupyna384Benchmark-report.md"; Target = "kupyna384.md" }
+            @{ Source = "Kupyna512Benchmark-report.md"; Target = "kupyna512.md" }
+
+            # LSH (KS X 3262) individual algorithms
+            @{ Source = "Lsh256_256Benchmark-report.md"; Target = "lsh256-256.md" }
+            @{ Source = "Lsh512_256Benchmark-report.md"; Target = "lsh512-256.md" }
+            @{ Source = "Lsh512_512Benchmark-report.md"; Target = "lsh512-512.md" }
+
             # Ascon individual algorithms
             @{ Source = "AsconHash256Benchmark-report.md"; Target = "asconhash256.md" }
             @{ Source = "AsconXof128Benchmark-report.md"; Target = "asconxof128.md" }
 
             # KMAC
-            @{ Source = "Kmac128Benchmark-report.md"; Target = "kmac128.md" }
-            @{ Source = "Kmac256Benchmark-report.md"; Target = "kmac256.md" }
-            @{ Source = "Kmac128IncrementalBenchmark-report.md"; Target = "kmac128incremental.md" }
-            @{ Source = "Kmac128OutputSizeBenchmark-report.md"; Target = "kmac128outputsize.md" }
-            @{ Source = "Kmac256IncrementalBenchmark-report.md"; Target = "kmac256incremental.md" }
-            @{ Source = "Kmac256OutputSizeBenchmark-report.md"; Target = "kmac256outputsize.md" }
+            @{ Source = "KMac128Benchmark-report.md"; Target = "kmac128.md" }
+            @{ Source = "KMac256Benchmark-report.md"; Target = "kmac256.md" }
+
+            # XOF (Absorb/Squeeze)
+            @{ Source = "Shake128XofBenchmark-report.md"; Target = "xof-shake128.md" }
+            @{ Source = "Shake256XofBenchmark-report.md"; Target = "xof-shake256.md" }
+            @{ Source = "CShake128XofBenchmark-report.md"; Target = "xof-cshake128.md" }
+            @{ Source = "CShake256XofBenchmark-report.md"; Target = "xof-cshake256.md" }
+            @{ Source = "TurboShake128XofBenchmark-report.md"; Target = "xof-turboshake128.md" }
+            @{ Source = "TurboShake256XofBenchmark-report.md"; Target = "xof-turboshake256.md" }
+            @{ Source = "KT128XofBenchmark-report.md"; Target = "xof-kt128.md" }
+            @{ Source = "KT256XofBenchmark-report.md"; Target = "xof-kt256.md" }
+            @{ Source = "KMac128XofBenchmark-report.md"; Target = "xof-kmac128.md" }
+            @{ Source = "KMac256XofBenchmark-report.md"; Target = "xof-kmac256.md" }
+            @{ Source = "Blake3XofBenchmark-report.md"; Target = "xof-blake3.md" }
+            @{ Source = "AsconXof128XofBenchmark-report.md"; Target = "xof-asconxof128.md" }
         )
     }
 }
 
-if (-not $packageConfigurations.ContainsKey($Package)) {
-    Write-Host "ERROR: Unknown package '$Package'." -ForegroundColor Red
+if (-not $packageConfigurations.ContainsKey($Project)) {
+    Write-Host "ERROR: Unknown project '$Project'." -ForegroundColor Red
     exit 1
 }
 
-$selectedConfig = $packageConfigurations[$Package]
+$selectedConfig = $packageConfigurations[$Project]
 
 if (-not $PSBoundParameters.ContainsKey('SourceDir') -or [string]::IsNullOrWhiteSpace($SourceDir)) {
     $SourceDir = $selectedConfig.SourceDir
@@ -142,16 +162,17 @@ Write-Host "========================================"
 Write-Host " Updating Benchmark Documentation"
 Write-Host "========================================"
 Write-Host ""
-Write-Host "Package: $Package"
+Write-Host "Project: $Project"
 Write-Host "Source: $SourceDir"
 Write-Host "Destination: $DestDir"
 Write-Host ""
 
 if (-not (Test-Path $SourceDir)) {
     Write-Host "ERROR: Source directory does not exist." -ForegroundColor Red
+    $testProjectDir = Split-Path (Split-Path $SourceDir)
     Write-Host "Please run benchmarks first:"
-    Write-Host "  cd tests/Threading"
-    Write-Host "  dotnet run -c Release -- --filter `"*Benchmark*`"" 
+    Write-Host "  cd $testProjectDir"
+    Write-Host "  dotnet run -c Release -- --filter `"*Benchmark*`""
     exit 1
 }
 

@@ -12,18 +12,23 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Tests for <see cref="ObjectPools"/>.
+/// </summary>
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class ObjectPoolsTests
 {
     [Test]
     public void GetStringBuilderReturnsObjectOwnerWithValidStringBuilder()
     {
-        // Act
         using ObjectOwner<StringBuilder> owner = ObjectPools.GetStringBuilder();
 
-        // Assert
-        Assert.That(owner.PooledObject, Is.Not.Null, "ObjectOwner.PooledObject should not be null");
-        Assert.That(owner.PooledObject, Is.InstanceOf<StringBuilder>(), "ObjectOwner.PooledObject should be a StringBuilder");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(owner.PooledObject, Is.Not.Null);
+            Assert.That(owner.PooledObject, Is.InstanceOf<StringBuilder>());
+        }
     }
 
     [Test]
@@ -37,16 +42,10 @@ public class ObjectPoolsTests
             Assert.That(sb1.ToString(), Is.EqualTo("test"));
         }
 
-        // The pool should clear the StringBuilder on return
-        Assert.That(sb1.ToString(), Is.EqualTo(string.Empty));
+        Assert.That(sb1.ToString(), Is.EqualTo(string.Empty), "Pool should clear the StringBuilder on return");
 
-        // After dispose, the StringBuilder should be returned to the pool and cleared
-        StringBuilder sb2;
         using ObjectOwner<StringBuilder> owner2 = ObjectPools.GetStringBuilder();
-        sb2 = owner2.PooledObject;
-
-        // The pool should clear the StringBuilder before reusing
-        Assert.That(sb2.ToString(), Is.EqualTo(string.Empty));
+        Assert.That(owner2.PooledObject.ToString(), Is.EqualTo(string.Empty), "Reused StringBuilder should be empty");
     }
 
     [Test]

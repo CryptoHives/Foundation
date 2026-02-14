@@ -29,9 +29,8 @@ public sealed class AsyncManualResetEvent
 
 ```csharp
 public AsyncManualResetEvent(
-    bool set = false, 
-    bool runContinuationAsynchronously = true, 
-    int defaultEventQueueSize = 0, 
+    bool set = false,
+    bool runContinuationAsynchronously = true,
     IGetPooledManualResetValueTaskSource<bool>? pool = null)
 ```
 
@@ -39,7 +38,6 @@ public AsyncManualResetEvent(
 
 - `set`: The initial state of the event (default: `false`).
 - `runContinuationAsynchronously`: Controls whether continuations are forced to run asynchronously (default: `true`).
-- `defaultEventQueueSize`: The default waiter queue capacity (when `0` the implementation uses an internal default, typically `8`).
 - `pool`: Optional custom source provider implementing `IGetPooledManualResetValueTaskSource<bool>` which supplies pooled `PooledManualResetValueTaskSource<bool>` instances (helps avoid allocations under contention). You may pass a `ValueTaskSourceObjectPool<bool>` or a custom provider that implements the interface.
 
 ## Properties

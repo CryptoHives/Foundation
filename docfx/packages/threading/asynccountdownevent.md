@@ -68,7 +68,6 @@ public async Task ParticipantWorkAsync(CancellationToken ct)
 public AsyncCountdownEvent(
     int initialCount,
     bool runContinuationAsynchronously = true,
-    int defaultEventQueueSize = 0,
     IGetPooledManualResetValueTaskSource<bool>? pool = null)
 ```
 
@@ -76,7 +75,6 @@ public AsyncCountdownEvent(
 |-----------|-------------|
 | `initialCount` | The initial count. Must be greater than zero. |
 | `runContinuationAsynchronously` | If true (default), continuations are forced to run on the thread pool. |
-| `defaultEventQueueSize` | Initial capacity for the waiter queue. |
 | `pool` | Optional custom pool for ValueTaskSource instances. |
 
 ## Properties

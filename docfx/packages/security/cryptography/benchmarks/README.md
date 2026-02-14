@@ -31,9 +31,13 @@ This directory stores the published BenchmarkDotNet results for the cryptography
 
 ### Legacy/Regional
 - `md5.md`, `sha1.md`, `sm3.md`, `streebog256.md`, `streebog512.md`, `whirlpool.md`, `ripemd160.md`
+- `kupyna256.md`, `kupyna384.md`, `kupyna512.md`
+- `lsh256-256.md`, `lsh512-256.md`, `lsh512-512.md`
 
 ### Ascon/KMAC
-- `asconhash256.md`, `asconxof128.md`, `kmac128.md`, `kmac256.md`
+- `asconhash256.md`, `asconxof128.md`
+- `kmac128.md`, `kmac128incremental.md`, `kmac128outputsize.md`
+- `kmac256.md`, `kmac256incremental.md`, `kmac256outputsize.md`
 
 ## Updating Benchmark Results
 

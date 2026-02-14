@@ -8,6 +8,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -401,6 +402,7 @@ internal unsafe struct KeccakCoreState
     /// <summary>
     /// Performs 64-bit rotation using AVX2 shift and OR operations.
     /// </summary>
+    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "Caller uses always constants.")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, byte offset)
     {
@@ -1099,7 +1101,7 @@ internal unsafe struct KeccakCoreState
             if (BitConverter.IsLittleEndian)
             {
                 // Fast path: direct memory XOR on little-endian systems
-                ReadOnlySpan<ulong> blockLanes = MemoryMarshal.Cast<byte, ulong>(block.Slice(0, rateLanes * 8));
+                ReadOnlySpan<ulong> blockLanes = MemoryMarshal.Cast<byte, ulong>(block.Slice(0, rateLanes * sizeof(ulong)));
                 for (int i = 0; i < rateLanes; i++)
                 {
                     statePtr[i] ^= blockLanes[i];
@@ -1110,7 +1112,7 @@ internal unsafe struct KeccakCoreState
                 // Big-endian: convert each ulong individually
                 for (int i = 0; i < rateLanes; i++)
                 {
-                    statePtr[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+                    statePtr[i] ^= BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * sizeof(ulong)));
                 }
             }
         }

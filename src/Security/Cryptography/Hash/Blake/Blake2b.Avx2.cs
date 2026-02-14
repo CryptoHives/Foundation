@@ -66,7 +66,6 @@ public sealed partial class Blake2b : HashAlgorithm
     // Vector state for AVX2 path
     private Vector256<ulong> _stateVec0;
     private Vector256<ulong> _stateVec1;
-    private readonly bool _useAvx2;
 
     static Blake2b()
     {
@@ -106,32 +105,39 @@ public sealed partial class Blake2b : HashAlgorithm
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void InitializeStateAvx2(ulong paramBlock)
+    {
+        _stateVec0 = Avx2.Xor(IVLow, Vector256.Create(paramBlock, 0UL, 0UL, 0UL));
+        _stateVec1 = IVHigh;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ExtractOutputAvx2(Span<byte> destination)
     {
         // Store vectors to stack, then copy required bytes
         Span<ulong> temp = stackalloc ulong[8];
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[0]), _stateVec0);
-        Unsafe.WriteUnaligned(ref Unsafe.As<ulong, byte>(ref temp[4]), _stateVec1);
+        _stateVec0.CopyTo(temp[..4]);
+        _stateVec1.CopyTo(temp[4..]);
 
         int fullWords = _outputBytes / 8;
         for (int i = 0; i < fullWords; i++)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * 8), temp[i]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * sizeof(UInt64)), temp[i]);
         }
 
-        int remainingBytes = _outputBytes % 8;
+        int remainingBytes = _outputBytes & 7;
         if (remainingBytes > 0)
         {
-            Span<byte> tempBytes = stackalloc byte[8];
+            Span<byte> tempBytes = stackalloc byte[sizeof(UInt64)];
             BinaryPrimitives.WriteUInt64LittleEndian(tempBytes, temp[fullWords]);
-            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 8));
+            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt64)));
         }
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, bool isFinal)
+    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
     {
-        _bytesCompressed += (ulong)_bufferLength;
+        _bytesCompressed += (ulong)bytesConsumed;
 
         // Pin the message block for gather operations
         fixed (byte* mPtr = block)
@@ -186,7 +192,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Performs one Gx round on 4 parallel lanes using AVX2.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRoundX(
         ref Vector256<ulong> a,
         ref Vector256<ulong> b,
@@ -208,7 +214,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Performs one Gy round on 4 parallel lanes using AVX2.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRoundY(
         ref Vector256<ulong> a,
         ref Vector256<ulong> b,
@@ -231,7 +237,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Performs diagonal permutations.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Permute(ref Vector256<ulong> a, ref Vector256<ulong> b, ref Vector256<ulong> c)
     {
         a = Avx2.Permute4x64(a, 0b00_11_10_01);

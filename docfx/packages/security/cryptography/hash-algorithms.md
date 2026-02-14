@@ -8,6 +8,35 @@ This page provides detailed documentation for all hash algorithms implemented in
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 ```
 
+## Best Practices: Zero-Allocation Hashing
+
+All hash algorithms in this package inherit from `System.Security.Cryptography.HashAlgorithm`, which provides two APIs for computing hashes:
+
+| API | Allocations | Availability |
+|-----|-------------|--------------|
+| `ComputeHash(byte[])` | Allocates a new `byte[]` for the result on every call | All frameworks |
+| `TryComputeHash(ReadOnlySpan<byte>, Span<byte>, out int)` | **Zero allocations** — writes directly into a caller-provided buffer | All frameworks (polyfilled) |
+
+For **performance-critical code**, prefer `TryComputeHash` with a stack-allocated or reusable buffer:
+
+```csharp
+using var sha256 = SHA256.Create();
+
+ReadOnlySpan<byte> input = data;
+Span<byte> hash = stackalloc byte[sha256.HashSize / 8]; // 32 bytes for SHA-256
+
+if (sha256.TryComputeHash(input, hash, out int bytesWritten))
+{
+    // 'hash' contains the result — no heap allocation occurred
+}
+```
+
+The `ComputeHash(byte[])` method internally allocates a new `byte[]` of `HashSize / 8` bytes for each call. In tight loops or high-throughput pipelines (network packet processing, file integrity checking, blockchain validation), these allocations add GC pressure and reduce performance. The `TryComputeHash` span-based API avoids this entirely by letting the caller control the output buffer.
+
+> **Note:** The CryptoHives `HashAlgorithm` base class provides a `TryComputeHash` polyfill for .NET Framework 4.x and .NET Standard 2.0 targets, where the BCL does not include this method. All CryptoHives hash algorithms support the zero-allocation code path on every target framework.
+
+All usage examples below use the zero-allocation `TryComputeHash` API.
+
 ---
 
 ## SHA-2 Family
@@ -28,7 +57,8 @@ public sealed class SHA224 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha224 = SHA224.Create();
-byte[] hash = sha224.ComputeHash(data);
+Span<byte> hash = stackalloc byte[28];
+sha224.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA-256
@@ -45,7 +75,8 @@ public sealed class SHA256 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha256 = SHA256.Create();
-byte[] hash = sha256.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+sha256.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA-384
@@ -62,7 +93,8 @@ public sealed class SHA384 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha384 = SHA384.Create();
-byte[] hash = sha384.ComputeHash(data);
+Span<byte> hash = stackalloc byte[48];
+sha384.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA-512
@@ -79,7 +111,8 @@ public sealed class SHA512 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha512 = SHA512.Create();
-byte[] hash = sha512.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+sha512.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA-512/224
@@ -96,7 +129,8 @@ public sealed class SHA512_224 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha512_224 = SHA512_224.Create();
-byte[] hash = sha512_224.ComputeHash(data);
+Span<byte> hash = stackalloc byte[28];
+sha512_224.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA-512/256
@@ -113,7 +147,8 @@ public sealed class SHA512_256 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha512_256 = SHA512_256.Create();
-byte[] hash = sha512_256.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+sha512_256.TryComputeHash(data, hash, out _);
 ```
 
 ---
@@ -136,7 +171,8 @@ public sealed class SHA3_224 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha3 = SHA3_224.Create();
-byte[] hash = sha3.ComputeHash(data);
+Span<byte> hash = stackalloc byte[28];
+sha3.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA3-256
@@ -153,7 +189,8 @@ public sealed class SHA3_256 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha3 = SHA3_256.Create();
-byte[] hash = sha3.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+sha3.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA3-384
@@ -170,7 +207,8 @@ public sealed class SHA3_384 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha3 = SHA3_384.Create();
-byte[] hash = sha3.ComputeHash(data);
+Span<byte> hash = stackalloc byte[48];
+sha3.TryComputeHash(data, hash, out _);
 ```
 
 ### SHA3-512
@@ -187,7 +225,8 @@ public sealed class SHA3_512 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sha3 = SHA3_512.Create();
-byte[] hash = sha3.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+sha3.TryComputeHash(data, hash, out _);
 ```
 
 ---
@@ -211,12 +250,16 @@ public sealed class Shake128 : HashAlgorithm
 ```csharp
 // Default 32-byte output
 using var shake = Shake128.Create();
-byte[] hash = shake.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+shake.TryComputeHash(data, hash, out _);
 
 // Custom output size
-using var shake = Shake128.Create(outputBytes: 64);
-byte[] longHash = shake.ComputeHash(data);
+using var shake64 = Shake128.Create(outputBytes: 64);
+Span<byte> longHash = stackalloc byte[64];
+shake64.TryComputeHash(data, longHash, out _);
 ```
+
+> **XOF Mode:** SHAKE128 implements [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ### Shake256
 
@@ -233,12 +276,16 @@ public sealed class Shake256 : HashAlgorithm
 ```csharp
 // Default 64-byte output
 using var shake = Shake256.Create();
-byte[] hash = shake.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+shake.TryComputeHash(data, hash, out _);
 
 // Custom output size
-using var shake = Shake256.Create(outputBytes: 128);
-byte[] longHash = shake.ComputeHash(data);
+using var shake128 = Shake256.Create(outputBytes: 128);
+Span<byte> longHash = stackalloc byte[128];
+shake128.TryComputeHash(data, longHash, out _);
 ```
+
+> **XOF Mode:** SHAKE256 implements [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -264,7 +311,8 @@ using var cshake = new CShake128(
     outputBytes: 32,
     functionName: "",
     customization: "My Application");
-byte[] hash = cshake.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+cshake.TryComputeHash(data, hash, out _);
 ```
 
 ### CShake256
@@ -285,10 +333,13 @@ using var cshake = new CShake256(
     outputBytes: 64,
     functionName: "",
     customization: "My Application");
-byte[] hash = cshake.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+cshake.TryComputeHash(data, hash, out _);
 ```
 
 **Note:** When both N and S are empty, cSHAKE is equivalent to SHAKE.
+
+> **XOF Mode:** cSHAKE128 and cSHAKE256 implement [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -314,13 +365,15 @@ public sealed class TurboShake128 : HashAlgorithm
 ```csharp
 // Standard (32 bytes)
 using var ts = TurboShake128.Create();
-byte[] hash = ts.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+ts.TryComputeHash(data, hash, out _);
 
 // Custom output and customization
-using var ts = new TurboShake128(
-    outputBytes: 64, 
+using var tsCustom = new TurboShake128(
+    outputBytes: 64,
     customization: "My App");
-byte[] hash = ts.ComputeHash(data);
+Span<byte> longHash = stackalloc byte[64];
+tsCustom.TryComputeHash(data, longHash, out _);
 ```
 
 ### TurboShake256
@@ -339,8 +392,11 @@ public sealed class TurboShake256 : HashAlgorithm
 **Usage:**
 ```csharp
 using var ts = TurboShake256.Create();
-byte[] hash = ts.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+ts.TryComputeHash(data, hash, out _);
 ```
+
+> **XOF Mode:** TurboSHAKE128 and TurboSHAKE256 implement [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -369,7 +425,8 @@ public sealed class KT128 : HashAlgorithm
 **Usage:**
 ```csharp
 using var kt = KT128.Create();
-byte[] hash = kt.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+kt.TryComputeHash(data, hash, out _);
 ```
 
 ### KT256
@@ -388,8 +445,11 @@ public sealed class KT256 : HashAlgorithm
 **Usage:**
 ```csharp
 using var kt = KT256.Create();
-byte[] hash = kt.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+kt.TryComputeHash(data, hash, out _);
 ```
+
+> **XOF Mode:** KT128 and KT256 implement [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -413,7 +473,8 @@ public sealed class Keccak256 : HashAlgorithm
 **Usage:**
 ```csharp
 using var keccak = Keccak256.Create();
-byte[] hash = keccak.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+keccak.TryComputeHash(data, hash, out _);
 ```
 
 **Ethereum Example:**
@@ -421,8 +482,9 @@ byte[] hash = keccak.ComputeHash(data);
 // Compute Ethereum address from public key
 byte[] publicKey = ...; // 64-byte uncompressed public key (without 0x04 prefix)
 using var keccak = Keccak256.Create();
-byte[] hash = keccak.ComputeHash(publicKey);
-byte[] address = hash[^20..]; // Last 20 bytes
+Span<byte> hash = stackalloc byte[32];
+keccak.TryComputeHash(publicKey, hash, out _);
+ReadOnlySpan<byte> address = hash[^20..]; // Last 20 bytes
 ```
 
 ### Keccak384
@@ -441,7 +503,8 @@ public sealed class Keccak384 : HashAlgorithm
 **Usage:**
 ```csharp
 using var keccak = Keccak384.Create();
-byte[] hash = keccak.ComputeHash(data);
+Span<byte> hash = stackalloc byte[48];
+keccak.TryComputeHash(data, hash, out _);
 ```
 
 ### Keccak512
@@ -460,7 +523,8 @@ public sealed class Keccak512 : HashAlgorithm
 **Usage:**
 ```csharp
 using var keccak = Keccak512.Create();
-byte[] hash = keccak.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+keccak.TryComputeHash(data, hash, out _);
 ```
 
 ---
@@ -485,16 +549,19 @@ public sealed class Blake2b : HashAlgorithm
 ```csharp
 // Standard hash (64 bytes)
 using var blake2b = Blake2b.Create();
-byte[] hash = blake2b.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+blake2b.TryComputeHash(data, hash, out _);
 
 // Custom output size (32 bytes)
-using var blake2b = Blake2b.Create(hashSize: 32);
-byte[] hash = blake2b.ComputeHash(data);
+using var blake2b32 = Blake2b.Create(hashSize: 32);
+Span<byte> hash32 = stackalloc byte[32];
+blake2b32.TryComputeHash(data, hash32, out _);
 
 // Keyed hash (MAC)
 byte[] key = new byte[32]; // Up to 64 bytes
-using var blake2b = Blake2b.Create(key: key, hashSize: 32);
-byte[] mac = blake2b.ComputeHash(data);
+using var blake2bMac = Blake2b.Create(key: key, hashSize: 32);
+Span<byte> mac = stackalloc byte[32];
+blake2bMac.TryComputeHash(data, mac, out _);
 ```
 
 ### Blake2s
@@ -513,16 +580,19 @@ public sealed class Blake2s : HashAlgorithm
 ```csharp
 // Standard hash (32 bytes)
 using var blake2s = Blake2s.Create();
-byte[] hash = blake2s.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+blake2s.TryComputeHash(data, hash, out _);
 
 // Custom output size (16 bytes)
-using var blake2s = Blake2s.Create(hashSize: 16);
-byte[] hash = blake2s.ComputeHash(data);
+using var blake2s16 = Blake2s.Create(hashSize: 16);
+Span<byte> hash16 = stackalloc byte[16];
+blake2s16.TryComputeHash(data, hash16, out _);
 
 // Keyed hash (MAC)
 byte[] key = new byte[16]; // Up to 32 bytes
-using var blake2s = Blake2s.Create(key: key, hashSize: 16);
-byte[] mac = blake2s.ComputeHash(data);
+using var blake2sMac = Blake2s.Create(key: key, hashSize: 16);
+Span<byte> mac = stackalloc byte[16];
+blake2sMac.TryComputeHash(data, mac, out _);
 ```
 
 ---
@@ -534,13 +604,14 @@ Modern, high-performance hash function.
 ### Blake3
 
 ```csharp
-public sealed class Blake3 : HashAlgorithm
+public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
 ```
 
 **Properties:**
 - Output Size: Variable (default 32 bytes)
 - Designed for parallelism
 - Supports: Hash, Keyed Hash, Derive Key modes
+- Implements [`IExtendableOutput`](xof-mode.md) for streaming XOF output
 
 **Modes:**
 
@@ -554,22 +625,28 @@ public sealed class Blake3 : HashAlgorithm
 ```csharp
 // Standard hash
 using var blake3 = Blake3.Create();
-byte[] hash = blake3.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+blake3.TryComputeHash(data, hash, out _);
 
 // Variable output (64 bytes)
-using var blake3 = Blake3.Create(outputBytes: 64);
-byte[] longHash = blake3.ComputeHash(data);
+using var blake3Long = Blake3.Create(outputBytes: 64);
+Span<byte> longHash = stackalloc byte[64];
+blake3Long.TryComputeHash(data, longHash, out _);
 
 // Keyed hash (MAC)
 byte[] key = new byte[32]; // Must be exactly 32 bytes
-using var blake3 = Blake3.CreateKeyed(key);
-byte[] mac = blake3.ComputeHash(data);
+using var blake3Mac = Blake3.CreateKeyed(key);
+Span<byte> mac = stackalloc byte[32];
+blake3Mac.TryComputeHash(data, mac, out _);
 
 // Key derivation
 string context = "MyApp 2025 session key";
-using var blake3 = Blake3.CreateDeriveKey(context);
-byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
+using var blake3Kdf = Blake3.CreateDeriveKey(context);
+Span<byte> derivedKey = stackalloc byte[32];
+blake3Kdf.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 ```
+
+> **XOF Mode:** BLAKE3 implements [`IExtendableOutput`](xof-mode.md) using counter-mode output expansion for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -591,7 +668,8 @@ public sealed class Ripemd160 : HashAlgorithm
 **Usage:**
 ```csharp
 using var ripemd = Ripemd160.Create();
-byte[] hash = ripemd.ComputeHash(data);
+Span<byte> hash = stackalloc byte[20];
+ripemd.TryComputeHash(data, hash, out _);
 ```
 
 **Bitcoin Address Example:**
@@ -601,8 +679,11 @@ byte[] publicKey = ...; // Compressed public key
 using var sha256 = SHA256.Create();
 using var ripemd = Ripemd160.Create();
 
-byte[] sha256Hash = sha256.ComputeHash(publicKey);
-byte[] pubKeyHash = ripemd.ComputeHash(sha256Hash); // 20-byte hash
+Span<byte> sha256Hash = stackalloc byte[32];
+sha256.TryComputeHash(publicKey, sha256Hash, out _);
+
+Span<byte> pubKeyHash = stackalloc byte[20];
+ripemd.TryComputeHash(sha256Hash, pubKeyHash, out _); // 20-byte hash
 ```
 
 ---
@@ -625,7 +706,8 @@ public sealed class SM3 : HashAlgorithm
 **Usage:**
 ```csharp
 using var sm3 = SM3.Create();
-byte[] hash = sm3.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+sm3.TryComputeHash(data, hash, out _);
 ```
 
 ---
@@ -648,7 +730,8 @@ public sealed class Whirlpool : HashAlgorithm
 **Usage:**
 ```csharp
 using var whirlpool = Whirlpool.Create();
-byte[] hash = whirlpool.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+whirlpool.TryComputeHash(data, hash, out _);
 ```
 
 ---
@@ -672,11 +755,111 @@ public sealed class Streebog : HashAlgorithm
 ```csharp
 // Streebog-512 (default)
 using var streebog = Streebog.Create();
-byte[] hash = streebog.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+streebog.TryComputeHash(data, hash, out _);
 
 // Streebog-256
 using var streebog256 = Streebog.Create(hashSize: 32);
-byte[] hash = streebog256.ComputeHash(data);
+Span<byte> hash256 = stackalloc byte[32];
+streebog256.TryComputeHash(data, hash256, out _);
+```
+
+---
+
+## Kupyna
+
+Ukrainian national standard hash function (DSTU 7564:2014).
+
+### Kupyna
+
+```csharp
+public sealed class Kupyna : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: 256, 384, or 512 bits
+- Block Size: 64 bytes (256-bit) or 128 bytes (384/512-bit)
+- Standard: DSTU 7564:2014
+
+**Usage:**
+```csharp
+// Kupyna-512 (default)
+using var kupyna = Kupyna.Create();
+Span<byte> hash = stackalloc byte[64];
+kupyna.TryComputeHash(data, hash, out _);
+
+// Kupyna-256
+using var kupyna256 = Kupyna.Create(hashSizeBytes: 32);
+Span<byte> hash256 = stackalloc byte[32];
+kupyna256.TryComputeHash(data, hash256, out _);
+
+// Kupyna-384
+using var kupyna384 = Kupyna.Create(hashSizeBytes: 48);
+Span<byte> hash384 = stackalloc byte[48];
+kupyna384.TryComputeHash(data, hash384, out _);
+```
+
+---
+
+## LSH (KS X 3262)
+
+Korean national standard hash function designed by KISA (Korea Internet & Security Agency).
+
+### Lsh512 
+
+```csharp
+public sealed class Lsh512 : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: 224, 256, 384, or 512 bits
+- Block Size: 256 bytes
+- Word Size: 64 bits
+- Steps: 28
+- Standard: KS X 3262
+
+**Usage:**
+```csharp
+// LSH-512-512 (default)
+using var lsh = Lsh512.Create();
+Span<byte> hash = stackalloc byte[64];
+lsh.TryComputeHash(data, hash, out _);
+
+// LSH-512-256
+using var lsh256 = Lsh512.Create(hashSizeBytes: 32);
+Span<byte> hash256 = stackalloc byte[32];
+lsh256.TryComputeHash(data, hash256, out _);
+
+// LSH-512-384
+using var lsh384 = Lsh512.Create(hashSizeBytes: 48);
+Span<byte> hash384 = stackalloc byte[48];
+lsh384.TryComputeHash(data, hash384, out _);
+```
+
+### Lsh256
+
+```csharp
+public sealed class Lsh256 : HashAlgorithm
+```
+
+**Properties:**
+- Output Size: 224 or 256 bits
+- Block Size: 128 bytes
+- Word Size: 32 bits
+- Steps: 26
+- Standard: KS X 3262
+
+**Usage:**
+```csharp
+// LSH-256-256 (default)
+using var lsh = Lsh256.Create();
+Span<byte> hash = stackalloc byte[32];
+lsh.TryComputeHash(data, hash, out _);
+
+// LSH-256-224
+using var lsh224 = Lsh256.Create(hashSizeBytes: 28);
+Span<byte> hash224 = stackalloc byte[28];
+lsh224.TryComputeHash(data, hash224, out _);
 ```
 
 ---
@@ -705,7 +888,8 @@ public sealed class AsconHash256 : HashAlgorithm
 **Usage:**
 ```csharp
 using var ascon = AsconHash256.Create();
-byte[] hash = ascon.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+ascon.TryComputeHash(data, hash, out _);
 ```
 
 ### AsconXof128
@@ -729,12 +913,16 @@ public sealed class AsconXof128 : HashAlgorithm
 ```csharp
 // Default 32-byte output
 using var ascon = AsconXof128.Create();
-byte[] hash = ascon.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+ascon.TryComputeHash(data, hash, out _);
 
 // Custom output size
-using var ascon = AsconXof128.Create(outputBytes: 64);
-byte[] longHash = ascon.ComputeHash(data);
+using var ascon64 = AsconXof128.Create(outputBytes: 64);
+Span<byte> longHash = stackalloc byte[64];
+ascon64.TryComputeHash(data, longHash, out _);
 ```
+
+> **XOF Mode:** Ascon-XOF128 implements [`IExtendableOutput`](xof-mode.md) for streaming variable-length output via `Absorb` / `Squeeze`.
 
 ---
 
@@ -758,7 +946,8 @@ public sealed class SHA1 : HashAlgorithm
 ```csharp
 #pragma warning disable CS0618
 using var sha1 = SHA1.Create();
-byte[] hash = sha1.ComputeHash(data);
+Span<byte> hash = stackalloc byte[20];
+sha1.TryComputeHash(data, hash, out _);
 #pragma warning restore CS0618
 ```
 
@@ -778,7 +967,8 @@ public sealed class MD5 : HashAlgorithm
 ```csharp
 #pragma warning disable CS0618
 using var md5 = MD5.Create();
-byte[] hash = md5.ComputeHash(data);
+Span<byte> hash = stackalloc byte[16];
+md5.TryComputeHash(data, hash, out _);
 #pragma warning restore CS0618
 ```
 
@@ -790,7 +980,8 @@ You can also create hash algorithms by name:
 
 ```csharp
 using var algorithm = HashAlgorithm.Create("SHA3-256");
-byte[] hash = algorithm.ComputeHash(data);
+Span<byte> hash = stackalloc byte[algorithm.HashSize / 8];
+algorithm.TryComputeHash(data, hash, out _);
 ```
 
 Supported names:
@@ -803,7 +994,7 @@ Supported names:
 - Keccak: `KECCAK-256`, `KECCAK-384`, `KECCAK-512`
 - Ascon: `ASCON-HASH256`, `ASCON-XOF128`
 - BLAKE: `BLAKE2B`, `BLAKE2S`, `BLAKE3`
-- Others: `RIPEMD-160`, `SM3`, `WHIRLPOOL`, `STREEBOG-256`, `STREEBOG-512`, `MD5`
+- Others: `RIPEMD-160`, `SM3`, `WHIRLPOOL`, `STREEBOG-256`, `STREEBOG-512`, `KUPYNA-256`, `KUPYNA-384`, `KUPYNA-512`, `LSH-256-224`, `LSH-256-256`, `LSH-512-256`, `LSH-512-384`, `LSH-512-512`, `MD5`
 
 ---
 

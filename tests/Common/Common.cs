@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1308 // Normalize strings to uppercase
+
 using NUnit.Framework;
 using System;
 using System.Globalization;

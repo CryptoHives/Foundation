@@ -33,8 +33,8 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 |-----------|----------|--------|-------|
 | cSHAKE128 | 128 bits | ✅ Implemented | `CShake128` |
 | cSHAKE256 | 256 bits | ✅ Implemented | `CShake256` |
-| KMAC128 | 128 bits | ✅ Implemented | `Kmac128` |
-| KMAC256 | 256 bits | ✅ Implemented | `Kmac256` |
+| KMAC128 | 128 bits | ✅ Implemented | `KMac128` |
+| KMAC256 | 256 bits | ✅ Implemented | `KMac256` |
 | TupleHash128 | 128 bits | ⬜ Not implemented | - |
 | TupleHash256 | 256 bits | ⬜ Not implemented | - |
 | ParallelHash128 | 128 bits | ⬜ Not implemented | - |
@@ -139,6 +139,28 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 > **Standard:** GOST R 34.11-2012, RFC 6986
 
+### Kupyna / DSTU 7564:2014 (Ukrainian National Standard)
+
+| Algorithm | Hash Size | Status | Class |
+|-----------|-----------|--------|-------|
+| Kupyna-256 | 256 bits | ✅ Implemented | `Kupyna` |
+| Kupyna-384 | 384 bits | ✅ Implemented | `Kupyna` |
+| Kupyna-512 | 512 bits | ✅ Implemented | `Kupyna` |
+
+> **Standard:** DSTU 7564:2014 (Ukraine)
+
+### LSH / KS X 3262 (Korean National Standard)
+
+| Algorithm | Hash Size | Status | Class |
+|-----------|-----------|--------|-------|
+| LSH-256-224 | 224 bits | ✅ Implemented | `Lsh256` |
+| LSH-256-256 | 256 bits | ✅ Implemented | `Lsh256` |
+| LSH-512-256 | 256 bits | ✅ Implemented | `Lsh512` |
+| LSH-512-384 | 384 bits | ✅ Implemented | `Lsh512` |
+| LSH-512-512 | 512 bits | ✅ Implemented | `Lsh512` |
+
+> **Standard:** KS X 3262 (South Korea), approved by KCMVP
+
 ### Legacy Algorithms
 
 | Algorithm | Hash Size | Status | Class |
@@ -242,6 +264,17 @@ BLAKE3 test vectors are from the official BLAKE3 specification:
 - **[Streebog-vectors.md](Streebog-vectors.md)** - Test vectors
 - RFC 6986: https://www.rfc-editor.org/rfc/rfc6986
 
+### Kupyna (DSTU 7564:2014)
+
+- **[Kupyna-vectors.md](Kupyna-vectors.md)** - Test vectors
+- IACR ePrint 2015/885: https://eprint.iacr.org/2015/885.pdf
+- Reference implementation: https://github.com/Roman-Oliynykov/Kupyna-reference
+
+### LSH (KS X 3262)
+
+- KS X 3262 specification (Korean standard)
+- Reference implementation: https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do
+
 ### MD5 (RFC 1321)
 
 MD5 is defined in RFC 1321:
@@ -270,6 +303,7 @@ specs/
 ├── SM3-vectors.md         # SM3 test vectors
 ├── Whirlpool-vectors.md   # Whirlpool test vectors
 ├── Streebog-vectors.md    # Streebog (GOST) test vectors
+├── Kupyna-vectors.md      # Kupyna (DSTU 7564) test vectors
 └── MD5-vectors.md         # MD5 test vectors (legacy)
 ```
 

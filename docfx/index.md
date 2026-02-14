@@ -57,7 +57,7 @@ The Cryptography package provides specification-based implementations of cryptog
 - Ascon lightweight hashing (NIST FIPS 207) for constrained environments
 - BLAKE2b, BLAKE2s, and BLAKE3 high-performance hashing with keyed modes
 - Keccak-256, Keccak-384, Keccak-512 for Ethereum compatibility
-- International standards: SM3 (Chinese), Streebog/GOST (Russian), Whirlpool (ISO)
+- International standards: SM3 (Chinese), Streebog/GOST (Russian), Kupyna/DSTU (Ukrainian), LSH/KS (Korean), Whirlpool (ISO)
 - Legacy algorithms: MD5, SHA-1, RIPEMD-160 (for compatibility only)
 - Cross-platform consistency without OS crypto API dependencies
 
@@ -65,67 +65,11 @@ The Cryptography package provides specification-based implementations of cryptog
 
 ## Quick Start
 
-Get started in minutes:
+Each package page includes installation, quick-start examples, and API documentation:
 
-1. [Install the packages](getting-started.md#installation)
-2. [Browse the Package Documentation](packages/index.md)
-
-## Sample Code
-
-### Memory Example
-
-```csharp
-using CryptoHives.Foundation.Memory.Buffers;
-using System.Buffers;
-
-// Use ArrayPoolMemoryStream for low-allocation I/O
-using var stream = new ArrayPoolMemoryStream();
-await stream.WriteAsync(data);
-
-// Get zero-copy access to the data until stream is disposed
-ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
-```
-
-### Threading Example
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-
-// Pooled async lock reduces allocations
-private readonly AsyncLock _lock = new AsyncLock();
-
-public async Task DoWorkAsync(CancellationToken ct)
-{
-    using (await _lock.LockAsync(ct))
-    {
-        // Protected critical section
-    }
-}
-```
-
-### Cryptography Example
-
-```csharp
-using CryptoHives.Foundation.Security.Cryptography.Hash;
-using CryptoHives.Foundation.Security.Cryptography.Mac;
-
-// SHA-256 hash (drop-in replacement for System.Security.Cryptography)
-using var sha256 = SHA256.Create();
-byte[] hash = sha256.ComputeHash(data);
-
-// SHA3-256 hash
-using var sha3 = SHA3_256.Create();
-byte[] sha3Hash = sha3.ComputeHash(data);
-
-// BLAKE3 with variable output length
-using var blake3 = Blake3.Create(outputBytes: 64);
-byte[] longHash = blake3.ComputeHash(data);
-
-// KMAC256 for authenticated hashing
-byte[] key = new byte[32];
-using var kmac = Kmac256.Create(key, outputBytes: 64, customization: "MyApp");
-byte[] mac = kmac.ComputeHash(message);
-```
+1. [Memory Package](packages/memory/index.md) — pooled buffers and streams
+2. [Threading Package](packages/threading/index.md) — async synchronization primitives
+3. [Security.Cryptography Package](packages/security/cryptography/index.md) — hash algorithms and MACs
 
 ## Platform Support
 
@@ -137,8 +81,6 @@ byte[] mac = kmac.ComputeHash(message);
 
 ## Resources
 
-- 🚀 [Getting Started Guide](getting-started.md)
-- 📦 [Package Documentation](packages/index.md)
 - 🔐 [Cryptographic Specifications](packages/security/cryptography/specs/README.md)
 - 🐛 [Report Issues](https://github.com/CryptoHives/Foundation/issues)
 - 💬 [Security Policy](https://github.com/CryptoHives/.github/blob/main/SECURITY.md)

@@ -1,69 +1,69 @@
-| Method                                                       | Iterations | cancellationType | Mean          | Ratio | Allocated | Alloc Ratio |
-|------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|------------:|
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 1          | None             |      28.17 ns |  0.92 |         - |          NA |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 1          | None             |      28.85 ns |  0.95 |         - |          NA |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 1          | None             |      29.78 ns |  0.98 |         - |          NA |
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 1          | None             |      30.31 ns |  0.99 |      96 B |          NA |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 1          | None             |      30.50 ns |  1.00 |         - |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 1          | None             |      36.70 ns |  1.20 |     160 B |          NA |
-| PooledAsTaskContSync                                         | 1          | None             |      45.54 ns |  1.49 |      80 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 1          | None             |     392.63 ns | 12.88 |     232 B |          NA |
-|                                                              |            |                  |               |       |           |             |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 1          | NotCancelled     |      44.91 ns |  0.99 |         - |          NA |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 1          | NotCancelled     |      45.49 ns |  1.00 |         - |          NA |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 1          | NotCancelled     |      47.69 ns |  1.05 |         - |          NA |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 1          | NotCancelled     |      51.24 ns |  1.13 |         - |          NA |
-| PooledAsTaskContSync                                         | 1          | NotCancelled     |      67.49 ns |  1.48 |      80 B |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 1          | NotCancelled     |     335.75 ns |  7.38 |     400 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 1          | NotCancelled     |     459.67 ns | 10.10 |     232 B |          NA |
-|                                                              |            |                  |               |       |           |             |
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 2          | None             |      55.84 ns |  0.82 |     192 B |          NA |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 2          | None             |      66.69 ns |  0.98 |         - |          NA |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 2          | None             |      67.26 ns |  0.99 |         - |          NA |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 2          | None             |      67.84 ns |  1.00 |         - |          NA |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 2          | None             |      68.41 ns |  1.01 |         - |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 2          | None             |      70.65 ns |  1.04 |     320 B |          NA |
-| PooledAsTaskContSync                                         | 2          | None             |     102.22 ns |  1.51 |     160 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 2          | None             |     855.36 ns | 12.61 |     344 B |          NA |
-|                                                              |            |                  |               |       |           |             |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 2          | NotCancelled     |      99.00 ns |  1.00 |         - |          NA |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 2          | NotCancelled     |     100.56 ns |  1.02 |         - |          NA |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 2          | NotCancelled     |     102.09 ns |  1.03 |         - |          NA |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 2          | NotCancelled     |     106.36 ns |  1.07 |         - |          NA |
-| PooledAsTaskContSync                                         | 2          | NotCancelled     |     151.93 ns |  1.53 |     160 B |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 2          | NotCancelled     |     607.96 ns |  6.14 |     800 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 2          | NotCancelled     |     930.59 ns |  9.40 |     344 B |          NA |
-|                                                              |            |                  |               |       |           |             |
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 10         | None             |     285.66 ns |  0.81 |     960 B |          NA |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 10         | None             |     337.95 ns |  0.95 |         - |          NA |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 10         | None             |     339.19 ns |  0.96 |         - |          NA |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 10         | None             |     354.67 ns |  1.00 |         - |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 10         | None             |     355.35 ns |  1.00 |    1600 B |          NA |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 10         | None             |     363.39 ns |  1.02 |         - |          NA |
-| PooledAsTaskContSync                                         | 10         | None             |     518.18 ns |  1.46 |     800 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 10         | None             |   2,429.83 ns |  6.85 |    1240 B |          NA |
-|                                                              |            |                  |               |       |           |             |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 10         | NotCancelled     |     494.26 ns |  0.99 |         - |          NA |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 10         | NotCancelled     |     501.56 ns |  1.00 |         - |          NA |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 10         | NotCancelled     |     503.32 ns |  1.00 |         - |          NA |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 10         | NotCancelled     |     505.63 ns |  1.01 |         - |          NA |
-| PooledAsTaskContSync                                         | 10         | NotCancelled     |     723.35 ns |  1.44 |     800 B |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 10         | NotCancelled     |   2,892.91 ns |  5.77 |    4000 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 10         | NotCancelled     |   3,092.34 ns |  6.17 |    1240 B |          NA |
-|                                                              |            |                  |               |       |           |             |
-| RefImplAsyncAutoResetEventWaitThenSetAsync                   | 100        | None             |   2,869.74 ns |  0.82 |    9600 B |          NA |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 100        | None             |   3,157.36 ns |  0.90 |         - |          NA |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 100        | None             |   3,192.06 ns |  0.91 |         - |          NA |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 100        | None             |   3,494.61 ns |  1.00 |         - |          NA |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 100        | None             |   3,551.16 ns |  1.02 |         - |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 100        | None             |   3,589.47 ns |  1.03 |   16000 B |          NA |
-| PooledAsTaskContSync                                         | 100        | None             |   5,131.95 ns |  1.47 |    8000 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 100        | None             |  16,915.60 ns |  4.84 |   11321 B |          NA |
-|                                                              |            |                  |               |       |           |             |
-| PooledAsValueTaskAsyncAutoResetEventWaitThenSetAsync         | 100        | NotCancelled     |   4,801.14 ns |  0.98 |         - |          NA |
-| PooledAsValueTaskContSyncAsyncAutoResetEventWaitThenSetAsync | 100        | NotCancelled     |   4,818.74 ns |  0.98 |         - |          NA |
-| PooledAsyncAutoResetEventWaitThenSetAsync                    | 100        | NotCancelled     |   4,921.33 ns |  1.00 |         - |          NA |
-| PooledContSyncAsyncAutoResetEventWaitThenSetAsync            | 100        | NotCancelled     |   4,944.66 ns |  1.00 |         - |          NA |
-| PooledAsTaskContSync                                         | 100        | NotCancelled     |   7,200.37 ns |  1.46 |    8000 B |          NA |
-| NitoAsyncAutoResetEventWaitThenSetAsync                      | 100        | NotCancelled     |  34,267.94 ns |  6.96 |   40000 B |          NA |
-| PooledAsTaskAutoResetEventWaitThenSetAsync                   | 100        | NotCancelled     | 308,299.22 ns | 62.65 |   11343 B |          NA |
+﻿| Description                                                  | Iterations | cancellationType | Mean          | Ratio | Allocated | 
+|------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 1          | None             |      24.23 ns |  0.93 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 1          | None             |      24.79 ns |  0.95 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 1          | None             |      26.08 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 1          | None             |      26.31 ns |  1.01 |         - | 
+| WaitThenSet · AsyncAutoReset · RefImpl                       | 1          | None             |      32.52 ns |  1.25 |      96 B | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 1          | None             |      33.40 ns |  1.28 |     160 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 1          | None             |      38.85 ns |  1.49 |      80 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 1          | None             |     460.55 ns | 17.66 |     231 B | 
+|                                                              |            |                  |               |       |           | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 1          | NotCancelled     |      39.10 ns |  0.99 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 1          | NotCancelled     |      39.43 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 1          | NotCancelled     |      40.80 ns |  1.03 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 1          | NotCancelled     |      41.09 ns |  1.04 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 1          | NotCancelled     |      56.56 ns |  1.43 |      80 B | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 1          | NotCancelled     |     307.08 ns |  7.79 |     400 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 1          | NotCancelled     |     499.14 ns | 12.66 |     232 B | 
+|                                                              |            |                  |               |       |           | 
+| WaitThenSet · AsyncAutoReset · RefImpl                       | 2          | None             |      51.11 ns |  0.85 |     192 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 2          | None             |      58.04 ns |  0.96 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 2          | None             |      59.40 ns |  0.98 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 2          | None             |      60.41 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 2          | None             |      60.69 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 2          | None             |      62.84 ns |  1.04 |     320 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 2          | None             |      92.07 ns |  1.52 |     160 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 2          | None             |     743.69 ns | 12.31 |     343 B | 
+|                                                              |            |                  |               |       |           | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 2          | NotCancelled     |      89.82 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 2          | NotCancelled     |      90.73 ns |  1.01 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 2          | NotCancelled     |      92.89 ns |  1.03 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 2          | NotCancelled     |      93.43 ns |  1.04 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 2          | NotCancelled     |     128.55 ns |  1.43 |     160 B | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 2          | NotCancelled     |     566.81 ns |  6.31 |     800 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 2          | NotCancelled     |     791.96 ns |  8.82 |     344 B | 
+|                                                              |            |                  |               |       |           | 
+| WaitThenSet · AsyncAutoReset · RefImpl                       | 10         | None             |     260.75 ns |  0.69 |     960 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 10         | None             |     304.38 ns |  0.81 |         - | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 10         | None             |     311.59 ns |  0.83 |    1600 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 10         | None             |     312.19 ns |  0.83 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 10         | None             |     326.99 ns |  0.87 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 10         | None             |     375.37 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 10         | None             |     464.41 ns |  1.24 |     800 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 10         | None             |   2,018.49 ns |  5.38 |    1233 B | 
+|                                                              |            |                  |               |       |           | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 10         | NotCancelled     |     461.39 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 10         | NotCancelled     |     462.00 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 10         | NotCancelled     |     469.02 ns |  1.02 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 10         | NotCancelled     |     476.91 ns |  1.03 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 10         | NotCancelled     |     663.37 ns |  1.44 |     800 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 10         | NotCancelled     |   2,605.49 ns |  5.64 |    1238 B | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 10         | NotCancelled     |   2,650.29 ns |  5.74 |    4000 B | 
+|                                                              |            |                  |               |       |           | 
+| WaitThenSet · AsyncAutoReset · RefImpl                       | 100        | None             |   2,608.54 ns |  0.82 |    9600 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 100        | None             |   2,852.94 ns |  0.89 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 100        | None             |   2,877.16 ns |  0.90 |         - | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 100        | None             |   3,181.78 ns |  1.00 |   16000 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 100        | None             |   3,183.07 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 100        | None             |   3,188.61 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 100        | None             |   4,520.63 ns |  1.42 |    8000 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 100        | None             |  16,973.40 ns |  5.32 |   11318 B | 
+|                                                              |            |                  |               |       |           | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)          | 100        | NotCancelled     |   4,472.44 ns |  0.96 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont) | 100        | NotCancelled     |   4,592.44 ns |  0.99 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (SyncCont)             | 100        | NotCancelled     |   4,637.98 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (ValueTask)            | 100        | NotCancelled     |   4,643.92 ns |  1.00 |         - | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)      | 100        | NotCancelled     |   6,443.24 ns |  1.39 |    8000 B | 
+| WaitThenSet · AsyncAutoReset · Nito.AsyncEx                  | 100        | NotCancelled     |  29,991.17 ns |  6.46 |   40000 B | 
+| WaitThenSet · AsyncAutoReset · Pooled (AsTask)               | 100        | NotCancelled     | 136,549.51 ns | 29.40 |   11321 B |

@@ -1,8 +1,8 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
     <Product>CryptoHives Open Source Initiative .NET Foundation Libraries</Product>
     <RepositoryUrl>https://github.com/CryptoHives/Foundation</RepositoryUrl>
-    <Copyright>Copyright © 2025 CryptoHives Open Source Initiative. All rights reserved.</Copyright>
+    <Copyright>Copyright © 2026 CryptoHives Open Source Initiative. All rights reserved.</Copyright>
     <PackagePrefix>CryptoHives.Foundation</PackagePrefix>
     <AssemblyPrefix>CryptoHives.Foundation</AssemblyPrefix>
     <Company>CryptoHives Open Source Initiative</Company>

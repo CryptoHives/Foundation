@@ -631,4 +631,132 @@ public class TestClass
 }";
         await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
+
+    [Test]
+    public async Task MultipleAwaitInsideForLoopReportsError()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        for (int i = 0; i < 1; i++)
+        {
+            await vt;
+        }
+        await {|#0:vt|};
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task MultipleAwaitInsideSwitchReportsError()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        await vt;
+        switch (1)
+        {
+            case 1:
+                await {|#0:vt|};
+                break;
+        }
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task MultipleAwaitInsideDoWhileReportsError()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        await vt;
+        do
+        {
+            await {|#0:vt|};
+        } while (false);
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task MultipleAwaitInsideLockReportsError()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private readonly object _sync = new object();
+
+    public void TestMethod()
+    {
+        ValueTask<int> vt = default;
+        lock (_sync)
+        {
+            int result = {|#0:vt.GetAwaiter().GetResult()|};
+        }
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.BlockingGetResult)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task SingleAwaitInsideForLoopNoDiagnostic()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            ValueTask vt = new ValueTask(Task.CompletedTask);
+            await vt;
+        }
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
 }

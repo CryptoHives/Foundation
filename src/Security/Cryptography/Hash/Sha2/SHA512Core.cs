@@ -69,6 +69,7 @@ internal static class SHA512Core
     /// </summary>
     /// <param name="block">The 128-byte block to process.</param>
     /// <param name="state">The 8-element state array to update.</param>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ProcessBlock(ReadOnlySpan<byte> block, Span<ulong> state)
     {

@@ -14,7 +14,7 @@ using Threading.Tests.Pools;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncCountdownEventUnitTests
+public class AsyncCountdownEventTests
 {
     [Test]
     public void ConstructorWithZeroCountThrows()

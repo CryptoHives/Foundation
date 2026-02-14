@@ -348,7 +348,6 @@ var customPool = new ValueTaskSourceObjectPool<bool>(customPolicy, maximumRetain
 var evt = new AsyncAutoResetEvent(
     initialState: false,
     runContinuationAsynchronously: true,
-    defaultEventQueueSize: 16,
     pool: customPool); // accepts any IGetPooledManualResetValueTaskSource<bool>
 ```
 

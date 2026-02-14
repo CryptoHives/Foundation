@@ -4,7 +4,6 @@
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
@@ -33,9 +32,7 @@ using System.Threading.Tasks;
 /// </para>
 /// </remarks>
 [TestFixture]
-[MemoryDiagnoser(displayGenColumns: false)]
-[Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)]
-[HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "AllocRatio")]
+[Config(typeof(ThreadingConfig))]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBenchmark
 {
@@ -47,7 +44,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// This is a pure synchronous baseline with no async overhead.
     /// </remarks>
     [Test]
-    [BenchmarkCategory("SetThenWait", "Standard")]
+    [BenchmarkCategory("SetThenWait", "System", "AutoResetEvent")]
     public void AutoResetEventSetThenWait()
     {
         _ = _eventStandard.Set();
@@ -63,7 +60,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Test]
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("SetThenWait", "Pooled")]
+    [BenchmarkCategory("SetThenWait", "Pooled (ValueTask)")]
     public async Task PooledAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventPooled.Set();
@@ -80,7 +77,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SetThenWait", "PooledAsTask")]
+    [BenchmarkCategory("SetThenWait", "Pooled (AsTask)")]
     public async Task PooledAsTaskAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventPooled.Set();

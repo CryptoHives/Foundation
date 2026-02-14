@@ -5,7 +5,9 @@ namespace Cryptography.Tests.Benchmarks;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 
 /// <summary>
@@ -45,19 +47,40 @@ public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
         base.GlobalSetup();
     }
 
-    [Test]
+    [Test, Repeat(5)]
     [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
     public void TestComputeHash(DataSize dataSize)
     {
         TestDataSize = dataSize;
         GlobalSetup();
+#if NET5_0_OR_GREATER
+        _outputSize = -1;
+        TryComputeHash();
+        Assert.That(_outputSize, Is.GreaterThan(0), "Hash output should not be empty.");
+        var result = _outputData.AsSpan().Slice(0, _outputSize).ToArray();
+        Assert.That(_outputSize, Is.EqualTo(HashAlgorithm.HashSize / 8));
+#else
         var result = ComputeHash();
+        Assert.That(result, Is.Not.Null, "Hash output should not be null.");
+        Assert.That(result.Length, Is.GreaterThan(0), "Hash output should not be empty.");
         Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));
-        Assert.That(result, Is.EqualTo(ComputeHash()));
+#endif
+        bool allZeros = result.All(b => b == 0);
+        Assert.That(allZeros, Is.False, "Hash output should not be all zeros.");
     }
 
     [Benchmark]
-    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(InputData);
+#if NET5_0_OR_GREATER
+    public void TryComputeHash()
+    {
+        if (HashAlgorithm.TryComputeHash(_inputData, _outputData, out int bytesWritten))
+        {
+            _outputSize = bytesWritten;
+        }
+    }
+#else
+    public byte[] ComputeHash() => HashAlgorithm.ComputeHash(_inputData);
+#endif
 }
 
 
