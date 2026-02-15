@@ -192,7 +192,7 @@ $GroupAliases = @{
     "AsconXOF"    = @("AsconXof128Xof")
     "AES-GCM"     = @("AesGcm128", "AesGcm256")
     "ChaCha"      = @("ChaCha20Poly1305", "XChaCha20Poly1305")
-    "AEAD"        = @("AesGcm128", "AesGcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")>>>>>>> main
+    "AEAD"        = @("AesGcm128", "AesGcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
 }
 
 # Get repository root

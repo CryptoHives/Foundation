@@ -6,13 +6,14 @@ namespace Cryptography.Tests.Benchmarks;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 
 /// <summary>
@@ -26,6 +27,11 @@ using System.Linq;
 /// </remarks>
 public class CipherConfig : ManualConfig
 {
+    /// <summary>
+    /// Shared instance of the short name markdown exporter.
+    /// </summary>
+    private static readonly ShortNameMarkdownExporter ShortExporter = new();
+
     public CipherConfig()
     {
         // Disable default exporters
@@ -35,8 +41,8 @@ public class CipherConfig : ManualConfig
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestCipherAlgorithm");
 
-        // Use GitHub markdown exporter
-        AddExporter(MarkdownExporter.GitHub);
+        // Export formats: markdown with short file names (class name only, no namespace)
+        AddExporter(ShortExporter);
     }
 
     /// <summary>
@@ -68,7 +74,9 @@ public class CipherConfig : ManualConfig
     }
 
     /// <summary>
-    /// Orders benchmarks by category (algorithm) then by data size.
+    /// Orders benchmarks by data size, then method (Encrypt/Decrypt), with fastest implementations
+    /// first within each group. This produces separate paragraphs for each size+method combination,
+    /// making it easy to compare Managed vs OS vs BouncyCastle.
     /// </summary>
     private class CategoryThenDataSizeOrderer : IOrderer
     {
@@ -76,19 +84,36 @@ public class CipherConfig : ManualConfig
             => benchmarksCase;
 
         public IEnumerable<BenchmarkCase> GetSummaryOrder(ImmutableArray<BenchmarkCase> benchmarksCase, Summary summary)
-            => benchmarksCase
-                .OrderBy(b => b.Parameters["TestCipherAlgorithm"]?.ToString() ?? "")
-                .ThenBy(b => GetDataSizeBytes(b));
+            => from b in benchmarksCase
+               orderby GetDataSizeBytes(b),
+                   b.Descriptor.WorkloadMethodDisplayInfo,
+                   summary[b]?.ResultStatistics?.Mean ?? double.MaxValue
+               select b;
 
         public string? GetHighlightGroupKey(BenchmarkCase benchmarkCase) => null;
 
         public string GetLogicalGroupKey(ImmutableArray<BenchmarkCase> allBenchmarksCases, BenchmarkCase benchmarkCase)
-            => benchmarkCase.Parameters["TestDataSize"]?.ToString() ?? "Default";
+        {
+            var dataSize = benchmarkCase.Parameters["TestDataSize"] as DataSize;
+            var method = benchmarkCase.Descriptor.WorkloadMethodDisplayInfo;
+            return $"{dataSize?.Name ?? "Unknown"} | {method}";
+        }
 
         public IEnumerable<IGrouping<string, BenchmarkCase>> GetLogicalGroupOrder(
             IEnumerable<IGrouping<string, BenchmarkCase>> logicalGroups,
             IEnumerable<BenchmarkLogicalGroupRule>? order = null)
-            => logicalGroups.OrderBy(g => GetDataSizeBytes(g.Key));
+            => logicalGroups
+                .OrderBy(g =>
+                {
+                    var parts = g.Key.Split('|');
+                    var sizeName = parts.Length > 0 ? parts[0].Trim() : "";
+                    return GetDataSizeBytes(sizeName);
+                })
+                .ThenBy(g =>
+                {
+                    var parts = g.Key.Split('|');
+                    return parts.Length > 1 ? parts[1].Trim() : "";
+                });
 
         public bool SeparateLogicalGroups => true;
 
@@ -108,6 +133,40 @@ public class CipherConfig : ManualConfig
                 "128KB" => 131072,
                 _ => 0
             };
+        }
+    }
+
+    /// <summary>
+    /// Custom markdown exporter that uses short file names (class name only, no namespace).
+    /// </summary>
+    /// <remarks>
+    /// Produces files like "AesGcm256Benchmark-report.md" instead of
+    /// "Cryptography.Tests.Benchmarks.AesGcm256Benchmark-report-github.md".
+    /// </remarks>
+    private sealed class ShortNameMarkdownExporter : IExporter
+    {
+        private readonly IExporter _inner = MarkdownExporter.GitHub;
+
+        public string Name => "ShortMarkdown";
+
+        public IEnumerable<string> ExportToFiles(Summary summary, ILogger consoleLogger)
+        {
+            var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
+
+            var fileName = $"{typeName}-report.md";
+            var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
+
+            using var writer = new StreamWriter(filePath);
+            using var logger = new StreamLogger(writer);
+            _inner.ExportToLog(summary, logger);
+
+            consoleLogger.WriteLine($"  // * Results exported to: {filePath}");
+            return [filePath];
+        }
+
+        public void ExportToLog(Summary summary, ILogger logger)
+        {
+            _inner.ExportToLog(summary, logger);
         }
     }
 }
