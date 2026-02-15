@@ -59,6 +59,7 @@ internal static class Poly1305
         BigInteger s = LoadLittleEndian(key.Slice(16, 16));
 
         // Process message
+        Span<byte> block = stackalloc byte[17];
         BigInteger acc = BigInteger.Zero;
         int offset = 0;
         while (offset < message.Length)
@@ -66,7 +67,6 @@ internal static class Poly1305
             int blockLen = Math.Min(BlockSize, message.Length - offset);
 
             // Load block and append 0x01
-            Span<byte> block = stackalloc byte[17];
             block.Clear();
             message.Slice(offset, blockLen).CopyTo(block);
             block[blockLen] = 0x01;

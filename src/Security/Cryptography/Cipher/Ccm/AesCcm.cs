@@ -100,9 +100,12 @@ public abstract class AesCcm : IAeadCipher
     /// <param name="ciphertext">Output buffer for ciphertext (must be same size as plaintext).</param>
     /// <param name="tag">Output buffer for authentication tag (4-16 bytes, even).</param>
     /// <param name="associatedData">Additional authenticated data (optional).</param>
-    public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                        Span<byte> ciphertext, Span<byte> tag,
-                        ReadOnlySpan<byte> associatedData = default)
+    public void Encrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> plaintext,
+        Span<byte> ciphertext,
+        Span<byte> tag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertext.Length < plaintext.Length)
             throw new ArgumentException("Ciphertext buffer too small.", nameof(ciphertext));
@@ -126,9 +129,12 @@ public abstract class AesCcm : IAeadCipher
     /// <param name="plaintext">Output buffer for plaintext (must be same size as ciphertext).</param>
     /// <param name="associatedData">Additional authenticated data (optional).</param>
     /// <returns>True if authentication succeeded; otherwise false.</returns>
-    public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
-                        ReadOnlySpan<byte> tag, Span<byte> plaintext,
-                        ReadOnlySpan<byte> associatedData = default)
+    public bool Decrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> ciphertext,
+        ReadOnlySpan<byte> tag,
+        Span<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (plaintext.Length < ciphertext.Length)
             throw new ArgumentException("Plaintext buffer too small.", nameof(plaintext));
@@ -151,8 +157,10 @@ public abstract class AesCcm : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Encrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         byte[] result = new byte[plaintext.Length + TagSizeBytes];
         Encrypt(nonce, plaintext, result.AsSpan(0, plaintext.Length),
@@ -161,17 +169,19 @@ public abstract class AesCcm : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextAndTag,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Decrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> ciphertextWithTag,
+        ReadOnlySpan<byte> associatedData = default)
     {
-        if (ciphertextAndTag.Length < TagSizeBytes)
+        if (ciphertextWithTag.Length < TagSizeBytes)
             throw new CryptographicException("Ciphertext too short.");
 
-        int ciphertextLength = ciphertextAndTag.Length - TagSizeBytes;
+        int ciphertextLength = ciphertextWithTag.Length - TagSizeBytes;
         byte[] plaintext = new byte[ciphertextLength];
 
-        if (!Decrypt(nonce, ciphertextAndTag.Slice(0, ciphertextLength),
-                    ciphertextAndTag.Slice(ciphertextLength, TagSizeBytes),
+        if (!Decrypt(nonce, ciphertextWithTag.Slice(0, ciphertextLength),
+                    ciphertextWithTag.Slice(ciphertextLength, TagSizeBytes),
                     plaintext, associatedData))
         {
             throw new CryptographicException("Authentication tag mismatch.");
@@ -183,11 +193,24 @@ public abstract class AesCcm : IAeadCipher
     /// <inheritdoc/>
     public void Dispose()
     {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases resources used by this instance.
+    /// </summary>
+    /// <param name="disposing">True if called from <see cref="Dispose()"/>, false if from finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
         if (!_disposed)
         {
-            Array.Clear(_key, 0, _key.Length);
+            if (disposing)
+            {
+                Array.Clear(_key, 0, _key.Length);
+            }
+
             _disposed = true;
         }
-        GC.SuppressFinalize(this);
     }
 }

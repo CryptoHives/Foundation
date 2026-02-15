@@ -75,10 +75,8 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     /// <param name="key">The 32-byte key.</param>
     public XChaCha20Poly1305(byte[] key)
     {
-        if (key == null)
-            throw new ArgumentNullException(nameof(key));
-        if (key.Length != KeySizeBytesConst)
-            throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes.", nameof(key));
+        if (key == null) throw new ArgumentNullException(nameof(key));
+        if (key.Length != KeySizeBytesConst) throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes.", nameof(key));
 
         _key = new byte[KeySizeBytesConst];
         Buffer.BlockCopy(key, 0, _key, 0, KeySizeBytesConst);
@@ -104,9 +102,12 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     public static XChaCha20Poly1305 Create(byte[] key) => new(key);
 
     /// <inheritdoc/>
-    public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                        Span<byte> ciphertext, Span<byte> tag,
-                        ReadOnlySpan<byte> associatedData = default)
+    public void Encrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> plaintext,
+        Span<byte> ciphertext,
+        Span<byte> tag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
@@ -137,9 +138,11 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
-                        ReadOnlySpan<byte> tag, Span<byte> plaintext,
-                        ReadOnlySpan<byte> associatedData = default)
+    public bool Decrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> ciphertext,
+        ReadOnlySpan<byte> tag, Span<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
@@ -179,8 +182,10 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Encrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         byte[] result = new byte[plaintext.Length + TagSizeBytesConst];
         Encrypt(nonce, plaintext, result.AsSpan(0, plaintext.Length),
@@ -189,17 +194,19 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextAndTag,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Decrypt(
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> ciphertextWithTag,
+        ReadOnlySpan<byte> associatedData = default)
     {
-        if (ciphertextAndTag.Length < TagSizeBytesConst)
+        if (ciphertextWithTag.Length < TagSizeBytesConst)
             throw new CryptographicException("Ciphertext too short.");
 
-        int ciphertextLength = ciphertextAndTag.Length - TagSizeBytesConst;
+        int ciphertextLength = ciphertextWithTag.Length - TagSizeBytesConst;
         byte[] plaintext = new byte[ciphertextLength];
 
-        if (!Decrypt(nonce, ciphertextAndTag.Slice(0, ciphertextLength),
-                    ciphertextAndTag.Slice(ciphertextLength, TagSizeBytesConst),
+        if (!Decrypt(nonce, ciphertextWithTag.Slice(0, ciphertextLength),
+                    ciphertextWithTag.Slice(ciphertextLength, TagSizeBytesConst),
                     plaintext, associatedData))
         {
             throw new CryptographicException("Authentication tag mismatch.");

@@ -200,11 +200,25 @@ public abstract class AesGcm : IAeadCipher
     /// <inheritdoc/>
     public void Dispose()
     {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases resources used by this instance.
+    /// </summary>
+    /// <param name="disposing">True if called from <see cref="Dispose()"/>, false if from finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
         if (!_disposed)
         {
-            Array.Clear(_key, 0, _key.Length);
-            Array.Clear(_h, 0, _h.Length);
-            Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
+            if (disposing)
+            {
+                Array.Clear(_key, 0, _key.Length);
+                Array.Clear(_h, 0, _h.Length);
+                Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
+            }
+
             _disposed = true;
         }
     }
