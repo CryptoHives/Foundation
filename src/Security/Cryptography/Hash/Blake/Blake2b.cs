@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
@@ -336,19 +336,19 @@ public sealed partial class Blake2b : HashAlgorithm
 
     private void ExtractOutputScalar(Span<byte> destination)
     {
-        int fullWords = _outputBytes / 8;
+        int fullWords = _outputBytes / sizeof(UInt64);
         for (int i = 0; i < fullWords; i++)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * 8), _state[i]);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * sizeof(UInt64)), _state[i]);
         }
 
         // Handle partial final word
-        int remainingBytes = _outputBytes % 8;
+        int remainingBytes = _outputBytes % sizeof(UInt64);
         if (remainingBytes > 0)
         {
-            Span<byte> temp = stackalloc byte[8];
+            Span<byte> temp = stackalloc byte[sizeof(UInt64)];
             BinaryPrimitives.WriteUInt64LittleEndian(temp, _state[fullWords]);
-            temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 8));
+            temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt64)));
         }
     }
 
@@ -391,7 +391,7 @@ public sealed partial class Blake2b : HashAlgorithm
         {
             for (int i = 0; i < ScratchSize; i++)
             {
-                m[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * 8));
+                m[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * sizeof(UInt64)));
             }
         }
 

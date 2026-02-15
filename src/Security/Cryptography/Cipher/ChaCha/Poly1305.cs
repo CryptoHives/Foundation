@@ -4,6 +4,8 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -91,23 +93,41 @@ internal static class Poly1305
     /// <summary>
     /// Computes Poly1305 MAC for ChaCha20-Poly1305 AEAD construction.
     /// </summary>
-    public static void ComputeAeadTag(ReadOnlySpan<byte> key, ReadOnlySpan<byte> aad,
-                                       ReadOnlySpan<byte> ciphertext, Span<byte> tag)
+    public static void ComputeAeadTag(
+        ReadOnlySpan<byte> key,
+        ReadOnlySpan<byte> aad,
+        ReadOnlySpan<byte> ciphertext,
+        Span<byte> tag)
     {
         int aadPadded = (aad.Length + 15) & ~15;
         int ctPadded = (ciphertext.Length + 15) & ~15;
         int totalLen = aadPadded + ctPadded + 16;
 
-        Span<byte> macInput = totalLen <= 512 ? stackalloc byte[totalLen] : new byte[totalLen];
-        macInput.Clear();
+        byte[]? macInputArray = null;
+        Span<byte> macInput = totalLen <= 512
+            ? stackalloc byte[totalLen]
+            : (macInputArray = ArrayPool<byte>.Shared.Rent(totalLen)).AsSpan(0, totalLen);
 
-        int pos = 0;
-        aad.CopyTo(macInput.Slice(pos)); pos += aadPadded;
-        ciphertext.CopyTo(macInput.Slice(pos)); pos += ctPadded;
-        StoreU64(macInput, pos, (ulong)aad.Length); pos += 8;
-        StoreU64(macInput, pos, (ulong)ciphertext.Length);
+        try
+        {
+            macInput.Clear();
+            aad.CopyTo(macInput.Slice(0));
+            int pos = aadPadded;
+            ciphertext.CopyTo(macInput.Slice(pos));
+            pos += ctPadded;
+            BinaryPrimitives.WriteUInt64LittleEndian(macInput.Slice(pos), (ulong)aad.Length);
+            pos += sizeof(UInt64);
+            BinaryPrimitives.WriteUInt64LittleEndian(macInput.Slice(pos), (ulong)ciphertext.Length);
 
-        ComputeTag(key, macInput, tag);
+            ComputeTag(key, macInput, tag);
+        }
+        finally
+        {
+            if (macInputArray != null)
+            {
+                ArrayPool<byte>.Shared.Return(macInputArray);
+            }
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -118,18 +138,5 @@ internal static class Poly1305
         data.CopyTo(temp);
         temp[data.Length] = 0; // Ensure positive
         return new BigInteger(temp);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void StoreU64(Span<byte> b, int i, ulong v)
-    {
-        b[i] = (byte)v;
-        b[i + 1] = (byte)(v >> 8);
-        b[i + 2] = (byte)(v >> 16);
-        b[i + 3] = (byte)(v >> 24);
-        b[i + 4] = (byte)(v >> 32);
-        b[i + 5] = (byte)(v >> 40);
-        b[i + 6] = (byte)(v >> 48);
-        b[i + 7] = (byte)(v >> 56);
     }
 }

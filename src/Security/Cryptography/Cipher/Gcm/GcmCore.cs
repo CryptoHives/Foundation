@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -100,8 +101,8 @@ internal static class GcmCore
         Span<byte> lenBlock = stackalloc byte[BlockSizeBytes];
         ulong aadBits = (ulong)aad.Length * 8;
         ulong cBits = (ulong)ciphertext.Length * 8;
-        StoreBigEndian64(lenBlock, 0, aadBits);
-        StoreBigEndian64(lenBlock, 8, cBits);
+        BinaryPrimitives.WriteUInt64BigEndian(lenBlock.Slice(0), aadBits);
+        BinaryPrimitives.WriteUInt64BigEndian(lenBlock.Slice(sizeof(UInt64)), cBits);
 
         // XOR and multiply
         for (int i = 0; i < BlockSizeBytes; i++)
@@ -180,7 +181,7 @@ internal static class GcmCore
             nonce.CopyTo(paddedNonce);
             // Padding zeros are already there from Clear()
             // Add length in bits at the end
-            StoreBigEndian64(paddedNonce.Slice(paddedLen - 8), 0, (ulong)nonce.Length * 8);
+            BinaryPrimitives.WriteUInt64BigEndian(paddedNonce.Slice(paddedLen - sizeof(UInt64)), (ulong)nonce.Length * 8);
 
             GHash(h, paddedNonce, j0);
         }
@@ -196,10 +197,10 @@ internal static class GcmCore
     public static void GfMul(ReadOnlySpan<byte> x, ReadOnlySpan<byte> y, Span<byte> result)
     {
         // Convert to 64-bit words (big-endian)
-        ulong x0 = LoadBigEndian64(x, 0);
-        ulong x1 = LoadBigEndian64(x, 8);
-        ulong y0 = LoadBigEndian64(y, 0);
-        ulong y1 = LoadBigEndian64(y, 8);
+        ulong x0 = BinaryPrimitives.ReadUInt64BigEndian(x.Slice(0));
+        ulong x1 = BinaryPrimitives.ReadUInt64BigEndian(x.Slice(sizeof(UInt64)));
+        ulong y0 = BinaryPrimitives.ReadUInt64BigEndian(y.Slice(0));
+        ulong y1 = BinaryPrimitives.ReadUInt64BigEndian(y.Slice(sizeof(UInt64)));
 
         ulong z0 = 0, z1 = 0;
 
@@ -240,8 +241,8 @@ internal static class GcmCore
             }
         }
 
-        StoreBigEndian64(result, 0, z0);
-        StoreBigEndian64(result, 8, z1);
+        BinaryPrimitives.WriteUInt64BigEndian(result.Slice(0), z0);
+        BinaryPrimitives.WriteUInt64BigEndian(result.Slice(sizeof(UInt64)), z1);
     }
 
     /// <summary>
@@ -279,31 +280,5 @@ internal static class GcmCore
 
             offset += BlockSizeBytes;
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong LoadBigEndian64(ReadOnlySpan<byte> data, int offset)
-    {
-        return ((ulong)data[offset] << 56) |
-               ((ulong)data[offset + 1] << 48) |
-               ((ulong)data[offset + 2] << 40) |
-               ((ulong)data[offset + 3] << 32) |
-               ((ulong)data[offset + 4] << 24) |
-               ((ulong)data[offset + 5] << 16) |
-               ((ulong)data[offset + 6] << 8) |
-               data[offset + 7];
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void StoreBigEndian64(Span<byte> data, int offset, ulong value)
-    {
-        data[offset] = (byte)(value >> 56);
-        data[offset + 1] = (byte)(value >> 48);
-        data[offset + 2] = (byte)(value >> 40);
-        data[offset + 3] = (byte)(value >> 32);
-        data[offset + 4] = (byte)(value >> 24);
-        data[offset + 5] = (byte)(value >> 16);
-        data[offset + 6] = (byte)(value >> 8);
-        data[offset + 7] = (byte)value;
     }
 }

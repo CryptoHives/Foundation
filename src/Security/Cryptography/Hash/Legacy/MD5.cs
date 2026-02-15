@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -177,9 +177,9 @@ public sealed class MD5 : HashAlgorithm
 
         // Output hash (little-endian)
         BinaryPrimitives.WriteUInt32LittleEndian(destination, _a);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(4), _b);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(8), _c);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(12), _d);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(sizeof(UInt32)), _b);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(2 * sizeof(UInt32)), _c);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(3 * sizeof(UInt32)), _d);
 
         bytesWritten = HashSizeBytes;
         return true;
@@ -207,7 +207,7 @@ public sealed class MD5 : HashAlgorithm
             // Parse block into 16 little-endian 32-bit words
             for (int i = 0; i < 16; i++)
             {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
+                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * sizeof(UInt32)));
             }
 
             uint a = _a;

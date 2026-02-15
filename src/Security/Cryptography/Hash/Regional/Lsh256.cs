@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -253,12 +253,12 @@ public sealed class Lsh256 : HashAlgorithm
             Compress(_buffer);
 
             // Finalization: H[l] = cv_l[l] ^ cv_r[l]
-            int fullWords = _hashSizeBytes / 4;
+            int fullWords = _hashSizeBytes / sizeof(UInt32);
             int outOff = 0;
             for (int l = 0; l < fullWords; l++)
             {
-                BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(outOff, 4), _cvL[l] ^ _cvR[l]);
-                outOff += 4;
+                BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(outOff, sizeof(UInt32)), _cvL[l] ^ _cvR[l]);
+                outOff += sizeof(UInt32);
             }
 
             bytesWritten = _hashSizeBytes;
@@ -298,10 +298,10 @@ public sealed class Lsh256 : HashAlgorithm
             for (int i = 0; i < NumWords; i++)
             {
                 int off = i << 2;
-                el[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off, 4));
-                er[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 32, 4));
-                ol[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 64, 4));
-                or2[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 96, 4));
+                el[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off, sizeof(UInt32)));
+                er[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 32, sizeof(UInt32)));
+                ol[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 64, sizeof(UInt32)));
+                or2[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 96, sizeof(UInt32)));
             }
 
             // Step 0 (even): MsgAdd, Mix, WordPerm

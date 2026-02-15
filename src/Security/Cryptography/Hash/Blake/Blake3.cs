@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -83,12 +83,12 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <summary>
     /// The required key size in uint words for internal usage.
     /// </summary>
-    private const int KeySizeWords = KeySizeBytes / sizeof(uint);
+    private const int KeySizeWords = KeySizeBytes / sizeof(UInt32);
 
     /// <summary>
     /// The block size in uint words for internal usage.
     /// </summary>
-    private const int BlockSizeWords = BlockSizeBytes / sizeof(uint);
+    private const int BlockSizeWords = BlockSizeBytes / sizeof(UInt32);
 
     // BLAKE3 flags
     private const uint FlagChunkStart = 1 << 0;
@@ -433,11 +433,11 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         Span<byte> block = stackalloc byte[BlockSizeBytes];
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * 4), left[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * sizeof(UInt32)), left[i]);
         }
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * 4), right[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * sizeof(UInt32)), right[i]);
         }
 
         uint flags = _baseFlags | FlagParent;

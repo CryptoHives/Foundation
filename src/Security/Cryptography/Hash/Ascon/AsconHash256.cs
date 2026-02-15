@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -82,10 +82,10 @@ public sealed class AsconHash256 : AsconHashAlgorithm
         // Squeeze output: 4 blocks of 64 bits = 256 bits
         BinaryPrimitives.WriteUInt64LittleEndian(destination, _x0);
         P12();
-        BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(8), _x0);
+        BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(sizeof(UInt64)), _x0);
         P12();
-        BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(16), _x0);
+        BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(2 * sizeof(UInt64)), _x0);
         P12();
-        BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(24), _x0);
+        BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(3 * sizeof(UInt64)), _x0);
     }
 }

@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -169,8 +170,7 @@ internal static class AesCore
             // Copy key bytes to first Nk words
             for (int i = 0; i < nk; i++)
             {
-                roundKeys[i] = ((uint)key[4 * i] << 24) | ((uint)key[4 * i + 1] << 16) |
-                               ((uint)key[4 * i + 2] << 8) | key[4 * i + 3];
+                roundKeys[i] = BinaryPrimitives.ReadUInt32BigEndian(key.Slice(i * sizeof(UInt32)));
             }
 
             // Generate remaining round key words
@@ -247,10 +247,10 @@ internal static class AesCore
         unchecked
         {
             // Load input as 4 columns (state) and add initial round key
-            uint s0 = LoadBigEndian(input, 0) ^ roundKeys[0];
-            uint s1 = LoadBigEndian(input, 4) ^ roundKeys[1];
-            uint s2 = LoadBigEndian(input, 8) ^ roundKeys[2];
-            uint s3 = LoadBigEndian(input, 12) ^ roundKeys[3];
+            uint s0 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(0 * sizeof(UInt32))) ^ roundKeys[0];
+            uint s1 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(1 * sizeof(UInt32))) ^ roundKeys[1];
+            uint s2 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(2 * sizeof(UInt32))) ^ roundKeys[2];
+            uint s3 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(3 * sizeof(UInt32))) ^ roundKeys[3];
 
             uint t0, t1, t2, t3;
             int keyOffset = 4;
@@ -278,10 +278,10 @@ internal static class AesCore
                  ((uint)SBox[(s1 >> 8) & 0xff] << 8) ^ SBox[s2 & 0xff] ^ roundKeys[keyOffset + 3];
 
             // Store output
-            StoreBigEndian(output, 0, t0);
-            StoreBigEndian(output, 4, t1);
-            StoreBigEndian(output, 8, t2);
-            StoreBigEndian(output, 12, t3);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(sizeof(UInt32)), t1);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(2 * sizeof(UInt32)), t2);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(3 * sizeof(UInt32)), t3);
         }
     }
 
@@ -298,10 +298,10 @@ internal static class AesCore
         unchecked
         {
             // Load input as 4 columns and add initial round key
-            uint s0 = LoadBigEndian(input, 0) ^ roundKeys[0];
-            uint s1 = LoadBigEndian(input, 4) ^ roundKeys[1];
-            uint s2 = LoadBigEndian(input, 8) ^ roundKeys[2];
-            uint s3 = LoadBigEndian(input, 12) ^ roundKeys[3];
+            uint s0 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(0 * sizeof(UInt32))) ^ roundKeys[0];
+            uint s1 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(1 * sizeof(UInt32))) ^ roundKeys[1];
+            uint s2 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(2 * sizeof(UInt32))) ^ roundKeys[2];
+            uint s3 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(3 * sizeof(UInt32))) ^ roundKeys[3];
 
             uint t0, t1, t2, t3;
             int keyOffset = 4;
@@ -329,10 +329,10 @@ internal static class AesCore
                  ((uint)InvSBox[(s1 >> 8) & 0xff] << 8) ^ InvSBox[s0 & 0xff] ^ roundKeys[keyOffset + 3];
 
             // Store output
-            StoreBigEndian(output, 0, t0);
-            StoreBigEndian(output, 4, t1);
-            StoreBigEndian(output, 8, t2);
-            StoreBigEndian(output, 12, t3);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(sizeof(UInt32)), t1);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(2 * sizeof(UInt32)), t2);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(3 * sizeof(UInt32)), t3);
         }
     }
 
@@ -380,31 +380,6 @@ internal static class AesCore
                    Td2[SBox[(w >> 8) & 0xff]] ^
                    Td3[SBox[w & 0xff]];
         }
-    }
-
-    /// <summary>
-    /// Loads a 32-bit big-endian value from a byte span.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint LoadBigEndian(ReadOnlySpan<byte> data, int offset)
-    {
-        unchecked
-        {
-            return ((uint)data[offset] << 24) | ((uint)data[offset + 1] << 16) |
-                   ((uint)data[offset + 2] << 8) | data[offset + 3];
-        }
-    }
-
-    /// <summary>
-    /// Stores a 32-bit big-endian value to a byte span.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void StoreBigEndian(Span<byte> data, int offset, uint value)
-    {
-        data[offset] = (byte)(value >> 24);
-        data[offset + 1] = (byte)(value >> 16);
-        data[offset + 2] = (byte)(value >> 8);
-        data[offset + 3] = (byte)value;
     }
 
     /// <summary>

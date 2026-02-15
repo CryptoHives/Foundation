@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1707 // Identifiers should not contain underscores
@@ -92,7 +92,7 @@ public sealed class SHA512_256 : Sha2HashAlgorithm<ulong>
         // Output first 4 words (32 bytes) in big-endian
         for (int i = 0; i < 4; i++)
         {
-            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * 8), state[i]);
+            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * sizeof(UInt64)), state[i]);
         }
     }
 }

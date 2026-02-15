@@ -92,8 +92,8 @@ public sealed class SHA512_224 : Sha2HashAlgorithm<ulong>
         // Output first 3.5 words (28 bytes) in big-endian
         for (int i = 0; i < 3; i++)
         {
-            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * 8), state[i]);
+            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * sizeof(UInt64)), state[i]);
         }
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(24), (uint)(state[3] >> 32));
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(3 * sizeof(UInt64)), (uint)(state[3] >> 32));
     }
 }

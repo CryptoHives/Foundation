@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -90,7 +90,7 @@ public sealed class SHA384 : Sha2HashAlgorithm<ulong>
         // Convert first 6 words of state to bytes (big-endian), truncated to 48 bytes
         for (int i = 0; i < 6; i++)
         {
-            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * 8), state[i]);
+            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * sizeof(UInt64)), state[i]);
         }
     }
 }

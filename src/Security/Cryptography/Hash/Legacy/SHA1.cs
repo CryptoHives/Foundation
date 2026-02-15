@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -136,7 +136,7 @@ public sealed class SHA1 : HashAlgorithm
         // Output 5 words (20 bytes) in big-endian
         for (int i = 0; i < 5; i++)
         {
-            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * 4), _state[i]);
+            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * sizeof(UInt32)), _state[i]);
         }
 
         bytesWritten = HashSizeBytes;
@@ -163,7 +163,7 @@ public sealed class SHA1 : HashAlgorithm
             // Parse block into 16 32-bit words (big-endian)
             for (int i = 0; i < 16; i++)
             {
-                _w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * 4));
+                _w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
             }
 
             // Extend 16 words to 80 words

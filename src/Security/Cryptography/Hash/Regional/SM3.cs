@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -152,13 +152,13 @@ public sealed class SM3 : HashAlgorithm
 
         // Output hash (big-endian)
         BinaryPrimitives.WriteUInt32BigEndian(destination, _v0);
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(4), _v1);
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(8), _v2);
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(12), _v3);
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(16), _v4);
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(20), _v5);
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(24), _v6);
-        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(28), _v7);
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(sizeof(UInt32)), _v1);
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(2 * sizeof(UInt32)), _v2);
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(3 * sizeof(UInt32)), _v3);
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(4 * sizeof(UInt32)), _v4);
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(5 * sizeof(UInt32)), _v5);
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(6 * sizeof(UInt32)), _v6);
+        BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(7 * sizeof(UInt32)), _v7);
 
         bytesWritten = HashSizeBytes;
         return true;
@@ -186,7 +186,7 @@ public sealed class SM3 : HashAlgorithm
             // Message expansion - load first 16 words
             for (int i = 0; i < 16; i++)
             {
-                w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * 4));
+                w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
             }
 
             // Message expansion - compute W[16..67]

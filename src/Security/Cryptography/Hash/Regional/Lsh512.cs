@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -278,19 +278,19 @@ public sealed class Lsh512 : HashAlgorithm
             Compress(_buffer);
 
             // Finalization: H[l] = cv_l[l] ^ cv_r[l]
-            int fullWords = _hashSizeBytes / 8;
+            int fullWords = _hashSizeBytes / sizeof(UInt64);
             int outOff = 0;
             for (int l = 0; l < fullWords; l++)
             {
-                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(outOff, 8), _cvL[l] ^ _cvR[l]);
-                outOff += 8;
+                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(outOff, sizeof(UInt64)), _cvL[l] ^ _cvR[l]);
+                outOff += sizeof(UInt64);
             }
 
             // Handle partial word (LSH-512-224: 28 bytes = 3 full words + 4 bytes)
             int extraBytes = _hashSizeBytes - outOff;
             if (extraBytes > 0)
             {
-                Span<byte> temp = stackalloc byte[8];
+                Span<byte> temp = stackalloc byte[sizeof(UInt64)];
                 BinaryPrimitives.WriteUInt64LittleEndian(temp, _cvL[fullWords] ^ _cvR[fullWords]);
                 temp.Slice(0, extraBytes).CopyTo(destination.Slice(outOff));
             }
@@ -332,10 +332,10 @@ public sealed class Lsh512 : HashAlgorithm
             for (int i = 0; i < NumWords; i++)
             {
                 int off = i << 3;
-                el[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off, 8));
-                er[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off + 64, 8));
-                ol[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off + 128, 8));
-                or2[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off + 192, 8));
+                el[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off, sizeof(UInt64)));
+                er[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off + 64, sizeof(UInt64)));
+                ol[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off + 128, sizeof(UInt64)));
+                or2[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(off + 192, sizeof(UInt64)));
             }
 
             // Step 0 (even): MsgAdd, Mix, WordPerm

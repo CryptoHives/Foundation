@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -186,10 +186,10 @@ public sealed class Ripemd160 : HashAlgorithm
 
         // Output hash (little-endian)
         BinaryPrimitives.WriteUInt32LittleEndian(destination, _h0);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(4), _h1);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(8), _h2);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(12), _h3);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(16), _h4);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(sizeof(UInt32)), _h1);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(2 * sizeof(UInt32)), _h2);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(3 * sizeof(UInt32)), _h3);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(4 * sizeof(UInt32)), _h4);
 
         bytesWritten = HashSizeBytes;
         return true;
@@ -216,7 +216,7 @@ public sealed class Ripemd160 : HashAlgorithm
         {
             for (int i = 0; i < 16; i++)
             {
-                x[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * 4));
+                x[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * sizeof(UInt32)));
             }
 
             uint al = _h0, bl = _h1, cl = _h2, dl = _h3, el = _h4;

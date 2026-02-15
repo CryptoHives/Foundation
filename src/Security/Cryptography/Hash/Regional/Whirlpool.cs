@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Ignore Naming Styles, use identifiers from specs to make the code more readable
@@ -257,7 +257,7 @@ public sealed class Whirlpool : HashAlgorithm
         // Output hash (big-endian)
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * 8), _hash[i]);
+            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * sizeof(UInt64)), _hash[i]);
         }
 
         bytesWritten = HashSizeBytes;
@@ -289,7 +289,7 @@ public sealed class Whirlpool : HashAlgorithm
             // Convert block to ulong array
             for (int i = 0; i < 8; i++)
             {
-                blockData[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * 8));
+                blockData[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * sizeof(UInt64)));
             }
 
             // Initialize state with key (current hash) XOR block

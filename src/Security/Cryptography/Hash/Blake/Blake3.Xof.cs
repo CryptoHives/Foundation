@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -191,11 +191,11 @@ public sealed partial class Blake3
         Span<byte> block = stackalloc byte[BlockSizeBytes];
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * 4), left[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * sizeof(UInt32)), left[i]);
         }
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * 4), right[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * sizeof(UInt32)), right[i]);
         }
 
         CopyBlockUInt32LittleEndian(block, _rootBlock);
@@ -226,11 +226,11 @@ public sealed partial class Blake3
         // Full 16-word output: v[i] ^ v[i+8] || v[i+8] ^ rootCv[i]
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(i * 4), v[i] ^ v[i + 8]);
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(i * sizeof(UInt32)), v[i] ^ v[i + 8]);
         }
         for (int i = 0; i < 8; i++)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(32 + i * 4), v[i + 8] ^ _rootCv[i]);
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(32 + i * sizeof(UInt32)), v[i + 8] ^ _rootCv[i]);
         }
     }
 }
