@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
@@ -176,14 +177,27 @@ internal static class GcmCore
             int s = (BlockSizeBytes - (nonce.Length % BlockSizeBytes)) % BlockSizeBytes;
             int paddedLen = nonce.Length + s + BlockSizeBytes;
 
-            Span<byte> paddedNonce = paddedLen <= 256 ? stackalloc byte[paddedLen] : new byte[paddedLen];
-            paddedNonce.Clear();
-            nonce.CopyTo(paddedNonce);
-            // Padding zeros are already there from Clear()
-            // Add length in bits at the end
-            BinaryPrimitives.WriteUInt64BigEndian(paddedNonce.Slice(paddedLen - sizeof(UInt64)), (ulong)nonce.Length * 8);
+            byte[]? paddedArray = null;
+            Span<byte> paddedNonce = paddedLen <= 256
+                ? stackalloc byte[paddedLen]
+                : (paddedArray = ArrayPool<byte>.Shared.Rent(paddedLen)).AsSpan(0, paddedLen);
+            try
+            {
+                paddedNonce.Clear();
+                nonce.CopyTo(paddedNonce);
+                // Padding zeros are already there from Clear()
+                // Add length in bits at the end
+                BinaryPrimitives.WriteUInt64BigEndian(paddedNonce.Slice(paddedLen - sizeof(UInt64)), (ulong)nonce.Length * 8);
 
-            GHash(h, paddedNonce, j0);
+                GHash(h, paddedNonce, j0);
+            }
+            finally
+            {
+                if (paddedArray != null)
+                {
+                    ArrayPool<byte>.Shared.Return(paddedArray);
+                }
+            }
         }
     }
 
