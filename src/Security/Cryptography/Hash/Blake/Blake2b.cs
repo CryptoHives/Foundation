@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
@@ -9,7 +9,6 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -337,10 +336,8 @@ public sealed partial class Blake2b : HashAlgorithm
     private void ExtractOutputScalar(Span<byte> destination)
     {
         int fullWords = _outputBytes / sizeof(UInt64);
-        for (int i = 0; i < fullWords; i++)
-        {
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * sizeof(UInt64)), _state[i]);
-        }
+
+        BinarySpans.WriteUInt64LittleEndian(_state.AsSpan(0, fullWords), destination);
 
         // Handle partial final word
         int remainingBytes = _outputBytes % sizeof(UInt64);
@@ -382,18 +379,7 @@ public sealed partial class Blake2b : HashAlgorithm
         Span<ulong> m = stackalloc ulong[ScratchSize];
 
         // Parse message block into 16 64-bit words (little-endian)
-        // On little-endian platforms, directly reinterpret the byte span as ulong.
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, ulong>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < ScratchSize; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(i * sizeof(UInt64)));
-            }
-        }
+        BinarySpans.ReadUInt64LittleEndian(block, m);
 
         // Initialize working vector
         _state.CopyTo(v.Slice(0, StateSize));

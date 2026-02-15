@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -164,7 +164,7 @@ public sealed partial class Blake3
         if (lastBlockLen == BlockSizeBytes)
         {
             // Full last block: read directly from chunk buffer
-            CopyBlockUInt32LittleEndian(_chunkBuffer.AsSpan(lastBlockOffset, BlockSizeBytes), _rootBlock);
+            BinarySpans.ReadUInt32LittleEndian(_chunkBuffer.AsSpan(lastBlockOffset, BlockSizeBytes), _rootBlock);
         }
         else
         {
@@ -175,7 +175,7 @@ public sealed partial class Blake3
                 _chunkBuffer.AsSpan(lastBlockOffset, lastBlockLen).CopyTo(block);
             }
 
-            CopyBlockUInt32LittleEndian(block, _rootBlock);
+            BinarySpans.ReadUInt32LittleEndian(block, _rootBlock);
         }
 
         Array.Copy(_cv, _rootCv, KeySizeWords);
@@ -188,17 +188,10 @@ public sealed partial class Blake3
     /// </summary>
     private void SaveParentAsRoot(ReadOnlySpan<uint> left, ReadOnlySpan<uint> right)
     {
-        Span<byte> block = stackalloc byte[BlockSizeBytes];
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * sizeof(UInt32)), left[i]);
-        }
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * sizeof(UInt32)), right[i]);
-        }
+        // Copy left[8] and right[8] directly into _rootBlock[16]
+        left.Slice(0, 8).CopyTo(_rootBlock);
+        right.Slice(0, 8).CopyTo(_rootBlock.AsSpan(8));
 
-        CopyBlockUInt32LittleEndian(block, _rootBlock);
         Array.Copy(_keyWords, _rootCv, KeySizeWords);
         _rootBlockLen = BlockSizeBytes;
         _rootFlags = _baseFlags | FlagParent | FlagRoot;

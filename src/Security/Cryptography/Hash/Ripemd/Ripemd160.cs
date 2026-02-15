@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -214,10 +214,7 @@ public sealed class Ripemd160 : HashAlgorithm
 
         unchecked
         {
-            for (int i = 0; i < 16; i++)
-            {
-                x[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * sizeof(UInt32)));
-            }
+            BinarySpans.ReadUInt32LittleEndian(block, x);
 
             uint al = _h0, bl = _h1, cl = _h2, dl = _h3, el = _h4;
             uint ar = _h0, br = _h1, cr = _h2, dr = _h3, er = _h4;

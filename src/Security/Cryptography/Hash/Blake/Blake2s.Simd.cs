@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
@@ -88,10 +88,8 @@ public sealed partial class Blake2s
         _stateVec1.CopyTo(temp[4..]);
 
         int fullWords = _outputBytes / sizeof(UInt32);
-        for (int i = 0; i < fullWords; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(i * sizeof(UInt32)), temp[i]);
-        }
+
+        BinarySpans.WriteUInt32LittleEndian(temp.Slice(0, fullWords), destination);
 
         int remainingBytes = _outputBytes % sizeof(UInt32);
         if (remainingBytes > 0)
@@ -128,7 +126,7 @@ public sealed partial class Blake2s
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];
-        CopyBlockUInt32LittleEndian(block, m);
+        BinarySpans.ReadUInt32LittleEndian(block, m);
 
         // Get base references (avoids bounds checking in loop)
         ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);
@@ -201,7 +199,7 @@ public sealed partial class Blake2s
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];
-        CopyBlockUInt32LittleEndian(block, m);
+        BinarySpans.ReadUInt32LittleEndian(block, m);
 
         // Get base references (avoids bounds checking in loop)
         ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);

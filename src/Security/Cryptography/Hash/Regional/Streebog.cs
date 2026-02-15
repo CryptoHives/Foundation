@@ -335,7 +335,7 @@ public sealed class Streebog : HashAlgorithm
     {
         // Convert message to ulong array
         Span<ulong> mn = stackalloc ulong[BlockSizeWords];
-        CopyBlockAsUInt64LittleEndian(m, mn);
+        BinarySpans.ReadUInt64LittleEndian(m, mn);
 
         // g_N(h, m)
         GN(_h, _n, mn);
@@ -365,7 +365,7 @@ public sealed class Streebog : HashAlgorithm
 
         // Convert padded block to ulongs
         Span<ulong> p = stackalloc ulong[BlockSizeWords];
-        CopyBlockAsUInt64LittleEndian(paddedBlock, p);
+        BinarySpans.ReadUInt64LittleEndian(paddedBlock, p);
 
         // Stage 3: Process padded block
         GN(_h, _n, p);
@@ -388,12 +388,8 @@ public sealed class Streebog : HashAlgorithm
             index = BlockSizeWords / 2;
         }
 
-        int offset = 0;
-        for (int i = index; i < BlockSizeWords; i++)
-        {
-            BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(offset), _h[i]);
-            offset += sizeof(UInt64);
-        }
+        int wordsToWrite = BlockSizeWords - index;
+        BinarySpans.WriteUInt64LittleEndian(_h.AsSpan(index, wordsToWrite), destination);
 
         bytesWritten = _hashSizeBytes;
         return true;
@@ -586,10 +582,7 @@ public sealed class Streebog : HashAlgorithm
         r[7] = T7[data[7]] ^ T6[data[15]] ^ T5[data[23]] ^ T4[data[31]] ^ T3[data[39]] ^ T2[data[47]] ^ T1[data[55]] ^ T0[data[63]];
 
         // Write result back to data in little-endian order
-        for (int i = 0; i < BlockSizeWords; i++)
-        {
-            BinaryPrimitives.WriteUInt64LittleEndian(data.Slice(i * sizeof(UInt64)), r[i]);
-        }
+        BinarySpans.WriteUInt64LittleEndian(r.Slice(0, BlockSizeWords), data);
     }
 
     /// <summary>
@@ -678,21 +671,5 @@ public sealed class Streebog : HashAlgorithm
             ClearBuffer(_buffer);
         }
         base.Dispose(disposing);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void CopyBlockAsUInt64LittleEndian(ReadOnlySpan<byte> src, Span<ulong> dst)
-    {
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, ulong>(src).CopyTo(dst);
-        }
-        else
-        {
-            for (int i = 0; i < BlockSizeWords; i++)
-            {
-                dst[i] = BinaryPrimitives.ReadUInt64LittleEndian(src.Slice(i * sizeof(UInt64)));
-            }
-        }
     }
 }

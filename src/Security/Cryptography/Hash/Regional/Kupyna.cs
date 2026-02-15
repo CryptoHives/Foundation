@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -7,6 +7,7 @@ using System;
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the Kupyna (DSTU 7564:2014) hash for the input data.
@@ -357,12 +358,8 @@ public sealed class Kupyna : HashAlgorithm
 
             // Truncation: extract hash from the last columns
             int neededColumns = _hashSizeBytes / sizeof(UInt64);
-            int outOff = 0;
-            for (int col = _columns - neededColumns; col < _columns; ++col)
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(outOff, sizeof(UInt64)), _state[col]);
-                outOff += sizeof(UInt64);
-            }
+            int startCol = _columns - neededColumns;
+            BinarySpans.WriteUInt64LittleEndian(_state.AsSpan(startCol, neededColumns), destination);
 
             bytesWritten = _hashSizeBytes;
             return true;
@@ -391,11 +388,23 @@ public sealed class Kupyna : HashAlgorithm
     {
         unchecked
         {
-            for (int col = 0; col < _columns; ++col)
+            if (BitConverter.IsLittleEndian)
             {
-                ulong word = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(col << 3, sizeof(UInt64)));
-                _tempState1[col] = _state[col] ^ word;
-                _tempState2[col] = word;
+                ReadOnlySpan<ulong> blockWords = MemoryMarshal.Cast<byte, ulong>(block.Slice(0, _columns * sizeof(UInt64)));
+                for (int col = 0; col < _columns; ++col)
+                {
+                    _tempState1[col] = _state[col] ^ blockWords[col];
+                    _tempState2[col] = blockWords[col];
+                }
+            }
+            else
+            {
+                for (int col = 0; col < _columns; ++col)
+                {
+                    ulong word = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(col << 3, sizeof(UInt64)));
+                    _tempState1[col] = _state[col] ^ word;
+                    _tempState2[col] = word;
+                }
             }
 
             P(_tempState1);

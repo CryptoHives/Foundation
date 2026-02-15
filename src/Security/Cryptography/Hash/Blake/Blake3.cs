@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -7,7 +7,6 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -430,20 +429,13 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
 
     private void ComputeParentCv(ReadOnlySpan<uint> left, ReadOnlySpan<uint> right, Span<uint> destination)
     {
-        Span<byte> block = stackalloc byte[BlockSizeBytes];
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(i * sizeof(UInt32)), left[i]);
-        }
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(block.Slice(32 + i * sizeof(UInt32)), right[i]);
-        }
+        Span<uint> m = stackalloc uint[BlockSizeWords];
+
+        // Copy left[8] and right[8] into m[16] — on LE, skip byte intermediary
+        left.Slice(0, 8).CopyTo(m);
+        right.Slice(0, 8).CopyTo(m.Slice(8));
 
         uint flags = _baseFlags | FlagParent;
-
-        Span<uint> m = stackalloc uint[BlockSizeWords];
-        CopyBlockUInt32LittleEndian(block, m);
 
         Span<uint> v = stackalloc uint[BlockSizeWords];
         v[0] = _keyWords[0]; v[1] = _keyWords[1]; v[2] = _keyWords[2]; v[3] = _keyWords[3];
@@ -467,7 +459,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     private void CompressBlockScalar(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
     {
         Span<uint> m = stackalloc uint[BlockSizeWords];
-        CopyBlockUInt32LittleEndian(block, m);
+        BinarySpans.ReadUInt32LittleEndian(block, m);
 
         Span<uint> v = stackalloc uint[BlockSizeWords];
         v[0] = _cv[0]; v[1] = _cv[1]; v[2] = _cv[2]; v[3] = _cv[3];
@@ -491,7 +483,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     private void CompressBlockFull(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags, Span<uint> result)
     {
         Span<uint> m = stackalloc uint[BlockSizeWords];
-        CopyBlockUInt32LittleEndian(block, m);
+        BinarySpans.ReadUInt32LittleEndian(block, m);
 
         Span<uint> v = stackalloc uint[BlockSizeWords];
         _cv.AsSpan().Slice(0, 8).CopyTo(v);
@@ -507,22 +499,6 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         {
             result[i] = v[i] ^ v[i + 8];
             result[i + 8] = v[i + 8] ^ _cv[i];
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void CopyBlockUInt32LittleEndian(ReadOnlySpan<byte> block, Span<uint> m)
-    {
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < BlockSizeWords; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * sizeof(UInt32)));
-            }
         }
     }
 

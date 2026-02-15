@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -111,9 +111,10 @@ internal static class ChaChaCore
         // Add original state to working state and serialize to output
         for (int i = 0; i < StateWords; i++)
         {
-            uint result = workingState[i] + state[i];
-            BinaryPrimitives.WriteUInt32LittleEndian(output.Slice(i * sizeof(UInt32)), result);
+            workingState[i] += state[i];
         }
+
+        BinarySpans.WriteUInt32LittleEndian(workingState.Slice(0, StateWords), output);
     }
 
     /// <summary>
@@ -176,22 +177,13 @@ internal static class ChaChaCore
         state[3] = Sigma[3];
 
         // Key (words 4-11)
-        state[4] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(0));
-        state[5] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(sizeof(UInt32)));
-        state[6] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(2 * sizeof(UInt32)));
-        state[7] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(3 * sizeof(UInt32)));
-        state[8] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4 * sizeof(UInt32)));
-        state[9] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(5 * sizeof(UInt32)));
-        state[10] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(6 * sizeof(UInt32)));
-        state[11] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(7 * sizeof(UInt32)));
+        BinarySpans.ReadUInt32LittleEndian(key, state.Slice(4));
 
         // Counter (word 12)
         state[12] = counter;
 
         // Nonce (words 13-15)
-        state[13] = BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(0));
-        state[14] = BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(sizeof(UInt32)));
-        state[15] = BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(2 * sizeof(UInt32)));
+        BinarySpans.ReadUInt32LittleEndian(nonce, state.Slice(13));
     }
 
     /// <summary>
@@ -266,20 +258,10 @@ internal static class ChaChaCore
         state[3] = Sigma[3];
 
         // Key (words 4-11)
-        state[4] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(0));
-        state[5] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(sizeof(UInt32)));
-        state[6] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(2 * sizeof(UInt32)));
-        state[7] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(3 * sizeof(UInt32)));
-        state[8] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4 * sizeof(UInt32)));
-        state[9] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(5 * sizeof(UInt32)));
-        state[10] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(6 * sizeof(UInt32)));
-        state[11] = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(7 * sizeof(UInt32)));
+        BinarySpans.ReadUInt32LittleEndian(key, state.Slice(4));
 
         // Nonce (words 12-15, instead of counter + nonce)
-        state[12] = BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(0));
-        state[13] = BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(sizeof(UInt32)));
-        state[14] = BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(2 * sizeof(UInt32)));
-        state[15] = BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(3 * sizeof(UInt32)));
+        BinarySpans.ReadUInt32LittleEndian(nonce, state.Slice(12));
 
         // Perform 20 rounds (10 double-rounds)
         for (int i = 0; i < Rounds; i += 2)
@@ -298,13 +280,7 @@ internal static class ChaChaCore
         }
 
         // Return first and last rows (words 0-3 and 12-15)
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(0), state[0]);
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(sizeof(UInt32)), state[1]);
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(2 * sizeof(UInt32)), state[2]);
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(3 * sizeof(UInt32)), state[3]);
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(4 * sizeof(UInt32)), state[12]);
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(5 * sizeof(UInt32)), state[13]);
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(6 * sizeof(UInt32)), state[14]);
-        BinaryPrimitives.WriteUInt32LittleEndian(subkey.Slice(7 * sizeof(UInt32)), state[15]);
+        BinarySpans.WriteUInt32LittleEndian(state.Slice(0, 4), subkey);
+        BinarySpans.WriteUInt32LittleEndian(state.Slice(12, 4), subkey.Slice(4 * sizeof(UInt32)));
     }
 }
