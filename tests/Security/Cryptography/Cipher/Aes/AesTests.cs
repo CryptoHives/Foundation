@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Cipher.Aes;
@@ -36,7 +36,7 @@ public class AesTests
         byte[] expected = FromHex("3925841d02dc09fbdc118597196a0b32");
 
         using var aes = Aes128.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -57,7 +57,7 @@ public class AesTests
         byte[] expected = FromHex("3243f6a8885a308d313198a2e0370734");
 
         using var aes = Aes128.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -82,7 +82,7 @@ public class AesTests
         byte[] expected = FromHex("69c4e0d86a7b0430d8cdb78070b4c55a");
 
         using var aes = Aes128.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -100,7 +100,7 @@ public class AesTests
         byte[] expected = FromHex("00112233445566778899aabbccddeeff");
 
         using var aes = Aes128.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -125,7 +125,7 @@ public class AesTests
         byte[] expected = FromHex("dda97ca4864cdfe06eaf70a0ec0d7191");
 
         using var aes = Aes192.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -143,7 +143,7 @@ public class AesTests
         byte[] expected = FromHex("00112233445566778899aabbccddeeff");
 
         using var aes = Aes192.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -168,7 +168,7 @@ public class AesTests
         byte[] expected = FromHex("8ea2b7ca516745bfeafc49904b496089");
 
         using var aes = Aes256.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -186,7 +186,7 @@ public class AesTests
         byte[] expected = FromHex("00112233445566778899aabbccddeeff");
 
         using var aes = Aes256.Create();
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -211,7 +211,7 @@ public class AesTests
         for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
 
         using var aes = CreateAes(keyLength);
-        aes.Mode = CipherMode.Ecb;
+        aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = new byte[16];
@@ -235,7 +235,7 @@ public class AesTests
         for (int i = 0; i < 16; i++) iv[i] = (byte)(0x10 + i);
 
         using var aes = CreateAes(keyLength);
-        aes.Mode = CipherMode.Cbc;
+        aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = iv;
@@ -260,7 +260,7 @@ public class AesTests
         for (int i = 0; i < 16; i++) iv[i] = (byte)(0x20 + i);
 
         using var aes = CreateAes(keyLength);
-        aes.Mode = CipherMode.Ctr;
+        aes.Mode = CipherMode.CTR;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = iv;
@@ -288,8 +288,8 @@ public class AesTests
         for (int i = 0; i < 16; i++) iv[i] = (byte)(0x30 + i);
 
         using var aes = CreateAes(keyLength);
-        aes.Mode = CipherMode.Cbc;
-        aes.Padding = PaddingMode.Pkcs7;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
         aes.Key = key;
         aes.IV = iv;
 
@@ -319,7 +319,7 @@ public class AesTests
         for (int i = 0; i < 16; i++) iv[i] = (byte)(0x60 + i);
 
         using var aes = Aes256.Create();
-        aes.Mode = CipherMode.Cbc;
+        aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
         aes.IV = iv;
@@ -350,8 +350,7 @@ public class AesTests
     public void Aes128_InvalidKeySize_Throws()
     {
         using var aes = Aes128.Create();
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() =>
-        {
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
             aes.Key = new byte[24]; // Wrong size for AES-128
         });
     }
@@ -360,8 +359,7 @@ public class AesTests
     public void Aes256_InvalidKeySize_Throws()
     {
         using var aes = Aes256.Create();
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() =>
-        {
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
             aes.Key = new byte[16]; // Wrong size for AES-256
         });
     }
@@ -372,8 +370,7 @@ public class AesTests
 
     private static SymmetricCipher CreateAes(int keyLength)
     {
-        return keyLength switch
-        {
+        return keyLength switch {
             16 => Aes128.Create(),
             24 => Aes192.Create(),
             32 => Aes256.Create(),

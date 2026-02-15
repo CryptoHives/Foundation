@@ -6,10 +6,9 @@ namespace Cryptography.Tests.Cipher.ChaCha;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
-using CryptographicException = System.Security.Cryptography.CryptographicException;
-
 // Alias to avoid conflict with System.Security.Cryptography.ChaCha20Poly1305
 using ChaCha20Poly1305 = CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20Poly1305;
+using CryptographicException = System.Security.Cryptography.CryptographicException;
 
 /// <summary>
 /// Tests for ChaCha20-Poly1305 implementation using RFC 8439 test vectors.
@@ -204,7 +203,7 @@ public class ChaCha20Poly1305Tests
         using var aead = ChaCha20Poly1305.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext, aad);
-        
+
         // Should be just the tag (16 bytes)
         Assert.That(ciphertextWithTag.Length, Is.EqualTo(16));
 

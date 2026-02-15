@@ -5,6 +5,8 @@
   items:
     - name: Overview
       href: cryptography/index.md
+    - name: Benchmarks
+      href: cryptography/benchmarks.md
     - name: Hash Algorithms
       href: cryptography/hash-algorithms.md
     - name: MAC Algorithms

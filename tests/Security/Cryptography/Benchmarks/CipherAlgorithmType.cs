@@ -4,11 +4,11 @@
 #pragma warning disable CA1050 // Declare types in namespaces
 #pragma warning disable IDE0011 // Add braces
 
+using Cryptography.Tests.Cipher;
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CryptoHives.Foundation.Security.Cryptography.Cipher;
-using Cryptography.Tests.Cipher;
 using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 /// <summary>
@@ -249,8 +249,7 @@ public sealed class CipherAlgorithmType : IFormattable
     /// </summary>
     private static string SourceToString(CipherAlgorithmRegistry.Source source)
     {
-        return source switch
-        {
+        return source switch {
             CipherAlgorithmRegistry.Source.Managed => "Managed",
             CipherAlgorithmRegistry.Source.OS => "OS",
             CipherAlgorithmRegistry.Source.BouncyCastle => "BouncyCastle",

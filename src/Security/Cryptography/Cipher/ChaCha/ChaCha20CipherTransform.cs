@@ -1,9 +1,10 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Security.Cryptography;
 
 /// <summary>
 /// ChaCha20 cipher transform for encryption or decryption operations.
@@ -50,6 +51,12 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
 
     /// <inheritdoc/>
     public int BlockSize => 1; // Stream cipher - can process any byte count
+
+    /// <inheritdoc/>
+    int ICryptoTransform.InputBlockSize => 1;
+
+    /// <inheritdoc/>
+    int ICryptoTransform.OutputBlockSize => 1;
 
     /// <inheritdoc/>
     public bool CanTransformMultipleBlocks => true;

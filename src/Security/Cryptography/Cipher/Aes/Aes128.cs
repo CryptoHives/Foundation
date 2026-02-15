@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -40,30 +40,19 @@ public sealed class Aes128 : SymmetricCipher
     /// </summary>
     public const int KeySizeBytes = 16;
 
-    private static readonly KeySizes[] _legalKeySizes = [new KeySizes(128, 128, 0)];
-    private static readonly KeySizes[] _legalBlockSizes = [new KeySizes(128, 128, 0)];
-
     /// <summary>
     /// Initializes a new instance of the <see cref="Aes128"/> class.
     /// </summary>
     public Aes128()
     {
+        BlockSizeValue = AesCore.BlockSizeBits;
+        KeySizeValue = KeySizeBits;
+        LegalKeySizesValue = [new KeySizes(128, 128, 0)];
+        LegalBlockSizesValue = [new KeySizes(128, 128, 0)];
     }
 
     /// <inheritdoc/>
     public override string AlgorithmName => "AES-128";
-
-    /// <inheritdoc/>
-    public override int BlockSize => AesCore.BlockSizeBits;
-
-    /// <inheritdoc/>
-    public override int KeySize => KeySizeBits;
-
-    /// <inheritdoc/>
-    public override KeySizes[] LegalKeySizes => _legalKeySizes;
-
-    /// <inheritdoc/>
-    public override KeySizes[] LegalBlockSizes => _legalBlockSizes;
 
     /// <inheritdoc/>
     public override int IVSize => AesCore.BlockSizeBytes;
@@ -72,17 +61,17 @@ public sealed class Aes128 : SymmetricCipher
     /// Creates a new instance of the <see cref="Aes128"/> cipher.
     /// </summary>
     /// <returns>A new AES-128 cipher instance.</returns>
-    public static Aes128 Create() => new();
+    public static new Aes128 Create() => new();
 
     /// <inheritdoc/>
-    public override ICipherTransform CreateEncryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
     {
         ValidateKeySize(key.Length * 8);
         return new AesCipherTransform(key, iv, encrypting: true, Mode, Padding);
     }
 
     /// <inheritdoc/>
-    public override ICipherTransform CreateDecryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
     {
         ValidateKeySize(key.Length * 8);
         return new AesCipherTransform(key, iv, encrypting: false, Mode, Padding);

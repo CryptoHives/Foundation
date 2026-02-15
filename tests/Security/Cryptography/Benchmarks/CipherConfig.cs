@@ -101,8 +101,7 @@ public class CipherConfig : ManualConfig
 
         private static int GetDataSizeBytes(string name)
         {
-            return name switch
-            {
+            return name switch {
                 "128B" => 128,
                 "1KB" => 1024,
                 "8KB" => 8192,

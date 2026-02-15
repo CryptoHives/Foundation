@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Cipher.ChaCha;
@@ -328,8 +328,7 @@ public class ChaCha20Tests
     public void ChaCha20_InvalidKeySize_Throws()
     {
         using var chacha = ChaCha20.Create();
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() =>
-        {
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
             chacha.Key = new byte[16]; // Wrong size
         });
     }
@@ -339,8 +338,7 @@ public class ChaCha20Tests
     {
         using var chacha = ChaCha20.Create();
         chacha.Key = new byte[32];
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() =>
-        {
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
             chacha.IV = new byte[8]; // Wrong size (should be 12)
         });
     }

@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -56,9 +56,6 @@ public sealed class ChaCha20 : SymmetricCipher
     /// </summary>
     public const int NonceSizeConst = 12;
 
-    private static readonly KeySizes[] _legalKeySizes = [new KeySizes(256, 256, 0)];
-    private static readonly KeySizes[] _legalBlockSizes = [new KeySizes(512, 512, 0)];
-
     private uint _initialCounter;
 
     /// <summary>
@@ -66,24 +63,16 @@ public sealed class ChaCha20 : SymmetricCipher
     /// </summary>
     public ChaCha20()
     {
+        BlockSizeValue = ChaChaCore.BlockSizeBytes * 8;
+        KeySizeValue = KeySizeBits;
+        LegalKeySizesValue = [new KeySizes(256, 256, 0)];
+        LegalBlockSizesValue = [new KeySizes(512, 512, 0)];
         Mode = CipherMode.Stream;
         Padding = PaddingMode.None;
     }
 
     /// <inheritdoc/>
     public override string AlgorithmName => "ChaCha20";
-
-    /// <inheritdoc/>
-    public override int BlockSize => ChaChaCore.BlockSizeBytes * 8; // 512 bits
-
-    /// <inheritdoc/>
-    public override int KeySize => KeySizeBits;
-
-    /// <inheritdoc/>
-    public override KeySizes[] LegalKeySizes => _legalKeySizes;
-
-    /// <inheritdoc/>
-    public override KeySizes[] LegalBlockSizes => _legalBlockSizes;
 
     /// <inheritdoc/>
     public override int IVSize => NonceSizeConst;
@@ -110,10 +99,10 @@ public sealed class ChaCha20 : SymmetricCipher
     /// Creates a new instance of the <see cref="ChaCha20"/> cipher.
     /// </summary>
     /// <returns>A new ChaCha20 cipher instance.</returns>
-    public static ChaCha20 Create() => new();
+    public static new ChaCha20 Create() => new();
 
     /// <inheritdoc/>
-    public override ICipherTransform CreateEncryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
     {
         ValidateKeySize(key.Length * 8);
         ValidateIVSize(iv.Length);
@@ -121,10 +110,10 @@ public sealed class ChaCha20 : SymmetricCipher
     }
 
     /// <inheritdoc/>
-    public override ICipherTransform CreateDecryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
     {
         // ChaCha20 is symmetric - encryption and decryption are the same
-        return CreateEncryptor(key, iv);
+        return CreateCipherEncryptor(key, iv);
     }
 
     /// <inheritdoc/>

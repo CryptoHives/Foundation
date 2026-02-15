@@ -1,14 +1,5 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
-
-// CryptographicOperations is available in:
-// - .NET Core 2.1+
-// - .NET Standard 2.1+
-// - .NET 5+
-// This shim is only needed for:
-// - .NET Standard 2.0
-// - .NET Framework 4.6.2, 4.8
-#if NETSTANDARD2_0 || NET462 || NET48
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher.Compat;
 
@@ -63,5 +54,3 @@ internal static class CryptographicOperations
         return diff == 0;
     }
 }
-
-#endif

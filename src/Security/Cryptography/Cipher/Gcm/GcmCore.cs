@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -84,7 +84,7 @@ internal static class GcmCore
     /// <param name="aad">Additional authenticated data.</param>
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer.</param>
-    public static void GHashComplete(ReadOnlySpan<byte> h, ReadOnlySpan<byte> aad, 
+    public static void GHashComplete(ReadOnlySpan<byte> h, ReadOnlySpan<byte> aad,
                                       ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
         Span<byte> y = stackalloc byte[BlockSizeBytes];
@@ -174,7 +174,7 @@ internal static class GcmCore
             // where s is the minimum number of zero bits to make (nonce || 0^s) a multiple of 128 bits
             int s = (BlockSizeBytes - (nonce.Length % BlockSizeBytes)) % BlockSizeBytes;
             int paddedLen = nonce.Length + s + BlockSizeBytes;
-            
+
             Span<byte> paddedNonce = paddedLen <= 256 ? stackalloc byte[paddedLen] : new byte[paddedLen];
             paddedNonce.Clear();
             nonce.CopyTo(paddedNonce);
@@ -267,7 +267,7 @@ internal static class GcmCore
         while (offset < data.Length)
         {
             int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
-            
+
             // XOR with next block (pad with zeros if partial)
             for (int i = 0; i < blockLen; i++)
             {

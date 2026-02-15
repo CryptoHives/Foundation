@@ -1,22 +1,22 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
-using System;
-using System.Security.Cryptography;
-
-#if NETSTANDARD2_0 || NET462 || NET48
 using CryptoHives.Foundation.Security.Cryptography.Cipher.Compat;
-#endif
+using System;
 
 /// <summary>
 /// Base class for CryptoHives clean-room symmetric cipher implementations.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class provides a common base for all CryptoHives symmetric cipher implementations.
-/// It ensures consistent behavior and provides helper methods for derived implementations.
+/// This class extends <see cref="System.Security.Cryptography.SymmetricAlgorithm"/>
+/// to enable drop-in replacement: switching the <c>using</c> directive from
+/// <c>System.Security.Cryptography</c> to
+/// <c>CryptoHives.Foundation.Security.Cryptography.Cipher</c> provides a managed
+/// implementation while preserving API compatibility with <see cref="System.Security.Cryptography.CryptoStream"/>
+/// and other .NET cryptographic infrastructure.
 /// </para>
 /// <para>
 /// All derived classes implement cipher algorithms without OS or hardware dependencies,
@@ -35,11 +35,10 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher.Compat;
 /// </code>
 /// </para>
 /// </remarks>
-public abstract class SymmetricCipher : IDisposable
+public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAlgorithm
 {
-    private byte[]? _key;
-    private byte[]? _iv;
-    private bool _disposed;
+    private CipherMode _mode = CipherMode.CBC;
+    private PaddingMode _padding = PaddingMode.PKCS7;
 
     /// <summary>
     /// Gets the name of the cipher algorithm.
@@ -48,33 +47,6 @@ public abstract class SymmetricCipher : IDisposable
     /// "AES-256", "ChaCha20", "AES-256-GCM"
     /// </example>
     public abstract string AlgorithmName { get; }
-
-    /// <summary>
-    /// Gets the block size in bits.
-    /// </summary>
-    /// <remarks>
-    /// For AES, this is always 128 bits (16 bytes).
-    /// For stream ciphers like ChaCha20, this returns 0 or the internal block size.
-    /// </remarks>
-    public abstract int BlockSize { get; }
-
-    /// <summary>
-    /// Gets the key size in bits.
-    /// </summary>
-    /// <remarks>
-    /// Common values: 128, 192, or 256 bits for AES; 256 bits for ChaCha20.
-    /// </remarks>
-    public abstract int KeySize { get; }
-
-    /// <summary>
-    /// Gets the valid key sizes for this algorithm.
-    /// </summary>
-    public abstract KeySizes[] LegalKeySizes { get; }
-
-    /// <summary>
-    /// Gets the valid block sizes for this algorithm.
-    /// </summary>
-    public abstract KeySizes[] LegalBlockSizes { get; }
 
     /// <summary>
     /// Gets or sets the initialization vector (IV) or nonce for the cipher operation.
@@ -95,21 +67,23 @@ public abstract class SymmetricCipher : IDisposable
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">Value is null.</exception>
-    /// <exception cref="CryptographicException">Value has an invalid size.</exception>
-    public virtual byte[]? IV
+    /// <exception cref="System.Security.Cryptography.CryptographicException">Value has an invalid size.</exception>
+    public override byte[] IV
     {
-        get => _iv?.Clone() as byte[];
+        get
+        {
+            if (IVValue == null)
+            {
+                GenerateIV();
+            }
+
+            return (byte[])IVValue!.Clone();
+        }
         set
         {
-            if (value != null)
-            {
-                ValidateIVSize(value.Length);
-                _iv = (byte[])value.Clone();
-            }
-            else
-            {
-                _iv = null;
-            }
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            ValidateIVSize(value.Length);
+            IVValue = (byte[])value.Clone();
         }
     }
 
@@ -117,33 +91,56 @@ public abstract class SymmetricCipher : IDisposable
     /// Gets or sets the secret key for the cipher operation.
     /// </summary>
     /// <exception cref="ArgumentNullException">Value is null.</exception>
-    /// <exception cref="CryptographicException">Value has an invalid size.</exception>
-    public virtual byte[]? Key
+    /// <exception cref="System.Security.Cryptography.CryptographicException">Value has an invalid size.</exception>
+    public override byte[] Key
     {
-        get => _key?.Clone() as byte[];
+        get
+        {
+            if (KeyValue == null)
+            {
+                GenerateKey();
+            }
+
+            return (byte[])KeyValue!.Clone();
+        }
         set
         {
-            if (value != null)
-            {
-                ValidateKeySize(value.Length * 8);
-                _key = (byte[])value.Clone();
-            }
-            else
-            {
-                _key = null;
-            }
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            ValidateKeySize(value.Length * 8);
+            KeySizeValue = value.Length * 8;
+            KeyValue = (byte[])value.Clone();
         }
     }
 
     /// <summary>
     /// Gets or sets the cipher mode of operation.
     /// </summary>
-    public virtual CipherMode Mode { get; set; } = CipherMode.Cbc;
+    /// <remarks>
+    /// This property shadows <see cref="System.Security.Cryptography.SymmetricAlgorithm.Mode"/>
+    /// to use <see cref="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode"/>,
+    /// which includes additional modes such as <see cref="CipherMode.CTR"/>,
+    /// <see cref="CipherMode.GCM"/>, <see cref="CipherMode.CCM"/>, and
+    /// <see cref="CipherMode.Stream"/>.
+    /// </remarks>
+    public new virtual CipherMode Mode
+    {
+        get => _mode;
+        set => _mode = value;
+    }
 
     /// <summary>
     /// Gets or sets the padding mode.
     /// </summary>
-    public virtual PaddingMode Padding { get; set; } = PaddingMode.Pkcs7;
+    /// <remarks>
+    /// This property shadows <see cref="System.Security.Cryptography.SymmetricAlgorithm.Padding"/>
+    /// to use <see cref="CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode"/>,
+    /// whose values are identical to <see cref="System.Security.Cryptography.PaddingMode"/>.
+    /// </remarks>
+    public new virtual PaddingMode Padding
+    {
+        get => _padding;
+        set => _padding = value;
+    }
 
     /// <summary>
     /// Gets the required IV/nonce size in bytes for the current mode.
@@ -161,7 +158,7 @@ public abstract class SymmetricCipher : IDisposable
     /// <summary>
     /// Gets a value indicating whether this cipher provides authenticated encryption.
     /// </summary>
-    public virtual bool IsAuthenticated => Mode is CipherMode.Gcm or CipherMode.Ccm;
+    public virtual bool IsAuthenticated => Mode is CipherMode.GCM or CipherMode.CCM;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SymmetricCipher"/> class.
@@ -173,31 +170,63 @@ public abstract class SymmetricCipher : IDisposable
     /// <summary>
     /// Generates a random key appropriate for this algorithm.
     /// </summary>
-    public virtual void GenerateKey()
+    public override void GenerateKey()
     {
-        _key = new byte[KeySize / 8];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(_key);
+        KeyValue = new byte[KeySizeValue / 8];
+        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+        rng.GetBytes(KeyValue);
     }
 
     /// <summary>
     /// Generates a random IV/nonce appropriate for this algorithm and mode.
     /// </summary>
-    public virtual void GenerateIV()
+    public override void GenerateIV()
     {
-        _iv = new byte[IVSize];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(_iv);
+        IVValue = new byte[IVSize];
+        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+        rng.GetBytes(IVValue);
     }
 
     /// <summary>
     /// Creates an encryptor transform using the current key and IV.
     /// </summary>
     /// <returns>A new encryptor transform.</returns>
-    /// <exception cref="CryptographicException">Key or IV is not set.</exception>
-    public ICipherTransform CreateEncryptor()
+    /// <exception cref="System.Security.Cryptography.CryptographicException">Key or IV is not set.</exception>
+    public new ICipherTransform CreateEncryptor()
     {
-        return CreateEncryptor(GetKeyOrThrow(), GetIVOrThrow());
+        return CreateCipherEncryptor(GetKeyOrThrow(), GetIVOrThrow());
+    }
+
+    /// <summary>
+    /// Creates an encryptor transform using the specified key and IV.
+    /// </summary>
+    /// <param name="rgbKey">The secret key.</param>
+    /// <param name="rgbIV">The initialization vector or nonce.</param>
+    /// <returns>A new encryptor transform.</returns>
+    public override System.Security.Cryptography.ICryptoTransform CreateEncryptor(byte[] rgbKey, byte[]? rgbIV)
+    {
+        return CreateCipherEncryptor(rgbKey, rgbIV ?? GetIVOrThrow());
+    }
+
+    /// <summary>
+    /// Creates a decryptor transform using the current key and IV.
+    /// </summary>
+    /// <returns>A new decryptor transform.</returns>
+    /// <exception cref="System.Security.Cryptography.CryptographicException">Key or IV is not set.</exception>
+    public new ICipherTransform CreateDecryptor()
+    {
+        return CreateCipherDecryptor(GetKeyOrThrow(), GetIVOrThrow());
+    }
+
+    /// <summary>
+    /// Creates a decryptor transform using the specified key and IV.
+    /// </summary>
+    /// <param name="rgbKey">The secret key.</param>
+    /// <param name="rgbIV">The initialization vector or nonce.</param>
+    /// <returns>A new decryptor transform.</returns>
+    public override System.Security.Cryptography.ICryptoTransform CreateDecryptor(byte[] rgbKey, byte[]? rgbIV)
+    {
+        return CreateCipherDecryptor(rgbKey, rgbIV ?? GetIVOrThrow());
     }
 
     /// <summary>
@@ -205,26 +234,16 @@ public abstract class SymmetricCipher : IDisposable
     /// </summary>
     /// <param name="key">The secret key.</param>
     /// <param name="iv">The initialization vector or nonce.</param>
-    /// <returns>A new encryptor transform.</returns>
-    public abstract ICipherTransform CreateEncryptor(byte[] key, byte[] iv);
-
-    /// <summary>
-    /// Creates a decryptor transform using the current key and IV.
-    /// </summary>
-    /// <returns>A new decryptor transform.</returns>
-    /// <exception cref="CryptographicException">Key or IV is not set.</exception>
-    public ICipherTransform CreateDecryptor()
-    {
-        return CreateDecryptor(GetKeyOrThrow(), GetIVOrThrow());
-    }
+    /// <returns>A new cipher encryptor transform.</returns>
+    protected abstract ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv);
 
     /// <summary>
     /// Creates a decryptor transform using the specified key and IV.
     /// </summary>
     /// <param name="key">The secret key.</param>
     /// <param name="iv">The initialization vector or nonce.</param>
-    /// <returns>A new decryptor transform.</returns>
-    public abstract ICipherTransform CreateDecryptor(byte[] key, byte[] iv);
+    /// <returns>A new cipher decryptor transform.</returns>
+    protected abstract ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv);
 
     /// <summary>
     /// Encrypts plaintext in a single operation.
@@ -239,7 +258,6 @@ public abstract class SymmetricCipher : IDisposable
     {
         using var encryptor = CreateEncryptor();
 
-        // Calculate output size (includes padding for block ciphers)
         int outputSize = CalculateOutputSize(plaintext.Length, encrypting: true);
         byte[] output = new byte[outputSize];
 
@@ -262,7 +280,6 @@ public abstract class SymmetricCipher : IDisposable
     {
         using var decryptor = CreateDecryptor();
 
-        // Allocate max possible size (ciphertext size, padding will reduce)
         byte[] output = new byte[ciphertext.Length];
 
         int written = decryptor.TransformFinalBlock(ciphertext, output);
@@ -283,9 +300,8 @@ public abstract class SymmetricCipher : IDisposable
     /// <returns>The required output buffer size in bytes.</returns>
     protected virtual int CalculateOutputSize(int inputLength, bool encrypting)
     {
-        if (Mode is CipherMode.Stream or CipherMode.Ctr or CipherMode.Gcm or CipherMode.Ccm)
+        if (Mode is CipherMode.Stream or CipherMode.CTR or CipherMode.GCM or CipherMode.CCM)
         {
-            // Stream modes and AEAD modes don't use padding
             return encrypting ? inputLength + TagSize : inputLength - TagSize;
         }
 
@@ -294,16 +310,13 @@ public abstract class SymmetricCipher : IDisposable
             return inputLength;
         }
 
-        // Block modes with padding
         int blockSizeBytes = BlockSize / 8;
         if (encrypting)
         {
-            // PKCS#7 always adds at least one byte of padding
             return ((inputLength / blockSizeBytes) + 1) * blockSizeBytes;
         }
         else
         {
-            // When decrypting, output will be at most input size (minus padding)
             return inputLength;
         }
     }
@@ -312,7 +325,7 @@ public abstract class SymmetricCipher : IDisposable
     /// Validates that the specified key size is valid for this algorithm.
     /// </summary>
     /// <param name="bitLength">The key size in bits.</param>
-    /// <exception cref="CryptographicException">The key size is invalid.</exception>
+    /// <exception cref="System.Security.Cryptography.CryptographicException">The key size is invalid.</exception>
     protected void ValidateKeySize(int bitLength)
     {
         foreach (var sizes in LegalKeySizes)
@@ -326,19 +339,19 @@ public abstract class SymmetricCipher : IDisposable
             }
         }
 
-        throw new CryptographicException($"Invalid key size: {bitLength} bits. Valid sizes: {FormatKeySizes(LegalKeySizes)}");
+        throw new System.Security.Cryptography.CryptographicException($"Invalid key size: {bitLength} bits. Valid sizes: {FormatKeySizes(LegalKeySizes)}");
     }
 
     /// <summary>
     /// Validates that the specified IV size is valid for this algorithm and mode.
     /// </summary>
     /// <param name="byteLength">The IV size in bytes.</param>
-    /// <exception cref="CryptographicException">The IV size is invalid.</exception>
+    /// <exception cref="System.Security.Cryptography.CryptographicException">The IV size is invalid.</exception>
     protected virtual void ValidateIVSize(int byteLength)
     {
         if (byteLength != IVSize)
         {
-            throw new CryptographicException($"Invalid IV size: {byteLength} bytes. Expected: {IVSize} bytes.");
+            throw new System.Security.Cryptography.CryptographicException($"Invalid IV size: {byteLength} bytes. Expected: {IVSize} bytes.");
         }
     }
 
@@ -359,7 +372,7 @@ public abstract class SymmetricCipher : IDisposable
     /// </summary>
     protected byte[] GetKeyOrThrow()
     {
-        return _key ?? throw new CryptographicException("Key has not been set.");
+        return KeyValue ?? throw new System.Security.Cryptography.CryptographicException("Key has not been set.");
     }
 
     /// <summary>
@@ -367,10 +380,10 @@ public abstract class SymmetricCipher : IDisposable
     /// </summary>
     protected byte[] GetIVOrThrow()
     {
-        return _iv ?? throw new CryptographicException("IV/nonce has not been set.");
+        return IVValue ?? throw new System.Security.Cryptography.CryptographicException("IV/nonce has not been set.");
     }
 
-    private static string FormatKeySizes(KeySizes[] sizes)
+    private static string FormatKeySizes(System.Security.Cryptography.KeySizes[] sizes)
     {
         var parts = new System.Collections.Generic.List<string>();
         foreach (var size in sizes)
@@ -389,34 +402,5 @@ public abstract class SymmetricCipher : IDisposable
             }
         }
         return string.Join(", ", parts);
-    }
-
-    /// <summary>
-    /// Releases all resources used by this instance.
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Releases resources used by this instance.
-    /// </summary>
-    /// <param name="disposing">True if called from Dispose(), false if from finalizer.</param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed)
-        {
-            if (disposing)
-            {
-                ClearSensitiveData(_key);
-                ClearSensitiveData(_iv);
-                _key = null;
-                _iv = null;
-            }
-
-            _disposed = true;
-        }
     }
 }

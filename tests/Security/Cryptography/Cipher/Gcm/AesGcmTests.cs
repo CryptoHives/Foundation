@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Cipher.Gcm;
@@ -294,8 +294,7 @@ public class AesGcmTests
 
     private static IAeadCipher CreateAesGcm(int keyLength, byte[] key)
     {
-        return keyLength switch
-        {
+        return keyLength switch {
             16 => AesGcm128.Create(key),
             24 => AesGcm192.Create(key),
             32 => AesGcm256.Create(key),

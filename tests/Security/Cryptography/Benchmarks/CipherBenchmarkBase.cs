@@ -6,7 +6,6 @@ namespace Cryptography.Tests.Benchmarks;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System;
-using System.Security.Cryptography;
 
 /// <summary>
 /// Base class for symmetric cipher benchmarks with deterministic test data.

@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Benchmarks;
 
 using BenchmarkDotNet.Attributes;
-using NUnit.Framework;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
+using NUnit.Framework;
 using System;
 
 /// <summary>

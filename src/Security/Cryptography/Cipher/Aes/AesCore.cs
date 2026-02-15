@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -522,85 +522,85 @@ internal static class AesCore
     }
 
     // Decryption T-tables for InvSubBytes, InvShiftRows, InvMixColumns
-        // InvMixColumns matrix:
-        // [0e, 09, 0d, 0b]
-        // [0b, 0e, 09, 0d]
-        // [0d, 0b, 0e, 09]
-        // [09, 0d, 0b, 0e]
+    // InvMixColumns matrix:
+    // [0e, 09, 0d, 0b]
+    // [0b, 0e, 09, 0d]
+    // [0d, 0b, 0e, 09]
+    // [09, 0d, 0b, 0e]
 
-        private static uint[] GenerateTd0()
+    private static uint[] GenerateTd0()
+    {
+        unchecked
         {
-            unchecked
+            var table = new uint[256];
+            for (int i = 0; i < 256; i++)
             {
-                var table = new uint[256];
-                for (int i = 0; i < 256; i++)
-                {
-                    byte s = InvSBox[i];
-                    byte s9 = GfMul(s, 0x09);
-                    byte sb = GfMul(s, 0x0b);
-                    byte sd = GfMul(s, 0x0d);
-                    byte se = GfMul(s, 0x0e);
-                    // Row [0e, 09, 0d, 0b]
-                    table[i] = ((uint)se << 24) | ((uint)s9 << 16) | ((uint)sd << 8) | sb;
-                }
-                return table;
+                byte s = InvSBox[i];
+                byte s9 = GfMul(s, 0x09);
+                byte sb = GfMul(s, 0x0b);
+                byte sd = GfMul(s, 0x0d);
+                byte se = GfMul(s, 0x0e);
+                // Row [0e, 09, 0d, 0b]
+                table[i] = ((uint)se << 24) | ((uint)s9 << 16) | ((uint)sd << 8) | sb;
             }
-        }
-
-        private static uint[] GenerateTd1()
-        {
-            unchecked
-            {
-                var table = new uint[256];
-                for (int i = 0; i < 256; i++)
-                {
-                    byte s = InvSBox[i];
-                    byte s9 = GfMul(s, 0x09);
-                    byte sb = GfMul(s, 0x0b);
-                    byte sd = GfMul(s, 0x0d);
-                    byte se = GfMul(s, 0x0e);
-                    // Row [0b, 0e, 09, 0d] (rotated)
-                    table[i] = ((uint)sb << 24) | ((uint)se << 16) | ((uint)s9 << 8) | sd;
-                }
-                return table;
-            }
-        }
-
-        private static uint[] GenerateTd2()
-        {
-            unchecked
-            {
-                var table = new uint[256];
-                for (int i = 0; i < 256; i++)
-                {
-                    byte s = InvSBox[i];
-                    byte s9 = GfMul(s, 0x09);
-                    byte sb = GfMul(s, 0x0b);
-                    byte sd = GfMul(s, 0x0d);
-                    byte se = GfMul(s, 0x0e);
-                    // Row [0d, 0b, 0e, 09] (rotated)
-                    table[i] = ((uint)sd << 24) | ((uint)sb << 16) | ((uint)se << 8) | s9;
-                }
-                return table;
-            }
-        }
-
-        private static uint[] GenerateTd3()
-        {
-            unchecked
-            {
-                var table = new uint[256];
-                for (int i = 0; i < 256; i++)
-                {
-                    byte s = InvSBox[i];
-                    byte s9 = GfMul(s, 0x09);
-                    byte sb = GfMul(s, 0x0b);
-                    byte sd = GfMul(s, 0x0d);
-                    byte se = GfMul(s, 0x0e);
-                    // Row [09, 0d, 0b, 0e] (rotated)
-                    table[i] = ((uint)s9 << 24) | ((uint)sd << 16) | ((uint)sb << 8) | se;
-                }
-                return table;
-            }
+            return table;
         }
     }
+
+    private static uint[] GenerateTd1()
+    {
+        unchecked
+        {
+            var table = new uint[256];
+            for (int i = 0; i < 256; i++)
+            {
+                byte s = InvSBox[i];
+                byte s9 = GfMul(s, 0x09);
+                byte sb = GfMul(s, 0x0b);
+                byte sd = GfMul(s, 0x0d);
+                byte se = GfMul(s, 0x0e);
+                // Row [0b, 0e, 09, 0d] (rotated)
+                table[i] = ((uint)sb << 24) | ((uint)se << 16) | ((uint)s9 << 8) | sd;
+            }
+            return table;
+        }
+    }
+
+    private static uint[] GenerateTd2()
+    {
+        unchecked
+        {
+            var table = new uint[256];
+            for (int i = 0; i < 256; i++)
+            {
+                byte s = InvSBox[i];
+                byte s9 = GfMul(s, 0x09);
+                byte sb = GfMul(s, 0x0b);
+                byte sd = GfMul(s, 0x0d);
+                byte se = GfMul(s, 0x0e);
+                // Row [0d, 0b, 0e, 09] (rotated)
+                table[i] = ((uint)sd << 24) | ((uint)sb << 16) | ((uint)se << 8) | s9;
+            }
+            return table;
+        }
+    }
+
+    private static uint[] GenerateTd3()
+    {
+        unchecked
+        {
+            var table = new uint[256];
+            for (int i = 0; i < 256; i++)
+            {
+                byte s = InvSBox[i];
+                byte s9 = GfMul(s, 0x09);
+                byte sb = GfMul(s, 0x0b);
+                byte sd = GfMul(s, 0x0d);
+                byte se = GfMul(s, 0x0e);
+                // Row [09, 0d, 0b, 0e] (rotated)
+                table[i] = ((uint)s9 << 24) | ((uint)sd << 16) | ((uint)sb << 8) | se;
+            }
+            return table;
+        }
+    }
+}

@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -49,7 +49,7 @@ internal sealed class AesCipherTransform : ICipherTransform
 
         // CTR and Stream modes always use encryption (we encrypt the counter/nonce)
         // ECB and CBC use encryption keys for encrypting, decryption keys for decrypting
-        if (encrypting || mode == CipherMode.Ctr || mode == CipherMode.Stream)
+        if (encrypting || mode == CipherMode.CTR || mode == CipherMode.Stream)
         {
             _roundKeys = encRoundKeys;
         }
@@ -77,6 +77,12 @@ internal sealed class AesCipherTransform : ICipherTransform
     public int BlockSize => AesCore.BlockSizeBytes;
 
     /// <inheritdoc/>
+    int ICryptoTransform.InputBlockSize => AesCore.BlockSizeBytes;
+
+    /// <inheritdoc/>
+    int ICryptoTransform.OutputBlockSize => AesCore.BlockSizeBytes;
+
+    /// <inheritdoc/>
     public bool CanTransformMultipleBlocks => true;
 
     /// <inheritdoc/>
@@ -100,13 +106,13 @@ internal sealed class AesCipherTransform : ICipherTransform
 
             switch (_mode)
             {
-                case CipherMode.Ecb:
+                case CipherMode.ECB:
                     TransformBlockEcb(inBlock, outBlock);
                     break;
-                case CipherMode.Cbc:
+                case CipherMode.CBC:
                     TransformBlockCbc(inBlock, outBlock);
                     break;
-                case CipherMode.Ctr:
+                case CipherMode.CTR:
                     TransformBlockCtr(inBlock, outBlock);
                     break;
                 default:
@@ -143,7 +149,7 @@ internal sealed class AesCipherTransform : ICipherTransform
         if (_encrypting)
         {
             // Apply padding and encrypt final block
-            if (_mode == CipherMode.Ctr || _mode == CipherMode.Stream)
+            if (_mode == CipherMode.CTR || _mode == CipherMode.Stream)
             {
                 // CTR mode doesn't need padding - just encrypt remaining bytes
                 if (remainder > 0)
@@ -191,7 +197,7 @@ internal sealed class AesCipherTransform : ICipherTransform
         else
         {
             // Decryption - remove padding from last block
-            if (_mode == CipherMode.Ctr || _mode == CipherMode.Stream)
+            if (_mode == CipherMode.CTR || _mode == CipherMode.Stream)
             {
                 // CTR mode - decrypt remaining bytes
                 if (remainder > 0)
