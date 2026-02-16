@@ -29,11 +29,10 @@ internal static class BinarySpans
     /// </summary>
     /// <param name="source">The source bytes. The number of words read is <c>source.Length / 4</c>.</param>
     /// <param name="destination">The destination word span (must have room for the words derived from <paramref name="source"/>).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void ReadUInt32LittleEndian(ReadOnlySpan<byte> source, Span<uint> destination)
     {
         int count = source.Length / sizeof(UInt32);
-
         if (BitConverter.IsLittleEndian)
         {
             MemoryMarshal.Cast<byte, uint>(source).Slice(0, count).CopyTo(destination);
@@ -52,11 +51,10 @@ internal static class BinarySpans
     /// </summary>
     /// <param name="source">The source bytes. The number of words read is <c>source.Length / 8</c>.</param>
     /// <param name="destination">The destination word span (must have room for the words derived from <paramref name="source"/>).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void ReadUInt64LittleEndian(ReadOnlySpan<byte> source, Span<ulong> destination)
     {
         int count = source.Length / sizeof(UInt64);
-
         if (BitConverter.IsLittleEndian)
         {
             MemoryMarshal.Cast<byte, ulong>(source).Slice(0, count).CopyTo(destination);
@@ -75,7 +73,7 @@ internal static class BinarySpans
     /// </summary>
     /// <param name="source">The source word span.</param>
     /// <param name="destination">The destination bytes (must be at least <paramref name="source"/>.Length × 4 bytes).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void WriteUInt32LittleEndian(ReadOnlySpan<uint> source, Span<byte> destination)
     {
         if (BitConverter.IsLittleEndian)
@@ -96,7 +94,7 @@ internal static class BinarySpans
     /// </summary>
     /// <param name="source">The source word span.</param>
     /// <param name="destination">The destination bytes (must be at least <paramref name="source"/>.Length × 8 bytes).</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void WriteUInt64LittleEndian(ReadOnlySpan<ulong> source, Span<byte> destination)
     {
         if (BitConverter.IsLittleEndian)

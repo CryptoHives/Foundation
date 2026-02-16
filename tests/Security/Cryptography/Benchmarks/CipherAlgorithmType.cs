@@ -198,6 +198,39 @@ public sealed class CipherAlgorithmType : IFormattable
     }
 
     /// <summary>
+    /// Returns AES-128-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesCbc128()
+    {
+        return FromRegistry("AES-128-CBC", CipherAlgorithmRegistry.Mode.CBC, 128);
+    }
+
+    /// <summary>
+    /// Returns AES-256-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesCbc256()
+    {
+        return FromRegistry("AES-256-CBC", CipherAlgorithmRegistry.Mode.CBC, 256);
+    }
+
+    /// <summary>
+    /// Returns all AES-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesCbc()
+    {
+        foreach (var alg in AesCbc128()) yield return alg;
+        foreach (var alg in AesCbc256()) yield return alg;
+    }
+
+    /// <summary>
+    /// Returns ChaCha20 stream cipher implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> ChaCha20()
+    {
+        return FromRegistry("ChaCha20", CipherAlgorithmRegistry.Mode.Stream, 256);
+    }
+
+    /// <summary>
     /// Returns all AEAD cipher implementations for benchmarking.
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AEAD()

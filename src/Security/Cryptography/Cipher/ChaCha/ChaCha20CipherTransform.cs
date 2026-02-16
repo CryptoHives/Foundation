@@ -72,27 +72,51 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
 
         int processed = 0;
 
-        while (processed < input.Length)
+        // Drain any leftover keystream from a previous partial block
+        if (_keystreamPosition < ChaChaCore.BlockSizeBytes)
         {
-            // Generate new keystream block if needed
-            if (_keystreamPosition >= ChaChaCore.BlockSizeBytes)
-            {
-                ChaChaCore.Block(_key, _nonce, _counter, _keystreamBuffer);
-                _counter++;
-                _keystreamPosition = 0;
-            }
-
-            // XOR input with keystream
             int available = ChaChaCore.BlockSizeBytes - _keystreamPosition;
-            int toProcess = Math.Min(available, input.Length - processed);
+            int toProcess = Math.Min(available, input.Length);
 
             for (int i = 0; i < toProcess; i++)
             {
-                output[processed + i] = (byte)(input[processed + i] ^ _keystreamBuffer[_keystreamPosition + i]);
+                output[i] = (byte)(input[i] ^ _keystreamBuffer[_keystreamPosition + i]);
             }
 
-            processed += toProcess;
+            processed = toProcess;
             _keystreamPosition += toProcess;
+        }
+
+        // Bulk path: delegate full blocks to ChaChaCore.Transform (SSE2-accelerated)
+        int remaining = input.Length - processed;
+        int bulkBytes = remaining & ~(ChaChaCore.BlockSizeBytes - 1); // round down to block boundary
+
+        if (bulkBytes > 0)
+        {
+            ChaChaCore.Transform(_key, _nonce, _counter,
+                                 input.Slice(processed, bulkBytes),
+                                 output.Slice(processed, bulkBytes));
+
+            int blocksProcessed = bulkBytes / ChaChaCore.BlockSizeBytes;
+            _counter += (uint)blocksProcessed;
+            processed += bulkBytes;
+        }
+
+        // Handle trailing partial block
+        remaining = input.Length - processed;
+        if (remaining > 0)
+        {
+            ChaChaCore.Block(_key, _nonce, _counter, _keystreamBuffer);
+            _counter++;
+            _keystreamPosition = 0;
+
+            for (int i = 0; i < remaining; i++)
+            {
+                output[processed + i] = (byte)(input[processed + i] ^ _keystreamBuffer[i]);
+            }
+
+            _keystreamPosition = remaining;
+            processed += remaining;
         }
 
         return processed;

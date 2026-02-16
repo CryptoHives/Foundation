@@ -209,8 +209,11 @@ public static class CipherAlgorithmRegistry
     {
         var implementations = new List<CipherImplementation>();
 
-        // AES Implementations
+        // AES AEAD Implementations
         AddAesImplementations(implementations);
+
+        // AES-CBC Implementations
+        AddAesCbcImplementations(implementations);
 
         // ChaCha Implementations
         AddChaChaImplementations(implementations);
@@ -356,8 +359,77 @@ public static class CipherAlgorithmRegistry
             Source.BouncyCastle));
     }
 
+    private static void AddAesCbcImplementations(List<CipherImplementation> implementations)
+    {
+        // AES-128-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "AES-128-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () =>
+            {
+                var aes = new CH.Aes128();
+                aes.Mode = CH.CipherMode.CBC;
+                aes.Padding = CH.PaddingMode.PKCS7;
+                return aes;
+            },
+            Source.Managed));
+
+        // AES-128-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "AES-128-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateAesCbc(16),
+            Source.BouncyCastle));
+
+        // AES-256-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "AES-256-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () =>
+            {
+                var aes = new CH.Aes256();
+                aes.Mode = CH.CipherMode.CBC;
+                aes.Padding = CH.PaddingMode.PKCS7;
+                return aes;
+            },
+            Source.Managed));
+
+        // AES-256-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "AES-256-CBC",
+            "BouncyCastle",
+            256,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateAesCbc(32),
+            Source.BouncyCastle));
+    }
+
     private static void AddChaChaImplementations(List<CipherImplementation> implementations)
     {
+        // ChaCha20 (stream) - Managed
+        implementations.Add(new CipherImplementation(
+            "ChaCha20",
+            "Managed",
+            256,
+            Mode.Stream,
+            () => new CH.ChaCha20(),
+            Source.Managed));
+
+        // ChaCha20 (stream) - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "ChaCha20",
+            "BouncyCastle",
+            256,
+            Mode.Stream,
+            () => BouncyCastleCipherAdapter.CreateChaCha20(),
+            Source.BouncyCastle));
+
         // ChaCha20-Poly1305 - Managed
         implementations.Add(new CipherImplementation(
             "ChaCha20-Poly1305",
@@ -422,6 +494,24 @@ public static class CipherAlgorithmRegistry
             () => new OSAesGcmAdapter(new byte[32]),
             Source.OS,
             supportCheck: () => OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()));
+
+        // AES-128-CBC - OS (.NET 8.0+)
+        implementations.Add(new CipherImplementation(
+            "AES-128-CBC",
+            "OS",
+            128,
+            Mode.CBC,
+            () => new OSAesCbcAdapter(16),
+            Source.OS));
+
+        // AES-256-CBC - OS (.NET 8.0+)
+        implementations.Add(new CipherImplementation(
+            "AES-256-CBC",
+            "OS",
+            256,
+            Mode.CBC,
+            () => new OSAesCbcAdapter(32),
+            Source.OS));
 #endif
 
 #if NET9_0_OR_GREATER

@@ -241,7 +241,7 @@ internal static class AesCore
     /// <param name="output">The 16-byte ciphertext output.</param>
     /// <param name="roundKeys">The expanded encryption key schedule.</param>
     /// <param name="nr">Number of rounds (10, 12, or 14).</param>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys, int nr)
     {
         unchecked
@@ -292,7 +292,7 @@ internal static class AesCore
     /// <param name="output">The 16-byte plaintext output.</param>
     /// <param name="roundKeys">The expanded decryption key schedule.</param>
     /// <param name="nr">Number of rounds (10, 12, or 14).</param>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys, int nr)
     {
         unchecked
@@ -343,7 +343,7 @@ internal static class AesCore
     /// <summary>
     /// Applies S-box substitution to each byte of a word.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint SubWord(uint w)
     {
         unchecked
@@ -358,7 +358,7 @@ internal static class AesCore
     /// <summary>
     /// Rotates a word left by 8 bits (one byte position).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint RotWord(uint w)
     {
         unchecked
@@ -370,7 +370,7 @@ internal static class AesCore
     /// <summary>
     /// Applies InvMixColumns to a single column for decryption key schedule.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint InvMixColumn(uint w)
     {
         unchecked
@@ -385,7 +385,7 @@ internal static class AesCore
     /// <summary>
     /// Multiply by x (0x02) in GF(2^8) with reduction by x^8 + x^4 + x^3 + x + 1.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static byte Xtime(byte b)
     {
         unchecked
@@ -397,7 +397,7 @@ internal static class AesCore
     /// <summary>
     /// Multiply two bytes in GF(2^8).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static byte GfMul(byte a, byte b)
     {
         unchecked
@@ -408,11 +408,17 @@ internal static class AesCore
             for (int i = 0; i < 8; i++)
             {
                 if ((b & 1) != 0)
+                {
                     result ^= temp;
+                }
+
                 bool highBit = (temp & 0x80) != 0;
                 temp = (byte)(temp << 1);
                 if (highBit)
+                {
                     temp ^= 0x1b;
+                }
+
                 b = (byte)(b >> 1);
             }
 

@@ -62,8 +62,16 @@ public class CipherConfig : ManualConfig
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase)
         {
             var method = benchmarkCase.Descriptor.WorkloadMethodDisplayInfo;
-            var category = benchmarkCase.Parameters["TestCipherAlgorithm"]?.ToString() ?? "Unknown";
-            return $"{method} · {category}";
+            var algorithmParam = benchmarkCase.Parameters["TestCipherAlgorithm"];
+            if (algorithmParam != null)
+                return $"{method} · {algorithmParam}";
+
+            // Fallback: derive description from CipherAlgorithm or class name
+            var cipherName = benchmarkCase.Parameters["CipherAlgorithm"]?.ToString();
+            if (!string.IsNullOrEmpty(cipherName))
+                return $"{method} · {cipherName}";
+
+            return method;
         }
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)

@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 
 /// <summary>
@@ -43,6 +44,9 @@ public abstract class AesGcm : IAeadCipher
 {
     private readonly byte[] _key;
     private readonly byte[] _h; // Hash subkey
+    private readonly ulong _h0; // High 64 bits of H (avoids byte→ulong conversion in hot path)
+    private readonly ulong _h1; // Low 64 bits of H
+    private readonly ulong[] _shoupTable; // Precomputed 4-bit Shoup multiplication table
     private readonly uint[] _encRoundKeys;
     private readonly int _rounds;
     private bool _disposed;
@@ -72,6 +76,13 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> zeroBlock = stackalloc byte[GcmCore.BlockSizeBytes];
         zeroBlock.Clear();
         AesCore.EncryptBlock(zeroBlock, _h, _encRoundKeys, _rounds);
+
+        // Store H as ulongs for the optimized GHASH path
+        _h0 = BinaryPrimitives.ReadUInt64BigEndian(_h.AsSpan(0));
+        _h1 = BinaryPrimitives.ReadUInt64BigEndian(_h.AsSpan(sizeof(UInt64)));
+
+        // Precompute 4-bit Shoup table for fast GF(2^128) multiplication
+        _shoupTable = GcmCore.BuildShoupTable(_h0, _h1);
     }
 
     /// <inheritdoc/>
@@ -112,7 +123,7 @@ public abstract class AesGcm : IAeadCipher
 
         // Compute GHASH over AAD and ciphertext
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.GHashComplete(_h, associatedData, ciphertext.Slice(0, plaintext.Length), ghash);
+        GcmCore.GHashComplete(_shoupTable, associatedData, ciphertext.Slice(0, plaintext.Length), ghash);
 
         // Compute tag: T = GCTR(J0, GHASH(H, A, C))
         Span<byte> fullTag = stackalloc byte[GcmCore.BlockSizeBytes];
@@ -140,7 +151,7 @@ public abstract class AesGcm : IAeadCipher
 
         // Compute GHASH over AAD and ciphertext
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.GHashComplete(_h, associatedData, ciphertext, ghash);
+        GcmCore.GHashComplete(_shoupTable, associatedData, ciphertext, ghash);
 
         // Compute expected tag
         Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
@@ -217,6 +228,7 @@ public abstract class AesGcm : IAeadCipher
                 Array.Clear(_key, 0, _key.Length);
                 Array.Clear(_h, 0, _h.Length);
                 Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
+                Array.Clear(_shoupTable, 0, _shoupTable.Length);
             }
 
             _disposed = true;

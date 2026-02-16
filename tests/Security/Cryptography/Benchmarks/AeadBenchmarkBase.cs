@@ -38,6 +38,7 @@ public abstract class AeadBenchmarkBase
     private byte[] _encryptedData = null!;
     private byte[] _tag = null!;
     private byte[] _nonce = null!;
+    private byte[] _decryptNonce = null!;
     private byte[] _aad = null!;
 
     /// <summary>
@@ -77,6 +78,17 @@ public abstract class AeadBenchmarkBase
     /// Gets the nonce/IV.
     /// </summary>
     protected byte[] Nonce => _nonce;
+
+    /// <summary>
+    /// Gets the nonce used for decryption benchmarks.
+    /// </summary>
+    /// <remarks>
+    /// This is a fixed copy of the original nonce used to pre-encrypt data in
+    /// <see cref="GlobalSetup"/>. Unlike <see cref="Nonce"/>, it is never
+    /// incremented, ensuring tag verification succeeds and the full decryption
+    /// path is exercised.
+    /// </remarks>
+    protected byte[] DecryptNonce => _decryptNonce;
 
     /// <summary>
     /// Gets the additional authenticated data (AAD).
@@ -119,6 +131,9 @@ public abstract class AeadBenchmarkBase
         // Pre-encrypt data for decryption benchmarks
         _encryptedData = new byte[_inputData.Length];
         AeadCipher.Encrypt(_nonce, _inputData, _encryptedData, _tag, _aad);
+
+        // Save the nonce that matches the pre-encrypted data for decryption benchmarks
+        _decryptNonce = (byte[])_nonce.Clone();
 
         // Allocate output buffer (same size as input, no padding for AEAD)
         _outputData = new byte[_inputData.Length];
