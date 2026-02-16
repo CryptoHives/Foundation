@@ -5,7 +5,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
-using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// ChaCha20 cipher transform for encryption or decryption operations.

@@ -275,12 +275,15 @@ internal static class GcmCore
     /// <param name="icb">The initial counter block.</param>
     /// <param name="input">The input data.</param>
     /// <param name="output">The output buffer.</param>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void GctrAes(ReadOnlySpan<uint> roundKeys, int rounds,
                                 ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (input.Length == 0)
+        {
             return;
+        }
 
         Span<byte> counter = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
@@ -544,6 +547,7 @@ internal static class GcmCore
     private static void ProcessBlocks(ulong[] shoupTable, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
+        Span<byte> padded = stackalloc byte[BlockSizeBytes];
         while (offset < data.Length)
         {
             int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
@@ -555,7 +559,6 @@ internal static class GcmCore
             }
             else
             {
-                Span<byte> padded = stackalloc byte[BlockSizeBytes];
                 padded.Clear();
                 data.Slice(offset, blockLen).CopyTo(padded);
                 y0 ^= BinaryPrimitives.ReadUInt64BigEndian(padded);
@@ -574,6 +577,7 @@ internal static class GcmCore
     private static void ProcessBlocks(ulong h0, ulong h1, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
+        Span<byte> padded = stackalloc byte[BlockSizeBytes];
         while (offset < data.Length)
         {
             int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
@@ -585,7 +589,6 @@ internal static class GcmCore
             }
             else
             {
-                Span<byte> padded = stackalloc byte[BlockSizeBytes];
                 padded.Clear();
                 data.Slice(offset, blockLen).CopyTo(padded);
                 y0 ^= BinaryPrimitives.ReadUInt64BigEndian(padded);

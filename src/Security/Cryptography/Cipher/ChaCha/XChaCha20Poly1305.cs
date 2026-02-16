@@ -5,7 +5,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
-using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// XChaCha20-Poly1305 authenticated encryption with extended nonce.

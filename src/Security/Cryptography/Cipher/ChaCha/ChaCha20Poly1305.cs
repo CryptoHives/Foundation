@@ -5,7 +5,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
-using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// ChaCha20-Poly1305 authenticated encryption as specified in RFC 8439.
@@ -44,20 +43,24 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 /// </remarks>
 public sealed class ChaCha20Poly1305 : IAeadCipher
 {
+    private const int KeySizeBits = 256;
+    private const int NonceSizeBits = 96;
+    private const int TagSizeBits = 128;
+
     /// <summary>
     /// Key size in bytes (256 bits).
     /// </summary>
-    public const int KeySizeBytesConst = 32;
+    public const int KeySizeBytesConst = KeySizeBits / 8;
 
     /// <summary>
     /// Nonce size in bytes (96 bits).
     /// </summary>
-    public const int NonceSizeBytesConst = 12;
+    public const int NonceSizeBytesConst = NonceSizeBits / 8;
 
     /// <summary>
     /// Tag size in bytes (128 bits).
     /// </summary>
-    public const int TagSizeBytesConst = 16;
+    public const int TagSizeBytesConst = TagSizeBits / 8;
 
     private readonly byte[] _key;
     private readonly SimdSupport _simdSupport;
@@ -133,14 +136,14 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
             throw new ArgumentException($"Tag buffer must be at least {TagSizeBytesConst} bytes.", nameof(tag));
 
         // Generate Poly1305 key using ChaCha20 with counter = 0
-        Span<byte> polyKey = stackalloc byte[64];
+        Span<byte> polyKey = stackalloc byte[ChaChaCore.BlockSizeBytes];
         ChaChaCore.Block(_key, nonce, 0, polyKey);
 
         // Encrypt plaintext using ChaCha20 with counter = 1
         ChaChaCore.Transform(_simdSupport, _key, nonce, 1, plaintext, ciphertext);
 
         // Compute Poly1305 tag over (AAD || pad || ciphertext || pad || lengths)
-        Poly1305.ComputeAeadTag(polyKey.Slice(0, 32), associatedData,
+        Poly1305.ComputeAeadTag(polyKey.Slice(0, Poly1305.KeySizeBytes), associatedData,
                                  ciphertext.Slice(0, plaintext.Length), tag);
     }
 
@@ -157,12 +160,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
             throw new ArgumentException("Plaintext buffer too small.", nameof(plaintext));
 
         // Generate Poly1305 key
-        Span<byte> polyKey = stackalloc byte[64];
+        Span<byte> polyKey = stackalloc byte[ChaChaCore.BlockSizeBytes];
         ChaChaCore.Block(_key, nonce, 0, polyKey);
 
         // Compute expected tag
         Span<byte> expectedTag = stackalloc byte[TagSizeBytesConst];
-        Poly1305.ComputeAeadTag(polyKey.Slice(0, 32), associatedData, ciphertext, expectedTag);
+        Poly1305.ComputeAeadTag(polyKey.Slice(0, Poly1305.KeySizeBytes), associatedData, ciphertext, expectedTag);
 
         // Verify tag in constant time
         if (!CryptoUtils.FixedTimeEquals(tag, expectedTag))

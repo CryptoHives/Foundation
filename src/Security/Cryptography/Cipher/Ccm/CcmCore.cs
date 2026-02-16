@@ -180,6 +180,7 @@ internal static class CcmCore
         x.Slice(0, M).CopyTo(mac);
     }
 
+    [SkipLocalsInit]
     private static void EncryptCtr(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> plaintext,
@@ -216,6 +217,7 @@ internal static class CcmCore
         }
     }
 
+    [SkipLocalsInit]
     private static void DecryptCtr(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,

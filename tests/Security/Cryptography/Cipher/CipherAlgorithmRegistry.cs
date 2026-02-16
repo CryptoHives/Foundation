@@ -415,14 +415,14 @@ public static class CipherAlgorithmRegistry
         var chachaSimd = CH.Cipher.ChaCha20.SimdSupport;
 
         // ChaCha20 (stream) - SSE2
-        if ((chachaSimd & CH.Hash.SimdSupport.Sse2) != 0)
+        if ((chachaSimd & CH.SimdSupport.Sse2) != 0)
         {
             implementations.Add(new CipherImplementation(
                 "ChaCha20",
                 "SSE2",
                 256,
                 Mode.Stream,
-                () => CH.Cipher.ChaCha20.Create(CH.Hash.SimdSupport.Sse2),
+                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Sse2),
                 Source.Simd));
         }
 
@@ -432,7 +432,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.Stream,
-            () => CH.Cipher.ChaCha20.Create(CH.Hash.SimdSupport.None),
+            () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.None),
             Source.Managed));
 
         // ChaCha20 (stream) - BouncyCastle
@@ -445,14 +445,14 @@ public static class CipherAlgorithmRegistry
             Source.BouncyCastle));
 
         // ChaCha20-Poly1305 - SSE2
-        if ((chachaSimd & CH.Hash.SimdSupport.Sse2) != 0)
+        if ((chachaSimd & CH.SimdSupport.Sse2) != 0)
         {
             implementations.Add(new CipherImplementation(
                 "ChaCha20-Poly1305",
                 "SSE2",
                 256,
                 Mode.ChaCha20Poly1305,
-                () => CH.Cipher.ChaCha20Poly1305.Create(CH.Hash.SimdSupport.Sse2, new byte[32]),
+                () => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Sse2, new byte[32]),
                 Source.Simd));
         }
 
@@ -462,7 +462,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.ChaCha20Poly1305,
-            () => CH.Cipher.ChaCha20Poly1305.Create(CH.Hash.SimdSupport.None, new byte[32]),
+            () => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.None, new byte[32]),
             Source.Managed));
 
         // ChaCha20-Poly1305 - BouncyCastle
@@ -479,14 +479,14 @@ public static class CipherAlgorithmRegistry
             Source.BouncyCastle));
 
         // XChaCha20-Poly1305 - SSE2
-        if ((chachaSimd & CH.Hash.SimdSupport.Sse2) != 0)
+        if ((chachaSimd & CH.SimdSupport.Sse2) != 0)
         {
             implementations.Add(new CipherImplementation(
                 "XChaCha20-Poly1305",
                 "SSE2",
                 256,
                 Mode.XChaCha20Poly1305,
-                () => CH.Cipher.XChaCha20Poly1305.Create(CH.Hash.SimdSupport.Sse2, new byte[32]),
+                () => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Sse2, new byte[32]),
                 Source.Simd));
         }
 
@@ -496,7 +496,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.XChaCha20Poly1305,
-            () => CH.Cipher.XChaCha20Poly1305.Create(CH.Hash.SimdSupport.None, new byte[32]),
+            () => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.None, new byte[32]),
             Source.Managed));
     }
 

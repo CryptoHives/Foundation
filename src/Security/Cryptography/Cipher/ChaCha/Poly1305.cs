@@ -97,9 +97,9 @@ internal static class Poly1305
     private static void ComputeTag32(ReadOnlySpan<byte> key, ReadOnlySpan<byte> message, Span<byte> tag)
     {
         uint t0 = BinaryPrimitives.ReadUInt32LittleEndian(key) & 0x0fffffff;
-        uint t1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4)) & 0x0ffffffc;
-        uint t2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(8)) & 0x0ffffffc;
-        uint t3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(12)) & 0x0ffffffc;
+        uint t1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(1 * sizeof(UInt32))) & 0x0ffffffc;
+        uint t2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(2 * sizeof(UInt32))) & 0x0ffffffc;
+        uint t3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(3 * sizeof(UInt32))) & 0x0ffffffc;
 
         uint r0 = t0 & 0x03ffffff;
         uint r1 = ((t0 >> 26) | (t1 << 6)) & 0x03ffffff;
@@ -112,10 +112,10 @@ internal static class Poly1305
         uint s3 = r3 * 5;
         uint s4 = r4 * 5;
 
-        uint pad0 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(16));
-        uint pad1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(20));
-        uint pad2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(24));
-        uint pad3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(28));
+        uint pad0 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4 * sizeof(UInt32)));
+        uint pad1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(5 * sizeof(UInt32)));
+        uint pad2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(6 * sizeof(UInt32)));
+        uint pad3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(7 * sizeof(UInt32)));
 
         uint h0 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0;
 
@@ -137,9 +137,9 @@ internal static class Poly1305
         Span<byte> tag)
     {
         uint t0 = BinaryPrimitives.ReadUInt32LittleEndian(key) & 0x0fffffff;
-        uint t1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4)) & 0x0ffffffc;
-        uint t2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(8)) & 0x0ffffffc;
-        uint t3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(12)) & 0x0ffffffc;
+        uint t1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(1 * sizeof(UInt32))) & 0x0ffffffc;
+        uint t2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(2 * sizeof(UInt32))) & 0x0ffffffc;
+        uint t3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(3 * sizeof(UInt32))) & 0x0ffffffc;
 
         uint r0 = t0 & 0x03ffffff;
         uint r1 = ((t0 >> 26) | (t1 << 6)) & 0x03ffffff;
@@ -152,10 +152,10 @@ internal static class Poly1305
         uint s3 = r3 * 5;
         uint s4 = r4 * 5;
 
-        uint pad0 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(16));
-        uint pad1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(20));
-        uint pad2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(24));
-        uint pad3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(28));
+        uint pad0 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4 * sizeof(UInt32)));
+        uint pad1 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(5 * sizeof(UInt32)));
+        uint pad2 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(6 * sizeof(UInt32)));
+        uint pad3 = BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(7 * sizeof(UInt32)));
 
         uint h0 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0;
 
@@ -165,9 +165,9 @@ internal static class Poly1305
         ProcessAeadSection(ciphertext, ref h0, ref h1, ref h2, ref h3, ref h4,
                             r0, r1, r2, r3, r4, s1, s2, s3, s4);
 
-        Span<byte> lengths = stackalloc byte[16];
+        Span<byte> lengths = stackalloc byte[BlockSize];
         BinaryPrimitives.WriteUInt64LittleEndian(lengths, (ulong)aad.Length);
-        BinaryPrimitives.WriteUInt64LittleEndian(lengths.Slice(8), (ulong)ciphertext.Length);
+        BinaryPrimitives.WriteUInt64LittleEndian(lengths.Slice(sizeof(UInt64)), (ulong)ciphertext.Length);
         ProcessFullBlock(lengths, ref h0, ref h1, ref h2, ref h3, ref h4,
                           r0, r1, r2, r3, r4, s1, s2, s3, s4);
 
@@ -253,9 +253,9 @@ internal static class Poly1305
         uint s1, uint s2, uint s3, uint s4)
     {
         uint b0 = BinaryPrimitives.ReadUInt32LittleEndian(block);
-        uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(4));
-        uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(8));
-        uint b3 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(12));
+        uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(1 * sizeof(UInt32)));
+        uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(2 * sizeof(UInt32)));
+        uint b3 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(3 * sizeof(UInt32)));
 
         h0 += b0 & 0x03ffffff;
         h1 += ((b0 >> 26) | (b1 << 6)) & 0x03ffffff;
@@ -283,9 +283,9 @@ internal static class Poly1305
         padded[block.Length] = 0x01;
 
         uint b0 = BinaryPrimitives.ReadUInt32LittleEndian(padded);
-        uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(4));
-        uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(8));
-        uint b3 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(12));
+        uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(1 * sizeof(UInt32)));
+        uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(2 * sizeof(UInt32)));
+        uint b3 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(3 * sizeof(UInt32)));
 
         h0 += b0 & 0x03ffffff;
         h1 += ((b0 >> 26) | (b1 << 6)) & 0x03ffffff;
@@ -363,9 +363,9 @@ internal static class Poly1305
         f3 += pad3 + c;
 
         BinaryPrimitives.WriteUInt32LittleEndian(tag, (uint)f0);
-        BinaryPrimitives.WriteUInt32LittleEndian(tag.Slice(4), (uint)f1);
-        BinaryPrimitives.WriteUInt32LittleEndian(tag.Slice(8), (uint)f2);
-        BinaryPrimitives.WriteUInt32LittleEndian(tag.Slice(12), (uint)f3);
+        BinaryPrimitives.WriteUInt32LittleEndian(tag.Slice(1 * sizeof(UInt32)), (uint)f1);
+        BinaryPrimitives.WriteUInt32LittleEndian(tag.Slice(2 * sizeof(UInt32)), (uint)f2);
+        BinaryPrimitives.WriteUInt32LittleEndian(tag.Slice(3 * sizeof(UInt32)), (uint)f3);
     }
 
 #if NET8_0_OR_GREATER
@@ -448,7 +448,7 @@ internal static class Poly1305
         out ulong padLo, out ulong padHi)
     {
         ulong t0 = BinaryPrimitives.ReadUInt64LittleEndian(key);
-        ulong t1 = BinaryPrimitives.ReadUInt64LittleEndian(key.Slice(8));
+        ulong t1 = BinaryPrimitives.ReadUInt64LittleEndian(key.Slice(sizeof(UInt64)));
         t0 &= 0x0ffffffc0fffffff;
         t1 &= 0x0ffffffc0ffffffc;
 
@@ -459,8 +459,8 @@ internal static class Poly1305
         s1 = r1 * 20;
         s2 = r2 * 20;
 
-        padLo = BinaryPrimitives.ReadUInt64LittleEndian(key.Slice(16));
-        padHi = BinaryPrimitives.ReadUInt64LittleEndian(key.Slice(24));
+        padLo = BinaryPrimitives.ReadUInt64LittleEndian(key.Slice(2 * sizeof(UInt64)));
+        padHi = BinaryPrimitives.ReadUInt64LittleEndian(key.Slice(3 * sizeof(UInt64)));
     }
 
     /// <summary>
@@ -499,7 +499,7 @@ internal static class Poly1305
         ref ulong h0, ref ulong h1, ref ulong h2)
     {
         ulong m0 = BinaryPrimitives.ReadUInt64LittleEndian(block);
-        ulong m1 = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(8));
+        ulong m1 = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(sizeof(UInt64)));
         h0 += m0 & Mask44;
         h1 += ((m0 >> 44) | (m1 << 20)) & Mask44;
         h2 += ((m1 >> 24) & Mask42) | (1UL << 40);
@@ -518,7 +518,7 @@ internal static class Poly1305
         padded[block.Length] = 0x01;
 
         ulong m0 = BinaryPrimitives.ReadUInt64LittleEndian(padded);
-        ulong m1 = BinaryPrimitives.ReadUInt64LittleEndian(padded.Slice(8));
+        ulong m1 = BinaryPrimitives.ReadUInt64LittleEndian(padded.Slice(sizeof(UInt64)));
         h0 += m0 & Mask44;
         h1 += ((m0 >> 44) | (m1 << 20)) & Mask44;
         h2 += (m1 >> 24) & Mask42;
@@ -598,7 +598,7 @@ internal static class Poly1305
         f1 += padHi + (f0 < padLo ? 1UL : 0UL);
 
         BinaryPrimitives.WriteUInt64LittleEndian(tag, f0);
-        BinaryPrimitives.WriteUInt64LittleEndian(tag.Slice(8), f1);
+        BinaryPrimitives.WriteUInt64LittleEndian(tag.Slice(sizeof(UInt64)), f1);
     }
 #endif
 }

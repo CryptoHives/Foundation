@@ -14,6 +14,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using BC = Org.BouncyCastle.Crypto.Digests;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
+using CHRoot = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Central registry of all hash algorithm implementations for testing and benchmarking.
@@ -335,8 +336,8 @@ public static class HashAlgorithmRegistry
         List<HashImplementation> list,
         string family,
         int hashSizeBits,
-        CH.SimdSupport simdSupport,
-        Func<CH.SimdSupport, HashAlgorithm> factory,
+        CHRoot.SimdSupport simdSupport,
+        Func<CHRoot.SimdSupport, HashAlgorithm> factory,
         Func<Org.BouncyCastle.Crypto.IDigest> bcFactory,
         Func<HashAlgorithm?>? osFactory = null)
     {
@@ -349,29 +350,29 @@ public static class HashAlgorithmRegistry
         }
 #endif
 
-        if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Avx512F) != 0)
         {
             list.Add(new(family, "AVX512F", hashSizeBits,
-                () => factory(CH.SimdSupport.Avx512F), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Avx512F) != 0));
+                () => factory(CHRoot.SimdSupport.Avx512F), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Avx512F) != 0));
         }
 
-        if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Avx2) != 0)
         {
             list.Add(new(family, "AVX2", hashSizeBits,
-                () => factory(CH.SimdSupport.Avx2), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Avx2) != 0));
+                () => factory(CHRoot.SimdSupport.Avx2), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Avx2) != 0));
         }
 
-        if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Ssse3) != 0)
         {
             list.Add(new(family, "SSSE3", hashSizeBits,
-                () => factory(CH.SimdSupport.Ssse3), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Ssse3) != 0));
+                () => factory(CHRoot.SimdSupport.Ssse3), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Ssse3) != 0));
         }
 
         list.Add(new(family, "Managed", hashSizeBits,
-            () => factory(CH.SimdSupport.None), Source.Managed));
+            () => factory(CHRoot.SimdSupport.None), Source.Managed));
 
         list.Add(new(family, "BouncyCastle", hashSizeBits,
             () => new BouncyCastleHashAdapter(bcFactory()), Source.BouncyCastle));
@@ -433,13 +434,13 @@ public static class HashAlgorithmRegistry
     {
         // BLAKE2b-512
         var blake2bSimd = CH.Blake2b.SimdSupport;
-        if ((blake2bSimd & CH.SimdSupport.Avx2) != 0)
+        if ((blake2bSimd & CHRoot.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2b-512", "AVX2", 512,
-                () => CH.Blake2b.Create(CH.SimdSupport.Avx2, 64), Source.Simd));
+                () => CH.Blake2b.Create(CHRoot.SimdSupport.Avx2, 64), Source.Simd));
         }
         list.Add(new("BLAKE2b-512", "Managed", 512,
-            () => CH.Blake2b.Create(CH.SimdSupport.None, 64), Source.Managed));
+            () => CH.Blake2b.Create(CHRoot.SimdSupport.None, 64), Source.Managed));
         list.Add(new("BLAKE2b-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(512)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
@@ -447,13 +448,13 @@ public static class HashAlgorithmRegistry
             excludeFromBenchmark: true));
 
         // BLAKE2b-256
-        if ((blake2bSimd & CH.SimdSupport.Avx2) != 0)
+        if ((blake2bSimd & CHRoot.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2b-256", "AVX2", 256,
-                () => CH.Blake2b.Create(CH.SimdSupport.Avx2, 32), Source.Simd));
+                () => CH.Blake2b.Create(CHRoot.SimdSupport.Avx2, 32), Source.Simd));
         }
         list.Add(new("BLAKE2b-256", "Managed", 256,
-            () => CH.Blake2b.Create(CH.SimdSupport.None, 32), Source.Managed));
+            () => CH.Blake2b.Create(CHRoot.SimdSupport.None, 32), Source.Managed));
         list.Add(new("BLAKE2b-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
@@ -462,44 +463,44 @@ public static class HashAlgorithmRegistry
 
         // BLAKE2s-256
         var blake2sSimd = CH.Blake2s.SimdSupport;
-        if ((blake2sSimd & CH.SimdSupport.Avx2) != 0)
+        if ((blake2sSimd & CHRoot.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2s-256", "AVX2", 256,
-                () => CH.Blake2s.Create(CH.SimdSupport.Avx2, 32), Source.Simd));
+                () => CH.Blake2s.Create(CHRoot.SimdSupport.Avx2, 32), Source.Simd));
         }
-        if ((blake2sSimd & CH.SimdSupport.Ssse3) != 0)
+        if ((blake2sSimd & CHRoot.SimdSupport.Ssse3) != 0)
         {
             list.Add(new("BLAKE2s-256", "SSSE3", 256,
-                () => CH.Blake2s.Create(CH.SimdSupport.Ssse3, 32), Source.Simd));
+                () => CH.Blake2s.Create(CHRoot.SimdSupport.Ssse3, 32), Source.Simd));
         }
-        if ((blake2sSimd & CH.SimdSupport.Sse2) != 0)
+        if ((blake2sSimd & CHRoot.SimdSupport.Sse2) != 0)
         {
             list.Add(new("BLAKE2s-256", "SSE2", 256,
-                () => CH.Blake2s.Create(CH.SimdSupport.Sse2, 32), Source.Simd));
+                () => CH.Blake2s.Create(CHRoot.SimdSupport.Sse2, 32), Source.Simd));
         }
         list.Add(new("BLAKE2s-256", "Managed", 256,
-            () => CH.Blake2s.Create(CH.SimdSupport.None, 32), Source.Managed));
+            () => CH.Blake2s.Create(CHRoot.SimdSupport.None, 32), Source.Managed));
         list.Add(new("BLAKE2s-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(256)), Source.BouncyCastle));
 
         // BLAKE2s-128
-        if ((blake2sSimd & CH.SimdSupport.Avx2) != 0)
+        if ((blake2sSimd & CHRoot.SimdSupport.Avx2) != 0)
         {
             list.Add(new("BLAKE2s-128", "AVX2", 128,
-                () => CH.Blake2s.Create(CH.SimdSupport.Avx2, 16), Source.Simd));
+                () => CH.Blake2s.Create(CHRoot.SimdSupport.Avx2, 16), Source.Simd));
         }
-        if ((blake2sSimd & CH.SimdSupport.Ssse3) != 0)
+        if ((blake2sSimd & CHRoot.SimdSupport.Ssse3) != 0)
         {
             list.Add(new("BLAKE2s-128", "SSSE3", 128,
-                () => CH.Blake2s.Create(CH.SimdSupport.Ssse3, 16), Source.Simd));
+                () => CH.Blake2s.Create(CHRoot.SimdSupport.Ssse3, 16), Source.Simd));
         }
-        if ((blake2sSimd & CH.SimdSupport.Sse2) != 0)
+        if ((blake2sSimd & CHRoot.SimdSupport.Sse2) != 0)
         {
             list.Add(new("BLAKE2s-128", "SSE2", 128,
-                () => CH.Blake2s.Create(CH.SimdSupport.Sse2, 16), Source.Simd));
+                () => CH.Blake2s.Create(CHRoot.SimdSupport.Sse2, 16), Source.Simd));
         }
         list.Add(new("BLAKE2s-128", "Managed", 128,
-            () => CH.Blake2s.Create(CH.SimdSupport.None, 16), Source.Managed));
+            () => CH.Blake2s.Create(CHRoot.SimdSupport.None, 16), Source.Managed));
         list.Add(new("BLAKE2s-128", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(128)), Source.BouncyCastle));
     }
@@ -511,12 +512,12 @@ public static class HashAlgorithmRegistry
     private static void AddBlake3(List<HashImplementation> list)
     {
         var blake3Simd = CH.Blake3.SimdSupport;
-        if ((blake3Simd & CH.SimdSupport.Ssse3) != 0)
+        if ((blake3Simd & CHRoot.SimdSupport.Ssse3) != 0)
         {
             list.Add(new HashImplementation("BLAKE3", "SSSE3", 256,
-                () => CH.Blake3.Create(CH.SimdSupport.Ssse3, 32), Source.Simd));
+                () => CH.Blake3.Create(CHRoot.SimdSupport.Ssse3, 32), Source.Simd));
         }
-        list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(CH.SimdSupport.None, 32), Source.Managed));
+        list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(CHRoot.SimdSupport.None, 32), Source.Managed));
         list.Add(new("BLAKE3", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake3Digest(256)), Source.BouncyCastle));
 
@@ -546,33 +547,33 @@ public static class HashAlgorithmRegistry
         List<HashImplementation> list,
         string family,
         int hashSizeBits,
-        CH.SimdSupport simdSupport,
-        Func<CH.SimdSupport, HashAlgorithm> factory,
+        CHRoot.SimdSupport simdSupport,
+        Func<CHRoot.SimdSupport, HashAlgorithm> factory,
         Func<Org.BouncyCastle.Crypto.IDigest> bcFactory)
     {
-        if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Avx512F) != 0)
         {
             list.Add(new(family, "AVX512F", hashSizeBits,
-                () => factory(CH.SimdSupport.Avx512F), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Avx512F) != 0));
+                () => factory(CHRoot.SimdSupport.Avx512F), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Avx512F) != 0));
         }
 
-        if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Avx2) != 0)
         {
             list.Add(new(family, "AVX2", hashSizeBits,
-                () => factory(CH.SimdSupport.Avx2), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Avx2) != 0));
+                () => factory(CHRoot.SimdSupport.Avx2), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Avx2) != 0));
         }
 
-        if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Ssse3) != 0)
         {
             list.Add(new(family, "SSSE3", hashSizeBits,
-                () => factory(CH.SimdSupport.Ssse3), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Ssse3) != 0));
+                () => factory(CHRoot.SimdSupport.Ssse3), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Ssse3) != 0));
         }
 
         list.Add(new(family, "Managed", hashSizeBits,
-            () => factory(CH.SimdSupport.None), Source.Managed));
+            () => factory(CHRoot.SimdSupport.None), Source.Managed));
 
         list.Add(new(family, "BouncyCastle", hashSizeBits,
             () => new BouncyCastleHashAdapter(bcFactory()), Source.BouncyCastle));
@@ -582,32 +583,32 @@ public static class HashAlgorithmRegistry
         List<HashImplementation> list,
         string family,
         int hashSizeBits,
-        CH.SimdSupport simdSupport,
-        Func<CH.SimdSupport, HashAlgorithm> factory)
+        CHRoot.SimdSupport simdSupport,
+        Func<CHRoot.SimdSupport, HashAlgorithm> factory)
     {
-        if ((simdSupport & CH.SimdSupport.Avx512F) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Avx512F) != 0)
         {
             list.Add(new(family, "AVX512F", hashSizeBits,
-                () => factory(CH.SimdSupport.Avx512F), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Avx512F) != 0));
+                () => factory(CHRoot.SimdSupport.Avx512F), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Avx512F) != 0));
         }
 
-        if ((simdSupport & CH.SimdSupport.Avx2) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Avx2) != 0)
         {
             list.Add(new(family, "AVX2", hashSizeBits,
-                () => factory(CH.SimdSupport.Avx2), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Avx2) != 0));
+                () => factory(CHRoot.SimdSupport.Avx2), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Avx2) != 0));
         }
 
-        if ((simdSupport & CH.SimdSupport.Ssse3) != 0)
+        if ((simdSupport & CHRoot.SimdSupport.Ssse3) != 0)
         {
             list.Add(new(family, "SSSE3", hashSizeBits,
-                () => factory(CH.SimdSupport.Ssse3), Source.Simd,
-                () => (simdSupport & CH.SimdSupport.Ssse3) != 0));
+                () => factory(CHRoot.SimdSupport.Ssse3), Source.Simd,
+                () => (simdSupport & CHRoot.SimdSupport.Ssse3) != 0));
         }
 
         list.Add(new(family, "Managed", hashSizeBits,
-            () => factory(CH.SimdSupport.None), Source.Managed));
+            () => factory(CHRoot.SimdSupport.None), Source.Managed));
     }
 
     #endregion

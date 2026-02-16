@@ -4,13 +4,12 @@
 #pragma warning disable CA1050 // Declare types in namespaces
 
 using Cryptography.Tests.Adapter;
-using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CryptoHives.Foundation.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Digests;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using CHHash = CryptoHives.Foundation.Security.Cryptography.Hash;
-using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Factory for creating <see cref="IExtendableOutput"/> instances for XOF benchmarking.
@@ -22,7 +21,7 @@ using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
 /// </remarks>
 public sealed class XofAlgorithmType : IFormattable
 {
-    private readonly Func<IExtendableOutput> _factory;
+    private readonly Func<CH.Hash.IExtendableOutput> _factory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="XofAlgorithmType"/> class.
@@ -30,7 +29,7 @@ public sealed class XofAlgorithmType : IFormattable
     /// <param name="category">The algorithm family name.</param>
     /// <param name="name">The display name for this implementation.</param>
     /// <param name="factory">Factory function that creates an <see cref="IExtendableOutput"/> instance.</param>
-    public XofAlgorithmType(string category, string name, Func<IExtendableOutput> factory)
+    public XofAlgorithmType(string category, string name, Func<CH.Hash.IExtendableOutput> factory)
     {
         Category = category;
         Name = name;
@@ -50,7 +49,7 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>
     /// Creates an instance of the XOF algorithm.
     /// </summary>
-    public IExtendableOutput Create() => _factory();
+    public CH.Hash.IExtendableOutput Create() => _factory();
 
     /// <inheritdoc/>
     public string ToString(string? format, IFormatProvider? formatProvider) => Name;
@@ -63,7 +62,7 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>SHAKE128 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> Shake128()
     {
-        yield return new("SHAKE128", "SHAKE128 (Managed)", () => CHHash.Shake128.Create(32));
+        yield return new("SHAKE128", "SHAKE128 (Managed)", () => CH.Hash.Shake128.Create(32));
         yield return new("SHAKE128", "SHAKE128 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new ShakeDigest(128)));
 #if NET8_0_OR_GREATER
         if (System.Security.Cryptography.Shake128.IsSupported)
@@ -74,7 +73,7 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>SHAKE256 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> Shake256()
     {
-        yield return new("SHAKE256", "SHAKE256 (Managed)", () => CHHash.Shake256.Create(64));
+        yield return new("SHAKE256", "SHAKE256 (Managed)", () => CH.Hash.Shake256.Create(64));
         yield return new("SHAKE256", "SHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new ShakeDigest(256)));
 #if NET8_0_OR_GREATER
         if (System.Security.Cryptography.Shake256.IsSupported)
@@ -89,14 +88,14 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>cSHAKE128 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> CShake128()
     {
-        yield return new("cSHAKE128", "cSHAKE128 (Managed)", () => CHHash.CShake128.Create(32));
+        yield return new("cSHAKE128", "cSHAKE128 (Managed)", () => CH.Hash.CShake128.Create(32));
         yield return new("cSHAKE128", "cSHAKE128 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new CShakeDigest(128, null, null)));
     }
 
     /// <summary>cSHAKE256 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> CShake256()
     {
-        yield return new("cSHAKE256", "cSHAKE256 (Managed)", () => CHHash.CShake256.Create(64));
+        yield return new("cSHAKE256", "cSHAKE256 (Managed)", () => CH.Hash.CShake256.Create(64));
         yield return new("cSHAKE256", "cSHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new CShakeDigest(256, null, null)));
     }
 
@@ -107,13 +106,13 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>TurboSHAKE128 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> TurboShake128()
     {
-        yield return new("TurboSHAKE128", "TurboSHAKE128 (Managed)", () => CHHash.TurboShake128.Create(32));
+        yield return new("TurboSHAKE128", "TurboSHAKE128 (Managed)", () => CH.Hash.TurboShake128.Create(32));
     }
 
     /// <summary>TurboSHAKE256 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> TurboShake256()
     {
-        yield return new("TurboSHAKE256", "TurboSHAKE256 (Managed)", () => CHHash.TurboShake256.Create(64));
+        yield return new("TurboSHAKE256", "TurboSHAKE256 (Managed)", () => CH.Hash.TurboShake256.Create(64));
     }
 
     #endregion
@@ -123,13 +122,13 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>KT128 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> KT128()
     {
-        yield return new("KT128", "KT128 (Managed)", () => CHHash.KT128.Create(32));
+        yield return new("KT128", "KT128 (Managed)", () => CH.Hash.KT128.Create(32));
     }
 
     /// <summary>KT256 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> KT256()
     {
-        yield return new("KT256", "KT256 (Managed)", () => CHHash.KT256.Create(64));
+        yield return new("KT256", "KT256 (Managed)", () => CH.Hash.KT256.Create(64));
     }
 
     #endregion
@@ -149,7 +148,7 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>KMAC128 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> KMac128()
     {
-        yield return new("KMAC-128", "KMAC-128 (Managed)", () => CHMac.KMac128.Create(SimdSupport.None, SharedKMacKey, 32, "Benchmark"));
+        yield return new("KMAC-128", "KMAC-128 (Managed)", () => CH.Mac.KMac128.Create(SimdSupport.None, SharedKMacKey, 32, "Benchmark"));
         yield return new("KMAC-128", "KMAC-128 (BouncyCastle)", () => new BouncyCastleKMacXofAdapter(128, SharedKMacKey, SharedKMacCustomization));
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac128.IsSupported)
@@ -160,7 +159,7 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>KMAC256 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> KMac256()
     {
-        yield return new("KMAC-256", "KMAC-256 (Managed)", () => CHMac.KMac256.Create(SimdSupport.None, SharedKMacKey, 64, "Benchmark"));
+        yield return new("KMAC-256", "KMAC-256 (Managed)", () => CH.Mac.KMac256.Create(SimdSupport.None, SharedKMacKey, 64, "Benchmark"));
         yield return new("KMAC-256", "KMAC-256 (BouncyCastle)", () => new BouncyCastleKMacXofAdapter(256, SharedKMacKey, SharedKMacCustomization));
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac256.IsSupported)
@@ -175,10 +174,10 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>BLAKE3 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> Blake3()
     {
-        yield return new("BLAKE3", "BLAKE3 (Managed)", () => CHHash.Blake3.Create(SimdSupport.None, 32));
-        if ((CHHash.Blake3.SimdSupport & SimdSupport.Ssse3) != 0)
+        yield return new("BLAKE3", "BLAKE3 (Managed)", () => CH.Hash.Blake3.Create(SimdSupport.None, 32));
+        if ((CH.Hash.Blake3.SimdSupport & SimdSupport.Ssse3) != 0)
         {
-            yield return new("BLAKE3", "BLAKE3 (Ssse3)", () => CHHash.Blake3.Create(SimdSupport.Ssse3, 32));
+            yield return new("BLAKE3", "BLAKE3 (Ssse3)", () => CH.Hash.Blake3.Create(SimdSupport.Ssse3, 32));
         }
         yield return new("BLAKE3", "BLAKE3 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Blake3Digest(256)));
 #if BLAKE3_NATIVE
@@ -193,7 +192,7 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>Ascon-XOF128 implementations.</summary>
     public static IEnumerable<XofAlgorithmType> AsconXof128()
     {
-        yield return new("Ascon-XOF128", "Ascon-XOF128 (Managed)", () => new CHHash.AsconXof128(32));
+        yield return new("Ascon-XOF128", "Ascon-XOF128 (Managed)", () => new CH.Hash.AsconXof128(32));
         yield return new("Ascon-XOF128", "Ascon-XOF128 (BouncyCastle)",
             () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.AsconXof128()));
     }

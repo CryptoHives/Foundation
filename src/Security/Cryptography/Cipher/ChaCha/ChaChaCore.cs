@@ -13,7 +13,6 @@ using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// Core ChaCha20 operations as specified in RFC 8439.
@@ -103,6 +102,7 @@ internal static class ChaChaCore
     /// <param name="nonce">The 12-byte nonce.</param>
     /// <param name="counter">The 32-bit block counter.</param>
     /// <param name="output">The 64-byte output buffer for the keystream.</param>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
     {
@@ -188,6 +188,7 @@ internal static class ChaChaCore
     /// <summary>
     /// Scalar fallback for <see cref="Transform(ReadOnlySpan{byte}, ReadOnlySpan{byte}, uint, ReadOnlySpan{byte}, Span{byte})"/>.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void TransformScalar(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
                                          ReadOnlySpan<byte> input, Span<byte> output)
@@ -434,6 +435,7 @@ internal static class ChaChaCore
     /// round, then unshuffling.
     /// </para>
     /// </remarks>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void TransformSse2(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
                                        ReadOnlySpan<byte> input, Span<byte> output)
@@ -442,19 +444,19 @@ internal static class ChaChaCore
         Vector128<uint> row0 = Vector128.Create(Sigma[0], Sigma[1], Sigma[2], Sigma[3]);
         Vector128<uint> row1 = Vector128.Create(
             BinaryPrimitives.ReadUInt32LittleEndian(key),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4)),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(8)),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(12)));
+            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(1 * sizeof(UInt32))),
+            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(2 * sizeof(UInt32))),
+            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(3 * sizeof(UInt32))));
         Vector128<uint> row2 = Vector128.Create(
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(16)),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(20)),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(24)),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(28)));
+            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4 * sizeof(UInt32))),
+            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(5 * sizeof(UInt32))),
+            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(6 * sizeof(UInt32))),
+            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(7 * sizeof(UInt32))));
         Vector128<uint> row3Base = Vector128.Create(
             counter,
             BinaryPrimitives.ReadUInt32LittleEndian(nonce),
-            BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(4)),
-            BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(8)));
+            BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(1 * sizeof(UInt32))),
+            BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(2 * sizeof(UInt32))));
 
         int offset = 0;
 
