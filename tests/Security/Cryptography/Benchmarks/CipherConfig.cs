@@ -111,14 +111,12 @@ public class CipherConfig : ManualConfig
             IEnumerable<IGrouping<string, BenchmarkCase>> logicalGroups,
             IEnumerable<BenchmarkLogicalGroupRule>? order = null)
             => logicalGroups
-                .OrderBy(g =>
-                {
+                .OrderBy(g => {
                     var parts = g.Key.Split('|');
                     var sizeName = parts.Length > 0 ? parts[0].Trim() : "";
                     return GetDataSizeBytes(sizeName);
                 })
-                .ThenBy(g =>
-                {
+                .ThenBy(g => {
                     var parts = g.Key.Split('|');
                     return parts.Length > 1 ? parts[1].Trim() : "";
                 });

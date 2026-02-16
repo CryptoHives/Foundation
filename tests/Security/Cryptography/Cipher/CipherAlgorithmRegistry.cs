@@ -367,8 +367,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             128,
             Mode.CBC,
-            () =>
-            {
+            () => {
                 var aes = new CH.Aes128();
                 aes.Mode = CH.CipherMode.CBC;
                 aes.Padding = CH.PaddingMode.PKCS7;
@@ -391,8 +390,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.CBC,
-            () =>
-            {
+            () => {
                 var aes = new CH.Aes256();
                 aes.Mode = CH.CipherMode.CBC;
                 aes.Padding = CH.PaddingMode.PKCS7;
