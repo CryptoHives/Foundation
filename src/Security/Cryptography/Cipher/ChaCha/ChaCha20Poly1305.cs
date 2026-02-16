@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// ChaCha20-Poly1305 authenticated encryption as specified in RFC 8439.
@@ -59,19 +60,30 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
     public const int TagSizeBytesConst = 16;
 
     private readonly byte[] _key;
+    private readonly SimdSupport _simdSupport;
     private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChaCha20Poly1305"/> class.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
-    public ChaCha20Poly1305(byte[] key)
+    public ChaCha20Poly1305(byte[] key) : this(SimdSupport.All, key)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20Poly1305"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 32-byte key.</param>
+    internal ChaCha20Poly1305(SimdSupport simdSupport, byte[] key)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
         if (key.Length != KeySizeBytesConst)
             throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes.", nameof(key));
 
+        _simdSupport = simdSupport;
         _key = new byte[KeySizeBytesConst];
         Buffer.BlockCopy(key, 0, _key, 0, KeySizeBytesConst);
     }
@@ -89,11 +101,24 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
     public int TagSizeBytes => TagSizeBytesConst;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20-Poly1305 on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport => ChaChaCore.SimdSupport;
+
+    /// <summary>
     /// Creates a new ChaCha20-Poly1305 instance.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
     /// <returns>A new ChaCha20-Poly1305 instance.</returns>
     public static ChaCha20Poly1305 Create(byte[] key) => new(key);
+
+    /// <summary>
+    /// Creates a new ChaCha20-Poly1305 instance with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 32-byte key.</param>
+    /// <returns>A new ChaCha20-Poly1305 instance.</returns>
+    internal static ChaCha20Poly1305 Create(SimdSupport simdSupport, byte[] key) => new(simdSupport, key);
 
     /// <inheritdoc/>
     public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
@@ -112,7 +137,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         ChaChaCore.Block(_key, nonce, 0, polyKey);
 
         // Encrypt plaintext using ChaCha20 with counter = 1
-        ChaChaCore.Transform(_key, nonce, 1, plaintext, ciphertext);
+        ChaChaCore.Transform(_simdSupport, _key, nonce, 1, plaintext, ciphertext);
 
         // Compute Poly1305 tag over (AAD || pad || ciphertext || pad || lengths)
         Poly1305.ComputeAeadTag(polyKey.Slice(0, 32), associatedData,
@@ -147,7 +172,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         }
 
         // Decrypt ciphertext
-        ChaChaCore.Transform(_key, nonce, 1, ciphertext, plaintext);
+        ChaChaCore.Transform(_simdSupport, _key, nonce, 1, ciphertext, plaintext);
 
         return true;
     }

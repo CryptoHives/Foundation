@@ -10,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Versioning;
-using CH = CryptoHives.Foundation.Security.Cryptography.Cipher;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Central registry of all cipher algorithm implementations for testing and benchmarking.
@@ -35,6 +35,8 @@ public static class CipherAlgorithmRegistry
         OS,
         /// <summary>CryptoHives managed implementation.</summary>
         Managed,
+        /// <summary>CryptoHives SIMD-optimized implementation.</summary>
+        Simd,
         /// <summary>BouncyCastle implementation.</summary>
         BouncyCastle,
         /// <summary>Regional implementation (e.g., OpenGost SM4).</summary>
@@ -184,7 +186,7 @@ public static class CipherAlgorithmRegistry
     /// Gets implementations from CryptoHives only (excludes external libraries).
     /// </summary>
     public static IEnumerable<CipherImplementation> CryptoHivesOnly =>
-        Supported.Where(impl => impl.Source is Source.Managed or Source.OS);
+        Supported.Where(impl => impl.Source is Source.Managed or Source.Simd or Source.OS);
 
     /// <summary>
     /// Gets implementations by algorithm family.
@@ -232,7 +234,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             128,
             Mode.GCM,
-            () => CH.AesGcm128.Create(new byte[16]),
+            () => CH.Cipher.AesGcm128.Create(new byte[16]),
             Source.Managed));
 
         // AES-128-GCM - BouncyCastle
@@ -254,7 +256,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             192,
             Mode.GCM,
-            () => CH.AesGcm192.Create(new byte[24]),
+            () => CH.Cipher.AesGcm192.Create(new byte[24]),
             Source.Managed));
 
         // AES-192-GCM - BouncyCastle
@@ -276,7 +278,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.GCM,
-            () => CH.AesGcm256.Create(new byte[32]),
+            () => CH.Cipher.AesGcm256.Create(new byte[32]),
             Source.Managed));
 
         // AES-256-GCM - BouncyCastle
@@ -298,7 +300,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             128,
             Mode.CCM,
-            () => CH.AesCcm128.Create(new byte[16]),
+            () => CH.Cipher.AesCcm128.Create(new byte[16]),
             Source.Managed));
 
         // AES-128-CCM - BouncyCastle
@@ -320,7 +322,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             192,
             Mode.CCM,
-            () => CH.AesCcm192.Create(new byte[24]),
+            () => CH.Cipher.AesCcm192.Create(new byte[24]),
             Source.Managed));
 
         // AES-192-CCM - BouncyCastle
@@ -342,7 +344,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.CCM,
-            () => CH.AesCcm256.Create(new byte[32]),
+            () => CH.Cipher.AesCcm256.Create(new byte[32]),
             Source.Managed));
 
         // AES-256-CCM - BouncyCastle
@@ -368,9 +370,9 @@ public static class CipherAlgorithmRegistry
             128,
             Mode.CBC,
             () => {
-                var aes = new CH.Aes128();
-                aes.Mode = CH.CipherMode.CBC;
-                aes.Padding = CH.PaddingMode.PKCS7;
+                var aes = new CH.Cipher.Aes128();
+                aes.Mode = CH.Cipher.CipherMode.CBC;
+                aes.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aes;
             },
             Source.Managed));
@@ -391,9 +393,9 @@ public static class CipherAlgorithmRegistry
             256,
             Mode.CBC,
             () => {
-                var aes = new CH.Aes256();
-                aes.Mode = CH.CipherMode.CBC;
-                aes.Padding = CH.PaddingMode.PKCS7;
+                var aes = new CH.Cipher.Aes256();
+                aes.Mode = CH.Cipher.CipherMode.CBC;
+                aes.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aes;
             },
             Source.Managed));
@@ -410,13 +412,27 @@ public static class CipherAlgorithmRegistry
 
     private static void AddChaChaImplementations(List<CipherImplementation> implementations)
     {
-        // ChaCha20 (stream) - Managed
+        var chachaSimd = CH.Cipher.ChaCha20.SimdSupport;
+
+        // ChaCha20 (stream) - SSE2
+        if ((chachaSimd & CH.Hash.SimdSupport.Sse2) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "ChaCha20",
+                "SSE2",
+                256,
+                Mode.Stream,
+                () => CH.Cipher.ChaCha20.Create(CH.Hash.SimdSupport.Sse2),
+                Source.Simd));
+        }
+
+        // ChaCha20 (stream) - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "ChaCha20",
             "Managed",
             256,
             Mode.Stream,
-            () => new CH.ChaCha20(),
+            () => CH.Cipher.ChaCha20.Create(CH.Hash.SimdSupport.None),
             Source.Managed));
 
         // ChaCha20 (stream) - BouncyCastle
@@ -428,13 +444,25 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateChaCha20(),
             Source.BouncyCastle));
 
-        // ChaCha20-Poly1305 - Managed
+        // ChaCha20-Poly1305 - SSE2
+        if ((chachaSimd & CH.Hash.SimdSupport.Sse2) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "ChaCha20-Poly1305",
+                "SSE2",
+                256,
+                Mode.ChaCha20Poly1305,
+                () => CH.Cipher.ChaCha20Poly1305.Create(CH.Hash.SimdSupport.Sse2, new byte[32]),
+                Source.Simd));
+        }
+
+        // ChaCha20-Poly1305 - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "ChaCha20-Poly1305",
             "Managed",
             256,
             Mode.ChaCha20Poly1305,
-            () => CH.ChaCha20Poly1305.Create(new byte[32]),
+            () => CH.Cipher.ChaCha20Poly1305.Create(CH.Hash.SimdSupport.None, new byte[32]),
             Source.Managed));
 
         // ChaCha20-Poly1305 - BouncyCastle
@@ -450,13 +478,25 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // XChaCha20-Poly1305 - Managed
+        // XChaCha20-Poly1305 - SSE2
+        if ((chachaSimd & CH.Hash.SimdSupport.Sse2) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "XChaCha20-Poly1305",
+                "SSE2",
+                256,
+                Mode.XChaCha20Poly1305,
+                () => CH.Cipher.XChaCha20Poly1305.Create(CH.Hash.SimdSupport.Sse2, new byte[32]),
+                Source.Simd));
+        }
+
+        // XChaCha20-Poly1305 - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "XChaCha20-Poly1305",
             "Managed",
             256,
             Mode.XChaCha20Poly1305,
-            () => CH.XChaCha20Poly1305.Create(new byte[32]),
+            () => CH.Cipher.XChaCha20Poly1305.Create(CH.Hash.SimdSupport.None, new byte[32]),
             Source.Managed));
     }
 

@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// ChaCha20 cipher transform for encryption or decryption operations.
@@ -19,6 +20,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
 {
     private readonly byte[] _key;
     private readonly byte[] _nonce;
+    private readonly SimdSupport _simdSupport;
     private uint _counter;
     private readonly uint _initialCounter;
     private readonly byte[] _keystreamBuffer;
@@ -32,12 +34,25 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     /// <param name="nonce">The 12-byte nonce.</param>
     /// <param name="initialCounter">The initial block counter (usually 0 or 1).</param>
     public ChaCha20CipherTransform(byte[] key, byte[] nonce, uint initialCounter = 0)
+        : this(SimdSupport.All, key, nonce, initialCounter)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20CipherTransform"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 32-byte key.</param>
+    /// <param name="nonce">The 12-byte nonce.</param>
+    /// <param name="initialCounter">The initial block counter (usually 0 or 1).</param>
+    internal ChaCha20CipherTransform(SimdSupport simdSupport, byte[] key, byte[] nonce, uint initialCounter = 0)
     {
         if (key == null || key.Length != ChaChaCore.KeySizeBytes)
             throw new ArgumentException($"Key must be {ChaChaCore.KeySizeBytes} bytes.", nameof(key));
         if (nonce == null || nonce.Length != ChaChaCore.NonceSizeBytes)
             throw new ArgumentException($"Nonce must be {ChaChaCore.NonceSizeBytes} bytes.", nameof(nonce));
 
+        _simdSupport = simdSupport;
         _key = new byte[ChaChaCore.KeySizeBytes];
         _nonce = new byte[ChaChaCore.NonceSizeBytes];
         Buffer.BlockCopy(key, 0, _key, 0, ChaChaCore.KeySizeBytes);
@@ -93,7 +108,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
 
         if (bulkBytes > 0)
         {
-            ChaChaCore.Transform(_key, _nonce, _counter,
+            ChaChaCore.Transform(_simdSupport, _key, _nonce, _counter,
                                  input.Slice(processed, bulkBytes),
                                  output.Slice(processed, bulkBytes));
 

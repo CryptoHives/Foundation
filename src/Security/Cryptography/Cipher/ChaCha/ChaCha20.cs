@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// ChaCha20 stream cipher implementation as specified in RFC 8439.
@@ -57,12 +58,22 @@ public sealed class ChaCha20 : SymmetricCipher
     public const int NonceSizeConst = 12;
 
     private uint _initialCounter;
+    private readonly SimdSupport _simdSupport;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChaCha20"/> class.
     /// </summary>
-    public ChaCha20()
+    public ChaCha20() : this(SimdSupport.All)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    internal ChaCha20(SimdSupport simdSupport)
+    {
+        _simdSupport = simdSupport & ChaChaCore.SimdSupport;
         BlockSizeValue = ChaChaCore.BlockSizeBytes * 8;
         KeySizeValue = KeySizeBits;
         LegalKeySizesValue = [new KeySizes(256, 256, 0)];
@@ -76,6 +87,11 @@ public sealed class ChaCha20 : SymmetricCipher
 
     /// <inheritdoc/>
     public override int IVSize => NonceSizeConst;
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport => ChaChaCore.SimdSupport;
 
     /// <summary>
     /// Gets or sets the initial block counter value.
@@ -101,12 +117,19 @@ public sealed class ChaCha20 : SymmetricCipher
     /// <returns>A new ChaCha20 cipher instance.</returns>
     public static new ChaCha20 Create() => new();
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="ChaCha20"/> cipher with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <returns>A new ChaCha20 cipher instance.</returns>
+    internal static ChaCha20 Create(SimdSupport simdSupport) => new(simdSupport);
+
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
     {
         ValidateKeySize(key.Length * 8);
         ValidateIVSize(iv.Length);
-        return new ChaCha20CipherTransform(key, iv, _initialCounter);
+        return new ChaCha20CipherTransform(_simdSupport, key, iv, _initialCounter);
     }
 
     /// <inheritdoc/>

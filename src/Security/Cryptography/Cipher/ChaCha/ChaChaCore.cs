@@ -13,6 +13,7 @@ using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
 /// Core ChaCha20 operations as specified in RFC 8439.
@@ -81,6 +82,21 @@ internal static class ChaChaCore
     ];
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
     /// Generates a 64-byte keystream block.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
@@ -147,7 +163,30 @@ internal static class ChaChaCore
     }
 
     /// <summary>
-    /// Scalar fallback for <see cref="Transform"/>.
+    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 32-byte key.</param>
+    /// <param name="nonce">The 12-byte nonce.</param>
+    /// <param name="counter">The initial block counter.</param>
+    /// <param name="input">The input data.</param>
+    /// <param name="output">The output buffer (must be same size as input).</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    internal static void Transform(SimdSupport simdSupport, ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce,
+                                    uint counter, ReadOnlySpan<byte> input, Span<byte> output)
+    {
+#if NET8_0_OR_GREATER
+        if ((simdSupport & SimdSupport.Sse2) != 0 && Sse2.IsSupported)
+        {
+            TransformSse2(key, nonce, counter, input, output);
+            return;
+        }
+#endif
+        TransformScalar(key, nonce, counter, input, output);
+    }
+
+    /// <summary>
+    /// Scalar fallback for <see cref="Transform(ReadOnlySpan{byte}, ReadOnlySpan{byte}, uint, ReadOnlySpan{byte}, Span{byte})"/>.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void TransformScalar(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,

@@ -5,11 +5,10 @@
 #pragma warning disable IDE0011 // Add braces
 
 using Cryptography.Tests.Cipher;
-using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Factory for creating cipher algorithm instances for benchmarking.
@@ -264,7 +263,10 @@ public sealed class CipherAlgorithmType : IFormattable
 
         foreach (var impl in implementations)
         {
-            string displayName = $"{familyName} ({SourceToString(impl.Source)})";
+            string label = impl.Source == CipherAlgorithmRegistry.Source.Simd
+                ? impl.Variant
+                : SourceToString(impl.Source);
+            string displayName = $"{familyName} ({label})";
             bool isAead = IsAeadMode(mode);
 
             yield return new CipherAlgorithmType(
