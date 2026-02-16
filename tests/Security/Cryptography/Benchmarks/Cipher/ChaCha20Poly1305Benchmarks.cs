@@ -1,7 +1,7 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Benchmarks;
+namespace Cryptography.Tests.Benchmarks.Cipher;
 
 using BenchmarkDotNet.Attributes;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -9,27 +9,27 @@ using NUnit.Framework;
 using System.Collections.Generic;
 
 /// <summary>
-/// Benchmarks for AES-128-CBC symmetric encryption.
+/// Benchmarks for ChaCha20-Poly1305 authenticated encryption.
 /// </summary>
 [TestFixture]
 [TestFixtureSource(nameof(CipherAlgorithmTypeArgs))]
 [Config(typeof(CipherConfig))]
 [MemoryDiagnoser(displayGenColumns: false)]
 [HideColumns("Namespace")]
-[BenchmarkCategory("Cipher", "AES", "AES-128-CBC")]
+[BenchmarkCategory("Cipher", "AEAD", "ChaCha20-Poly1305")]
 [NonParallelizable]
-public class AesCbc128Benchmark : CipherBenchmarkBase
+public class ChaCha20Poly1305Benchmark : AeadBenchmarkBase
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="AesCbc128Benchmark"/> class.
+    /// Initializes a new instance of the <see cref="ChaCha20Poly1305Benchmark"/> class.
     /// </summary>
-    public AesCbc128Benchmark() => TestDataSize = DataSize.K8;
+    public ChaCha20Poly1305Benchmark() => TestDataSize = DataSize.K8;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AesCbc128Benchmark"/> class.
+    /// Initializes a new instance of the <see cref="ChaCha20Poly1305Benchmark"/> class.
     /// </summary>
     /// <param name="algorithm">The cipher algorithm to benchmark.</param>
-    public AesCbc128Benchmark(CipherAlgorithmType algorithm)
+    public ChaCha20Poly1305Benchmark(CipherAlgorithmType algorithm)
     {
         TestCipherAlgorithm = algorithm;
     }
@@ -44,15 +44,8 @@ public class AesCbc128Benchmark : CipherBenchmarkBase
     /// Gets the data sizes for benchmarking.
     /// </summary>
     public static IEnumerable<DataSize> Sizes() => DataSize.Standard;
+    public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.ChaCha20Poly1305();
 
-    /// <summary>
-    /// Gets the AES-128-CBC implementations for benchmarking.
-    /// </summary>
-    public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.AesCbc128();
-
-    /// <summary>
-    /// NUnit test fixture argument source.
-    /// </summary>
     public static IEnumerable<object[]> CipherAlgorithmTypeArgs()
     {
         foreach (var alg in Algorithms())
@@ -62,13 +55,14 @@ public class AesCbc128Benchmark : CipherBenchmarkBase
     }
 
     /// <summary>
-    /// Initializes the benchmark with the specified data size.
+    /// Initializes the benchmark with the specified algorithm and data size.
     /// </summary>
     [OneTimeSetUp]
+    [GlobalSetup]
     public override void GlobalSetup()
     {
         Bytes = TestDataSize.Bytes;
-        CipherAlgorithm = (SymmetricCipher)TestCipherAlgorithm.Create();
+        AeadCipher = (IAeadCipher)TestCipherAlgorithm.Create();
         base.GlobalSetup();
     }
 
@@ -79,8 +73,8 @@ public class AesCbc128Benchmark : CipherBenchmarkBase
     [Test]
     public void Encrypt()
     {
-        Encryptor!.Reset();
-        Encryptor.TransformBlock(InputData, OutputData);
+        IncrementNonce(); // Ensure unique nonce for each invocation
+        AeadCipher!.Encrypt(Nonce, InputData, OutputData, Tag, Aad);
     }
 
     /// <summary>
@@ -90,33 +84,32 @@ public class AesCbc128Benchmark : CipherBenchmarkBase
     [Test]
     public void Decrypt()
     {
-        Decryptor!.Reset();
-        Decryptor.TransformBlock(EncryptedData, OutputData);
+        AeadCipher!.Decrypt(DecryptNonce, EncryptedData, Tag, OutputData, Aad);
     }
 }
 
 /// <summary>
-/// Benchmarks for AES-256-CBC symmetric encryption.
+/// Benchmarks for XChaCha20-Poly1305 authenticated encryption.
 /// </summary>
 [TestFixture]
 [TestFixtureSource(nameof(CipherAlgorithmTypeArgs))]
 [Config(typeof(CipherConfig))]
 [MemoryDiagnoser(displayGenColumns: false)]
 [HideColumns("Namespace")]
-[BenchmarkCategory("Cipher", "AES", "AES-256-CBC")]
+[BenchmarkCategory("Cipher", "AEAD", "XChaCha20-Poly1305")]
 [NonParallelizable]
-public class AesCbc256Benchmark : CipherBenchmarkBase
+public class XChaCha20Poly1305Benchmark : AeadBenchmarkBase
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="AesCbc256Benchmark"/> class.
+    /// Initializes a new instance of the <see cref="XChaCha20Poly1305Benchmark"/> class.
     /// </summary>
-    public AesCbc256Benchmark() => TestDataSize = DataSize.K8;
+    public XChaCha20Poly1305Benchmark() => TestDataSize = DataSize.K8;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AesCbc256Benchmark"/> class.
+    /// Initializes a new instance of the <see cref="XChaCha20Poly1305Benchmark"/> class.
     /// </summary>
     /// <param name="algorithm">The cipher algorithm to benchmark.</param>
-    public AesCbc256Benchmark(CipherAlgorithmType algorithm)
+    public XChaCha20Poly1305Benchmark(CipherAlgorithmType algorithm)
     {
         TestCipherAlgorithm = algorithm;
     }
@@ -131,15 +124,8 @@ public class AesCbc256Benchmark : CipherBenchmarkBase
     /// Gets the data sizes for benchmarking.
     /// </summary>
     public static IEnumerable<DataSize> Sizes() => DataSize.Standard;
+    public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.XChaCha20Poly1305();
 
-    /// <summary>
-    /// Gets the AES-256-CBC implementations for benchmarking.
-    /// </summary>
-    public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.AesCbc256();
-
-    /// <summary>
-    /// NUnit test fixture argument source.
-    /// </summary>
     public static IEnumerable<object[]> CipherAlgorithmTypeArgs()
     {
         foreach (var alg in Algorithms())
@@ -149,13 +135,14 @@ public class AesCbc256Benchmark : CipherBenchmarkBase
     }
 
     /// <summary>
-    /// Initializes the benchmark with the specified data size.
+    /// Initializes the benchmark with the specified algorithm and data size.
     /// </summary>
     [OneTimeSetUp]
+    [GlobalSetup]
     public override void GlobalSetup()
     {
         Bytes = TestDataSize.Bytes;
-        CipherAlgorithm = (SymmetricCipher)TestCipherAlgorithm.Create();
+        AeadCipher = (IAeadCipher)TestCipherAlgorithm.Create();
         base.GlobalSetup();
     }
 
@@ -166,8 +153,8 @@ public class AesCbc256Benchmark : CipherBenchmarkBase
     [Test]
     public void Encrypt()
     {
-        Encryptor!.Reset();
-        Encryptor.TransformBlock(InputData, OutputData);
+        IncrementNonce(); // Ensure unique nonce for each invocation
+        AeadCipher!.Encrypt(Nonce, InputData, OutputData, Tag, Aad);
     }
 
     /// <summary>
@@ -177,7 +164,6 @@ public class AesCbc256Benchmark : CipherBenchmarkBase
     [Test]
     public void Decrypt()
     {
-        Decryptor!.Reset();
-        Decryptor.TransformBlock(EncryptedData, OutputData);
+        AeadCipher!.Decrypt(DecryptNonce, EncryptedData, Tag, OutputData, Aad);
     }
 }

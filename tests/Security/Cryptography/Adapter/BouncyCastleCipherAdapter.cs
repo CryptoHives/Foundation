@@ -104,12 +104,27 @@ internal sealed class BouncyCastleCipherAdapter : SymmetricCipher
 /// <summary>
 /// Wraps a BouncyCastle <see cref="IBufferedCipher"/> as a CryptoHives <see cref="ICipherTransform"/>.
 /// </summary>
+/// <remarks>
+/// <para>
+/// On .NET 8+, uses BouncyCastle's span-based <c>ProcessBytes</c> and <c>DoFinal</c>
+/// overloads to pass caller buffers directly — zero intermediate copies.
+/// </para>
+/// <para>
+/// On .NET Framework, falls back to pre-allocated reusable byte arrays to minimize
+/// per-call allocations.
+/// </para>
+/// </remarks>
 internal sealed class BouncyCastleCipherTransform : ICipherTransform
 {
     private readonly IBufferedCipher _cipher;
     private readonly byte[] _key;
     private readonly byte[] _iv;
     private readonly bool _forEncryption;
+    private readonly ICipherParameters _parameters;
+#if !NET8_0_OR_GREATER
+    private byte[] _inputBuffer;
+    private byte[] _outputBuffer;
+#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BouncyCastleCipherTransform"/> class.
@@ -120,8 +135,17 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
         _key = (byte[])key.Clone();
         _iv = iv != null ? (byte[])iv.Clone() : Array.Empty<byte>();
         _forEncryption = forEncryption;
+#if !NET8_0_OR_GREATER
+        _inputBuffer = Array.Empty<byte>();
+        _outputBuffer = Array.Empty<byte>();
+#endif
 
-        InitCipher();
+        var keyParam = new KeyParameter(_key);
+        _parameters = _iv.Length > 0
+            ? new ParametersWithIV(keyParam, _iv)
+            : keyParam;
+
+        _cipher.Init(_forEncryption, _parameters);
     }
 
     /// <inheritdoc/>
@@ -142,12 +166,22 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
     /// <inheritdoc/>
     public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        byte[] inputArray = input.ToArray();
-        byte[] outputArray = new byte[_cipher.GetOutputSize(inputArray.Length)];
-        int len = _cipher.ProcessBytes(inputArray, 0, inputArray.Length, outputArray, 0);
-        len += _cipher.DoFinal(outputArray, len);
-        outputArray.AsSpan(0, len).CopyTo(output);
+#if NET8_0_OR_GREATER
+        int len = _cipher.ProcessBytes(input, output);
+        len += _cipher.DoFinal(output.Slice(len));
         return len;
+#else
+        EnsureBufferSize(ref _inputBuffer, input.Length);
+        input.CopyTo(_inputBuffer);
+
+        int outputSize = _cipher.GetOutputSize(input.Length);
+        EnsureBufferSize(ref _outputBuffer, outputSize);
+
+        int len = _cipher.ProcessBytes(_inputBuffer, 0, input.Length, _outputBuffer, 0);
+        len += _cipher.DoFinal(_outputBuffer, len);
+        _outputBuffer.AsSpan(0, len).CopyTo(output);
+        return len;
+#endif
     }
 
     /// <inheritdoc/>
@@ -180,7 +214,7 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
     /// <inheritdoc/>
     public void Reset()
     {
-        InitCipher();
+        _cipher.Init(_forEncryption, _parameters);
     }
 
     /// <inheritdoc/>
@@ -191,13 +225,12 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
         if (_iv.Length > 0) Array.Clear(_iv, 0, _iv.Length);
     }
 
-    private void InitCipher()
+#if !NET8_0_OR_GREATER
+    private static void EnsureBufferSize(ref byte[] buffer, int requiredSize)
     {
-        var keyParam = new KeyParameter(_key);
-        ICipherParameters parameters = _iv.Length > 0
-            ? new ParametersWithIV(keyParam, _iv)
-            : keyParam;
-        _cipher.Init(_forEncryption, parameters);
+        if (buffer.Length < requiredSize)
+            buffer = new byte[requiredSize];
     }
+#endif
 }
 
