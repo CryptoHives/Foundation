@@ -414,15 +414,15 @@ public static class CipherAlgorithmRegistry
     {
         var chachaSimd = CH.Cipher.ChaCha20.SimdSupport;
 
-        // ChaCha20 (stream) - SSE2
-        if ((chachaSimd & CH.SimdSupport.Sse2) != 0)
+        // ChaCha20 (stream) - SSSE3
+        if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
         {
             implementations.Add(new CipherImplementation(
                 "ChaCha20",
-                "SSE2",
+                "SSSE3",
                 256,
                 Mode.Stream,
-                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Sse2),
+                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Ssse3),
                 Source.Simd));
         }
 
@@ -444,15 +444,15 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateChaCha20(),
             Source.BouncyCastle));
 
-        // ChaCha20-Poly1305 - SSE2
-        if ((chachaSimd & CH.SimdSupport.Sse2) != 0)
+        // ChaCha20-Poly1305 - SSSE3
+        if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
         {
             implementations.Add(new CipherImplementation(
                 "ChaCha20-Poly1305",
-                "SSE2",
+                "SSSE3",
                 256,
                 Mode.ChaCha20Poly1305,
-                () => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Sse2, new byte[32]),
+                () => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, new byte[32]),
                 Source.Simd));
         }
 
@@ -478,15 +478,15 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // XChaCha20-Poly1305 - SSE2
-        if ((chachaSimd & CH.SimdSupport.Sse2) != 0)
+        // XChaCha20-Poly1305 - SSSE3
+        if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
         {
             implementations.Add(new CipherImplementation(
                 "XChaCha20-Poly1305",
-                "SSE2",
+                "SSSE3",
                 256,
                 Mode.XChaCha20Poly1305,
-                () => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Sse2, new byte[32]),
+                () => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, new byte[32]),
                 Source.Simd));
         }
 

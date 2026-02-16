@@ -54,7 +54,7 @@ bool success = aesGcm.Decrypt(nonce, ciphertext, tag, decrypted, aad);
 ```
 
 **See Also:**
-- [AES-GCM Benchmarks](benchmarks/aesgcm128.md)
+- [AES-GCM Benchmarks](benchmarks-cipher.md#aes-128-gcm)
 
 ### AES-CCM (Counter with CBC-MAC)
 
@@ -133,7 +133,7 @@ byte[] decrypted = chacha.Decrypt(nonce, ciphertext);
 ```
 
 **See Also:**
-- [ChaCha20-Poly1305 Benchmarks](benchmarks/chacha20poly1305.md)
+- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#chacha20-poly1305)
 
 ### XChaCha20-Poly1305
 
@@ -172,8 +172,8 @@ byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
 ```
 
 **See Also:**
-- [XChaCha20-Poly1305 Benchmarks](benchmarks/xchacha20poly1305.md)
-- [ChaCha20-Poly1305 Benchmarks](benchmarks/chacha20poly1305.md)
+- [XChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#xchacha20-poly1305)
+- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#chacha20-poly1305)
 
 ---
 
@@ -270,6 +270,7 @@ aesGcm.Encrypt(nonce, message, ciphertext, tag, header);
 Test vector documentation is coming soon.
 
 ### Benchmarks
-- [AES-GCM Performance](benchmarks/aesgcm128.md)
-- [ChaCha20-Poly1305 Performance](benchmarks/chacha20poly1305.md)
-- [XChaCha20-Poly1305 Performance](benchmarks/xchacha20poly1305.md)
+- [All Cipher Benchmarks](benchmarks-cipher.md)
+- [AES-GCM Performance](benchmarks-cipher.md#aes-128-gcm)
+- [ChaCha20-Poly1305 Performance](benchmarks-cipher.md#chacha20-poly1305)
+- [XChaCha20-Poly1305 Performance](benchmarks-cipher.md#xchacha20-poly1305)

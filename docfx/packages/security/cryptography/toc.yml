@@ -10,6 +10,13 @@
   href: xof-mode.md
 - name: Benchmarks
   href: benchmarks.md
+  items:
+    - name: Overview
+      href: benchmarks.md
+    - name: Hash Benchmarks
+      href: benchmarks-hash.md
+    - name: Cipher Benchmarks
+      href: benchmarks-cipher.md
 - name: Specifications
   href: specs/README.md
   items:

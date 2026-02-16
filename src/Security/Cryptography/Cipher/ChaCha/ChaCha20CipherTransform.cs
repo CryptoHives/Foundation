@@ -19,10 +19,11 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
 {
     private readonly byte[] _key;
     private readonly byte[] _nonce;
-    private readonly SimdSupport _simdSupport;
+
     private uint _counter;
     private readonly uint _initialCounter;
     private readonly byte[] _keystreamBuffer;
+    private ChaChaCore _chaChaCore;
     private int _keystreamPosition;
     private bool _disposed;
 
@@ -51,7 +52,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
         if (nonce == null || nonce.Length != ChaChaCore.NonceSizeBytes)
             throw new ArgumentException($"Nonce must be {ChaChaCore.NonceSizeBytes} bytes.", nameof(nonce));
 
-        _simdSupport = simdSupport;
+        _chaChaCore = new ChaChaCore(simdSupport);
         _key = new byte[ChaChaCore.KeySizeBytes];
         _nonce = new byte[ChaChaCore.NonceSizeBytes];
         Buffer.BlockCopy(key, 0, _key, 0, ChaChaCore.KeySizeBytes);
@@ -107,11 +108,8 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
 
         if (bulkBytes > 0)
         {
-            ChaChaCore.Transform(_simdSupport, _key, _nonce, _counter,
-                                 input.Slice(processed, bulkBytes),
-                                 output.Slice(processed, bulkBytes));
-
             int blocksProcessed = bulkBytes / ChaChaCore.BlockSizeBytes;
+            _chaChaCore.Transform(_key, _nonce, _counter, input.Slice(processed, bulkBytes), output.Slice(processed, bulkBytes));
             _counter += (uint)blocksProcessed;
             processed += bulkBytes;
         }
@@ -120,7 +118,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
         remaining = input.Length - processed;
         if (remaining > 0)
         {
-            ChaChaCore.Block(_key, _nonce, _counter, _keystreamBuffer);
+            _chaChaCore.Block(_key, _nonce, _counter, _keystreamBuffer);
             _counter++;
             _keystreamPosition = 0;
 
@@ -139,9 +137,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     /// <inheritdoc/>
     public int TransformBlock(byte[] inputBuffer, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
     {
-        return TransformBlock(
-            inputBuffer.AsSpan(inputOffset, inputCount),
-            outputBuffer.AsSpan(outputOffset));
+        return TransformBlock(inputBuffer.AsSpan(inputOffset, inputCount), outputBuffer.AsSpan(outputOffset));
     }
 
     /// <inheritdoc/>

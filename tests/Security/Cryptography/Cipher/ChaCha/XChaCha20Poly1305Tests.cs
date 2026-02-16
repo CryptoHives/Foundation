@@ -3,6 +3,7 @@
 
 namespace Cryptography.Tests.Cipher.ChaCha;
 
+using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
@@ -23,9 +24,11 @@ public class XChaCha20Poly1305Tests
     // HChaCha20 Test Vector (draft-irtf-cfrg-xchacha Section 2.2.1)
     // ========================================================================
 
-    [Test]
-    public void HChaCha20_DraftIrtfCfrgXchacha_Section221()
+    [Theory]
+    public void HChaCha20_DraftIrtfCfrgXchacha_Section221(bool simdSupport)
     {
+        ChaChaCore chaChaCore = new ChaChaCore(simdSupport ? SimdSupport.All : SimdSupport.None);
+
         byte[] key = FromHex(
             "000102030405060708090a0b0c0d0e0f" +
             "101112131415161718191a1b1c1d1e1f");
@@ -35,7 +38,7 @@ public class XChaCha20Poly1305Tests
             "a0f9e4d58a74a853c12ec41326d3ecdc");
 
         byte[] subkey = new byte[32];
-        ChaChaCore.HChaCha20(key, nonce, subkey);
+        chaChaCore.HChaCha20(key, nonce, subkey);
 
         Assert.That(subkey, Is.EqualTo(expectedSubkey));
     }

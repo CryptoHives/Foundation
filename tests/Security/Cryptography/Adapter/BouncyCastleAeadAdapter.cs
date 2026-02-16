@@ -7,8 +7,8 @@ using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;
-using BCCipher = Org.BouncyCastle.Crypto.Modes.IAeadCipher;
-using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher;
+using BC = Org.BouncyCastle.Crypto;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Wraps a BouncyCastle AEAD cipher as a CryptoHives <see cref="IAeadCipher"/>.
@@ -22,9 +22,9 @@ using CHCipher = CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher
 /// Supports: GcmBlockCipher, CcmBlockCipher, ChaCha20Poly1305.
 /// </para>
 /// </remarks>
-internal sealed class BouncyCastleAeadAdapter : CHCipher
+internal sealed class BouncyCastleAeadAdapter : CH.Cipher.IAeadCipher
 {
-    private readonly BCCipher _cipher;
+    private readonly BC.Modes.IAeadCipher _cipher;
     private readonly byte[] _key;
     private readonly int _keySizeBits;
     private readonly int _tagSizeBits;
@@ -39,7 +39,7 @@ internal sealed class BouncyCastleAeadAdapter : CHCipher
     /// <param name="tagSizeBits">Tag size in bits (default: 128).</param>
     /// <param name="nonceSizeBytes">Nonce size in bytes (default: 12).</param>
     public BouncyCastleAeadAdapter(
-        BCCipher cipher,
+        BC.Modes.IAeadCipher cipher,
         byte[] key,
         int tagSizeBits = 128,
         int nonceSizeBytes = 12)

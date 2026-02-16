@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
 /// <summary>
@@ -67,7 +68,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     public const int TagSizeBytesConst = 16;
 
     private readonly byte[] _key;
-    private readonly SimdSupport _simdSupport;
+    private ChaChaCore _chaChaCore;
     private bool _disposed;
 
     /// <summary>
@@ -88,7 +89,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         if (key == null) throw new ArgumentNullException(nameof(key));
         if (key.Length != KeySizeBytesConst) throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes.", nameof(key));
 
-        _simdSupport = simdSupport;
+        _chaChaCore = new ChaChaCore(simdSupport);
         _key = new byte[KeySizeBytesConst];
         Buffer.BlockCopy(key, 0, _key, 0, KeySizeBytesConst);
     }
@@ -126,6 +127,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     internal static XChaCha20Poly1305 Create(SimdSupport simdSupport, byte[] key) => new(simdSupport, key);
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     public void Encrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> plaintext,
@@ -142,7 +144,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 
         // Derive subkey using HChaCha20
         Span<byte> subkey = stackalloc byte[ChaChaCore.KeySizeBytes];
-        ChaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
+        _chaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
 
         // Construct ChaCha20 nonce: 4 zero bytes + last 8 bytes of XChaCha20 nonce
         Span<byte> chacha20Nonce = stackalloc byte[ChaChaCore.NonceSizeBytes];
@@ -151,21 +153,22 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 
         // Generate Poly1305 key using first ChaCha20 block (counter = 0)
         Span<byte> poly1305Key = stackalloc byte[ChaChaCore.BlockSizeBytes];
-        ChaChaCore.Block(subkey, chacha20Nonce, 0, poly1305Key);
+        _chaChaCore.Block(subkey, chacha20Nonce, 0, poly1305Key);
 
         // Encrypt plaintext with ChaCha20 (starting from counter = 1)
-        ChaChaCore.Transform(_simdSupport, subkey, chacha20Nonce, 1, plaintext, ciphertext);
+        _chaChaCore.Transform(subkey, chacha20Nonce, 1, plaintext, ciphertext);
 
         // Compute Poly1305 MAC over AAD and ciphertext
         Poly1305.ComputeAeadTag(poly1305Key.Slice(0, Poly1305.KeySizeBytes),
-                                associatedData, ciphertext.Slice(0, plaintext.Length), tag);
+            associatedData, ciphertext.Slice(0, plaintext.Length), tag);
     }
 
     /// <inheritdoc/>
     public bool Decrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
-        ReadOnlySpan<byte> tag, Span<byte> plaintext,
+        ReadOnlySpan<byte> tag,
+        Span<byte> plaintext,
         ReadOnlySpan<byte> associatedData = default)
     {
         if (nonce.Length != NonceSizeBytesConst)
@@ -177,7 +180,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 
         // Derive subkey using HChaCha20
         Span<byte> subkey = stackalloc byte[ChaChaCore.KeySizeBytes];
-        ChaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
+        _chaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
 
         // Construct ChaCha20 nonce: 4 zero bytes + last 8 bytes of XChaCha20 nonce
         Span<byte> chacha20Nonce = stackalloc byte[ChaChaCore.NonceSizeBytes];
@@ -186,7 +189,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 
         // Generate Poly1305 key using first ChaCha20 block (counter = 0)
         Span<byte> poly1305Key = stackalloc byte[ChaChaCore.BlockSizeBytes];
-        ChaChaCore.Block(subkey, chacha20Nonce, 0, poly1305Key);
+        _chaChaCore.Block(subkey, chacha20Nonce, 0, poly1305Key);
 
         // Verify Poly1305 MAC
         Span<byte> computedTag = stackalloc byte[TagSizeBytesConst];
@@ -201,7 +204,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         }
 
         // Decrypt ciphertext with ChaCha20 (starting from counter = 1)
-        ChaChaCore.Transform(_simdSupport, subkey, chacha20Nonce, 1, ciphertext, plaintext);
+        _chaChaCore.Transform(subkey, chacha20Nonce, 1, ciphertext, plaintext);
         return true;
     }
 
@@ -213,7 +216,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     {
         byte[] result = new byte[plaintext.Length + TagSizeBytesConst];
         Encrypt(nonce, plaintext, result.AsSpan(0, plaintext.Length),
-                result.AsSpan(plaintext.Length, TagSizeBytesConst), associatedData);
+            result.AsSpan(plaintext.Length, TagSizeBytesConst), associatedData);
         return result;
     }
 
@@ -230,8 +233,8 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         byte[] plaintext = new byte[ciphertextLength];
 
         if (!Decrypt(nonce, ciphertextWithTag.Slice(0, ciphertextLength),
-                    ciphertextWithTag.Slice(ciphertextLength, TagSizeBytesConst),
-                    plaintext, associatedData))
+            ciphertextWithTag.Slice(ciphertextLength, TagSizeBytesConst),
+            plaintext, associatedData))
         {
             throw new CryptographicException("Authentication tag mismatch.");
         }

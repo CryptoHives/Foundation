@@ -3,6 +3,7 @@
 
 namespace Cryptography.Tests.Cipher.ChaCha;
 
+using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
@@ -25,9 +26,11 @@ public class ChaCha20Tests
     /// <summary>
     /// RFC 8439 Section 2.3.2: ChaCha20 block function test.
     /// </summary>
-    [Test]
-    public void ChaCha20_Rfc8439_Section232_BlockFunction()
+    [Theory]
+    public void ChaCha20_Rfc8439_Section232_BlockFunction(bool simdSupport)
     {
+        ChaChaCore chaChaCore = new(simdSupport ? SimdSupport.All : SimdSupport.None);
+
         // Key: 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f
         byte[] key = FromHex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
         // Nonce: 00:00:00:09:00:00:00:4a:00:00:00:00
@@ -43,7 +46,7 @@ public class ChaCha20Tests
             "b5129cd1de164eb9cbd083e8a2503c4e");
 
         byte[] output = new byte[64];
-        ChaChaCore.Block(key, nonce, counter, output);
+        chaChaCore.Block(key, nonce, counter, output);
 
         Assert.That(output, Is.EqualTo(expected));
     }
@@ -138,16 +141,18 @@ public class ChaCha20Tests
     /// <summary>
     /// Tests the quarter round operation indirectly through block function.
     /// </summary>
-    [Test]
-    public void ChaCha20_QuarterRound_ThroughBlock()
+    [Theory]
+    public void ChaCha20_QuarterRound_ThroughBlock(bool simdSupport)
     {
+        ChaChaCore chaChaCore = new(simdSupport ? SimdSupport.All : SimdSupport.None);
+
         // Use all-zero key and nonce with counter 0 to test basic functionality
         byte[] key = new byte[32];
         byte[] nonce = new byte[12];
         byte[] output = new byte[64];
 
         // This should produce deterministic output based on the constants
-        ChaChaCore.Block(key, nonce, 0, output);
+        chaChaCore.Block(key, nonce, 0, output);
 
         // The output should not be all zeros (proves rounds are working)
         bool allZero = true;

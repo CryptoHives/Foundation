@@ -146,13 +146,4 @@ public abstract class CipherBenchmarkBase
         if (_iv != null) Array.Clear(_iv, 0, _iv.Length);
     }
 
-    /// <summary>
-    /// Resets the encryptor transform between iterations if needed.
-    /// </summary>
-    [IterationSetup]
-    public virtual void IterationSetup()
-    {
-        Encryptor?.Reset();
-        Decryptor?.Reset();
-    }
 }

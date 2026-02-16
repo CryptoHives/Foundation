@@ -63,7 +63,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
     public const int TagSizeBytesConst = TagSizeBits / 8;
 
     private readonly byte[] _key;
-    private readonly SimdSupport _simdSupport;
+    private ChaChaCore _chaChaCore;
     private bool _disposed;
 
     /// <summary>
@@ -86,7 +86,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         if (key.Length != KeySizeBytesConst)
             throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes.", nameof(key));
 
-        _simdSupport = simdSupport;
+        _chaChaCore = new ChaChaCore(simdSupport);
         _key = new byte[KeySizeBytesConst];
         Buffer.BlockCopy(key, 0, _key, 0, KeySizeBytesConst);
     }
@@ -137,10 +137,10 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 
         // Generate Poly1305 key using ChaCha20 with counter = 0
         Span<byte> polyKey = stackalloc byte[ChaChaCore.BlockSizeBytes];
-        ChaChaCore.Block(_key, nonce, 0, polyKey);
+        _chaChaCore.Block(_key, nonce, 0, polyKey);
 
         // Encrypt plaintext using ChaCha20 with counter = 1
-        ChaChaCore.Transform(_simdSupport, _key, nonce, 1, plaintext, ciphertext);
+        _chaChaCore.Transform(_key, nonce, 1, plaintext, ciphertext);
 
         // Compute Poly1305 tag over (AAD || pad || ciphertext || pad || lengths)
         Poly1305.ComputeAeadTag(polyKey.Slice(0, Poly1305.KeySizeBytes), associatedData,
@@ -161,7 +161,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 
         // Generate Poly1305 key
         Span<byte> polyKey = stackalloc byte[ChaChaCore.BlockSizeBytes];
-        ChaChaCore.Block(_key, nonce, 0, polyKey);
+        _chaChaCore.Block(_key, nonce, 0, polyKey);
 
         // Compute expected tag
         Span<byte> expectedTag = stackalloc byte[TagSizeBytesConst];
@@ -175,7 +175,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         }
 
         // Decrypt ciphertext
-        ChaChaCore.Transform(_simdSupport, _key, nonce, 1, ciphertext, plaintext);
+        _chaChaCore.Transform(_key, nonce, 1, ciphertext, plaintext);
 
         return true;
     }

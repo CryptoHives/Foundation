@@ -345,8 +345,11 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 ## See Also
 
 - [Hash Algorithms Reference](hash-algorithms.md)
+- [Cipher Algorithms Reference](cipher-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
+- [Hash Benchmarks](benchmarks-hash.md)
+- [Cipher Benchmarks](benchmarks-cipher.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

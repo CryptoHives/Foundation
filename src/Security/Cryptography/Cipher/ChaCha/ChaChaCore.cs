@@ -1,15 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if NET8_0_OR_GREATER
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-#endif
-
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -32,7 +26,7 @@ using System.Runtime.InteropServices;
 /// </list>
 /// </para>
 /// </remarks>
-internal static class ChaChaCore
+internal partial struct ChaChaCore
 {
     /// <summary>
     /// ChaCha20 block size in bytes (512 bits = 64 bytes).
@@ -81,18 +75,16 @@ internal static class ChaChaCore
     ];
 
     /// <summary>
-    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// The SimD instruction sets to use for this instance.
     /// </summary>
-    internal static SimdSupport SimdSupport
+    private readonly SimdSupport _simdSupport;
+
+    /// <summary>
+    /// Initializes a new instance of the ChaChaCore class with the specified SIMD support settings.
+    /// </summary>
+    public ChaChaCore(SimdSupport simdSupport = SimdSupport.All)
     {
-        get
-        {
-            var support = SimdSupport.None;
-#if NET8_0_OR_GREATER
-            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
-#endif
-            return support;
-        }
+        _simdSupport = simdSupport & SimdSupport;
     }
 
     /// <summary>
@@ -104,7 +96,7 @@ internal static class ChaChaCore
     /// <param name="output">The 64-byte output buffer for the keystream.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
+    public void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
     {
         Span<uint> state = stackalloc uint[StateWords];
         Span<uint> workingState = stackalloc uint[StateWords];
@@ -141,57 +133,33 @@ internal static class ChaChaCore
     }
 
     /// <summary>
-    /// Encrypts or decrypts data using ChaCha20.
-    /// </summary>
-    /// <param name="key">The 32-byte key.</param>
-    /// <param name="nonce">The 12-byte nonce.</param>
-    /// <param name="counter">The initial block counter.</param>
-    /// <param name="input">The input data.</param>
-    /// <param name="output">The output buffer (must be same size as input).</param>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Transform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-                                  ReadOnlySpan<byte> input, Span<byte> output)
-    {
-#if NET8_0_OR_GREATER
-        if (Sse2.IsSupported)
-        {
-            TransformSse2(key, nonce, counter, input, output);
-            return;
-        }
-#endif
-        TransformScalar(key, nonce, counter, input, output);
-    }
-
-    /// <summary>
     /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
     /// </summary>
-    /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">The 32-byte key.</param>
     /// <param name="nonce">The 12-byte nonce.</param>
     /// <param name="counter">The initial block counter.</param>
     /// <param name="input">The input data.</param>
     /// <param name="output">The output buffer (must be same size as input).</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    internal static void Transform(SimdSupport simdSupport, ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce,
-                                    uint counter, ReadOnlySpan<byte> input, Span<byte> output)
+    public void Transform(
+        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
+        ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport.Sse2) != 0 && Sse2.IsSupported)
+        if ((_simdSupport & SimdSupport.Ssse3) != 0)
         {
-            TransformSse2(key, nonce, counter, input, output);
+            TransformSsse3(key, nonce, counter, input, output);
             return;
         }
 #endif
         TransformScalar(key, nonce, counter, input, output);
     }
 
-    /// <summary>
-    /// Scalar fallback for <see cref="Transform(ReadOnlySpan{byte}, ReadOnlySpan{byte}, uint, ReadOnlySpan{byte}, Span{byte})"/>.
-    /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void TransformScalar(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-                                         ReadOnlySpan<byte> input, Span<byte> output)
+    private static void TransformScalar(
+        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
+        ReadOnlySpan<byte> input, Span<byte> output)
     {
         Span<uint> state = stackalloc uint[StateWords];
         Span<uint> workingState = stackalloc uint[StateWords];
@@ -200,7 +168,7 @@ internal static class ChaChaCore
         InitializeState(key, nonce, counter, state);
 
         int offset = 0;
-
+        Span<byte> ks = stackalloc byte[BlockSizeBytes];
         while (offset < input.Length)
         {
             // Copy state to working state
@@ -242,7 +210,6 @@ internal static class ChaChaCore
                 Span<byte> keystream = MemoryMarshal.AsBytes(workingState);
                 if (!BitConverter.IsLittleEndian)
                 {
-                    Span<byte> ks = stackalloc byte[BlockSizeBytes];
                     BinarySpans.WriteUInt32LittleEndian(workingState.Slice(0, StateWords), ks);
                     keystream = ks;
                 }
@@ -318,10 +285,7 @@ internal static class ChaChaCore
     private static void InitializeState(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<uint> state)
     {
         // Constants (words 0-3)
-        state[0] = Sigma[0];
-        state[1] = Sigma[1];
-        state[2] = Sigma[2];
-        state[3] = Sigma[3];
+        Sigma.AsSpan().CopyTo(state);
 
         // Key (words 4-11)
         BinarySpans.ReadUInt32LittleEndian(key, state.Slice(4));
@@ -378,8 +342,9 @@ internal static class ChaChaCore
     /// Where c = constant, k = key, n = nonce (no counter).
     /// </para>
     /// </remarks>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void HChaCha20(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, Span<byte> subkey)
+    public void HChaCha20(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, Span<byte> subkey)
     {
         if (key.Length != KeySizeBytes)
             throw new ArgumentException($"Key must be {KeySizeBytes} bytes.", nameof(key));
@@ -391,10 +356,7 @@ internal static class ChaChaCore
         Span<uint> state = stackalloc uint[StateWords];
 
         // Initialize state (no counter, nonce is 16 bytes)
-        state[0] = Sigma[0];
-        state[1] = Sigma[1];
-        state[2] = Sigma[2];
-        state[3] = Sigma[3];
+        Sigma.AsSpan().CopyTo(state);
 
         // Key (words 4-11)
         BinarySpans.ReadUInt32LittleEndian(key, state.Slice(4));
@@ -422,143 +384,4 @@ internal static class ChaChaCore
         BinarySpans.WriteUInt32LittleEndian(state.Slice(0, 4), subkey);
         BinarySpans.WriteUInt32LittleEndian(state.Slice(12, 4), subkey.Slice(4 * sizeof(UInt32)));
     }
-
-#if NET8_0_OR_GREATER
-    /// <summary>
-    /// SSE2-accelerated ChaCha20 Transform operating on 4 × <see cref="Vector128{T}"/> rows.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Maps the 4×4 state matrix to four <see cref="Vector128{UInt32}"/> vectors (one per row).
-    /// The column round operates on the four rows directly. The diagonal round is implemented
-    /// by shuffling rows 1, 2, 3 left by 1, 2, 3 positions respectively, performing the column
-    /// round, then unshuffling.
-    /// </para>
-    /// </remarks>
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void TransformSse2(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-                                       ReadOnlySpan<byte> input, Span<byte> output)
-    {
-        // Load initial state into 4 Vector128<uint> rows
-        Vector128<uint> row0 = Vector128.Create(Sigma[0], Sigma[1], Sigma[2], Sigma[3]);
-        Vector128<uint> row1 = Vector128.Create(
-            BinaryPrimitives.ReadUInt32LittleEndian(key),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(1 * sizeof(UInt32))),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(2 * sizeof(UInt32))),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(3 * sizeof(UInt32))));
-        Vector128<uint> row2 = Vector128.Create(
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(4 * sizeof(UInt32))),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(5 * sizeof(UInt32))),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(6 * sizeof(UInt32))),
-            BinaryPrimitives.ReadUInt32LittleEndian(key.Slice(7 * sizeof(UInt32))));
-        Vector128<uint> row3Base = Vector128.Create(
-            counter,
-            BinaryPrimitives.ReadUInt32LittleEndian(nonce),
-            BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(1 * sizeof(UInt32))),
-            BinaryPrimitives.ReadUInt32LittleEndian(nonce.Slice(2 * sizeof(UInt32))));
-
-        int offset = 0;
-
-        while (offset < input.Length)
-        {
-            // Working copy (row3 has per-block counter)
-            Vector128<uint> row3 = row3Base;
-            Vector128<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
-
-            // 10 double-rounds
-            for (int i = 0; i < Rounds; i += 2)
-            {
-                // Column round
-                Sse2QuarterRound(ref w0, ref w1, ref w2, ref w3);
-
-                // Diagonal round: rotate rows to align diagonals into columns
-                w1 = Sse2.Shuffle(w1, 0b_00_11_10_01); // <<< 1
-                w2 = Sse2.Shuffle(w2, 0b_01_00_11_10); // <<< 2
-                w3 = Sse2.Shuffle(w3, 0b_10_01_00_11); // <<< 3
-
-                Sse2QuarterRound(ref w0, ref w1, ref w2, ref w3);
-
-                // Un-rotate rows
-                w1 = Sse2.Shuffle(w1, 0b_10_01_00_11); // >>> 1
-                w2 = Sse2.Shuffle(w2, 0b_01_00_11_10); // >>> 2
-                w3 = Sse2.Shuffle(w3, 0b_00_11_10_01); // >>> 3
-            }
-
-            // Add original state
-            w0 = Sse2.Add(w0, row0);
-            w1 = Sse2.Add(w1, row1);
-            w2 = Sse2.Add(w2, row2);
-            w3 = Sse2.Add(w3, row3);
-
-            int remaining = input.Length - offset;
-
-            if (remaining >= BlockSizeBytes)
-            {
-                // Full block: XOR keystream with input
-                ref byte inRef = ref MemoryMarshal.GetReference(input.Slice(offset));
-                ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(offset));
-
-                Vector128<byte> in0 = Vector128.LoadUnsafe(ref inRef);
-                Vector128<byte> in1 = Vector128.LoadUnsafe(ref inRef, 16);
-                Vector128<byte> in2 = Vector128.LoadUnsafe(ref inRef, 32);
-                Vector128<byte> in3 = Vector128.LoadUnsafe(ref inRef, 48);
-
-                Vector128<byte> out0 = Sse2.Xor(in0, w0.AsByte());
-                Vector128<byte> out1 = Sse2.Xor(in1, w1.AsByte());
-                Vector128<byte> out2 = Sse2.Xor(in2, w2.AsByte());
-                Vector128<byte> out3 = Sse2.Xor(in3, w3.AsByte());
-
-                out0.StoreUnsafe(ref outRef);
-                out1.StoreUnsafe(ref outRef, 16);
-                out2.StoreUnsafe(ref outRef, 32);
-                out3.StoreUnsafe(ref outRef, 48);
-            }
-            else
-            {
-                // Partial block: serialize to temp buffer, XOR byte-by-byte
-                Span<byte> ks = stackalloc byte[BlockSizeBytes];
-                w0.AsByte().CopyTo(ks);
-                w1.AsByte().CopyTo(ks.Slice(16));
-                w2.AsByte().CopyTo(ks.Slice(32));
-                w3.AsByte().CopyTo(ks.Slice(48));
-
-                for (int i = 0; i < remaining; i++)
-                {
-                    output[offset + i] = (byte)(input[offset + i] ^ ks[i]);
-                }
-            }
-
-            offset += BlockSizeBytes;
-
-            // Increment counter
-            row3Base = row3Base.WithElement(0, row3Base.GetElement(0) + 1);
-        }
-    }
-
-    /// <summary>
-    /// SSE2 ChaCha quarter-round on four <see cref="Vector128{UInt32}"/> rows simultaneously.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void Sse2QuarterRound(
-        ref Vector128<uint> a, ref Vector128<uint> b,
-        ref Vector128<uint> c, ref Vector128<uint> d)
-    {
-        a = Sse2.Add(a, b);
-        d = Sse2.Xor(d, a);
-        d = Sse2.Or(Sse2.ShiftLeftLogical(d, 16), Sse2.ShiftRightLogical(d, 16));
-
-        c = Sse2.Add(c, d);
-        b = Sse2.Xor(b, c);
-        b = Sse2.Or(Sse2.ShiftLeftLogical(b, 12), Sse2.ShiftRightLogical(b, 20));
-
-        a = Sse2.Add(a, b);
-        d = Sse2.Xor(d, a);
-        d = Sse2.Or(Sse2.ShiftLeftLogical(d, 8), Sse2.ShiftRightLogical(d, 24));
-
-        c = Sse2.Add(c, d);
-        b = Sse2.Xor(b, c);
-        b = Sse2.Or(Sse2.ShiftLeftLogical(b, 7), Sse2.ShiftRightLogical(b, 25));
-    }
-#endif
 }

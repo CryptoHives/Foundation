@@ -57,13 +57,17 @@ internal sealed class OSAesCbcAdapter : SymmetricCipher
 /// <summary>
 /// Wraps .NET's OS-provided AES-CBC transform as a CryptoHives <see cref="ICipherTransform"/>.
 /// </summary>
+/// <remarks>
+/// Uses the span-based <see cref="OSAes.EncryptCbc(ReadOnlySpan{byte}, ReadOnlySpan{byte}, Span{byte}, System.Security.Cryptography.PaddingMode)"/>
+/// and <see cref="OSAes.DecryptCbc(ReadOnlySpan{byte}, ReadOnlySpan{byte}, Span{byte}, System.Security.Cryptography.PaddingMode)"/>
+/// APIs for zero-allocation operation.
+/// </remarks>
 internal sealed class OSAesCbcTransform : ICipherTransform
 {
     private readonly OSAes _aes;
     private readonly byte[] _key;
     private readonly byte[] _iv;
     private readonly bool _forEncryption;
-    private ICryptoTransform _transform;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OSAesCbcTransform"/> class.
@@ -75,12 +79,7 @@ internal sealed class OSAesCbcTransform : ICipherTransform
         _forEncryption = forEncryption;
 
         _aes = OSAes.Create();
-        _aes.Mode = System.Security.Cryptography.CipherMode.CBC;
-        _aes.Padding = System.Security.Cryptography.PaddingMode.PKCS7;
         _aes.Key = _key;
-        _aes.IV = _iv;
-
-        _transform = CreateTransform();
     }
 
     /// <inheritdoc/>
@@ -101,15 +100,10 @@ internal sealed class OSAesCbcTransform : ICipherTransform
     /// <inheritdoc/>
     public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        byte[] inputArray = input.ToArray();
-        byte[] result = _transform.TransformFinalBlock(inputArray, 0, inputArray.Length);
-        result.AsSpan().CopyTo(output);
-
-        // Re-create transform (TransformFinalBlock finalizes state)
-        _transform.Dispose();
-        _transform = CreateTransform();
-
-        return result.Length;
+        if (_forEncryption)
+            return _aes.EncryptCbc(input, _iv, output, System.Security.Cryptography.PaddingMode.PKCS7);
+        else
+            return _aes.DecryptCbc(input, _iv, output, System.Security.Cryptography.PaddingMode.PKCS7);
     }
 
     /// <inheritdoc/>
@@ -142,21 +136,16 @@ internal sealed class OSAesCbcTransform : ICipherTransform
     /// <inheritdoc/>
     public void Reset()
     {
-        _transform.Dispose();
-        _transform = CreateTransform();
+        // No-op: span-based APIs are stateless per call
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        _transform.Dispose();
         _aes.Dispose();
         Array.Clear(_key, 0, _key.Length);
         Array.Clear(_iv, 0, _iv.Length);
     }
-
-    private ICryptoTransform CreateTransform()
-        => _forEncryption ? _aes.CreateEncryptor() : _aes.CreateDecryptor();
 }
 
 #endif // NET8_0_OR_GREATER
