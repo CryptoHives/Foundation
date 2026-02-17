@@ -5,7 +5,7 @@
 XChaCha20-Poly1305 is an extended-nonce variant of ChaCha20-Poly1305, featuring a 192-bit nonce instead of 96-bit. This makes it much safer for random nonce generation and reduces the risk of nonce collisions.
 
 **Implementation Sources:**
-- **Managed**: CryptoHives clean-room implementation
+- **Managed**: CryptoHives implementation
 - **BouncyCastle**: Not available
 - **OS**: Not available
 

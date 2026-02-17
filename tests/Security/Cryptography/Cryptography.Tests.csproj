@@ -33,6 +33,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="OpenGost.Security.Cryptography" />
+    <PackageReference Include="Konscious.Security.Cryptography.Blake2" />
   </ItemGroup>
 
   <!-- Exclude IndexRange transitive dependency from NaCl.Core to avoid conflict with Microsoft.Bcl.Memory on net48 -->

@@ -5,7 +5,7 @@
 ChaCha20-Poly1305 is an authenticated encryption algorithm combining the ChaCha20 stream cipher with Poly1305 MAC. It's designed as a software-friendly alternative to AES-GCM, offering excellent performance without requiring hardware acceleration.
 
 **Implementation Sources:**
-- **Managed**: CryptoHives clean-room implementation
+- **Managed**: CryptoHives implementation
 - **BouncyCastle**: BouncyCastle ChaCha20Poly1305 wrapper
 - **OS**: .NET System.Security.Cryptography.ChaCha20Poly1305 (.NET 9+)
 

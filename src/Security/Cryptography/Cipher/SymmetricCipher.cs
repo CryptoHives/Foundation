@@ -7,7 +7,7 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher.Compat;
 using System;
 
 /// <summary>
-/// Base class for CryptoHives clean-room symmetric cipher implementations.
+/// Base class for CryptoHives symmetric cipher implementations.
 /// </summary>
 /// <remarks>
 /// <para>

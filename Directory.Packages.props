@@ -10,6 +10,7 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="HashifyNET" Version="7.1.1" />
     <PackageVersion Include="IndexRange" Version="1.0.3" />
+    <PackageVersion Include="Konscious.Security.Cryptography.Blake2" Version="1.1.1" />
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
     <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.2" />
