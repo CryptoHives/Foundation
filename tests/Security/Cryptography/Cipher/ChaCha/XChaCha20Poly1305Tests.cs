@@ -7,6 +7,8 @@ using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using System.Linq;
+using static Cryptography.Tests.Cipher.CipherAlgorithmRegistry;
 using CryptographicException = System.Security.Cryptography.CryptographicException;
 
 /// <summary>
@@ -17,17 +19,43 @@ using CryptographicException = System.Security.Cryptography.CryptographicExcepti
 /// See: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha
 /// </remarks>
 [TestFixture]
+[TestFixtureSource(nameof(CipherImplementationArgs))]
 [Parallelizable(ParallelScope.All)]
 public class XChaCha20Poly1305Tests
 {
+    /// <summary>
+    /// Gets the collection of cipher implementations that support the ChaCha20-Poly1305 algorithm family.
+    /// </summary>CipherAlgorithmRegistry
+    public static CipherImplementation[] ChaCha20Poly1305All = CipherAlgorithmRegistry.ByFamily("XChaCha20-Poly1305").ToArray();
+
+    /// <summary>
+    /// Cipher implementations to test.
+    /// </summary>
+    public static readonly object[] CipherImplementationArgs = ChaCha20Poly1305All.Select(impl => new object[] { impl.Name }).ToArray();
+
+    private readonly CipherImplementation _implementation;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20Poly1305Tests"/> class.
+    /// </summary>
+    public XChaCha20Poly1305Tests(string name)
+    {
+        _implementation = ChaCha20Poly1305All!.Where(impl => impl.Name == name).FirstOrDefault() ?? throw new ArgumentNullException(name);
+    }
+
     // ========================================================================
     // HChaCha20 Test Vector (draft-irtf-cfrg-xchacha Section 2.2.1)
     // ========================================================================
 
-    [Theory]
-    public void HChaCha20_DraftIrtfCfrgXchacha_Section221(bool simdSupport)
+    [Test]
+    public void HChaCha20_DraftIrtfCfrgXchacha_Section221()
     {
-        ChaChaCore chaChaCore = new ChaChaCore(simdSupport ? SimdSupport.All : SimdSupport.None);
+        if (_implementation.Source != Source.Managed && _implementation.Source != Source.Simd)
+        {
+            Assert.Ignore("Not a Managed or Simd implementation.");
+        }
+
+        ChaChaCore chaChaCore = new ChaChaCore(_implementation.Source == Source.Managed ? SimdSupport.None : SimdSupport.All);
 
         byte[] key = FromHex(
             "000102030405060708090a0b0c0d0e0f" +

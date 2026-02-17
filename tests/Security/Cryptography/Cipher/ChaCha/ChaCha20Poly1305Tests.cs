@@ -3,9 +3,12 @@
 
 namespace Cryptography.Tests.Cipher.ChaCha;
 
+using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using System.Linq;
+using static Cryptography.Tests.Cipher.CipherAlgorithmRegistry;
 // Alias to avoid conflict with System.Security.Cryptography.ChaCha20Poly1305
 using ChaCha20Poly1305 = CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20Poly1305;
 using CryptographicException = System.Security.Cryptography.CryptographicException;
@@ -18,9 +21,30 @@ using CryptographicException = System.Security.Cryptography.CryptographicExcepti
 /// See: https://datatracker.ietf.org/doc/html/rfc8439
 /// </remarks>
 [TestFixture]
+[TestFixtureSource(nameof(CipherImplementationArgs))]
 [Parallelizable(ParallelScope.All)]
 public class ChaCha20Poly1305Tests
 {
+    /// <summary>
+    /// Gets the collection of cipher implementations that support the ChaCha20-Poly1305 algorithm family.
+    /// </summary>CipherAlgorithmRegistry
+    public static CipherImplementation[] ChaCha20Poly1305All = CipherAlgorithmRegistry.ByFamily("ChaCha20-Poly1305").ToArray();
+
+    /// <summary>
+    /// Cipher implementations to test.
+    /// </summary>
+    public static readonly object[] CipherImplementationArgs = ChaCha20Poly1305All.Select(impl => new object[] { impl.Name }).ToArray();
+
+    private readonly CipherImplementation _implementation;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20Poly1305Tests"/> class.
+    /// </summary>
+    public ChaCha20Poly1305Tests(string name)
+    {
+        _implementation = ChaCha20Poly1305All!.Where(impl => impl.Name == name).FirstOrDefault() ?? throw new ArgumentNullException(name);
+    }
+
     // ========================================================================
     // RFC 8439 Section 2.8.2 - AEAD Test Vector
     // ========================================================================
@@ -53,7 +77,7 @@ public class ChaCha20Poly1305Tests
             "6116");
         byte[] expectedTag = FromHex("1ae10b594f09e26a7e902ecbd0600691");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertext = new byte[plaintext.Length];
         byte[] tag = new byte[16];
@@ -92,7 +116,7 @@ public class ChaCha20Poly1305Tests
             "637265656e20776f756c642062652069" +
             "742e");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] plaintext = new byte[ciphertext.Length];
         bool success = aead.Decrypt(nonce, ciphertext, tag, plaintext, aad);
@@ -137,7 +161,7 @@ public class ChaCha20Poly1305Tests
 
         byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Hello, ChaCha20-Poly1305!");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext);
         byte[] decrypted = aead.Decrypt(nonce, ciphertextWithTag);
@@ -157,7 +181,7 @@ public class ChaCha20Poly1305Tests
         byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Secret message with AAD");
         byte[] aad = System.Text.Encoding.UTF8.GetBytes("Additional authenticated data");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext, aad);
         byte[] decrypted = aead.Decrypt(nonce, ciphertextWithTag, aad);
@@ -181,7 +205,7 @@ public class ChaCha20Poly1305Tests
         byte[] aad = new byte[256];
         random.NextBytes(aad);
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext, aad);
         byte[] decrypted = aead.Decrypt(nonce, ciphertextWithTag, aad);
@@ -200,7 +224,7 @@ public class ChaCha20Poly1305Tests
         byte[] plaintext = Array.Empty<byte>();
         byte[] aad = System.Text.Encoding.UTF8.GetBytes("Some AAD");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext, aad);
 
@@ -222,7 +246,7 @@ public class ChaCha20Poly1305Tests
         byte[] nonce = new byte[12];
         byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Secret message");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext);
 
@@ -239,7 +263,7 @@ public class ChaCha20Poly1305Tests
         byte[] nonce = new byte[12];
         byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Secret message");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext);
 
@@ -258,7 +282,7 @@ public class ChaCha20Poly1305Tests
         byte[] aad = System.Text.Encoding.UTF8.GetBytes("Correct AAD");
         byte[] wrongAad = System.Text.Encoding.UTF8.GetBytes("Wrong AAD");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext, aad);
 
@@ -274,7 +298,7 @@ public class ChaCha20Poly1305Tests
         wrongNonce[0] = 0x01;
         byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Secret message");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext);
 
@@ -290,8 +314,8 @@ public class ChaCha20Poly1305Tests
         byte[] nonce = new byte[12];
         byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Secret message");
 
-        using var aead = ChaCha20Poly1305.Create(key);
-        using var wrongAead = ChaCha20Poly1305.Create(wrongKey);
+        using var aead = (IAeadCipher)_implementation.Create(key);
+        using var wrongAead = (IAeadCipher)_implementation.Create(wrongKey);
 
         byte[] ciphertextWithTag = aead.Encrypt(nonce, plaintext);
 
@@ -305,20 +329,28 @@ public class ChaCha20Poly1305Tests
     [Test]
     public void ChaCha20Poly1305_InvalidKeySize_Throws()
     {
+        if (_implementation.Source != Source.Managed && _implementation.Source != Source.Simd)
+            Assert.Ignore("Key validation is implementation-specific.");
+
         byte[] shortKey = new byte[16];
-        Assert.Throws<ArgumentException>(() => ChaCha20Poly1305.Create(shortKey));
+        Assert.That(() => _implementation.Create(shortKey),
+            Throws.InstanceOf<ArgumentException>().Or.InstanceOf<CryptographicException>());
     }
 
     [Test]
     public void ChaCha20Poly1305_InvalidNonceSize_Throws()
     {
+        if (_implementation.Source != Source.Managed && _implementation.Source != Source.Simd)
+            Assert.Ignore("Nonce validation is implementation-specific.");
+
         byte[] key = new byte[32];
         byte[] shortNonce = new byte[8];
         byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Test");
 
-        using var aead = ChaCha20Poly1305.Create(key);
+        using var aead = (IAeadCipher)_implementation.Create(key);
 
-        Assert.Throws<ArgumentException>(() => aead.Encrypt(shortNonce, plaintext));
+        Assert.That(() => aead.Encrypt(shortNonce, plaintext),
+            Throws.InstanceOf<ArgumentException>().Or.InstanceOf<CryptographicException>());
     }
 
     // ========================================================================

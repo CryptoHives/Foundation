@@ -1,25 +1,25 @@
-﻿| Description                          | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · AES-256-CCM (Managed)      | 128B         |     1.286 μs | 0.0090 μs | 0.0085 μs |         - |
-| Decrypt · AES-256-CCM (BouncyCastle) | 128B         |     2.022 μs | 0.0134 μs | 0.0126 μs |    3288 B |
-|                                      |              |              |           |           |           |
-| Encrypt · AES-256-CCM (Managed)      | 128B         |     1.248 μs | 0.0088 μs | 0.0082 μs |         - |
-| Encrypt · AES-256-CCM (BouncyCastle) | 128B         |     2.001 μs | 0.0146 μs | 0.0136 μs |    3328 B |
-|                                      |              |              |           |           |           |
-| Decrypt · AES-256-CCM (Managed)      | 1KB          |     8.311 μs | 0.0819 μs | 0.0766 μs |         - |
-| Decrypt · AES-256-CCM (BouncyCastle) | 1KB          |    10.328 μs | 0.0739 μs | 0.0692 μs |    5080 B |
-|                                      |              |              |           |           |           |
-| Encrypt · AES-256-CCM (Managed)      | 1KB          |     8.247 μs | 0.0914 μs | 0.0855 μs |         - |
-| Encrypt · AES-256-CCM (BouncyCastle) | 1KB          |    10.257 μs | 0.0886 μs | 0.0829 μs |    5120 B |
-|                                      |              |              |           |           |           |
-| Decrypt · AES-256-CCM (Managed)      | 8KB          |    63.703 μs | 0.3597 μs | 0.3188 μs |         - |
-| Decrypt · AES-256-CCM (BouncyCastle) | 8KB          |    76.292 μs | 0.5981 μs | 0.5595 μs |   19416 B |
-|                                      |              |              |           |           |           |
-| Encrypt · AES-256-CCM (Managed)      | 8KB          |    64.029 μs | 0.5208 μs | 0.4872 μs |         - |
-| Encrypt · AES-256-CCM (BouncyCastle) | 8KB          |    75.727 μs | 0.4781 μs | 0.4238 μs |   19456 B |
-|                                      |              |              |           |           |           |
-| Decrypt · AES-256-CCM (Managed)      | 128KB        | 1,051.762 μs | 8.7001 μs | 8.1381 μs |         - |
-| Decrypt · AES-256-CCM (BouncyCastle) | 128KB        | 1,252.980 μs | 7.1854 μs | 6.0002 μs |  265204 B |
-|                                      |              |              |           |           |           |
-| Encrypt · AES-256-CCM (Managed)      | 128KB        | 1,018.635 μs | 6.0097 μs | 4.6920 μs |         - |
-| Encrypt · AES-256-CCM (BouncyCastle) | 128KB        | 1,256.303 μs | 6.8147 μs | 6.0411 μs |  265244 B |
+﻿| Description                          | TestDataSize | Mean         | Error      | StdDev     | Allocated |
+|------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|
+| Decrypt · AES-256-CCM (Managed)      | 128B         |     1.280 μs |  0.0065 μs |  0.0061 μs |         - |
+| Decrypt · AES-256-CCM (BouncyCastle) | 128B         |     2.032 μs |  0.0170 μs |  0.0142 μs |    2808 B |
+|                                      |              |              |            |            |           |
+| Encrypt · AES-256-CCM (Managed)      | 128B         |     1.242 μs |  0.0102 μs |  0.0095 μs |         - |
+| Encrypt · AES-256-CCM (BouncyCastle) | 128B         |     1.929 μs |  0.0208 μs |  0.0194 μs |    2848 B |
+|                                      |              |              |            |            |           |
+| Decrypt · AES-256-CCM (Managed)      | 1KB          |     8.193 μs |  0.0413 μs |  0.0366 μs |         - |
+| Decrypt · AES-256-CCM (BouncyCastle) | 1KB          |    10.124 μs |  0.0610 μs |  0.0570 μs |    2808 B |
+|                                      |              |              |            |            |           |
+| Encrypt · AES-256-CCM (Managed)      | 1KB          |     8.174 μs |  0.0935 μs |  0.0875 μs |         - |
+| Encrypt · AES-256-CCM (BouncyCastle) | 1KB          |    10.134 μs |  0.0584 μs |  0.0546 μs |    2848 B |
+|                                      |              |              |            |            |           |
+| Decrypt · AES-256-CCM (Managed)      | 8KB          |    63.270 μs |  0.3350 μs |  0.2797 μs |         - |
+| Decrypt · AES-256-CCM (BouncyCastle) | 8KB          |    74.947 μs |  0.4991 μs |  0.4424 μs |    2808 B |
+|                                      |              |              |            |            |           |
+| Encrypt · AES-256-CCM (Managed)      | 8KB          |    63.595 μs |  0.4426 μs |  0.3924 μs |         - |
+| Encrypt · AES-256-CCM (BouncyCastle) | 8KB          |    74.968 μs |  0.6204 μs |  0.5803 μs |    2848 B |
+|                                      |              |              |            |            |           |
+| Decrypt · AES-256-CCM (Managed)      | 128KB        | 1,013.367 μs | 10.2607 μs |  9.5979 μs |         - |
+| Decrypt · AES-256-CCM (BouncyCastle) | 128KB        | 1,190.685 μs | 10.7234 μs | 10.0307 μs |    2808 B |
+|                                      |              |              |            |            |           |
+| Encrypt · AES-256-CCM (Managed)      | 128KB        | 1,011.768 μs |  6.1974 μs |  5.4939 μs |         - |
+| Encrypt · AES-256-CCM (BouncyCastle) | 128KB        | 1,194.736 μs |  6.8932 μs |  5.7561 μs |    2848 B |

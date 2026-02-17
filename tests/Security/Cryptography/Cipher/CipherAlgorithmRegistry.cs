@@ -9,7 +9,6 @@ using Org.BouncyCastle.Crypto.Modes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Versioning;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
@@ -39,6 +38,8 @@ public static class CipherAlgorithmRegistry
         Simd,
         /// <summary>BouncyCastle implementation.</summary>
         BouncyCastle,
+        /// <summary>NaCl.Core implementation.</summary>
+        NaClCore,
         /// <summary>Regional implementation (e.g., OpenGost SM4).</summary>
         Regional
     }
@@ -71,6 +72,8 @@ public static class CipherAlgorithmRegistry
     /// </summary>
     public sealed class CipherImplementation
     {
+        private readonly Func<byte[], object> _keyedFactory;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="CipherImplementation"/> class.
         /// </summary>
@@ -78,7 +81,7 @@ public static class CipherAlgorithmRegistry
         /// <param name="variant">Implementation variant (e.g., "Managed", "BouncyCastle", "OS").</param>
         /// <param name="keySizeBits">Key size in bits.</param>
         /// <param name="mode">Cipher mode.</param>
-        /// <param name="factory">Factory function to create the cipher.</param>
+        /// <param name="factory">Factory function to create the cipher (uses a default zero key).</param>
         /// <param name="source">Implementation source type.</param>
         /// <param name="supportCheck">Optional function to check if implementation is supported at runtime.</param>
         /// <param name="excludeFromBenchmark">Whether to exclude this implementation from benchmarks.</param>
@@ -91,12 +94,37 @@ public static class CipherAlgorithmRegistry
             Source source,
             Func<bool>? supportCheck = null,
             bool excludeFromBenchmark = false)
+            : this(algorithmFamily, variant, keySizeBits, mode, _ => factory(), source, supportCheck, excludeFromBenchmark)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CipherImplementation"/> class
+        /// with a key-parameterized factory.
+        /// </summary>
+        /// <param name="algorithmFamily">Algorithm family name (e.g., "AES-128-GCM", "ChaCha20-Poly1305").</param>
+        /// <param name="variant">Implementation variant (e.g., "Managed", "BouncyCastle", "OS").</param>
+        /// <param name="keySizeBits">Key size in bits.</param>
+        /// <param name="mode">Cipher mode.</param>
+        /// <param name="keyedFactory">Factory function that accepts a key to create the cipher.</param>
+        /// <param name="source">Implementation source type.</param>
+        /// <param name="supportCheck">Optional function to check if implementation is supported at runtime.</param>
+        /// <param name="excludeFromBenchmark">Whether to exclude this implementation from benchmarks.</param>
+        public CipherImplementation(
+            string algorithmFamily,
+            string variant,
+            int keySizeBits,
+            Mode mode,
+            Func<byte[], object> keyedFactory,
+            Source source,
+            Func<bool>? supportCheck = null,
+            bool excludeFromBenchmark = false)
         {
             AlgorithmFamily = algorithmFamily;
             Variant = variant;
             KeySizeBits = keySizeBits;
             CipherMode = mode;
-            Factory = factory;
+            _keyedFactory = keyedFactory;
             Source = source;
             SupportCheck = supportCheck;
             ExcludeFromBenchmark = excludeFromBenchmark;
@@ -123,9 +151,9 @@ public static class CipherAlgorithmRegistry
         public Mode CipherMode { get; }
 
         /// <summary>
-        /// Gets the factory function.
+        /// Gets the factory function that creates a cipher with a default zero key.
         /// </summary>
-        public Func<object> Factory { get; }
+        public Func<object> Factory => () => _keyedFactory(new byte[KeySizeBits / 8]);
 
         /// <summary>
         /// Gets the implementation source type.
@@ -155,9 +183,15 @@ public static class CipherAlgorithmRegistry
         public bool IsSupported => SupportCheck?.Invoke() ?? true;
 
         /// <summary>
-        /// Creates a new instance of the cipher.
+        /// Creates a new instance of the cipher with a default zero key.
         /// </summary>
-        public object Create() => Factory();
+        public object Create() => _keyedFactory(new byte[KeySizeBits / 8]);
+
+        /// <summary>
+        /// Creates a new instance of the cipher with the specified key.
+        /// </summary>
+        /// <param name="key">The encryption key.</param>
+        public object Create(byte[] key) => _keyedFactory(key);
 
         /// <inheritdoc/>
         public override string ToString() => Name;
@@ -234,7 +268,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             128,
             Mode.GCM,
-            () => CH.Cipher.AesGcm128.Create(new byte[16]),
+            (byte[] key) => CH.Cipher.AesGcm128.Create(key),
             Source.Managed));
 
         // AES-128-GCM - BouncyCastle
@@ -243,9 +277,9 @@ public static class CipherAlgorithmRegistry
             "BouncyCastle",
             128,
             Mode.GCM,
-            () => new BouncyCastleAeadAdapter(
+            (byte[] key) => new BouncyCastleAeadAdapter(
                 new GcmBlockCipher(new AesEngine()),
-                new byte[16],
+                key,
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
@@ -256,7 +290,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             192,
             Mode.GCM,
-            () => CH.Cipher.AesGcm192.Create(new byte[24]),
+            (byte[] key) => CH.Cipher.AesGcm192.Create(key),
             Source.Managed));
 
         // AES-192-GCM - BouncyCastle
@@ -265,9 +299,9 @@ public static class CipherAlgorithmRegistry
             "BouncyCastle",
             192,
             Mode.GCM,
-            () => new BouncyCastleAeadAdapter(
+            (byte[] key) => new BouncyCastleAeadAdapter(
                 new GcmBlockCipher(new AesEngine()),
-                new byte[24],
+                key,
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
@@ -278,7 +312,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.GCM,
-            () => CH.Cipher.AesGcm256.Create(new byte[32]),
+            (byte[] key) => CH.Cipher.AesGcm256.Create(key),
             Source.Managed));
 
         // AES-256-GCM - BouncyCastle
@@ -287,9 +321,9 @@ public static class CipherAlgorithmRegistry
             "BouncyCastle",
             256,
             Mode.GCM,
-            () => new BouncyCastleAeadAdapter(
+            (byte[] key) => new BouncyCastleAeadAdapter(
                 new GcmBlockCipher(new AesEngine()),
-                new byte[32],
+                key,
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
@@ -300,7 +334,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             128,
             Mode.CCM,
-            () => CH.Cipher.AesCcm128.Create(new byte[16]),
+            (byte[] key) => CH.Cipher.AesCcm128.Create(key),
             Source.Managed));
 
         // AES-128-CCM - BouncyCastle
@@ -309,9 +343,9 @@ public static class CipherAlgorithmRegistry
             "BouncyCastle",
             128,
             Mode.CCM,
-            () => new BouncyCastleAeadAdapter(
+            (byte[] key) => new BouncyCastleAeadAdapter(
                 new CcmBlockCipher(new AesEngine()),
-                new byte[16],
+                key,
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
@@ -322,7 +356,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             192,
             Mode.CCM,
-            () => CH.Cipher.AesCcm192.Create(new byte[24]),
+            (byte[] key) => CH.Cipher.AesCcm192.Create(key),
             Source.Managed));
 
         // AES-192-CCM - BouncyCastle
@@ -331,9 +365,9 @@ public static class CipherAlgorithmRegistry
             "BouncyCastle",
             192,
             Mode.CCM,
-            () => new BouncyCastleAeadAdapter(
+            (byte[] key) => new BouncyCastleAeadAdapter(
                 new CcmBlockCipher(new AesEngine()),
-                new byte[24],
+                key,
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
@@ -344,7 +378,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.CCM,
-            () => CH.Cipher.AesCcm256.Create(new byte[32]),
+            (byte[] key) => CH.Cipher.AesCcm256.Create(key),
             Source.Managed));
 
         // AES-256-CCM - BouncyCastle
@@ -353,9 +387,9 @@ public static class CipherAlgorithmRegistry
             "BouncyCastle",
             256,
             Mode.CCM,
-            () => new BouncyCastleAeadAdapter(
+            (byte[] key) => new BouncyCastleAeadAdapter(
                 new CcmBlockCipher(new AesEngine()),
-                new byte[32],
+                key,
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
@@ -414,6 +448,18 @@ public static class CipherAlgorithmRegistry
     {
         var chachaSimd = CH.Cipher.ChaCha20.SimdSupport;
 
+        // ChaCha20 (stream) - AVX2
+        if ((chachaSimd & CH.SimdSupport.Avx2) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "ChaCha20",
+                "AVX2",
+                256,
+                Mode.Stream,
+                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3),
+                Source.Simd));
+        }
+
         // ChaCha20 (stream) - SSSE3
         if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
         {
@@ -444,6 +490,27 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateChaCha20(),
             Source.BouncyCastle));
 
+        // ChaCha20 (stream) - NaCl.Core
+        implementations.Add(new CipherImplementation(
+            "ChaCha20",
+            "NaCl.Core",
+            256,
+            Mode.Stream,
+            () => new NaClCoreStreamCipherAdapter(),
+            Source.NaClCore));
+
+        // ChaCha20-Poly1305 - AVX2
+        if ((chachaSimd & CH.SimdSupport.Avx2) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "ChaCha20-Poly1305",
+                "AVX2",
+                256,
+                Mode.ChaCha20Poly1305,
+                (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3, key),
+                Source.Simd));
+        }
+
         // ChaCha20-Poly1305 - SSSE3
         if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
         {
@@ -452,7 +519,7 @@ public static class CipherAlgorithmRegistry
                 "SSSE3",
                 256,
                 Mode.ChaCha20Poly1305,
-                () => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, new byte[32]),
+                (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, key),
                 Source.Simd));
         }
 
@@ -462,7 +529,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.ChaCha20Poly1305,
-            () => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.None, new byte[32]),
+            (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.None, key),
             Source.Managed));
 
         // ChaCha20-Poly1305 - BouncyCastle
@@ -471,12 +538,33 @@ public static class CipherAlgorithmRegistry
             "BouncyCastle",
             256,
             Mode.ChaCha20Poly1305,
-            () => new BouncyCastleAeadAdapter(
+            (byte[] key) => new BouncyCastleAeadAdapter(
                 new ChaCha20Poly1305(),
-                new byte[32],
+                key,
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
+
+        // ChaCha20-Poly1305 - NaCl.Core
+        implementations.Add(new CipherImplementation(
+            "ChaCha20-Poly1305",
+            "NaCl.Core",
+            256,
+            Mode.ChaCha20Poly1305,
+            (byte[] key) => new NaClCoreAeadAdapter(key, useXChaCha: false),
+            Source.NaClCore));
+
+        // XChaCha20-Poly1305 - AVX2
+        if ((chachaSimd & CH.SimdSupport.Avx2) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "XChaCha20-Poly1305",
+                "AVX2",
+                256,
+                Mode.XChaCha20Poly1305,
+                (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3, key),
+                Source.Simd));
+        }
 
         // XChaCha20-Poly1305 - SSSE3
         if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
@@ -486,7 +574,7 @@ public static class CipherAlgorithmRegistry
                 "SSSE3",
                 256,
                 Mode.XChaCha20Poly1305,
-                () => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, new byte[32]),
+                (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, key),
                 Source.Simd));
         }
 
@@ -496,8 +584,17 @@ public static class CipherAlgorithmRegistry
             "Managed",
             256,
             Mode.XChaCha20Poly1305,
-            () => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.None, new byte[32]),
+            (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.None, key),
             Source.Managed));
+
+        // XChaCha20-Poly1305 - NaCl.Core
+        implementations.Add(new CipherImplementation(
+            "XChaCha20-Poly1305",
+            "NaCl.Core",
+            256,
+            Mode.XChaCha20Poly1305,
+            (byte[] key) => new NaClCoreAeadAdapter(key, useXChaCha: true),
+            Source.NaClCore));
     }
 
     private static void AddOSImplementations(List<CipherImplementation> implementations)
@@ -509,7 +606,7 @@ public static class CipherAlgorithmRegistry
             "OS",
             128,
             Mode.GCM,
-            () => new OSAesGcmAdapter(new byte[16]),
+            (byte[] key) => new OSAesGcmAdapter(key),
             Source.OS,
             supportCheck: () => OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()));
 
@@ -519,7 +616,7 @@ public static class CipherAlgorithmRegistry
             "OS",
             192,
             Mode.GCM,
-            () => new OSAesGcmAdapter(new byte[24]),
+            (byte[] key) => new OSAesGcmAdapter(key),
             Source.OS,
             supportCheck: () => OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()));
 
@@ -529,7 +626,7 @@ public static class CipherAlgorithmRegistry
             "OS",
             256,
             Mode.GCM,
-            () => new OSAesGcmAdapter(new byte[32]),
+            (byte[] key) => new OSAesGcmAdapter(key),
             Source.OS,
             supportCheck: () => OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()));
 
@@ -559,7 +656,7 @@ public static class CipherAlgorithmRegistry
             "OS",
             256,
             Mode.ChaCha20Poly1305,
-            () => new OSChaCha20Poly1305Adapter(new byte[32]),
+            (byte[] key) => new OSChaCha20Poly1305Adapter(key),
             Source.OS,
             supportCheck: () => OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()));
 #endif

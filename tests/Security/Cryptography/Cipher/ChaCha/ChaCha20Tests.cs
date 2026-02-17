@@ -7,6 +7,8 @@ using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using System.Linq;
+using static Cryptography.Tests.Cipher.CipherAlgorithmRegistry;
 
 /// <summary>
 /// Tests for ChaCha20 implementation using RFC 8439 test vectors.
@@ -16,9 +18,30 @@ using System;
 /// See: https://datatracker.ietf.org/doc/html/rfc8439
 /// </remarks>
 [TestFixture]
+[TestFixtureSource(nameof(CipherImplementationArgs))]
 [Parallelizable(ParallelScope.All)]
 public class ChaCha20Tests
 {
+    /// <summary>
+    /// Gets the collection of cipher implementations that support the ChaCha20-Poly1305 algorithm family.
+    /// </summary>CipherAlgorithmRegistry
+    public static CipherImplementation[] ChaCha20All = CipherAlgorithmRegistry.ByFamily("ChaCha20").ToArray();
+
+    /// <summary>
+    /// Cipher implementations to test.
+    /// </summary>
+    public static readonly object[] CipherImplementationArgs = ChaCha20All.Select(impl => new object[] { impl.Name }).ToArray();
+
+    private readonly CipherImplementation _implementation;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20Poly1305Tests"/> class.
+    /// </summary>
+    public ChaCha20Tests(string name)
+    {
+        _implementation = ChaCha20All!.Where(impl => impl.Name == name).FirstOrDefault() ?? throw new ArgumentNullException(name);
+    }
+
     // ========================================================================
     // RFC 8439 Section 2.3.2 - ChaCha20 Block Function Test Vector
     // ========================================================================
@@ -26,10 +49,15 @@ public class ChaCha20Tests
     /// <summary>
     /// RFC 8439 Section 2.3.2: ChaCha20 block function test.
     /// </summary>
-    [Theory]
-    public void ChaCha20_Rfc8439_Section232_BlockFunction(bool simdSupport)
+    [Test]
+    public void ChaCha20_Rfc8439_Section232_BlockFunction()
     {
-        ChaChaCore chaChaCore = new(simdSupport ? SimdSupport.All : SimdSupport.None);
+        if (_implementation.Source != Source.Managed && _implementation.Source != Source.Simd)
+        {
+            Assert.Ignore("Not a Managed or Simd implementation.");
+        }
+
+        ChaChaCore chaChaCore = new ChaChaCore(_implementation.Source == Source.Managed ? SimdSupport.None : SimdSupport.All);
 
         // Key: 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f
         byte[] key = FromHex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
@@ -85,7 +113,7 @@ public class ChaCha20Tests
             "5af90bbf74a35be6b40b8eedf2785e42" +
             "874d");
 
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = key;
         chacha.IV = nonce;
         chacha.InitialCounter = 1;
@@ -124,7 +152,7 @@ public class ChaCha20Tests
             "637265656e20776f756c642062652069" +
             "742e");
 
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = key;
         chacha.IV = nonce;
         chacha.InitialCounter = 1;
@@ -141,10 +169,15 @@ public class ChaCha20Tests
     /// <summary>
     /// Tests the quarter round operation indirectly through block function.
     /// </summary>
-    [Theory]
-    public void ChaCha20_QuarterRound_ThroughBlock(bool simdSupport)
+    [Test]
+    public void ChaCha20_QRound_ThroughBlock()
     {
-        ChaChaCore chaChaCore = new(simdSupport ? SimdSupport.All : SimdSupport.None);
+        if (_implementation.Source != Source.Managed && _implementation.Source != Source.Simd)
+        {
+            Assert.Ignore("Not a Managed or Simd implementation.");
+        }
+
+        ChaChaCore chaChaCore = new ChaChaCore(_implementation.Source == Source.Managed ? SimdSupport.None : SimdSupport.All);
 
         // Use all-zero key and nonce with counter 0 to test basic functionality
         byte[] key = new byte[32];
@@ -182,7 +215,7 @@ public class ChaCha20Tests
         for (int i = 0; i < 32; i++) key[i] = (byte)i;
         for (int i = 0; i < 12; i++) nonce[i] = (byte)(0x20 + i);
 
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = key;
         chacha.IV = nonce;
 
@@ -210,7 +243,7 @@ public class ChaCha20Tests
         for (int i = 0; i < 32; i++) key[i] = (byte)(0x40 + i);
         for (int i = 0; i < 12; i++) nonce[i] = (byte)(0x50 + i);
 
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = key;
         chacha.IV = nonce;
 
@@ -233,7 +266,7 @@ public class ChaCha20Tests
         for (int i = 0; i < 32; i++) key[i] = (byte)(0x60 + i);
         for (int i = 0; i < 12; i++) nonce[i] = (byte)(0x70 + i);
 
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = key;
         chacha.IV = nonce;
 
@@ -257,7 +290,7 @@ public class ChaCha20Tests
         random.NextBytes(key);
         random.NextBytes(nonce);
 
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = key;
         chacha.IV = nonce;
 
@@ -278,20 +311,27 @@ public class ChaCha20Tests
         byte[] plaintext = new byte[64];
         byte[] key = new byte[32];
         byte[] nonce = new byte[12];
+        byte[] ciphertext0;
+        byte[] ciphertext1;
+
         for (int i = 0; i < 32; i++) key[i] = (byte)i;
         for (int i = 0; i < 12; i++) nonce[i] = (byte)i;
 
-        using var chacha0 = ChaCha20.Create();
-        chacha0.Key = key;
-        chacha0.IV = nonce;
-        chacha0.InitialCounter = 0;
-        byte[] ciphertext0 = chacha0.Encrypt(plaintext);
+        using (var chacha0 = (SymmetricCipher)_implementation.Create())
+        {
+            chacha0.Key = key;
+            chacha0.IV = nonce;
+            chacha0.InitialCounter = 0;
+            ciphertext0 = chacha0.Encrypt(plaintext);
+        }
 
-        using var chacha1 = ChaCha20.Create();
-        chacha1.Key = key;
-        chacha1.IV = nonce;
-        chacha1.InitialCounter = 1;
-        byte[] ciphertext1 = chacha1.Encrypt(plaintext);
+        using (var chacha1 = (SymmetricCipher)_implementation.Create())
+        {
+            chacha1.Key = key;
+            chacha1.IV = nonce;
+            chacha1.InitialCounter = 1;
+            ciphertext1 = chacha1.Encrypt(plaintext);
+        }
 
         // Different initial counters should produce different ciphertext
         Assert.That(ciphertext0, Is.Not.EqualTo(ciphertext1));
@@ -310,7 +350,7 @@ public class ChaCha20Tests
         for (int i = 0; i < 32; i++) key[i] = (byte)i;
         for (int i = 0; i < 12; i++) nonce[i] = (byte)i;
 
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = key;
         chacha.IV = nonce;
 
@@ -332,7 +372,7 @@ public class ChaCha20Tests
     [Test]
     public void ChaCha20_InvalidKeySize_Throws()
     {
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
             chacha.Key = new byte[16]; // Wrong size
         });
@@ -341,7 +381,7 @@ public class ChaCha20Tests
     [Test]
     public void ChaCha20_InvalidNonceSize_Throws()
     {
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.Key = new byte[32];
         Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
             chacha.IV = new byte[8]; // Wrong size (should be 12)
@@ -351,7 +391,7 @@ public class ChaCha20Tests
     [Test]
     public void ChaCha20_GenerateKeyAndNonce()
     {
-        using var chacha = ChaCha20.Create();
+        using var chacha = (SymmetricCipher)_implementation.Create();
         chacha.GenerateKey();
         chacha.GenerateIV();
 

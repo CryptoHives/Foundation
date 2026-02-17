@@ -49,6 +49,17 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     public abstract string AlgorithmName { get; }
 
     /// <summary>
+    /// Gets or sets the initial block counter value for stream ciphers.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The default value is 0. Some protocols (like TLS) use 1 as the initial counter.
+    /// Block ciphers ignore this property.
+    /// </para>
+    /// </remarks>
+    public virtual uint InitialCounter { get; set; }
+
+    /// <summary>
     /// Gets or sets the initialization vector (IV) or nonce for the cipher operation.
     /// </summary>
     /// <remarks>

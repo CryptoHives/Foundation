@@ -288,6 +288,7 @@ public sealed class CipherAlgorithmType : IFormattable
             CipherAlgorithmRegistry.Source.Managed => "Managed",
             CipherAlgorithmRegistry.Source.OS => "OS",
             CipherAlgorithmRegistry.Source.BouncyCastle => "BouncyCastle",
+            CipherAlgorithmRegistry.Source.NaClCore => "NaCl.Core",
             CipherAlgorithmRegistry.Source.Regional => "Regional",
             _ => "Unknown"
         };

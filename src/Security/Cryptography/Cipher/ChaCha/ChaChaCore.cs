@@ -99,37 +99,37 @@ internal partial struct ChaChaCore
     public void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
     {
         Span<uint> state = stackalloc uint[StateWords];
-        Span<uint> workingState = stackalloc uint[StateWords];
+        Span<uint> wState = stackalloc uint[StateWords];
 
         // Initialize state
         InitializeState(key, nonce, counter, state);
 
         // Copy state to working state
-        state.CopyTo(workingState);
+        state.CopyTo(wState);
 
         // Perform 20 rounds (10 double-rounds)
         for (int i = 0; i < Rounds; i += 2)
         {
             // Odd round (column round)
-            QuarterRound(ref workingState[0], ref workingState[4], ref workingState[8], ref workingState[12]);
-            QuarterRound(ref workingState[1], ref workingState[5], ref workingState[9], ref workingState[13]);
-            QuarterRound(ref workingState[2], ref workingState[6], ref workingState[10], ref workingState[14]);
-            QuarterRound(ref workingState[3], ref workingState[7], ref workingState[11], ref workingState[15]);
+            QRound(ref wState[0], ref wState[4], ref wState[8], ref wState[12]);
+            QRound(ref wState[1], ref wState[5], ref wState[9], ref wState[13]);
+            QRound(ref wState[2], ref wState[6], ref wState[10], ref wState[14]);
+            QRound(ref wState[3], ref wState[7], ref wState[11], ref wState[15]);
 
             // Even round (diagonal round)
-            QuarterRound(ref workingState[0], ref workingState[5], ref workingState[10], ref workingState[15]);
-            QuarterRound(ref workingState[1], ref workingState[6], ref workingState[11], ref workingState[12]);
-            QuarterRound(ref workingState[2], ref workingState[7], ref workingState[8], ref workingState[13]);
-            QuarterRound(ref workingState[3], ref workingState[4], ref workingState[9], ref workingState[14]);
+            QRound(ref wState[0], ref wState[5], ref wState[10], ref wState[15]);
+            QRound(ref wState[1], ref wState[6], ref wState[11], ref wState[12]);
+            QRound(ref wState[2], ref wState[7], ref wState[8], ref wState[13]);
+            QRound(ref wState[3], ref wState[4], ref wState[9], ref wState[14]);
         }
 
         // Add original state to working state and serialize to output
         for (int i = 0; i < StateWords; i++)
         {
-            workingState[i] += state[i];
+            wState[i] += state[i];
         }
 
-        BinarySpans.WriteUInt32LittleEndian(workingState.Slice(0, StateWords), output);
+        BinarySpans.WriteUInt32LittleEndian(wState.Slice(0, StateWords), output);
     }
 
     /// <summary>
@@ -146,6 +146,12 @@ internal partial struct ChaChaCore
         ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        {
+            TransformAvx2(key, nonce, counter, input, output);
+            return;
+        }
+
         if ((_simdSupport & SimdSupport.Ssse3) != 0)
         {
             TransformSsse3(key, nonce, counter, input, output);
@@ -162,7 +168,7 @@ internal partial struct ChaChaCore
         ReadOnlySpan<byte> input, Span<byte> output)
     {
         Span<uint> state = stackalloc uint[StateWords];
-        Span<uint> workingState = stackalloc uint[StateWords];
+        Span<uint> wState = stackalloc uint[StateWords];
 
         // Initialize base state once (counter updated per block)
         InitializeState(key, nonce, counter, state);
@@ -172,26 +178,26 @@ internal partial struct ChaChaCore
         while (offset < input.Length)
         {
             // Copy state to working state
-            state.CopyTo(workingState);
+            state.CopyTo(wState);
 
             // Perform 20 rounds (10 double-rounds)
             for (int i = 0; i < Rounds; i += 2)
             {
-                QuarterRound(ref workingState[0], ref workingState[4], ref workingState[8], ref workingState[12]);
-                QuarterRound(ref workingState[1], ref workingState[5], ref workingState[9], ref workingState[13]);
-                QuarterRound(ref workingState[2], ref workingState[6], ref workingState[10], ref workingState[14]);
-                QuarterRound(ref workingState[3], ref workingState[7], ref workingState[11], ref workingState[15]);
+                QRound(ref wState[0], ref wState[4], ref wState[8], ref wState[12]);
+                QRound(ref wState[1], ref wState[5], ref wState[9], ref wState[13]);
+                QRound(ref wState[2], ref wState[6], ref wState[10], ref wState[14]);
+                QRound(ref wState[3], ref wState[7], ref wState[11], ref wState[15]);
 
-                QuarterRound(ref workingState[0], ref workingState[5], ref workingState[10], ref workingState[15]);
-                QuarterRound(ref workingState[1], ref workingState[6], ref workingState[11], ref workingState[12]);
-                QuarterRound(ref workingState[2], ref workingState[7], ref workingState[8], ref workingState[13]);
-                QuarterRound(ref workingState[3], ref workingState[4], ref workingState[9], ref workingState[14]);
+                QRound(ref wState[0], ref wState[5], ref wState[10], ref wState[15]);
+                QRound(ref wState[1], ref wState[6], ref wState[11], ref wState[12]);
+                QRound(ref wState[2], ref wState[7], ref wState[8], ref wState[13]);
+                QRound(ref wState[3], ref wState[4], ref wState[9], ref wState[14]);
             }
 
             // Add original state
             for (int i = 0; i < StateWords; i++)
             {
-                workingState[i] += state[i];
+                wState[i] += state[i];
             }
 
             int remaining = input.Length - offset;
@@ -201,16 +207,16 @@ internal partial struct ChaChaCore
                 // Full block: XOR keystream with input using widened operations
                 XorBlock(
                     input.Slice(offset, BlockSizeBytes),
-                    MemoryMarshal.AsBytes(workingState),
+                    MemoryMarshal.AsBytes(wState),
                     output.Slice(offset, BlockSizeBytes));
             }
             else
             {
                 // Partial block: serialize keystream then XOR byte-by-byte
-                Span<byte> keystream = MemoryMarshal.AsBytes(workingState);
+                Span<byte> keystream = MemoryMarshal.AsBytes(wState);
                 if (!BitConverter.IsLittleEndian)
                 {
-                    BinarySpans.WriteUInt32LittleEndian(workingState.Slice(0, StateWords), ks);
+                    BinarySpans.WriteUInt32LittleEndian(wState.Slice(0, StateWords), ks);
                     keystream = ks;
                 }
 
@@ -312,7 +318,7 @@ internal partial struct ChaChaCore
     /// </para>
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void QuarterRound(ref uint a, ref uint b, ref uint c, ref uint d)
+    private static void QRound(ref uint a, ref uint b, ref uint c, ref uint d)
     {
         a += b; d ^= a; d = BitOperations.RotateLeft(d, 16);
         c += d; b ^= c; b = BitOperations.RotateLeft(b, 12);
@@ -368,16 +374,16 @@ internal partial struct ChaChaCore
         for (int i = 0; i < Rounds; i += 2)
         {
             // Odd round (column round)
-            QuarterRound(ref state[0], ref state[4], ref state[8], ref state[12]);
-            QuarterRound(ref state[1], ref state[5], ref state[9], ref state[13]);
-            QuarterRound(ref state[2], ref state[6], ref state[10], ref state[14]);
-            QuarterRound(ref state[3], ref state[7], ref state[11], ref state[15]);
+            QRound(ref state[0], ref state[4], ref state[8], ref state[12]);
+            QRound(ref state[1], ref state[5], ref state[9], ref state[13]);
+            QRound(ref state[2], ref state[6], ref state[10], ref state[14]);
+            QRound(ref state[3], ref state[7], ref state[11], ref state[15]);
 
             // Even round (diagonal round)
-            QuarterRound(ref state[0], ref state[5], ref state[10], ref state[15]);
-            QuarterRound(ref state[1], ref state[6], ref state[11], ref state[12]);
-            QuarterRound(ref state[2], ref state[7], ref state[8], ref state[13]);
-            QuarterRound(ref state[3], ref state[4], ref state[9], ref state[14]);
+            QRound(ref state[0], ref state[5], ref state[10], ref state[15]);
+            QRound(ref state[1], ref state[6], ref state[11], ref state[12]);
+            QRound(ref state[2], ref state[7], ref state[8], ref state[13]);
+            QRound(ref state[3], ref state[4], ref state[9], ref state[14]);
         }
 
         // Return first and last rows (words 0-3 and 12-15)

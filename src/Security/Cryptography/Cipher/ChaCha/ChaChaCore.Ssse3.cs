@@ -43,6 +43,7 @@ internal partial struct ChaChaCore
             var support = SimdSupport.None;
 #if NET8_0_OR_GREATER
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
 #endif
             return support;
         }
@@ -88,19 +89,15 @@ internal partial struct ChaChaCore
         // SSSE3 implies x86 (always little-endian), so we can load key/nonce directly.
         Vector128<uint> row0 = Vector128.LoadUnsafe(
             ref MemoryMarshal.GetArrayDataReference(Sigma));
-        Vector128<uint> row1 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetReference(key)).AsUInt32();
-        Vector128<uint> row2 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetReference(key), 16).AsUInt32();
-        Vector128<uint> row3Base = Vector128.Create(
-            counter,
-            MemoryMarshal.Cast<byte, uint>(nonce)[0],
-            MemoryMarshal.Cast<byte, uint>(nonce)[1],
-            MemoryMarshal.Cast<byte, uint>(nonce)[2]);
 
-        // Cache shuffle masks in locals for the inner loop.
-        Vector128<byte> rol16 = RotateLeftMask16;
-        Vector128<byte> rol8 = RotateLeftMask8;
+        ref byte keyRef = ref MemoryMarshal.GetReference(key);
+        Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
+        Vector128<uint> row2 = Vector128.LoadUnsafe(ref keyRef, 16).AsUInt32();
+
+        ReadOnlySpan<uint> nonceUInt = MemoryMarshal.Cast<byte, uint>(nonce);
+        Vector128<uint> row3Base = Vector128.Create(
+            counter, nonceUInt[0], nonceUInt[1], nonceUInt[2]);
+
 
         int offset = 0;
         Span<byte> ks = stackalloc byte[BlockSizeBytes];
@@ -114,19 +111,14 @@ internal partial struct ChaChaCore
             for (int i = 0; i < Rounds; i += 2)
             {
                 // Column round
-                Ssse3QuarterRound(ref w0, ref w1, ref w2, ref w3, rol16, rol8);
+                QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
 
                 // Diagonal round: rotate rows to align diagonals into columns
-                w1 = Sse2.Shuffle(w1, 0b_00_11_10_01); // <<< 1
-                w2 = Sse2.Shuffle(w2, 0b_01_00_11_10); // <<< 2
-                w3 = Sse2.Shuffle(w3, 0b_10_01_00_11); // <<< 3
-
-                Ssse3QuarterRound(ref w0, ref w1, ref w2, ref w3, rol16, rol8);
+                DiagPermuteSse2(ref w1, ref w2, ref w3);
+                QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
 
                 // Un-rotate rows
-                w1 = Sse2.Shuffle(w1, 0b_10_01_00_11); // >>> 1
-                w2 = Sse2.Shuffle(w2, 0b_01_00_11_10); // >>> 2
-                w3 = Sse2.Shuffle(w3, 0b_00_11_10_01); // >>> 3
+                DiagPermuteSse2(ref w3, ref w2, ref w1);
             }
 
             // Add original state
@@ -148,15 +140,10 @@ internal partial struct ChaChaCore
                 Vector128<byte> in2 = Vector128.LoadUnsafe(ref inRef, 32);
                 Vector128<byte> in3 = Vector128.LoadUnsafe(ref inRef, 48);
 
-                Vector128<byte> out0 = Sse2.Xor(in0, w0.AsByte());
-                Vector128<byte> out1 = Sse2.Xor(in1, w1.AsByte());
-                Vector128<byte> out2 = Sse2.Xor(in2, w2.AsByte());
-                Vector128<byte> out3 = Sse2.Xor(in3, w3.AsByte());
-
-                out0.StoreUnsafe(ref outRef);
-                out1.StoreUnsafe(ref outRef, 16);
-                out2.StoreUnsafe(ref outRef, 32);
-                out3.StoreUnsafe(ref outRef, 48);
+                Sse2.Xor(in0, w0.AsByte()).StoreUnsafe(ref outRef);
+                Sse2.Xor(in1, w1.AsByte()).StoreUnsafe(ref outRef, 16);
+                Sse2.Xor(in2, w2.AsByte()).StoreUnsafe(ref outRef, 32);
+                Sse2.Xor(in3, w3.AsByte()).StoreUnsafe(ref outRef, 48);
             }
             else
             {
@@ -179,6 +166,14 @@ internal partial struct ChaChaCore
         }
     }
 
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void DiagPermuteSse2(ref Vector128<uint> w1, ref Vector128<uint> w2, ref Vector128<uint> w3)
+    {
+        w1 = Sse2.Shuffle(w1, 0b_00_11_10_01);
+        w2 = Sse2.Shuffle(w2, 0b_01_00_11_10);
+        w3 = Sse2.Shuffle(w3, 0b_10_01_00_11);
+    }
+
     /// <summary>
     /// SSSE3 ChaCha quarter-round on four <see cref="Vector128{UInt32}"/> rows simultaneously.
     /// </summary>
@@ -187,20 +182,19 @@ internal partial struct ChaChaCore
     /// rotations (ROL16, ROL8) and SSE2 shift+or for non-byte-aligned rotations (ROL12, ROL7).
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void Ssse3QuarterRound(
+    private static void QRoundSsse3(
         ref Vector128<uint> a, ref Vector128<uint> b,
-        ref Vector128<uint> c, ref Vector128<uint> d,
-        Vector128<byte> rol16, Vector128<byte> rol8)
+        ref Vector128<uint> c, ref Vector128<uint> d)
     {
         a = Sse2.Add(a, b);
-        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), rol16).AsUInt32();
+        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateLeftMask16).AsUInt32();
 
         c = Sse2.Add(c, d);
         b = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftLeftLogical(b, 12), Sse2.ShiftRightLogical(b, 20));
 
         a = Sse2.Add(a, b);
-        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), rol8).AsUInt32();
+        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateLeftMask8).AsUInt32();
 
         c = Sse2.Add(c, d);
         b = Sse2.Xor(b, c);

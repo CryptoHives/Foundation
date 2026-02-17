@@ -4,7 +4,6 @@
 namespace Cryptography.Tests.Hash.Regional;
 
 using Cryptography.Tests.Adapter;
-using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Digests;

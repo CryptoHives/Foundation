@@ -1,33 +1,33 @@
 ﻿| Description                          | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| Decrypt · AES-192-GCM (OS)           | 128B         |     122.2 ns |     1.55 ns |     1.45 ns |         - |
-| Decrypt · AES-192-GCM (Managed)      | 128B         |     903.4 ns |     4.30 ns |     4.02 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle) | 128B         |   1,026.5 ns |     7.45 ns |     6.61 ns |    2200 B |
+| Decrypt · AES-192-GCM (OS)           | 128B         |     122.1 ns |     0.50 ns |     0.44 ns |         - |
+| Decrypt · AES-192-GCM (Managed)      | 128B         |     908.4 ns |     2.81 ns |     2.50 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle) | 128B         |     977.4 ns |     4.16 ns |     3.25 ns |    1728 B |
 |                                      |              |              |             |             |           |
-| Encrypt · AES-192-GCM (OS)           | 128B         |     127.1 ns |     1.17 ns |     1.09 ns |         - |
-| Encrypt · AES-192-GCM (Managed)      | 128B         |     868.5 ns |     3.68 ns |     3.44 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle) | 128B         |     937.0 ns |    10.16 ns |     9.50 ns |    2184 B |
+| Encrypt · AES-192-GCM (OS)           | 128B         |     121.9 ns |     0.75 ns |     0.70 ns |         - |
+| Encrypt · AES-192-GCM (Managed)      | 128B         |     870.2 ns |     2.90 ns |     2.71 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle) | 128B         |     899.2 ns |     6.15 ns |     5.75 ns |    1712 B |
 |                                      |              |              |             |             |           |
-| Decrypt · AES-192-GCM (OS)           | 1KB          |     188.4 ns |     1.33 ns |     1.24 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle) | 1KB          |   4,331.5 ns |    34.14 ns |    31.94 ns |    3992 B |
-| Decrypt · AES-192-GCM (Managed)      | 1KB          |   5,924.7 ns |    40.10 ns |    37.51 ns |         - |
+| Decrypt · AES-192-GCM (OS)           | 1KB          |     194.0 ns |     1.00 ns |     0.93 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle) | 1KB          |   4,187.7 ns |    42.29 ns |    37.49 ns |    1728 B |
+| Decrypt · AES-192-GCM (Managed)      | 1KB          |   5,959.1 ns |    46.81 ns |    43.79 ns |         - |
 |                                      |              |              |             |             |           |
-| Encrypt · AES-192-GCM (OS)           | 1KB          |     176.2 ns |     0.89 ns |     0.79 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle) | 1KB          |   4,202.9 ns |    27.64 ns |    21.58 ns |    3976 B |
-| Encrypt · AES-192-GCM (Managed)      | 1KB          |   6,077.2 ns |    27.21 ns |    25.45 ns |         - |
+| Encrypt · AES-192-GCM (OS)           | 1KB          |     175.8 ns |     1.22 ns |     1.14 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle) | 1KB          |   4,105.0 ns |    33.94 ns |    30.09 ns |    1712 B |
+| Encrypt · AES-192-GCM (Managed)      | 1KB          |   5,974.7 ns |    22.66 ns |    21.19 ns |         - |
 |                                      |              |              |             |             |           |
-| Decrypt · AES-192-GCM (OS)           | 8KB          |     754.6 ns |     2.86 ns |     2.54 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle) | 8KB          |  30,375.8 ns |   158.28 ns |   132.17 ns |   18328 B |
-| Decrypt · AES-192-GCM (Managed)      | 8KB          |  46,118.9 ns |   259.60 ns |   230.12 ns |         - |
+| Decrypt · AES-192-GCM (OS)           | 8KB          |     754.4 ns |     3.57 ns |     3.34 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle) | 8KB          |  30,024.9 ns |    88.60 ns |    82.87 ns |    1728 B |
+| Decrypt · AES-192-GCM (Managed)      | 8KB          |  46,112.4 ns |   224.14 ns |   198.69 ns |         - |
 |                                      |              |              |             |             |           |
-| Encrypt · AES-192-GCM (OS)           | 8KB          |     684.2 ns |     2.69 ns |     2.10 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle) | 8KB          |  30,331.3 ns |   247.70 ns |   231.70 ns |   18312 B |
-| Encrypt · AES-192-GCM (Managed)      | 8KB          |  46,163.8 ns |   187.09 ns |   165.85 ns |         - |
+| Encrypt · AES-192-GCM (OS)           | 8KB          |     686.2 ns |     3.24 ns |     2.71 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle) | 8KB          |  29,551.0 ns |   188.15 ns |   166.79 ns |    1712 B |
+| Encrypt · AES-192-GCM (Managed)      | 8KB          |  46,391.0 ns |   258.27 ns |   228.95 ns |         - |
 |                                      |              |              |             |             |           |
-| Decrypt · AES-192-GCM (OS)           | 128KB        |  11,626.1 ns |    91.48 ns |    85.57 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle) | 128KB        | 528,492.7 ns | 5,427.92 ns | 5,077.28 ns |  264116 B |
-| Decrypt · AES-192-GCM (Managed)      | 128KB        | 736,246.4 ns | 2,988.46 ns | 2,795.41 ns |         - |
+| Decrypt · AES-192-GCM (OS)           | 128KB        |  11,699.5 ns |    41.92 ns |    35.01 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle) | 128KB        | 473,453.9 ns | 3,136.17 ns | 2,933.57 ns |    1728 B |
+| Decrypt · AES-192-GCM (Managed)      | 128KB        | 749,539.8 ns | 5,537.85 ns | 4,909.16 ns |         - |
 |                                      |              |              |             |             |           |
-| Encrypt · AES-192-GCM (OS)           | 128KB        |  10,194.6 ns |    90.88 ns |    85.01 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle) | 128KB        | 527,180.3 ns | 3,916.73 ns | 3,663.71 ns |  264100 B |
-| Encrypt · AES-192-GCM (Managed)      | 128KB        | 735,198.1 ns | 2,303.78 ns | 2,042.24 ns |         - |
+| Encrypt · AES-192-GCM (OS)           | 128KB        |  10,170.2 ns |    66.04 ns |    58.54 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle) | 128KB        | 469,098.1 ns | 3,150.16 ns | 2,946.67 ns |    1712 B |
+| Encrypt · AES-192-GCM (Managed)      | 128KB        | 735,242.7 ns | 4,296.09 ns | 3,808.37 ns |         - |

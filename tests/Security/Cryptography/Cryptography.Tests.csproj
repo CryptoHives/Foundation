@@ -15,6 +15,7 @@
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" />
     <PackageReference Include="HashifyNET" />
+    <PackageReference Include="NaCl.Core" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="NUnit" />
@@ -33,7 +34,12 @@
     </PackageReference>
     <PackageReference Include="OpenGost.Security.Cryptography" />
   </ItemGroup>
-  
+
+  <!-- Exclude IndexRange transitive dependency from NaCl.Core to avoid conflict with Microsoft.Bcl.Memory on net48 -->
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+    <PackageReference Include="IndexRange" ExcludeAssets="all" PrivateAssets="all" />
+  </ItemGroup>
+
   <!-- Blake3 NuGet package only supports .NET 8+ and is not strong name signed-->
   <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <PackageReference Include="Blake3" />

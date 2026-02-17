@@ -1,0 +1,129 @@
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
+
+namespace Cryptography.Tests.Adapter;
+
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
+using System;
+using NC = NaCl.Core;
+
+/// <summary>
+/// Wraps NaCl.Core's <see cref="NC.ChaCha20"/> as a CryptoHives <see cref="SymmetricCipher"/>.
+/// </summary>
+/// <remarks>
+/// <para>
+/// NaCl.Core provides a managed ChaCha20 stream cipher implementation.
+/// This adapter bridges the NaCl.Core <see cref="NaCl.Core.Base.Snuffle"/> API to the
+/// CryptoHives <see cref="SymmetricCipher"/> contract for cross-validation and benchmarking.
+/// </para>
+/// <para>
+/// A new <see cref="NC.ChaCha20"/> instance is created per transform because
+/// NaCl.Core does not expose a re-keying or reset mechanism.
+/// </para>
+/// </remarks>
+internal sealed class NaClCoreStreamCipherAdapter : SymmetricCipher
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NaClCoreStreamCipherAdapter"/> class.
+    /// </summary>
+    public NaClCoreStreamCipherAdapter()
+    {
+        KeySizeValue = 256;
+        BlockSizeValue = 8;
+        LegalKeySizesValue = [new System.Security.Cryptography.KeySizes(256, 256, 0)];
+        Mode = CipherMode.Stream;
+        Padding = PaddingMode.None;
+    }
+
+    /// <inheritdoc/>
+    public override string AlgorithmName => "ChaCha20 (NaCl.Core)";
+
+    /// <inheritdoc/>
+    public override int IVSize => 12;
+
+    /// <inheritdoc/>
+    protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
+        => new NaClCoreChaCha20Transform(key, iv, (int)InitialCounter);
+
+    /// <inheritdoc/>
+    protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
+        => new NaClCoreChaCha20Transform(key, iv, (int)InitialCounter);
+
+    /// <summary>
+    /// Wraps NaCl.Core ChaCha20 encrypt/decrypt as an <see cref="ICipherTransform"/>.
+    /// </summary>
+    /// <remarks>
+    /// ChaCha20 is symmetric — encryption and decryption are the same XOR operation.
+    /// </remarks>
+    private sealed class NaClCoreChaCha20Transform : ICipherTransform
+    {
+        private readonly byte[] _key;
+        private readonly byte[] _iv;
+        private readonly NC.ChaCha20 _cipher;
+
+        public NaClCoreChaCha20Transform(byte[] key, byte[] iv, int initialCounter)
+        {
+            _key = (byte[])key.Clone();
+            _iv = (byte[])iv.Clone();
+            _cipher = new NC.ChaCha20(new ReadOnlyMemory<byte>(_key), initialCounter: initialCounter);
+        }
+
+        /// <inheritdoc/>
+        public int BlockSize => 1;
+
+        /// <inheritdoc/>
+        int System.Security.Cryptography.ICryptoTransform.InputBlockSize => 1;
+
+        /// <inheritdoc/>
+        int System.Security.Cryptography.ICryptoTransform.OutputBlockSize => 1;
+
+        /// <inheritdoc/>
+        bool System.Security.Cryptography.ICryptoTransform.CanTransformMultipleBlocks => true;
+
+        /// <inheritdoc/>
+        bool System.Security.Cryptography.ICryptoTransform.CanReuseTransform => true;
+
+        /// <inheritdoc/>
+        public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
+        {
+            _cipher.Encrypt(input, _iv, output.Slice(0, input.Length));
+            return input.Length;
+        }
+
+        /// <inheritdoc/>
+        int System.Security.Cryptography.ICryptoTransform.TransformBlock(
+            byte[] inputBuffer, int inputOffset, int inputCount,
+            byte[] outputBuffer, int outputOffset)
+        {
+            return TransformBlock(
+                inputBuffer.AsSpan(inputOffset, inputCount),
+                outputBuffer.AsSpan(outputOffset));
+        }
+
+        /// <inheritdoc/>
+        public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
+            => TransformBlock(input, output);
+
+        /// <inheritdoc/>
+        byte[] System.Security.Cryptography.ICryptoTransform.TransformFinalBlock(
+            byte[] inputBuffer, int inputOffset, int inputCount)
+        {
+            byte[] output = new byte[inputCount];
+            TransformBlock(
+                inputBuffer.AsSpan(inputOffset, inputCount),
+                output.AsSpan());
+            return output;
+        }
+
+        /// <inheritdoc/>
+        public void Reset() { }
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            Array.Clear(_key, 0, _key.Length);
+            Array.Clear(_iv, 0, _iv.Length);
+            _cipher.Dispose();
+        }
+    }
+}

@@ -92,19 +92,14 @@ public sealed class ChaCha20 : SymmetricCipher
     /// </summary>
     internal static SimdSupport SimdSupport => ChaChaCore.SimdSupport;
 
-    /// <summary>
-    /// Gets or sets the initial block counter value.
-    /// </summary>
+    /// <inheritdoc/>
     /// <remarks>
-    /// <para>
-    /// The default value is 0. Some protocols (like TLS) use 1 as the initial counter.
-    /// </para>
     /// <para>
     /// For ChaCha20-Poly1305 AEAD, the counter typically starts at 1 because
     /// counter 0 is used to generate the Poly1305 key.
     /// </para>
     /// </remarks>
-    public uint InitialCounter
+    public override uint InitialCounter
     {
         get => _initialCounter;
         set => _initialCounter = value;

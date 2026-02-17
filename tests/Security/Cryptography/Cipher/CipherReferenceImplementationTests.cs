@@ -6,128 +6,70 @@ namespace Cryptography.Tests.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 
 /// <summary>
-/// Tests that validate CryptoHives cipher implementations against reference implementations.
+/// Cross-validates all cipher implementations against each other.
 /// </summary>
 /// <remarks>
 /// <para>
-/// These tests compare CryptoHives implementations against:
-/// - BouncyCastle (primary reference for AES-GCM, AES-CCM, ChaCha20-Poly1305)
-/// - System.Security.Cryptography (OS implementations when available)
-/// </para>
-/// <para>
-/// Pattern mirrors HashReferenceImplementationTests for consistency.
+/// Every supported implementation of an algorithm family (Managed, AVX2, SSSE3,
+/// BouncyCastle, NaCl.Core, OS) is tested pairwise. This ensures that SIMD variants
+/// produce identical output to the scalar path and to external reference libraries.
 /// </para>
 /// </remarks>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
 public class CipherReferenceImplementationTests
 {
-    private const int TestDataSize = 1024;
+    private static readonly int[] TestDataSizes = [0, 1, 15, 16, 63, 64, 65, 127, 128, 129, 256, 1024, 4096];
 
     // ========================================================================
-    // AES-GCM Tests
+    // AEAD Cross-Validation: All implementations pairwise
     // ========================================================================
 
-    [Test]
-    [TestCaseSource(nameof(GetAesGcmManagedImplementations))]
-    public void AesGcm_Managed_MatchesBouncyCastle(CipherAlgorithmRegistry.CipherImplementation impl)
+    [TestCaseSource(nameof(GetAllAeadImplementationPairs))]
+    public void AeadCipher_CrossValidation(
+        CipherAlgorithmRegistry.CipherImplementation impl1,
+        CipherAlgorithmRegistry.CipherImplementation impl2)
     {
-        // Find corresponding BC implementation
-        var bcImpl = CipherAlgorithmRegistry
-            .ByFamily(impl.AlgorithmFamily)
-            .First(c => c.Source == CipherAlgorithmRegistry.Source.BouncyCastle);
-
-        CompareAeadImplementations(impl, bcImpl);
-    }
-
-#if NET8_0_OR_GREATER
-    [Test]
-    [TestCaseSource(nameof(GetAesGcmManagedImplementations))]
-    public void AesGcm_Managed_MatchesOS(CipherAlgorithmRegistry.CipherImplementation impl)
-    {
-        // Find corresponding OS implementation
-        var osImpl = CipherAlgorithmRegistry
-            .ByFamily(impl.AlgorithmFamily)
-            .FirstOrDefault(c => c.Source == CipherAlgorithmRegistry.Source.OS);
-
-        if (osImpl == null || !osImpl.IsSupported)
+        foreach (int size in TestDataSizes)
         {
-            Assert.Ignore($"No OS implementation available for {impl.AlgorithmFamily}");
-            return;
+            CompareAeadImplementations(impl1, impl2, size);
         }
-
-        CompareAeadImplementations(impl, osImpl);
     }
-#endif
 
     // ========================================================================
-    // AES-CCM Tests
+    // Stream Cipher Cross-Validation: All implementations pairwise
     // ========================================================================
 
-    [Test]
-    [TestCaseSource(nameof(GetAesCcmManagedImplementations))]
-    public void AesCcm_Managed_MatchesBouncyCastle(CipherAlgorithmRegistry.CipherImplementation impl)
+    [TestCaseSource(nameof(GetAllStreamCipherImplementationPairs))]
+    public void StreamCipher_CrossValidation(
+        CipherAlgorithmRegistry.CipherImplementation impl1,
+        CipherAlgorithmRegistry.CipherImplementation impl2)
     {
-        // Find corresponding BC implementation
-        var bcImpl = CipherAlgorithmRegistry
-            .ByFamily(impl.AlgorithmFamily)
-            .First(c => c.Source == CipherAlgorithmRegistry.Source.BouncyCastle);
-
-        CompareAeadImplementations(impl, bcImpl);
+        foreach (int size in TestDataSizes)
+        {
+            CompareStreamCipherImplementations(impl1, impl2, size);
+        }
     }
 
     // ========================================================================
-    // ChaCha20-Poly1305 Tests
+    // Block Cipher Cross-Validation: All implementations pairwise
     // ========================================================================
 
-    [Test]
-    [TestCaseSource(nameof(GetChaCha20Poly1305ManagedImplementations))]
-    public void ChaCha20Poly1305_Managed_MatchesBouncyCastle(CipherAlgorithmRegistry.CipherImplementation impl)
+    [TestCaseSource(nameof(GetAllBlockCipherImplementationPairs))]
+    public void BlockCipher_CrossValidation(
+        CipherAlgorithmRegistry.CipherImplementation impl1,
+        CipherAlgorithmRegistry.CipherImplementation impl2)
     {
-        // Find corresponding BC implementation (if it exists)
-        var bcImpl = CipherAlgorithmRegistry
-            .ByFamily(impl.AlgorithmFamily)
-            .FirstOrDefault(c => c.Source == CipherAlgorithmRegistry.Source.BouncyCastle);
-
-        if (bcImpl == null)
+        foreach (int blockAlignedSize in new[] { 16, 32, 64, 128, 256, 1024 })
         {
-            Assert.Ignore($"No BouncyCastle implementation found for {impl.AlgorithmFamily}");
-            return;
+            CompareBlockCipherImplementations(impl1, impl2, blockAlignedSize);
         }
-
-        CompareAeadImplementations(impl, bcImpl);
     }
-
-#if NET9_0_OR_GREATER
-    [Test]
-    [TestCaseSource(nameof(GetChaCha20Poly1305ManagedImplementations))]
-    public void ChaCha20Poly1305_Managed_MatchesOS(CipherAlgorithmRegistry.CipherImplementation impl)
-    {
-        // XChaCha20-Poly1305 not supported by OS
-        if (impl.AlgorithmFamily.Contains("XChaCha"))
-        {
-            Assert.Ignore($"OS does not support {impl.AlgorithmFamily}");
-            return;
-        }
-
-        // Find corresponding OS implementation
-        var osImpl = CipherAlgorithmRegistry
-            .ByFamily(impl.AlgorithmFamily)
-            .FirstOrDefault(c => c.Source == CipherAlgorithmRegistry.Source.OS);
-
-        if (osImpl == null || !osImpl.IsSupported)
-        {
-            Assert.Ignore($"No OS implementation available for {impl.AlgorithmFamily}");
-            return;
-        }
-
-        CompareAeadImplementations(impl, osImpl);
-    }
-#endif
 
     // ========================================================================
     // Helper Methods
@@ -135,46 +77,98 @@ public class CipherReferenceImplementationTests
 
     private static void CompareAeadImplementations(
         CipherAlgorithmRegistry.CipherImplementation impl1,
-        CipherAlgorithmRegistry.CipherImplementation impl2)
+        CipherAlgorithmRegistry.CipherImplementation impl2,
+        int plaintextSize)
     {
-        // Generate deterministic test data
-        byte[] key = GenerateBytes(impl1.KeySizeBits / 8, seed: 0x01);
-        byte[] nonce = GenerateBytes(12, seed: 0x02);
-        byte[] plaintext = GenerateBytes(TestDataSize, seed: 0x03);
-        byte[] aad = GenerateBytes(64, seed: 0x04);
-
         using var cipher1 = (IAeadCipher)impl1.Create();
         using var cipher2 = (IAeadCipher)impl2.Create();
 
-        // Encrypt with both implementations
+        byte[] key = GenerateBytes(impl1.KeySizeBits / 8, seed: 0x01);
+        byte[] nonce = GenerateBytes(cipher1.NonceSizeBytes, seed: 0x02);
+        byte[] plaintext = GenerateBytes(plaintextSize, seed: 0x03 + plaintextSize);
+        byte[] aad = GenerateBytes(64, seed: 0x04);
+
+        // Encrypt with impl1
         byte[] ciphertext1 = new byte[plaintext.Length];
-        byte[] tag1 = new byte[16];
+        byte[] tag1 = new byte[cipher1.TagSizeBytes];
         cipher1.Encrypt(nonce, plaintext, ciphertext1, tag1, aad);
 
+        // Encrypt with impl2
         byte[] ciphertext2 = new byte[plaintext.Length];
-        byte[] tag2 = new byte[16];
+        byte[] tag2 = new byte[cipher2.TagSizeBytes];
         cipher2.Encrypt(nonce, plaintext, ciphertext2, tag2, aad);
 
-        // Compare results
+        // Compare
         Assert.That(ciphertext1, Is.EqualTo(ciphertext2),
-            $"{impl1.Name} ciphertext does not match {impl2.Name}");
+            $"Ciphertext mismatch at size {plaintextSize}: {impl1.Name} vs {impl2.Name}");
         Assert.That(tag1, Is.EqualTo(tag2),
-            $"{impl1.Name} tag does not match {impl2.Name}");
+            $"Tag mismatch at size {plaintextSize}: {impl1.Name} vs {impl2.Name}");
 
-        // Verify both can decrypt each other's output
-        byte[] decrypted1 = new byte[plaintext.Length];
-        byte[] decrypted2 = new byte[plaintext.Length];
+        // Cross-decrypt
+        byte[] decrypted = new byte[plaintext.Length];
+        bool result = cipher2.Decrypt(nonce, ciphertext1, tag1, decrypted, aad);
+        Assert.That(result, Is.True,
+            $"{impl2.Name} failed to decrypt {impl1.Name} output at size {plaintextSize}");
+        Assert.That(decrypted, Is.EqualTo(plaintext),
+            $"Decryption mismatch at size {plaintextSize}: {impl2.Name} decrypting {impl1.Name}");
+    }
 
-        bool result1 = cipher1.Decrypt(nonce, ciphertext2, tag2, decrypted1, aad);
-        bool result2 = cipher2.Decrypt(nonce, ciphertext1, tag1, decrypted2, aad);
+    private static void CompareStreamCipherImplementations(
+        CipherAlgorithmRegistry.CipherImplementation impl1,
+        CipherAlgorithmRegistry.CipherImplementation impl2,
+        int plaintextSize)
+    {
+        using var cipher1 = (SymmetricCipher)impl1.Create();
+        using var cipher2 = (SymmetricCipher)impl2.Create();
 
-        Assert.That(result1, Is.True, $"{impl1.Name} failed to decrypt {impl2.Name} output");
-        Assert.That(result2, Is.True, $"{impl2.Name} failed to decrypt {impl1.Name} output");
+        byte[] key = GenerateBytes(impl1.KeySizeBits / 8, seed: 0x11);
+        byte[] nonce = GenerateBytes(cipher1.IVSize, seed: 0x12);
+        byte[] plaintext = GenerateBytes(plaintextSize, seed: 0x13 + plaintextSize);
 
-        Assert.That(decrypted1, Is.EqualTo(plaintext),
-            $"{impl1.Name} decryption mismatch");
-        Assert.That(decrypted2, Is.EqualTo(plaintext),
-            $"{impl2.Name} decryption mismatch");
+        cipher1.Key = key;
+        cipher1.IV = nonce;
+        cipher2.Key = key;
+        cipher2.IV = nonce;
+
+        byte[] ciphertext1 = cipher1.Encrypt(plaintext);
+        byte[] ciphertext2 = cipher2.Encrypt(plaintext);
+
+        Assert.That(ciphertext1, Is.EqualTo(ciphertext2),
+            $"Stream cipher mismatch at size {plaintextSize}: {impl1.Name} vs {impl2.Name}");
+
+        // Cross-decrypt
+        byte[] decrypted = cipher2.Decrypt(ciphertext1);
+        Assert.That(decrypted, Is.EqualTo(plaintext),
+            $"Decryption mismatch at size {plaintextSize}: {impl2.Name} decrypting {impl1.Name}");
+    }
+
+    private static void CompareBlockCipherImplementations(
+        CipherAlgorithmRegistry.CipherImplementation impl1,
+        CipherAlgorithmRegistry.CipherImplementation impl2,
+        int plaintextSize)
+    {
+        using var cipher1 = (SymmetricCipher)impl1.Create();
+        using var cipher2 = (SymmetricCipher)impl2.Create();
+
+        byte[] key = GenerateBytes(impl1.KeySizeBits / 8, seed: 0x21);
+        byte[] iv = GenerateBytes(cipher1.IVSize, seed: 0x22);
+        byte[] plaintext = GenerateBytes(plaintextSize, seed: 0x23 + plaintextSize);
+
+        cipher1.Key = key;
+        cipher1.IV = iv;
+        cipher2.Key = key;
+        cipher2.IV = iv;
+
+        byte[] ciphertext1 = cipher1.Encrypt(plaintext);
+        byte[] ciphertext2 = cipher2.Encrypt(plaintext);
+
+        Assert.That(ciphertext1, Is.EqualTo(ciphertext2),
+            $"Block cipher mismatch at size {plaintextSize}: {impl1.Name} vs {impl2.Name}");
+
+        // Cross-decrypt
+        byte[] decrypted = cipher2.Decrypt(ciphertext1);
+        Assert.That(decrypted, Is.EqualTo(plaintext),
+            $"Decryption mismatch at size {plaintextSize}: {impl2.Name} decrypting {impl1.Name}");
     }
 
     private static byte[] GenerateBytes(int size, int seed)
@@ -189,27 +183,48 @@ public class CipherReferenceImplementationTests
     // Test Case Sources
     // ========================================================================
 
-    private static System.Collections.IEnumerable GetAesGcmManagedImplementations()
+    private static readonly string[] AeadFamilies =
+    [
+        "AES-128-GCM", "AES-192-GCM", "AES-256-GCM",
+        "AES-128-CCM", "AES-192-CCM", "AES-256-CCM",
+        "ChaCha20-Poly1305", "XChaCha20-Poly1305"
+    ];
+
+    private static readonly string[] StreamFamilies = ["ChaCha20"];
+    private static readonly string[] BlockFamilies = ["AES-128-CBC", "AES-256-CBC"];
+
+    private static System.Collections.IEnumerable GetAllAeadImplementationPairs()
     {
-        return CipherAlgorithmRegistry.Supported
-            .Where(c => c.AlgorithmFamily.Contains("GCM") &&
-                       c.Source == CipherAlgorithmRegistry.Source.Managed)
-            .Select(c => new TestCaseData(c).SetName($"{{m}}({c.Name})"));
+        return GetImplementationPairs(AeadFamilies);
     }
 
-    private static System.Collections.IEnumerable GetAesCcmManagedImplementations()
+    private static System.Collections.IEnumerable GetAllStreamCipherImplementationPairs()
     {
-        return CipherAlgorithmRegistry.Supported
-            .Where(c => c.AlgorithmFamily.Contains("CCM") &&
-                       c.Source == CipherAlgorithmRegistry.Source.Managed)
-            .Select(c => new TestCaseData(c).SetName($"{{m}}({c.Name})"));
+        return GetImplementationPairs(StreamFamilies);
     }
 
-    private static System.Collections.IEnumerable GetChaCha20Poly1305ManagedImplementations()
+    private static System.Collections.IEnumerable GetAllBlockCipherImplementationPairs()
     {
-        return CipherAlgorithmRegistry.Supported
-            .Where(c => c.AlgorithmFamily.Contains("ChaCha20-Poly1305") &&
-                       c.Source == CipherAlgorithmRegistry.Source.Managed)
-            .Select(c => new TestCaseData(c).SetName($"{{m}}({c.Name})"));
+        return GetImplementationPairs(BlockFamilies);
+    }
+
+    private static IEnumerable<TestCaseData> GetImplementationPairs(string[] families)
+    {
+        foreach (string family in families)
+        {
+            var impls = CipherAlgorithmRegistry.Supported
+                .Where(c => c.AlgorithmFamily == family)
+                .ToList();
+
+            // Generate all unique ordered pairs (impl1, impl2) where impl1 != impl2
+            for (int i = 0; i < impls.Count; i++)
+            {
+                for (int j = i + 1; j < impls.Count; j++)
+                {
+                    yield return new TestCaseData(impls[i], impls[j])
+                        .SetName($"{{m}}({impls[i].Name} vs {impls[j].Name})");
+                }
+            }
+        }
     }
 }

@@ -57,11 +57,11 @@ internal sealed class BouncyCastleCipherAdapter : SymmetricCipher
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
-        => new BouncyCastleCipherTransform(_cipherFactory(), key, iv, forEncryption: true);
+        => new BouncyCastleCipherTransform(_cipherFactory(), key, iv, forEncryption: true, initialCounter: InitialCounter);
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
-        => new BouncyCastleCipherTransform(_cipherFactory(), key, iv, forEncryption: false);
+        => new BouncyCastleCipherTransform(_cipherFactory(), key, iv, forEncryption: false, initialCounter: InitialCounter);
 
     /// <summary>
     /// Creates an AES-CBC adapter with PKCS7 padding.
@@ -129,7 +129,7 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
     /// <summary>
     /// Initializes a new instance of the <see cref="BouncyCastleCipherTransform"/> class.
     /// </summary>
-    public BouncyCastleCipherTransform(IBufferedCipher cipher, byte[] key, byte[] iv, bool forEncryption)
+    public BouncyCastleCipherTransform(IBufferedCipher cipher, byte[] key, byte[] iv, bool forEncryption, uint initialCounter = 0)
     {
         _cipher = cipher;
         _key = (byte[])key.Clone();
@@ -146,6 +146,13 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
             : keyParam;
 
         _cipher.Init(_forEncryption, _parameters);
+
+        // Advance the stream cipher past the first initialCounter blocks (64 bytes each).
+        if (initialCounter > 0)
+        {
+            byte[] discard = new byte[64 * initialCounter];
+            _cipher.ProcessBytes(discard, 0, discard.Length, discard, 0);
+        }
     }
 
     /// <inheritdoc/>
