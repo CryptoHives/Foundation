@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Adapter;
+namespace Cryptography.Tests.Adapter.Hash;
 
 using HashifyNet;
 using HashifyNet.Algorithms.Blake2;

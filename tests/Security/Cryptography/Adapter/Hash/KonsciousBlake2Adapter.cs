@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Adapter;
+namespace Cryptography.Tests.Adapter.Hash;
 
 using Konscious.Security.Cryptography;
 using System;

@@ -1,9 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if NET8_0_OR_GREATER
+namespace Cryptography.Tests.Adapter.Cipher;
 
-namespace Cryptography.Tests.Adapter;
+#if NET8_0_OR_GREATER
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
