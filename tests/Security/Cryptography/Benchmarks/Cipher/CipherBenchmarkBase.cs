@@ -1,6 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1819 // Properties should not return arrays — benchmark buffers are intentionally shared
+#pragma warning disable CA5401 // Symmetric encryption uses non-default IV — benchmark uses fixed IV intentionally
+
 namespace Cryptography.Tests.Benchmarks.Cipher;
 
 using BenchmarkDotNet.Attributes;

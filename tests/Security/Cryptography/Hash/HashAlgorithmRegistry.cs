@@ -8,6 +8,7 @@
 namespace Cryptography.Tests.Hash;
 
 using Cryptography.Tests.Adapter;
+using Cryptography.Tests.Adapter.Hash;
 using System;
 using System.Collections.Generic;
 using System.Linq;

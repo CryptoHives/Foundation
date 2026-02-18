@@ -105,6 +105,16 @@ public abstract class AesCcm : IAeadCipher
 #endif
     }
 
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by AES-CCM on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport =>
+#if NET8_0_OR_GREATER
+        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
+#else
+        SimdSupport.None;
+#endif
+
     /// <inheritdoc/>
     public abstract string AlgorithmName { get; }
 

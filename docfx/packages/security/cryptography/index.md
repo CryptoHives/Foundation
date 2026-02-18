@@ -2,12 +2,13 @@
 
 ## Overview
 
-The Cryptography package provides specification-based implementations of cryptographic hash algorithms and message authentication codes (MACs) for .NET applications. All implementations are fully managed code that does not rely on OS or hardware cryptographic APIs, ensuring deterministic and consistent behavior across all platforms.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), and cipher algorithms for .NET applications. Core implementations are fully managed code with optional hardware acceleration via AES-NI, PCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics, ensuring consistent behavior across all platforms with automatic SIMD dispatch on supported hardware.
 
 ## Key Features
 
 - **Specification-Based Implementations**: Written based on official specifications (NIST, RFC, ISO)
 - **No OS Dependencies**: Works identically on all platforms without calling OS crypto APIs
+- **Hardware Acceleration**: Optional AES-NI, PCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics with automatic fallback
 - **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, and many more
 - **AEAD Support**: Authenticated encryption with AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305
 - **Variable Output**: XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
@@ -20,9 +21,8 @@ The Cryptography package provides specification-based implementations of cryptog
 dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```
 
-> The focus is currently on stability and validation of the algorithms against test
-> vectors and other implementations.
-> Once stabilized, perf improvements and zero allocation support become the next priority.
+> Performance optimizations including AES-NI, PCLMULQDQ, and SIMD intrinsics are implemented
+> for AES-GCM, AES-CCM, AES-CBC, and ChaCha20 families on .NET 8+.
 
 ## Namespaces
 
@@ -322,7 +322,7 @@ All implementations use fixed-size internal buffers based on their block size. N
 |---------|-------------|------------------------------|
 | OS dependency | None | Uses CNG/OpenSSL |
 | Cross-platform consistency | Guaranteed | May vary |
-| Hardware acceleration | Managed SIMD (SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL) |
+| Hardware acceleration | Managed SIMD (AES-NI/PCLMULQDQ/SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL/SymCrypt) |
 | SHA-3 support | Full | .NET 8+ only |
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |

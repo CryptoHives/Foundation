@@ -4,14 +4,15 @@
 #pragma warning disable CA1050 // Declare types in namespaces
 #pragma warning disable IDE0011 // Add braces
 
-using Cryptography.Tests.Adapter;
+using Cryptography.Tests.Adapter.Hash;
+using Cryptography.Tests.Adapter.Mac;
 using Cryptography.Tests.Hash;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using CHMac = CryptoHives.Foundation.Security.Cryptography.Mac;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Factory for creating hash algorithm instances for benchmarking.
@@ -308,7 +309,7 @@ public sealed class HashAlgorithmType : IFormattable
     public static IEnumerable<HashAlgorithmType> KMac128()
     {
         yield return new("KMAC-128", "KMAC-128 (Managed)",
-            () => CHMac.KMac128.Create(_sharedKMacKey, 32, "Benchmark"));
+            () => CH.Mac.KMac128.Create(_sharedKMacKey, 32, "Benchmark"));
 
         yield return new("KMAC-128", "KMAC-128 (BouncyCastle)",
             () => new BouncyCastleKMacAdapter(128, _sharedKMacKey, _sharedKMacCustomization, 32));
@@ -327,7 +328,7 @@ public sealed class HashAlgorithmType : IFormattable
     public static IEnumerable<HashAlgorithmType> KMac256()
     {
         yield return new("KMAC-256", "KMAC-256 (Managed)",
-            () => CHMac.KMac256.Create(_sharedKMacKey, 64, "Benchmark"));
+            () => CH.Mac.KMac256.Create(_sharedKMacKey, 64, "Benchmark"));
 
         yield return new("KMAC-256", "KMAC-256 (BouncyCastle)",
             () => new BouncyCastleKMacAdapter(256, _sharedKMacKey, _sharedKMacCustomization, 64));

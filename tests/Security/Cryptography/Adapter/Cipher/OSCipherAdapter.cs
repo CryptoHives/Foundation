@@ -8,7 +8,7 @@ namespace Cryptography.Tests.Adapter.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Security.Cryptography;
-using OSAesGcm = System.Security.Cryptography.AesGcm;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Wraps .NET's OS-provided AesGcm as CryptoHives <see cref="IAeadCipher"/>.
@@ -25,7 +25,7 @@ using OSAesGcm = System.Security.Cryptography.AesGcm;
 /// </remarks>
 internal sealed class OSAesGcmAdapter : IAeadCipher
 {
-    private readonly OSAesGcm _cipher;
+    private readonly OS.AesGcm _cipher;
     private readonly int _keySizeBytes;
     private readonly int _nonceSizeBytes;
     private readonly int _tagSizeBytes;
@@ -42,7 +42,7 @@ internal sealed class OSAesGcmAdapter : IAeadCipher
         if (key == null)
             throw new ArgumentNullException(nameof(key));
 
-        _cipher = new OSAesGcm(key, tagSizeBytes);
+        _cipher = new OS.AesGcm(key, tagSizeBytes);
         _keySizeBytes = key.Length;
         _nonceSizeBytes = nonceSizeBytes;
         _tagSizeBytes = tagSizeBytes;
@@ -148,7 +148,7 @@ internal sealed class OSAesGcmAdapter : IAeadCipher
 /// </remarks>
 internal sealed class OSChaCha20Poly1305Adapter : IAeadCipher
 {
-    private readonly System.Security.Cryptography.ChaCha20Poly1305 _cipher;
+    private readonly OS.ChaCha20Poly1305 _cipher;
     private bool _disposed;
 
     /// <summary>
@@ -162,7 +162,7 @@ internal sealed class OSChaCha20Poly1305Adapter : IAeadCipher
         if (key.Length != 32)
             throw new ArgumentException("Key must be 32 bytes.", nameof(key));
 
-        _cipher = new System.Security.Cryptography.ChaCha20Poly1305(key);
+        _cipher = new OS.ChaCha20Poly1305(key);
     }
 
     /// <inheritdoc/>

@@ -6,7 +6,6 @@ namespace Cryptography.Tests.Adapter.Cipher;
 using System;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 using NC = NaCl.Core;
-using NCBase = NaCl.Core.Base;
 
 /// <summary>
 /// Wraps a NaCl.Core AEAD cipher as a CryptoHives <see cref="CH.Cipher.IAeadCipher"/>.
@@ -29,7 +28,7 @@ internal sealed class NaClCoreAeadAdapter : CH.Cipher.IAeadCipher
     private readonly byte[] _key;
     private readonly int _nonceSizeBytes;
     private readonly string _algorithmName;
-    private readonly NCBase.SnufflePoly1305 _aead;
+    private readonly NC.Base.SnufflePoly1305 _aead;
     private readonly bool _isXChaCha;
     private bool _disposed;
 
@@ -136,7 +135,7 @@ internal sealed class NaClCoreAeadAdapter : CH.Cipher.IAeadCipher
         GC.SuppressFinalize(this);
     }
 
-    private NCBase.SnufflePoly1305 CreateCipher() => _isXChaCha
+    private NC.Base.SnufflePoly1305 CreateCipher() => _isXChaCha
         ? new NC.XChaCha20Poly1305(_key)
         : new NC.ChaCha20Poly1305(_key);
 }

@@ -26,7 +26,7 @@ public class XChaCha20Poly1305Tests
     /// <summary>
     /// Gets the collection of cipher implementations that support the ChaCha20-Poly1305 algorithm family.
     /// </summary>CipherAlgorithmRegistry
-    public static CipherImplementation[] ChaCha20Poly1305All = CipherAlgorithmRegistry.ByFamily("XChaCha20-Poly1305").ToArray();
+    public static readonly CipherImplementation[] ChaCha20Poly1305All = CipherAlgorithmRegistry.ByFamily("XChaCha20-Poly1305").ToArray();
 
     /// <summary>
     /// Cipher implementations to test.

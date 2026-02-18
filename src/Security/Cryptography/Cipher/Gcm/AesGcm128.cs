@@ -40,16 +40,6 @@ public sealed class AesGcm128 : AesGcm
     public override string AlgorithmName => "AES-128-GCM";
 
     /// <summary>
-    /// Gets the SIMD instruction sets supported by AES-GCM on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport =>
-#if NET8_0_OR_GREATER
-        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
-#else
-        SimdSupport.None;
-#endif
-
-    /// <summary>
     /// Creates a new AES-128-GCM instance.
     /// </summary>
     /// <param name="key">The 16-byte key.</param>

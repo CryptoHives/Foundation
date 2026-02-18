@@ -3,7 +3,7 @@
 
 namespace Cryptography.Tests.Cipher;
 
-using Cryptography.Tests.Adapter;
+using Cryptography.Tests.Adapter.Cipher;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
 using System;

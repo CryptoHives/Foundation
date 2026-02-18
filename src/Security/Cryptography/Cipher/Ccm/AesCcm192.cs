@@ -33,6 +33,8 @@ public sealed class AesCcm192 : AesCcm
     /// <param name="key">The 24-byte key.</param>
     internal AesCcm192(SimdSupport simdSupport, byte[] key) : base(simdSupport, key)
     {
+        if (key == null)
+            throw new ArgumentNullException(nameof(key));
         if (key.Length != KeySizeBytesConst)
             throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes for AES-192.", nameof(key));
     }
@@ -42,16 +44,6 @@ public sealed class AesCcm192 : AesCcm
 
     /// <inheritdoc/>
     public override int KeySizeBytes => KeySizeBytesConst;
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by AES-CCM on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport =>
-#if NET8_0_OR_GREATER
-        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
-#else
-        SimdSupport.None;
-#endif
 
     /// <summary>
     /// Creates a new AES-192-CCM instance.

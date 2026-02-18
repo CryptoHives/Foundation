@@ -3,14 +3,11 @@
 
 namespace Cryptography.Tests.Cipher.ChaCha;
 
-using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
 using System.Linq;
 using static Cryptography.Tests.Cipher.CipherAlgorithmRegistry;
-// Alias to avoid conflict with System.Security.Cryptography.ChaCha20Poly1305
-using ChaCha20Poly1305 = CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20Poly1305;
 using CryptographicException = System.Security.Cryptography.CryptographicException;
 
 /// <summary>
@@ -28,7 +25,7 @@ public class ChaCha20Poly1305Tests
     /// <summary>
     /// Gets the collection of cipher implementations that support the ChaCha20-Poly1305 algorithm family.
     /// </summary>CipherAlgorithmRegistry
-    public static CipherImplementation[] ChaCha20Poly1305All = CipherAlgorithmRegistry.ByFamily("ChaCha20-Poly1305").ToArray();
+    public static readonly CipherImplementation[] ChaCha20Poly1305All = CipherAlgorithmRegistry.ByFamily("ChaCha20-Poly1305").ToArray();
 
     /// <summary>
     /// Cipher implementations to test.

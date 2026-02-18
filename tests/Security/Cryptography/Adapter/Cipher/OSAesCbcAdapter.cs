@@ -8,9 +8,8 @@ namespace Cryptography.Tests.Adapter.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Security.Cryptography;
-using OSAes = System.Security.Cryptography.Aes;
-using CHCipherMode = CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode;
-using CHPaddingMode = CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode;
+using OS = System.Security.Cryptography;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Wraps .NET's OS-provided AES-CBC as a CryptoHives <see cref="SymmetricCipher"/>.
@@ -35,8 +34,8 @@ internal sealed class OSAesCbcAdapter : SymmetricCipher
         BlockSizeValue = 128;
         KeySizeValue = keySizeBytes * 8;
         LegalKeySizesValue = [new KeySizes(keySizeBytes * 8, keySizeBytes * 8, 0)];
-        Mode = CHCipherMode.CBC;
-        Padding = CHPaddingMode.PKCS7;
+        Mode = CH.Cipher.CipherMode.CBC;
+        Padding = CH.Cipher.PaddingMode.PKCS7;
     }
 
     /// <inheritdoc/>
@@ -58,13 +57,15 @@ internal sealed class OSAesCbcAdapter : SymmetricCipher
 /// Wraps .NET's OS-provided AES-CBC transform as a CryptoHives <see cref="ICipherTransform"/>.
 /// </summary>
 /// <remarks>
-/// Uses the span-based <see cref="OSAes.EncryptCbc(ReadOnlySpan{byte}, ReadOnlySpan{byte}, Span{byte}, System.Security.Cryptography.PaddingMode)"/>
-/// and <see cref="OSAes.DecryptCbc(ReadOnlySpan{byte}, ReadOnlySpan{byte}, Span{byte}, System.Security.Cryptography.PaddingMode)"/>
+/// Uses the span-based
+/// <see cref="OS.Aes.EncryptCbc(ReadOnlySpan{byte}, ReadOnlySpan{byte}, Span{byte}, OS.PaddingMode)"/>
+/// and
+/// <see cref="OS.Aes.DecryptCbc(ReadOnlySpan{byte}, ReadOnlySpan{byte}, Span{byte}, OS.PaddingMode)"/>
 /// APIs for zero-allocation operation.
 /// </remarks>
 internal sealed class OSAesCbcTransform : ICipherTransform
 {
-    private readonly OSAes _aes;
+    private readonly OS.Aes _aes;
     private readonly byte[] _key;
     private readonly byte[] _iv;
     private readonly bool _forEncryption;
@@ -78,7 +79,7 @@ internal sealed class OSAesCbcTransform : ICipherTransform
         _iv = (byte[])iv.Clone();
         _forEncryption = forEncryption;
 
-        _aes = OSAes.Create();
+        _aes = OS.Aes.Create();
         _aes.Key = _key;
     }
 
@@ -101,9 +102,9 @@ internal sealed class OSAesCbcTransform : ICipherTransform
     public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_forEncryption)
-            return _aes.EncryptCbc(input, _iv, output, System.Security.Cryptography.PaddingMode.PKCS7);
+            return _aes.EncryptCbc(input, _iv, output, OS.PaddingMode.PKCS7);
         else
-            return _aes.DecryptCbc(input, _iv, output, System.Security.Cryptography.PaddingMode.PKCS7);
+            return _aes.DecryptCbc(input, _iv, output, OS.PaddingMode.PKCS7);
     }
 
     /// <inheritdoc/>

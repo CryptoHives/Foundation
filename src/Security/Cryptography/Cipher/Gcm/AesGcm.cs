@@ -97,7 +97,7 @@ public abstract class AesGcm : IAeadCipher
         zeroBlock.Clear();
 
 #if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport.AesNi) != 0 && AesCoreAesNi.IsSupported)
+        if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
         {
             _useAesNi = true;
             _niEncRoundKeys = new Vector128<byte>[AesCoreAesNi.MaxRoundKeys];
@@ -131,6 +131,16 @@ public abstract class AesGcm : IAeadCipher
         }
 #endif
     }
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by AES-GCM on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport =>
+#if NET8_0_OR_GREATER
+        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
+#else
+        SimdSupport.None;
+#endif
 
     /// <inheritdoc/>
     public abstract string AlgorithmName { get; }

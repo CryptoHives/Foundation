@@ -3,7 +3,7 @@
 
 #pragma warning disable CA1050 // Declare types in namespaces
 
-using Cryptography.Tests.Adapter;
+using Cryptography.Tests.Adapter.Hash;
 using CryptoHives.Foundation.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Digests;
 using System;
@@ -66,7 +66,7 @@ public sealed class XofAlgorithmType : IFormattable
         yield return new("SHAKE128", "SHAKE128 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new ShakeDigest(128)));
 #if NET8_0_OR_GREATER
         if (System.Security.Cryptography.Shake128.IsSupported)
-            yield return new("SHAKE128", "SHAKE128 (OS)", () => new OsShakeXofAdapter(128));
+            yield return new("SHAKE128", "SHAKE128 (OS)", () => new OSShakeXofAdapter(128));
 #endif
     }
 
@@ -77,7 +77,7 @@ public sealed class XofAlgorithmType : IFormattable
         yield return new("SHAKE256", "SHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new ShakeDigest(256)));
 #if NET8_0_OR_GREATER
         if (System.Security.Cryptography.Shake256.IsSupported)
-            yield return new("SHAKE256", "SHAKE256 (OS)", () => new OsShakeXofAdapter(256));
+            yield return new("SHAKE256", "SHAKE256 (OS)", () => new OSShakeXofAdapter(256));
 #endif
     }
 
@@ -152,7 +152,7 @@ public sealed class XofAlgorithmType : IFormattable
         yield return new("KMAC-128", "KMAC-128 (BouncyCastle)", () => new BouncyCastleKMacXofAdapter(128, SharedKMacKey, SharedKMacCustomization));
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac128.IsSupported)
-            yield return new("KMAC-128", "KMAC-128 (OS)", () => new OsKmacXofAdapter(128, SharedKMacKey, SharedKMacCustomization));
+            yield return new("KMAC-128", "KMAC-128 (OS)", () => new OSKmacXofAdapter(128, SharedKMacKey, SharedKMacCustomization));
 #endif
     }
 
@@ -163,7 +163,7 @@ public sealed class XofAlgorithmType : IFormattable
         yield return new("KMAC-256", "KMAC-256 (BouncyCastle)", () => new BouncyCastleKMacXofAdapter(256, SharedKMacKey, SharedKMacCustomization));
 #if NET9_0_OR_GREATER
         if (System.Security.Cryptography.Kmac256.IsSupported)
-            yield return new("KMAC-256", "KMAC-256 (OS)", () => new OsKmacXofAdapter(256, SharedKMacKey, SharedKMacCustomization));
+            yield return new("KMAC-256", "KMAC-256 (OS)", () => new OSKmacXofAdapter(256, SharedKMacKey, SharedKMacCustomization));
 #endif
     }
 

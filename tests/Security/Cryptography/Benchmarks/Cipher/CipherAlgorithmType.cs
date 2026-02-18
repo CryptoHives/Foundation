@@ -1,6 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1031 // Catch more specific exception — TryCreate intentionally catches all failures
 #pragma warning disable CA1050 // Declare types in namespaces
 #pragma warning disable IDE0011 // Add braces
 
@@ -8,7 +9,6 @@ using Cryptography.Tests.Cipher;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Factory for creating cipher algorithm instances for benchmarking.

@@ -111,13 +111,13 @@ internal sealed class BouncyCastleKMacXofAdapter : CH.Hash.IExtendableOutput, ID
 /// Buffers absorbed input and calls the static <c>HashData</c> method during squeeze.
 /// The buffer is allocated once during warmup and reused across benchmark iterations.
 /// </remarks>
-internal sealed class OsShakeXofAdapter : CH.Hash.IExtendableOutput, IDisposable
+internal sealed class OSShakeXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 {
     private readonly int _bitStrength;
     private byte[] _buffer;
     private int _absorbed;
 
-    public OsShakeXofAdapter(int bitStrength)
+    public OSShakeXofAdapter(int bitStrength)
     {
         _bitStrength = bitStrength;
         _buffer = new byte[8192];
@@ -168,7 +168,7 @@ internal sealed class OsShakeXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 /// Buffers absorbed input and calls the static <c>HashData</c> method during squeeze.
 /// The buffer is allocated once during warmup and reused across benchmark iterations.
 /// </remarks>
-internal sealed class OsKmacXofAdapter : CH.Hash.IExtendableOutput, IDisposable
+internal sealed class OSKmacXofAdapter : CH.Hash.IExtendableOutput, IDisposable
 {
     private readonly int _bitStrength;
     private readonly byte[] _key;
@@ -176,7 +176,7 @@ internal sealed class OsKmacXofAdapter : CH.Hash.IExtendableOutput, IDisposable
     private byte[] _buffer;
     private int _absorbed;
 
-    public OsKmacXofAdapter(int bitStrength, byte[] key, byte[] customization)
+    public OSKmacXofAdapter(int bitStrength, byte[] key, byte[] customization)
     {
         _bitStrength = bitStrength;
         _key = key;
