@@ -40,11 +40,22 @@ public sealed class Aes128 : SymmetricCipher
     /// </summary>
     public const int KeySizeBytes = 16;
 
+    private readonly SimdSupport _simdSupport;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Aes128"/> class.
     /// </summary>
-    public Aes128()
+    public Aes128() : this(SimdSupport.All)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Aes128"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    internal Aes128(SimdSupport simdSupport)
+    {
+        _simdSupport = simdSupport & SimdSupport;
         BlockSizeValue = AesCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
         LegalKeySizesValue = [new KeySizes(128, 128, 0)];
@@ -58,22 +69,34 @@ public sealed class Aes128 : SymmetricCipher
     public override int IVSize => AesCore.BlockSizeBytes;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by AES on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport => AesCipherTransform.SimdSupport;
+
+    /// <summary>
     /// Creates a new instance of the <see cref="Aes128"/> cipher.
     /// </summary>
     /// <returns>A new AES-128 cipher instance.</returns>
     public static new Aes128 Create() => new();
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="Aes128"/> cipher with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <returns>A new AES-128 cipher instance.</returns>
+    internal static Aes128 Create(SimdSupport simdSupport) => new(simdSupport);
+
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AesCipherTransform(key, iv, encrypting: true, Mode, Padding);
+        return new AesCipherTransform(_simdSupport, key, iv, encrypting: true, Mode, Padding);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AesCipherTransform(key, iv, encrypting: false, Mode, Padding);
+        return new AesCipherTransform(_simdSupport, key, iv, encrypting: false, Mode, Padding);
     }
 }

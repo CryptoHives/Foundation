@@ -6,6 +6,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics;
+#endif
 
 /// <summary>
 /// AES-GCM (Galois/Counter Mode) authenticated encryption implementation.
@@ -50,12 +53,29 @@ public abstract class AesGcm : IAeadCipher
     private readonly uint[] _encRoundKeys;
     private readonly int _rounds;
     private bool _disposed;
+#if NET8_0_OR_GREATER
+    private readonly Vector128<byte>[]? _niEncRoundKeys;
+    private readonly bool _useAesNi;
+    private readonly Vector128<byte> _hClmul;
+    private readonly bool _useClmul;
+    private readonly Vector128<byte>[]? _hPowers;
+    private readonly bool _usePipeline;
+#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AesGcm"/> class.
     /// </summary>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    protected AesGcm(byte[] key)
+    protected AesGcm(byte[] key) : this(SimdSupport.All, key)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AesGcm"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
+    internal AesGcm(SimdSupport simdSupport, byte[] key)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
@@ -75,7 +95,20 @@ public abstract class AesGcm : IAeadCipher
         _h = new byte[GcmCore.BlockSizeBytes];
         Span<byte> zeroBlock = stackalloc byte[GcmCore.BlockSizeBytes];
         zeroBlock.Clear();
-        AesCore.EncryptBlock(zeroBlock, _h, _encRoundKeys, _rounds);
+
+#if NET8_0_OR_GREATER
+        if ((simdSupport & SimdSupport.AesNi) != 0 && AesCoreAesNi.IsSupported)
+        {
+            _useAesNi = true;
+            _niEncRoundKeys = new Vector128<byte>[AesCoreAesNi.MaxRoundKeys];
+            AesCoreAesNi.ExpandKey(key, _niEncRoundKeys);
+            AesCoreAesNi.EncryptBlock(zeroBlock, _h, _niEncRoundKeys, _rounds);
+        }
+        else
+#endif
+        {
+            AesCore.EncryptBlock(zeroBlock, _h, _encRoundKeys, _rounds);
+        }
 
         // Store H as ulongs for the optimized GHASH path
         _h0 = BinaryPrimitives.ReadUInt64BigEndian(_h.AsSpan(0));
@@ -83,6 +116,20 @@ public abstract class AesGcm : IAeadCipher
 
         // Precompute 4-bit Shoup table for fast GF(2^128) multiplication
         _shoupTable = GcmCore.BuildShoupTable(_h0, _h1);
+
+#if NET8_0_OR_GREATER
+        if (GcmCore.IsClmulSupported)
+        {
+            _useClmul = true;
+            _hClmul = GcmCore.PrepareH(_h);
+
+            if (GcmCore.IsPipelineSupported && _useAesNi)
+            {
+                _usePipeline = true;
+                _hPowers = GcmCore.PrepareHPowers(_hClmul);
+            }
+        }
+#endif
     }
 
     /// <inheritdoc/>
@@ -118,16 +165,27 @@ public abstract class AesGcm : IAeadCipher
         j0.CopyTo(icb);
         IncrementCounter(icb);
 
-        // Encrypt plaintext using GCTR
-        GcmCore.GctrAes(_encRoundKeys, _rounds, icb, plaintext, ciphertext);
-
-        // Compute GHASH over AAD and ciphertext
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.GHashComplete(_shoupTable, associatedData, ciphertext.Slice(0, plaintext.Length), ghash);
+
+#if NET8_0_OR_GREATER
+        if (_usePipeline)
+        {
+            // Fused GCTR+GHASH pipeline: 4-block interleaved AES + aggregated CLMUL
+            GcmCore.EncryptPipelined(
+                _niEncRoundKeys!, _rounds, _hPowers!, _hClmul,
+                icb, associatedData, plaintext, ciphertext, ghash);
+        }
+        else
+#endif
+        {
+            // Serial path: GCTR then GHASH
+            GctrDispatch(icb, plaintext, ciphertext);
+            GHashDispatch(associatedData, ciphertext.Slice(0, plaintext.Length), ghash);
+        }
 
         // Compute tag: T = GCTR(J0, GHASH(H, A, C))
         Span<byte> fullTag = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.GctrAes(_encRoundKeys, _rounds, j0, ghash, fullTag);
+        GctrDispatch(j0, ghash, fullTag);
 
         // Copy tag to output (truncate if necessary)
         fullTag.Slice(0, tag.Length).CopyTo(tag);
@@ -149,27 +207,49 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> j0 = stackalloc byte[GcmCore.BlockSizeBytes];
         GcmCore.ComputeJ0(_h, nonce, j0);
 
-        // Compute GHASH over AAD and ciphertext
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.GHashComplete(_shoupTable, associatedData, ciphertext, ghash);
 
-        // Compute expected tag
-        Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.GctrAes(_encRoundKeys, _rounds, j0, ghash, expectedTag);
-
-        // Verify tag in constant time
-        if (!CryptoUtils.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
-        {
-            // Clear plaintext buffer on failure
-            plaintext.Slice(0, ciphertext.Length).Clear();
-            return false;
-        }
-
-        // Decrypt ciphertext
         Span<byte> icb = stackalloc byte[GcmCore.BlockSizeBytes];
         j0.CopyTo(icb);
         IncrementCounter(icb);
-        GcmCore.GctrAes(_encRoundKeys, _rounds, icb, ciphertext, plaintext);
+
+#if NET8_0_OR_GREATER
+        if (_usePipeline)
+        {
+            // Fused GHASH+GCTR pipeline: computes GHASH and decrypts simultaneously
+            GcmCore.DecryptPipelined(
+                _niEncRoundKeys!, _rounds, _hPowers!, _hClmul,
+                icb, associatedData, ciphertext, plaintext, ghash);
+
+            // Compute expected tag
+            Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
+            GctrDispatch(j0, ghash, expectedTag);
+
+            if (!CryptoUtils.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
+            {
+                plaintext.Slice(0, ciphertext.Length).Clear();
+                return false;
+            }
+
+            return true;
+        }
+#endif
+
+        // Serial path: GHASH → verify → GCTR
+        GHashDispatch(associatedData, ciphertext, ghash);
+
+        {
+            Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
+            GctrDispatch(j0, ghash, expectedTag);
+
+            if (!CryptoUtils.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
+            {
+                plaintext.Slice(0, ciphertext.Length).Clear();
+                return false;
+            }
+        }
+
+        GctrDispatch(icb, ciphertext, plaintext);
 
         return true;
     }
@@ -243,97 +323,30 @@ public abstract class AesGcm : IAeadCipher
                 break;
         }
     }
-}
 
-/// <summary>
-/// AES-128-GCM authenticated encryption.
-/// </summary>
-public sealed class AesGcm128 : AesGcm
-{
-    /// <summary>
-    /// Key size in bytes for AES-128-GCM.
-    /// </summary>
-    public const int KeySize = 16;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AesGcm128"/> class.
-    /// </summary>
-    /// <param name="key">The 16-byte AES key.</param>
-    public AesGcm128(byte[] key) : base(key)
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private void GctrDispatch(ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
-        if (key.Length != KeySize)
-            throw new ArgumentException($"Key must be {KeySize} bytes.", nameof(key));
+#if NET8_0_OR_GREATER
+        if (_useAesNi)
+        {
+            GcmCore.GctrAesNi(_niEncRoundKeys!, _rounds, icb, input, output);
+            return;
+        }
+#endif
+        GcmCore.GctrAes(_encRoundKeys, _rounds, icb, input, output);
     }
 
-    /// <inheritdoc/>
-    public override string AlgorithmName => "AES-128-GCM";
-
-    /// <summary>
-    /// Creates a new AES-128-GCM instance.
-    /// </summary>
-    /// <param name="key">The 16-byte key.</param>
-    /// <returns>A new AES-128-GCM instance.</returns>
-    public static AesGcm128 Create(byte[] key) => new(key);
-}
-
-/// <summary>
-/// AES-192-GCM authenticated encryption.
-/// </summary>
-public sealed class AesGcm192 : AesGcm
-{
-    /// <summary>
-    /// Key size in bytes for AES-192-GCM.
-    /// </summary>
-    public const int KeySize = 24;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AesGcm192"/> class.
-    /// </summary>
-    /// <param name="key">The 24-byte AES key.</param>
-    public AesGcm192(byte[] key) : base(key)
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private void GHashDispatch(ReadOnlySpan<byte> aad, ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
-        if (key.Length != KeySize)
-            throw new ArgumentException($"Key must be {KeySize} bytes.", nameof(key));
+#if NET8_0_OR_GREATER
+        if (_useClmul)
+        {
+            GcmCore.GHashCompleteClmul(_hClmul, aad, ciphertext, output);
+            return;
+        }
+#endif
+        GcmCore.GHashComplete(_shoupTable, aad, ciphertext, output);
     }
-
-    /// <inheritdoc/>
-    public override string AlgorithmName => "AES-192-GCM";
-
-    /// <summary>
-    /// Creates a new AES-192-GCM instance.
-    /// </summary>
-    /// <param name="key">The 24-byte key.</param>
-    /// <returns>A new AES-192-GCM instance.</returns>
-    public static AesGcm192 Create(byte[] key) => new(key);
-}
-
-/// <summary>
-/// AES-256-GCM authenticated encryption.
-/// </summary>
-public sealed class AesGcm256 : AesGcm
-{
-    /// <summary>
-    /// Key size in bytes for AES-256-GCM.
-    /// </summary>
-    public const int KeySize = 32;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AesGcm256"/> class.
-    /// </summary>
-    /// <param name="key">The 32-byte AES key.</param>
-    public AesGcm256(byte[] key) : base(key)
-    {
-        if (key.Length != KeySize)
-            throw new ArgumentException($"Key must be {KeySize} bytes.", nameof(key));
-    }
-
-    /// <inheritdoc/>
-    public override string AlgorithmName => "AES-256-GCM";
-
-    /// <summary>
-    /// Creates a new AES-256-GCM instance.
-    /// </summary>
-    /// <param name="key">The 32-byte key.</param>
-    /// <returns>A new AES-256-GCM instance.</returns>
-    public static AesGcm256 Create(byte[] key) => new(key);
 }

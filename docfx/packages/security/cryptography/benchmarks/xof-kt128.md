@@ -1,9 +1,9 @@
-﻿| Description                     | TestDataSize | Mean       | Error     | StdDev    | Median     | Allocated |
-|-------------------------------- |------------- |-----------:|----------:|----------:|-----------:|----------:|
-| AbsorbSqueeze · KT128 · Managed | 128B         |   1.622 μs | 0.0118 μs | 0.0110 μs |   1.622 μs |         - |
-|                                 |              |            |           |           |            |           |
-| AbsorbSqueeze · KT128 · Managed | 1KB          |   2.818 μs | 0.0229 μs | 0.0214 μs |   2.816 μs |         - |
-|                                 |              |            |           |           |            |           |
-| AbsorbSqueeze · KT128 · Managed | 8KB          |  12.010 μs | 0.2010 μs | 0.3920 μs |  11.830 μs |         - |
-|                                 |              |            |           |           |            |           |
-| AbsorbSqueeze · KT128 · Managed | 128KB        | 166.194 μs | 1.0116 μs | 0.9463 μs | 166.569 μs |         - |
+﻿| Description                     | TestDataSize | Mean       | Error     | StdDev    | Allocated |
+|-------------------------------- |------------- |-----------:|----------:|----------:|----------:|
+| AbsorbSqueeze · KT128 · Managed | 128B         |   1.556 μs | 0.0075 μs | 0.0070 μs |         - |
+|                                 |              |            |           |           |           |
+| AbsorbSqueeze · KT128 · Managed | 1KB          |   2.711 μs | 0.0175 μs | 0.0163 μs |         - |
+|                                 |              |            |           |           |           |
+| AbsorbSqueeze · KT128 · Managed | 8KB          |  11.353 μs | 0.0615 μs | 0.0545 μs |         - |
+|                                 |              |            |           |           |           |
+| AbsorbSqueeze · KT128 · Managed | 128KB        | 160.315 μs | 0.9537 μs | 0.8921 μs |         - |

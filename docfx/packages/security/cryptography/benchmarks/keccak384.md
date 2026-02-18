@@ -1,31 +1,31 @@
 ﻿| Description                                | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · Keccak-384 · Managed      | 128B         |     427.2 ns |     1.25 ns |     1.11 ns |         - |
-| TryComputeHash · Keccak-384 · AVX2         | 128B         |     579.3 ns |     2.15 ns |     1.91 ns |         - |
-| TryComputeHash · Keccak-384 · AVX512F      | 128B         |     596.4 ns |     1.72 ns |     1.53 ns |         - |
-| TryComputeHash · Keccak-384 · BouncyCastle | 128B         |     622.4 ns |     1.59 ns |     1.24 ns |         - |
+| TryComputeHash · Keccak-384 · Managed      | 128B         |     437.3 ns |     2.76 ns |     2.58 ns |         - |
+| TryComputeHash · Keccak-384 · AVX2         | 128B         |     586.9 ns |     1.48 ns |     1.39 ns |         - |
+| TryComputeHash · Keccak-384 · AVX512F      | 128B         |     607.4 ns |     1.44 ns |     1.20 ns |         - |
+| TryComputeHash · Keccak-384 · BouncyCastle | 128B         |     623.6 ns |     4.38 ns |     4.10 ns |         - |
 |                                            |              |              |             |             |           |
-| TryComputeHash · Keccak-384 · Managed      | 137B         |     423.5 ns |     1.15 ns |     0.96 ns |         - |
-| TryComputeHash · Keccak-384 · AVX2         | 137B         |     579.5 ns |     1.31 ns |     1.23 ns |         - |
-| TryComputeHash · Keccak-384 · AVX512F      | 137B         |     592.1 ns |     1.38 ns |     1.29 ns |         - |
-| TryComputeHash · Keccak-384 · BouncyCastle | 137B         |     624.8 ns |     2.31 ns |     1.93 ns |         - |
+| TryComputeHash · Keccak-384 · Managed      | 137B         |     435.5 ns |     1.82 ns |     1.70 ns |         - |
+| TryComputeHash · Keccak-384 · AVX2         | 137B         |     584.1 ns |     1.46 ns |     1.29 ns |         - |
+| TryComputeHash · Keccak-384 · AVX512F      | 137B         |     603.1 ns |     1.45 ns |     1.35 ns |         - |
+| TryComputeHash · Keccak-384 · BouncyCastle | 137B         |     624.4 ns |     4.46 ns |     4.18 ns |         - |
 |                                            |              |              |             |             |           |
-| TryComputeHash · Keccak-384 · Managed      | 1KB          |   1,966.5 ns |    12.97 ns |    12.14 ns |         - |
-| TryComputeHash · Keccak-384 · AVX2         | 1KB          |   2,706.6 ns |     6.45 ns |     6.03 ns |         - |
-| TryComputeHash · Keccak-384 · AVX512F      | 1KB          |   2,780.6 ns |     8.18 ns |     7.65 ns |         - |
-| TryComputeHash · Keccak-384 · BouncyCastle | 1KB          |   3,067.9 ns |    12.27 ns |    11.48 ns |         - |
+| TryComputeHash · Keccak-384 · Managed      | 1KB          |   1,973.0 ns |    11.79 ns |    10.46 ns |         - |
+| TryComputeHash · Keccak-384 · AVX2         | 1KB          |   2,704.9 ns |     5.92 ns |     5.54 ns |         - |
+| TryComputeHash · Keccak-384 · AVX512F      | 1KB          |   2,781.8 ns |     5.02 ns |     4.19 ns |         - |
+| TryComputeHash · Keccak-384 · BouncyCastle | 1KB          |   3,041.5 ns |     9.73 ns |     8.63 ns |         - |
 |                                            |              |              |             |             |           |
-| TryComputeHash · Keccak-384 · Managed      | 1025B        |   1,969.1 ns |     7.49 ns |     7.01 ns |         - |
-| TryComputeHash · Keccak-384 · AVX2         | 1025B        |   2,698.2 ns |     3.58 ns |     3.18 ns |         - |
-| TryComputeHash · Keccak-384 · AVX512F      | 1025B        |   2,777.3 ns |     3.40 ns |     3.18 ns |         - |
-| TryComputeHash · Keccak-384 · BouncyCastle | 1025B        |   3,038.3 ns |     5.97 ns |     4.98 ns |         - |
+| TryComputeHash · Keccak-384 · Managed      | 1025B        |   1,971.5 ns |    17.73 ns |    16.59 ns |         - |
+| TryComputeHash · Keccak-384 · AVX2         | 1025B        |   2,695.8 ns |     4.47 ns |     3.97 ns |         - |
+| TryComputeHash · Keccak-384 · AVX512F      | 1025B        |   2,790.1 ns |    11.88 ns |    10.53 ns |         - |
+| TryComputeHash · Keccak-384 · BouncyCastle | 1025B        |   3,042.1 ns |    17.61 ns |    16.48 ns |         - |
 |                                            |              |              |             |             |           |
-| TryComputeHash · Keccak-384 · Managed      | 8KB          |  15,424.2 ns |    57.98 ns |    54.24 ns |         - |
-| TryComputeHash · Keccak-384 · AVX2         | 8KB          |  21,243.9 ns |    46.84 ns |    43.81 ns |         - |
-| TryComputeHash · Keccak-384 · AVX512F      | 8KB          |  21,837.4 ns |    65.96 ns |    58.47 ns |         - |
-| TryComputeHash · Keccak-384 · BouncyCastle | 8KB          |  23,770.6 ns |    49.33 ns |    43.73 ns |         - |
+| TryComputeHash · Keccak-384 · Managed      | 8KB          |  15,399.7 ns |    66.96 ns |    59.36 ns |         - |
+| TryComputeHash · Keccak-384 · AVX2         | 8KB          |  21,194.1 ns |    36.02 ns |    33.70 ns |         - |
+| TryComputeHash · Keccak-384 · AVX512F      | 8KB          |  21,797.6 ns |    44.02 ns |    39.03 ns |         - |
+| TryComputeHash · Keccak-384 · BouncyCastle | 8KB          |  23,814.0 ns |    63.91 ns |    56.65 ns |         - |
 |                                            |              |              |             |             |           |
-| TryComputeHash · Keccak-384 · Managed      | 128KB        | 246,315.5 ns | 2,286.23 ns | 2,026.68 ns |         - |
-| TryComputeHash · Keccak-384 · AVX2         | 128KB        | 337,710.0 ns |   573.88 ns |   536.81 ns |         - |
-| TryComputeHash · Keccak-384 · AVX512F      | 128KB        | 348,988.1 ns |   647.17 ns |   573.70 ns |         - |
-| TryComputeHash · Keccak-384 · BouncyCastle | 128KB        | 379,818.2 ns |   800.01 ns |   709.19 ns |         - |
+| TryComputeHash · Keccak-384 · Managed      | 128KB        | 245,553.5 ns | 1,417.93 ns | 1,256.96 ns |         - |
+| TryComputeHash · Keccak-384 · AVX2         | 128KB        | 336,844.7 ns | 1,001.68 ns |   887.96 ns |         - |
+| TryComputeHash · Keccak-384 · AVX512F      | 128KB        | 347,933.4 ns |   944.25 ns |   837.06 ns |         - |
+| TryComputeHash · Keccak-384 · BouncyCastle | 128KB        | 381,363.7 ns | 2,875.67 ns | 2,401.32 ns |         - |

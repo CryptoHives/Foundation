@@ -47,9 +47,14 @@ internal enum SimdSupport
     Neon = 1 << 4,
 
     /// <summary>
+    /// AES-NI instruction set support (hardware AES acceleration).
+    /// </summary>
+    AesNi = 1 << 5,
+
+    /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
-    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon,
+    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi,
 
     /// <summary>
     /// The default optimization to use for Keccak based algorithms.

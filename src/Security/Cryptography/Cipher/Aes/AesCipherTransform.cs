@@ -5,6 +5,10 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
+using System.Runtime.CompilerServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics;
+#endif
 
 /// <summary>
 /// AES cipher transform for encryption or decryption operations.
@@ -13,6 +17,10 @@ using System.Security.Cryptography;
 /// <para>
 /// This class implements <see cref="ICipherTransform"/> for AES block cipher operations.
 /// It supports ECB, CBC, and CTR modes with PKCS#7 padding.
+/// </para>
+/// <para>
+/// When AES-NI hardware acceleration is available, this transform automatically uses
+/// hardware-accelerated AES instructions for significantly improved performance.
 /// </para>
 /// </remarks>
 internal sealed class AesCipherTransform : ICipherTransform
@@ -26,6 +34,10 @@ internal sealed class AesCipherTransform : ICipherTransform
     private readonly byte[] _counter;
     private readonly byte[] _feedbackBlock;
     private bool _disposed;
+#if NET8_0_OR_GREATER
+    private readonly Vector128<byte>[]? _niRoundKeys;
+    private readonly bool _useAesNi;
+#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AesCipherTransform"/> class.
@@ -36,6 +48,20 @@ internal sealed class AesCipherTransform : ICipherTransform
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
     public AesCipherTransform(byte[] key, byte[] iv, bool encrypting, CipherMode mode, PaddingMode padding)
+        : this(SimdSupport.All, key, iv, encrypting, mode, padding)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AesCipherTransform"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The cipher key.</param>
+    /// <param name="iv">The initialization vector.</param>
+    /// <param name="encrypting">True for encryption, false for decryption.</param>
+    /// <param name="mode">The cipher mode.</param>
+    /// <param name="padding">The padding mode.</param>
+    internal AesCipherTransform(SimdSupport simdSupport, byte[] key, byte[] iv, bool encrypting, CipherMode mode, PaddingMode padding)
     {
         _encrypting = encrypting;
         _mode = mode;
@@ -59,6 +85,25 @@ internal sealed class AesCipherTransform : ICipherTransform
             AesCore.CreateDecryptionKeys(encRoundKeys, _roundKeys, _rounds);
         }
 
+#if NET8_0_OR_GREATER
+        if ((simdSupport & SimdSupport.AesNi) != 0 && AesCoreAesNi.IsSupported)
+        {
+            _useAesNi = true;
+            var niEncKeys = new Vector128<byte>[AesCoreAesNi.MaxRoundKeys];
+            AesCoreAesNi.ExpandKey(key, niEncKeys);
+
+            if (encrypting || mode == CipherMode.CTR || mode == CipherMode.Stream)
+            {
+                _niRoundKeys = niEncKeys;
+            }
+            else
+            {
+                _niRoundKeys = new Vector128<byte>[AesCoreAesNi.MaxRoundKeys];
+                AesCoreAesNi.CreateDecryptionKeys(niEncKeys, _niRoundKeys, _rounds);
+            }
+        }
+#endif
+
         // Copy IV
         _iv = new byte[AesCore.BlockSizeBytes];
         if (iv != null && iv.Length >= AesCore.BlockSizeBytes)
@@ -72,6 +117,16 @@ internal sealed class AesCipherTransform : ICipherTransform
         Buffer.BlockCopy(_iv, 0, _feedbackBlock, 0, AesCore.BlockSizeBytes);
         Buffer.BlockCopy(_iv, 0, _counter, 0, AesCore.BlockSizeBytes);
     }
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by AES on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport =>
+#if NET8_0_OR_GREATER
+        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
+#else
+        SimdSupport.None;
+#endif
 
     /// <inheritdoc/>
     public int BlockSize => AesCore.BlockSizeBytes;
@@ -154,9 +209,8 @@ internal sealed class AesCipherTransform : ICipherTransform
                 // CTR mode doesn't need padding - just encrypt remaining bytes
                 if (remainder > 0)
                 {
-                    Span<byte> keystream = stackalloc byte[BlockSize];
                     Span<byte> counterOut = stackalloc byte[BlockSize];
-                    AesCore.EncryptBlock(_counter, counterOut, _roundKeys, _rounds);
+                    EncryptBlockDispatch(_counter, counterOut);
                     IncrementCounter();
 
                     for (int i = 0; i < remainder; i++)
@@ -203,7 +257,7 @@ internal sealed class AesCipherTransform : ICipherTransform
                 if (remainder > 0)
                 {
                     Span<byte> counterOut = stackalloc byte[BlockSize];
-                    AesCore.EncryptBlock(_counter, counterOut, _roundKeys, _rounds);
+                    EncryptBlockDispatch(_counter, counterOut);
                     IncrementCounter();
 
                     for (int i = 0; i < remainder; i++)
@@ -289,11 +343,11 @@ internal sealed class AesCipherTransform : ICipherTransform
     {
         if (_encrypting)
         {
-            AesCore.EncryptBlock(input, output, _roundKeys, _rounds);
+            EncryptBlockDispatch(input, output);
         }
         else
         {
-            AesCore.DecryptBlock(input, output, _roundKeys, _rounds);
+            DecryptBlockDispatch(input, output);
         }
     }
 
@@ -313,7 +367,7 @@ internal sealed class AesCipherTransform : ICipherTransform
             }
 
             // Encrypt
-            AesCore.EncryptBlock(xored, output, _roundKeys, _rounds);
+            EncryptBlockDispatch(xored, output);
 
             // Save ciphertext for next block
             output.Slice(0, BlockSize).CopyTo(_feedbackBlock);
@@ -325,7 +379,7 @@ internal sealed class AesCipherTransform : ICipherTransform
             input.CopyTo(savedInput);
 
             // Decrypt
-            AesCore.DecryptBlock(input, output, _roundKeys, _rounds);
+            DecryptBlockDispatch(input, output);
 
             // XOR with previous ciphertext (or IV)
             for (int i = 0; i < BlockSize; i++)
@@ -346,7 +400,7 @@ internal sealed class AesCipherTransform : ICipherTransform
     {
         // Encrypt counter to get keystream
         Span<byte> keystream = stackalloc byte[BlockSize];
-        AesCore.EncryptBlock(_counter, keystream, _roundKeys, _rounds);
+        EncryptBlockDispatch(_counter, keystream);
 
         // XOR with input
         for (int i = 0; i < BlockSize; i++)
@@ -369,5 +423,35 @@ internal sealed class AesCipherTransform : ICipherTransform
             if (++_counter[i] != 0)
                 break;
         }
+    }
+
+    // ========================================================================
+    // AES-NI Dispatch
+    // ========================================================================
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void EncryptBlockDispatch(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+#if NET8_0_OR_GREATER
+        if (_useAesNi)
+        {
+            AesCoreAesNi.EncryptBlock(input, output, _niRoundKeys!, _rounds);
+            return;
+        }
+#endif
+        AesCore.EncryptBlock(input, output, _roundKeys, _rounds);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void DecryptBlockDispatch(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+#if NET8_0_OR_GREATER
+        if (_useAesNi)
+        {
+            AesCoreAesNi.DecryptBlock(input, output, _niRoundKeys!, _rounds);
+            return;
+        }
+#endif
+        AesCore.DecryptBlock(input, output, _roundKeys, _rounds);
     }
 }

@@ -262,13 +262,27 @@ public static class CipherAlgorithmRegistry
 
     private static void AddAesImplementations(List<CipherImplementation> implementations)
     {
-        // AES-128-GCM - Managed
+        var aesSimd = CH.Cipher.AesGcm128.SimdSupport;
+
+        // AES-128-GCM - AES-NI
+        if ((aesSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-128-GCM",
+                "AES-NI",
+                128,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
+        // AES-128-GCM - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "AES-128-GCM",
             "Managed",
             128,
             Mode.GCM,
-            (byte[] key) => CH.Cipher.AesGcm128.Create(key),
+            (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.None, key),
             Source.Managed));
 
         // AES-128-GCM - BouncyCastle
@@ -284,13 +298,25 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // AES-192-GCM - Managed
+        // AES-192-GCM - AES-NI
+        if ((aesSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-192-GCM",
+                "AES-NI",
+                192,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
+        // AES-192-GCM - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "AES-192-GCM",
             "Managed",
             192,
             Mode.GCM,
-            (byte[] key) => CH.Cipher.AesGcm192.Create(key),
+            (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.None, key),
             Source.Managed));
 
         // AES-192-GCM - BouncyCastle
@@ -306,13 +332,25 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // AES-256-GCM - Managed
+        // AES-256-GCM - AES-NI
+        if ((aesSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-256-GCM",
+                "AES-NI",
+                256,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
+        // AES-256-GCM - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "AES-256-GCM",
             "Managed",
             256,
             Mode.GCM,
-            (byte[] key) => CH.Cipher.AesGcm256.Create(key),
+            (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.None, key),
             Source.Managed));
 
         // AES-256-GCM - BouncyCastle
@@ -397,14 +435,33 @@ public static class CipherAlgorithmRegistry
 
     private static void AddAesCbcImplementations(List<CipherImplementation> implementations)
     {
-        // AES-128-CBC - Managed
+        var aesSimd = CH.Cipher.Aes128.SimdSupport;
+
+        // AES-128-CBC - AES-NI
+        if ((aesSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-128-CBC",
+                "AES-NI",
+                128,
+                Mode.CBC,
+                () => {
+                    var aes = CH.Cipher.Aes128.Create(CH.SimdSupport.AesNi);
+                    aes.Mode = CH.Cipher.CipherMode.CBC;
+                    aes.Padding = CH.Cipher.PaddingMode.PKCS7;
+                    return aes;
+                },
+                Source.Simd));
+        }
+
+        // AES-128-CBC - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "AES-128-CBC",
             "Managed",
             128,
             Mode.CBC,
             () => {
-                var aes = new CH.Cipher.Aes128();
+                var aes = CH.Cipher.Aes128.Create(CH.SimdSupport.None);
                 aes.Mode = CH.Cipher.CipherMode.CBC;
                 aes.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aes;
@@ -420,14 +477,31 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateAesCbc(16),
             Source.BouncyCastle));
 
-        // AES-256-CBC - Managed
+        // AES-256-CBC - AES-NI
+        if ((aesSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-256-CBC",
+                "AES-NI",
+                256,
+                Mode.CBC,
+                () => {
+                    var aes = CH.Cipher.Aes256.Create(CH.SimdSupport.AesNi);
+                    aes.Mode = CH.Cipher.CipherMode.CBC;
+                    aes.Padding = CH.Cipher.PaddingMode.PKCS7;
+                    return aes;
+                },
+                Source.Simd));
+        }
+
+        // AES-256-CBC - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "AES-256-CBC",
             "Managed",
             256,
             Mode.CBC,
             () => {
-                var aes = new CH.Cipher.Aes256();
+                var aes = CH.Cipher.Aes256.Create(CH.SimdSupport.None);
                 aes.Mode = CH.Cipher.CipherMode.CBC;
                 aes.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aes;

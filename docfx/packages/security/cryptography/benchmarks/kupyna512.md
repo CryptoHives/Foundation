@@ -1,19 +1,19 @@
 ﻿| Description                                | TestDataSize | Mean         | Error      | StdDev     | Allocated |
 |------------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|
-| TryComputeHash · Kupyna-512 · Managed      | 128B         |     4.307 μs |  0.0338 μs |  0.0316 μs |         - |
-| TryComputeHash · Kupyna-512 · BouncyCastle | 128B         |     7.225 μs |  0.0477 μs |  0.0447 μs |         - |
+| TryComputeHash · Kupyna-512 · Managed      | 128B         |     4.319 μs |  0.0257 μs |  0.0227 μs |         - |
+| TryComputeHash · Kupyna-512 · BouncyCastle | 128B         |     6.620 μs |  0.0240 μs |  0.0201 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-512 · Managed      | 137B         |     4.282 μs |  0.0347 μs |  0.0325 μs |         - |
-| TryComputeHash · Kupyna-512 · BouncyCastle | 137B         |     6.670 μs |  0.0467 μs |  0.0437 μs |         - |
+| TryComputeHash · Kupyna-512 · Managed      | 137B         |     4.325 μs |  0.0205 μs |  0.0182 μs |         - |
+| TryComputeHash · Kupyna-512 · BouncyCastle | 137B         |     6.630 μs |  0.0184 μs |  0.0163 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-512 · Managed      | 1KB          |    16.213 μs |  0.2174 μs |  0.2033 μs |         - |
-| TryComputeHash · Kupyna-512 · BouncyCastle | 1KB          |    25.454 μs |  0.1347 μs |  0.1194 μs |         - |
+| TryComputeHash · Kupyna-512 · Managed      | 1KB          |    16.387 μs |  0.1101 μs |  0.1029 μs |         - |
+| TryComputeHash · Kupyna-512 · BouncyCastle | 1KB          |    25.276 μs |  0.1349 μs |  0.1262 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-512 · Managed      | 1025B        |    16.273 μs |  0.2408 μs |  0.2135 μs |         - |
-| TryComputeHash · Kupyna-512 · BouncyCastle | 1025B        |    25.561 μs |  0.1198 μs |  0.1121 μs |         - |
+| TryComputeHash · Kupyna-512 · Managed      | 1025B        |    16.358 μs |  0.0767 μs |  0.0640 μs |         - |
+| TryComputeHash · Kupyna-512 · BouncyCastle | 1025B        |    25.428 μs |  0.1356 μs |  0.1202 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-512 · Managed      | 8KB          |   111.827 μs |  0.7716 μs |  0.7218 μs |         - |
-| TryComputeHash · Kupyna-512 · BouncyCastle | 8KB          |   175.501 μs |  1.6704 μs |  1.5625 μs |         - |
+| TryComputeHash · Kupyna-512 · Managed      | 8KB          |   112.719 μs |  0.3260 μs |  0.2890 μs |         - |
+| TryComputeHash · Kupyna-512 · BouncyCastle | 8KB          |   174.818 μs |  0.7154 μs |  0.6342 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-512 · Managed      | 128KB        | 1,748.794 μs | 16.5414 μs | 15.4728 μs |         - |
-| TryComputeHash · Kupyna-512 · BouncyCastle | 128KB        | 2,749.887 μs | 12.7021 μs | 11.2601 μs |         - |
+| TryComputeHash · Kupyna-512 · Managed      | 128KB        | 1,763.256 μs |  8.4060 μs |  7.8630 μs |         - |
+| TryComputeHash · Kupyna-512 · BouncyCastle | 128KB        | 2,731.852 μs | 12.8837 μs | 12.0514 μs |         - |

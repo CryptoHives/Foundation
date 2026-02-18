@@ -72,6 +72,18 @@ public class DataSize : IFormattable
     /// <summary>Edge case sizes only.</summary>
     public static readonly DataSize[] EdgeCases = [B137, B1025];
 
+    /// <summary>17 bytes - one AES block (16) + 1 byte partial block.</summary>
+    public static readonly DataSize B17 = new("17B", 17);
+
+    /// <summary>129 bytes - 8 AES blocks (128) + 1 byte, tests pipelined block boundary.</summary>
+    public static readonly DataSize B129 = new("129B", 129);
+
+    /// <summary>256 bytes - 16 AES blocks, tests two full 8-block pipeline iterations.</summary>
+    public static readonly DataSize B256 = new("256B", 256);
+
+    /// <summary>Standard sizes with cipher pipeline edge cases.</summary>
+    public static readonly DataSize[] CipherSizes = [B17, B128, B129, B256, K1, K8, K128];
+
     /// <summary>Standard sizes for quick benchmarks.</summary>
     public static readonly object[] StandardTests = Standard.Where(s => s != null).Select(s => new object[] { s }).ToArray();
 
