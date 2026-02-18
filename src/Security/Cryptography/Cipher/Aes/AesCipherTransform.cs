@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Runtime.CompilerServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 #endif
 
 /// <summary>
@@ -153,6 +154,15 @@ internal sealed class AesCipherTransform : ICipherTransform
 
         int blocks = input.Length / BlockSize;
         int bytesProcessed = 0;
+
+#if NET8_0_OR_GREATER
+        // Vectorized CBC decrypt: process 8/4 blocks in parallel
+        if (_mode == CipherMode.CBC && !_encrypting && _useAesNi)
+        {
+            bytesProcessed = TransformCbcDecryptVectorized(input, output, blocks);
+            return bytesProcessed;
+        }
+#endif
 
         for (int i = 0; i < blocks; i++)
         {
@@ -334,6 +344,103 @@ internal sealed class AesCipherTransform : ICipherTransform
             _disposed = true;
         }
     }
+
+#if NET8_0_OR_GREATER
+    // ========================================================================
+    // Vectorized CBC Decrypt (8/4-block interleaved AES-NI)
+    // ========================================================================
+
+    /// <summary>
+    /// Processes CBC decrypt using 8/4-block interleaved AES-NI for parallelism.
+    /// </summary>
+    /// <remarks>
+    /// CBC decryption is parallelizable: each ciphertext block is independently
+    /// AES-decrypted, then XOR'd with the previous ciphertext block. By decrypting
+    /// 8 blocks simultaneously, we saturate the AES pipeline (latency=4, throughput=1).
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int TransformCbcDecryptVectorized(ReadOnlySpan<byte> input, Span<byte> output, int blocks)
+    {
+        int offset = 0;
+        var feedback = Vector128.Create(_feedbackBlock.AsSpan());
+
+        // 8-block loop
+        while (offset + 8 * BlockSize <= blocks * BlockSize)
+        {
+            var ct0 = Vector128.Create(input.Slice(offset, BlockSize));
+            var ct1 = Vector128.Create(input.Slice(offset + BlockSize, BlockSize));
+            var ct2 = Vector128.Create(input.Slice(offset + 2 * BlockSize, BlockSize));
+            var ct3 = Vector128.Create(input.Slice(offset + 3 * BlockSize, BlockSize));
+            var ct4 = Vector128.Create(input.Slice(offset + 4 * BlockSize, BlockSize));
+            var ct5 = Vector128.Create(input.Slice(offset + 5 * BlockSize, BlockSize));
+            var ct6 = Vector128.Create(input.Slice(offset + 6 * BlockSize, BlockSize));
+            var ct7 = Vector128.Create(input.Slice(offset + 7 * BlockSize, BlockSize));
+
+            var b0 = ct0; var b1 = ct1; var b2 = ct2; var b3 = ct3;
+            var b4 = ct4; var b5 = ct5; var b6 = ct6; var b7 = ct7;
+
+            AesCoreAesNi.DecryptBlocks8(ref b0, ref b1, ref b2, ref b3,
+                                         ref b4, ref b5, ref b6, ref b7,
+                                         _niRoundKeys!, _rounds);
+
+            Sse2.Xor(b0, feedback).CopyTo(output.Slice(offset));
+            Sse2.Xor(b1, ct0).CopyTo(output.Slice(offset + BlockSize));
+            Sse2.Xor(b2, ct1).CopyTo(output.Slice(offset + 2 * BlockSize));
+            Sse2.Xor(b3, ct2).CopyTo(output.Slice(offset + 3 * BlockSize));
+            Sse2.Xor(b4, ct3).CopyTo(output.Slice(offset + 4 * BlockSize));
+            Sse2.Xor(b5, ct4).CopyTo(output.Slice(offset + 5 * BlockSize));
+            Sse2.Xor(b6, ct5).CopyTo(output.Slice(offset + 6 * BlockSize));
+            Sse2.Xor(b7, ct6).CopyTo(output.Slice(offset + 7 * BlockSize));
+
+            feedback = ct7;
+            offset += 8 * BlockSize;
+        }
+
+        // 4-block fallback
+        while (offset + 4 * BlockSize <= blocks * BlockSize)
+        {
+            var ct0 = Vector128.Create(input.Slice(offset, BlockSize));
+            var ct1 = Vector128.Create(input.Slice(offset + BlockSize, BlockSize));
+            var ct2 = Vector128.Create(input.Slice(offset + 2 * BlockSize, BlockSize));
+            var ct3 = Vector128.Create(input.Slice(offset + 3 * BlockSize, BlockSize));
+
+            var b0 = ct0; var b1 = ct1; var b2 = ct2; var b3 = ct3;
+
+            AesCoreAesNi.DecryptBlocks4(ref b0, ref b1, ref b2, ref b3,
+                                         _niRoundKeys!, _rounds);
+
+            Sse2.Xor(b0, feedback).CopyTo(output.Slice(offset));
+            Sse2.Xor(b1, ct0).CopyTo(output.Slice(offset + BlockSize));
+            Sse2.Xor(b2, ct1).CopyTo(output.Slice(offset + 2 * BlockSize));
+            Sse2.Xor(b3, ct2).CopyTo(output.Slice(offset + 3 * BlockSize));
+
+            feedback = ct3;
+            offset += 4 * BlockSize;
+        }
+
+        // Remaining 1-3 blocks
+        while (offset < blocks * BlockSize)
+        {
+            var ct = Vector128.Create(input.Slice(offset, BlockSize));
+            var b = ct;
+
+            AesCoreAesNi.DecryptBlock(input.Slice(offset, BlockSize),
+                                       output.Slice(offset, BlockSize),
+                                       _niRoundKeys!, _rounds);
+            var plain = Vector128.Create(output.Slice(offset, BlockSize));
+            Sse2.Xor(plain, feedback).CopyTo(output.Slice(offset));
+
+            feedback = ct;
+            offset += BlockSize;
+        }
+
+        // Save feedback for next call
+        feedback.CopyTo(_feedbackBlock);
+
+        return offset;
+    }
+#endif
 
     // ========================================================================
     // ECB Mode

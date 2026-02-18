@@ -5,6 +5,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics;
+#endif
 
 /// <summary>
 /// AES-CCM (Counter with CBC-MAC) authenticated encryption implementation.
@@ -58,12 +61,25 @@ public abstract class AesCcm : IAeadCipher
     private readonly uint[] _roundKeys;
     private readonly int _rounds;
     private bool _disposed;
+#if NET8_0_OR_GREATER
+    private readonly Vector128<byte>[]? _niEncRoundKeys;
+    private readonly bool _useAesNi;
+#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AesCcm"/> class.
     /// </summary>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    protected AesCcm(byte[] key)
+    protected AesCcm(byte[] key) : this(SimdSupport.All, key)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AesCcm"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
+    internal AesCcm(SimdSupport simdSupport, byte[] key)
     {
         if (key == null)
             throw new ArgumentNullException(nameof(key));
@@ -78,6 +94,15 @@ public abstract class AesCcm : IAeadCipher
         int totalWords = 4 * (keyWords + 7);
         _roundKeys = new uint[totalWords];
         _rounds = AesCore.ExpandKey(key, _roundKeys);
+
+#if NET8_0_OR_GREATER
+        if ((simdSupport & SimdSupport.AesNi) != 0 && AesCoreAesNi.IsSupported)
+        {
+            _useAesNi = true;
+            _niEncRoundKeys = new Vector128<byte>[AesCoreAesNi.MaxRoundKeys];
+            AesCoreAesNi.ExpandKey(key, _niEncRoundKeys);
+        }
+#endif
     }
 
     /// <inheritdoc/>
@@ -117,7 +142,11 @@ public abstract class AesCcm : IAeadCipher
             ciphertext.Slice(0, plaintext.Length),
             tag,
             _roundKeys,
-            _rounds);
+            _rounds
+#if NET8_0_OR_GREATER
+            , _useAesNi, _niEncRoundKeys
+#endif
+            );
     }
 
     /// <summary>
@@ -146,7 +175,11 @@ public abstract class AesCcm : IAeadCipher
             associatedData,
             plaintext.Slice(0, ciphertext.Length),
             _roundKeys,
-            _rounds);
+            _rounds
+#if NET8_0_OR_GREATER
+            , _useAesNi, _niEncRoundKeys
+#endif
+            );
 
         if (!success)
         {

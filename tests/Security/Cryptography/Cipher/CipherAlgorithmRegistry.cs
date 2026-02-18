@@ -365,6 +365,20 @@ public static class CipherAlgorithmRegistry
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
+
+        var ccmSimd = CH.Cipher.AesCcm128.SimdSupport;
+
+        // AES-128-CCM - AES-NI
+        if ((ccmSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-128-CCM",
+                "AES-NI",
+                128,
+                Mode.CCM,
+                (byte[] key) => CH.Cipher.AesCcm128.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
 
         // AES-128-CCM - Managed
         implementations.Add(new CipherImplementation(
@@ -372,7 +386,7 @@ public static class CipherAlgorithmRegistry
             "Managed",
             128,
             Mode.CCM,
-            (byte[] key) => CH.Cipher.AesCcm128.Create(key),
+            (byte[] key) => CH.Cipher.AesCcm128.Create(CH.SimdSupport.None, key),
             Source.Managed));
 
         // AES-128-CCM - BouncyCastle
@@ -388,13 +402,25 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
+        // AES-192-CCM - AES-NI
+        if ((ccmSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-192-CCM",
+                "AES-NI",
+                192,
+                Mode.CCM,
+                (byte[] key) => CH.Cipher.AesCcm192.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
         // AES-192-CCM - Managed
         implementations.Add(new CipherImplementation(
             "AES-192-CCM",
             "Managed",
             192,
             Mode.CCM,
-            (byte[] key) => CH.Cipher.AesCcm192.Create(key),
+            (byte[] key) => CH.Cipher.AesCcm192.Create(CH.SimdSupport.None, key),
             Source.Managed));
 
         // AES-192-CCM - BouncyCastle
@@ -410,13 +436,25 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
+        // AES-256-CCM - AES-NI
+        if ((ccmSimd & CH.SimdSupport.AesNi) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-256-CCM",
+                "AES-NI",
+                256,
+                Mode.CCM,
+                (byte[] key) => CH.Cipher.AesCcm256.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
         // AES-256-CCM - Managed
         implementations.Add(new CipherImplementation(
             "AES-256-CCM",
             "Managed",
             256,
             Mode.CCM,
-            (byte[] key) => CH.Cipher.AesCcm256.Create(key),
+            (byte[] key) => CH.Cipher.AesCcm256.Create(CH.SimdSupport.None, key),
             Source.Managed));
 
         // AES-256-CCM - BouncyCastle

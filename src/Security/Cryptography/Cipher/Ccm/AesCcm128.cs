@@ -22,7 +22,16 @@ public sealed class AesCcm128 : AesCcm
     /// Initializes a new instance of the <see cref="AesCcm128"/> class.
     /// </summary>
     /// <param name="key">The 16-byte key.</param>
-    public AesCcm128(byte[] key) : base(key)
+    public AesCcm128(byte[] key) : this(SimdSupport.All, key)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AesCcm128"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 16-byte key.</param>
+    internal AesCcm128(SimdSupport simdSupport, byte[] key) : base(simdSupport, key)
     {
         if (key.Length != KeySizeBytesConst)
             throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes for AES-128.", nameof(key));
@@ -35,9 +44,27 @@ public sealed class AesCcm128 : AesCcm
     public override int KeySizeBytes => KeySizeBytesConst;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by AES-CCM on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport =>
+#if NET8_0_OR_GREATER
+        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
+#else
+        SimdSupport.None;
+#endif
+
+    /// <summary>
     /// Creates a new AES-128-CCM instance.
     /// </summary>
     /// <param name="key">The 16-byte key.</param>
     /// <returns>A new AES-128-CCM instance.</returns>
     public static AesCcm128 Create(byte[] key) => new(key);
+
+    /// <summary>
+    /// Creates a new AES-128-CCM instance with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 16-byte key.</param>
+    /// <returns>A new AES-128-CCM instance.</returns>
+    internal static AesCcm128 Create(SimdSupport simdSupport, byte[] key) => new(simdSupport, key);
 }

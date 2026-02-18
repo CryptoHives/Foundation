@@ -391,6 +391,106 @@ internal static class AesCoreAesNi
         b0 = AesNi.EncryptLast(b0, rk); b1 = AesNi.EncryptLast(b1, rk);
         b2 = AesNi.EncryptLast(b2, rk); b3 = AesNi.EncryptLast(b3, rk);
     }
+
+    /// <summary>
+    /// Encrypts 8 blocks simultaneously using interleaved AES-NI instructions.
+    /// </summary>
+    /// <remarks>
+    /// With AESENC latency=4 and throughput=1 on modern CPUs, 8-block interleaving
+    /// fully saturates the AES pipeline, achieving near-theoretical throughput.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void EncryptBlocks8(
+        ref Vector128<byte> b0, ref Vector128<byte> b1,
+        ref Vector128<byte> b2, ref Vector128<byte> b3,
+        ref Vector128<byte> b4, ref Vector128<byte> b5,
+        ref Vector128<byte> b6, ref Vector128<byte> b7,
+        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+    {
+        var rk = roundKeys[0];
+        b0 = Sse2.Xor(b0, rk); b1 = Sse2.Xor(b1, rk);
+        b2 = Sse2.Xor(b2, rk); b3 = Sse2.Xor(b3, rk);
+        b4 = Sse2.Xor(b4, rk); b5 = Sse2.Xor(b5, rk);
+        b6 = Sse2.Xor(b6, rk); b7 = Sse2.Xor(b7, rk);
+
+        for (int i = 1; i < nr; i++)
+        {
+            rk = roundKeys[i];
+            b0 = AesNi.Encrypt(b0, rk); b1 = AesNi.Encrypt(b1, rk);
+            b2 = AesNi.Encrypt(b2, rk); b3 = AesNi.Encrypt(b3, rk);
+            b4 = AesNi.Encrypt(b4, rk); b5 = AesNi.Encrypt(b5, rk);
+            b6 = AesNi.Encrypt(b6, rk); b7 = AesNi.Encrypt(b7, rk);
+        }
+
+        rk = roundKeys[nr];
+        b0 = AesNi.EncryptLast(b0, rk); b1 = AesNi.EncryptLast(b1, rk);
+        b2 = AesNi.EncryptLast(b2, rk); b3 = AesNi.EncryptLast(b3, rk);
+        b4 = AesNi.EncryptLast(b4, rk); b5 = AesNi.EncryptLast(b5, rk);
+        b6 = AesNi.EncryptLast(b6, rk); b7 = AesNi.EncryptLast(b7, rk);
+    }
+
+    /// <summary>
+    /// Decrypts 4 blocks simultaneously using interleaved AES-NI instructions.
+    /// </summary>
+    /// <remarks>
+    /// Interleaving exploits the CPU's out-of-order execution to overlap the latency
+    /// of AESDEC instructions across independent blocks. Particularly effective for
+    /// CBC decrypt where all ciphertext blocks are available upfront.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void DecryptBlocks4(
+        ref Vector128<byte> b0, ref Vector128<byte> b1,
+        ref Vector128<byte> b2, ref Vector128<byte> b3,
+        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+    {
+        var rk = roundKeys[0];
+        b0 = Sse2.Xor(b0, rk); b1 = Sse2.Xor(b1, rk);
+        b2 = Sse2.Xor(b2, rk); b3 = Sse2.Xor(b3, rk);
+
+        for (int i = 1; i < nr; i++)
+        {
+            rk = roundKeys[i];
+            b0 = AesNi.Decrypt(b0, rk); b1 = AesNi.Decrypt(b1, rk);
+            b2 = AesNi.Decrypt(b2, rk); b3 = AesNi.Decrypt(b3, rk);
+        }
+
+        rk = roundKeys[nr];
+        b0 = AesNi.DecryptLast(b0, rk); b1 = AesNi.DecryptLast(b1, rk);
+        b2 = AesNi.DecryptLast(b2, rk); b3 = AesNi.DecryptLast(b3, rk);
+    }
+
+    /// <summary>
+    /// Decrypts 8 blocks simultaneously using interleaved AES-NI instructions.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void DecryptBlocks8(
+        ref Vector128<byte> b0, ref Vector128<byte> b1,
+        ref Vector128<byte> b2, ref Vector128<byte> b3,
+        ref Vector128<byte> b4, ref Vector128<byte> b5,
+        ref Vector128<byte> b6, ref Vector128<byte> b7,
+        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+    {
+        var rk = roundKeys[0];
+        b0 = Sse2.Xor(b0, rk); b1 = Sse2.Xor(b1, rk);
+        b2 = Sse2.Xor(b2, rk); b3 = Sse2.Xor(b3, rk);
+        b4 = Sse2.Xor(b4, rk); b5 = Sse2.Xor(b5, rk);
+        b6 = Sse2.Xor(b6, rk); b7 = Sse2.Xor(b7, rk);
+
+        for (int i = 1; i < nr; i++)
+        {
+            rk = roundKeys[i];
+            b0 = AesNi.Decrypt(b0, rk); b1 = AesNi.Decrypt(b1, rk);
+            b2 = AesNi.Decrypt(b2, rk); b3 = AesNi.Decrypt(b3, rk);
+            b4 = AesNi.Decrypt(b4, rk); b5 = AesNi.Decrypt(b5, rk);
+            b6 = AesNi.Decrypt(b6, rk); b7 = AesNi.Decrypt(b7, rk);
+        }
+
+        rk = roundKeys[nr];
+        b0 = AesNi.DecryptLast(b0, rk); b1 = AesNi.DecryptLast(b1, rk);
+        b2 = AesNi.DecryptLast(b2, rk); b3 = AesNi.DecryptLast(b3, rk);
+        b4 = AesNi.DecryptLast(b4, rk); b5 = AesNi.DecryptLast(b5, rk);
+        b6 = AesNi.DecryptLast(b6, rk); b7 = AesNi.DecryptLast(b7, rk);
+    }
 }
 
 #endif
