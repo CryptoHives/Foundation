@@ -48,15 +48,20 @@ internal static class GcmCore
     public const int NonceSizeBytes = 12;
 
     /// <summary>
+    /// Number of entries in the 4-bit shoup multiplication table.
+    /// </summary>
+    public const int ShoupTableSize = 16;
+
+    /// <summary>
+    /// The full number of entries in the 4-bit shoup multiplication table.
+    /// </summary>
+    public const int ShoupTableSpanSize = ShoupTableSize * 2;
+
+    /// <summary>
     /// Reduction polynomial for GF(2^128): x^128 + x^7 + x^2 + x + 1
     /// Represented as the lower 128 bits: 0xe1 shifted appropriately.
     /// </summary>
     private const ulong R = 0xe100000000000000UL;
-
-    /// <summary>
-    /// Number of entries in the 4-bit multiplication table.
-    /// </summary>
-    private const int ShoupTableSize = 16;
 
     /// <summary>
     /// 4-bit reduction table for the right-shift-by-4 operation in GF(2^128).
@@ -91,12 +96,13 @@ internal static class GcmCore
     /// </remarks>
     /// <param name="h0">High 64 bits of H.</param>
     /// <param name="h1">Low 64 bits of H.</param>
+    /// <param name="table">An array of 32 ulongs representing 16 entries of (hi, lo) pairs.</param>
     /// <returns>
-    /// An array of 32 ulongs representing 16 entries of (hi, lo) pairs.
+    /// The number of entries written to the table.
     /// </returns>
-    public static ulong[] BuildShoupTable(ulong h0, ulong h1)
+    public static int BuildShoupTable(ulong h0, ulong h1, Span<ulong> table)
     {
-        var table = new ulong[ShoupTableSize * 2];
+        if (table.Length < ShoupTableSpanSize) throw new ArgumentOutOfRangeException(nameof(table));
 
         // M[0] = 0 (already zeroed)
         // M[8] = H · x⁰ = H
@@ -130,7 +136,7 @@ internal static class GcmCore
             }
         }
 
-        return table;
+        return ShoupTableSpanSize;
     }
 
     /// <summary>
@@ -152,8 +158,9 @@ internal static class GcmCore
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void GHashComplete(ulong[] shoupTable, ReadOnlySpan<byte> aad,
-                                      ReadOnlySpan<byte> ciphertext, Span<byte> output)
+    public static void GHashComplete(
+        ReadOnlySpan<ulong> shoupTable, ReadOnlySpan<byte> aad,
+        ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
         ulong y0 = 0, y1 = 0;
 
@@ -180,8 +187,9 @@ internal static class GcmCore
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void GHashComplete(ulong h0, ulong h1, ReadOnlySpan<byte> aad,
-                                      ReadOnlySpan<byte> ciphertext, Span<byte> output)
+    public static void GHashComplete(
+        ulong h0, ulong h1, ReadOnlySpan<byte> aad,
+        ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
         ulong y0 = 0, y1 = 0;
 
@@ -209,7 +217,8 @@ internal static class GcmCore
     /// <param name="data">The input data to hash.</param>
     /// <param name="output">The 16-byte output buffer.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void GHash(ReadOnlySpan<byte> h, ReadOnlySpan<byte> data, Span<byte> output)
+    public static void GHash(
+        ReadOnlySpan<byte> h, ReadOnlySpan<byte> data, Span<byte> output)
     {
         // Initialize Y to zero
         Span<byte> y = stackalloc byte[BlockSizeBytes];
@@ -242,8 +251,9 @@ internal static class GcmCore
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void GHashComplete(ReadOnlySpan<byte> h, ReadOnlySpan<byte> aad,
-                                      ReadOnlySpan<byte> ciphertext, Span<byte> output)
+    public static void GHashComplete(
+        ReadOnlySpan<byte> h, ReadOnlySpan<byte> aad,
+        ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
         Span<byte> y = stackalloc byte[BlockSizeBytes];
         y.Clear();
@@ -281,8 +291,9 @@ internal static class GcmCore
     /// <param name="output">The output buffer.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void GctrAes(ReadOnlySpan<uint> roundKeys, int rounds,
-                                ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
+    public static void GctrAes(
+        ReadOnlySpan<uint> roundKeys, int rounds,
+        ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (input.Length == 0)
         {
@@ -337,8 +348,9 @@ internal static class GcmCore
     /// <param name="output">The output buffer.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void GctrAesNi(ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
-                                  ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
+    public static void GctrAesNi(
+        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
+        ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (input.Length == 0)
         {
@@ -555,7 +567,7 @@ internal static class GcmCore
     /// <param name="y0">High 64 bits of y (modified in place with result).</param>
     /// <param name="y1">Low 64 bits of y (modified in place with result).</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void GfMulShoup(ulong[] table, ref ulong y0, ref ulong y1)
+    private static void GfMulShoup(ReadOnlySpan<ulong> table, ref ulong y0, ref ulong y1)
     {
         ulong x0 = y0, x1 = y1;
         ulong z0 = 0, z1 = 0;
@@ -600,7 +612,8 @@ internal static class GcmCore
     /// Processes blocks for GHASH using a precomputed Shoup table.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void ProcessBlocks(ulong[] shoupTable, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
+    private static void ProcessBlocks(
+        ReadOnlySpan<ulong> shoupTable, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
         Span<byte> padded = stackalloc byte[BlockSizeBytes];
@@ -838,6 +851,7 @@ internal static class GcmCore
         y.CopyTo(output);
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<byte> ProcessBlocksClmul(
         Vector128<byte> hSwapped, ReadOnlySpan<byte> data, Vector128<byte> y)
@@ -856,8 +870,8 @@ internal static class GcmCore
         if (offset < data.Length)
         {
             Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            padded.Clear();
             data.Slice(offset).CopyTo(padded);
+            padded.Slice(data.Length - offset).Clear();
             var block = Vector128.Create(padded);
             block = Ssse3.Shuffle(block, ByteSwapMask);
             y = Sse2.Xor(y, block);

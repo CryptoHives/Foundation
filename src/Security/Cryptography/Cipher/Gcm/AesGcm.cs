@@ -5,9 +5,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 #if NET8_0_OR_GREATER
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 #endif
@@ -113,7 +113,8 @@ public abstract class AesGcm : IAeadCipher
         _h1 = BinaryPrimitives.ReadUInt64BigEndian(_h.AsSpan(sizeof(UInt64)));
 
         // Precompute 4-bit Shoup table for fast GF(2^128) multiplication
-        _shoupTable = GcmCore.BuildShoupTable(_h0, _h1);
+        _shoupTable = new ulong[GcmCore.ShoupTableSpanSize];
+        GcmCore.BuildShoupTable(_h0, _h1, _shoupTable);
 
 #if NET8_0_OR_GREATER
         if (GcmCore.IsClmulSupported)
@@ -274,8 +275,9 @@ public abstract class AesGcm : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Encrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         byte[] result = new byte[plaintext.Length + TagSizeBytes];
         Span<byte> ciphertext = result.AsSpan(0, plaintext.Length);
@@ -287,8 +289,9 @@ public abstract class AesGcm : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Decrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytes)
             throw new CryptographicException("Ciphertext too short.");
@@ -342,7 +345,7 @@ public abstract class AesGcm : IAeadCipher
         }
     }
 
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void GctrDispatch(ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
@@ -355,7 +358,7 @@ public abstract class AesGcm : IAeadCipher
         GcmCore.GctrAes(_encRoundKeys, _rounds, icb, input, output);
     }
 
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void GHashDispatch(ReadOnlySpan<byte> aad, ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
