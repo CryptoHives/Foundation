@@ -37,6 +37,11 @@ internal static class AesCore
     public const int BlockSizeBits = 128;
 
     /// <summary>
+    /// Maximum number of round keys (AES-256: 15 round keys).
+    /// </summary>
+    public const int MaxRoundKeys = 15;
+
+    /// <summary>
     /// Number of columns in the state (Nb = 4 for AES).
     /// </summary>
     public const int Nb = 4;

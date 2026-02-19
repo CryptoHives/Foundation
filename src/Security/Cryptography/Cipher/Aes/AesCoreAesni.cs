@@ -28,11 +28,6 @@ internal static class AesCoreAesNi
     }
 
     /// <summary>
-    /// Maximum number of round keys (AES-256: 15 round keys).
-    /// </summary>
-    internal const int MaxRoundKeys = 15;
-
-    /// <summary>
     /// Expands a cipher key into the AES-NI encryption key schedule.
     /// </summary>
     /// <param name="key">The cipher key (16, 24, or 32 bytes).</param>
