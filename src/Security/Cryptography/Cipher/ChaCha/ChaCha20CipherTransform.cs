@@ -19,10 +19,10 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
 {
     private readonly byte[] _key;
     private readonly byte[] _nonce;
+    private readonly byte[] _keystreamBuffer;
 
     private uint _counter;
     private readonly uint _initialCounter;
-    private readonly byte[] _keystreamBuffer;
     private ChaChaCore _chaChaCore;
     private int _keystreamPosition;
     private bool _disposed;
@@ -33,7 +33,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     /// <param name="key">The 32-byte key.</param>
     /// <param name="nonce">The 12-byte nonce.</param>
     /// <param name="initialCounter">The initial block counter (usually 0 or 1).</param>
-    public ChaCha20CipherTransform(byte[] key, byte[] nonce, uint initialCounter = 0)
+    public ChaCha20CipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint initialCounter = 0)
         : this(SimdSupport.All, key, nonce, initialCounter)
     {
     }
@@ -45,18 +45,18 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     /// <param name="key">The 32-byte key.</param>
     /// <param name="nonce">The 12-byte nonce.</param>
     /// <param name="initialCounter">The initial block counter (usually 0 or 1).</param>
-    internal ChaCha20CipherTransform(SimdSupport simdSupport, byte[] key, byte[] nonce, uint initialCounter = 0)
+    internal ChaCha20CipherTransform(SimdSupport simdSupport, ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint initialCounter = 0)
     {
-        if (key == null || key.Length != ChaChaCore.KeySizeBytes)
+        if (key.Length != ChaChaCore.KeySizeBytes)
             throw new ArgumentException($"Key must be {ChaChaCore.KeySizeBytes} bytes.", nameof(key));
-        if (nonce == null || nonce.Length != ChaChaCore.NonceSizeBytes)
+        if (nonce.Length != ChaChaCore.NonceSizeBytes)
             throw new ArgumentException($"Nonce must be {ChaChaCore.NonceSizeBytes} bytes.", nameof(nonce));
 
         _chaChaCore = new ChaChaCore(simdSupport);
         _key = new byte[ChaChaCore.KeySizeBytes];
         _nonce = new byte[ChaChaCore.NonceSizeBytes];
-        Buffer.BlockCopy(key, 0, _key, 0, ChaChaCore.KeySizeBytes);
-        Buffer.BlockCopy(nonce, 0, _nonce, 0, ChaChaCore.NonceSizeBytes);
+        key.Slice(0, ChaChaCore.KeySizeBytes).CopyTo(_key);
+        nonce.Slice(0, ChaChaCore.NonceSizeBytes).CopyTo(_nonce);
 
         _counter = initialCounter;
         _initialCounter = initialCounter;

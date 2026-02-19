@@ -119,7 +119,7 @@ public sealed class ChaCha20 : SymmetricCipher
     internal static ChaCha20 Create(SimdSupport simdSupport) => new(simdSupport);
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
         ValidateIVSize(iv.Length);
@@ -127,7 +127,7 @@ public sealed class ChaCha20 : SymmetricCipher
     }
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         // ChaCha20 is symmetric - encryption and decryption are the same
         return CreateCipherEncryptor(key, iv);

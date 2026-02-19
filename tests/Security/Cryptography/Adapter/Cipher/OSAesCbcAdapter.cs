@@ -45,11 +45,11 @@ internal sealed class OSAesCbcAdapter : SymmetricCipher
     public override int IVSize => 16;
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
         => new OSAesCbcTransform(key, iv, forEncryption: true);
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
         => new OSAesCbcTransform(key, iv, forEncryption: false);
 }
 
@@ -73,10 +73,19 @@ internal sealed class OSAesCbcTransform : ICipherTransform
     /// <summary>
     /// Initializes a new instance of the <see cref="OSAesCbcTransform"/> class.
     /// </summary>
-    public OSAesCbcTransform(byte[] key, byte[] iv, bool forEncryption)
+    public OSAesCbcTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool forEncryption)
     {
-        _key = (byte[])key.Clone();
-        _iv = (byte[])iv.Clone();
+        _key = new byte[key.Length];
+        key.CopyTo(_key);
+        if (iv.Length > 0)
+        {
+            _iv = new byte[iv.Length];
+            iv.CopyTo(_iv);
+        }
+        else
+        {
+            _iv = Array.Empty<byte>();
+        }
         _forEncryption = forEncryption;
 
         _aes = OS.Aes.Create();

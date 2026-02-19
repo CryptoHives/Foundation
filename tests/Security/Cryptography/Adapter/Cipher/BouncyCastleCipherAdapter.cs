@@ -56,11 +56,11 @@ internal sealed class BouncyCastleCipherAdapter : SymmetricCipher
     public override int IVSize => _ivSize;
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
         => new BouncyCastleCipherTransform(_cipherFactory(), key, iv, forEncryption: true, initialCounter: InitialCounter);
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
         => new BouncyCastleCipherTransform(_cipherFactory(), key, iv, forEncryption: false, initialCounter: InitialCounter);
 
     /// <summary>
@@ -129,11 +129,20 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
     /// <summary>
     /// Initializes a new instance of the <see cref="BouncyCastleCipherTransform"/> class.
     /// </summary>
-    public BouncyCastleCipherTransform(IBufferedCipher cipher, byte[] key, byte[] iv, bool forEncryption, uint initialCounter = 0)
+    public BouncyCastleCipherTransform(IBufferedCipher cipher, ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool forEncryption, uint initialCounter = 0)
     {
         _cipher = cipher;
-        _key = (byte[])key.Clone();
-        _iv = iv != null ? (byte[])iv.Clone() : Array.Empty<byte>();
+        _key = new byte[key.Length];
+        key.CopyTo(_key);
+        if (iv.Length > 0)
+        {
+            _iv = new byte[iv.Length];
+            iv.CopyTo(_iv);
+        }
+        else
+        {
+            _iv = Array.Empty<byte>();
+        }
         _forEncryption = forEncryption;
 #if !NET8_0_OR_GREATER
         _inputBuffer = Array.Empty<byte>();

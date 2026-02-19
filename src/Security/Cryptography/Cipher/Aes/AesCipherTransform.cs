@@ -64,7 +64,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
-    public AesCipherTransform(byte[] key, byte[] iv, bool encrypting, CipherMode mode, PaddingMode padding)
+    public AesCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
         : this(SimdSupport.All, key, iv, encrypting, mode, padding)
     {
     }
@@ -78,7 +78,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
-    internal AesCipherTransform(SimdSupport simdSupport, byte[] key, byte[] iv, bool encrypting, CipherMode mode, PaddingMode padding)
+    internal AesCipherTransform(SimdSupport simdSupport, ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
     {
         _encrypting = encrypting;
         _mode = mode;
@@ -129,9 +129,9 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         {
             var ivSpan = new Span<byte>(ivPtr, AesCore.BlockSizeBytes);
             ivSpan.Clear();
-            if (iv != null && iv.Length >= AesCore.BlockSizeBytes)
+            if (iv.Length >= AesCore.BlockSizeBytes)
             {
-                iv.AsSpan(0, AesCore.BlockSizeBytes).CopyTo(ivSpan);
+                iv.Slice(0, AesCore.BlockSizeBytes).CopyTo(ivSpan);
             }
         }
 

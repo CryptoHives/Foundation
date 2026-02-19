@@ -5,17 +5,19 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher.Compat;
 using System;
+using CH = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Base class for CryptoHives symmetric cipher implementations.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class extends <see cref="System.Security.Cryptography.SymmetricAlgorithm"/>
+/// This class extends <see cref="OS.SymmetricAlgorithm"/>
 /// to enable drop-in replacement: switching the <c>using</c> directive from
 /// <c>System.Security.Cryptography</c> to
 /// <c>CryptoHives.Foundation.Security.Cryptography.Cipher</c> provides a managed
-/// implementation while preserving API compatibility with <see cref="System.Security.Cryptography.CryptoStream"/>
+/// implementation while preserving API compatibility with <see cref="OS.CryptoStream"/>
 /// and other .NET cryptographic infrastructure.
 /// </para>
 /// <para>
@@ -35,7 +37,7 @@ using System;
 /// </code>
 /// </para>
 /// </remarks>
-public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAlgorithm
+public abstract class SymmetricCipher : OS.SymmetricAlgorithm
 {
     private CipherMode _mode = CipherMode.CBC;
     private PaddingMode _padding = PaddingMode.PKCS7;
@@ -78,7 +80,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">Value is null.</exception>
-    /// <exception cref="System.Security.Cryptography.CryptographicException">Value has an invalid size.</exception>
+    /// <exception cref="OS.CryptographicException">Value has an invalid size.</exception>
     public override byte[] IV
     {
         get
@@ -102,7 +104,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// Gets or sets the secret key for the cipher operation.
     /// </summary>
     /// <exception cref="ArgumentNullException">Value is null.</exception>
-    /// <exception cref="System.Security.Cryptography.CryptographicException">Value has an invalid size.</exception>
+    /// <exception cref="OS.CryptographicException">Value has an invalid size.</exception>
     public override byte[] Key
     {
         get
@@ -127,8 +129,8 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// Gets or sets the cipher mode of operation.
     /// </summary>
     /// <remarks>
-    /// This property shadows <see cref="System.Security.Cryptography.SymmetricAlgorithm.Mode"/>
-    /// to use <see cref="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode"/>,
+    /// This property shadows <see cref="OS.SymmetricAlgorithm.Mode"/>
+    /// to use <see cref="CipherMode"/>,
     /// which includes additional modes such as <see cref="CipherMode.CTR"/>,
     /// <see cref="CipherMode.GCM"/>, <see cref="CipherMode.CCM"/>, and
     /// <see cref="CipherMode.Stream"/>.
@@ -143,9 +145,9 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// Gets or sets the padding mode.
     /// </summary>
     /// <remarks>
-    /// This property shadows <see cref="System.Security.Cryptography.SymmetricAlgorithm.Padding"/>
-    /// to use <see cref="CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode"/>,
-    /// whose values are identical to <see cref="System.Security.Cryptography.PaddingMode"/>.
+    /// This property shadows <see cref="OS.SymmetricAlgorithm.Padding"/>
+    /// to use <see cref="PaddingMode"/>,
+    /// whose values are identical to <see cref="OS.PaddingMode"/>.
     /// </remarks>
     public new virtual PaddingMode Padding
     {
@@ -184,7 +186,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     public override void GenerateKey()
     {
         KeyValue = new byte[KeySizeValue / 8];
-        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+        using var rng = OS.RandomNumberGenerator.Create();
         rng.GetBytes(KeyValue);
     }
 
@@ -194,7 +196,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     public override void GenerateIV()
     {
         IVValue = new byte[IVSize];
-        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+        using var rng = OS.RandomNumberGenerator.Create();
         rng.GetBytes(IVValue);
     }
 
@@ -202,7 +204,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// Creates an encryptor transform using the current key and IV.
     /// </summary>
     /// <returns>A new encryptor transform.</returns>
-    /// <exception cref="System.Security.Cryptography.CryptographicException">Key or IV is not set.</exception>
+    /// <exception cref="OS.CryptographicException">Key or IV is not set.</exception>
     public new ICipherTransform CreateEncryptor()
     {
         return CreateCipherEncryptor(GetKeyOrThrow(), GetIVOrThrow());
@@ -214,7 +216,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// <param name="rgbKey">The secret key.</param>
     /// <param name="rgbIV">The initialization vector or nonce.</param>
     /// <returns>A new encryptor transform.</returns>
-    public override System.Security.Cryptography.ICryptoTransform CreateEncryptor(byte[] rgbKey, byte[]? rgbIV)
+    public override OS.ICryptoTransform CreateEncryptor(byte[] rgbKey, byte[]? rgbIV)
     {
         return CreateCipherEncryptor(rgbKey, rgbIV ?? GetIVOrThrow());
     }
@@ -223,7 +225,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// Creates a decryptor transform using the current key and IV.
     /// </summary>
     /// <returns>A new decryptor transform.</returns>
-    /// <exception cref="System.Security.Cryptography.CryptographicException">Key or IV is not set.</exception>
+    /// <exception cref="OS.CryptographicException">Key or IV is not set.</exception>
     public new ICipherTransform CreateDecryptor()
     {
         return CreateCipherDecryptor(GetKeyOrThrow(), GetIVOrThrow());
@@ -235,7 +237,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// <param name="rgbKey">The secret key.</param>
     /// <param name="rgbIV">The initialization vector or nonce.</param>
     /// <returns>A new decryptor transform.</returns>
-    public override System.Security.Cryptography.ICryptoTransform CreateDecryptor(byte[] rgbKey, byte[]? rgbIV)
+    public override OS.ICryptoTransform CreateDecryptor(byte[] rgbKey, byte[]? rgbIV)
     {
         return CreateCipherDecryptor(rgbKey, rgbIV ?? GetIVOrThrow());
     }
@@ -246,7 +248,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// <param name="key">The secret key.</param>
     /// <param name="iv">The initialization vector or nonce.</param>
     /// <returns>A new cipher encryptor transform.</returns>
-    protected abstract ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv);
+    protected abstract ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv);
 
     /// <summary>
     /// Creates a decryptor transform using the specified key and IV.
@@ -254,7 +256,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// <param name="key">The secret key.</param>
     /// <param name="iv">The initialization vector or nonce.</param>
     /// <returns>A new cipher decryptor transform.</returns>
-    protected abstract ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv);
+    protected abstract ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv);
 
     /// <summary>
     /// Encrypts plaintext in a single operation.
@@ -336,7 +338,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// Validates that the specified key size is valid for this algorithm.
     /// </summary>
     /// <param name="bitLength">The key size in bits.</param>
-    /// <exception cref="System.Security.Cryptography.CryptographicException">The key size is invalid.</exception>
+    /// <exception cref="OS.CryptographicException">The key size is invalid.</exception>
     protected void ValidateKeySize(int bitLength)
     {
         foreach (var sizes in LegalKeySizes)
@@ -350,19 +352,19 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
             }
         }
 
-        throw new System.Security.Cryptography.CryptographicException($"Invalid key size: {bitLength} bits. Valid sizes: {FormatKeySizes(LegalKeySizes)}");
+        throw new OS.CryptographicException($"Invalid key size: {bitLength} bits. Valid sizes: {FormatKeySizes(LegalKeySizes)}");
     }
 
     /// <summary>
     /// Validates that the specified IV size is valid for this algorithm and mode.
     /// </summary>
     /// <param name="byteLength">The IV size in bytes.</param>
-    /// <exception cref="System.Security.Cryptography.CryptographicException">The IV size is invalid.</exception>
+    /// <exception cref="OS.CryptographicException">The IV size is invalid.</exception>
     protected virtual void ValidateIVSize(int byteLength)
     {
         if (byteLength != IVSize)
         {
-            throw new System.Security.Cryptography.CryptographicException($"Invalid IV size: {byteLength} bytes. Expected: {IVSize} bytes.");
+            throw new OS.CryptographicException($"Invalid IV size: {byteLength} bytes. Expected: {IVSize} bytes.");
         }
     }
 
@@ -383,7 +385,7 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// </summary>
     protected byte[] GetKeyOrThrow()
     {
-        return KeyValue ?? throw new System.Security.Cryptography.CryptographicException("Key has not been set.");
+        return KeyValue ?? throw new OS.CryptographicException("Key has not been set.");
     }
 
     /// <summary>
@@ -391,10 +393,10 @@ public abstract class SymmetricCipher : System.Security.Cryptography.SymmetricAl
     /// </summary>
     protected byte[] GetIVOrThrow()
     {
-        return IVValue ?? throw new System.Security.Cryptography.CryptographicException("IV/nonce has not been set.");
+        return IVValue ?? throw new OS.CryptographicException("IV/nonce has not been set.");
     }
 
-    private static string FormatKeySizes(System.Security.Cryptography.KeySizes[] sizes)
+    private static string FormatKeySizes(OS.KeySizes[] sizes)
     {
         var parts = new System.Collections.Generic.List<string>();
         foreach (var size in sizes)

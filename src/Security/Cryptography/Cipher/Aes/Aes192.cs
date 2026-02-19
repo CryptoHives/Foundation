@@ -3,6 +3,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+using System;
 using System.Security.Cryptography;
 
 /// <summary>
@@ -80,14 +81,14 @@ public sealed class Aes192 : SymmetricCipher
     internal static Aes192 Create(SimdSupport simdSupport) => new(simdSupport);
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherEncryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
         return new AesCipherTransform(_simdSupport, key, iv, encrypting: true, Mode, Padding);
     }
 
     /// <inheritdoc/>
-    protected override ICipherTransform CreateCipherDecryptor(byte[] key, byte[] iv)
+    protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
         return new AesCipherTransform(_simdSupport, key, iv, encrypting: false, Mode, Padding);
