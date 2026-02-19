@@ -59,6 +59,7 @@ The Cryptography package provides specification-based implementations of cryptog
 - Keccak-256, Keccak-384, Keccak-512 for Ethereum compatibility
 - International standards: SM3 (Chinese), Streebog/GOST (Russian), Kupyna/DSTU (Ukrainian), LSH/KS (Korean), Whirlpool (ISO)
 - Legacy algorithms: MD5, SHA-1, RIPEMD-160 (for compatibility only)
+- Aes, Aes-Gcm, Aes-Ccm and ChaCha20-Poly1305 cipher implementations.
 - Cross-platform consistency without OS crypto API dependencies
 
 [Explore Security.Cryptography Package](packages/security/cryptography/index.md)

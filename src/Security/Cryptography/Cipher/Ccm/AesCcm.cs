@@ -5,9 +5,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Security.Cryptography;
-#if NET8_0_OR_GREATER
-using System.Runtime.Intrinsics;
-#endif
 
 /// <summary>
 /// AES-CCM (Counter with CBC-MAC) authenticated encryption implementation.
@@ -57,20 +54,14 @@ using System.Runtime.Intrinsics;
 /// </remarks>
 public abstract class AesCcm : IAeadCipher
 {
-    private readonly byte[] _key;
-    private readonly uint[] _roundKeys;
-    private readonly int _rounds;
+    private CcmCore _core;
     private bool _disposed;
-#if NET8_0_OR_GREATER
-    private readonly Vector128<byte>[]? _niEncRoundKeys;
-    private readonly bool _useAesNi;
-#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AesCcm"/> class.
     /// </summary>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    protected AesCcm(byte[] key) : this(SimdSupport.All, key)
+    protected AesCcm(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
     {
     }
 
@@ -79,41 +70,18 @@ public abstract class AesCcm : IAeadCipher
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    internal AesCcm(SimdSupport simdSupport, byte[] key)
+    internal AesCcm(SimdSupport simdSupport, ReadOnlySpan<byte> key)
     {
-        if (key == null)
-            throw new ArgumentNullException(nameof(key));
         if (key.Length != 16 && key.Length != 24 && key.Length != 32)
             throw new ArgumentException("Key must be 16, 24, or 32 bytes.", nameof(key));
 
-        _key = new byte[key.Length];
-        Buffer.BlockCopy(key, 0, _key, 0, key.Length);
-
-        // Expand key for AES
-        int keyWords = key.Length / 4;
-        int totalWords = 4 * (keyWords + 7);
-        _roundKeys = new uint[totalWords];
-        _rounds = AesCore.ExpandKey(key, _roundKeys);
-
-#if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport.AesNi) != 0 && AesCoreAesNi.IsSupported)
-        {
-            _useAesNi = true;
-            _niEncRoundKeys = new Vector128<byte>[AesCoreAesNi.MaxRoundKeys];
-            AesCoreAesNi.ExpandKey(key, _niEncRoundKeys);
-        }
-#endif
+        _core = new CcmCore(key, simdSupport);
     }
 
     /// <summary>
     /// Gets the SIMD instruction sets supported by AES-CCM on the current platform.
     /// </summary>
-    internal static SimdSupport SimdSupport =>
-#if NET8_0_OR_GREATER
-        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
-#else
-        SimdSupport.None;
-#endif
+    internal static SimdSupport SimdSupport => CcmCore.SimdSupport;
 
     /// <inheritdoc/>
     public abstract string AlgorithmName { get; }
@@ -145,18 +113,12 @@ public abstract class AesCcm : IAeadCipher
         if (ciphertext.Length < plaintext.Length)
             throw new ArgumentException("Ciphertext buffer too small.", nameof(ciphertext));
 
-        CcmCore.Encrypt(
+        _core.Encrypt(
             nonce,
             plaintext,
             associatedData,
             ciphertext.Slice(0, plaintext.Length),
-            tag,
-            _roundKeys,
-            _rounds
-#if NET8_0_OR_GREATER
-            , _useAesNi, _niEncRoundKeys
-#endif
-            );
+            tag);
     }
 
     /// <summary>
@@ -178,18 +140,12 @@ public abstract class AesCcm : IAeadCipher
         if (plaintext.Length < ciphertext.Length)
             throw new ArgumentException("Plaintext buffer too small.", nameof(plaintext));
 
-        bool success = CcmCore.Decrypt(
+        bool success = _core.Decrypt(
             nonce,
             ciphertext,
             tag,
             associatedData,
-            plaintext.Slice(0, ciphertext.Length),
-            _roundKeys,
-            _rounds
-#if NET8_0_OR_GREATER
-            , _useAesNi, _niEncRoundKeys
-#endif
-            );
+            plaintext.Slice(0, ciphertext.Length));
 
         if (!success)
         {
@@ -250,7 +206,7 @@ public abstract class AesCcm : IAeadCipher
         {
             if (disposing)
             {
-                Array.Clear(_key, 0, _key.Length);
+                _core.Clear();
             }
 
             _disposed = true;

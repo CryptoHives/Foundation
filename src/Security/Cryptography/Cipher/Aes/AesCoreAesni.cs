@@ -1,9 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if NET8_0_OR_GREATER
-
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+#if NET8_0_OR_GREATER
 
 using System;
 using System.Runtime.CompilerServices;
@@ -226,6 +226,7 @@ internal static class AesCoreAesNi
     private static void ExpandKey192(ReadOnlySpan<byte> key, Span<Vector128<byte>> roundKeys)
     {
         var k0 = Vector128.Create(key);
+
         // Load 8 bytes for the high part of the 192-bit key
         var k1 = Vector128.Create(
             MemoryMarshal.Read<long>(key.Slice(16)),
@@ -237,8 +238,8 @@ internal static class AesCoreAesNi
         roundKeys[1] = Sse2.Or(
             Sse2.ShiftRightLogical128BitLane(roundKeys[0], 8).AsInt64().AsByte(),
             Sse2.ShiftLeftLogical128BitLane(k0, 8).AsInt64().AsByte());
-        // Hmm — 192-bit key expansion is trickier because round keys don't align to 128 bits.
-        // Let me use a simpler approach: expand to a flat buffer then load round keys.
+
+        // Use scalar key expansion for 192-bit keys, then load as Vector128
         Span<byte> expanded = stackalloc byte[13 * 16];
         ExpandKey192Flat(key, expanded);
         for (int i = 0; i < 13; i++)

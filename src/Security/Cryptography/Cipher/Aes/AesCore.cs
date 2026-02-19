@@ -279,7 +279,7 @@ internal static class AesCore
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
-            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(sizeof(UInt32)), t1);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(1 * sizeof(UInt32)), t1);
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(2 * sizeof(UInt32)), t2);
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(3 * sizeof(UInt32)), t3);
         }
@@ -330,7 +330,7 @@ internal static class AesCore
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
-            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(sizeof(UInt32)), t1);
+            BinaryPrimitives.WriteUInt32BigEndian(output.Slice(1 * sizeof(UInt32)), t1);
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(2 * sizeof(UInt32)), t2);
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(3 * sizeof(UInt32)), t3);
         }

@@ -7,6 +7,8 @@ using System;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 #if NET8_0_OR_GREATER
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 #endif
 
@@ -45,7 +47,7 @@ using System.Runtime.Intrinsics;
 /// </remarks>
 public abstract class AesGcm : IAeadCipher
 {
-    private readonly byte[] _key;
+    private readonly int _keySizeBytes;
     private readonly byte[] _h; // Hash subkey
     private readonly ulong _h0; // High 64 bits of H (avoids byte→ulong conversion in hot path)
     private readonly ulong _h1; // Low 64 bits of H
@@ -54,7 +56,6 @@ public abstract class AesGcm : IAeadCipher
     private readonly int _rounds;
     private bool _disposed;
 #if NET8_0_OR_GREATER
-    private readonly Vector128<byte>[]? _niEncRoundKeys;
     private readonly bool _useAesNi;
     private readonly Vector128<byte> _hClmul;
     private readonly bool _useClmul;
@@ -66,7 +67,7 @@ public abstract class AesGcm : IAeadCipher
     /// Initializes a new instance of the <see cref="AesGcm"/> class.
     /// </summary>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    protected AesGcm(byte[] key) : this(SimdSupport.All, key)
+    protected AesGcm(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
     {
     }
 
@@ -75,17 +76,14 @@ public abstract class AesGcm : IAeadCipher
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    internal AesGcm(SimdSupport simdSupport, byte[] key)
+    internal AesGcm(SimdSupport simdSupport, ReadOnlySpan<byte> key)
     {
-        if (key == null)
-            throw new ArgumentNullException(nameof(key));
         if (key.Length != 16 && key.Length != 24 && key.Length != 32)
             throw new ArgumentException("Key must be 16, 24, or 32 bytes.", nameof(key));
 
-        _key = new byte[key.Length];
-        Buffer.BlockCopy(key, 0, _key, 0, key.Length);
+        _keySizeBytes = key.Length;
 
-        // Expand key for AES
+        // Expand key — single pinned buffer for both managed and AES-NI paths
         int keyWords = key.Length / 4;
         int totalWords = 4 * (keyWords + 7);
         _encRoundKeys = new uint[totalWords];
@@ -100,13 +98,13 @@ public abstract class AesGcm : IAeadCipher
         if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
         {
             _useAesNi = true;
-            _niEncRoundKeys = new Vector128<byte>[AesCoreAesNi.MaxRoundKeys];
-            AesCoreAesNi.ExpandKey(key, _niEncRoundKeys);
-            AesCoreAesNi.EncryptBlock(zeroBlock, _h, _niEncRoundKeys, _rounds);
+            _rounds = AesCoreAesNi.ExpandKey(key, AesNiRoundKeys);
+            AesCoreAesNi.EncryptBlock(zeroBlock, _h, AesNiRoundKeys, _rounds);
         }
         else
 #endif
         {
+            _rounds = AesCore.ExpandKey(key, _encRoundKeys);
             AesCore.EncryptBlock(zeroBlock, _h, _encRoundKeys, _rounds);
         }
 
@@ -132,6 +130,17 @@ public abstract class AesGcm : IAeadCipher
 #endif
     }
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Gets the round keys reinterpreted as <see cref="Vector128{T}"/> for AES-NI dispatch.
+    /// </summary>
+    private Span<Vector128<byte>> AesNiRoundKeys
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => MemoryMarshal.Cast<uint, Vector128<byte>>(_encRoundKeys.AsSpan());
+    }
+#endif
+
     /// <summary>
     /// Gets the SIMD instruction sets supported by AES-GCM on the current platform.
     /// </summary>
@@ -146,7 +155,7 @@ public abstract class AesGcm : IAeadCipher
     public abstract string AlgorithmName { get; }
 
     /// <inheritdoc/>
-    public int KeySizeBytes => _key.Length;
+    public int KeySizeBytes => _keySizeBytes;
 
     /// <inheritdoc/>
     public int NonceSizeBytes => GcmCore.NonceSizeBytes;
@@ -182,7 +191,7 @@ public abstract class AesGcm : IAeadCipher
         {
             // Fused GCTR+GHASH pipeline: 4-block interleaved AES + aggregated CLMUL
             GcmCore.EncryptPipelined(
-                _niEncRoundKeys!, _rounds, _hPowers!, _hClmul,
+                AesNiRoundKeys, _rounds, _hPowers!, _hClmul,
                 icb, associatedData, plaintext, ciphertext, ghash);
         }
         else
@@ -228,7 +237,7 @@ public abstract class AesGcm : IAeadCipher
         {
             // Fused GHASH+GCTR pipeline: computes GHASH and decrypts simultaneously
             GcmCore.DecryptPipelined(
-                _niEncRoundKeys!, _rounds, _hPowers!, _hClmul,
+                AesNiRoundKeys, _rounds, _hPowers!, _hClmul,
                 icb, associatedData, ciphertext, plaintext, ghash);
 
             // Compute expected tag
@@ -315,7 +324,6 @@ public abstract class AesGcm : IAeadCipher
         {
             if (disposing)
             {
-                Array.Clear(_key, 0, _key.Length);
                 Array.Clear(_h, 0, _h.Length);
                 Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
                 Array.Clear(_shoupTable, 0, _shoupTable.Length);
@@ -340,7 +348,7 @@ public abstract class AesGcm : IAeadCipher
 #if NET8_0_OR_GREATER
         if (_useAesNi)
         {
-            GcmCore.GctrAesNi(_niEncRoundKeys!, _rounds, icb, input, output);
+            GcmCore.GctrAesNi(AesNiRoundKeys, _rounds, icb, input, output);
             return;
         }
 #endif

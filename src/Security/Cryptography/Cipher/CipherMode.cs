@@ -3,6 +3,8 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+using System.Diagnostics.CodeAnalysis;
+
 /// <summary>
 /// Specifies the block cipher mode of operation.
 /// </summary>
@@ -25,7 +27,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 /// </list>
 /// </para>
 /// </remarks>
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1008:Enums should have zero value", Justification = "Mirror runtime implementation")]
+[SuppressMessage("Design", "CA1008:Enums should have zero value", Justification = "Mirror runtime implementation")]
 public enum CipherMode
 {
     /// <summary>
@@ -134,7 +136,7 @@ public enum CipherMode
 /// Values match <see cref="System.Security.Cryptography.PaddingMode"/> for compatibility.
 /// </para>
 /// </remarks>
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1008:Enums should have zero value", Justification = "Mirror runtime implementation")]
+[SuppressMessage("Design", "CA1008:Enums should have zero value", Justification = "Mirror runtime implementation")]
 public enum PaddingMode
 {
     /// <summary>

@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Runtime.CompilerServices;
 #if NET8_0_OR_GREATER
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 #endif
 
@@ -27,7 +28,7 @@ using System.Runtime.Intrinsics;
 /// </list>
 /// </para>
 /// </remarks>
-internal static class CcmCore
+internal readonly struct CcmCore
 {
     /// <summary>
     /// Block size in bytes (128 bits = 16 bytes).
@@ -54,22 +55,79 @@ internal static class CcmCore
     /// </summary>
     public const int MaxNonceSizeBytes = 13;
 
+    private readonly uint[] _roundKeys;
+    private readonly int _rounds;
+#if NET8_0_OR_GREATER
+    private readonly bool _useAesNi;
+#endif
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CcmCore"/> struct with the specified key and SIMD support.
+    /// </summary>
+    /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    public CcmCore(ReadOnlySpan<byte> key, SimdSupport simdSupport)
+    {
+        int keyWords = key.Length / 4;
+        int totalWords = 4 * (keyWords + 7);
+        _roundKeys = new uint[totalWords];
+
+#if NET8_0_OR_GREATER
+        if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
+        {
+            _useAesNi = true;
+            _rounds = AesCoreAesNi.ExpandKey(key, AesNiRoundKeys);
+        }
+        else
+#endif
+        {
+            _rounds = AesCore.ExpandKey(key, _roundKeys);
+        }
+    }
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by AES-CCM on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport =>
+#if NET8_0_OR_GREATER
+        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
+#else
+        SimdSupport.None;
+#endif
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Gets the round keys reinterpreted as <see cref="Vector128{T}"/> for AES-NI dispatch.
+    /// </summary>
+    private Span<Vector128<byte>> AesNiRoundKeys
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => MemoryMarshal.Cast<uint, Vector128<byte>>(_roundKeys.AsSpan());
+    }
+#endif
+
+    /// <summary>
+    /// Clears the round key material.
+    /// </summary>
+    public void Clear()
+    {
+        Array.Clear(_roundKeys, 0, _roundKeys.Length);
+    }
+
     /// <summary>
     /// Encrypts and authenticates data using CCM mode with AES.
     /// </summary>
-    public static void Encrypt(
+    /// <param name="nonce">The nonce (7-13 bytes).</param>
+    /// <param name="plaintext">The plaintext to encrypt.</param>
+    /// <param name="associatedData">Additional authenticated data.</param>
+    /// <param name="ciphertext">Output buffer for ciphertext.</param>
+    /// <param name="tag">Output buffer for authentication tag.</param>
+    public void Encrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> plaintext,
         ReadOnlySpan<byte> associatedData,
         Span<byte> ciphertext,
-        Span<byte> tag,
-        ReadOnlySpan<uint> roundKeys,
-        int rounds
-#if NET8_0_OR_GREATER
-        , bool useAesNi = false,
-        Vector128<byte>[]? niRoundKeys = null
-#endif
-        )
+        Span<byte> tag)
     {
         ValidateParameters(nonce, plaintext, tag);
 
@@ -78,27 +136,15 @@ internal static class CcmCore
 
         // Compute CBC-MAC
         Span<byte> macTag = stackalloc byte[BlockSizeBytes];
-        ComputeCbcMac(nonce, plaintext, associatedData, macTag, L, M, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        ComputeCbcMac(nonce, plaintext, associatedData, macTag, L, M);
 
         // Encrypt using CTR mode
-        EncryptCtr(nonce, plaintext, ciphertext, L, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        EncryptCtr(nonce, plaintext, ciphertext, L);
 
         // Encrypt the MAC tag
         Span<byte> s0 = stackalloc byte[BlockSizeBytes];
         FormatCounterBlock(nonce, 0, s0, L);
-        EncryptBlockDispatch(s0, s0, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        EncryptBlockDispatch(s0, s0);
 
         // XOR MAC with S_0 to get final tag
         for (int i = 0; i < M; i++)
@@ -110,19 +156,18 @@ internal static class CcmCore
     /// <summary>
     /// Decrypts and verifies data using CCM mode.
     /// </summary>
-    public static bool Decrypt(
+    /// <param name="nonce">The nonce (7-13 bytes).</param>
+    /// <param name="ciphertext">The ciphertext to decrypt.</param>
+    /// <param name="tag">The authentication tag to verify.</param>
+    /// <param name="associatedData">Additional authenticated data.</param>
+    /// <param name="plaintext">Output buffer for plaintext.</param>
+    /// <returns>True if authentication succeeded; otherwise false.</returns>
+    public bool Decrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
         ReadOnlySpan<byte> tag,
         ReadOnlySpan<byte> associatedData,
-        Span<byte> plaintext,
-        ReadOnlySpan<uint> roundKeys,
-        int rounds
-#if NET8_0_OR_GREATER
-        , bool useAesNi = false,
-        Vector128<byte>[]? niRoundKeys = null
-#endif
-        )
+        Span<byte> plaintext)
     {
         ValidateParameters(nonce, ciphertext, tag);
 
@@ -130,28 +175,16 @@ internal static class CcmCore
         int M = tag.Length;
 
         // Decrypt using CTR mode
-        DecryptCtr(nonce, ciphertext, plaintext, L, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        DecryptCtr(nonce, ciphertext, plaintext, L);
 
         // Compute CBC-MAC over decrypted plaintext
         Span<byte> macTag = stackalloc byte[BlockSizeBytes];
-        ComputeCbcMac(nonce, plaintext, associatedData, macTag, L, M, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        ComputeCbcMac(nonce, plaintext, associatedData, macTag, L, M);
 
         // Encrypt the computed MAC tag
         Span<byte> s0 = stackalloc byte[BlockSizeBytes];
         FormatCounterBlock(nonce, 0, s0, L);
-        EncryptBlockDispatch(s0, s0, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        EncryptBlockDispatch(s0, s0);
 
         // XOR to get expected tag
         Span<byte> expectedTag = stackalloc byte[M];
@@ -164,20 +197,13 @@ internal static class CcmCore
         return CryptoUtils.FixedTimeEquals(tag, expectedTag);
     }
 
-    private static void ComputeCbcMac(
+    private void ComputeCbcMac(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> message,
         ReadOnlySpan<byte> associatedData,
         Span<byte> mac,
         int L,
-        int M,
-        ReadOnlySpan<uint> roundKeys,
-        int rounds
-#if NET8_0_OR_GREATER
-        , bool useAesNi,
-        Vector128<byte>[]? niRoundKeys
-#endif
-        )
+        int M)
     {
         // Format B_0 block
         Span<byte> b = stackalloc byte[BlockSizeBytes];
@@ -185,20 +211,12 @@ internal static class CcmCore
 
         // Initialize MAC with B_0
         Span<byte> x = stackalloc byte[BlockSizeBytes];
-        EncryptBlockDispatch(b, x, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        EncryptBlockDispatch(b, x);
 
         // Process AAD if present
         if (associatedData.Length > 0)
         {
-            ProcessAad(associatedData, x, b, roundKeys, rounds
-#if NET8_0_OR_GREATER
-                , useAesNi, niRoundKeys
-#endif
-                );
+            ProcessAad(associatedData, x, b);
         }
 
         // Process message
@@ -214,11 +232,7 @@ internal static class CcmCore
             {
                 b[i] ^= x[i];
             }
-            EncryptBlockDispatch(b, x, roundKeys, rounds
-#if NET8_0_OR_GREATER
-                , useAesNi, niRoundKeys
-#endif
-                );
+            EncryptBlockDispatch(b, x);
 
             offset += BlockSizeBytes;
         }
@@ -228,18 +242,11 @@ internal static class CcmCore
     }
 
     [SkipLocalsInit]
-    private static void EncryptCtr(
+    private void EncryptCtr(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> plaintext,
         Span<byte> ciphertext,
-        int L,
-        ReadOnlySpan<uint> roundKeys,
-        int rounds
-#if NET8_0_OR_GREATER
-        , bool useAesNi,
-        Vector128<byte>[]? niRoundKeys
-#endif
-        )
+        int L)
     {
         Span<byte> counterBlock = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
@@ -253,11 +260,7 @@ internal static class CcmCore
             FormatCounterBlock(nonce, counter, counterBlock, L);
 
             // Generate keystream
-            EncryptBlockDispatch(counterBlock, keystream, roundKeys, rounds
-#if NET8_0_OR_GREATER
-                , useAesNi, niRoundKeys
-#endif
-                );
+            EncryptBlockDispatch(counterBlock, keystream);
 
             // XOR plaintext with keystream
             int remaining = plaintext.Length - offset;
@@ -274,25 +277,14 @@ internal static class CcmCore
     }
 
     [SkipLocalsInit]
-    private static void DecryptCtr(
+    private void DecryptCtr(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
         Span<byte> plaintext,
-        int L,
-        ReadOnlySpan<uint> roundKeys,
-        int rounds
-#if NET8_0_OR_GREATER
-        , bool useAesNi,
-        Vector128<byte>[]? niRoundKeys
-#endif
-        )
+        int L)
     {
         // CTR decryption is same as encryption
-        EncryptCtr(nonce, ciphertext, plaintext, L, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        EncryptCtr(nonce, ciphertext, plaintext, L);
     }
 
     private static void FormatB0Block(
@@ -319,7 +311,6 @@ internal static class CcmCore
         nonce.CopyTo(b0.Slice(1, nonce.Length));
 
         // Message length (big-endian)
-        int lenOffset = BlockSizeBytes - L;
         for (int i = 0; i < L; i++)
         {
             b0[BlockSizeBytes - 1 - i] = (byte)(messageLength >> (i * 8));
@@ -348,17 +339,10 @@ internal static class CcmCore
         }
     }
 
-    private static void ProcessAad(
+    private void ProcessAad(
         ReadOnlySpan<byte> aad,
         Span<byte> x,
-        Span<byte> b,
-        ReadOnlySpan<uint> roundKeys,
-        int rounds
-#if NET8_0_OR_GREATER
-        , bool useAesNi,
-        Vector128<byte>[]? niRoundKeys
-#endif
-        )
+        Span<byte> b)
     {
         b.Clear();
         int pos = 0;
@@ -395,11 +379,7 @@ internal static class CcmCore
         {
             b[i] ^= x[i];
         }
-        EncryptBlockDispatch(b, x, roundKeys, rounds
-#if NET8_0_OR_GREATER
-            , useAesNi, niRoundKeys
-#endif
-            );
+        EncryptBlockDispatch(b, x);
 
         // Process remaining AAD blocks
         while (aadOffset < aad.Length)
@@ -412,11 +392,7 @@ internal static class CcmCore
             {
                 b[i] ^= x[i];
             }
-            EncryptBlockDispatch(b, x, roundKeys, rounds
-#if NET8_0_OR_GREATER
-                , useAesNi, niRoundKeys
-#endif
-                );
+            EncryptBlockDispatch(b, x);
 
             aadOffset += BlockSizeBytes;
         }
@@ -426,25 +402,16 @@ internal static class CcmCore
     /// Dispatches a single AES block encryption to AES-NI or managed implementation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void EncryptBlockDispatch(
-        Span<byte> input,
-        Span<byte> output,
-        ReadOnlySpan<uint> roundKeys,
-        int rounds
-#if NET8_0_OR_GREATER
-        , bool useAesNi,
-        Vector128<byte>[]? niRoundKeys
-#endif
-        )
+    private void EncryptBlockDispatch(Span<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (useAesNi)
+        if (_useAesNi)
         {
-            AesCoreAesNi.EncryptBlock(input, output, niRoundKeys!, rounds);
+            AesCoreAesNi.EncryptBlock(input, output, AesNiRoundKeys, _rounds);
             return;
         }
 #endif
-        AesCore.EncryptBlock(input, output, roundKeys, rounds);
+        AesCore.EncryptBlock(input, output, _roundKeys, _rounds);
     }
 
     private static void ValidateParameters(

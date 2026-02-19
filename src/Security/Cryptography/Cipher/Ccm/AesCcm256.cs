@@ -22,7 +22,7 @@ public sealed class AesCcm256 : AesCcm
     /// Initializes a new instance of the <see cref="AesCcm256"/> class.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
-    public AesCcm256(byte[] key) : this(SimdSupport.All, key)
+    public AesCcm256(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
     {
     }
 
@@ -31,10 +31,8 @@ public sealed class AesCcm256 : AesCcm
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">The 32-byte key.</param>
-    internal AesCcm256(SimdSupport simdSupport, byte[] key) : base(simdSupport, key)
+    internal AesCcm256(SimdSupport simdSupport, ReadOnlySpan<byte> key) : base(simdSupport, key)
     {
-        if (key == null)
-            throw new ArgumentNullException(nameof(key));
         if (key.Length != KeySizeBytesConst)
             throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes for AES-256.", nameof(key));
     }
@@ -50,7 +48,7 @@ public sealed class AesCcm256 : AesCcm
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
     /// <returns>A new AES-256-CCM instance.</returns>
-    public static AesCcm256 Create(byte[] key) => new(key);
+    public static AesCcm256 Create(ReadOnlySpan<byte> key) => new(key);
 
     /// <summary>
     /// Creates a new AES-256-CCM instance with specified SIMD support.
@@ -58,5 +56,5 @@ public sealed class AesCcm256 : AesCcm
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">The 32-byte key.</param>
     /// <returns>A new AES-256-CCM instance.</returns>
-    internal static AesCcm256 Create(SimdSupport simdSupport, byte[] key) => new(simdSupport, key);
+    internal static AesCcm256 Create(SimdSupport simdSupport, ReadOnlySpan<byte> key) => new(simdSupport, key);
 }

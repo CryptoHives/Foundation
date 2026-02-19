@@ -19,7 +19,7 @@ public sealed class AesGcm128 : AesGcm
     /// Initializes a new instance of the <see cref="AesGcm128"/> class.
     /// </summary>
     /// <param name="key">The 16-byte AES key.</param>
-    public AesGcm128(byte[] key) : this(SimdSupport.All, key)
+    public AesGcm128(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
     {
     }
 
@@ -28,10 +28,8 @@ public sealed class AesGcm128 : AesGcm
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">The 16-byte AES key.</param>
-    internal AesGcm128(SimdSupport simdSupport, byte[] key) : base(simdSupport, key)
+    internal AesGcm128(SimdSupport simdSupport, ReadOnlySpan<byte> key) : base(simdSupport, key)
     {
-        if (key == null)
-            throw new ArgumentNullException(nameof(key));
         if (key.Length != KeySize)
             throw new ArgumentException($"Key must be {KeySize} bytes.", nameof(key));
     }
@@ -44,7 +42,7 @@ public sealed class AesGcm128 : AesGcm
     /// </summary>
     /// <param name="key">The 16-byte key.</param>
     /// <returns>A new AES-128-GCM instance.</returns>
-    public static AesGcm128 Create(byte[] key) => new(key);
+    public static AesGcm128 Create(ReadOnlySpan<byte> key) => new(key);
 
     /// <summary>
     /// Creates a new AES-128-GCM instance with specified SIMD support.
@@ -52,6 +50,6 @@ public sealed class AesGcm128 : AesGcm
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">The 16-byte key.</param>
     /// <returns>A new AES-128-GCM instance.</returns>
-    internal static AesGcm128 Create(SimdSupport simdSupport, byte[] key) => new(simdSupport, key);
+    internal static AesGcm128 Create(SimdSupport simdSupport, ReadOnlySpan<byte> key) => new(simdSupport, key);
 }
 
