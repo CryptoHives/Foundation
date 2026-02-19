@@ -5,8 +5,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Runtime.CompilerServices;
-#if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 #endif
 
@@ -28,7 +28,7 @@ using System.Runtime.Intrinsics;
 /// </list>
 /// </para>
 /// </remarks>
-internal readonly struct CcmCore
+internal unsafe struct CcmCore
 {
     /// <summary>
     /// Block size in bytes (128 bits = 16 bytes).
@@ -55,7 +55,12 @@ internal readonly struct CcmCore
     /// </summary>
     public const int MaxNonceSizeBytes = 13;
 
-    private readonly uint[] _roundKeys;
+    /// <summary>
+    /// Maximum number of round key words (AES-256: 4 × (8 + 7) = 60).
+    /// </summary>
+    private const int MaxRoundKeyWords = 60;
+
+    private unsafe fixed uint _roundKeys[MaxRoundKeyWords];
     private readonly int _rounds;
 #if NET8_0_OR_GREATER
     private readonly bool _useAesNi;
@@ -68,20 +73,20 @@ internal readonly struct CcmCore
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     public CcmCore(ReadOnlySpan<byte> key, SimdSupport simdSupport)
     {
-        int keyWords = key.Length / 4;
-        int totalWords = 4 * (keyWords + 7);
-        _roundKeys = new uint[totalWords];
-
+        fixed (uint* p = _roundKeys)
+        {
+            var roundKeys = new Span<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
-        {
-            _useAesNi = true;
-            _rounds = AesCoreAesNi.ExpandKey(key, AesNiRoundKeys);
-        }
-        else
+            if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
+            {
+                _useAesNi = true;
+                _rounds = AesCoreAesNi.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
+            }
+            else
 #endif
-        {
-            _rounds = AesCore.ExpandKey(key, _roundKeys);
+            {
+                _rounds = AesCore.ExpandKey(key, roundKeys);
+            }
         }
     }
 
@@ -95,23 +100,15 @@ internal readonly struct CcmCore
         SimdSupport.None;
 #endif
 
-#if NET8_0_OR_GREATER
-    /// <summary>
-    /// Gets the round keys reinterpreted as <see cref="Vector128{T}"/> for AES-NI dispatch.
-    /// </summary>
-    private Span<Vector128<byte>> AesNiRoundKeys
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => MemoryMarshal.Cast<uint, Vector128<byte>>(_roundKeys.AsSpan());
-    }
-#endif
-
     /// <summary>
     /// Clears the round key material.
     /// </summary>
     public void Clear()
     {
-        Array.Clear(_roundKeys, 0, _roundKeys.Length);
+        fixed (uint* p = _roundKeys)
+        {
+            new Span<uint>(p, MaxRoundKeyWords).Clear();
+        }
     }
 
     /// <summary>
@@ -404,14 +401,19 @@ internal readonly struct CcmCore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void EncryptBlockDispatch(Span<byte> input, Span<byte> output)
     {
-#if NET8_0_OR_GREATER
-        if (_useAesNi)
+        fixed (uint* p = _roundKeys)
         {
-            AesCoreAesNi.EncryptBlock(input, output, AesNiRoundKeys, _rounds);
-            return;
-        }
+            var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
+#if NET8_0_OR_GREATER
+            if (_useAesNi)
+            {
+                AesCoreAesNi.EncryptBlock(input, output,
+                    MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
+                return;
+            }
 #endif
-        AesCore.EncryptBlock(input, output, _roundKeys, _rounds);
+            AesCore.EncryptBlock(input, output, roundKeys, _rounds);
+        }
     }
 
     private static void ValidateParameters(

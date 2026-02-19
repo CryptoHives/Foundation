@@ -23,6 +23,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Resolve repo root from script location (scripts/ is one level below root)
+$RepoRoot = Split-Path $PSScriptRoot
+
 $packageConfigurations = @{
     "Threading" = [ordered]@{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
@@ -168,11 +171,11 @@ if (-not $packageConfigurations.ContainsKey($Project)) {
 $selectedConfig = $packageConfigurations[$Project]
 
 if (-not $PSBoundParameters.ContainsKey('SourceDir') -or [string]::IsNullOrWhiteSpace($SourceDir)) {
-    $SourceDir = $selectedConfig.SourceDir
+    $SourceDir = Join-Path $RepoRoot $selectedConfig.SourceDir
 }
 
 if (-not $PSBoundParameters.ContainsKey('DestDir') -or [string]::IsNullOrWhiteSpace($DestDir)) {
-    $DestDir = $selectedConfig.DestDir
+    $DestDir = Join-Path $RepoRoot $selectedConfig.DestDir
 }
 
 $benchmarkMappings = $selectedConfig.Files
