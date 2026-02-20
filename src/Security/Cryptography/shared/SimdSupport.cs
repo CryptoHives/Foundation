@@ -52,9 +52,19 @@ internal enum SimdSupport
     AesNi = 1 << 5,
 
     /// <summary>
+    /// PClMul instruction set support.
+    /// </summary>
+    PClMul = 1 << 6,
+
+    /// <summary>
+    /// PClMul V256 instruction set support.
+    /// </summary>
+    PClMulV256 = 1 << 7,
+
+    /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
-    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi,
+    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256,
 
     /// <summary>
     /// The default optimization to use for Keccak based algorithms.

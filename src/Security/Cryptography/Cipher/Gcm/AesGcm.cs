@@ -4,8 +4,6 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Buffers.Binary;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 #if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
@@ -47,21 +45,10 @@ using System.Runtime.Intrinsics;
 /// </remarks>
 public abstract class AesGcm : IAeadCipher
 {
+    // GcmCore is a struct and shall not be readonly to avoid defensive copies
+    private GcmCore _gcmCore;
     private readonly int _keySizeBytes;
-    private readonly byte[] _h; // Hash subkey
-    private readonly ulong _h0; // High 64 bits of H (avoids byte→ulong conversion in hot path)
-    private readonly ulong _h1; // Low 64 bits of H
-    private readonly ulong[] _shoupTable; // Precomputed 4-bit Shoup multiplication table
-    private readonly uint[] _encRoundKeys;
-    private readonly int _rounds;
     private bool _disposed;
-#if NET8_0_OR_GREATER
-    private readonly bool _useAesNi;
-    private readonly Vector128<byte> _hClmul;
-    private readonly bool _useClmul;
-    private readonly Vector128<byte>[]? _hPowers;
-    private readonly bool _usePipeline;
-#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AesGcm"/> class.
@@ -82,75 +69,13 @@ public abstract class AesGcm : IAeadCipher
             throw new ArgumentException("Key must be 16, 24, or 32 bytes.", nameof(key));
 
         _keySizeBytes = key.Length;
-
-        // Expand key — single pinned buffer for both managed and AES-NI paths
-        int keyWords = key.Length / 4;
-        int totalWords = 4 * (keyWords + 7);
-        _encRoundKeys = new uint[totalWords];
-        _rounds = AesCore.ExpandKey(key, _encRoundKeys);
-
-        // Compute hash subkey H = AES(K, 0^128)
-        _h = new byte[GcmCore.BlockSizeBytes];
-        Span<byte> zeroBlock = stackalloc byte[GcmCore.BlockSizeBytes];
-        zeroBlock.Clear();
-
-#if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
-        {
-            _useAesNi = true;
-            _rounds = AesCoreAesNi.ExpandKey(key, AesNiRoundKeys);
-            AesCoreAesNi.EncryptBlock(zeroBlock, _h, AesNiRoundKeys, _rounds);
-        }
-        else
-#endif
-        {
-            _rounds = AesCore.ExpandKey(key, _encRoundKeys);
-            AesCore.EncryptBlock(zeroBlock, _h, _encRoundKeys, _rounds);
-        }
-
-        // Store H as ulongs for the optimized GHASH path
-        _h0 = BinaryPrimitives.ReadUInt64BigEndian(_h.AsSpan(0));
-        _h1 = BinaryPrimitives.ReadUInt64BigEndian(_h.AsSpan(sizeof(UInt64)));
-
-        // Precompute 4-bit Shoup table for fast GF(2^128) multiplication
-        _shoupTable = new ulong[GcmCore.ShoupTableSpanSize];
-        GcmCore.BuildShoupTable(_h0, _h1, _shoupTable);
-
-#if NET8_0_OR_GREATER
-        if (GcmCore.IsClmulSupported)
-        {
-            _useClmul = true;
-            _hClmul = GcmCore.PrepareH(_h);
-
-            if (GcmCore.IsPipelineSupported && _useAesNi)
-            {
-                _usePipeline = true;
-                _hPowers = GcmCore.PrepareHPowers(_hClmul);
-            }
-        }
-#endif
+        _gcmCore = new GcmCore(simdSupport, key);
     }
-
-#if NET8_0_OR_GREATER
-    /// <summary>
-    /// Gets the round keys reinterpreted as <see cref="Vector128{T}"/> for AES-NI dispatch.
-    /// </summary>
-    private Span<Vector128<byte>> AesNiRoundKeys
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => MemoryMarshal.Cast<uint, Vector128<byte>>(_encRoundKeys.AsSpan());
-    }
-#endif
 
     /// <summary>
     /// Gets the SIMD instruction sets supported by AES-GCM on the current platform.
     /// </summary>
-    internal static SimdSupport SimdSupport =>
-#if NET8_0_OR_GREATER
-        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
-#else
-        SimdSupport.None;
-#endif
+    internal static SimdSupport SimdSupport => GcmCore.SimdSupport;
 
     /// <inheritdoc/>
     public abstract string AlgorithmName { get; }
@@ -165,9 +90,10 @@ public abstract class AesGcm : IAeadCipher
     public int TagSizeBytes => GcmCore.TagSizeBytes;
 
     /// <inheritdoc/>
-    public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                        Span<byte> ciphertext, Span<byte> tag,
-                        ReadOnlySpan<byte> associatedData = default)
+    public void Encrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
+        Span<byte> ciphertext, Span<byte> tag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (nonce.Length == 0)
             throw new ArgumentException("Nonce cannot be empty.", nameof(nonce));
@@ -178,7 +104,7 @@ public abstract class AesGcm : IAeadCipher
 
         // Compute J0 (initial counter block)
         Span<byte> j0 = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.ComputeJ0(_h, nonce, j0);
+        _gcmCore.ComputeJ0(nonce, j0);
 
         // Compute initial counter for encryption (J0 + 1)
         Span<byte> icb = stackalloc byte[GcmCore.BlockSizeBytes];
@@ -186,35 +112,21 @@ public abstract class AesGcm : IAeadCipher
         IncrementCounter(icb);
 
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
-
-#if NET8_0_OR_GREATER
-        if (_usePipeline)
-        {
-            // Fused GCTR+GHASH pipeline: 4-block interleaved AES + aggregated CLMUL
-            GcmCore.EncryptPipelined(
-                AesNiRoundKeys, _rounds, _hPowers!, _hClmul,
-                icb, associatedData, plaintext, ciphertext, ghash);
-        }
-        else
-#endif
-        {
-            // Serial path: GCTR then GHASH
-            GctrDispatch(icb, plaintext, ciphertext);
-            GHashDispatch(associatedData, ciphertext.Slice(0, plaintext.Length), ghash);
-        }
+        _gcmCore.GEncryptDispatch(icb, associatedData, plaintext, ciphertext, ghash);
 
         // Compute tag: T = GCTR(J0, GHASH(H, A, C))
         Span<byte> fullTag = stackalloc byte[GcmCore.BlockSizeBytes];
-        GctrDispatch(j0, ghash, fullTag);
+        _gcmCore.GctrDispatch(j0, ghash, fullTag);
 
         // Copy tag to output (truncate if necessary)
         fullTag.Slice(0, tag.Length).CopyTo(tag);
     }
 
     /// <inheritdoc/>
-    public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
-                        ReadOnlySpan<byte> tag, Span<byte> plaintext,
-                        ReadOnlySpan<byte> associatedData = default)
+    public bool Decrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
+        ReadOnlySpan<byte> tag, Span<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (nonce.Length == 0)
             throw new ArgumentException("Nonce cannot be empty.", nameof(nonce));
@@ -225,52 +137,23 @@ public abstract class AesGcm : IAeadCipher
 
         // Compute J0
         Span<byte> j0 = stackalloc byte[GcmCore.BlockSizeBytes];
-        GcmCore.ComputeJ0(_h, nonce, j0);
+        _gcmCore.ComputeJ0(nonce, j0);
 
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
-
         Span<byte> icb = stackalloc byte[GcmCore.BlockSizeBytes];
         j0.CopyTo(icb);
         IncrementCounter(icb);
 
-#if NET8_0_OR_GREATER
-        if (_usePipeline)
+        _gcmCore.GDecryptDispatch(icb, associatedData, ciphertext, plaintext, ghash);
+
+        Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
+        _gcmCore.GctrDispatch(j0, ghash, expectedTag);
+
+        if (!CryptoUtils.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
         {
-            // Fused GHASH+GCTR pipeline: computes GHASH and decrypts simultaneously
-            GcmCore.DecryptPipelined(
-                AesNiRoundKeys, _rounds, _hPowers!, _hClmul,
-                icb, associatedData, ciphertext, plaintext, ghash);
-
-            // Compute expected tag
-            Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
-            GctrDispatch(j0, ghash, expectedTag);
-
-            if (!CryptoUtils.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
-            {
-                plaintext.Slice(0, ciphertext.Length).Clear();
-                return false;
-            }
-
-            return true;
+            plaintext.Slice(0, ciphertext.Length).Clear();
+            return false;
         }
-#endif
-
-        // Serial path: GHASH → verify → GCTR
-        GHashDispatch(associatedData, ciphertext, ghash);
-
-        {
-            Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
-            GctrDispatch(j0, ghash, expectedTag);
-
-            if (!CryptoUtils.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
-            {
-                plaintext.Slice(0, ciphertext.Length).Clear();
-                return false;
-            }
-        }
-
-        GctrDispatch(icb, ciphertext, plaintext);
-
         return true;
     }
 
@@ -327,9 +210,7 @@ public abstract class AesGcm : IAeadCipher
         {
             if (disposing)
             {
-                Array.Clear(_h, 0, _h.Length);
-                Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
-                Array.Clear(_shoupTable, 0, _shoupTable.Length);
+                _gcmCore = default;
             }
 
             _disposed = true;
@@ -345,29 +226,4 @@ public abstract class AesGcm : IAeadCipher
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void GctrDispatch(ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
-    {
-#if NET8_0_OR_GREATER
-        if (_useAesNi)
-        {
-            GcmCore.GctrAesNi(AesNiRoundKeys, _rounds, icb, input, output);
-            return;
-        }
-#endif
-        GcmCore.GctrAes(_encRoundKeys, _rounds, icb, input, output);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void GHashDispatch(ReadOnlySpan<byte> aad, ReadOnlySpan<byte> ciphertext, Span<byte> output)
-    {
-#if NET8_0_OR_GREATER
-        if (_useClmul)
-        {
-            GcmCore.GHashCompleteClmul(_hClmul, aad, ciphertext, output);
-            return;
-        }
-#endif
-        GcmCore.GHashComplete(_shoupTable, aad, ciphertext, output);
-    }
 }

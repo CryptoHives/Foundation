@@ -32,9 +32,9 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     /// </summary>
     private const int MaxRoundKeyWords = 60;
 
-#pragma warning disable CS0414 //The field 'AesCipherTransform._buffers' is assigned but its value is never used
+#pragma warning disable CS0414 // The field 'AesCipherTransform._buffers' is assigned but its value is never used
     private AesCipherBuffers _buffers;
-#pragma warning restore
+#pragma warning restore CS0414
     private readonly CipherMode _mode;
     private readonly PaddingMode _padding;
     private readonly int _rounds;
