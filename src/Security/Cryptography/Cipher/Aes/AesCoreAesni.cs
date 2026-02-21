@@ -23,7 +23,6 @@ internal static class AesCoreAesNi
     /// </summary>
     internal static bool IsSupported
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => AesNi.IsSupported;
     }
 
@@ -177,7 +176,6 @@ internal static class AesCoreAesNi
     {
         var k = Vector128.Create(key);
         roundKeys[0] = k;
-
         k = KeyExpand128(k, AesNi.KeygenAssist(k, 0x01));
         roundKeys[1] = k;
         k = KeyExpand128(k, AesNi.KeygenAssist(k, 0x02));

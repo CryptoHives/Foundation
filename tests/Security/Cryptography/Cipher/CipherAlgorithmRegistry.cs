@@ -264,7 +264,7 @@ public static class CipherAlgorithmRegistry
     {
         var aesSimd = CH.Cipher.AesGcm128.SimdSupport;
 
-        // AES-128-GCM - AES-NI
+        // AES-128-GCM - AES-NI (AES-NI + Shoup GHASH, serial)
         if ((aesSimd & CH.SimdSupport.AesNi) != 0)
         {
             implementations.Add(new CipherImplementation(
@@ -273,6 +273,42 @@ public static class CipherAlgorithmRegistry
                 128,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
+        // AES-128-GCM - PClMul (T-table AES + CLMUL GHASH, serial)
+        if ((aesSimd & CH.SimdSupport.PClMul) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-128-GCM",
+                "PClMul",
+                128,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.PClMul, key),
+                Source.Simd));
+        }
+
+        // AES-128-GCM - AES-NI+PClMul (AES-NI + PCLMULQDQ, pipelined)
+        if ((aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul))
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-128-GCM",
+                "AES-NI+PClMul",
+                128,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul, key),
+                Source.Simd));
+        }
+
+        // AES-128-GCM - AES-NI+PClMulV256 (AES-NI + VPCLMULQDQ, stitched)
+        if ((aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMulV256)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMulV256))
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-128-GCM",
+                "AES-NI+PClMulV256",
+                128,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256, key),
                 Source.Simd));
         }
 
@@ -298,7 +334,7 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // AES-192-GCM - AES-NI
+        // AES-192-GCM - AES-NI (AES-NI + Shoup GHASH, serial)
         if ((aesSimd & CH.SimdSupport.AesNi) != 0)
         {
             implementations.Add(new CipherImplementation(
@@ -307,6 +343,42 @@ public static class CipherAlgorithmRegistry
                 192,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
+        // AES-192-GCM - PClMul (T-table AES + CLMUL GHASH, serial)
+        if ((aesSimd & CH.SimdSupport.PClMul) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-192-GCM",
+                "PClMul",
+                192,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.PClMul, key),
+                Source.Simd));
+        }
+
+        // AES-192-GCM - AES-NI+PClMul (AES-NI + PCLMULQDQ, pipelined)
+        if ((aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul))
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-192-GCM",
+                "AES-NI+PClMul",
+                192,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul, key),
+                Source.Simd));
+        }
+
+        // AES-192-GCM - AES-NI+PClMulV256 (AES-NI + VPCLMULQDQ, stitched)
+        if ((aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMulV256)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMulV256))
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-192-GCM",
+                "AES-NI+PClMulV256",
+                192,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256, key),
                 Source.Simd));
         }
 
@@ -332,7 +404,7 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // AES-256-GCM - AES-NI
+        // AES-256-GCM - AES-NI (AES-NI + Shoup GHASH, serial)
         if ((aesSimd & CH.SimdSupport.AesNi) != 0)
         {
             implementations.Add(new CipherImplementation(
@@ -341,6 +413,42 @@ public static class CipherAlgorithmRegistry
                 256,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.AesNi, key),
+                Source.Simd));
+        }
+
+        // AES-256-GCM - PClMul (T-table AES + CLMUL GHASH, serial)
+        if ((aesSimd & CH.SimdSupport.PClMul) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-256-GCM",
+                "PClMul",
+                256,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.PClMul, key),
+                Source.Simd));
+        }
+
+        // AES-256-GCM - AES-NI+PClMul (AES-NI + PCLMULQDQ, pipelined)
+        if ((aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul))
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-256-GCM",
+                "AES-NI+PClMul",
+                256,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul, key),
+                Source.Simd));
+        }
+
+        // AES-256-GCM - AES-NI+PClMulV256 (AES-NI + VPCLMULQDQ, stitched)
+        if ((aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMulV256)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMulV256))
+        {
+            implementations.Add(new CipherImplementation(
+                "AES-256-GCM",
+                "AES-NI+PClMulV256",
+                256,
+                Mode.GCM,
+                (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256, key),
                 Source.Simd));
         }
 
