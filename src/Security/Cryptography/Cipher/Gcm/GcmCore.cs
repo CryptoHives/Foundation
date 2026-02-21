@@ -854,7 +854,7 @@ internal readonly struct GcmCore
 #if NET8_0_OR_GREATER
         if (_usePclmul)
         {
-            GHashCompleteClmul(_hClmul, aad, ciphertext, output);
+            GHashCompletePclmul(_hClmul, aad, ciphertext, output);
             return;
         }
 #endif
@@ -1063,7 +1063,7 @@ internal readonly struct GcmCore
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer for the GHASH result.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    internal static void GHashCompleteClmul(
+    internal static void GHashCompletePclmul(
         Vector128<byte> hSwapped, ReadOnlySpan<byte> aad,
         ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
@@ -1610,374 +1610,28 @@ internal readonly struct GcmCore
         int offset = 0;
         int len = ciphertext.Length;
 
-        if (len > 8 * BlockSizeBytes)
+        // stitched loop overhead pays off with at least two rounds
+        if (len >= 2 * 8 * BlockSizeBytes)
         {
-#if !NOT_STITCHED
-            // 8-block stitched loop: inline AES rounds + GHASH CLMUL interleaved
+            // 8-block stitched loops: inline AES rounds + GHASH CLMUL interleaved
             // for maximum CPU port overlap (AES on port 0/1, CLMUL on port 0)
+            // use non inlined functions which can be better
 #if NET10_0_OR_GREATER
             if (_usePclmulV256)
             {
-                // Single 256-bit loads from consecutive H power pairs
-                var hp256 = MemoryMarshal.Cast<Vector128<byte>, Vector256<ulong>>(hPowers);
-                var hp01 = hp256[0];
-                var hp23 = hp256[1];
-                var hp45 = hp256[2];
-                var hp67 = hp256[3];
-
-                while (offset + 8 * BlockSizeBytes <= len)
-                {
-                    // Load 8 ciphertext blocks as 256-bit pairs (single vmovdqu per pair)
-                    var raw01 = Vector256.Create(ciphertext.Slice(offset, 2 * BlockSizeBytes));
-                    var raw23 = Vector256.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, 2 * BlockSizeBytes));
-                    var raw45 = Vector256.Create(ciphertext.Slice(offset + 4 * BlockSizeBytes, 2 * BlockSizeBytes));
-                    var raw67 = Vector256.Create(ciphertext.Slice(offset + 6 * BlockSizeBytes, 2 * BlockSizeBytes));
-
-                    // Extract individual 128-bit blocks for final XOR with keystream
-                    var ct0 = raw01.GetLower(); var ct1 = raw01.GetUpper();
-                    var ct2 = raw23.GetLower(); var ct3 = raw23.GetUpper();
-                    var ct4 = raw45.GetLower(); var ct5 = raw45.GetUpper();
-                    var ct6 = raw67.GetLower(); var ct7 = raw67.GetUpper();
-
-                    // AVX2 byte-swap for GHASH inputs (vpshufb ymm, 2 blocks per op)
-                    var dp01 = Avx2.Shuffle(raw01, ByteSwapMask256).AsUInt64();
-                    var dp23 = Avx2.Shuffle(raw23, ByteSwapMask256).AsUInt64();
-                    var dp45 = Avx2.Shuffle(raw45, ByteSwapMask256).AsUInt64();
-                    var dp67 = Avx2.Shuffle(raw67, ByteSwapMask256).AsUInt64();
-
-                    // XOR y into first GHASH data block (lower lane only)
-                    dp01 = Avx2.Xor(dp01, y.AsUInt64().ToVector256());
-
-                    // Generate 8 counter blocks
-                    GenerateCounterBlocks8(ref counter,
-                        out var c0, out var c1, out var c2, out var c3,
-                        out var c4, out var c5, out var c6, out var c7);
-
-                    // === Stitched AES + GHASH: interleave for CPU port overlap ===
-
-                    // AES whitening (round 0)
-                    var rk = roundKeys[0];
-                    c0 = Sse2.Xor(c0, rk); c1 = Sse2.Xor(c1, rk);
-                    c2 = Sse2.Xor(c2, rk); c3 = Sse2.Xor(c3, rk);
-                    c4 = Sse2.Xor(c4, rk); c5 = Sse2.Xor(c5, rk);
-                    c6 = Sse2.Xor(c6, rk); c7 = Sse2.Xor(c7, rk);
-
-                    // AES round 1 + GHASH lo
-                    rk = roundKeys[1];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    var lo256 = Pclmulqdq.V256.CarrylessMultiply(hp01.AsInt64(), dp01.AsInt64(), 0x00).AsUInt64();
-                    lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 2 + GHASH lo continued
-                    rk = roundKeys[2];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp45.AsInt64(), dp45.AsInt64(), 0x00).AsUInt64());
-                    lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 3 + GHASH hi
-                    rk = roundKeys[3];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    var hi256 = Pclmulqdq.V256.CarrylessMultiply(hp01.AsInt64(), dp01.AsInt64(), 0x11).AsUInt64();
-                    hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x11).AsUInt64());
-
-                    // AES round 4 + GHASH hi continued
-                    rk = roundKeys[4];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp45.AsInt64(), dp45.AsInt64(), 0x11).AsUInt64());
-                    hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x11).AsUInt64());
-
-                    // AES round 5 + GHASH cross (Karatsuba prep + multiply)
-                    rk = roundKeys[5];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    var ht01 = Avx2.Xor(Avx2.Shuffle(hp01.AsUInt32(), 0x4E).AsUInt64(), hp01);
-                    var dt01 = Avx2.Xor(Avx2.Shuffle(dp01.AsUInt32(), 0x4E).AsUInt64(), dp01);
-                    var mid256 = Pclmulqdq.V256.CarrylessMultiply(ht01.AsInt64(), dt01.AsInt64(), 0x00).AsUInt64();
-                    var ht23 = Avx2.Xor(Avx2.Shuffle(hp23.AsUInt32(), 0x4E).AsUInt64(), hp23);
-                    var dt23 = Avx2.Xor(Avx2.Shuffle(dp23.AsUInt32(), 0x4E).AsUInt64(), dp23);
-                    mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht23.AsInt64(), dt23.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 6 + GHASH cross continued
-                    rk = roundKeys[6];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    var ht45 = Avx2.Xor(Avx2.Shuffle(hp45.AsUInt32(), 0x4E).AsUInt64(), hp45);
-                    var dt45 = Avx2.Xor(Avx2.Shuffle(dp45.AsUInt32(), 0x4E).AsUInt64(), dp45);
-                    mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht45.AsInt64(), dt45.AsInt64(), 0x00).AsUInt64());
-                    var ht67 = Avx2.Xor(Avx2.Shuffle(hp67.AsUInt32(), 0x4E).AsUInt64(), hp67);
-                    var dt67 = Avx2.Xor(Avx2.Shuffle(dp67.AsUInt32(), 0x4E).AsUInt64(), dp67);
-                    mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht67.AsInt64(), dt67.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 7 + GHASH fold 256→128 using AVX2
-                    rk = roundKeys[7];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    lo256 = Avx2.Xor(lo256, Avx2.Permute2x128(lo256, lo256, 0x01));
-                    hi256 = Avx2.Xor(hi256, Avx2.Permute2x128(hi256, hi256, 0x01));
-                    mid256 = Avx2.Xor(mid256, Avx2.Permute2x128(mid256, mid256, 0x01));
-                    mid256 = Avx2.Xor(mid256, Avx2.Xor(lo256, hi256));
-
-                    // AES round 8 + extract to 128-bit for MODREDUCE
-                    rk = roundKeys[8];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    Vector128<ulong> lo = lo256.GetLower();
-                    Vector128<ulong> mid = mid256.GetLower();
-                    Vector128<ulong> hi = hi256.GetLower();
-
-                    // AES round 9 + GHASH MODREDUCE (2 CLMUL)
-                    rk = roundKeys[9];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    y = ModReduceClmul(lo, mid, hi);
-
-                    // AES remaining rounds for 192/256 key sizes
-                    for (int i = 10; i < rounds; i++)
-                    {
-                        rk = roundKeys[i];
-                        c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                        c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                        c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                        c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    }
-
-                    // AES last round
-                    rk = roundKeys[rounds];
-                    c0 = AesNi.EncryptLast(c0, rk); c1 = AesNi.EncryptLast(c1, rk);
-                    c2 = AesNi.EncryptLast(c2, rk); c3 = AesNi.EncryptLast(c3, rk);
-                    c4 = AesNi.EncryptLast(c4, rk); c5 = AesNi.EncryptLast(c5, rk);
-                    c6 = AesNi.EncryptLast(c6, rk); c7 = AesNi.EncryptLast(c7, rk);
-
-                    // XOR keystream with ciphertext to produce plaintext
-                    Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
-                    Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
-                    Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
-                    Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
-                    Sse2.Xor(ct4, c4).CopyTo(plaintext.Slice(offset + 4 * BlockSizeBytes));
-                    Sse2.Xor(ct5, c5).CopyTo(plaintext.Slice(offset + 5 * BlockSizeBytes));
-                    Sse2.Xor(ct6, c6).CopyTo(plaintext.Slice(offset + 6 * BlockSizeBytes));
-                    Sse2.Xor(ct7, c7).CopyTo(plaintext.Slice(offset + 7 * BlockSizeBytes));
-
-                    offset += 8 * BlockSizeBytes;
-                }
+                offset = DecryptStitchedPclmulV256Loop(roundKeys, rounds, hPowers,
+                    ref counter, ref y, ciphertext, plaintext, offset, len);
             }
             else
 #endif
             {
-                // 128-bit PCLMULQDQ stitched path: 24 CLMUL + MODREDUCE spread across AES rounds
-                Vector128<ulong> h8 = hPowers[0].AsUInt64(); Vector128<ulong> h7 = hPowers[1].AsUInt64();
-                Vector128<ulong> h6 = hPowers[2].AsUInt64(); Vector128<ulong> h5 = hPowers[3].AsUInt64();
-                Vector128<ulong> h4 = hPowers[4].AsUInt64(); Vector128<ulong> h3 = hPowers[5].AsUInt64();
-                Vector128<ulong> h2 = hPowers[6].AsUInt64(); Vector128<ulong> h1 = hPowers[7].AsUInt64();
-
-                while (offset + 8 * BlockSizeBytes <= len)
-                {
-                    // Load 8 ciphertext blocks and prepare GHASH inputs
-                    var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
-                    var ct1 = Vector128.Create(ciphertext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
-                    var ct2 = Vector128.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
-                    var ct3 = Vector128.Create(ciphertext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
-                    var ct4 = Vector128.Create(ciphertext.Slice(offset + 4 * BlockSizeBytes, BlockSizeBytes));
-                    var ct5 = Vector128.Create(ciphertext.Slice(offset + 5 * BlockSizeBytes, BlockSizeBytes));
-                    var ct6 = Vector128.Create(ciphertext.Slice(offset + 6 * BlockSizeBytes, BlockSizeBytes));
-                    var ct7 = Vector128.Create(ciphertext.Slice(offset + 7 * BlockSizeBytes, BlockSizeBytes));
-
-                    Vector128<ulong> d0 = Sse2.Xor(y, Ssse3.Shuffle(ct0, ByteSwapMask)).AsUInt64();
-                    Vector128<ulong> d1 = Ssse3.Shuffle(ct1, ByteSwapMask).AsUInt64();
-                    Vector128<ulong> d2 = Ssse3.Shuffle(ct2, ByteSwapMask).AsUInt64();
-                    Vector128<ulong> d3 = Ssse3.Shuffle(ct3, ByteSwapMask).AsUInt64();
-                    Vector128<ulong> d4 = Ssse3.Shuffle(ct4, ByteSwapMask).AsUInt64();
-                    Vector128<ulong> d5 = Ssse3.Shuffle(ct5, ByteSwapMask).AsUInt64();
-                    Vector128<ulong> d6 = Ssse3.Shuffle(ct6, ByteSwapMask).AsUInt64();
-                    Vector128<ulong> d7 = Ssse3.Shuffle(ct7, ByteSwapMask).AsUInt64();
-
-                    // Generate 8 counter blocks
-                    GenerateCounterBlocks8(ref counter,
-                        out var c0, out var c1, out var c2, out var c3,
-                        out var c4, out var c5, out var c6, out var c7);
-
-                    // === Stitched AES + GHASH (128-bit PCLMULQDQ) ===
-
-                    // AES whitening (round 0)
-                    var rk = roundKeys[0];
-                    c0 = Sse2.Xor(c0, rk); c1 = Sse2.Xor(c1, rk);
-                    c2 = Sse2.Xor(c2, rk); c3 = Sse2.Xor(c3, rk);
-                    c4 = Sse2.Xor(c4, rk); c5 = Sse2.Xor(c5, rk);
-                    c6 = Sse2.Xor(c6, rk); c7 = Sse2.Xor(c7, rk);
-
-                    // AES round 1 + GHASH lo (blocks 0-3)
-                    rk = roundKeys[1];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    var lo = Pclmulqdq.CarrylessMultiply(h8.AsInt64(), d0.AsInt64(), 0x00).AsUInt64();
-                    lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h7.AsInt64(), d1.AsInt64(), 0x00).AsUInt64());
-                    lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h6.AsInt64(), d2.AsInt64(), 0x00).AsUInt64());
-                    lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 2 + GHASH lo (blocks 4-7)
-                    rk = roundKeys[2];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h4.AsInt64(), d4.AsInt64(), 0x00).AsUInt64());
-                    lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h3.AsInt64(), d5.AsInt64(), 0x00).AsUInt64());
-                    lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h2.AsInt64(), d6.AsInt64(), 0x00).AsUInt64());
-                    lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 3 + GHASH hi (blocks 0-3)
-                    rk = roundKeys[3];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    var hi = Pclmulqdq.CarrylessMultiply(h8.AsInt64(), d0.AsInt64(), 0x11).AsUInt64();
-                    hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h7.AsInt64(), d1.AsInt64(), 0x11).AsUInt64());
-                    hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h6.AsInt64(), d2.AsInt64(), 0x11).AsUInt64());
-                    hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x11).AsUInt64());
-
-                    // AES round 4 + GHASH hi (blocks 4-7)
-                    rk = roundKeys[4];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h4.AsInt64(), d4.AsInt64(), 0x11).AsUInt64());
-                    hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h3.AsInt64(), d5.AsInt64(), 0x11).AsUInt64());
-                    hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h2.AsInt64(), d6.AsInt64(), 0x11).AsUInt64());
-                    hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x11).AsUInt64());
-
-                    // AES round 5 + GHASH cross (Karatsuba, blocks 0-3)
-                    rk = roundKeys[5];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    Vector128<ulong> ht, dt;
-                    ht = Sse2.Xor(Sse2.Shuffle(h8.AsUInt32(), 0x4E).AsUInt64(), h8);
-                    dt = Sse2.Xor(Sse2.Shuffle(d0.AsUInt32(), 0x4E).AsUInt64(), d0);
-                    var mid = Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64();
-                    ht = Sse2.Xor(Sse2.Shuffle(h7.AsUInt32(), 0x4E).AsUInt64(), h7);
-                    dt = Sse2.Xor(Sse2.Shuffle(d1.AsUInt32(), 0x4E).AsUInt64(), d1);
-                    mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
-                    ht = Sse2.Xor(Sse2.Shuffle(h6.AsUInt32(), 0x4E).AsUInt64(), h6);
-                    dt = Sse2.Xor(Sse2.Shuffle(d2.AsUInt32(), 0x4E).AsUInt64(), d2);
-                    mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
-                    ht = Sse2.Xor(Sse2.Shuffle(h5.AsUInt32(), 0x4E).AsUInt64(), h5);
-                    dt = Sse2.Xor(Sse2.Shuffle(d3.AsUInt32(), 0x4E).AsUInt64(), d3);
-                    mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 6 + GHASH cross (blocks 4-7)
-                    rk = roundKeys[6];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    ht = Sse2.Xor(Sse2.Shuffle(h4.AsUInt32(), 0x4E).AsUInt64(), h4);
-                    dt = Sse2.Xor(Sse2.Shuffle(d4.AsUInt32(), 0x4E).AsUInt64(), d4);
-                    mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
-                    ht = Sse2.Xor(Sse2.Shuffle(h3.AsUInt32(), 0x4E).AsUInt64(), h3);
-                    dt = Sse2.Xor(Sse2.Shuffle(d5.AsUInt32(), 0x4E).AsUInt64(), d5);
-                    mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
-                    ht = Sse2.Xor(Sse2.Shuffle(h2.AsUInt32(), 0x4E).AsUInt64(), h2);
-                    dt = Sse2.Xor(Sse2.Shuffle(d6.AsUInt32(), 0x4E).AsUInt64(), d6);
-                    mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
-                    ht = Sse2.Xor(Sse2.Shuffle(h1.AsUInt32(), 0x4E).AsUInt64(), h1);
-                    dt = Sse2.Xor(Sse2.Shuffle(d7.AsUInt32(), 0x4E).AsUInt64(), d7);
-                    mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
-
-                    // AES round 7 + GHASH fold cross terms (CLMUL_3_POST)
-                    rk = roundKeys[7];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    mid = Sse2.Xor(mid, lo);
-                    mid = Sse2.Xor(mid, hi);
-
-                    // AES round 8 + GHASH MODREDUCE step 1
-                    rk = roundKeys[8];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    var vMul = Vector128.Create(GcmReductionConstant, 0UL).AsInt64();
-                    var t0 = Pclmulqdq.CarrylessMultiply(lo.AsInt64(), vMul, 0x00).AsUInt64();
-                    lo = Sse2.Shuffle(lo.AsUInt32(), 0x4E).AsUInt64();
-                    mid = Sse2.Xor(mid, t0);
-                    mid = Sse2.Xor(mid, lo);
-
-                    // AES round 9 + GHASH MODREDUCE step 2
-                    rk = roundKeys[9];
-                    c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                    c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                    c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                    c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    t0 = Pclmulqdq.CarrylessMultiply(
-                        Sse2.ShiftLeftLogical(mid, 1).AsInt64(), vMul, 0x00).AsUInt64();
-                    mid = Sse2.Shuffle(mid.AsUInt32(), 0x4E).AsUInt64();
-                    var res = Sse2.Xor(hi, mid);
-
-                    // AES remaining rounds for 192/256 key sizes
-                    for (int i = 10; i < rounds; i++)
-                    {
-                        rk = roundKeys[i];
-                        c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
-                        c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
-                        c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
-                        c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
-                    }
-
-                    // AES last round + GHASH final reduction (rotate left by 1)
-                    rk = roundKeys[rounds];
-                    c0 = AesNi.EncryptLast(c0, rk); c1 = AesNi.EncryptLast(c1, rk);
-                    c2 = AesNi.EncryptLast(c2, rk); c3 = AesNi.EncryptLast(c3, rk);
-                    c4 = AesNi.EncryptLast(c4, rk); c5 = AesNi.EncryptLast(c5, rk);
-                    c6 = AesNi.EncryptLast(c6, rk); c7 = AesNi.EncryptLast(c7, rk);
-                    var t1 = Sse2.ShiftLeftLogical(res.AsUInt32(), 1).AsUInt64();
-                    res = Sse2.ShiftRightLogical(res.AsUInt32(), 31).AsUInt64();
-                    t0 = Sse2.Xor(t0, t1);
-                    res = Sse2.Shuffle(res.AsUInt32(), 0x93).AsUInt64();
-                    y = Sse2.Xor(res, t0).AsByte();
-
-                    // XOR keystream with ciphertext to produce plaintext
-                    Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
-                    Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
-                    Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
-                    Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
-                    Sse2.Xor(ct4, c4).CopyTo(plaintext.Slice(offset + 4 * BlockSizeBytes));
-                    Sse2.Xor(ct5, c5).CopyTo(plaintext.Slice(offset + 5 * BlockSizeBytes));
-                    Sse2.Xor(ct6, c6).CopyTo(plaintext.Slice(offset + 6 * BlockSizeBytes));
-                    Sse2.Xor(ct7, c7).CopyTo(plaintext.Slice(offset + 7 * BlockSizeBytes));
-
-                    offset += 8 * BlockSizeBytes;
-                }
+                offset = DecryptStitchedPclmul128Loop(roundKeys, rounds, hPowers,
+                    ref counter, ref y, ciphertext, plaintext, offset, len);
             }
-#else
+        }
+#if mist
+        else
+        {
             while (offset + 8 * BlockSizeBytes <= len)
             {
                 var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
@@ -2024,83 +1678,464 @@ internal readonly struct GcmCore
 
                 offset += 8 * BlockSizeBytes;
             }
+        }
 #endif
 
-            // 4-block fallback
-            while (offset + 4 * BlockSizeBytes <= len)
-            {
-                // Load 4 ciphertext blocks and GHASH them
-                var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
-                var ct1 = Vector128.Create(ciphertext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
-                var ct2 = Vector128.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
-                var ct3 = Vector128.Create(ciphertext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
+        // 4-block fallback
+        while (offset + 4 * BlockSizeBytes <= len)
+        {
+            // Load 4 ciphertext blocks and GHASH them
+            var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
+            var ct1 = Vector128.Create(ciphertext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
+            var ct2 = Vector128.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
+            var ct3 = Vector128.Create(ciphertext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
 
-                Vector128<byte> g0 = Sse2.Xor(y, Ssse3.Shuffle(ct0, ByteSwapMask));
-                Vector128<byte> g1 = Ssse3.Shuffle(ct1, ByteSwapMask);
-                Vector128<byte> g2 = Ssse3.Shuffle(ct2, ByteSwapMask);
-                Vector128<byte> g3 = Ssse3.Shuffle(ct3, ByteSwapMask);
+            Vector128<byte> g0 = Sse2.Xor(y, Ssse3.Shuffle(ct0, ByteSwapMask));
+            Vector128<byte> g1 = Ssse3.Shuffle(ct1, ByteSwapMask);
+            Vector128<byte> g2 = Ssse3.Shuffle(ct2, ByteSwapMask);
+            Vector128<byte> g3 = Ssse3.Shuffle(ct3, ByteSwapMask);
 
-                // Generate 4 counter blocks
-                GenerateCounterBlocks4(ref counter,
-                    out var c0, out var c1, out var c2, out var c3);
+            // Generate 4 counter blocks
+            GenerateCounterBlocks4(ref counter,
+                out var c0, out var c1, out var c2, out var c3);
 
-                // GHASH and AES can overlap on different execution ports
-                y = GfMulReduce4(hPowers, g0, g1, g2, g3);
-                AesCoreAesNi.EncryptBlocks4(ref c0, ref c1, ref c2, ref c3, roundKeys, rounds);
+            // GHASH and AES can overlap on different execution ports
+            y = GfMulReduce4(hPowers, g0, g1, g2, g3);
+            AesCoreAesNi.EncryptBlocks4(ref c0, ref c1, ref c2, ref c3, roundKeys, rounds);
 
-                // XOR keystream with ciphertext to produce plaintext
-                Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
-                Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
-                Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
-                Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
+            // XOR keystream with ciphertext to produce plaintext
+            Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
+            Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
+            Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
+            Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
 
-                offset += 4 * BlockSizeBytes;
-            }
+            offset += 4 * BlockSizeBytes;
+        }
 
-            // Remaining full blocks (1-3)
-            while (offset + BlockSizeBytes <= len)
-            {
-                var ct = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
-                y = Sse2.Xor(y, Ssse3.Shuffle(ct, ByteSwapMask));
-                y = GfMulClmul(_hClmul, y);
-
-                Vector128<byte> c = counter;
-                IncrementCounterVec(ref counter);
-                c.CopyTo(ctrBuf);
-                AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
-
-                var ksVec = Vector128.Create(ksBuf);
-                Sse2.Xor(ct, ksVec).CopyTo(plaintext.Slice(offset));
-                offset += BlockSizeBytes;
-            }
-
-            // Partial final block
-            if (offset < len)
-            {
-                int remaining = len - offset;
-
-                Span<byte> padded = stackalloc byte[BlockSizeBytes];
-                padded.Clear();
-                ciphertext.Slice(offset, remaining).CopyTo(padded);
-                Vector128<byte> block = Ssse3.Shuffle(Vector128.Create(padded), ByteSwapMask);
-                y = Sse2.Xor(y, block);
-                y = GfMulClmul(_hClmul, y);
-
-                counter.CopyTo(ctrBuf);
-                AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
-                for (int i = 0; i < remaining; i++)
-                    plaintext[offset + i] = (byte)(ciphertext[offset + i] ^ ksBuf[i]);
-            }
-
-            // Length block
-            ulong aadBits = (ulong)aad.Length * 8;
-            ulong cBits = (ulong)ciphertext.Length * 8;
-            Vector128<byte> lenBlock = Vector128.Create(cBits, aadBits).AsByte();
-            y = Sse2.Xor(y, lenBlock);
+        // Remaining full blocks (1-3)
+        while (offset + BlockSizeBytes <= len)
+        {
+            var ct = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
+            y = Sse2.Xor(y, Ssse3.Shuffle(ct, ByteSwapMask));
             y = GfMulClmul(_hClmul, y);
 
-            Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
+            Vector128<byte> c = counter;
+            IncrementCounterVec(ref counter);
+            c.CopyTo(ctrBuf);
+            AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
+
+            var ksVec = Vector128.Create(ksBuf);
+            Sse2.Xor(ct, ksVec).CopyTo(plaintext.Slice(offset));
+            offset += BlockSizeBytes;
         }
+
+        // Partial final block
+        if (offset < len)
+        {
+            int remaining = len - offset;
+
+            Span<byte> padded = stackalloc byte[BlockSizeBytes];
+            padded.Clear();
+            ciphertext.Slice(offset, remaining).CopyTo(padded);
+            Vector128<byte> block = Ssse3.Shuffle(Vector128.Create(padded), ByteSwapMask);
+            y = Sse2.Xor(y, block);
+            y = GfMulClmul(_hClmul, y);
+
+            counter.CopyTo(ctrBuf);
+            AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
+            for (int i = 0; i < remaining; i++)
+            {
+                plaintext[offset + i] = (byte)(ciphertext[offset + i] ^ ksBuf[i]);
+            }
+        }
+
+        // Length block
+        ulong aadBits = (ulong)aad.Length * 8;
+        ulong cBits = (ulong)ciphertext.Length * 8;
+        Vector128<byte> lenBlock = Vector128.Create(cBits, aadBits).AsByte();
+        y = Sse2.Xor(y, lenBlock);
+        y = GfMulClmul(_hClmul, y);
+
+        Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
+    }
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// V256 stitched 8-block decrypt loop: VPCLMULQDQ GHASH interleaved with AES-NI rounds.
+    /// </summary>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static int DecryptStitchedPclmulV256Loop(
+        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
+        ReadOnlySpan<Vector128<byte>> hPowers,
+        ref Vector128<byte> counter,
+        ref Vector128<byte> y,
+        ReadOnlySpan<byte> ciphertext,
+        Span<byte> plaintext,
+        int offset,
+        int len)
+    {
+        // Single 256-bit loads from consecutive H power pairs
+        var hp256 = MemoryMarshal.Cast<Vector128<byte>, Vector256<ulong>>(hPowers);
+        var hp01 = hp256[0]; var hp23 = hp256[1]; var hp45 = hp256[2]; var hp67 = hp256[3];
+
+        while (offset + 8 * BlockSizeBytes <= len)
+        {
+            // Load 8 ciphertext blocks as 256-bit pairs (single vmovdqu per pair)
+            var raw01 = Vector256.Create(ciphertext.Slice(offset, 2 * BlockSizeBytes));
+            var raw23 = Vector256.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, 2 * BlockSizeBytes));
+            var raw45 = Vector256.Create(ciphertext.Slice(offset + 4 * BlockSizeBytes, 2 * BlockSizeBytes));
+            var raw67 = Vector256.Create(ciphertext.Slice(offset + 6 * BlockSizeBytes, 2 * BlockSizeBytes));
+
+            // Extract individual 128-bit blocks for final XOR with keystream
+            var ct0 = raw01.GetLower(); var ct1 = raw01.GetUpper();
+            var ct2 = raw23.GetLower(); var ct3 = raw23.GetUpper();
+            var ct4 = raw45.GetLower(); var ct5 = raw45.GetUpper();
+            var ct6 = raw67.GetLower(); var ct7 = raw67.GetUpper();
+
+            // AVX2 byte-swap for GHASH inputs (vpshufb ymm, 2 blocks per op)
+            var dp01 = Avx2.Shuffle(raw01, ByteSwapMask256).AsUInt64();
+            var dp23 = Avx2.Shuffle(raw23, ByteSwapMask256).AsUInt64();
+            var dp45 = Avx2.Shuffle(raw45, ByteSwapMask256).AsUInt64();
+            var dp67 = Avx2.Shuffle(raw67, ByteSwapMask256).AsUInt64();
+
+            // XOR y into first GHASH data block (lower lane only)
+            dp01 = Avx2.Xor(dp01, y.AsUInt64().ToVector256());
+
+            // Generate 8 counter blocks
+            GenerateCounterBlocks8(ref counter,
+                out var c0, out var c1, out var c2, out var c3,
+                out var c4, out var c5, out var c6, out var c7);
+
+            // AES whitening (round 0)
+            var rk = roundKeys[0];
+            c0 = Sse2.Xor(c0, rk); c1 = Sse2.Xor(c1, rk);
+            c2 = Sse2.Xor(c2, rk); c3 = Sse2.Xor(c3, rk);
+            c4 = Sse2.Xor(c4, rk); c5 = Sse2.Xor(c5, rk);
+            c6 = Sse2.Xor(c6, rk); c7 = Sse2.Xor(c7, rk);
+
+            // AES round 1 + GHASH lo
+            rk = roundKeys[1];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            var lo256 = Pclmulqdq.V256.CarrylessMultiply(hp01.AsInt64(), dp01.AsInt64(), 0x00).AsUInt64();
+            lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 2 + GHASH lo continued
+            rk = roundKeys[2];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp45.AsInt64(), dp45.AsInt64(), 0x00).AsUInt64());
+            lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 3 + GHASH hi
+            rk = roundKeys[3];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            var hi256 = Pclmulqdq.V256.CarrylessMultiply(hp01.AsInt64(), dp01.AsInt64(), 0x11).AsUInt64();
+            hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 4 + GHASH hi continued
+            rk = roundKeys[4];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp45.AsInt64(), dp45.AsInt64(), 0x11).AsUInt64());
+            hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 5 + GHASH cross (Karatsuba prep + multiply)
+            rk = roundKeys[5];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            var ht01 = Avx2.Xor(Avx2.Shuffle(hp01.AsUInt32(), 0x4E).AsUInt64(), hp01);
+            var dt01 = Avx2.Xor(Avx2.Shuffle(dp01.AsUInt32(), 0x4E).AsUInt64(), dp01);
+            var mid256 = Pclmulqdq.V256.CarrylessMultiply(ht01.AsInt64(), dt01.AsInt64(), 0x00).AsUInt64();
+            var ht23 = Avx2.Xor(Avx2.Shuffle(hp23.AsUInt32(), 0x4E).AsUInt64(), hp23);
+            var dt23 = Avx2.Xor(Avx2.Shuffle(dp23.AsUInt32(), 0x4E).AsUInt64(), dp23);
+            mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht23.AsInt64(), dt23.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 6 + GHASH cross continued
+            rk = roundKeys[6];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            var ht45 = Avx2.Xor(Avx2.Shuffle(hp45.AsUInt32(), 0x4E).AsUInt64(), hp45);
+            var dt45 = Avx2.Xor(Avx2.Shuffle(dp45.AsUInt32(), 0x4E).AsUInt64(), dp45);
+            mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht45.AsInt64(), dt45.AsInt64(), 0x00).AsUInt64());
+            var ht67 = Avx2.Xor(Avx2.Shuffle(hp67.AsUInt32(), 0x4E).AsUInt64(), hp67);
+            var dt67 = Avx2.Xor(Avx2.Shuffle(dp67.AsUInt32(), 0x4E).AsUInt64(), dp67);
+            mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht67.AsInt64(), dt67.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 7 + GHASH fold 256→128 using AVX2
+            rk = roundKeys[7];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            lo256 = Avx2.Xor(lo256, Avx2.Permute2x128(lo256, lo256, 0x01));
+            hi256 = Avx2.Xor(hi256, Avx2.Permute2x128(hi256, hi256, 0x01));
+            mid256 = Avx2.Xor(mid256, Avx2.Permute2x128(mid256, mid256, 0x01));
+            mid256 = Avx2.Xor(mid256, Avx2.Xor(lo256, hi256));
+
+            // AES round 8 + extract to 128-bit for MODREDUCE
+            rk = roundKeys[8];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            Vector128<ulong> lo = lo256.GetLower();
+            Vector128<ulong> mid = mid256.GetLower();
+            Vector128<ulong> hi = hi256.GetLower();
+
+            // AES round 9 + GHASH MODREDUCE (2 CLMUL)
+            rk = roundKeys[9];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            y = ModReduceClmul(lo, mid, hi);
+
+            // AES remaining rounds for 192/256 key sizes
+            for (int i = 10; i < rounds; i++)
+            {
+                rk = roundKeys[i];
+                c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+                c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+                c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+                c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            }
+
+            // AES last round
+            rk = roundKeys[rounds];
+            c0 = AesNi.EncryptLast(c0, rk); c1 = AesNi.EncryptLast(c1, rk);
+            c2 = AesNi.EncryptLast(c2, rk); c3 = AesNi.EncryptLast(c3, rk);
+            c4 = AesNi.EncryptLast(c4, rk); c5 = AesNi.EncryptLast(c5, rk);
+            c6 = AesNi.EncryptLast(c6, rk); c7 = AesNi.EncryptLast(c7, rk);
+
+            // XOR keystream with ciphertext to produce plaintext
+            Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
+            Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
+            Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
+            Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
+            Sse2.Xor(ct4, c4).CopyTo(plaintext.Slice(offset + 4 * BlockSizeBytes));
+            Sse2.Xor(ct5, c5).CopyTo(plaintext.Slice(offset + 5 * BlockSizeBytes));
+            Sse2.Xor(ct6, c6).CopyTo(plaintext.Slice(offset + 6 * BlockSizeBytes));
+            Sse2.Xor(ct7, c7).CopyTo(plaintext.Slice(offset + 7 * BlockSizeBytes));
+
+            offset += 8 * BlockSizeBytes;
+        }
+        return offset;
+    }
+#endif
+
+    /// <summary>
+    /// PCLMUL128 stitched 8-block decrypt loop: 24 CLMUL + MODREDUCE interleaved with AES-NI rounds.
+    /// </summary>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static int DecryptStitchedPclmul128Loop(
+        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
+        ReadOnlySpan<Vector128<byte>> hPowers,
+        ref Vector128<byte> counter, ref Vector128<byte> y,
+        ReadOnlySpan<byte> ciphertext, Span<byte> plaintext,
+        int offset, int len)
+    {
+        Vector128<ulong> h8 = hPowers[0].AsUInt64(); Vector128<ulong> h7 = hPowers[1].AsUInt64();
+        Vector128<ulong> h6 = hPowers[2].AsUInt64(); Vector128<ulong> h5 = hPowers[3].AsUInt64();
+        Vector128<ulong> h4 = hPowers[4].AsUInt64(); Vector128<ulong> h3 = hPowers[5].AsUInt64();
+        Vector128<ulong> h2 = hPowers[6].AsUInt64(); Vector128<ulong> h1 = hPowers[7].AsUInt64();
+
+        while (offset + 8 * BlockSizeBytes <= len)
+        {
+            var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
+            var ct1 = Vector128.Create(ciphertext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
+            var ct2 = Vector128.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
+            var ct3 = Vector128.Create(ciphertext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
+            var ct4 = Vector128.Create(ciphertext.Slice(offset + 4 * BlockSizeBytes, BlockSizeBytes));
+            var ct5 = Vector128.Create(ciphertext.Slice(offset + 5 * BlockSizeBytes, BlockSizeBytes));
+            var ct6 = Vector128.Create(ciphertext.Slice(offset + 6 * BlockSizeBytes, BlockSizeBytes));
+            var ct7 = Vector128.Create(ciphertext.Slice(offset + 7 * BlockSizeBytes, BlockSizeBytes));
+
+            Vector128<ulong> d0 = Sse2.Xor(y, Ssse3.Shuffle(ct0, ByteSwapMask)).AsUInt64();
+            Vector128<ulong> d1 = Ssse3.Shuffle(ct1, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d2 = Ssse3.Shuffle(ct2, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d3 = Ssse3.Shuffle(ct3, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d4 = Ssse3.Shuffle(ct4, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d5 = Ssse3.Shuffle(ct5, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d6 = Ssse3.Shuffle(ct6, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d7 = Ssse3.Shuffle(ct7, ByteSwapMask).AsUInt64();
+
+            GenerateCounterBlocks8(ref counter,
+                out var c0, out var c1, out var c2, out var c3,
+                out var c4, out var c5, out var c6, out var c7);
+
+            // AES whitening (round 0)
+            var rk = roundKeys[0];
+            c0 = Sse2.Xor(c0, rk); c1 = Sse2.Xor(c1, rk);
+            c2 = Sse2.Xor(c2, rk); c3 = Sse2.Xor(c3, rk);
+            c4 = Sse2.Xor(c4, rk); c5 = Sse2.Xor(c5, rk);
+            c6 = Sse2.Xor(c6, rk); c7 = Sse2.Xor(c7, rk);
+
+            // AES round 1 + GHASH lo (blocks 0-3)
+            rk = roundKeys[1];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            var lo = Pclmulqdq.CarrylessMultiply(h8.AsInt64(), d0.AsInt64(), 0x00).AsUInt64();
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h7.AsInt64(), d1.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h6.AsInt64(), d2.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 2 + GHASH lo (blocks 4-7)
+            rk = roundKeys[2];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h4.AsInt64(), d4.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h3.AsInt64(), d5.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h2.AsInt64(), d6.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 3 + GHASH hi (blocks 0-3)
+            rk = roundKeys[3];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            var hi = Pclmulqdq.CarrylessMultiply(h8.AsInt64(), d0.AsInt64(), 0x11).AsUInt64();
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h7.AsInt64(), d1.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h6.AsInt64(), d2.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 4 + GHASH hi (blocks 4-7)
+            rk = roundKeys[4];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h4.AsInt64(), d4.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h3.AsInt64(), d5.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h2.AsInt64(), d6.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 5 + GHASH cross (Karatsuba, blocks 0-3)
+            rk = roundKeys[5];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            Vector128<ulong> ht, dt;
+            ht = Sse2.Xor(Sse2.Shuffle(h8.AsUInt32(), 0x4E).AsUInt64(), h8);
+            dt = Sse2.Xor(Sse2.Shuffle(d0.AsUInt32(), 0x4E).AsUInt64(), d0);
+            var mid = Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64();
+            ht = Sse2.Xor(Sse2.Shuffle(h7.AsUInt32(), 0x4E).AsUInt64(), h7);
+            dt = Sse2.Xor(Sse2.Shuffle(d1.AsUInt32(), 0x4E).AsUInt64(), d1);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h6.AsUInt32(), 0x4E).AsUInt64(), h6);
+            dt = Sse2.Xor(Sse2.Shuffle(d2.AsUInt32(), 0x4E).AsUInt64(), d2);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h5.AsUInt32(), 0x4E).AsUInt64(), h5);
+            dt = Sse2.Xor(Sse2.Shuffle(d3.AsUInt32(), 0x4E).AsUInt64(), d3);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 6 + GHASH cross (blocks 4-7)
+            rk = roundKeys[6];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            ht = Sse2.Xor(Sse2.Shuffle(h4.AsUInt32(), 0x4E).AsUInt64(), h4);
+            dt = Sse2.Xor(Sse2.Shuffle(d4.AsUInt32(), 0x4E).AsUInt64(), d4);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h3.AsUInt32(), 0x4E).AsUInt64(), h3);
+            dt = Sse2.Xor(Sse2.Shuffle(d5.AsUInt32(), 0x4E).AsUInt64(), d5);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h2.AsUInt32(), 0x4E).AsUInt64(), h2);
+            dt = Sse2.Xor(Sse2.Shuffle(d6.AsUInt32(), 0x4E).AsUInt64(), d6);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h1.AsUInt32(), 0x4E).AsUInt64(), h1);
+            dt = Sse2.Xor(Sse2.Shuffle(d7.AsUInt32(), 0x4E).AsUInt64(), d7);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 7 + GHASH fold cross terms (CLMUL_3_POST)
+            rk = roundKeys[7];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            mid = Sse2.Xor(mid, lo);
+            mid = Sse2.Xor(mid, hi);
+
+            // AES round 8 + GHASH MODREDUCE step 1
+            rk = roundKeys[8];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            var vMul = Vector128.Create(GcmReductionConstant, 0UL).AsInt64();
+            var t0 = Pclmulqdq.CarrylessMultiply(lo.AsInt64(), vMul, 0x00).AsUInt64();
+            lo = Sse2.Shuffle(lo.AsUInt32(), 0x4E).AsUInt64();
+            mid = Sse2.Xor(mid, t0);
+            mid = Sse2.Xor(mid, lo);
+
+            // AES round 9 + GHASH MODREDUCE step 2
+            rk = roundKeys[9];
+            c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+            c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+            c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+            c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            t0 = Pclmulqdq.CarrylessMultiply(
+                Sse2.ShiftLeftLogical(mid, 1).AsInt64(), vMul, 0x00).AsUInt64();
+            mid = Sse2.Shuffle(mid.AsUInt32(), 0x4E).AsUInt64();
+            var res = Sse2.Xor(hi, mid);
+
+            // AES remaining rounds for 192/256 key sizes
+            for (int i = 10; i < rounds; i++)
+            {
+                rk = roundKeys[i];
+                c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
+                c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
+                c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
+                c6 = AesNi.Encrypt(c6, rk); c7 = AesNi.Encrypt(c7, rk);
+            }
+
+            // AES last round + GHASH final reduction (rotate left by 1)
+            rk = roundKeys[rounds];
+            c0 = AesNi.EncryptLast(c0, rk); c1 = AesNi.EncryptLast(c1, rk);
+            c2 = AesNi.EncryptLast(c2, rk); c3 = AesNi.EncryptLast(c3, rk);
+            c4 = AesNi.EncryptLast(c4, rk); c5 = AesNi.EncryptLast(c5, rk);
+            c6 = AesNi.EncryptLast(c6, rk); c7 = AesNi.EncryptLast(c7, rk);
+            var t1 = Sse2.ShiftLeftLogical(res.AsUInt32(), 1).AsUInt64();
+            res = Sse2.ShiftRightLogical(res.AsUInt32(), 31).AsUInt64();
+            t0 = Sse2.Xor(t0, t1);
+            res = Sse2.Shuffle(res.AsUInt32(), 0x93).AsUInt64();
+            y = Sse2.Xor(res, t0).AsByte();
+
+            // XOR keystream with ciphertext to produce plaintext
+            Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
+            Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
+            Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
+            Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
+            Sse2.Xor(ct4, c4).CopyTo(plaintext.Slice(offset + 4 * BlockSizeBytes));
+            Sse2.Xor(ct5, c5).CopyTo(plaintext.Slice(offset + 5 * BlockSizeBytes));
+            Sse2.Xor(ct6, c6).CopyTo(plaintext.Slice(offset + 6 * BlockSizeBytes));
+            Sse2.Xor(ct7, c7).CopyTo(plaintext.Slice(offset + 7 * BlockSizeBytes));
+
+            offset += 8 * BlockSizeBytes;
+        }
+        return offset;
     }
 #endif
 }

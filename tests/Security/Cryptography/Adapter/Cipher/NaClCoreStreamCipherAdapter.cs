@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Adapter.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using NC = NaCl.Core;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Wraps NaCl.Core's <see cref="NC.ChaCha20"/> as a CryptoHives <see cref="SymmetricCipher"/>.
@@ -30,7 +31,7 @@ internal sealed class NaClCoreStreamCipherAdapter : SymmetricCipher
     {
         KeySizeValue = 256;
         BlockSizeValue = 8;
-        LegalKeySizesValue = [new System.Security.Cryptography.KeySizes(256, 256, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0)];
         Mode = CipherMode.Stream;
         Padding = PaddingMode.None;
     }
@@ -81,16 +82,16 @@ internal sealed class NaClCoreStreamCipherAdapter : SymmetricCipher
         public int BlockSize => 1;
 
         /// <inheritdoc/>
-        int System.Security.Cryptography.ICryptoTransform.InputBlockSize => 1;
+        int OS.ICryptoTransform.InputBlockSize => 1;
 
         /// <inheritdoc/>
-        int System.Security.Cryptography.ICryptoTransform.OutputBlockSize => 1;
+        int OS.ICryptoTransform.OutputBlockSize => 1;
 
         /// <inheritdoc/>
-        bool System.Security.Cryptography.ICryptoTransform.CanTransformMultipleBlocks => true;
+        bool OS.ICryptoTransform.CanTransformMultipleBlocks => true;
 
         /// <inheritdoc/>
-        bool System.Security.Cryptography.ICryptoTransform.CanReuseTransform => true;
+        bool OS.ICryptoTransform.CanReuseTransform => true;
 
         /// <inheritdoc/>
         public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
@@ -100,7 +101,7 @@ internal sealed class NaClCoreStreamCipherAdapter : SymmetricCipher
         }
 
         /// <inheritdoc/>
-        int System.Security.Cryptography.ICryptoTransform.TransformBlock(
+        int OS.ICryptoTransform.TransformBlock(
             byte[] inputBuffer, int inputOffset, int inputCount,
             byte[] outputBuffer, int outputOffset)
         {
@@ -114,7 +115,7 @@ internal sealed class NaClCoreStreamCipherAdapter : SymmetricCipher
             => TransformBlock(input, output);
 
         /// <inheritdoc/>
-        byte[] System.Security.Cryptography.ICryptoTransform.TransformFinalBlock(
+        byte[] OS.ICryptoTransform.TransformFinalBlock(
             byte[] inputBuffer, int inputOffset, int inputCount)
         {
             byte[] output = new byte[inputCount];

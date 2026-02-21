@@ -49,7 +49,7 @@ public class AesGcm128Benchmark : AeadBenchmarkBase
     /// <summary>
     /// Gets the data sizes for benchmarking.
     /// </summary>
-    public static IEnumerable<DataSize> Sizes() => DataSize.Standard;
+    public static IEnumerable<DataSize> Sizes() => DataSize.CipherSizes;
 
     /// <summary>
     /// Gets the AES-128-GCM implementations for benchmarking.
@@ -136,7 +136,7 @@ public class AesGcm192Benchmark : AeadBenchmarkBase
     /// <summary>
     /// Gets the data sizes for benchmarking.
     /// </summary>
-    public static IEnumerable<DataSize> Sizes() => DataSize.Standard;
+    public static IEnumerable<DataSize> Sizes() => DataSize.CipherSizes;
     public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.AesGcm192();
 
     public static IEnumerable<object[]> CipherAlgorithmTypeArgs()
@@ -216,7 +216,7 @@ public class AesGcm256Benchmark : AeadBenchmarkBase
     /// <summary>
     /// Gets the data sizes for benchmarking.
     /// </summary>
-    public static IEnumerable<DataSize> Sizes() => DataSize.Standard;
+    public static IEnumerable<DataSize> Sizes() => DataSize.CipherSizes;
     public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.AesGcm256();
 
     public static IEnumerable<object[]> CipherAlgorithmTypeArgs()
