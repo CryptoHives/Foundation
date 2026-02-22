@@ -9,7 +9,6 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -363,19 +362,17 @@ public sealed partial class Blake2s : HashAlgorithm
 
     private void ExtractOutputScalar(Span<byte> destination)
     {
-        int fullWords = _outputBytes / 4;
-        for (int i = 0; i < fullWords; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(i * 4), _state[i]);
-        }
+        int fullWords = _outputBytes / sizeof(UInt32);
+
+        BinarySpans.WriteUInt32LittleEndian(_state.AsSpan(0, fullWords), destination);
 
         // Handle partial final word
-        int remainingBytes = _outputBytes % 4;
+        int remainingBytes = _outputBytes % sizeof(UInt32);
         if (remainingBytes > 0)
         {
-            Span<byte> temp = stackalloc byte[4];
+            Span<byte> temp = stackalloc byte[sizeof(UInt32)];
             BinaryPrimitives.WriteUInt32LittleEndian(temp, _state[fullWords]);
-            temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 4));
+            temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt32)));
         }
     }
 
@@ -407,7 +404,7 @@ public sealed partial class Blake2s : HashAlgorithm
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];
-        CopyBlockUInt32LittleEndian(block, m);
+        BinarySpans.ReadUInt32LittleEndian(block, m);
 
         // Initialize working vector
         Span<uint> v = stackalloc uint[ScratchSize];
@@ -471,22 +468,6 @@ public sealed partial class Blake2s : HashAlgorithm
             d = BitOperations.RotateRight(d ^ a, 8);
             c = c + d;
             b = BitOperations.RotateRight(b ^ c, 7);
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void CopyBlockUInt32LittleEndian(ReadOnlySpan<byte> block, Span<uint> m)
-    {
-        if (BitConverter.IsLittleEndian)
-        {
-            MemoryMarshal.Cast<byte, uint>(block).CopyTo(m);
-        }
-        else
-        {
-            for (int i = 0; i < ScratchSize; i++)
-            {
-                m[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(i * sizeof(UInt32)));
-            }
         }
     }
 }

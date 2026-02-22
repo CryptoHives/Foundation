@@ -1,0 +1,151 @@
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
+
+namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+using System;
+using System.Security.Cryptography;
+
+/// <summary>
+/// ChaCha20 stream cipher implementation as specified in RFC 8439.
+/// </summary>
+/// <remarks>
+/// <para>
+/// ChaCha20 is a high-speed stream cipher designed by Daniel J. Bernstein.
+/// It uses a 256-bit key and a 96-bit nonce (IETF variant).
+/// </para>
+/// <para>
+/// <b>Security properties:</b>
+/// <list type="bullet">
+///   <item><description>256-bit security level</description></item>
+///   <item><description>No weak keys</description></item>
+///   <item><description>Resistant to timing attacks (no table lookups)</description></item>
+///   <item><description>Efficient in software on all platforms</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// <b>Important:</b> Never reuse a (key, nonce) pair. Each encryption must use
+/// a unique nonce with the same key.
+/// </para>
+/// <para>
+/// <b>Example usage:</b>
+/// <code>
+/// using var chacha = ChaCha20.Create();
+/// chacha.GenerateKey();
+/// chacha.GenerateIV(); // Generates 12-byte nonce
+///
+/// byte[] ciphertext = chacha.Encrypt(plaintext);
+/// byte[] decrypted = chacha.Decrypt(ciphertext);
+/// </code>
+/// </para>
+/// </remarks>
+public sealed class ChaCha20 : SymmetricCipher
+{
+    /// <summary>
+    /// Key size in bits for ChaCha20 (256 bits).
+    /// </summary>
+    public const int KeySizeBits = 256;
+
+    /// <summary>
+    /// Key size in bytes for ChaCha20 (32 bytes).
+    /// </summary>
+    public const int KeySizeConst = 32;
+
+    /// <summary>
+    /// Nonce size in bytes for ChaCha20 IETF variant (12 bytes).
+    /// </summary>
+    public const int NonceSizeConst = 12;
+
+    private uint _initialCounter;
+    private readonly SimdSupport _simdSupport;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20"/> class.
+    /// </summary>
+    public ChaCha20() : this(SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChaCha20"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    internal ChaCha20(SimdSupport simdSupport)
+    {
+        _simdSupport = simdSupport & ChaChaCore.SimdSupport;
+        BlockSizeValue = ChaChaCore.BlockSizeBytes * 8;
+        KeySizeValue = KeySizeBits;
+        LegalKeySizesValue = [new KeySizes(256, 256, 0)];
+        LegalBlockSizesValue = [new KeySizes(512, 512, 0)];
+        Mode = CipherMode.Stream;
+        Padding = PaddingMode.None;
+    }
+
+    /// <inheritdoc/>
+    public override string AlgorithmName => "ChaCha20";
+
+    /// <inheritdoc/>
+    public override int IVSize => NonceSizeConst;
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport => ChaChaCore.SimdSupport;
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// <para>
+    /// For ChaCha20-Poly1305 AEAD, the counter typically starts at 1 because
+    /// counter 0 is used to generate the Poly1305 key.
+    /// </para>
+    /// </remarks>
+    public override uint InitialCounter
+    {
+        get => _initialCounter;
+        set => _initialCounter = value;
+    }
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="ChaCha20"/> cipher.
+    /// </summary>
+    /// <returns>A new ChaCha20 cipher instance.</returns>
+    public static new ChaCha20 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="ChaCha20"/> cipher with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <returns>A new ChaCha20 cipher instance.</returns>
+    internal static ChaCha20 Create(SimdSupport simdSupport) => new(simdSupport);
+
+    /// <inheritdoc/>
+    protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
+    {
+        ValidateKeySize(key.Length * 8);
+        ValidateIVSize(iv.Length);
+        return new ChaCha20CipherTransform(_simdSupport, key, iv, _initialCounter);
+    }
+
+    /// <inheritdoc/>
+    protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
+    {
+        // ChaCha20 is symmetric - encryption and decryption are the same
+        return CreateCipherEncryptor(key, iv);
+    }
+
+    /// <inheritdoc/>
+    protected override void ValidateIVSize(int byteLength)
+    {
+        if (byteLength != NonceSizeConst)
+        {
+            throw new CryptographicException($"Invalid nonce size: {byteLength} bytes. Expected: {NonceSizeConst} bytes.");
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override int CalculateOutputSize(int inputLength, bool encrypting)
+    {
+        // Stream cipher - output size equals input size
+        return inputLength;
+    }
+}

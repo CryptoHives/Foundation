@@ -1,13 +1,14 @@
 # Benchmark Results
 
-This directory stores the published BenchmarkDotNet results for the cryptography hash suites.
+This directory stores the published BenchmarkDotNet results for the cryptography hash and cipher suites.
 
 ## File Structure
 
 | File | Description |
 |------|-------------|
 | `machine-spec.md` | Captured hardware/software profile for the latest run |
-| `sha256.md`, `blake3.md`, etc. | Individual algorithm benchmark results |
+| `sha256.md`, `blake3.md`, etc. | Individual hash algorithm benchmark results |
+| `aes-gcm-128.md`, `chacha20.md`, etc. | Individual cipher algorithm benchmark results |
 
 ## Available Benchmark Files
 
@@ -36,8 +37,27 @@ This directory stores the published BenchmarkDotNet results for the cryptography
 
 ### Ascon/KMAC
 - `asconhash256.md`, `asconxof128.md`
-- `kmac128.md`, `kmac128incremental.md`, `kmac128outputsize.md`
-- `kmac256.md`, `kmac256incremental.md`, `kmac256outputsize.md`
+- `kmac128.md`, `kmac256.md`
+
+### XOF (Extendable Output)
+- `xof-shake128.md`, `xof-shake256.md`
+- `xof-cshake128.md`, `xof-cshake256.md`
+- `xof-kmac128.md`, `xof-kmac256.md`
+- `xof-kt128.md`, `xof-kt256.md`
+- `xof-turboshake128.md`, `xof-turboshake256.md`
+- `xof-blake3.md`, `xof-asconxof128.md`
+
+### AES-CBC (Block Cipher)
+- `aes-cbc-128.md`, `aes-cbc-256.md`
+
+### AES-GCM (AEAD)
+- `aes-gcm-128.md`, `aes-gcm-192.md`, `aes-gcm-256.md`
+
+### AES-CCM (AEAD)
+- `aes-ccm-128.md`, `aes-ccm-256.md`
+
+### ChaCha20 Family (Stream Cipher / AEAD)
+- `chacha20.md`, `chacha20-poly1305.md`, `xchacha20-poly1305.md`
 
 ## Updating Benchmark Results
 

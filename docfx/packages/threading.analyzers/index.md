@@ -1,4 +1,4 @@
-﻿# CryptoHives.Foundation.Threading.Analyzers
+# CryptoHives.Foundation.Threading.Analyzers
 
 ## Overview
 
@@ -140,7 +140,7 @@ valueTask.GetAwaiter().GetResult();
 #pragma warning restore CHT002
 
 // SuppressMessage attribute
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CHT002")]
+[SuppressMessage("Usage", "CHT002")]
 public void Method() { }
 ```
 

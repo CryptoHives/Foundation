@@ -23,6 +23,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Resolve repo root from script location (scripts/ is one level below root)
+$RepoRoot = Split-Path $PSScriptRoot
+
 $packageConfigurations = @{
     "Threading" = [ordered]@{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
@@ -136,6 +139,26 @@ $packageConfigurations = @{
             @{ Source = "KMac256XofBenchmark-report.md"; Target = "xof-kmac256.md" }
             @{ Source = "Blake3XofBenchmark-report.md"; Target = "xof-blake3.md" }
             @{ Source = "AsconXof128XofBenchmark-report.md"; Target = "xof-asconxof128.md" }
+
+            # Cipher benchmarks - AES-GCM
+            @{ Source = "AesGcm128Benchmark-report.md"; Target = "aes-gcm-128.md" }
+            @{ Source = "AesGcm192Benchmark-report.md"; Target = "aes-gcm-192.md" }
+            @{ Source = "AesGcm256Benchmark-report.md"; Target = "aes-gcm-256.md" }
+
+            # Cipher benchmarks - AES-CCM
+            @{ Source = "AesCcm128Benchmark-report.md"; Target = "aes-ccm-128.md" }
+            @{ Source = "AesCcm256Benchmark-report.md"; Target = "aes-ccm-256.md" }
+
+            # Cipher benchmarks - AES-CBC
+            @{ Source = "AesCbc128Benchmark-report.md"; Target = "aes-cbc-128.md" }
+            @{ Source = "AesCbc256Benchmark-report.md"; Target = "aes-cbc-256.md" }
+
+            # Cipher benchmarks - ChaCha20
+            @{ Source = "ChaCha20Benchmark-report.md"; Target = "chacha20.md" }
+
+            # Cipher benchmarks - ChaCha20-Poly1305
+            @{ Source = "ChaCha20Poly1305Benchmark-report.md"; Target = "chacha20-poly1305.md" }
+            @{ Source = "XChaCha20Poly1305Benchmark-report.md"; Target = "xchacha20-poly1305.md" }
         )
     }
 }
@@ -148,11 +171,11 @@ if (-not $packageConfigurations.ContainsKey($Project)) {
 $selectedConfig = $packageConfigurations[$Project]
 
 if (-not $PSBoundParameters.ContainsKey('SourceDir') -or [string]::IsNullOrWhiteSpace($SourceDir)) {
-    $SourceDir = $selectedConfig.SourceDir
+    $SourceDir = Join-Path $RepoRoot $selectedConfig.SourceDir
 }
 
 if (-not $PSBoundParameters.ContainsKey('DestDir') -or [string]::IsNullOrWhiteSpace($DestDir)) {
-    $DestDir = $selectedConfig.DestDir
+    $DestDir = Join-Path $RepoRoot $selectedConfig.DestDir
 }
 
 $benchmarkMappings = $selectedConfig.Files

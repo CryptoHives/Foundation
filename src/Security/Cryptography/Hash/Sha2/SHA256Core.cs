@@ -68,7 +68,7 @@ internal static class SHA256Core
             // Prepare message schedule - first 16 words from input
             for (int i = 0; i < 16; i++)
             {
-                w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * 4));
+                w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
             }
 
             // Extend message schedule W[16..63]

@@ -172,6 +172,63 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 ---
 
+## Cipher Algorithms
+
+### FIPS 197 (Advanced Encryption Standard)
+
+| Algorithm | Key Size | Mode | Status | Class |
+|-----------|----------|------|--------|-------|
+| AES-128 | 128 bits | ECB/CBC/CTR | ✅ Implemented | `Aes128` |
+| AES-192 | 192 bits | ECB/CBC/CTR | ✅ Implemented | `Aes192` |
+| AES-256 | 256 bits | ECB/CBC/CTR | ✅ Implemented | `Aes256` |
+
+> **Hardware acceleration:** AES-NI (`AESENC`/`AESDEC`) on .NET 8+. CBC decrypt uses 8-block interleaving.
+> OFB, CFB, and CTS modes are defined for compatibility but marked `[Obsolete]` and not implemented —
+> modern protocols use AEAD modes (GCM, CCM) or CTR instead.
+
+### SP 800-38D (AES-GCM)
+
+| Algorithm | Key Size | Status | Class |
+|-----------|----------|--------|-------|
+| AES-128-GCM | 128 bits | ✅ Implemented | `AesGcm128` |
+| AES-192-GCM | 192 bits | ✅ Implemented | `AesGcm192` |
+| AES-256-GCM | 256 bits | ✅ Implemented | `AesGcm256` |
+
+> **Hardware acceleration:** AES-NI + PCLMULQDQ (.NET 8+), VPCLMULQDQ (.NET 10+).
+> Uses 8-block stitched AES+GHASH pipeline with lagged carry-less multiplication and
+> SymCrypt-style 2-CLMUL modular reduction.
+
+### RFC 3610 (AES-CCM)
+
+| Algorithm | Key Size | Status | Class |
+|-----------|----------|--------|-------|
+| AES-128-CCM | 128 bits | ✅ Implemented | `AesCcm128` |
+| AES-256-CCM | 256 bits | ✅ Implemented | `AesCcm256` |
+
+> **Hardware acceleration:** AES-NI on .NET 8+ for CTR and CBC-MAC block operations.
+
+### RFC 8439 (ChaCha20 / ChaCha20-Poly1305)
+
+| Algorithm | Key Size | Status | Class |
+|-----------|----------|--------|-------|
+| ChaCha20 | 256 bits | ✅ Implemented | `ChaCha20` |
+| Poly1305 | 256 bits | ✅ Implemented | `Poly1305` |
+| ChaCha20-Poly1305 | 256 bits | ✅ Implemented | `ChaCha20Poly1305` |
+
+> **Hardware acceleration:** SSSE3 (single-block) and AVX2 (dual-block) on .NET 8+.
+> Poly1305 uses donna-64 (3×44-bit limbs) on .NET 8+, donna-32 (5×26-bit limbs) on older targets.
+
+### draft-irtf-cfrg-xchacha (XChaCha20-Poly1305)
+
+| Algorithm | Key Size | Nonce Size | Status | Class |
+|-----------|----------|------------|--------|-------|
+| XChaCha20-Poly1305 | 256 bits | 192 bits | ✅ Implemented | `XChaCha20Poly1305` |
+
+> **Note:** XChaCha20-Poly1305 extends ChaCha20-Poly1305 with a 24-byte nonce (vs 12-byte),
+> making random nonce generation safe for a practically unlimited number of messages.
+
+---
+
 ## Sources
 
 ### NIST (National Institute of Standards and Technology)
@@ -280,6 +337,28 @@ BLAKE3 test vectors are from the official BLAKE3 specification:
 MD5 is defined in RFC 1321:
 - https://www.ietf.org/rfc/rfc1321.txt
 
+### AES (FIPS 197)
+
+The official FIPS 197 specification is available from NIST:
+- **[NIST-FIPS-197.md](NIST-FIPS-197.md)** - Local reference with algorithm details and test vectors
+- [NIST FIPS 197](https://csrc.nist.gov/pubs/fips/197/final) - Advanced Encryption Standard (AES)
+
+### AES-GCM (SP 800-38D)
+
+- [NIST SP 800-38D](https://csrc.nist.gov/pubs/sp/800-38d/final) - Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM)
+
+### AES-CCM (RFC 3610)
+
+- [RFC 3610](https://www.rfc-editor.org/rfc/rfc3610) - Counter with CBC-MAC (CCM)
+
+### ChaCha20 / ChaCha20-Poly1305 (RFC 8439)
+
+- [RFC 8439](https://datatracker.ietf.org/doc/html/rfc8439) - ChaCha20 and Poly1305 for IETF Protocols
+
+### XChaCha20-Poly1305 (draft-irtf-cfrg-xchacha)
+
+- [draft-irtf-cfrg-xchacha](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha) - XChaCha20 and XChaCha20-Poly1305
+
 ## File Organization
 
 ```
@@ -287,6 +366,7 @@ specs/
 ├── README.md              # This file
 ├── toc.yml                # DocFX table of contents
 ├── NIST-FIPS-180-4.md     # NIST FIPS 180-4 - SHA-1, SHA-2 reference
+├── NIST-FIPS-197.md       # NIST FIPS 197 - AES reference
 ├── NIST-FIPS-202.md       # NIST FIPS 202 - SHA-3, SHAKE reference
 ├── NIST-SP-800-185.md     # NIST SP 800-185 - cSHAKE, KMAC reference
 ├── SHA1-vectors.md        # SHA-1 test vectors (legacy)
@@ -296,7 +376,6 @@ specs/
 ├── Keccak-vectors.md      # Keccak-256, Keccak-384, Keccak-512 test vectors
 ├── KT-vectors.md          # KT128, KT256 (KangarooTwelve) test vectors
 ├── TurboSHAKE-vectors.md  # TurboSHAKE128, TurboSHAKE256 test vectors
-├── Ascon-vectors.md       # Ascon-Hash256, Ascon-XOF128 test vectors
 ├── BLAKE2-vectors.md      # BLAKE2b, BLAKE2s test vectors
 ├── BLAKE3-vectors.md      # BLAKE3 test vectors
 ├── RIPEMD-160-vectors.md  # RIPEMD-160 test vectors
@@ -304,7 +383,11 @@ specs/
 ├── Whirlpool-vectors.md   # Whirlpool test vectors
 ├── Streebog-vectors.md    # Streebog (GOST) test vectors
 ├── Kupyna-vectors.md      # Kupyna (DSTU 7564) test vectors
-└── MD5-vectors.md         # MD5 test vectors (legacy)
+├── LSH-vectors.md         # LSH (KS X 3262) test vectors
+├── MD5-vectors.md         # MD5 test vectors (legacy)
+├── AES-vectors.md         # AES ECB/GCM/CCM test vectors
+├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
+└── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
 ```
 
 ## Usage

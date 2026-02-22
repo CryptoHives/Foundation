@@ -21,7 +21,7 @@ public class WhirlpoolTests
     [Test]
     public void HashSizeIs512Bits()
     {
-        using var whirlpool = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var whirlpool = Whirlpool.Create();
         Assert.That(whirlpool.HashSize, Is.EqualTo(512));
     }
 
@@ -31,7 +31,7 @@ public class WhirlpoolTests
     [Test]
     public void BlockSizeIs64Bytes()
     {
-        using var whirlpool = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var whirlpool = Whirlpool.Create();
         Assert.That(whirlpool.BlockSize, Is.EqualTo(64));
     }
 
@@ -41,7 +41,7 @@ public class WhirlpoolTests
     [Test]
     public void AlgorithmNameIsWhirlpool()
     {
-        using var whirlpool = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var whirlpool = Whirlpool.Create();
         Assert.That(whirlpool.AlgorithmName, Is.EqualTo("Whirlpool"));
     }
 
@@ -63,7 +63,7 @@ public class WhirlpoolTests
         byte[] data = Encoding.UTF8.GetBytes(input);
         byte[] expected = TestHelpers.FromHexString(expectedHex);
 
-        using var whirlpool = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var whirlpool = Whirlpool.Create();
         byte[] actual = whirlpool.ComputeHash(data);
 
         Assert.That(actual, Is.EqualTo(expected), $"Whirlpool mismatch for: \"{input}\"");
@@ -77,10 +77,10 @@ public class WhirlpoolTests
     {
         byte[] input = Encoding.UTF8.GetBytes("Hello, World!");
 
-        using var wp1 = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var wp1 = Whirlpool.Create();
         byte[] hash1 = wp1.ComputeHash(input);
 
-        using var wp2 = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var wp2 = Whirlpool.Create();
         wp2.TransformBlock(input, 0, 7, null, 0);
         wp2.TransformFinalBlock(input, 7, input.Length - 7);
         byte[] hash2 = wp2.Hash!;
@@ -115,7 +115,7 @@ public class WhirlpoolTests
             input[i] = (byte)i;
         }
 
-        using var whirlpool = CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.Create();
+        using var whirlpool = Whirlpool.Create();
         byte[] hash = whirlpool.ComputeHash(input);
 
         Assert.That(hash, Has.Length.EqualTo(64));

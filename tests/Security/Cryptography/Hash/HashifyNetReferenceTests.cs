@@ -4,6 +4,7 @@
 namespace Cryptography.Tests.Hash;
 
 using Cryptography.Tests.Adapter;
+using Cryptography.Tests.Adapter.Hash;
 using NUnit.Framework;
 using System.Text;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;

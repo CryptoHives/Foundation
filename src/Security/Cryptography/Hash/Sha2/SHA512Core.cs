@@ -80,7 +80,7 @@ internal static class SHA512Core
             // Prepare message schedule - load first 16 words from block
             for (int i = 0; i < 16; i++)
             {
-                w[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * 8));
+                w[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * sizeof(UInt64)));
             }
 
             // Extend message schedule W[16..79]

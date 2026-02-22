@@ -7,6 +7,7 @@ using System;
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the Kupyna (DSTU 7564:2014) hash for the input data.
@@ -340,7 +341,7 @@ public sealed class Kupyna : HashAlgorithm
             // 96-bit message length in bits (little-endian: 32-bit low + 64-bit high)
             ulong c = ((_inputBlocks & 0xFFFFFFFFUL) * (ulong)_blockSize + (uint)inputBytes) << 3;
             BinaryPrimitives.WriteUInt32LittleEndian(_buffer.AsSpan(_bufferLength), (uint)c);
-            _bufferLength += 4;
+            _bufferLength += sizeof(UInt32);
             c >>= 32;
             c += ((_inputBlocks >> 32) * (ulong)_blockSize) << 3;
             BinaryPrimitives.WriteUInt64LittleEndian(_buffer.AsSpan(_bufferLength), c);
@@ -356,13 +357,9 @@ public sealed class Kupyna : HashAlgorithm
             }
 
             // Truncation: extract hash from the last columns
-            int neededColumns = _hashSizeBytes / 8;
-            int outOff = 0;
-            for (int col = _columns - neededColumns; col < _columns; ++col)
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(outOff, 8), _state[col]);
-                outOff += 8;
-            }
+            int neededColumns = _hashSizeBytes / sizeof(UInt64);
+            int startCol = _columns - neededColumns;
+            BinarySpans.WriteUInt64LittleEndian(_state.AsSpan(startCol, neededColumns), destination);
 
             bytesWritten = _hashSizeBytes;
             return true;
@@ -391,11 +388,23 @@ public sealed class Kupyna : HashAlgorithm
     {
         unchecked
         {
-            for (int col = 0; col < _columns; ++col)
+            if (BitConverter.IsLittleEndian)
             {
-                ulong word = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(col << 3, 8));
-                _tempState1[col] = _state[col] ^ word;
-                _tempState2[col] = word;
+                ReadOnlySpan<ulong> blockWords = MemoryMarshal.Cast<byte, ulong>(block.Slice(0, _columns * sizeof(UInt64)));
+                for (int col = 0; col < _columns; ++col)
+                {
+                    _tempState1[col] = _state[col] ^ blockWords[col];
+                    _tempState2[col] = blockWords[col];
+                }
+            }
+            else
+            {
+                for (int col = 0; col < _columns; ++col)
+                {
+                    ulong word = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(col << 3, sizeof(UInt64)));
+                    _tempState1[col] = _state[col] ^ word;
+                    _tempState2[col] = word;
+                }
             }
 
             P(_tempState1);

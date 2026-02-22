@@ -87,18 +87,16 @@ public sealed partial class Blake2s
         _stateVec0.CopyTo(temp[..4]);
         _stateVec1.CopyTo(temp[4..]);
 
-        int fullWords = _outputBytes / 4;
-        for (int i = 0; i < fullWords; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(i * 4), temp[i]);
-        }
+        int fullWords = _outputBytes / sizeof(UInt32);
 
-        int remainingBytes = _outputBytes % 4;
+        BinarySpans.WriteUInt32LittleEndian(temp.Slice(0, fullWords), destination);
+
+        int remainingBytes = _outputBytes % sizeof(UInt32);
         if (remainingBytes > 0)
         {
-            Span<byte> tempBytes = stackalloc byte[4];
+            Span<byte> tempBytes = stackalloc byte[sizeof(UInt32)];
             BinaryPrimitives.WriteUInt32LittleEndian(tempBytes, temp[fullWords]);
-            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * 4));
+            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt32)));
         }
     }
 
@@ -128,7 +126,7 @@ public sealed partial class Blake2s
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];
-        CopyBlockUInt32LittleEndian(block, m);
+        BinarySpans.ReadUInt32LittleEndian(block, m);
 
         // Get base references (avoids bounds checking in loop)
         ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);
@@ -201,7 +199,7 @@ public sealed partial class Blake2s
 
         // Parse message block into 16 32-bit words (little-endian)
         Span<uint> m = stackalloc uint[ScratchSize];
-        CopyBlockUInt32LittleEndian(block, m);
+        BinarySpans.ReadUInt32LittleEndian(block, m);
 
         // Get base references (avoids bounds checking in loop)
         ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);

@@ -2,13 +2,15 @@
 
 ## Overview
 
-The Cryptography package provides specification-based implementations of cryptographic hash algorithms and message authentication codes (MACs) for .NET applications. All implementations are fully managed code that does not rely on OS or hardware cryptographic APIs, ensuring deterministic and consistent behavior across all platforms.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), and cipher algorithms for .NET applications. Core implementations are fully managed code with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics, ensuring consistent behavior across all platforms with automatic SIMD dispatch on supported hardware.
 
 ## Key Features
 
 - **Specification-Based Implementations**: Written based on official specifications (NIST, RFC, ISO)
 - **No OS Dependencies**: Works identically on all platforms without calling OS crypto APIs
-- **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, and many more
+- **Hardware Acceleration**: Optional AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics with automatic fallback
+- **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, and many more
+- **AEAD Support**: Authenticated encryption with AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305
 - **Variable Output**: XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
 - **Keyed Hashing**: Built-in MAC modes for BLAKE2, BLAKE3, and KMAC
 - **Standards Compliant**: Verified against NIST, RFC, and ISO test vectors
@@ -19,9 +21,8 @@ The Cryptography package provides specification-based implementations of cryptog
 dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```
 
-> The focus is currently on stability and validation of the algorithms against test
-> vectors and other implementations.
-> Once stabilized, perf improvements and zero allocation support become the next priority.
+> Performance optimizations including AES-NI, PCLMULQDQ, VPCLMULQDQ, and SIMD intrinsics are implemented
+> for AES-GCM, AES-CCM, AES-CBC, and ChaCha20 families on .NET 8+. VPCLMULQDQ requires .NET 10+.
 
 ## Namespaces
 
@@ -35,6 +36,12 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Mac;
+```
+
+### Cipher Algorithms
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
 ```
 
 ## Implemented Algorithms
@@ -70,6 +77,15 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 | BLAKE2b (keyed) | Up to 256 bits | [Details](mac-algorithms.md#blake2-mac) |
 | BLAKE2s (keyed) | Up to 128 bits | [Details](mac-algorithms.md#blake2-mac) |
 | BLAKE3 (keyed) | 128 bits | [Details](mac-algorithms.md#blake3-mac) |
+
+### Cipher Algorithms (AEAD)
+
+| Algorithm | Key Sizes | Nonce Size | Tag Size | Documentation |
+|-----------|-----------|------------|----------|---------------|
+| AES-GCM | 128/192/256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#aes-gcm-galoiscounter-mode) |
+| AES-CCM | 128/192/256 bits | 7-13 bytes | 4-16 bytes | [Details](cipher-algorithms.md#aes-ccm-counter-with-cbc-mac) |
+| ChaCha20-Poly1305 | 256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#chacha20-poly1305) |
+| XChaCha20-Poly1305 | 256 bits | 24 bytes | 16 bytes | [Details](cipher-algorithms.md#xchacha20-poly1305) |
 
 ## Getting Started
 
@@ -167,6 +183,25 @@ using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
 byte[] mac = kmac.ComputeHash(message);
 ```
 
+### Authenticated Encryption (AEAD)
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+// AES-256-GCM
+byte[] key = new byte[32];
+byte[] nonce = new byte[12];
+using var aesGcm = AesGcm256.Create(key);
+
+byte[] ciphertext = aesGcm.Encrypt(nonce, plaintext, associatedData);
+byte[] decrypted = aesGcm.Decrypt(nonce, ciphertext, associatedData);
+
+// ChaCha20-Poly1305
+using var chacha = ChaCha20Poly1305.Create(key);
+byte[] encrypted = chacha.Encrypt(nonce, plaintext);
+byte[] decrypted = chacha.Decrypt(nonce, encrypted);
+```
+
 ### Keyed Hashing with BLAKE3
 
 ```csharp
@@ -220,6 +255,16 @@ byte[] hash = sha256.Hash;
 | High performance | BLAKE3 keyed | BLAKE2b keyed |
 | NIST compliance | KMAC128/256 | - |
 | Short tags (≤16 bytes) | BLAKE2s keyed | KMAC128 |
+
+### For Authenticated Encryption
+
+| Use Case | Recommended | Alternative |
+|----------|-------------|-------------|
+| Modern applications | AES-256-GCM or ChaCha20-Poly1305 | XChaCha20-Poly1305 |
+| Hardware acceleration | AES-256-GCM | AES-128-GCM |
+| Software-only | ChaCha20-Poly1305 | XChaCha20-Poly1305 |
+| IoT/constrained | AES-128-CCM | ChaCha20-Poly1305 |
+| Random nonces | XChaCha20-Poly1305 | AES-256-GCM |
 
 ### For Specific Domains
 
@@ -277,7 +322,7 @@ All implementations use fixed-size internal buffers based on their block size. N
 |---------|-------------|------------------------------|
 | OS dependency | None | Uses CNG/OpenSSL |
 | Cross-platform consistency | Guaranteed | May vary |
-| Hardware acceleration | Managed SIMD (SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL) |
+| Hardware acceleration | Managed SIMD (AES-NI/PCLMULQDQ/VPCLMULQDQ/SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL/SymCrypt) |
 | SHA-3 support | Full | .NET 8+ only |
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |
@@ -300,8 +345,11 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 ## See Also
 
 - [Hash Algorithms Reference](hash-algorithms.md)
+- [Cipher Algorithms Reference](cipher-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
+- [Hash Benchmarks](benchmarks-hash.md)
+- [Cipher Benchmarks](benchmarks-cipher.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

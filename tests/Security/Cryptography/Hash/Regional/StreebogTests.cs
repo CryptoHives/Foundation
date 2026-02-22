@@ -8,7 +8,6 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
 using System.Linq;
-using System.Security.Policy;
 using System.Text;
 
 /// <summary>

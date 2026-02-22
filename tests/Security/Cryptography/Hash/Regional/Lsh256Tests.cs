@@ -3,7 +3,6 @@
 
 namespace Cryptography.Tests.Hash.Regional;
 
-using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System.Text;
