@@ -150,6 +150,251 @@ byte[] mac = kmac.ComputeHash(message);
 
 ---
 
+## HMAC (Hash-based Message Authentication Code)
+
+HMAC is the most widely used MAC construction, defined in RFC 2104 and FIPS 198-1. It works with any cryptographic hash function and is used extensively in TLS, SSH, IPsec, and OAuth.
+
+### IMac Interface
+
+All new MAC types implement the `IMac` interface for consistent API:
+
+```csharp
+public interface IMac : IDisposable
+{
+    string AlgorithmName { get; }
+    int MacSize { get; }
+    void Update(ReadOnlySpan<byte> input);
+    void Finalize(Span<byte> destination);
+    void Reset();
+}
+```
+
+### Available HMAC Variants
+
+| Class | Hash | MAC Size | Security | Status |
+|-------|------|----------|----------|--------|
+| `HmacSha256` | SHA-256 | 32 bytes | 256 bits | ✅ Recommended |
+| `HmacSha384` | SHA-384 | 48 bytes | 384 bits | ✅ Recommended |
+| `HmacSha512` | SHA-512 | 64 bytes | 512 bits | ✅ Recommended |
+| `HmacSha3_256` | SHA3-256 | 32 bytes | 256 bits | ✅ Cross-platform |
+| `HmacSha1` | SHA-1 | 20 bytes | 160 bits | ⚠️ Legacy |
+| `HmacMd5` | MD5 | 16 bytes | 128 bits | ⚠️ Legacy |
+
+### Constructor
+
+```csharp
+public HmacSha256(byte[] key)
+```
+
+**Parameters:**
+- `key` - The secret key (any length; keys longer than the hash block size are hashed first)
+
+### Factory Method
+
+```csharp
+public static HmacSha256 Create(byte[] key)
+```
+
+### Static One-Shot
+
+```csharp
+public static byte[] Hash(byte[] key, byte[] data)
+```
+
+### Usage Examples
+
+```csharp
+byte[] key = new byte[32];
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
+
+// One-shot API
+byte[] tag = HmacSha256.Hash(key, message);
+
+// Instance-based API
+using var hmac = HmacSha256.Create(key);
+byte[] mac = hmac.ComputeHash(message);
+
+// Streaming API (IMac interface)
+using var hmac = HmacSha256.Create(key);
+hmac.Update(chunk1);
+hmac.Update(chunk2);
+byte[] result = new byte[hmac.MacSize];
+hmac.Finalize(result);
+
+// Reuse with same key
+hmac.Reset();
+hmac.Update(newData);
+hmac.Finalize(result);
+```
+
+### HMAC-SHA3-256 (Cross-Platform)
+
+Unlike .NET's built-in `HMACSHA3_256` which requires Windows 11+ or OpenSSL 1.1.1+, the CryptoHives implementation works on all platforms:
+
+```csharp
+using var hmac = HmacSha3_256.Create(key);
+byte[] mac = hmac.ComputeHash(message);
+```
+
+### Generic HMAC with Any Hash
+
+The `HmacCore` base class works with any `HashAlgorithm` from the library. Create custom HMAC variants by subclassing:
+
+```csharp
+public sealed class HmacSm3 : HmacCore
+{
+    public HmacSm3(byte[] key) : base("HMAC-SM3", SM3.Create(), SM3.Create(), key) { }
+}
+```
+
+---
+
+## AES-CMAC (Cipher-based MAC)
+
+AES-CMAC is a MAC based on the AES block cipher, defined in NIST SP 800-38B and RFC 4493. Unlike HMAC, it computes the tag in a single pass and does not require a hash function.
+
+> **Note:** .NET does not provide a portable CMAC implementation. This is a CryptoHives differentiator.
+
+### Class Declaration
+
+```csharp
+public sealed class AesCmac : IMac
+```
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| MAC Size | 128 bits (16 bytes) |
+| Key Sizes | 128, 192, or 256 bits |
+| Block Size | 128 bits (AES) |
+| Hardware Accel. | AES-NI when available |
+
+### Constructor
+
+```csharp
+public AesCmac(byte[] key)
+public AesCmac(ReadOnlySpan<byte> key)
+```
+
+**Parameters:**
+- `key` - The secret key (16, 24, or 32 bytes for AES-128/192/256)
+
+### Factory Method
+
+```csharp
+public static AesCmac Create(byte[] key)
+```
+
+### Static One-Shot
+
+```csharp
+public static byte[] Hash(byte[] key, byte[] data)
+```
+
+### Usage Examples
+
+```csharp
+byte[] key = new byte[16]; // AES-128
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
+
+// One-shot API
+byte[] tag = AesCmac.Hash(key, message);
+
+// Instance-based API
+using var cmac = AesCmac.Create(key);
+byte[] mac = cmac.ComputeHash(message);
+
+// Streaming API
+using var cmac = AesCmac.Create(key);
+cmac.Update(chunk1);
+cmac.Update(chunk2);
+byte[] result = new byte[cmac.MacSize];
+cmac.Finalize(result);
+```
+
+### AES-256 CMAC
+
+```csharp
+byte[] key = new byte[32]; // AES-256
+RandomNumberGenerator.Fill(key);
+
+using var cmac = AesCmac.Create(key);
+byte[] mac = cmac.ComputeHash(message);
+```
+
+---
+
+## AES-GMAC (Galois MAC)
+
+AES-GMAC is the authentication-only mode of AES-GCM, defined in NIST SP 800-38D. It produces a 128-bit tag using the Galois field multiplication (GHASH) used in GCM.
+
+> **Note:** .NET does not provide a standalone GMAC class. This is a CryptoHives differentiator.
+
+### Class Declaration
+
+```csharp
+public sealed class AesGmac : IDisposable
+```
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| MAC Size | 128 bits (16 bytes) |
+| Key Sizes | 128, 192, or 256 bits |
+| Nonce Size | 96 bits (12 bytes) |
+| Hardware Accel. | AES-NI + PCLMULQDQ |
+
+### Constructor
+
+```csharp
+public AesGmac(ReadOnlySpan<byte> key)
+```
+
+**Parameters:**
+- `key` - The secret key (16, 24, or 32 bytes)
+
+### Factory Method
+
+```csharp
+public static AesGmac Create(byte[] key)
+```
+
+### Usage Examples
+
+```csharp
+byte[] key = new byte[16];
+RandomNumberGenerator.Fill(key);
+byte[] nonce = new byte[12]; // MUST be unique per message
+RandomNumberGenerator.Fill(nonce);
+byte[] data = Encoding.UTF8.GetBytes("authenticated data");
+
+// Compute tag
+using var gmac = AesGmac.Create(key);
+byte[] tag = gmac.ComputeTag(nonce, data);
+
+// Verify tag
+bool valid = gmac.VerifyTag(nonce, data, tag);
+```
+
+### Important: Nonce Requirements
+
+**Never reuse a nonce with the same key.** Each GMAC invocation must use a unique 12-byte nonce. Nonce reuse completely compromises the authentication guarantee.
+
+```csharp
+// CORRECT: Generate a fresh nonce for each message
+byte[] nonce = new byte[12];
+RandomNumberGenerator.Fill(nonce);
+
+// WRONG: Reusing the same nonce with the same key
+// byte[] nonce = new byte[12]; // reused - INSECURE!
+```
+
+---
+
 ## BLAKE2 MAC
 
 BLAKE2b and BLAKE2s support built-in keyed hashing mode for message authentication.
@@ -250,7 +495,12 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 
 | Algorithm | Security Strength | Notes |
 |-----------|-------------------|-------|
+| HMAC-SHA-512 | 512 bits | Maximum HMAC security |
+| HMAC-SHA-256 | 256 bits | Most widely used, recommended |
 | KMAC256 | 256 bits | Highest security, NIST approved |
+| HMAC-SHA3-256 | 256 bits | Cross-platform SHA-3 HMAC |
+| AES-CMAC | 128 bits | Cipher-based, single-pass |
+| AES-GMAC | 128 bits | Galois field, nonce-required |
 | KMAC128 | 128 bits | Good security, NIST approved |
 | BLAKE3 keyed | 128 bits | High performance |
 | BLAKE2b keyed | Up to 256 bits | Depends on key/output size |
@@ -262,19 +512,27 @@ byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
 |-----------|----------------|----------|
 | BLAKE3 keyed | Fastest | High-throughput applications |
 | BLAKE2b keyed | Very fast | General purpose on 64-bit |
+| AES-GMAC | Very fast (AES-NI) | When nonce management is feasible |
+| AES-CMAC | Fast (AES-NI) | Protocol compliance (EAP, 802.11i) |
+| HMAC-SHA-256 | Moderate | General purpose, widest compatibility |
+| HMAC-SHA-512 | Moderate | Maximum security on 64-bit |
+| HMAC-SHA3-256 | Moderate | Cross-platform SHA-3 |
 | BLAKE2s keyed | Fast | 32-bit and embedded systems |
 | KMAC256 | Moderate | Maximum security |
 | KMAC128 | Moderate | NIST compliance |
 
 ### Feature Comparison
 
-| Feature | KMAC | BLAKE2 | BLAKE3 |
-|---------|------|--------|--------|
-| Variable output | ✅ | ✅ | ✅ |
-| Customization string | ✅ | ❌ | ❌ |
-| NIST approved | ✅ | ❌ | ❌ |
-| Key derivation | ❌ | ❌ | ✅ |
-| Arbitrary key size | ✅ | ❌ | ❌ |
+| Feature | HMAC | AES-CMAC | AES-GMAC | KMAC | BLAKE2 | BLAKE3 |
+|---------|------|----------|----------|------|--------|--------|
+| Variable output | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Customization string | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Nonce required | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| NIST approved | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| .NET built-in | ✅ | ❌ | ❌ | Partial | ❌ | ❌ |
+| Key derivation | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Arbitrary key size | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Hardware accelerated | ❌ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
 ---
 
@@ -386,8 +644,13 @@ public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expir
 ## See Also
 
 - [Hash Algorithms](hash-algorithms.md)
+- [Cipher Algorithms](cipher-algorithms.md)
 - [Cryptography Package Overview](index.md)
 - [KMAC Specifications](specs/NIST-SP-800-185.md)
+- [HMAC Specification (RFC 2104)](specs/RFC-2104.md)
+- [CMAC Specification (SP 800-38B)](specs/NIST-SP-800-38B.md)
+- [HMAC Test Vectors](specs/HMAC-vectors.md)
+- [CMAC Test Vectors](specs/CMAC-vectors.md)
 
 ---
 

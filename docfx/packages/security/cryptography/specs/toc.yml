@@ -12,6 +12,10 @@
       href: NIST-SP-800-185.md
     - name: SP 800-232 (Ascon)
       href: NIST-SP-800-232.md
+    - name: RFC 2104 (HMAC)
+      href: RFC-2104.md
+    - name: SP 800-38B (CMAC, GMAC)
+      href: NIST-SP-800-38B.md
 - name: Test Vectors
   items:
     - name: SHA-1 (Legacy)
@@ -46,6 +50,10 @@
       href: MD5-vectors.md
     - name: AES (ECB/GCM/CCM)
       href: AES-vectors.md
+    - name: HMAC (RFC 4231)
+      href: HMAC-vectors.md
+    - name: CMAC / GMAC
+      href: CMAC-vectors.md
     - name: ChaCha20/Poly1305
       href: ChaCha20-vectors.md
     - name: XChaCha20-Poly1305

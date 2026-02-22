@@ -30,6 +30,10 @@
           href: specs/NIST-FIPS-202.md
         - name: SP 800-185 (cSHAKE, KMAC)
           href: specs/NIST-SP-800-185.md
+        - name: RFC 2104 (HMAC)
+          href: specs/RFC-2104.md
+        - name: SP 800-38B (CMAC, GMAC)
+          href: specs/NIST-SP-800-38B.md
     - name: Test Vectors
       items:
         - name: SHA-1 (Legacy)
@@ -64,3 +68,7 @@
           href: specs/LSH-vectors.md
         - name: MD5 (Legacy)
           href: specs/MD5-vectors.md
+        - name: HMAC (RFC 4231)
+          href: specs/HMAC-vectors.md
+        - name: CMAC / GMAC
+          href: specs/CMAC-vectors.md
