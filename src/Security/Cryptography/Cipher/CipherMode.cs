@@ -3,6 +3,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
@@ -56,24 +57,52 @@ public enum CipherMode
     /// Output Feedback mode. Converts a block cipher into a synchronous stream cipher.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Value matches <see cref="System.Security.Cryptography.CipherMode.OFB"/>.
+    /// </para>
+    /// <para>
+    /// <b>Obsolete:</b> OFB is largely superseded by CTR mode, which offers the same
+    /// parallelism and random-access benefits with simpler implementation. Modern protocols
+    /// (TLS 1.3, QUIC, WireGuard, IPsec) exclusively use AEAD modes (GCM, CCM, ChaCha20-Poly1305)
+    /// or CTR. OFB is retained for compatibility but is not implemented in this library.
+    /// </para>
     /// </remarks>
+    [Obsolete("OFB is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. OFB is superseded by CTR which offers the same parallelism with simpler implementation.")]
     OFB = 3,
 
     /// <summary>
     /// Cipher Feedback mode. Converts a block cipher into a self-synchronizing stream cipher.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Value matches <see cref="System.Security.Cryptography.CipherMode.CFB"/>.
+    /// </para>
+    /// <para>
+    /// <b>Obsolete:</b> CFB was designed for environments requiring self-synchronization
+    /// after bit errors (e.g. noisy serial links), a property irrelevant on modern reliable
+    /// transports. Modern protocols use AEAD modes (GCM, CCM, ChaCha20-Poly1305) which provide
+    /// both confidentiality and integrity. CFB is retained for compatibility but is not
+    /// implemented in this library.
+    /// </para>
     /// </remarks>
+    [Obsolete("CFB is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. CFB was designed for self-synchronization on noisy serial links, which is irrelevant on modern reliable transports.")]
     CFB = 4,
 
     /// <summary>
     /// Cipher Text Stealing mode. Handles plaintext that is not a multiple of the block size.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Value matches <see cref="System.Security.Cryptography.CipherMode.CTS"/>.
+    /// </para>
+    /// <para>
+    /// <b>Niche:</b> CTS avoids ciphertext expansion by stealing bits from the penultimate block.
+    /// It is used in Kerberos (RFC 3962) and some disk encryption schemes, but is otherwise
+    /// uncommon. Modern AEAD modes and CTR mode handle arbitrary-length data without padding.
+    /// CTS is retained for compatibility but is not implemented in this library.
+    /// </para>
     /// </remarks>
+    [Obsolete("CTS is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. CTS is a niche mode used primarily in Kerberos (RFC 3962); modern modes handle arbitrary-length data without padding.")]
     CTS = 5,
 
     /// <summary>

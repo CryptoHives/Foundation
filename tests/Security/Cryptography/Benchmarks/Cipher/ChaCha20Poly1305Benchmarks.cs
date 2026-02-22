@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Benchmarks.Cipher;
 using BenchmarkDotNet.Attributes;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -66,22 +67,37 @@ public class ChaCha20Poly1305Benchmark : AeadBenchmarkBase
         base.GlobalSetup();
     }
 
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void EncryptTest()
+    {
+        Encrypt();
+        Assert.That(OutputData.AsSpan().Slice(0, InputData.Length).SequenceEqual(
+            EncryptedData.AsSpan()), Is.False, "Encrypt should produce different output than cached ciphertext (nonce incremented)");
+    }
+
     /// <summary>
     /// Benchmarks encryption performance.
     /// </summary>
     [Benchmark(Description = "Encrypt")]
-    [Test]
     public void Encrypt()
     {
         IncrementNonce(); // Ensure unique nonce for each invocation
         AeadCipher!.Encrypt(Nonce, InputData, OutputData, Tag, Aad);
     }
 
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void DecryptTest()
+    {
+        Decrypt();
+        Assert.That(OutputData.AsSpan().Slice(0, InputData.Length).SequenceEqual(InputData), Is.True);
+    }
+
     /// <summary>
     /// Benchmarks decryption performance.
     /// </summary>
     [Benchmark(Description = "Decrypt")]
-    [Test]
     public void Decrypt()
     {
         AeadCipher!.Decrypt(DecryptNonce, EncryptedData, Tag, OutputData, Aad);
@@ -146,22 +162,37 @@ public class XChaCha20Poly1305Benchmark : AeadBenchmarkBase
         base.GlobalSetup();
     }
 
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void EncryptTest()
+    {
+        Encrypt();
+        Assert.That(OutputData.AsSpan().Slice(0, InputData.Length).SequenceEqual(
+            EncryptedData.AsSpan()), Is.False, "Encrypt should produce different output than cached ciphertext (nonce incremented)");
+    }
+
     /// <summary>
     /// Benchmarks encryption performance.
     /// </summary>
     [Benchmark(Description = "Encrypt")]
-    [Test]
     public void Encrypt()
     {
         IncrementNonce(); // Ensure unique nonce for each invocation
         AeadCipher!.Encrypt(Nonce, InputData, OutputData, Tag, Aad);
     }
 
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void DecryptTest()
+    {
+        Decrypt();
+        Assert.That(OutputData.AsSpan().Slice(0, InputData.Length).SequenceEqual(InputData), Is.True);
+    }
+
     /// <summary>
     /// Benchmarks decryption performance.
     /// </summary>
     [Benchmark(Description = "Decrypt")]
-    [Test]
     public void Decrypt()
     {
         AeadCipher!.Decrypt(DecryptNonce, EncryptedData, Tag, OutputData, Aad);

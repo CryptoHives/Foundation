@@ -182,6 +182,10 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | AES-192 | 192 bits | ECB/CBC/CTR | ✅ Implemented | `Aes192` |
 | AES-256 | 256 bits | ECB/CBC/CTR | ✅ Implemented | `Aes256` |
 
+> **Hardware acceleration:** AES-NI (`AESENC`/`AESDEC`) on .NET 8+. CBC decrypt uses 8-block interleaving.
+> OFB, CFB, and CTS modes are defined for compatibility but marked `[Obsolete]` and not implemented —
+> modern protocols use AEAD modes (GCM, CCM) or CTR instead.
+
 ### SP 800-38D (AES-GCM)
 
 | Algorithm | Key Size | Status | Class |
@@ -190,12 +194,18 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | AES-192-GCM | 192 bits | ✅ Implemented | `AesGcm192` |
 | AES-256-GCM | 256 bits | ✅ Implemented | `AesGcm256` |
 
+> **Hardware acceleration:** AES-NI + PCLMULQDQ (.NET 8+), VPCLMULQDQ (.NET 10+).
+> Uses 8-block stitched AES+GHASH pipeline with lagged carry-less multiplication and
+> SymCrypt-style 2-CLMUL modular reduction.
+
 ### RFC 3610 (AES-CCM)
 
 | Algorithm | Key Size | Status | Class |
 |-----------|----------|--------|-------|
 | AES-128-CCM | 128 bits | ✅ Implemented | `AesCcm128` |
 | AES-256-CCM | 256 bits | ✅ Implemented | `AesCcm256` |
+
+> **Hardware acceleration:** AES-NI on .NET 8+ for CTR and CBC-MAC block operations.
 
 ### RFC 8439 (ChaCha20 / ChaCha20-Poly1305)
 
@@ -204,6 +214,9 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | ChaCha20 | 256 bits | ✅ Implemented | `ChaCha20` |
 | Poly1305 | 256 bits | ✅ Implemented | `Poly1305` |
 | ChaCha20-Poly1305 | 256 bits | ✅ Implemented | `ChaCha20Poly1305` |
+
+> **Hardware acceleration:** SSSE3 (single-block) and AVX2 (dual-block) on .NET 8+.
+> Poly1305 uses donna-64 (3×44-bit limbs) on .NET 8+, donna-32 (5×26-bit limbs) on older targets.
 
 ### draft-irtf-cfrg-xchacha (XChaCha20-Poly1305)
 

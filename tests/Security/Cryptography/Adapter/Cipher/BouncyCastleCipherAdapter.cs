@@ -223,7 +223,10 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
             inputBuffer.AsSpan(inputOffset, inputCount),
             output.AsSpan());
         if (len != output.Length)
+        {
             Array.Resize(ref output, len);
+        }
+
         return output;
     }
 
@@ -238,14 +241,19 @@ internal sealed class BouncyCastleCipherTransform : ICipherTransform
     {
         _cipher.Reset();
         Array.Clear(_key, 0, _key.Length);
-        if (_iv.Length > 0) Array.Clear(_iv, 0, _iv.Length);
+        if (_iv.Length > 0)
+        {
+            Array.Clear(_iv, 0, _iv.Length);
+        }
     }
 
 #if !NET8_0_OR_GREATER
     private static void EnsureBufferSize(ref byte[] buffer, int requiredSize)
     {
         if (buffer.Length < requiredSize)
+        {
             buffer = new byte[requiredSize];
+        }
     }
 #endif
 }

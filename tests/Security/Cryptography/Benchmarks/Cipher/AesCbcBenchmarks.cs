@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Benchmarks.Cipher;
 using BenchmarkDotNet.Attributes;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -72,26 +73,42 @@ public class AesCbc128Benchmark : CipherBenchmarkBase
         base.GlobalSetup();
     }
 
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void EncryptTest()
+    {
+        int result = Encrypt();
+        Assert.That(result, Is.GreaterThanOrEqualTo(InputData.Length));
+    }
+
     /// <summary>
     /// Benchmarks encryption performance.
     /// </summary>
     [Benchmark(Description = "Encrypt")]
-    [Test]
-    public void Encrypt()
+    public int Encrypt()
     {
         Encryptor!.Reset();
-        Encryptor.TransformBlock(InputData, OutputData);
+        return Encryptor.TransformFinalBlock(InputData, OutputData);
+    }
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void DecryptTest()
+    {
+        int result = Decrypt();
+        Assert.That(result, Is.EqualTo(InputData.Length));
+        var decryptedData = OutputData.AsSpan().Slice(0, result);
+        Assert.That(decryptedData.SequenceEqual(InputData), Is.True);
     }
 
     /// <summary>
     /// Benchmarks decryption performance.
     /// </summary>
     [Benchmark(Description = "Decrypt")]
-    [Test]
-    public void Decrypt()
+    public int Decrypt()
     {
         Decryptor!.Reset();
-        Decryptor.TransformBlock(EncryptedData, OutputData);
+        return Decryptor.TransformFinalBlock(EncryptedData, OutputData);
     }
 }
 
@@ -159,25 +176,41 @@ public class AesCbc256Benchmark : CipherBenchmarkBase
         base.GlobalSetup();
     }
 
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void EncryptTest()
+    {
+        int result = Encrypt();
+        Assert.That(result, Is.GreaterThanOrEqualTo(InputData.Length));
+    }
+
     /// <summary>
     /// Benchmarks encryption performance.
     /// </summary>
     [Benchmark(Description = "Encrypt")]
-    [Test]
-    public void Encrypt()
+    public int Encrypt()
     {
         Encryptor!.Reset();
-        Encryptor.TransformBlock(InputData, OutputData);
+        return Encryptor.TransformFinalBlock(InputData, OutputData);
+    }
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void DecryptTest()
+    {
+        int result = Decrypt();
+        Assert.That(result, Is.EqualTo(InputData.Length));
+        var decryptedData = OutputData.AsSpan().Slice(0, result);
+        Assert.That(decryptedData.SequenceEqual(InputData), Is.True);
     }
 
     /// <summary>
     /// Benchmarks decryption performance.
     /// </summary>
     [Benchmark(Description = "Decrypt")]
-    [Test]
-    public void Decrypt()
+    public int Decrypt()
     {
         Decryptor!.Reset();
-        Decryptor.TransformBlock(EncryptedData, OutputData);
+        return Decryptor.TransformFinalBlock(EncryptedData, OutputData);
     }
 }

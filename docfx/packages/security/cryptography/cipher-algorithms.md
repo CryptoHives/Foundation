@@ -26,7 +26,7 @@ public sealed class AesGcm256 : AesGcm
 - Key Sizes: 128, 192, or 256 bits
 - Nonce Size: 12 bytes (recommended), variable supported
 - Tag Size: 16 bytes (default), configurable
-- Performance: Very fast with AES-NI + PCLMULQDQ hardware support; outperforms OS at small sizes
+- Performance: Very fast with AES-NI + PCLMULQDQ/VPCLMULQDQ hardware support; 8-block stitched pipeline; ~2× faster than OS at small sizes
 
 **Security:**
 - ✅ Widely used in TLS 1.3, IPsec, QUIC
@@ -181,7 +181,7 @@ byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
 
 | Algorithm | Key Size | Nonce Size | Tag Size | Performance | Hardware Accel | Best For |
 |-----------|----------|------------|----------|-------------|----------------|----------|
-| **AES-GCM** | 128/192/256 | 12 bytes | 16 bytes | Very fast* | AES-NI + PCLMULQDQ | General purpose, high throughput |
+| **AES-GCM** | 128/192/256 | 12 bytes | 16 bytes | Very fast* | AES-NI + PCLMULQDQ/VPCLMULQDQ | General purpose, high throughput |
 | **AES-CCM** | 128/192/256 | 7-13 bytes | 4-16 bytes | Moderate* | AES-NI | IoT, small messages |
 | **ChaCha20-Poly1305** | 256 | 12 bytes | 16 bytes | Fast | SSSE3/AVX2 | Software-only, mobile |
 | **XChaCha20-Poly1305** | 256 | 24 bytes | 16 bytes | Fast | SSSE3/AVX2 | Random nonces safe |

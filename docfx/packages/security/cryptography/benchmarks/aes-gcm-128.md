@@ -1,97 +1,97 @@
-﻿| Description                               | TestDataSize | Mean          | Error         | StdDev        | Allocated |
-|------------------------------------------ |------------- |--------------:|--------------:|--------------:|----------:|
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 17B          |     105.23 ns |      0.793 ns |      0.703 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 17B          |     105.63 ns |      0.718 ns |      0.672 ns |         - |
-| Decrypt · AES-128-GCM (OS)                | 17B          |     125.21 ns |      2.293 ns |      2.145 ns |         - |
-| Decrypt · AES-128-GCM (Managed)           | 17B          |     355.80 ns |      5.702 ns |      5.333 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 17B          |     605.19 ns |      9.938 ns |      9.296 ns |    1624 B |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 17B          |      63.07 ns |      0.349 ns |      0.310 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 17B          |      63.17 ns |      1.251 ns |      1.109 ns |         - |
-| Encrypt · AES-128-GCM (OS)                | 17B          |     120.57 ns |      1.033 ns |      0.966 ns |         - |
-| Encrypt · AES-128-GCM (Managed)           | 17B          |     310.96 ns |      1.518 ns |      1.185 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 17B          |     515.25 ns |      5.586 ns |      5.225 ns |    1608 B |
-|                                           |              |               |               |               |           |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 65B          |     104.51 ns |      0.891 ns |      0.833 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 65B          |     106.29 ns |      1.007 ns |      0.892 ns |         - |
-| Decrypt · AES-128-GCM (OS)                | 65B          |     124.16 ns |      2.402 ns |      2.570 ns |         - |
-| Decrypt · AES-128-GCM (Managed)           | 65B          |     610.34 ns |     12.177 ns |     11.391 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 65B          |     803.56 ns |      9.092 ns |      8.504 ns |    1624 B |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 65B          |      68.81 ns |      0.371 ns |      0.347 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 65B          |      69.44 ns |      0.519 ns |      0.486 ns |         - |
-| Encrypt · AES-128-GCM (OS)                | 65B          |     124.03 ns |      0.706 ns |      0.626 ns |         - |
-| Encrypt · AES-128-GCM (Managed)           | 65B          |     558.60 ns |      5.587 ns |      5.226 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 65B          |     661.64 ns |      5.680 ns |      5.313 ns |    1608 B |
-|                                           |              |               |               |               |           |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 128B         |      99.07 ns |      0.915 ns |      0.811 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 128B         |     101.63 ns |      1.080 ns |      1.010 ns |         - |
-| Decrypt · AES-128-GCM (OS)                | 128B         |     121.65 ns |      0.712 ns |      0.631 ns |         - |
-| Decrypt · AES-128-GCM (Managed)           | 128B         |     850.01 ns |      7.225 ns |      6.404 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 128B         |     910.73 ns |      9.428 ns |      8.819 ns |    1624 B |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 128B         |      57.46 ns |      0.353 ns |      0.313 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 128B         |      59.19 ns |      0.578 ns |      0.512 ns |         - |
-| Encrypt · AES-128-GCM (OS)                | 128B         |     157.90 ns |      3.074 ns |      2.875 ns |         - |
-| Encrypt · AES-128-GCM (Managed)           | 128B         |     832.70 ns |      6.847 ns |      6.405 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 128B         |     840.73 ns |     16.315 ns |     22.871 ns |    1608 B |
-|                                           |              |               |               |               |           |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 152B         |     124.72 ns |      2.489 ns |      2.328 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 152B         |     127.20 ns |      2.571 ns |      2.751 ns |         - |
-| Decrypt · AES-128-GCM (OS)                | 152B         |     136.27 ns |      2.010 ns |      1.880 ns |         - |
-| Decrypt · AES-128-GCM (Managed)           | 152B         |   1,023.19 ns |     19.951 ns |     21.347 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 152B         |   1,090.01 ns |     20.278 ns |     19.916 ns |    1624 B |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 152B         |      85.64 ns |      1.145 ns |      1.071 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 152B         |      88.34 ns |      1.641 ns |      1.535 ns |         - |
-| Encrypt · AES-128-GCM (OS)                | 152B         |     138.44 ns |      2.579 ns |      2.413 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 152B         |     947.77 ns |      5.935 ns |      5.552 ns |    1608 B |
-| Encrypt · AES-128-GCM (Managed)           | 152B         |     994.17 ns |     19.070 ns |     22.701 ns |         - |
-|                                           |              |               |               |               |           |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 256B         |     114.94 ns |      0.690 ns |      0.646 ns |         - |
-| Decrypt · AES-128-GCM (OS)                | 256B         |     126.24 ns |      0.770 ns |      0.720 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 256B         |     128.94 ns |      2.563 ns |      3.676 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 256B         |   1,325.32 ns |     25.407 ns |     24.953 ns |    1624 B |
-| Decrypt · AES-128-GCM (Managed)           | 256B         |   1,516.14 ns |     19.168 ns |     17.930 ns |         - |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 256B         |      75.89 ns |      1.012 ns |      0.947 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 256B         |      80.49 ns |      1.330 ns |      1.244 ns |         - |
-| Encrypt · AES-128-GCM (OS)                | 256B         |     125.67 ns |      2.511 ns |      2.686 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 256B         |   1,229.66 ns |     18.110 ns |     16.940 ns |    1608 B |
-| Encrypt · AES-128-GCM (Managed)           | 256B         |   1,492.04 ns |     16.701 ns |     15.623 ns |         - |
-|                                           |              |               |               |               |           |
-| Decrypt · AES-128-GCM (OS)                | 1KB          |     178.69 ns |      0.774 ns |      0.724 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 1KB          |     201.57 ns |      1.393 ns |      1.235 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 1KB          |     248.13 ns |      2.015 ns |      1.885 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 1KB          |   3,708.04 ns |     23.669 ns |     22.140 ns |    1624 B |
-| Decrypt · AES-128-GCM (Managed)           | 1KB          |   5,385.57 ns |     28.983 ns |     25.693 ns |         - |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 1KB          |     176.32 ns |      2.497 ns |      2.335 ns |         - |
-| Encrypt · AES-128-GCM (OS)                | 1KB          |     177.66 ns |      3.052 ns |      2.706 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 1KB          |     201.62 ns |      2.138 ns |      1.895 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 1KB          |   3,685.51 ns |     26.151 ns |     24.462 ns |    1608 B |
-| Encrypt · AES-128-GCM (Managed)           | 1KB          |   5,479.01 ns |     94.715 ns |     88.597 ns |         - |
-|                                           |              |               |               |               |           |
-| Decrypt · AES-128-GCM (OS)                | 8KB          |     687.14 ns |      4.783 ns |      4.474 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 8KB          |   1,024.42 ns |      9.035 ns |      8.452 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 8KB          |   1,395.81 ns |     15.156 ns |     14.176 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 8KB          |  25,817.91 ns |    186.932 ns |    156.097 ns |    1624 B |
-| Decrypt · AES-128-GCM (Managed)           | 8KB          |  41,729.40 ns |    182.063 ns |    161.394 ns |         - |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (OS)                | 8KB          |     674.10 ns |     12.917 ns |     12.082 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 8KB          |   1,118.95 ns |     21.707 ns |     20.305 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 8KB          |   1,341.78 ns |     24.089 ns |     22.533 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 8KB          |  26,207.61 ns |    225.538 ns |    210.968 ns |    1608 B |
-| Encrypt · AES-128-GCM (Managed)           | 8KB          |  42,769.22 ns |    477.509 ns |    446.662 ns |         - |
-|                                           |              |               |               |               |           |
-| Decrypt · AES-128-GCM (OS)                | 128KB        |  10,881.04 ns |     39.135 ns |     32.679 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 128KB        |  15,968.52 ns |    200.948 ns |    187.967 ns |         - |
-| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 128KB        |  21,023.79 ns |    106.721 ns |     94.606 ns |         - |
-| Decrypt · AES-128-GCM (BouncyCastle)      | 128KB        | 409,905.49 ns |  3,921.800 ns |  3,668.454 ns |    1624 B |
-| Decrypt · AES-128-GCM (Managed)           | 128KB        | 668,119.73 ns |  5,905.788 ns |  5,524.278 ns |         - |
-|                                           |              |               |               |               |           |
-| Encrypt · AES-128-GCM (OS)                | 128KB        |   9,991.19 ns |    196.652 ns |    183.949 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 128KB        |  17,399.22 ns |    342.975 ns |    381.216 ns |         - |
-| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 128KB        |  21,034.60 ns |    269.991 ns |    239.340 ns |         - |
-| Encrypt · AES-128-GCM (BouncyCastle)      | 128KB        | 416,158.72 ns |  5,065.124 ns |  4,737.920 ns |    1608 B |
-| Encrypt · AES-128-GCM (Managed)           | 128KB        | 679,895.12 ns | 11,810.967 ns | 11,047.986 ns |         - |
+﻿| Description                               | TestDataSize | Mean          | Error        | StdDev       | Allocated |
+|------------------------------------------ |------------- |--------------:|-------------:|-------------:|----------:|
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 17B          |     102.95 ns |     0.331 ns |     0.293 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 17B          |     104.40 ns |     0.371 ns |     0.347 ns |         - |
+| Decrypt · AES-128-GCM (OS)                | 17B          |     114.99 ns |     0.637 ns |     0.565 ns |         - |
+| Decrypt · AES-128-GCM (Managed)           | 17B          |     340.88 ns |     1.797 ns |     1.681 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 17B          |     559.75 ns |     3.006 ns |     2.812 ns |    1624 B |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 17B          |      62.08 ns |     0.189 ns |     0.167 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 17B          |      62.62 ns |     0.138 ns |     0.123 ns |         - |
+| Encrypt · AES-128-GCM (OS)                | 17B          |     122.74 ns |     0.571 ns |     0.534 ns |         - |
+| Encrypt · AES-128-GCM (Managed)           | 17B          |     313.01 ns |     1.462 ns |     1.368 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 17B          |     499.26 ns |     3.590 ns |     2.998 ns |    1608 B |
+|                                           |              |               |              |              |           |
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 65B          |     101.25 ns |     0.527 ns |     0.493 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 65B          |     103.23 ns |     0.438 ns |     0.410 ns |         - |
+| Decrypt · AES-128-GCM (OS)                | 65B          |     117.66 ns |     0.763 ns |     0.714 ns |         - |
+| Decrypt · AES-128-GCM (Managed)           | 65B          |     581.40 ns |     3.339 ns |     3.123 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 65B          |     739.54 ns |     2.530 ns |     2.367 ns |    1624 B |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 65B          |      68.42 ns |     0.196 ns |     0.183 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 65B          |      68.77 ns |     0.340 ns |     0.301 ns |         - |
+| Encrypt · AES-128-GCM (OS)                | 65B          |     122.76 ns |     0.407 ns |     0.340 ns |         - |
+| Encrypt · AES-128-GCM (Managed)           | 65B          |     548.80 ns |     3.678 ns |     3.441 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 65B          |     648.90 ns |     6.516 ns |     5.777 ns |    1608 B |
+|                                           |              |               |              |              |           |
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 128B         |      95.70 ns |     0.407 ns |     0.380 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 128B         |      98.45 ns |     0.321 ns |     0.300 ns |         - |
+| Decrypt · AES-128-GCM (OS)                | 128B         |     116.39 ns |     0.314 ns |     0.262 ns |         - |
+| Decrypt · AES-128-GCM (Managed)           | 128B         |     818.32 ns |     3.375 ns |     2.991 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 128B         |     876.64 ns |     2.989 ns |     2.796 ns |    1624 B |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 128B         |      57.24 ns |     0.106 ns |     0.094 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 128B         |      59.48 ns |     0.540 ns |     0.505 ns |         - |
+| Encrypt · AES-128-GCM (OS)                | 128B         |     120.30 ns |     0.801 ns |     0.749 ns |         - |
+| Encrypt · AES-128-GCM (Managed)           | 128B         |     789.27 ns |     3.525 ns |     3.297 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 128B         |     792.65 ns |     5.102 ns |     4.523 ns |    1608 B |
+|                                           |              |               |              |              |           |
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 152B         |     120.05 ns |     0.240 ns |     0.188 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 152B         |     123.28 ns |     0.365 ns |     0.305 ns |         - |
+| Decrypt · AES-128-GCM (OS)                | 152B         |     132.80 ns |     0.332 ns |     0.277 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 152B         |     999.24 ns |     4.913 ns |     4.595 ns |    1624 B |
+| Decrypt · AES-128-GCM (Managed)           | 152B         |   1,002.47 ns |    10.254 ns |     9.592 ns |         - |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 152B         |      82.86 ns |     0.210 ns |     0.196 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 152B         |      84.51 ns |     0.161 ns |     0.143 ns |         - |
+| Encrypt · AES-128-GCM (OS)                | 152B         |     131.56 ns |     0.614 ns |     0.545 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 152B         |     903.64 ns |     5.494 ns |     5.139 ns |    1608 B |
+| Encrypt · AES-128-GCM (Managed)           | 152B         |     953.86 ns |     4.207 ns |     3.729 ns |         - |
+|                                           |              |               |              |              |           |
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 256B         |     111.85 ns |     0.334 ns |     0.312 ns |         - |
+| Decrypt · AES-128-GCM (OS)                | 256B         |     122.60 ns |     0.568 ns |     0.504 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 256B         |     124.00 ns |     0.866 ns |     0.810 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 256B         |   1,274.52 ns |     5.696 ns |     5.049 ns |    1624 B |
+| Decrypt · AES-128-GCM (Managed)           | 256B         |   1,462.78 ns |     9.769 ns |     9.138 ns |         - |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 256B         |      72.90 ns |     0.432 ns |     0.404 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 256B         |      77.77 ns |     0.266 ns |     0.248 ns |         - |
+| Encrypt · AES-128-GCM (OS)                | 256B         |     120.86 ns |     0.584 ns |     0.546 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 256B         |   1,187.06 ns |    12.003 ns |    11.228 ns |    1608 B |
+| Encrypt · AES-128-GCM (Managed)           | 256B         |   1,430.67 ns |     7.493 ns |     7.009 ns |         - |
+|                                           |              |               |              |              |           |
+| Decrypt · AES-128-GCM (OS)                | 1KB          |     176.06 ns |     0.851 ns |     0.796 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 1KB          |     202.11 ns |     0.745 ns |     0.660 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 1KB          |     250.02 ns |     1.481 ns |     1.385 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 1KB          |   3,646.17 ns |    17.730 ns |    16.585 ns |    1624 B |
+| Decrypt · AES-128-GCM (Managed)           | 1KB          |   5,321.67 ns |    26.885 ns |    25.148 ns |         - |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 1KB          |     170.82 ns |     1.061 ns |     0.992 ns |         - |
+| Encrypt · AES-128-GCM (OS)                | 1KB          |     171.72 ns |     0.928 ns |     0.868 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 1KB          |     194.79 ns |     0.744 ns |     0.660 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 1KB          |   3,533.12 ns |     7.379 ns |     6.162 ns |    1608 B |
+| Encrypt · AES-128-GCM (Managed)           | 1KB          |   5,275.04 ns |    32.511 ns |    30.411 ns |         - |
+|                                           |              |               |              |              |           |
+| Decrypt · AES-128-GCM (OS)                | 8KB          |     749.33 ns |     2.528 ns |     2.241 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 8KB          |   1,024.88 ns |     4.731 ns |     4.194 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 8KB          |   1,365.80 ns |     5.493 ns |     4.587 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 8KB          |  25,495.69 ns |   130.849 ns |   122.396 ns |    1624 B |
+| Decrypt · AES-128-GCM (Managed)           | 8KB          |  41,842.83 ns |   244.320 ns |   228.537 ns |         - |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (OS)                | 8KB          |     665.39 ns |     4.516 ns |     4.224 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 8KB          |   1,083.19 ns |     5.775 ns |     4.822 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 8KB          |   1,296.43 ns |     3.035 ns |     2.691 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 8KB          |  25,328.18 ns |   142.092 ns |   125.961 ns |    1608 B |
+| Encrypt · AES-128-GCM (Managed)           | 8KB          |  40,995.91 ns |   131.972 ns |   116.990 ns |         - |
+|                                           |              |               |              |              |           |
+| Decrypt · AES-128-GCM (OS)                | 128KB        |  10,769.09 ns |    70.491 ns |    65.937 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMulV256) | 128KB        |  16,651.25 ns |   325.878 ns |   362.213 ns |         - |
+| Decrypt · AES-128-GCM (AES-NI+PClMul)     | 128KB        |  20,730.36 ns |   114.943 ns |   107.517 ns |         - |
+| Decrypt · AES-128-GCM (BouncyCastle)      | 128KB        | 401,251.41 ns | 1,495.452 ns | 1,325.680 ns |    1624 B |
+| Decrypt · AES-128-GCM (Managed)           | 128KB        | 656,117.23 ns | 3,867.558 ns | 3,229.586 ns |         - |
+|                                           |              |               |              |              |           |
+| Encrypt · AES-128-GCM (OS)                | 128KB        |   9,868.98 ns |    64.336 ns |    60.180 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMulV256) | 128KB        |  16,782.50 ns |   103.115 ns |    96.453 ns |         - |
+| Encrypt · AES-128-GCM (AES-NI+PClMul)     | 128KB        |  20,316.93 ns |    99.132 ns |    92.728 ns |         - |
+| Encrypt · AES-128-GCM (BouncyCastle)      | 128KB        | 401,508.72 ns | 2,259.139 ns | 2,002.668 ns |    1608 B |
+| Encrypt · AES-128-GCM (Managed)           | 128KB        | 659,908.63 ns | 4,853.744 ns | 4,540.195 ns |         - |

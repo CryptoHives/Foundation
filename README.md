@@ -74,7 +74,7 @@ Nuget package contains a C# analyzer to avoid common ValueTask usage mistakes.
 
 ### 🔐 Managed Code Cryptography
 Fully managed implementations of cryptographic hash algorithms, MACs, and cipher algorithms, written from NIST/RFC/ISO specifications and verified against official test vectors.
-No OS crypto dependency — deterministic results on every platform. Hardware acceleration via AES-NI, PCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics is automatically enabled on supported hardware, in some cases outperforming OS implementations.
+No OS crypto dependency — deterministic results on every platform. Hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics is automatically enabled on supported hardware, in some cases outperforming OS implementations.
 
 **Algorithms:**
 
@@ -94,11 +94,11 @@ No OS crypto dependency — deterministic results on every platform. Hardware ac
 All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
 BLAKE2b, BLAKE2s, and BLAKE3 use managed SIMD intrinsics (SSE2, SSSE3, AVX2) with scalar fallback.
 
-### 🧪 Package Benchmarks
+### ⏱️ Package Benchmarks
 
 - [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, comparing pooled `ValueTask` vs. existing `Task`-based alternatives.
 - [Hash algorithm benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html) — measured with BenchmarkDotNet across 128B–128KB payloads, comparing managed vs. BouncyCastle vs. OS implementations.
-- [Cipher algorithm benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html) — AES-GCM, AES-CCM, AES-CBC, ChaCha20, and ChaCha20-Poly1305 with AES-NI/PCLMULQDQ/SSSE3 hardware acceleration.
+- [Cipher algorithm benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html) — AES-GCM, AES-CCM, AES-CBC, ChaCha20, and ChaCha20-Poly1305 with AES-NI/PCLMULQDQ/VPCLMULQDQ/SSSE3/AVX2 hardware acceleration.
 
 ### 🔒 Fuzzed APIs (planned)
 - All libraries and public-facing APIs are planned to be fuzzed 
