@@ -160,7 +160,9 @@ public class CipherConfig : ManualConfig
             var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
 
             var fileName = $"{typeName}-report.md";
-            var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
+            var filePath = Path.IsPathRooted(fileName)
+                ? fileName
+                : Path.Combine(summary.ResultsDirectoryPath, fileName);
 
             using var writer = new StreamWriter(filePath);
             using var logger = new StreamLogger(writer);
