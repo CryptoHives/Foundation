@@ -1,4 +1,4 @@
-## Machine Specification
+﻿## Machine Specification
 
 The benchmarks were run on the following machine:
 
@@ -11,4 +11,4 @@ AMD Ryzen 5 7600X 4.70GHz, 1 CPU, 12 logical and 6 physical cores
 Job=.NET 10.0  Runtime=.NET 10.0  Toolchain=net10.0
 ```
 
-> **Note:** All benchmarks and SIMD optimizations have been developed and measured on this AMD Ryzen 5 / Windows 11 platform only. No results are available yet for Linux, macOS, or ARM processors (e.g. Apple Silicon, AWS Graviton). Performance characteristics — particularly SIMD dispatch paths and OS-backed implementations (CNG vs OpenSSL) — may differ significantly on other platforms. Run benchmarks locally for your specific hardware.
+> **Note:** Results are machine-specific and may vary between systems. Run benchmarks locally for your specific hardware.

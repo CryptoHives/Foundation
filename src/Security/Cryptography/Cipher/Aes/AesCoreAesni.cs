@@ -126,6 +126,46 @@ internal static class AesCoreAesNi
     }
 
     /// <summary>
+    /// Encrypts a single 128-bit block using AES-NI instructions, operating directly on <see cref="Vector128{T}"/>.
+    /// </summary>
+    /// <param name="input">The plaintext block as a vector.</param>
+    /// <param name="rk">The expanded encryption key schedule.</param>
+    /// <param name="nr">Number of rounds (10, 12, or 14).</param>
+    /// <returns>The encrypted ciphertext block.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static Vector128<byte> EncryptBlock(
+        Vector128<byte> input,
+        ref Vector128<byte> rk,
+        int nr)
+    {
+        var state = Sse2.Xor(input, rk);
+
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 1));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 2));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 3));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 4));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 5));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 6));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 7));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 8));
+        state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 9));
+
+        if (nr > 10)
+        {
+            state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 10));
+            state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 11));
+
+            if (nr > 12)
+            {
+                state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 12));
+                state = AesNi.Encrypt(state, Unsafe.Add(ref rk, 13));
+            }
+        }
+
+        return AesNi.EncryptLast(state, Unsafe.Add(ref rk, nr));
+    }
+
+    /// <summary>
     /// Decrypts a single 16-byte block using AES-NI instructions.
     /// </summary>
     /// <param name="input">The 16-byte ciphertext block.</param>
@@ -368,20 +408,20 @@ internal static class AesCoreAesNi
     public static void EncryptBlocks4(
         ref Vector128<byte> b0, ref Vector128<byte> b1,
         ref Vector128<byte> b2, ref Vector128<byte> b3,
-        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+        ref Vector128<byte> roundKeys, int nr)
     {
-        var rk = roundKeys[0];
+        var rk = roundKeys;
         b0 = Sse2.Xor(b0, rk); b1 = Sse2.Xor(b1, rk);
         b2 = Sse2.Xor(b2, rk); b3 = Sse2.Xor(b3, rk);
 
         for (int i = 1; i < nr; i++)
         {
-            rk = roundKeys[i];
+            rk = Unsafe.Add(ref roundKeys, i);
             b0 = AesNi.Encrypt(b0, rk); b1 = AesNi.Encrypt(b1, rk);
             b2 = AesNi.Encrypt(b2, rk); b3 = AesNi.Encrypt(b3, rk);
         }
 
-        rk = roundKeys[nr];
+        rk = Unsafe.Add(ref roundKeys, nr);
         b0 = AesNi.EncryptLast(b0, rk); b1 = AesNi.EncryptLast(b1, rk);
         b2 = AesNi.EncryptLast(b2, rk); b3 = AesNi.EncryptLast(b3, rk);
     }
@@ -399,9 +439,9 @@ internal static class AesCoreAesNi
         ref Vector128<byte> b2, ref Vector128<byte> b3,
         ref Vector128<byte> b4, ref Vector128<byte> b5,
         ref Vector128<byte> b6, ref Vector128<byte> b7,
-        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+        ref Vector128<byte> roundKeys, int nr)
     {
-        var rk = roundKeys[0];
+        var rk = roundKeys;
         b0 = Sse2.Xor(b0, rk); b1 = Sse2.Xor(b1, rk);
         b2 = Sse2.Xor(b2, rk); b3 = Sse2.Xor(b3, rk);
         b4 = Sse2.Xor(b4, rk); b5 = Sse2.Xor(b5, rk);
@@ -409,14 +449,14 @@ internal static class AesCoreAesNi
 
         for (int i = 1; i < nr; i++)
         {
-            rk = roundKeys[i];
+            rk = Unsafe.Add(ref roundKeys, i);
             b0 = AesNi.Encrypt(b0, rk); b1 = AesNi.Encrypt(b1, rk);
             b2 = AesNi.Encrypt(b2, rk); b3 = AesNi.Encrypt(b3, rk);
             b4 = AesNi.Encrypt(b4, rk); b5 = AesNi.Encrypt(b5, rk);
             b6 = AesNi.Encrypt(b6, rk); b7 = AesNi.Encrypt(b7, rk);
         }
 
-        rk = roundKeys[nr];
+        rk = Unsafe.Add(ref roundKeys, nr);
         b0 = AesNi.EncryptLast(b0, rk); b1 = AesNi.EncryptLast(b1, rk);
         b2 = AesNi.EncryptLast(b2, rk); b3 = AesNi.EncryptLast(b3, rk);
         b4 = AesNi.EncryptLast(b4, rk); b5 = AesNi.EncryptLast(b5, rk);
