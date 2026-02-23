@@ -119,8 +119,6 @@ internal readonly struct GcmCore
     private readonly bool _usePclmulV256;
     private readonly Vector128<byte> _hClmul;
     private readonly Vector128<byte>[] _hPowers;
-    /// Pre-computed Karatsuba cross-term halves: Hx[k] = H[k]_lo ⊕ H[k]_hi.
-    private readonly Vector128<byte>[] _hxPowers;
 #endif
 
     /// <summary>
@@ -170,7 +168,6 @@ internal readonly struct GcmCore
 
 #if NET8_0_OR_GREATER
         _hPowers = null!;
-        _hxPowers = null!;
         _usePclmul = (simdSupport & SimdSupport.PClMul) != 0;
         _usePclmulV256 = (simdSupport & SimdSupport.PClMulV256) != 0;
         if (_usePclmul || _usePclmulV256)
@@ -180,7 +177,6 @@ internal readonly struct GcmCore
             {
                 _usePipeline = true;
                 _hPowers = PrepareHPowers(_hClmul);
-                _hxPowers = PrepareHxPowers(_hPowers);
             }
         }
 #endif
@@ -959,27 +955,6 @@ internal readonly struct GcmCore
         Vector128<byte> h7 = GfMulClmul(hSwapped, h6);
         Vector128<byte> h8 = GfMulClmul(hSwapped, h7);
         return [h8, h7, h6, h5, h4, h3, h2, hSwapped];
-    }
-
-    /// <summary>
-    /// Pre-computes Karatsuba cross-term halves Hx[k] = H[k]_lo ⊕ H[k]_hi for each H power.
-    /// </summary>
-    /// <remarks>
-    /// Eliminates per-block SHUFFLE + XOR in the aggregated GHASH hot loop by pre-computing
-    /// the half-swap XOR that Karatsuba needs for the cross term.
-    /// </remarks>
-    /// <param name="hPowers">The H power table [0, H¹, H², ..., H⁸].</param>
-    /// <returns>Array [0, Hx¹, Hx², ..., Hx⁸] where Hx[k] = H[k]_lo ⊕ H[k]_hi.</returns>
-    private static Vector128<byte>[] PrepareHxPowers(Vector128<byte>[] hPowers)
-    {
-        var hx = new Vector128<byte>[hPowers.Length];
-        for (int i = 1; i < hPowers.Length; i++)
-        {
-            var h = hPowers[i].AsUInt64();
-            hx[i] = Sse2.Xor(h, Sse2.ShiftRightLogical128BitLane(h.AsByte(), 8).AsUInt64()).AsByte();
-        }
-
-        return hx;
     }
 
     /// <summary>
