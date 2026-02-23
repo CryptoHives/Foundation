@@ -24,11 +24,11 @@ Each package is designed for security, interoperability, and clarity — making 
 
 | Package | Description | NuGet | Documentation |
 |----------|--------------|--------|---------------|
-| `CryptoHives.Foundation.Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
-| `CryptoHives.Foundation.Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `CryptoHives.Foundation.Security.Cryptography` | Hash & MAC algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
+| `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
+| `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `Security.Cryptography` | Hash & MAC algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
 
-More packages will be published under the `CryptoHives.*` namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages?q=CryptoHives) for details.
+All packages are published under the `CryptoHives.Foundation` prefix and namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages?q=CryptoHives) for details.
 
 ### 🍯 CryptoHives Health
 
@@ -49,14 +49,14 @@ More packages will be published under the `CryptoHives.*` namespace — see the 
 - There is no intention to replace or shadow existing .NET class libraries; instead, CryptoHives packages are designed to complement and extend existing functionality
 
 ### ⚡ High-Performance Primitives
-- CryptoHives provides a growing set of utilities designed to optimize high performance transformation pipelines and cryptography workloads.
+- All CryptoHives packages are designed for high performance and no operational allocations to optimize high performance transformation pipelines and cryptography workloads.
 
 ### 🛠️ Memory Efficiency
 Pooled buffer management for transformation pipelines and high-frequency I/O:
 - **ArrayPool-based allocators** for common crypto and serialization scenarios
-- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`
+- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>` with `ReadOnlySequence` handoff support
 - `ReadOnlySequenceMemoryStream` — read from `ReadOnlySequence<byte>` without copying
-- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays
+- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays for e.g. `Utf8JsonWriter`
 - Ownership primitives for zero-copy handoff of pooled buffers
 
 ### 🚀 Concurrency Tools (Threading)
@@ -70,11 +70,11 @@ Designed to eliminate `Task` / `TaskCompletionSource<T>` allocations on the hot 
 - `AsyncBarrier` / `AsyncCountdownEvent`
 
 All primitives support `CancellationToken` and `ConfigureAwait(false)` without the need for extra allocations.
-Nuget package contains a C# analyzer to avoid common ValueTask usage mistakes.
+Nuget package contains a C# analyzer to avoid common ValueTask usage mistakes. (Also available as standalone package)
 
 ### 🔐 Managed Code Cryptography
 Fully managed implementations of cryptographic hash algorithms, MACs, and cipher algorithms, written from NIST/RFC/ISO specifications and verified against official test vectors.
-No OS crypto dependency — deterministic results on every platform. Hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics is automatically enabled on supported hardware, in some cases outperforming OS implementations.
+No OS crypto dependency — deterministic results on every platform. Hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics is automatically enabled on supported hardware, in some cases even outperforming OS implementations.
 
 **Algorithms:**
 
