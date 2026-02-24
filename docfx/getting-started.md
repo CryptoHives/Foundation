@@ -22,7 +22,7 @@ dotnet add package CryptoHives.Foundation.Threading
 
 ### 🔐 [Security.Cryptography Package](packages/security/cryptography/index.md)
 
-Specification-based cryptographic hash algorithms and MACs — SHA-2, SHA-3, SHAKE, cSHAKE, TurboSHAKE, KangarooTwelve, KMAC, BLAKE2, BLAKE3, Ascon, Keccak, SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160, and legacy MD5/SHA-1.
+Specification-based cryptographic hash algorithms, MACs, and cipher algorithms — SHA-2, SHA-3, SHAKE, cSHAKE, TurboSHAKE, KangarooTwelve, KMAC, BLAKE2, BLAKE3, Ascon, Keccak, SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160, AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and legacy MD5/SHA-1.
 
 ```bash
 dotnet add package CryptoHives.Foundation.Security.Cryptography

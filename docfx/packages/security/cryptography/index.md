@@ -282,9 +282,15 @@ byte[] hash = sha256.Hash;
 All implementations are verified against official test vectors:
 
 - **NIST FIPS 180-4**: SHA-1, SHA-2 family
+- **NIST FIPS 197**: AES (128/192/256)
 - **NIST FIPS 202**: SHA-3, SHAKE
+- **NIST SP 800-38D**: AES-GCM
 - **NIST SP 800-185**: cSHAKE, KMAC
+- **NIST SP 800-232**: Ascon-Hash256, Ascon-XOF128
+- **RFC 3610**: AES-CCM
 - **RFC 7693**: BLAKE2
+- **RFC 8439**: ChaCha20, Poly1305, ChaCha20-Poly1305
+- **draft-irtf-cfrg-xchacha**: XChaCha20-Poly1305
 - **BLAKE3 Specification**: BLAKE3
 - **GB/T 32905-2016**: SM3
 - **GOST R 34.11-2012 / RFC 6986**: Streebog
@@ -327,6 +333,9 @@ All implementations use fixed-size internal buffers based on their block size. N
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |
 | KMAC support | Yes | .NET 9+ only |
+| AES-GCM/CCM | Yes (managed + AES-NI) | Yes (OS-dependent) |
+| ChaCha20-Poly1305 | Yes (managed + SSSE3/AVX2) | .NET 8+ only (OS-dependent) |
+| XChaCha20-Poly1305 | Yes | No |
 | SM3/Streebog/Kupyna/LSH/Whirlpool | Yes | No |
 
 ## Thread Safety
