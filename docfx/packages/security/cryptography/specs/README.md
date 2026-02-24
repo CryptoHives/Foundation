@@ -369,6 +369,7 @@ specs/
 ├── NIST-FIPS-197.md       # NIST FIPS 197 - AES reference
 ├── NIST-FIPS-202.md       # NIST FIPS 202 - SHA-3, SHAKE reference
 ├── NIST-SP-800-185.md     # NIST SP 800-185 - cSHAKE, KMAC reference
+├── NIST-SP-800-232.md     # NIST SP 800-232 - Ascon hash and XOF reference
 ├── SHA1-vectors.md        # SHA-1 test vectors (legacy)
 ├── SHA2-vectors.md        # SHA-2 family test vectors
 ├── SHA3-vectors.md        # SHA-3 family test vectors

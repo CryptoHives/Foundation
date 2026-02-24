@@ -26,7 +26,7 @@ Each package is designed for security, interoperability, and clarity — making 
 |----------|--------------|--------|---------------|
 | `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
 | `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `Security.Cryptography` | Hash & MAC algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
+| `Security.Cryptography` | Hash, MAC & cipher algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
 
 All packages are published under the `CryptoHives.Foundation` prefix and namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages?q=CryptoHives) for details.
 
@@ -88,6 +88,8 @@ No OS crypto dependency — deterministic results on every platform. Hardware ac
 | BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST lightweight) |
 | MAC | KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
+| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/256), ChaCha20-Poly1305, XChaCha20-Poly1305 |
+| Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
 | Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5 (backward compatibility only) |
 
