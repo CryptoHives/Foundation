@@ -2,6 +2,16 @@
 
 This page collects the BenchmarkDotNet measurements for every cryptographic algorithm implementation that ships with `CryptoHives.Foundation.Security.Cryptography`. Each algorithm family has its own benchmark, measuring performance across representative payload sizes (128 bytes through 128 KiB) to capture both latency and throughput characteristics.
 
+## Benchmark Categories
+
+### [Hash Algorithm Benchmarks](benchmarks-hash.md)
+
+Performance measurements for all hash algorithm implementations including SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards (SM3, Streebog, Kupyna, LSH, Whirlpool).
+
+### [Cipher Algorithm Benchmarks](benchmarks-cipher.md)
+
+Performance measurements for all cipher algorithm implementations including AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, and XChaCha20-Poly1305.
+
 ## Memory Footprint
 
 The following tables show the per-instance memory footprint (internal state + buffers) and any static lookup tables shared across all instances. These are the raw data sizes; actual managed object overhead adds ~16–40 bytes per object and ~24 bytes per array on 64-bit runtimes.
@@ -75,15 +85,6 @@ The following tables show the per-instance memory footprint (internal state + bu
 
 > **Static tables** are shared across all instances of algorithms in the same family and are loaded once into memory. AES T-tables (10.5 KB) are shared by all AES-based algorithms (ECB, CBC, CTR, GCM, CCM). Keccak round constants (192 B) are shared by all SHA-3, SHAKE, cSHAKE, TurboSHAKE, KT, and KMAC instances. Algorithms marked "—" use no static lookup tables (permutation-based or constant-time by design).
 
-## Benchmark Categories
-
-### [Hash Algorithm Benchmarks](benchmarks-hash.md)
-
-Performance measurements for all hash algorithm implementations including SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards (SM3, Streebog, Kupyna, LSH, Whirlpool).
-
-### [Cipher Algorithm Benchmarks](benchmarks-cipher.md)
-
-Performance measurements for all cipher algorithm implementations including AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, and XChaCha20-Poly1305.
 
 ## Updating benchmark documentation
 
