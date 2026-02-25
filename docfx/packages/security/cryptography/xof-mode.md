@@ -57,7 +57,7 @@ public interface IExtendableOutput
 using var shake = Shake256.Create(64);
 
 // Absorb input data
-shake.Absorb(new byte[] { 0x01, 0x02, 0x03 });
+shake.Absorb(stackalloc byte[] { 0x01, 0x02, 0x03 });
 
 // Squeeze output into a stack-allocated buffer
 Span<byte> output = stackalloc byte[64];
@@ -102,11 +102,14 @@ The output from multiple `Squeeze` calls is identical to a single call requestin
 // These produce the same output:
 
 // Option A: single call
-xof.Squeeze(new byte[128]);
+Span<byte> outputA = stackalloc byte[128];
+xof.Squeeze(outputA);
 
 // Option B: two calls
-xof.Squeeze(new byte[64]);
-xof.Squeeze(new byte[64]);
+Span<byte> outputB1 = stackalloc byte[64];
+Span<byte> outputB2 = stackalloc byte[64];
+xof.Squeeze(outputB1);
+xof.Squeeze(outputB2);
 ```
 
 ### Reuse with Reset
@@ -148,7 +151,7 @@ if (algo is IExtendableOutput xof)
 }
 else
 {
-    byte[] hash = algo.ComputeHash(data);
+    byte[] hash = algo.ComputeHash(data); // allocates, but non-XOF algorithms don't support Absorb/Squeeze
 }
 ```
 
@@ -173,14 +176,15 @@ kmac.Squeeze(tag);
 All XOF algorithms also support the standard `HashAlgorithm` API with a fixed output size specified at construction:
 
 ```csharp
-// Fixed-output mode (standard HashAlgorithm API)
+// Fixed-output mode (standard HashAlgorithm API) — zero allocations
 using var shake = Shake256.Create(outputBytes: 32);
-byte[] hash = shake.ComputeHash(data);           // Always 32 bytes
+Span<byte> hash = stackalloc byte[32];
+shake.TryComputeHash(data, hash, out _);            // Always 32 bytes
 
-// XOF mode (IExtendableOutput API)
+// XOF mode (IExtendableOutput API) — zero allocations, any length
 using var xof = Shake256.Create(outputBytes: 32);
 xof.Absorb(data);
-Span<byte> output = stackalloc byte[128];         // Any length
+Span<byte> output = stackalloc byte[128];            // Any length
 xof.Squeeze(output);
 ```
 

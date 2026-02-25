@@ -70,15 +70,18 @@ byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
 
 // Basic KMAC128
 using var kmac = KMac128.Create(key, outputBytes: 32);
-byte[] mac = kmac.ComputeHash(message);
+Span<byte> mac = stackalloc byte[32];
+kmac.TryComputeHash(message, mac, out _);
 
 // With customization string
-using var kmac = KMac128.Create(key, outputBytes: 32, customization: "MyApp v1.0");
-byte[] mac = kmac.ComputeHash(message);
+using var kmacCustom = KMac128.Create(key, outputBytes: 32, customization: "MyApp v1.0");
+Span<byte> macCustom = stackalloc byte[32];
+kmacCustom.TryComputeHash(message, macCustom, out _);
 
 // Variable output length
-using var kmac = KMac128.Create(key, outputBytes: 64);
-byte[] longMac = kmac.ComputeHash(message);
+using var kmacLong = KMac128.Create(key, outputBytes: 64);
+Span<byte> longMac = stackalloc byte[64];
+kmacLong.TryComputeHash(message, longMac, out _);
 ```
 
 ### Incremental Usage
@@ -86,12 +89,13 @@ byte[] longMac = kmac.ComputeHash(message);
 ```csharp
 using var kmac = KMac128.Create(key, outputBytes: 32, customization: "");
 
-// Process data in chunks
-kmac.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
-kmac.TransformBlock(chunk2, 0, chunk2.Length, null, 0);
-kmac.TransformFinalBlock(chunk3, 0, chunk3.Length);
+// Process data in chunks — zero allocations
+kmac.AppendData(chunk1);
+kmac.AppendData(chunk2);
+kmac.AppendData(chunk3);
 
-byte[] mac = kmac.Hash;
+Span<byte> mac = stackalloc byte[32];
+kmac.TryGetHashAndReset(mac, out _);
 ```
 
 ---
@@ -141,11 +145,13 @@ byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
 
 // Basic KMAC256
 using var kmac = KMac256.Create(key, outputBytes: 64);
-byte[] mac = kmac.ComputeHash(message);
+Span<byte> mac = stackalloc byte[64];
+kmac.TryComputeHash(message, mac, out _);
 
 // With customization string for domain separation
-using var kmac = KMac256.Create(key, outputBytes: 64, customization: "Session Authentication");
-byte[] mac = kmac.ComputeHash(message);
+using var kmacCustom = KMac256.Create(key, outputBytes: 64, customization: "Session Authentication");
+Span<byte> macCustom = stackalloc byte[64];
+kmacCustom.TryComputeHash(message, macCustom, out _);
 ```
 
 ---
@@ -171,7 +177,8 @@ byte[] key = new byte[32]; // Up to 64 bytes
 RandomNumberGenerator.Fill(key);
 
 using var blake2b = Blake2b.Create(key: key, hashSize: 32);
-byte[] mac = blake2b.ComputeHash(message);
+Span<byte> mac = stackalloc byte[32];
+blake2b.TryComputeHash(message, mac, out _);
 ```
 
 ### Blake2s Keyed Mode
@@ -191,7 +198,8 @@ byte[] key = new byte[16]; // Up to 32 bytes
 RandomNumberGenerator.Fill(key);
 
 using var blake2s = Blake2s.Create(key: key, hashSize: 16);
-byte[] mac = blake2s.ComputeHash(message);
+Span<byte> mac = stackalloc byte[16];
+blake2s.TryComputeHash(message, mac, out _);
 ```
 
 ---
@@ -218,11 +226,13 @@ RandomNumberGenerator.Fill(key);
 
 // Standard 32-byte MAC
 using var blake3 = Blake3.CreateKeyed(key);
-byte[] mac = blake3.ComputeHash(message);
+Span<byte> mac = stackalloc byte[32];
+blake3.TryComputeHash(message, mac, out _);
 
 // Extended 64-byte MAC
-using var blake3 = Blake3.CreateKeyed(key, outputBytes: 64);
-byte[] longMac = blake3.ComputeHash(message);
+using var blake3Long = Blake3.CreateKeyed(key, outputBytes: 64);
+Span<byte> longMac = stackalloc byte[64];
+blake3Long.TryComputeHash(message, longMac, out _);
 ```
 
 ### BLAKE3 Key Derivation
@@ -239,7 +249,8 @@ string context = "MyApp 2025-01-01 encryption key";
 byte[] inputKeyMaterial = ...; // Your master key or password-derived key
 
 using var blake3 = Blake3.CreateDeriveKey(context);
-byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
+Span<byte> derivedKey = stackalloc byte[32];
+blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 ```
 
 ---
@@ -333,23 +344,25 @@ public class AuthenticatedMessage
 {
     public byte[] Ciphertext { get; set; }
     public byte[] Mac { get; set; }
-    
+
     public static AuthenticatedMessage Create(byte[] key, byte[] plaintext)
     {
         // Encrypt (using your preferred cipher)
         byte[] ciphertext = Encrypt(plaintext);
-        
+
         // Authenticate
         using var kmac = KMac256.Create(key, customization: "Auth");
-        byte[] mac = kmac.ComputeHash(ciphertext);
-        
-        return new AuthenticatedMessage { Ciphertext = ciphertext, Mac = mac };
+        Span<byte> mac = stackalloc byte[64];
+        kmac.TryComputeHash(ciphertext, mac, out _);
+
+        return new AuthenticatedMessage { Ciphertext = ciphertext, Mac = mac.ToArray() };
     }
-    
+
     public bool Verify(byte[] key)
     {
         using var kmac = KMac256.Create(key, customization: "Auth");
-        byte[] expectedMac = kmac.ComputeHash(Ciphertext);
+        Span<byte> expectedMac = stackalloc byte[64];
+        kmac.TryComputeHash(Ciphertext, expectedMac, out _);
         return CryptographicOperations.FixedTimeEquals(Mac, expectedMac);
     }
 }
@@ -362,10 +375,11 @@ public string SignRequest(byte[] key, string method, string path, string timesta
 {
     string message = $"{method}:{path}:{timestamp}";
     byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-    
+
     using var blake3 = Blake3.CreateKeyed(key);
-    byte[] signature = blake3.ComputeHash(messageBytes);
-    
+    Span<byte> signature = stackalloc byte[32];
+    blake3.TryComputeHash(messageBytes, signature, out _);
+
     return Convert.ToBase64String(signature);
 }
 ```
@@ -377,7 +391,9 @@ public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expir
 {
     string context = $"session:{userId}:{expiry:O}";
     using var blake3 = Blake3.CreateDeriveKey(context);
-    return blake3.ComputeHash(masterKey);
+    Span<byte> sessionKey = stackalloc byte[32];
+    blake3.TryComputeHash(masterKey, sessionKey, out _);
+    return sessionKey.ToArray();
 }
 ```
 
