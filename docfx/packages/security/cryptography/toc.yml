@@ -26,6 +26,8 @@
       items:
         - name: FIPS 180-4 (SHA-1, SHA-2)
           href: specs/NIST-FIPS-180-4.md
+        - name: FIPS 197 (AES)
+          href: specs/NIST-FIPS-197.md
         - name: FIPS 202 (SHA-3, SHAKE)
           href: specs/NIST-FIPS-202.md
         - name: SP 800-185 (cSHAKE, KMAC)
@@ -34,6 +36,8 @@
           href: specs/RFC-2104.md
         - name: SP 800-38B (CMAC, GMAC)
           href: specs/NIST-SP-800-38B.md
+        - name: SP 800-232 (Ascon)
+          href: specs/NIST-SP-800-232.md
     - name: Test Vectors
       items:
         - name: SHA-1 (Legacy)
@@ -72,3 +76,9 @@
           href: specs/HMAC-vectors.md
         - name: CMAC / GMAC
           href: specs/CMAC-vectors.md
+        - name: AES (ECB/GCM/CCM)
+          href: specs/AES-vectors.md
+        - name: ChaCha20/Poly1305
+          href: specs/ChaCha20-vectors.md
+        - name: XChaCha20-Poly1305
+          href: specs/XChaCha20-vectors.md

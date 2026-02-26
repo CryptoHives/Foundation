@@ -152,7 +152,8 @@ SHAKE128 and SHAKE256 can produce arbitrary-length output:
 ```csharp
 // Request 64 bytes of output
 using var shake = Shake256.Create(outputBytes: 64);
-byte[] hash = shake.ComputeHash(data);
+Span<byte> hash = stackalloc byte[64];
+shake.TryComputeHash(data, hash, out _);
 ```
 
 ### Use Cases

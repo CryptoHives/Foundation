@@ -46,6 +46,8 @@
       href: Streebog-vectors.md
     - name: Kupyna (DSTU 7564)
       href: Kupyna-vectors.md
+    - name: LSH (KS X 3262)
+      href: LSH-vectors.md
     - name: MD5 (Legacy)
       href: MD5-vectors.md
     - name: AES (ECB/GCM/CCM)

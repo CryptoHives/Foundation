@@ -424,6 +424,7 @@ specs/
 ├── NIST-SP-800-185.md     # NIST SP 800-185 - cSHAKE, KMAC reference
 ├── RFC-2104.md            # RFC 2104 - HMAC reference
 ├── NIST-SP-800-38B.md     # NIST SP 800-38B - CMAC, GMAC reference
+├── NIST-SP-800-232.md     # NIST SP 800-232 - Ascon hash and XOF reference
 ├── SHA1-vectors.md        # SHA-1 test vectors (legacy)
 ├── SHA2-vectors.md        # SHA-2 family test vectors
 ├── SHA3-vectors.md        # SHA-3 family test vectors

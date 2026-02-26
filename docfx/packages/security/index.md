@@ -40,13 +40,15 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 
-// Compute SHA-256 hash
+// Compute SHA-256 hash — zero allocations
 using var sha256 = SHA256.Create();
-byte[] hash = sha256.ComputeHash(data);
+Span<byte> hash = stackalloc byte[32];
+sha256.TryComputeHash(data, hash, out _);
 
-// Compute BLAKE3 hash with variable output
+// Compute BLAKE3 hash with variable output — zero allocations
 using var blake3 = Blake3.Create(outputBytes: 64);
-byte[] longHash = blake3.ComputeHash(data);
+Span<byte> longHash = stackalloc byte[64];
+blake3.TryComputeHash(data, longHash, out _);
 ```
 
 ---
