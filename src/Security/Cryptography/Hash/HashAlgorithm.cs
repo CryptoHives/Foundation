@@ -173,6 +173,7 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// <param name="bytesWritten">The number of bytes written into the buffer.</param>
     /// <returns><see langword="true"/> if the destination buffer was large enough; otherwise <see langword="false"/>.</returns>
     protected abstract bool TryHashFinal(Span<byte> destination, out int bytesWritten);
+#endif
 
     /// <summary>
     /// Attempts to compute the hash value for the specified read-only byte span
@@ -188,10 +189,18 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// otherwise, <see langword="false"/>.
     /// </returns>
     /// <remarks>
-    /// This polyfill enables zero-allocation hashing on .NET Framework and .NET Standard 2.0
-    /// where the base class does not provide this method.
+    /// <para>
+    /// The algorithm is automatically reset after a successful computation, allowing the
+    /// instance to be reused for subsequent <see cref="AppendData"/> calls or another
+    /// <see cref="TryComputeHash"/> without calling
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> first.
+    /// </para>
     /// </remarks>
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+    public new bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+#else
     public bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+#endif
     {
         if (destination.Length < HashSizeValue / 8)
         {
@@ -199,11 +208,17 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             return false;
         }
 
-        Initialize();
         HashCore(source);
-        return TryHashFinal(destination, out bytesWritten);
+
+        if (!TryHashFinal(destination, out bytesWritten))
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        Initialize();
+        return true;
     }
-#endif
 
     /// <inheritdoc/>
     protected sealed override byte[] HashFinal()
