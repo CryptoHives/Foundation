@@ -10,7 +10,7 @@ Performance measurements for all hash algorithm implementations including SHA-2,
 
 ### [Cipher Algorithm Benchmarks](benchmarks-cipher.md)
 
-Performance measurements for all cipher algorithm implementations including AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, and XChaCha20-Poly1305.
+Performance measurements for all cipher algorithm implementations including AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and regional block ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED).
 
 ## Memory Footprint
 
@@ -72,6 +72,18 @@ The following tables show the per-instance memory footprint (internal state + bu
 | ChaCha20 | ~128 B | 64 B | 16 B | uint[16] state + keystream buffer |
 | ChaCha20-Poly1305 | ~192 B | 64 B | 16 B | ChaCha20 state + Poly1305 accumulator |
 | XChaCha20-Poly1305 | ~192 B | 64 B | 16 B | Same as ChaCha20-Poly1305 (HChaCha subkey) |
+| Ascon-AEAD-128 | 56 B | 16 B | — | 5 × ulong state + nonce; permutation-based |
+| SM4 (ECB/CBC/CTR) | 176 B | 16 B | 4 KB | uint[32] round keys + IV + feedback; S-box + CK table |
+| ARIA-128 (ECB/CBC/CTR) | 288 B | 16 B | 1 KB | byte[16×17] round keys + IV + feedback; 4 S-boxes |
+| ARIA-192 (ECB/CBC/CTR) | 288 B | 16 B | 1 KB | byte[16×15] round keys (shared buffer) |
+| ARIA-256 (ECB/CBC/CTR) | 288 B | 16 B | 1 KB | byte[16×17] round keys (shared buffer) |
+| Camellia-128 (ECB/CBC/CTR) | 320 B | 16 B | 4.5 KB | uint[52] subkeys + IV + feedback; 6 SP-boxes |
+| Camellia-192 (ECB/CBC/CTR) | 400 B | 16 B | 4.5 KB | uint[68] subkeys (shared SP-boxes) |
+| Camellia-256 (ECB/CBC/CTR) | 400 B | 16 B | 4.5 KB | uint[68] subkeys (shared SP-boxes) |
+| Kuznyechik (ECB/CBC/CTR) | 320 B | 16 B | 8 KB | byte[10×16] round keys + IV + feedback; LS/IL tables |
+| Kalyna-128 (ECB/CBC/CTR) | 320 B | 16 B | 5 KB | ulong[22] round keys + IV + feedback; 4 S-boxes + MDS |
+| Kalyna-256 (ECB/CBC/CTR) | 400 B | 16 B | 5 KB | ulong[30] round keys (shared S-boxes/MDS) |
+| SEED (ECB/CBC/CTR) | 192 B | 16 B | 4 KB | uint[32] round keys + IV + feedback; 4 SS-boxes |
 
 ### Message Authentication Codes (MAC)
 
@@ -98,6 +110,9 @@ The following tables show the per-instance memory footprint (internal state + bu
 
    # Run cipher benchmarks
    .\scripts\run-benchmarks.ps1 -Project Cryptography -Family AesGcm128
+
+   # Run all regional cipher benchmarks
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher
 
    # Direct invocation
    cd tests/Security/Cryptography
