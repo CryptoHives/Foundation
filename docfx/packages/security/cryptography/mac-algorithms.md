@@ -401,6 +401,107 @@ RandomNumberGenerator.Fill(nonce);
 
 ---
 
+## Poly1305
+
+Poly1305 is a high-speed one-time authenticator designed by Daniel J. Bernstein, defined in [RFC 8439](https://tools.ietf.org/html/rfc8439). It is the MAC component of ChaCha20-Poly1305 and XChaCha20-Poly1305 AEAD constructions.
+
+> **Note:** .NET does not provide a standalone Poly1305 class. This is a CryptoHives differentiator.
+
+### Class Declaration
+
+```csharp
+public sealed class Poly1305Mac : IMac
+```
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| MAC Size | 128 bits (16 bytes) |
+| Key Size | 256 bits (32 bytes) |
+| Block Size | 128 bits (16 bytes) |
+| One-Time Key | **Yes — key must be unique per message** |
+
+### Constructor
+
+```csharp
+public Poly1305Mac(ReadOnlySpan<byte> key)
+```
+
+**Parameters:**
+- `key` - A 32-byte one-time key. **Must be unique for every message.**
+
+### Factory Method
+
+```csharp
+public static Poly1305Mac Create(byte[] key)
+public static Poly1305Mac Create(ReadOnlySpan<byte> key)
+```
+
+### Static One-Shot
+
+```csharp
+public static byte[] Hash(byte[] key, byte[] data)
+```
+
+### Usage Examples
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] key = new byte[32]; // Must be exactly 32 bytes, unique per message
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes("Hello, World!");
+
+// One-shot API
+byte[] tag = Poly1305Mac.Hash(key, message);
+
+// Instance-based API
+using var mac = Poly1305Mac.Create(key);
+byte[] result = mac.ComputeHash(message);
+
+// Streaming API (IMac interface)
+using var mac = Poly1305Mac.Create(key);
+mac.Update(chunk1);
+mac.Update(chunk2);
+byte[] tag = new byte[mac.MacSize]; // 16 bytes
+mac.Finalize(tag);
+```
+
+### Important: Key Requirements
+
+**The 32-byte key must be used for exactly one message.** Reusing a key across multiple messages allows an attacker to forge tags. In practice, the key is derived from a session key and nonce:
+
+```csharp
+// Typical pattern: derive Poly1305 key from ChaCha20 key stream
+// (This is done internally by ChaCha20-Poly1305)
+byte[] sessionKey = ...; // 256-bit session key
+byte[] nonce = ...;      // 96-bit nonce
+
+// Generate one-time key from ChaCha20 block 0
+byte[] oneTimeKey = ChaCha20KeyStream(sessionKey, nonce, blockCounter: 0);
+using var mac = Poly1305Mac.Create(oneTimeKey);
+```
+
+### Reset Behavior
+
+Calling `Reset()` restores the accumulator to the initial state with the **same key**. This allows computing multiple MACs with the same key (for testing or if the one-time key property is managed externally):
+
+```csharp
+using var mac = Poly1305Mac.Create(key);
+
+mac.Update(message1);
+byte[] tag1 = new byte[16];
+mac.Finalize(tag1);
+
+mac.Reset(); // Resets accumulator, same key
+mac.Update(message2);
+byte[] tag2 = new byte[16];
+mac.Finalize(tag2);
+```
+
+---
+
 ## BLAKE2 MAC
 
 BLAKE2b and BLAKE2s support built-in keyed hashing mode for message authentication.
@@ -510,6 +611,7 @@ blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 | HMAC-SHA-256 | 256 bits | Most widely used, recommended |
 | KMAC256 | 256 bits | Highest security, NIST approved |
 | HMAC-SHA3-256 | 256 bits | Cross-platform SHA-3 HMAC |
+| Poly1305 | 128 bits | Ultra-fast one-time authenticator |
 | AES-CMAC | 128 bits | Cipher-based, single-pass |
 | AES-GMAC | 128 bits | Galois field, nonce-required |
 | KMAC128 | 128 bits | Good security, NIST approved |
@@ -521,7 +623,8 @@ blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 
 | Algorithm | Relative Speed | Best For |
 |-----------|----------------|----------|
-| BLAKE3 keyed | Fastest | High-throughput applications |
+| Poly1305 | Fastest | AEAD constructions, one-time auth |
+| BLAKE3 keyed | Very fast | High-throughput applications |
 | BLAKE2b keyed | Very fast | General purpose on 64-bit |
 | AES-GMAC | Very fast (AES-NI) | When nonce management is feasible |
 | AES-CMAC | Fast (AES-NI) | Protocol compliance (EAP, 802.11i) |
@@ -534,16 +637,19 @@ blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 
 ### Feature Comparison
 
-| Feature | HMAC | AES-CMAC | AES-GMAC | KMAC | BLAKE2 | BLAKE3 |
-|---------|------|----------|----------|------|--------|--------|
-| Variable output | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Customization string | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Nonce required | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| NIST approved | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| .NET built-in | ✅ | ❌ | ❌ | Partial | ❌ | ❌ |
-| Key derivation | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Feature | HMAC | AES-CMAC | AES-GMAC | Poly1305 | KMAC | BLAKE2 | BLAKE3 |
+|---------|------|----------|----------|----------|------|--------|--------|
+| Variable output | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Customization string | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Nonce required | ❌ | ❌ | ✅ | ❌¹ | ❌ | ❌ | ❌ |
+| One-time key required | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| NIST approved | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| .NET built-in | ✅ | ❌ | ❌ | ❌ | Partial | ❌ | ❌ |
+| Key derivation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Arbitrary key size | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Hardware accelerated | ❌ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Hardware accelerated | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+
+¹ Poly1305 does not use a nonce directly, but its key must be unique per message (typically derived from a nonce via ChaCha20).
 
 ---
 
@@ -661,12 +767,14 @@ public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expir
 
 - [Hash Algorithms](hash-algorithms.md)
 - [Cipher Algorithms](cipher-algorithms.md)
+- [KDF Algorithms](kdf-algorithms.md)
 - [Cryptography Package Overview](index.md)
 - [KMAC Specifications](specs/NIST-SP-800-185.md)
 - [HMAC Specification (RFC 2104)](specs/RFC-2104.md)
 - [CMAC Specification (SP 800-38B)](specs/NIST-SP-800-38B.md)
 - [HMAC Test Vectors](specs/HMAC-vectors.md)
 - [CMAC Test Vectors](specs/CMAC-vectors.md)
+- [Poly1305 / ChaCha20 Test Vectors](specs/ChaCha20-vectors.md)
 
 ---
 
