@@ -314,6 +314,91 @@ byte[] derived = Kbkdf.DeriveKey(
 
 ---
 
+## Concat KDF — One-Step (SP 800-56A / SP 800-56C)
+
+The Concatenation Key Derivation Function derives keying material from a shared secret using a hash function or HMAC iterated with an incrementing counter. It is defined in NIST SP 800-56A §5.8.1 (hash-based) and NIST SP 800-56C rev2 Option 1 (HMAC-based).
+
+### Design
+
+Each iteration computes:
+
+- **Hash-based:** `Hash(counter ‖ Z ‖ OtherInfo)`
+- **HMAC-based:** `HMAC-Hash(salt, counter ‖ Z ‖ OtherInfo)`
+
+Where `counter` is a 32-bit big-endian counter starting at 1, `Z` is the shared secret, and `OtherInfo` is supplementary public information.
+
+### Class Declaration
+
+```csharp
+public static class ConcatKdf
+```
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `DeriveKey(HashAlgorithm, ReadOnlySpan<byte>, Span<byte>, ReadOnlySpan<byte>)` | Hash-based KDF (span overload) |
+| `DeriveKey(HashAlgorithm, byte[], int, byte[]?)` | Hash-based KDF (array overload) |
+| `DeriveKey(HmacFactory, ReadOnlySpan<byte>, Span<byte>, ReadOnlySpan<byte>, ReadOnlySpan<byte>)` | HMAC-based KDF with salt (span overload) |
+| `DeriveKey(HmacFactory, byte[], int, byte[]?, byte[]?)` | HMAC-based KDF with salt (array overload) |
+
+### Usage Examples
+
+#### Hash-Based (SP 800-56A §5.8.1)
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
+
+byte[] sharedSecret = ...; // e.g., from ECDH key agreement
+byte[] otherInfo = ...; // algorithm ID, party info, etc.
+
+using var sha256 = SHA256.Create();
+byte[] derivedKey = ConcatKdf.DeriveKey(sha256, sharedSecret, 32, otherInfo);
+```
+
+#### HMAC-Based (SP 800-56C rev2 Option 1)
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] salt = ...; // optional salt (used as HMAC key)
+byte[] derivedKey = ConcatKdf.DeriveKey(
+    key => new HmacSha256(key),
+    sharedSecret, 32, otherInfo, salt);
+```
+
+#### JOSE/JWE Key Agreement (RFC 7518)
+
+```csharp
+// Compose OtherInfo per RFC 7518 §4.6.2
+byte[] algId = Encoding.UTF8.GetBytes("A256GCM");
+byte[] otherInfo = ComposeJweOtherInfo(algId, apu, apv, keyLength: 256);
+
+using var sha256 = SHA256.Create();
+byte[] cek = ConcatKdf.DeriveKey(sha256, ecdhSharedSecret, 32, otherInfo);
+```
+
+### Concat KDF vs HKDF
+
+| Aspect | Concat KDF | HKDF |
+|--------|-----------|------|
+| Input | Shared secret + OtherInfo | IKM + salt + info |
+| Phases | Single step | Extract + Expand |
+| Hash function | Direct or HMAC | HMAC only |
+| Salt | Optional (HMAC variant only) | Optional (Extract phase) |
+| Best for | ECDH key agreement, JOSE/JWE | TLS 1.3, HPKE, protocol key schedules |
+| Standards | SP 800-56A, SP 800-56C, RFC 7518 | RFC 5869, RFC 8446 |
+
+### Standards Compliance
+
+- **NIST SP 800-56A §5.8.1**: Hash-based one-step KDF — verified against BouncyCastle test vectors
+- **NIST SP 800-56C rev2 Option 1**: HMAC-based one-step KDF
+- Compatible with BouncyCastle `ConcatenationKdfGenerator`
+
+---
+
 ## BLAKE3 Key Derivation
 
 BLAKE3 provides a built-in key derivation mode that uses a context string for domain separation. Unlike HKDF, it does not require a separate HMAC; the KDF is integrated into the hash function.
@@ -373,8 +458,8 @@ The following KDFs are commonly used with ECC, asymmetric encryption, and post-q
 |-----|----------|-----------|--------|
 | HKDF | RFC 5869 | TLS 1.3, HPKE, Signal, WireGuard | ✅ Implemented |
 | KBKDF Counter Mode | NIST SP 800-108r1 | CNG, DPAPI, IPsec, Kerberos | ✅ Implemented |
+| Concat KDF (One-Step) | NIST SP 800-56A/56C | ECDH key agreement, JOSE/JWE | ✅ Implemented |
 | BLAKE3 DeriveKey | BLAKE3 Spec | Custom protocols | ✅ Implemented |
-| Concat KDF (One-Step) | NIST SP 800-56C | ECDH key agreement, JOSE/JWE | 🔲 Planned |
 | X9.63 KDF | ANSI X9.63 / SEC 1 | Legacy ECC (IEEE P1363) | 🔲 Under review |
 | PBKDF2 | RFC 8018 | Password-based key derivation | 🔲 Planned |
 

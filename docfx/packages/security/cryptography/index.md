@@ -97,6 +97,7 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 |-----------|----------|---------------|
 | HKDF | RFC 5869 | [Details](kdf-algorithms.md#hkdf-hmac-based-extract-and-expand-kdf) |
 | KBKDF Counter Mode | NIST SP 800-108r1 | [Details](kdf-algorithms.md#kbkdf--counter-mode-sp-800-108r1) |
+| Concat KDF | NIST SP 800-56A/56C | [Details](kdf-algorithms.md#concat-kdf--one-step-sp-800-56a--sp-800-56c) |
 | BLAKE3 DeriveKey | BLAKE3 Spec | [Details](hash-algorithms.md#blake3) |
 
 ### Cipher Algorithms (Block/Stream)
@@ -301,11 +302,13 @@ sha256.TryGetHashAndReset(hash, out _);
 | Use Case | Recommended | Alternative |
 |----------|-------------|-------------|
 | TLS 1.3 / HPKE / Signal | HKDF (SHA-256) | HKDF (SHA-384) |
+| ECDH key agreement | Concat KDF (hash-based) | HKDF |
+| JOSE/JWE (RFC 7518) | Concat KDF (SHA-256) | — |
 | Session key from master key | KBKDF (SP 800-108r1) | HKDF |
 | Multiple keys from one secret | HKDF (Extract + Expand) | KBKDF (vary label) |
 | CMAC-based PRF | KBKDF with AES-CMAC | — |
 | High performance | BLAKE3 DeriveKey | HKDF |
-| NIST compliance | HKDF or KBKDF | — |
+| NIST compliance | HKDF, KBKDF, or Concat KDF | — |
 
 ### For Authenticated Encryption
 
@@ -347,6 +350,7 @@ All implementations are verified against official test vectors:
 - **NIST SP 800-38B**: AES-CMAC
 - **NIST SP 800-38D**: AES-GCM
 - **NIST SP 800-108r1**: KBKDF Counter Mode
+- **NIST SP 800-56A/56C**: Concat KDF (One-Step)
 - **NIST SP 800-185**: cSHAKE, KMAC
 - **NIST SP 800-232**: Ascon-Hash256, Ascon-XOF128
 - **RFC 2104**: HMAC
