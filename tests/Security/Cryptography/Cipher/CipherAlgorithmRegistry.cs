@@ -262,6 +262,9 @@ public static class CipherAlgorithmRegistry
         // OS Implementations (.NET 8.0+)
         AddOSImplementations(implementations);
 
+        // Regional Cipher Implementations
+        AddRegionalImplementations(implementations);
+
         return implementations;
     }
 
@@ -928,5 +931,169 @@ public static class CipherAlgorithmRegistry
             Source.OS,
             supportCheck: () => OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()));
 #endif
+    }
+
+    private static void AddRegionalImplementations(List<CipherImplementation> implementations)
+    {
+        // SM4-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "SM4-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var sm4 = CH.Cipher.Sm4.Create();
+                sm4.Mode = CH.Cipher.CipherMode.CBC;
+                sm4.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return sm4;
+            },
+            Source.Managed));
+
+        // SM4-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "SM4-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new SM4Engine(), 16, "SM4-CBC"),
+            Source.BouncyCastle));
+
+        // ARIA-128-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "ARIA-128-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var aria = CH.Cipher.Aria128.Create();
+                aria.Mode = CH.Cipher.CipherMode.CBC;
+                aria.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return aria;
+            },
+            Source.Managed));
+
+        // ARIA-128-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "ARIA-128-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 16, "ARIA-128-CBC"),
+            Source.BouncyCastle));
+
+        // ARIA-256-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "ARIA-256-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var aria = CH.Cipher.Aria256.Create();
+                aria.Mode = CH.Cipher.CipherMode.CBC;
+                aria.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return aria;
+            },
+            Source.Managed));
+
+        // ARIA-256-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "ARIA-256-CBC",
+            "BouncyCastle",
+            256,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 32, "ARIA-256-CBC"),
+            Source.BouncyCastle));
+
+        // Camellia-128-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Camellia-128-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var cam = CH.Cipher.Camellia128.Create();
+                cam.Mode = CH.Cipher.CipherMode.CBC;
+                cam.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return cam;
+            },
+            Source.Managed));
+
+        // Camellia-128-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Camellia-128-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 16, "Camellia-128-CBC"),
+            Source.BouncyCastle));
+
+        // Camellia-256-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Camellia-256-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var cam = CH.Cipher.Camellia256.Create();
+                cam.Mode = CH.Cipher.CipherMode.CBC;
+                cam.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return cam;
+            },
+            Source.Managed));
+
+        // Camellia-256-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Camellia-256-CBC",
+            "BouncyCastle",
+            256,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 32, "Camellia-256-CBC"),
+            Source.BouncyCastle));
+
+        // Kalyna-128-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Kalyna-128-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var kal = CH.Cipher.Kalyna128.Create();
+                kal.Mode = CH.Cipher.CipherMode.CBC;
+                kal.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return kal;
+            },
+            Source.Managed));
+
+        // Kalyna-128-CBC - BouncyCastle (Dstu7624Engine)
+        implementations.Add(new CipherImplementation(
+            "Kalyna-128-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(128), 16, "Kalyna-128-CBC"),
+            Source.BouncyCastle));
+
+        // Kalyna-256-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Kalyna-256-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var kal = CH.Cipher.Kalyna256.Create();
+                kal.Mode = CH.Cipher.CipherMode.CBC;
+                kal.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return kal;
+            },
+            Source.Managed));
+
+        // Kalyna-256-CBC - BouncyCastle (Dstu7624Engine)
+        implementations.Add(new CipherImplementation(
+            "Kalyna-256-CBC",
+            "BouncyCastle",
+            256,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(128), 32, "Kalyna-256-CBC"),
+            Source.BouncyCastle));
     }
 }
