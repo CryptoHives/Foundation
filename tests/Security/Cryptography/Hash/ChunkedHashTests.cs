@@ -5,7 +5,7 @@ namespace Cryptography.Tests.Hash;
 
 using NUnit.Framework;
 using System;
-using CryptoHivesHash = CryptoHives.Foundation.Security.Cryptography.Hash;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Verifies that feeding data in random-sized chunks produces the same hash
@@ -80,7 +80,7 @@ public class ChunkedHashTests
             if (inputSize > 0) dataRng.NextBytes(input);
 
             byte[] expected;
-            using (var oneShot = (CryptoHivesHash.HashAlgorithm)factory.Create())
+            using (var oneShot = (CH.Hash.HashAlgorithm)factory.Create())
             {
                 expected = oneShot.ComputeHash(input);
             }
@@ -112,7 +112,7 @@ public class ChunkedHashTests
         rng.NextBytes(input);
 
         byte[] expected;
-        using (var oneShot = (CryptoHivesHash.HashAlgorithm)factory.Create())
+        using (var oneShot = (CH.Hash.HashAlgorithm)factory.Create())
         {
             expected = oneShot.ComputeHash(input);
         }
@@ -157,7 +157,7 @@ public class ChunkedHashTests
         byte[] input = new byte[blockSize * 4 + 13];
         rng.NextBytes(input);
 
-        using var algo = (CryptoHivesHash.HashAlgorithm)factory.Create();
+        using var algo = (CH.Hash.HashAlgorithm)factory.Create();
         byte[] expected = algo.ComputeHash(input);
 
         // Reuse with varying chunk sizes: ComputeHash calls Initialize internally
@@ -190,7 +190,7 @@ public class ChunkedHashTests
             rng.NextBytes(input);
 
             byte[] expected;
-            using (var oneShot = (CryptoHivesHash.HashAlgorithm)factory.Create())
+            using (var oneShot = (CH.Hash.HashAlgorithm)factory.Create())
             {
                 expected = oneShot.ComputeHash(input);
             }
@@ -216,7 +216,7 @@ public class ChunkedHashTests
 
     private static int GetBlockSize(HashAlgorithmFactory factory)
     {
-        using var algo = (CryptoHivesHash.HashAlgorithm)factory.Create();
+        using var algo = (CH.Hash.HashAlgorithm)factory.Create();
         return algo.BlockSize;
     }
 
@@ -276,9 +276,9 @@ public class ChunkedHashTests
     }
 
     /// <summary>
-    /// Verifies that the zero-allocation <see cref="CryptoHivesHash.HashAlgorithm.AppendData"/>
-    /// and <see cref="CryptoHivesHash.HashAlgorithm.TryGetHashAndReset"/> API produces the same
-    /// result as single-shot <see cref="CryptoHivesHash.HashAlgorithm.TryComputeHash"/>.
+    /// Verifies that the zero-allocation <see cref="CH.Hash.HashAlgorithm.AppendData"/>
+    /// and <see cref="CH.Hash.HashAlgorithm.TryGetHashAndReset"/> API produces the same
+    /// result as single-shot <see cref="CH.Hash.HashAlgorithm.TryComputeHash"/>.
     /// </summary>
     /// <param name="factory">The hash algorithm factory under test.</param>
     [Test]
@@ -290,7 +290,7 @@ public class ChunkedHashTests
         byte[] input = new byte[blockSize * 3 + 13];
         rng.NextBytes(input);
 
-        using var algo = (CryptoHivesHash.HashAlgorithm)factory.Create();
+        using var algo = (CH.Hash.HashAlgorithm)factory.Create();
 
         // Single-shot reference
         Span<byte> expected = stackalloc byte[algo.HashSize / 8];
@@ -311,7 +311,7 @@ public class ChunkedHashTests
 
         Assert.That(success, Is.True, $"{factory.Name}: TryGetHashAndReset returned false");
         Assert.That(bytesWritten, Is.EqualTo(expected.Length), $"{factory.Name}: unexpected bytesWritten");
-        Assert.That(actual.ToArray(), Is.EqualTo(expected.ToArray()),
+        Assert.That(actual.Slice(0, bytesWritten).ToArray(), Is.EqualTo(expected.ToArray()),
             $"{factory.Name}: AppendData/TryGetHashAndReset mismatch");
 
         // Verify reset: a second single-shot should work without explicit Initialize
