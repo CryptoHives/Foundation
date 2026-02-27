@@ -105,9 +105,9 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 | Algorithm | Key Sizes | Modes | Documentation |
 |-----------|-----------|-------|---------------|
-| AES-128 | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-block-cipher) |
-| AES-192 | 192 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-block-cipher) |
-| AES-256 | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-block-cipher) |
+| AES-128 | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| AES-192 | 192 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| AES-256 | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
 | ChaCha20 | 256 bits | Stream cipher | [Details](cipher-algorithms.md#chacha20) |
 
 ### Cipher Algorithms (AEAD)
