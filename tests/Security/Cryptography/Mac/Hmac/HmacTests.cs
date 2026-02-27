@@ -92,7 +92,7 @@ public class HmacTests
     public void HmacSha256Rfc4231TestCase6()
     {
         byte[] key = new byte[131];
-        Array.Fill(key, (byte)0xaa);
+        for (int i = 0; i < key.Length; i++) key[i] = 0xaa;
         byte[] data = Encoding.ASCII.GetBytes("Test Using Larger Than Block-Size Key - Hash Key First");
         byte[] expected = TestHelpers.FromHexString("60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54");
 
@@ -109,7 +109,7 @@ public class HmacTests
     public void HmacSha256Rfc4231TestCase7()
     {
         byte[] key = new byte[131];
-        Array.Fill(key, (byte)0xaa);
+        for (int i = 0; i < key.Length; i++) key[i] = 0xaa;
         byte[] data = Encoding.ASCII.GetBytes("This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm.");
         byte[] expected = TestHelpers.FromHexString("9b09ffa71b942fcb27635fbcd5b0e944bfdc63644f0713938a7f51535c3a35e2");
 

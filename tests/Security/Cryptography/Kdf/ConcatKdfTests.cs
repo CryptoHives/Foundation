@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
@@ -20,9 +20,9 @@ public sealed class ConcatKdfTests
     [Test]
     public void HashBasedSha256MatchesBouncyCastle()
     {
-        byte[] z = Convert.FromHexString("3f892bd8b84dae64a782a35f6eaa8f00");
-        byte[] otherInfo = Convert.FromHexString("ec3f1cd873d28858a58cc39e");
-        byte[] expected = Convert.FromHexString(
+        byte[] z = TestHelpers.FromHexString("3f892bd8b84dae64a782a35f6eaa8f00");
+        byte[] otherInfo = TestHelpers.FromHexString("ec3f1cd873d28858a58cc39e");
+        byte[] expected = TestHelpers.FromHexString(
             "A7C0665298252531E0DB37737A374651B368275F2048284D16A166C6D8A90A91" +
             "A491C16F49641B9F516A03D9D6D0F4FE7B81FFDF1C816F40ECD74AED8EDA2B8A" +
             "3C714FA0");
@@ -36,9 +36,9 @@ public sealed class ConcatKdfTests
     [Test]
     public void HashBasedSha512MatchesBouncyCastle()
     {
-        byte[] z = Convert.FromHexString("e65b1905878b95f68b5535bd3b2b1013");
-        byte[] otherInfo = Convert.FromHexString("830221b1730d9176f807d407");
-        byte[] expected = Convert.FromHexString(
+        byte[] z = TestHelpers.FromHexString("e65b1905878b95f68b5535bd3b2b1013");
+        byte[] otherInfo = TestHelpers.FromHexString("830221b1730d9176f807d407");
+        byte[] expected = TestHelpers.FromHexString(
             "B8C44BDF0B85A64B6A51C12A06710E373D829BB1FDA5B4E1A20795C6199594F6" +
             "FA65198A721257F7D58CB2F6F6DB9BB5699F73863045909054B2389E06EC00FE" +
             "318CABD9");
@@ -54,7 +54,7 @@ public sealed class ConcatKdfTests
     // -------------------------------------------------------------------
 
     private static readonly byte[] TestKey = CreateSequentialKey(32);
-    private static readonly byte[] TestOtherInfo = Convert.FromHexString("ABCDEF0123456789");
+    private static readonly byte[] TestOtherInfo = TestHelpers.FromHexString("ABCDEF0123456789");
 
     private static byte[] CreateSequentialKey(int length)
     {
@@ -67,7 +67,7 @@ public sealed class ConcatKdfTests
     [Test]
     public void Sha256With32ByteOutput()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "B9075DD4A7092B0104A28230C632528DD3C998933B08747D7A5282F145BE593F");
 
         using var sha256 = SHA256.Create();
@@ -79,7 +79,7 @@ public sealed class ConcatKdfTests
     [Test]
     public void Sha256With64ByteOutputTwoIterations()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "B9075DD4A7092B0104A28230C632528DD3C998933B08747D7A5282F145BE593F" +
             "BEF7747AA05C975276F3B945C4382006F14AFC98D48CDDB7878FB2FC98A5BDF6");
 
@@ -92,7 +92,7 @@ public sealed class ConcatKdfTests
     [Test]
     public void Sha256With16BytePartialBlock()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "B9075DD4A7092B0104A28230C632528D");
 
         using var sha256 = SHA256.Create();
@@ -104,7 +104,7 @@ public sealed class ConcatKdfTests
     [Test]
     public void Sha256EmptyOtherInfo()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "893D4D0D7D5D07B62132A837BD661E06E32C2A08C23AA4F4C08ED86037B2BD9C");
 
         using var sha256 = SHA256.Create();
@@ -116,7 +116,7 @@ public sealed class ConcatKdfTests
     [Test]
     public void Sha256SingleByteOutput()
     {
-        byte[] expected = Convert.FromHexString("B9");
+        byte[] expected = TestHelpers.FromHexString("B9");
 
         using var sha256 = SHA256.Create();
         byte[] result = ConcatKdf.DeriveKey(sha256, TestKey, 1, TestOtherInfo);
@@ -336,3 +336,4 @@ public sealed class ConcatKdfTests
             () => ConcatKdf.DeriveKey(sha256, TestKey, Span<byte>.Empty, []));
     }
 }
+

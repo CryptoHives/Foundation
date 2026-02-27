@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
@@ -38,7 +38,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha256With32ByteOutput()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "4CF30DA1E591E846467CEBBCBD1C656B568154FB8EFA0FBE48DC1129E5334058");
 
         byte[] result = Kbkdf.DeriveKey(Sha256Factory, TestKey, 32, TestLabel, TestContext);
@@ -49,7 +49,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha256With64ByteOutputTwoIterations()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "BCCD5B19A501B55C5F2C8FB332C23E77AD465633AA919D8DC3A14A8409C040EC" +
             "39118AC074A9F58BBD0D64DCBA6953CB35A1ACC86409B0C0356DCFF4E18B5141");
 
@@ -61,7 +61,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha256With16BytePartialBlock()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "D39F05AF190AFD73C1E1565F81F2474F");
 
         byte[] result = Kbkdf.DeriveKey(Sha256Factory, TestKey, 16, TestLabel, TestContext);
@@ -72,7 +72,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha512With64ByteOutput()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "82D33336EFE3290B26875A091E7CD67CFE85137C9EE400EBC33314AE4E308F04" +
             "C0E5FDC2C85150470BF1378211C636C47328E43C3B3207C204CFA2DB615C13A0");
 
@@ -84,7 +84,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha256WithEmptyLabelAndContext()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "F8B724820DF0EFEA81C252B67A8860B644D3C37B9FCE782458214F14C661C00A");
 
         byte[] result = Kbkdf.DeriveKey(Sha256Factory, TestKey, 32);
@@ -95,7 +95,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha384With48ByteOutput()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "1A3786038AFA521267B3853A161555CBCE7B05F9AEECDD80" +
             "B15B9063F42E52C450A43C9711C8493D4BC33658501D9331");
 
@@ -107,7 +107,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha256SingleByteOutput()
     {
-        byte[] expected = Convert.FromHexString("4A");
+        byte[] expected = TestHelpers.FromHexString("4A");
 
         byte[] result = Kbkdf.DeriveKey(Sha256Factory, TestKey, 1, TestLabel, TestContext);
 
@@ -117,7 +117,7 @@ public sealed class KbkdfTests
     [Test]
     public void Sha256With100BytesFourIterations()
     {
-        byte[] expected = Convert.FromHexString(
+        byte[] expected = TestHelpers.FromHexString(
             "AD0D2F7B58370446C8CF188045DF0BEEAEC385DA8CDEBDB15F115F4CB44853C4" +
             "F1E00076BF9AE3877E5EA5540AFF64D2C9188AC2E892A569A46DE931C5B6E017" +
             "B8F75A933D9B11E02E03B5197A1C7672EDE202202365FB734639AF8D733F0C6C" +
@@ -248,3 +248,4 @@ public sealed class KbkdfTests
         Assert.That(r1, Is.EqualTo(r2));
     }
 }
+
