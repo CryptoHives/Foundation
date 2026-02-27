@@ -241,6 +241,98 @@ public sealed class CipherAlgorithmType : IFormattable
     }
 
     // ========================================================================
+    // Regional Cipher Factory Methods
+    // ========================================================================
+
+    /// <summary>
+    /// Returns SM4-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> Sm4Cbc()
+    {
+        return FromRegistry("SM4-CBC", CipherAlgorithmRegistry.Mode.CBC, 128);
+    }
+
+    /// <summary>
+    /// Returns ARIA-128-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AriaCbc128()
+    {
+        return FromRegistry("ARIA-128-CBC", CipherAlgorithmRegistry.Mode.CBC, 128);
+    }
+
+    /// <summary>
+    /// Returns ARIA-256-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AriaCbc256()
+    {
+        return FromRegistry("ARIA-256-CBC", CipherAlgorithmRegistry.Mode.CBC, 256);
+    }
+
+    /// <summary>
+    /// Returns Camellia-128-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> CamelliaCbc128()
+    {
+        return FromRegistry("Camellia-128-CBC", CipherAlgorithmRegistry.Mode.CBC, 128);
+    }
+
+    /// <summary>
+    /// Returns Camellia-256-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> CamelliaCbc256()
+    {
+        return FromRegistry("Camellia-256-CBC", CipherAlgorithmRegistry.Mode.CBC, 256);
+    }
+
+    /// <summary>
+    /// Returns Kuznyechik-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> KuznyechikCbc()
+    {
+        return FromRegistry("Kuznyechik-CBC", CipherAlgorithmRegistry.Mode.CBC, 256);
+    }
+
+    /// <summary>
+    /// Returns Kalyna-128-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> KalynaCbc128()
+    {
+        return FromRegistry("Kalyna-128-CBC", CipherAlgorithmRegistry.Mode.CBC, 128);
+    }
+
+    /// <summary>
+    /// Returns Kalyna-256-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> KalynaCbc256()
+    {
+        return FromRegistry("Kalyna-256-CBC", CipherAlgorithmRegistry.Mode.CBC, 256);
+    }
+
+    /// <summary>
+    /// Returns SEED-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> SeedCbc()
+    {
+        return FromRegistry("SEED-CBC", CipherAlgorithmRegistry.Mode.CBC, 128);
+    }
+
+    /// <summary>
+    /// Returns all regional cipher implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> Regional()
+    {
+        foreach (var alg in Sm4Cbc()) yield return alg;
+        foreach (var alg in AriaCbc128()) yield return alg;
+        foreach (var alg in AriaCbc256()) yield return alg;
+        foreach (var alg in CamelliaCbc128()) yield return alg;
+        foreach (var alg in CamelliaCbc256()) yield return alg;
+        foreach (var alg in KuznyechikCbc()) yield return alg;
+        foreach (var alg in KalynaCbc128()) yield return alg;
+        foreach (var alg in KalynaCbc256()) yield return alg;
+        foreach (var alg in SeedCbc()) yield return alg;
+    }
+
+    // ========================================================================
     // Helper Methods
     // ========================================================================
 

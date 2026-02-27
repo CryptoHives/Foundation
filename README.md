@@ -90,6 +90,7 @@ No OS crypto dependency — deterministic results on every platform. Hardware ac
 | MAC | KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
 | Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/256), ChaCha20-Poly1305, XChaCha20-Poly1305 |
 | Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
+| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256), SEED |
 | Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5 (backward compatibility only) |
 
@@ -100,7 +101,7 @@ BLAKE2b, BLAKE2s, and BLAKE3 use managed SIMD intrinsics (SSE2, SSSE3, AVX2) wit
 
 - [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, comparing pooled `ValueTask` vs. existing `Task`-based alternatives.
 - [Hash algorithm benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html) — measured with BenchmarkDotNet across 128B–128KB payloads, comparing managed vs. BouncyCastle vs. OS implementations.
-- [Cipher algorithm benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html) — AES-GCM, AES-CCM, AES-CBC, ChaCha20, and ChaCha20-Poly1305 with AES-NI/PCLMULQDQ/VPCLMULQDQ/SSSE3/AVX2 hardware acceleration.
+- [Cipher algorithm benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html) — AES-GCM, AES-CCM, AES-CBC, ChaCha20, ChaCha20-Poly1305, and regional ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED) with AES-NI/PCLMULQDQ/VPCLMULQDQ/SSSE3/AVX2 hardware acceleration.
 
 ### 🔒 Fuzzed APIs (planned)
 - All libraries and public-facing APIs are planned to be fuzzed 

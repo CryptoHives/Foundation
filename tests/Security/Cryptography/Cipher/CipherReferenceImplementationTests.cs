@@ -196,7 +196,8 @@ public class CipherReferenceImplementationTests
         "AES-128-CBC", "AES-256-CBC",
         "SM4-CBC", "ARIA-128-CBC", "ARIA-256-CBC",
         "Camellia-128-CBC", "Camellia-256-CBC",
-        "Kalyna-128-CBC", "Kalyna-256-CBC"
+        "Kalyna-128-CBC", "Kalyna-256-CBC",
+        "SEED-CBC"
     ];
 
     private static System.Collections.IEnumerable GetAllAeadImplementationPairs()

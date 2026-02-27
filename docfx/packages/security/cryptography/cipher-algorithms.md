@@ -257,6 +257,194 @@ aesGcm.Encrypt(nonce, message, ciphertext, tag, header);
 
 ---
 
+## Regional Block Ciphers
+
+Regional block ciphers complement the hash family coverage and provide national standard encryption algorithms. All implementations support ECB, CBC, and CTR modes via the shared `BlockCipherTransform` infrastructure.
+
+### SM4 (China)
+
+```csharp
+public sealed class Sm4 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Size: 128 bits
+- Block Size: 128 bits
+- Rounds: 32
+- Standard: GB/T 32907-2016
+
+**Security:**
+- ✅ Chinese national standard, mandatory for commercial use in China
+- ✅ Used in Chinese TLS implementations and WAPI (WLAN security)
+- ✅ ISO/IEC 18033-3:2010 listed
+
+**Usage:**
+```csharp
+using var sm4 = Sm4.Create();
+sm4.Mode = CipherMode.CBC;
+sm4.Padding = PaddingMode.PKCS7;
+sm4.Key = key; // 16 bytes
+sm4.IV = iv;   // 16 bytes
+byte[] ciphertext = sm4.Encrypt(plaintext);
+byte[] decrypted = sm4.Decrypt(ciphertext);
+```
+
+### ARIA (Korea)
+
+```csharp
+public sealed class Aria128 : BlockCipherTransform
+public sealed class Aria192 : BlockCipherTransform
+public sealed class Aria256 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Sizes: 128, 192, or 256 bits
+- Block Size: 128 bits
+- Rounds: 12 (128-bit key), 14 (192-bit key), 16 (256-bit key)
+- Standard: KS X 1213, RFC 5794
+
+**Security:**
+- ✅ Korean national standard
+- ✅ Used in Korean government and financial systems
+- ✅ RFC 5794 specification
+
+**Usage:**
+```csharp
+using var aria = Aria256.Create();
+aria.Mode = CipherMode.CBC;
+aria.Padding = PaddingMode.PKCS7;
+aria.Key = key; // 32 bytes
+aria.IV = iv;   // 16 bytes
+byte[] ciphertext = aria.Encrypt(plaintext);
+```
+
+### Camellia (Japan)
+
+```csharp
+public sealed class Camellia128 : BlockCipherTransform
+public sealed class Camellia192 : BlockCipherTransform
+public sealed class Camellia256 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Sizes: 128, 192, or 256 bits
+- Block Size: 128 bits
+- Rounds: 18 (128-bit key), 24 (192/256-bit key)
+- Standard: RFC 3713, ISO/IEC 18033-3
+
+**Security:**
+- ✅ Japanese CRYPTREC recommended cipher
+- ✅ NESSIE selected algorithm (EU)
+- ✅ Comparable security level to AES
+
+**Usage:**
+```csharp
+using var camellia = Camellia128.Create();
+camellia.Mode = CipherMode.CBC;
+camellia.Padding = PaddingMode.PKCS7;
+camellia.Key = key; // 16 bytes
+camellia.IV = iv;   // 16 bytes
+byte[] ciphertext = camellia.Encrypt(plaintext);
+```
+
+### Kuznyechik (Russia)
+
+```csharp
+public sealed class Kuznyechik : BlockCipherTransform
+```
+
+**Properties:**
+- Key Size: 256 bits
+- Block Size: 128 bits
+- Rounds: 10
+- Standard: GOST R 34.12-2015
+
+**Security:**
+- ✅ Russian national standard (successor to GOST 28147-89)
+- ✅ Used in Russian government and banking systems
+- ✅ Paired with Streebog hash family
+
+**Usage:**
+```csharp
+using var kuz = Kuznyechik.Create();
+kuz.Mode = CipherMode.CBC;
+kuz.Padding = PaddingMode.PKCS7;
+kuz.Key = key; // 32 bytes
+kuz.IV = iv;   // 16 bytes
+byte[] ciphertext = kuz.Encrypt(plaintext);
+```
+
+### Kalyna (Ukraine)
+
+```csharp
+public sealed class Kalyna128 : BlockCipherTransform
+public sealed class Kalyna256 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Sizes: 128 or 256 bits
+- Block Size: 128 bits
+- Rounds: 10 (128-bit key), 14 (256-bit key)
+- Standard: DSTU 7624:2014
+
+**Security:**
+- ✅ Ukrainian national standard
+- ✅ Paired with Kupyna hash family
+- ✅ Uses MDS matrix-based diffusion layer
+
+**Usage:**
+```csharp
+using var kalyna = Kalyna256.Create();
+kalyna.Mode = CipherMode.CBC;
+kalyna.Padding = PaddingMode.PKCS7;
+kalyna.Key = key; // 32 bytes
+kalyna.IV = iv;   // 16 bytes
+byte[] ciphertext = kalyna.Encrypt(plaintext);
+```
+
+### SEED (Korea)
+
+```csharp
+public sealed class Seed : BlockCipherTransform
+```
+
+**Properties:**
+- Key Size: 128 bits
+- Block Size: 128 bits
+- Rounds: 16
+- Standard: RFC 4269, KISA
+
+**Security:**
+- ✅ Korean national standard (KISA)
+- ✅ Used in Korean financial and government systems
+- ✅ 16-round Feistel structure with S-boxes derived from the golden ratio
+
+**Usage:**
+```csharp
+using var seed = Seed.Create();
+seed.Mode = CipherMode.CBC;
+seed.Padding = PaddingMode.PKCS7;
+seed.Key = key; // 16 bytes
+seed.IV = iv;   // 16 bytes
+byte[] ciphertext = seed.Encrypt(plaintext);
+```
+
+### Regional Cipher Comparison
+
+| Algorithm | Origin | Key Sizes | Block Size | Rounds | Standard |
+|-----------|--------|-----------|------------|--------|----------|
+| **SM4** | China | 128 | 128 bits | 32 | GB/T 32907-2016 |
+| **ARIA** | Korea | 128/192/256 | 128 bits | 12/14/16 | KS X 1213, RFC 5794 |
+| **Camellia** | Japan | 128/192/256 | 128 bits | 18/24 | RFC 3713, ISO 18033-3 |
+| **Kuznyechik** | Russia | 256 | 128 bits | 10 | GOST R 34.12-2015 |
+| **Kalyna** | Ukraine | 128/256 | 128 bits | 10/14 | DSTU 7624:2014 |
+| **SEED** | Korea | 128 | 128 bits | 16 | RFC 4269 |
+
+**See Also:**
+- [Regional Cipher Benchmarks](benchmarks-cipher.md#regional-block-ciphers)
+
+---
+
 ## References
 
 ### Standards
@@ -264,6 +452,14 @@ aesGcm.Encrypt(nonce, message, ciphertext, tag, header);
 - **NIST SP 800-38D** - Recommendation for Block Cipher Modes: GCM
 - **RFC 3610** - Counter with CBC-MAC (CCM)
 - **RFC 8439** - ChaCha20-Poly1305 for IETF protocols
+
+### Regional Standards
+- **GB/T 32907-2016** - SM4 Block Cipher (China)
+- **KS X 1213** - ARIA Block Cipher (Korea)
+- **RFC 3713** - Camellia Encryption Algorithm (Japan, CRYPTREC)
+- **GOST R 34.12-2015** - Kuznyechik Block Cipher (Russia)
+- **DSTU 7624:2014** - Kalyna Block Cipher (Ukraine)
+- **RFC 4269** - SEED Encryption Algorithm (Korea, KISA)
 
 ### Test Vectors
 
@@ -274,3 +470,4 @@ Test vector documentation is coming soon.
 - [AES-GCM Performance](benchmarks-cipher.md#aes-128-gcm)
 - [ChaCha20-Poly1305 Performance](benchmarks-cipher.md#chacha20-poly1305)
 - [XChaCha20-Poly1305 Performance](benchmarks-cipher.md#xchacha20-poly1305)
+- [Regional Cipher Benchmarks](benchmarks-cipher.md#regional-block-ciphers)

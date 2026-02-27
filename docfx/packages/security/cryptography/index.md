@@ -87,6 +87,17 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher;
 | AES-256 | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-block-cipher) |
 | ChaCha20 | 256 bits | Stream cipher | [Details](cipher-algorithms.md#chacha20) |
 
+### Cipher Algorithms (Regional)
+
+| Algorithm | Origin | Key Sizes | Modes | Documentation |
+|-----------|--------|-----------|-------|---------------|
+| SM4 | China | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#sm4-china) |
+| ARIA | Korea | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aria-korea) |
+| Camellia | Japan | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#camellia-japan) |
+| Kuznyechik | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kuznyechik-russia) |
+| Kalyna | Ukraine | 128/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kalyna-ukraine) |
+| SEED | Korea | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#seed-korea) |
+
 ### Cipher Algorithms (AEAD)
 
 | Algorithm | Key Sizes | Nonce Size | Tag Size | Documentation |

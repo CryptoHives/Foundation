@@ -1095,5 +1095,42 @@ public static class CipherAlgorithmRegistry
             Mode.CBC,
             () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(128), 32, "Kalyna-256-CBC"),
             Source.BouncyCastle));
+
+        // Kuznyechik-CBC - Managed (no BouncyCastle engine available)
+        implementations.Add(new CipherImplementation(
+            "Kuznyechik-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var kuz = CH.Cipher.Kuznyechik.Create();
+                kuz.Mode = CH.Cipher.CipherMode.CBC;
+                kuz.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return kuz;
+            },
+            Source.Managed));
+
+        // SEED-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "SEED-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var seed = CH.Cipher.Seed.Create();
+                seed.Mode = CH.Cipher.CipherMode.CBC;
+                seed.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return seed;
+            },
+            Source.Managed));
+
+        // SEED-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "SEED-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new SeedEngine(), 16, "SEED-CBC"),
+            Source.BouncyCastle));
     }
 }

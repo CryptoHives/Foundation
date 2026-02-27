@@ -6,6 +6,7 @@
 # Usage: .\scripts\run-benchmarks.ps1 [-Project Threading] [-Filter "*AsyncLock*"] [-Framework net10.0]
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
+#        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher  (runs SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED)
 
 [CmdletBinding()]
 param(
@@ -45,12 +46,18 @@ param(
         "AesCbc128", "AesCbc256",
         "ChaCha20",
         "ChaCha20Poly1305", "XChaCha20Poly1305",
+        # Regional cipher algorithms (individual)
+        "Sm4Cbc", "AriaCbc128", "AriaCbc256",
+        "CamelliaCbc128", "CamelliaCbc256",
+        "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256",
+        "SeedCbc",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
         "Legacy", "Regional", "Kupyna", "LSH", "Ascon", "KMAC",
         "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
         "AES-GCM", "AES-CCM", "AES-CBC", "ChaCha",
+        "RegionalCipher",
         "Cipher", "AEAD",
         "All"
     )]
@@ -174,6 +181,16 @@ $AlgorithmBenchmarkMap = @{
     "ChaCha20"    = "ChaCha20"
     "ChaCha20Poly1305" = "ChaCha20Poly1305"
     "XChaCha20Poly1305" = "XChaCha20Poly1305"
+    # Ciphers - Regional
+    "Sm4Cbc"      = "Sm4Cbc"
+    "AriaCbc128"  = "AriaCbc128"
+    "AriaCbc256"  = "AriaCbc256"
+    "CamelliaCbc128" = "CamelliaCbc128"
+    "CamelliaCbc256" = "CamelliaCbc256"
+    "KuznyechikCbc" = "KuznyechikCbc"
+    "KalynaCbc128" = "KalynaCbc128"
+    "KalynaCbc256" = "KalynaCbc256"
+    "SeedCbc"     = "SeedCbc"
     # Group Aliases
     "All"         = "Hash"
 }
@@ -206,8 +223,9 @@ $GroupAliases = @{
     "AES-CCM"     = @("AesCcm128", "AesCcm256")
     "AES-CBC"     = @("AesCbc128", "AesCbc256")
     "ChaCha"      = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
     "AEAD"        = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "Cipher"      = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "Cipher"      = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
 }
 
 # Get repository root
@@ -292,6 +310,8 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  AES-CCM:       -Family AesCcm128, AesCcm256"
     Write-Host "  AES-CBC:       -Family AesCbc128, AesCbc256"
     Write-Host "  ChaCha:        -Family ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
+    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc256, CamelliaCbc128, CamelliaCbc256"
+    Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, SeedCbc"
     Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -320,7 +340,8 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family AES-CBC    runs: AesCbc128, AesCbc256"
     Write-Host "  -Family ChaCha     runs: ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
     Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
-    Write-Host "  -Family Cipher     runs: All cipher benchmarks"
+    Write-Host "  -Family RegionalCipher runs: All regional ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED)"
+    Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
     Write-Host "  -Family All        runs: All Hash benchmarks"
     Write-Host ""
 }
