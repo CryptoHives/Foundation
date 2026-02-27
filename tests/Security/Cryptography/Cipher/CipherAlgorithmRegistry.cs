@@ -63,6 +63,8 @@ public static class CipherAlgorithmRegistry
         ChaCha20Poly1305,
         /// <summary>XChaCha20-Poly1305 (AEAD).</summary>
         XChaCha20Poly1305,
+        /// <summary>Ascon-AEAD128 (AEAD).</summary>
+        AsconAead128,
         /// <summary>Stream cipher.</summary>
         Stream
     }
@@ -253,6 +255,9 @@ public static class CipherAlgorithmRegistry
 
         // ChaCha Implementations
         AddChaChaImplementations(implementations);
+
+        // Ascon Implementations
+        AddAsconImplementations(implementations);
 
         // OS Implementations (.NET 8.0+)
         AddOSImplementations(implementations);
@@ -833,6 +838,31 @@ public static class CipherAlgorithmRegistry
             Mode.XChaCha20Poly1305,
             (byte[] key) => new NaClCoreAeadAdapter(key, useXChaCha: true),
             Source.NaClCore));
+    }
+
+    private static void AddAsconImplementations(List<CipherImplementation> implementations)
+    {
+        // Ascon-AEAD128 - Managed
+        implementations.Add(new CipherImplementation(
+            "Ascon-AEAD128",
+            "Managed",
+            128,
+            Mode.AsconAead128,
+            (byte[] key) => CH.Cipher.AsconAead128.Create(key),
+            Source.Managed));
+
+        // Ascon-AEAD128 - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Ascon-AEAD128",
+            "BouncyCastle",
+            128,
+            Mode.AsconAead128,
+            (byte[] key) => new BouncyCastleAeadAdapter(
+                new AsconAead128(),
+                key,
+                tagSizeBits: 128,
+                nonceSizeBytes: 16),
+            Source.BouncyCastle));
     }
 
     private static void AddOSImplementations(List<CipherImplementation> implementations)
