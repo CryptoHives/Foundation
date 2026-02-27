@@ -139,7 +139,7 @@ public class ChaCha20Poly1305Tests
         byte[] expectedTag = FromHex("a8061dc1305136c6c22b8baf0c0127a9");
 
         byte[] tag = new byte[16];
-        Poly1305.ComputeTag(key, message, tag);
+        Poly1305Core.ComputeTag(key, message, tag);
 
         Assert.That(tag, Is.EqualTo(expectedTag));
     }
