@@ -12,7 +12,15 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 ## Overview
 
-Key Derivation Functions extract cryptographic keys from input keying material (IKM) such as shared secrets from key agreement (e.g., ECDH), pre-shared keys, or other entropy sources. Unlike password-based KDFs (PBKDF2, Argon2), these functions assume the input already has sufficient entropy and focus on uniform key extraction and expansion.
+Key Derivation Functions extract cryptographic keys from input keying material (IKM) such as shared secrets from key agreement (e.g., ECDH), pre-shared keys, passwords, or other entropy sources.
+
+| KDF | Source | Primary Use |
+|-----|--------|-------------|
+| [HKDF](#hkdf-hmac-based-extract-and-expand-kdf) | RFC 5869 | Extract + expand from shared secrets |
+| [KBKDF Counter Mode](#kbkdf--counter-mode-sp-800-108r1) | SP 800-108r1 | Key diversification from master keys |
+| [Concat KDF](#concat-kdf--one-step-sp-800-56a--sp-800-56c) | SP 800-56A/56C | ECDH key agreement, JOSE/JWE |
+| [PBKDF2](#pbkdf2-password-based-kdf) | RFC 8018 | Password-based key derivation |
+| [BLAKE3 DeriveKey](#blake3-key-derivation) | BLAKE3 Spec | High-performance custom protocols |
 
 ### When to Use a KDF
 
@@ -399,6 +407,81 @@ byte[] cek = ConcatKdf.DeriveKey(sha256, ecdhSharedSecret, 32, otherInfo);
 
 ---
 
+## PBKDF2 (Password-Based KDF)
+
+**Standard:** [RFC 8018 §5.2](https://tools.ietf.org/html/rfc8018#section-5.2) (formerly RFC 2898)
+
+PBKDF2 derives keying material from a password by applying a pseudorandom function (PRF) — typically HMAC — iteratively. The iteration count slows down brute-force attacks, making it suitable for password hashing and password-based encryption.
+
+### Algorithm
+
+```
+DK = T₁ ‖ T₂ ‖ ... ‖ T_⌈dkLen/hLen⌉
+Tᵢ = U₁ ⊕ U₂ ⊕ ... ⊕ Uₓ
+U₁ = PRF(Password, Salt ‖ INT(i))   — i is 32-bit big-endian, 1-based
+Uⱼ = PRF(Password, U_{j-1})         — for j ≥ 2
+```
+
+### Usage
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+// Derive a 32-byte key from a password using HMAC-SHA-256
+byte[] password = Encoding.UTF8.GetBytes("my-password");
+byte[] salt = RandomNumberGenerator.GetBytes(16);
+
+byte[] derivedKey = Pbkdf2.DeriveKey(
+    key => new HmacSha256(key),
+    password, salt, iterations: 600_000, outputLength: 32);
+```
+
+### Span-Based API
+
+```csharp
+// Zero-copy derivation into pre-allocated buffer
+Span<byte> output = stackalloc byte[32];
+Pbkdf2.DeriveKey(
+    key => new HmacSha256(key),
+    password, salt, iterations: 600_000, output);
+```
+
+### Comparison with .NET Rfc2898DeriveBytes
+
+| Feature | CryptoHives `Pbkdf2` | .NET `Rfc2898DeriveBytes` |
+|---------|---------------------|--------------------------|
+| Any HMAC variant | ✅ via `HmacFactory` | ✅ via `HashAlgorithmName` |
+| Span overloads | ✅ | ✅ (static `Pbkdf2` method) |
+| .NET Framework 4.6.2 | ✅ | ⚠️ SHA-1 only (pre-.NET Core 3.0) |
+| .NET Standard 2.0 | ✅ | ⚠️ Limited hash support |
+| Fully managed | ✅ | ❌ OS-dependent |
+| Custom PRF (CMAC, etc.) | ✅ | ❌ HMAC only |
+
+### OWASP Iteration Count Recommendations (2024)
+
+| HMAC Variant | Minimum Iterations |
+|--------------|--------------------|
+| HMAC-SHA-256 | 600,000 |
+| HMAC-SHA-384 | 600,000 |
+| HMAC-SHA-512 | 210,000 |
+| HMAC-SHA-1   | 1,300,000 |
+
+> [!WARNING]
+> PBKDF2 is **not** memory-hard and is vulnerable to GPU/ASIC attacks for password
+> hashing. For new password storage, consider Argon2id or scrypt. PBKDF2 remains
+> appropriate for key derivation in protocols like PKCS#12, WPA2, and S/MIME.
+
+### Use Cases
+
+- **WPA/WPA2** — Wi-Fi key derivation (HMAC-SHA-1, 4096 iterations)
+- **PKCS#12** — Certificate container encryption
+- **S/MIME** — Email encryption key derivation
+- **Password storage** — When Argon2 is not available
+- **PEM encryption** — PKCS#5 encrypted private keys
+
+---
+
 ## BLAKE3 Key Derivation
 
 BLAKE3 provides a built-in key derivation mode that uses a context string for domain separation. Unlike HKDF, it does not require a separate HMAC; the KDF is integrated into the hash function.
@@ -434,6 +517,8 @@ blake3.TryComputeHash(ikm, derivedKey, out _);
 | Microsoft CNG / DPAPI | KBKDF | SHA-256 or AES-CMAC | SP 800-108 Counter Mode |
 | Kerberos | KBKDF | SHA-256 | Session key derivation |
 | 802.11i / EAP | KBKDF | AES-CMAC | Key hierarchy derivation |
+| WPA/WPA2 | PBKDF2 | SHA-1 | 4096 iterations (Wi-Fi passphrase) |
+| PKCS#12 / S/MIME | PBKDF2 | SHA-256 | Certificate/key encryption |
 
 ### By Use Case
 
@@ -444,7 +529,9 @@ blake3.TryComputeHash(ikm, derivedKey, out _);
 | Session key from master key | KBKDF | HKDF |
 | Context-bound key derivation | HKDF with `info` or KBKDF with label/context | BLAKE3 DeriveKey |
 | High-performance key derivation | BLAKE3 DeriveKey | HKDF |
-| NIST compliance required | HKDF or KBKDF | — |
+| Password-based key derivation | PBKDF2 | — |
+| Password storage | PBKDF2 (if Argon2 unavailable) | — |
+| NIST compliance required | HKDF or KBKDF | PBKDF2 |
 | Cross-platform SHA-3 KDF | HKDF with HMAC-SHA3-256 | — |
 | CMAC-based PRF needed | KBKDF with AES-CMAC | — |
 
@@ -461,7 +548,7 @@ The following KDFs are commonly used with ECC, asymmetric encryption, and post-q
 | Concat KDF (One-Step) | NIST SP 800-56A/56C | ECDH key agreement, JOSE/JWE | ✅ Implemented |
 | BLAKE3 DeriveKey | BLAKE3 Spec | Custom protocols | ✅ Implemented |
 | X9.63 KDF | ANSI X9.63 / SEC 1 | Legacy ECC (IEEE P1363) | 🔲 Under review |
-| PBKDF2 | RFC 8018 | Password-based key derivation | 🔲 Planned |
+| PBKDF2 | RFC 8018 | Password-based key derivation | ✅ Implemented |
 
 ---
 
