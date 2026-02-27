@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Security.Cryptography;
+namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;

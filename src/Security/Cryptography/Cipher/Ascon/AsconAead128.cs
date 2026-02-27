@@ -3,6 +3,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
@@ -328,8 +329,9 @@ public sealed class AsconAead128 : IAeadCipher
     /// Decrypts ciphertext data through the sponge.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void DecryptData(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
-                                    ReadOnlySpan<byte> ciphertext, Span<byte> plaintext)
+    private static void DecryptData(
+        ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
+        ReadOnlySpan<byte> ciphertext, Span<byte> plaintext)
     {
         int offset = 0;
 
