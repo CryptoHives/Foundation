@@ -212,6 +212,108 @@ The maximum output length is `255 × HashLen` bytes:
 
 ---
 
+## KBKDF — Counter Mode (SP 800-108r1)
+
+KBKDF (Key-Based Key Derivation Function) in Counter Mode derives keying material from a key derivation key (KI) using a pseudorandom function iterated with an incrementing counter, as defined in [NIST SP 800-108r1 §4.1](https://csrc.nist.gov/pubs/sp/800/108/r1/upd1/final).
+
+### Design
+
+Counter Mode iterates a PRF (HMAC or CMAC) with a 32-bit counter prepended to fixed input data:
+
+```
+K(i) = PRF(KI, [i]₄ ‖ Label ‖ 0x00 ‖ Context ‖ [L]₄)
+```
+
+Where:
+- `[i]₄` = 32-bit big-endian counter (1-based)
+- `Label` = purpose identifier
+- `0x00` = separator byte
+- `Context` = session/application context
+- `[L]₄` = output length in bits (32-bit big-endian)
+
+### Class Declaration
+
+```csharp
+public static class Kbkdf
+```
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `DeriveKey(HmacFactory, ReadOnlySpan<byte>, Span<byte>, ReadOnlySpan<byte>, ReadOnlySpan<byte>)` | Derive key with label and context (span overload) |
+| `DeriveKey(HmacFactory, byte[], int, byte[]?, byte[]?)` | Derive key with label and context (array overload) |
+
+### Usage Examples
+
+#### Basic Key Derivation
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] masterKey = ...; // key derivation key
+byte[] label = Encoding.UTF8.GetBytes("encryption");
+byte[] context = Encoding.UTF8.GetBytes("session-001");
+
+// Array API (simple)
+byte[] derivedKey = Kbkdf.DeriveKey(
+    key => new HmacSha256(key),
+    masterKey, outputLength: 32, label, context);
+
+// Span API (zero extra allocations)
+Span<byte> output = stackalloc byte[32];
+Kbkdf.DeriveKey(
+    key => new HmacSha256(key),
+    masterKey, output, label, context);
+```
+
+#### Multiple Keys from Same Master Key
+
+```csharp
+HmacFactory sha256 = key => new HmacSha256(key);
+byte[] context = Encoding.UTF8.GetBytes("session-001");
+
+// Derive different keys by varying the label
+byte[] encKey = Kbkdf.DeriveKey(sha256, masterKey, 32,
+    Encoding.UTF8.GetBytes("encryption"), context);
+
+byte[] authKey = Kbkdf.DeriveKey(sha256, masterKey, 32,
+    Encoding.UTF8.GetBytes("authentication"), context);
+
+byte[] ivKey = Kbkdf.DeriveKey(sha256, masterKey, 12,
+    Encoding.UTF8.GetBytes("iv"), context);
+```
+
+#### With AES-CMAC as PRF
+
+```csharp
+// AES-128 CMAC produces 16-byte MACs
+byte[] aesKey = ...; // 16, 24, or 32 bytes
+byte[] derived = Kbkdf.DeriveKey(
+    key => AesCmac.Create(key),
+    aesKey, outputLength: 32, label, context);
+```
+
+### KBKDF vs HKDF
+
+| Aspect | KBKDF (SP 800-108r1) | HKDF (RFC 5869) |
+|--------|----------------------|-----------------|
+| Design | Single-phase counter loop | Two-phase Extract + Expand |
+| Input key | Must be uniformly random | Can be non-uniform (Extract handles it) |
+| Salt | No salt parameter | Optional salt for extraction |
+| PRF support | HMAC and CMAC | HMAC only |
+| Label/Context | Built into the construction | Via `info` parameter |
+| Best for | Session key derivation from master key | Key extraction from shared secrets |
+| Standards | NIST SP 800-108r1, CNG, DPAPI | RFC 5869, TLS 1.3, HPKE |
+
+### Standards Compliance
+
+- **NIST SP 800-108r1**: Counter Mode KDF — verified against independently computed test vectors
+- Compatible with .NET `SP800108DeriveBytes` (same PRF input format)
+
+---
+
 ## BLAKE3 Key Derivation
 
 BLAKE3 provides a built-in key derivation mode that uses a context string for domain separation. Unlike HKDF, it does not require a separate HMAC; the KDF is integrated into the hash function.
@@ -239,22 +341,27 @@ blake3.TryComputeHash(ikm, derivedKey, out _);
 |----------|-----|-------------|-------|
 | TLS 1.3 | HKDF | SHA-256 or SHA-384 | RFC 8446 key schedule |
 | HPKE | HKDF | SHA-256 | RFC 9180 labeled Extract/Expand |
-| IKEv2 / IPsec | HKDF | SHA-256 or SHA-512 | RFC 7296 |
+| IKEv2 / IPsec | HKDF or KBKDF | SHA-256 or SHA-512 | RFC 7296 |
 | Signal Protocol | HKDF | SHA-256 | Double Ratchet algorithm |
 | WireGuard | HKDF / BLAKE3 | SHA-256 | Noise framework |
 | SSH | HKDF | SHA-256 or SHA-512 | Key exchange |
 | OPC UA | HKDF | SHA-256 | Secure channel key derivation |
+| Microsoft CNG / DPAPI | KBKDF | SHA-256 or AES-CMAC | SP 800-108 Counter Mode |
+| Kerberos | KBKDF | SHA-256 | Session key derivation |
+| 802.11i / EAP | KBKDF | AES-CMAC | Key hierarchy derivation |
 
 ### By Use Case
 
 | Use Case | Recommended | Alternative |
 |----------|-------------|-------------|
 | Extract + expand from shared secret | HKDF | — |
-| Multiple keys from one secret | HKDF (Extract once, Expand many) | BLAKE3 DeriveKey |
-| Context-bound key derivation | HKDF with `info` | BLAKE3 with `context` |
+| Multiple keys from one secret | HKDF (Extract once, Expand many) | KBKDF (vary label) |
+| Session key from master key | KBKDF | HKDF |
+| Context-bound key derivation | HKDF with `info` or KBKDF with label/context | BLAKE3 DeriveKey |
 | High-performance key derivation | BLAKE3 DeriveKey | HKDF |
-| NIST compliance required | HKDF with SHA-256/384/512 | — |
+| NIST compliance required | HKDF or KBKDF | — |
 | Cross-platform SHA-3 KDF | HKDF with HMAC-SHA3-256 | — |
+| CMAC-based PRF needed | KBKDF with AES-CMAC | — |
 
 ---
 
@@ -265,8 +372,8 @@ The following KDFs are commonly used with ECC, asymmetric encryption, and post-q
 | KDF | Standard | Used With | Status |
 |-----|----------|-----------|--------|
 | HKDF | RFC 5869 | TLS 1.3, HPKE, Signal, WireGuard | ✅ Implemented |
+| KBKDF Counter Mode | NIST SP 800-108r1 | CNG, DPAPI, IPsec, Kerberos | ✅ Implemented |
 | BLAKE3 DeriveKey | BLAKE3 Spec | Custom protocols | ✅ Implemented |
-| SP 800-108r1 KBKDF | NIST SP 800-108r1 | Session key derivation, CNG, IPsec | 🔲 Planned |
 | Concat KDF (One-Step) | NIST SP 800-56C | ECDH key agreement, JOSE/JWE | 🔲 Planned |
 | X9.63 KDF | ANSI X9.63 / SEC 1 | Legacy ECC (IEEE P1363) | 🔲 Under review |
 | PBKDF2 | RFC 8018 | Password-based key derivation | 🔲 Planned |
