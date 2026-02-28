@@ -33,8 +33,16 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="OpenGost.Security.Cryptography" />
+  </ItemGroup>
+
+  <!-- Konscious.Security.Cryptography.Blake2 is not strong name signed -->
+  <ItemGroup Condition="'$(SignAssembly)' != 'true'">
     <PackageReference Include="Konscious.Security.Cryptography.Blake2" />
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(SignAssembly)' != 'true'">
+    <DefineConstants>$(DefineConstants);KONSCIOUS_BLAKE2</DefineConstants>
+  </PropertyGroup>
 
   <!-- Exclude IndexRange transitive dependency from NaCl.Core to avoid conflict with Microsoft.Bcl.Memory on net48 -->
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
