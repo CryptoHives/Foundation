@@ -143,8 +143,8 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         _chaChaCore.Transform(_key, nonce, 1, plaintext, ciphertext);
 
         // Compute Poly1305 tag over (AAD || pad || ciphertext || pad || lengths)
-        Poly1305.ComputeAeadTag(polyKey.Slice(0, Poly1305.KeySizeBytes), associatedData,
-                                 ciphertext.Slice(0, plaintext.Length), tag);
+        Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData,
+                                     ciphertext.Slice(0, plaintext.Length), tag);
     }
 
     /// <inheritdoc/>
@@ -165,7 +165,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 
         // Compute expected tag
         Span<byte> expectedTag = stackalloc byte[TagSizeBytesConst];
-        Poly1305.ComputeAeadTag(polyKey.Slice(0, Poly1305.KeySizeBytes), associatedData, ciphertext, expectedTag);
+        Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData, ciphertext, expectedTag);
 
         // Verify tag in constant time
         if (!CryptoUtils.FixedTimeEquals(tag, expectedTag))

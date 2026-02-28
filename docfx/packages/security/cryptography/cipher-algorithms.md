@@ -177,7 +177,184 @@ byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
 
 ---
 
-## AEAD Cipher Comparison
+## Block Ciphers
+
+Block ciphers encrypt fixed-size blocks of data. They require a mode of operation (ECB, CBC, CTR) to encrypt data larger than a single block.
+
+All block ciphers extend `SymmetricCipher` (which inherits from `System.Security.Cryptography.SymmetricAlgorithm`) and implement `ICipherTransform` for span-based streaming transformations.
+
+### AES (Advanced Encryption Standard)
+
+```csharp
+public sealed class Aes128 : SymmetricCipher
+public sealed class Aes192 : SymmetricCipher
+public sealed class Aes256 : SymmetricCipher
+```
+
+**Properties:**
+- Key Sizes: 128, 192, or 256 bits
+- Block Size: 128 bits (16 bytes)
+- IV Size: 16 bytes (CBC, CTR) or none (ECB)
+- Modes: ECB, CBC, CTR
+- Padding: PKCS#7, None, Zeros, ANSIX923, ISO10126
+- Performance: Hardware accelerated with AES-NI; vectorized CBC decrypt (4/8-block interleaved)
+
+**Security:**
+- ✅ NIST approved (FIPS 197)
+- ✅ The most widely used symmetric cipher in the world
+- ⚠️ ECB mode is insecure for multi-block data — use CBC or CTR
+- ⚠️ CBC mode requires unpredictable IVs and is vulnerable to padding oracle attacks without authentication
+
+**Usage — CTR Mode (Recommended):**
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+// Create AES-256 in CTR mode
+using var aes = Aes256.Create();
+aes.Mode = CipherMode.CTR;
+aes.Padding = PaddingMode.None; // CTR does not require padding
+
+// Set key and IV
+aes.Key = new byte[32]; // 256-bit key
+aes.IV = new byte[16]; // 128-bit nonce/counter
+
+// Single-operation
+byte[] ciphertext = aes.Encrypt(plaintext);
+byte[] decrypted = aes.Decrypt(ciphertext);
+```
+
+**Usage — CBC Mode:**
+```csharp
+using var aes = Aes128.Create();
+aes.Mode = CipherMode.CBC;
+aes.Padding = PaddingMode.PKCS7;
+aes.Key = new byte[16]; // 128-bit key
+aes.GenerateIV(); // Random IV
+
+byte[] ciphertext = aes.Encrypt(plaintext);
+byte[] decrypted = aes.Decrypt(ciphertext);
+```
+
+**Usage — Streaming (ICipherTransform):**
+```csharp
+using var aes = Aes256.Create();
+aes.Mode = CipherMode.CTR;
+aes.Padding = PaddingMode.None;
+aes.Key = new byte[32];
+aes.IV = new byte[16];
+
+// Create transform for incremental encryption
+using var encryptor = aes.CreateEncryptor();
+
+// Process multiple blocks
+Span<byte> output = new byte[inputChunk.Length];
+int written = encryptor.TransformBlock(inputChunk, output);
+
+// Final block (handles padding for CBC)
+written = encryptor.TransformFinalBlock(lastChunk, output);
+```
+
+> [!WARNING]
+> **ECB mode** encrypts each block independently. Identical plaintext blocks produce
+> identical ciphertext, leaking patterns. Use **CTR** or **CBC** mode instead.
+> For authenticated encryption, prefer [AES-GCM](#aes-gcm-galoisscounter-mode) or
+> [AES-CCM](#aes-ccm-counter-with-cbc-mac).
+
+---
+
+## Stream Ciphers
+
+Stream ciphers generate a keystream that is XORed with the plaintext. They do not require padding and can process data of any length.
+
+### ChaCha20
+
+```csharp
+public sealed class ChaCha20 : SymmetricCipher
+```
+
+**Properties:**
+- Key Size: 256 bits (32 bytes)
+- Nonce Size: 12 bytes (96 bits) — IETF variant (RFC 8439)
+- Block Size: 1 byte (stream cipher, processes any length)
+- Counter: 32-bit initial block counter (configurable via `InitialCounter`)
+- Performance: SSSE3/AVX2 hardware accelerated
+
+**Security:**
+- ✅ IETF standard (RFC 8439)
+- ✅ Constant-time — no timing side channels
+- ✅ Fast in software without dedicated hardware (unlike AES without AES-NI)
+- ⚠️ No authentication — use [ChaCha20-Poly1305](#chacha20-poly1305) for authenticated encryption
+- ⚠️ Nonce reuse is catastrophic — never reuse a (key, nonce) pair
+
+**Usage:**
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+// Create ChaCha20 stream cipher
+using var chacha = ChaCha20.Create();
+chacha.Key = new byte[32]; // 256-bit key
+chacha.IV = new byte[12]; // 96-bit nonce
+
+// Single-operation encryption (XOR with keystream)
+byte[] ciphertext = chacha.Encrypt(plaintext);
+
+// Decryption is the same operation (XOR is symmetric)
+byte[] decrypted = chacha.Decrypt(ciphertext);
+```
+
+**Usage — Streaming:**
+```csharp
+using var chacha = ChaCha20.Create();
+chacha.Key = key;
+chacha.IV = nonce;
+
+using var encryptor = chacha.CreateEncryptor();
+
+// Stream cipher: process any amount of data
+Span<byte> output = new byte[chunk.Length];
+encryptor.TransformBlock(chunk, output);
+
+// No padding needed for final block
+encryptor.TransformFinalBlock(lastChunk, output);
+```
+
+**Usage — Custom Initial Counter:**
+```csharp
+// RFC 8439 §2.4: AEAD construction uses counter = 1 (block 0 for Poly1305 key)
+using var chacha = ChaCha20.Create();
+chacha.InitialCounter = 1;
+chacha.Key = key;
+chacha.IV = nonce;
+```
+
+> [!TIP]
+> ChaCha20 is the preferred stream cipher when AES-NI hardware is not available.
+> It is faster than AES in software and has no timing side channels from table lookups.
+> For authenticated encryption, use [ChaCha20-Poly1305](#chacha20-poly1305).
+
+---
+
+## Block/Stream Cipher Comparison
+
+| Algorithm | Type | Key Size | Block/IV | Modes | Hardware Accel | Best For |
+|-----------|------|----------|----------|-------|----------------|----------|
+| **AES-128** | Block | 128 bits | 16B / 16B | ECB, CBC, CTR | AES-NI | General purpose, compliance |
+| **AES-192** | Block | 192 bits | 16B / 16B | ECB, CBC, CTR | AES-NI | Higher security margin |
+| **AES-256** | Block | 256 bits | 16B / 16B | ECB, CBC, CTR | AES-NI | Maximum AES security |
+| **ChaCha20** | Stream | 256 bits | — / 12B | Stream | SSSE3/AVX2 | Software-only, mobile |
+
+---
+
+## Cipher Modes of Operation
+
+| Mode | Type | Padding | Parallel Encrypt | Parallel Decrypt | Notes |
+|------|------|---------|------------------|------------------|-------|
+| **ECB** | Block | Required | ✅ | ✅ | ⚠️ Insecure for multi-block |
+| **CBC** | Block | Required | ❌ | ✅ | Needs unpredictable IV |
+| **CTR** | Stream | None | ✅ | ✅ | Recommended for most uses |
+| **Stream** | Stream | None | ✅ | ✅ | ChaCha20 native mode |
+
+
 
 | Algorithm | Key Size | Nonce Size | Tag Size | Performance | Hardware Accel | Best For |
 |-----------|----------|------------|----------|-------------|----------------|----------|
@@ -260,10 +437,13 @@ aesGcm.Encrypt(nonce, message, ciphertext, tag, header);
 ## References
 
 ### Standards
+- **NIST FIPS 197** - Advanced Encryption Standard (AES)
+- **NIST SP 800-38A** - Recommendation for Block Cipher Modes: ECB, CBC, CFB, OFB, CTR
 - **NIST SP 800-38C** - Recommendation for Block Cipher Modes: CCM
 - **NIST SP 800-38D** - Recommendation for Block Cipher Modes: GCM
 - **RFC 3610** - Counter with CBC-MAC (CCM)
-- **RFC 8439** - ChaCha20-Poly1305 for IETF protocols
+- **RFC 8439** - ChaCha20 and Poly1305 for IETF Protocols
+- **draft-irtf-cfrg-xchacha** - XChaCha20-Poly1305
 
 ### Test Vectors
 
