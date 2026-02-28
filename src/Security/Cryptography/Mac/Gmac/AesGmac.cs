@@ -66,8 +66,7 @@ public sealed class AesGmac : IDisposable
     /// <exception cref="ArgumentException">The key length is invalid.</exception>
     public AesGmac(ReadOnlySpan<byte> key)
     {
-        _gcm = key.Length switch
-        {
+        _gcm = key.Length switch {
             16 => new AesGcm128(key),
             24 => new AesGcm192(key),
             32 => new AesGcm256(key),
