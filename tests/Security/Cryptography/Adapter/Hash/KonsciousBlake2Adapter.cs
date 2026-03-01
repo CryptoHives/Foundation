@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#if KONSCIOUS_BLAKE2
+
 namespace Cryptography.Tests.Adapter.Hash;
 
 using Konscious.Security.Cryptography;
@@ -93,3 +95,5 @@ internal sealed class KonsciousBlake2Adapter : HA.HashAlgorithm
         base.Dispose(disposing);
     }
 }
+
+#endif

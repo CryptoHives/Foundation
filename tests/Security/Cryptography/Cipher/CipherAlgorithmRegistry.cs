@@ -284,7 +284,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                )                );
+                ));
         }
 
         // AES-128-GCM - PClMul (T-table AES + CLMUL GHASH, serial)

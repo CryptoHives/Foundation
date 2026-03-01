@@ -1604,57 +1604,6 @@ internal readonly struct GcmCore
                     ref counter, ref y, ciphertext, plaintext, offset, len);
             }
         }
-#if mist
-        else
-        {
-            while (offset + 8 * BlockSizeBytes <= len)
-            {
-                var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
-                var ct1 = Vector128.Create(ciphertext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
-                var ct2 = Vector128.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
-                var ct3 = Vector128.Create(ciphertext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
-                var ct4 = Vector128.Create(ciphertext.Slice(offset + 4 * BlockSizeBytes, BlockSizeBytes));
-                var ct5 = Vector128.Create(ciphertext.Slice(offset + 5 * BlockSizeBytes, BlockSizeBytes));
-                var ct6 = Vector128.Create(ciphertext.Slice(offset + 6 * BlockSizeBytes, BlockSizeBytes));
-                var ct7 = Vector128.Create(ciphertext.Slice(offset + 7 * BlockSizeBytes, BlockSizeBytes));
-
-                Vector128<byte> g0 = Sse2.Xor(y, Ssse3.Shuffle(ct0, ByteSwapMask));
-                Vector128<byte> g1 = Ssse3.Shuffle(ct1, ByteSwapMask);
-                Vector128<byte> g2 = Ssse3.Shuffle(ct2, ByteSwapMask);
-                Vector128<byte> g3 = Ssse3.Shuffle(ct3, ByteSwapMask);
-                Vector128<byte> g4 = Ssse3.Shuffle(ct4, ByteSwapMask);
-                Vector128<byte> g5 = Ssse3.Shuffle(ct5, ByteSwapMask);
-                Vector128<byte> g6 = Ssse3.Shuffle(ct6, ByteSwapMask);
-                Vector128<byte> g7 = Ssse3.Shuffle(ct7, ByteSwapMask);
-
-#if NET10_0_OR_GREATER
-                y = _usePclmulV256 ?
-                    GfMulReduce8Vpclmul(hPowers, g0, g1, g2, g3, g4, g5, g6, g7) :
-                    GfMulReduce8(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
-#else
-                y = GfMulReduce8(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
-#endif
-
-                GenerateCounterBlocks8(ref counter,
-                    out var c0, out var c1, out var c2, out var c3,
-                    out var c4, out var c5, out var c6, out var c7);
-
-                AesCoreAesNi.EncryptBlocks8(ref c0, ref c1, ref c2, ref c3,
-                    ref c4, ref c5, ref c6, ref c7, roundKeys, rounds);
-
-                Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
-                Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
-                Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
-                Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
-                Sse2.Xor(ct4, c4).CopyTo(plaintext.Slice(offset + 4 * BlockSizeBytes));
-                Sse2.Xor(ct5, c5).CopyTo(plaintext.Slice(offset + 5 * BlockSizeBytes));
-                Sse2.Xor(ct6, c6).CopyTo(plaintext.Slice(offset + 6 * BlockSizeBytes));
-                Sse2.Xor(ct7, c7).CopyTo(plaintext.Slice(offset + 7 * BlockSizeBytes));
-
-                offset += 8 * BlockSizeBytes;
-            }
-        }
-#endif
 
         // 4-block fallback
         while (offset + 4 * BlockSizeBytes <= len)
