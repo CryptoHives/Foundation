@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#if !NETFRAMEWORK
+
 namespace Cryptography.Tests.Hash;
 
 using NUnit.Framework;
@@ -61,3 +63,4 @@ public class MemoryAllocationTests
         Assert.That(results, Is.Not.Empty);
     }
 }
+#endif
