@@ -1110,15 +1110,15 @@ internal readonly struct GcmCore
     /// <returns>The reduced GF(2^128) result.</returns>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static Vector128<byte> GfMulReduce4(
-        ReadOnlySpan<Vector128<byte>> hPowers,
+        ref Vector128<byte> hPowers,
         Vector128<byte> x0, Vector128<byte> x1,
         Vector128<byte> x2, Vector128<byte> x3)
     {
         // 4 independent carry-less multiplies (lo, hi, and cross terms)
-        Vector128<ulong> h1 = hPowers[7].AsUInt64();
-        Vector128<ulong> h4 = hPowers[4].AsUInt64();
-        Vector128<ulong> h3 = hPowers[5].AsUInt64();
-        Vector128<ulong> h2 = hPowers[6].AsUInt64();
+        Vector128<ulong> h4 = Unsafe.Add(ref hPowers, 4).AsUInt64();
+        Vector128<ulong> h3 = Unsafe.Add(ref hPowers, 5).AsUInt64();
+        Vector128<ulong> h2 = Unsafe.Add(ref hPowers, 6).AsUInt64();
+        Vector128<ulong> h1 = Unsafe.Add(ref hPowers, 7).AsUInt64();
         Vector128<ulong> d0 = x0.AsUInt64(); Vector128<ulong> d1 = x1.AsUInt64();
         Vector128<ulong> d2 = x2.AsUInt64(); Vector128<ulong> d3 = x3.AsUInt64();
 
@@ -1167,16 +1167,16 @@ internal readonly struct GcmCore
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static Vector128<byte> GfMulReduce8(
-        ReadOnlySpan<Vector128<byte>> hPowers,
+        ref Vector128<byte> hPowers,
         Vector128<byte> x0, Vector128<byte> x1,
         Vector128<byte> x2, Vector128<byte> x3,
         Vector128<byte> x4, Vector128<byte> x5,
         Vector128<byte> x6, Vector128<byte> x7)
     {
-        Vector128<ulong> h8 = hPowers[0].AsUInt64(); Vector128<ulong> h7 = hPowers[1].AsUInt64();
-        Vector128<ulong> h6 = hPowers[2].AsUInt64(); Vector128<ulong> h5 = hPowers[3].AsUInt64();
-        Vector128<ulong> h4 = hPowers[4].AsUInt64(); Vector128<ulong> h3 = hPowers[5].AsUInt64();
-        Vector128<ulong> h2 = hPowers[6].AsUInt64(); Vector128<ulong> h1 = hPowers[7].AsUInt64();
+        Vector128<ulong> h8 = hPowers.AsUInt64(); Vector128<ulong> h7 = Unsafe.Add(ref hPowers, 1).AsUInt64();
+        Vector128<ulong> h6 = Unsafe.Add(ref hPowers, 2).AsUInt64(); Vector128<ulong> h5 = Unsafe.Add(ref hPowers, 3).AsUInt64();
+        Vector128<ulong> h4 = Unsafe.Add(ref hPowers, 4).AsUInt64(); Vector128<ulong> h3 = Unsafe.Add(ref hPowers, 5).AsUInt64();
+        Vector128<ulong> h2 = Unsafe.Add(ref hPowers, 6).AsUInt64(); Vector128<ulong> h1 = Unsafe.Add(ref hPowers, 7).AsUInt64();
         Vector128<ulong> d0 = x0.AsUInt64(); Vector128<ulong> d1 = x1.AsUInt64();
         Vector128<ulong> d2 = x2.AsUInt64(); Vector128<ulong> d3 = x3.AsUInt64();
         Vector128<ulong> d4 = x4.AsUInt64(); Vector128<ulong> d5 = x5.AsUInt64();
@@ -1254,15 +1254,16 @@ internal readonly struct GcmCore
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static Vector128<byte> GfMulReduce8Vpclmul(
-        ReadOnlySpan<Vector128<byte>> hPowers,
+        ref Vector128<byte> hPowers,
         Vector128<byte> x0, Vector128<byte> x1,
         Vector128<byte> x2, Vector128<byte> x3,
         Vector128<byte> x4, Vector128<byte> x5,
         Vector128<byte> x6, Vector128<byte> x7)
     {
         // Single 256-bit loads from consecutive H power pairs
-        var hp256 = MemoryMarshal.Cast<Vector128<byte>, Vector256<ulong>>(hPowers);
-        var hp01 = hp256[0]; var hp23 = hp256[1]; var hp45 = hp256[2]; var hp67 = hp256[3];
+        ref var hp256 = ref Unsafe.As<Vector128<byte>, Vector256<ulong>>(ref hPowers);
+        var hp01 = hp256; var hp23 = Unsafe.Add(ref hp256, 1);
+        var hp45 = Unsafe.Add(ref hp256, 2); var hp67 = Unsafe.Add(ref hp256, 3);
 
         var dp01 = Vector256.Create(x0.AsUInt64(), x1.AsUInt64());
         var dp23 = Vector256.Create(x2.AsUInt64(), x3.AsUInt64());
@@ -1402,19 +1403,40 @@ internal readonly struct GcmCore
         Span<byte> ghashOut)
     {
         Vector128<byte> y = Vector128<byte>.Zero;
-
-        Span<byte> ctrBuf = stackalloc byte[BlockSizeBytes];
         Span<byte> ksBuf = stackalloc byte[BlockSizeBytes];
 
         // Process AAD with single-block GHASH
         y = ProcessBlocksClmul(_hClmul, aad, y);
+
+        // references to vector/text arrays
+        ref Vector128<byte> rk = ref MemoryMarshal.GetReference(roundKeys);
+        ref Vector128<byte> hp = ref MemoryMarshal.GetReference(hPowers);
+        ref byte pt = ref MemoryMarshal.GetReference(plaintext);
+        ref byte ct = ref MemoryMarshal.GetReference(ciphertext);
 
         // Pipelined GCTR+GHASH for plaintext
         var counter = Vector128.Create(icb);
         int offset = 0;
         int len = plaintext.Length;
 
-        // 8-block pipelined loop
+        // stitched loop overhead pays off with at least two rounds
+        if (len >= 2 * 8 * BlockSizeBytes)
+        {
+#if NET10_0_OR_GREATER
+            if (_usePclmulV256)
+            {
+                offset = EncryptStitchedPclmulV256Loop(roundKeys, rounds, ref hp,
+                    ref counter, ref y, ref pt, ref ct, offset, len);
+            }
+            else
+#endif
+            {
+                offset = EncryptStitchedPclmul128Loop(roundKeys, rounds, ref hp,
+                    ref counter, ref y, ref pt, ref ct, offset, len);
+            }
+        }
+
+        // 8-block non-stitched fallback (for remaining 8-15 blocks after stitched, or < 16 blocks total)
         while (offset + 8 * BlockSizeBytes <= len)
         {
             GenerateCounterBlocks8(ref counter,
@@ -1423,25 +1445,25 @@ internal readonly struct GcmCore
 
             AesCoreAesNi.EncryptBlocks8(
                 ref c0, ref c1, ref c2, ref c3,
-                ref c4, ref c5, ref c6, ref c7, roundKeys, rounds);
+                ref c4, ref c5, ref c6, ref c7, ref rk, rounds);
 
-            c0 = Sse2.Xor(c0, Vector128.Create(plaintext.Slice(offset, BlockSizeBytes)));
-            c1 = Sse2.Xor(c1, Vector128.Create(plaintext.Slice(offset + BlockSizeBytes, BlockSizeBytes)));
-            c2 = Sse2.Xor(c2, Vector128.Create(plaintext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes)));
-            c3 = Sse2.Xor(c3, Vector128.Create(plaintext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes)));
-            c4 = Sse2.Xor(c4, Vector128.Create(plaintext.Slice(offset + 4 * BlockSizeBytes, BlockSizeBytes)));
-            c5 = Sse2.Xor(c5, Vector128.Create(plaintext.Slice(offset + 5 * BlockSizeBytes, BlockSizeBytes)));
-            c6 = Sse2.Xor(c6, Vector128.Create(plaintext.Slice(offset + 6 * BlockSizeBytes, BlockSizeBytes)));
-            c7 = Sse2.Xor(c7, Vector128.Create(plaintext.Slice(offset + 7 * BlockSizeBytes, BlockSizeBytes)));
+            c0 = Sse2.Xor(c0, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset)));
+            c1 = Sse2.Xor(c1, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + BlockSizeBytes)));
+            c2 = Sse2.Xor(c2, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes)));
+            c3 = Sse2.Xor(c3, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes)));
+            c4 = Sse2.Xor(c4, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 4 * BlockSizeBytes)));
+            c5 = Sse2.Xor(c5, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 5 * BlockSizeBytes)));
+            c6 = Sse2.Xor(c6, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 6 * BlockSizeBytes)));
+            c7 = Sse2.Xor(c7, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 7 * BlockSizeBytes)));
 
-            c0.CopyTo(ciphertext.Slice(offset));
-            c1.CopyTo(ciphertext.Slice(offset + BlockSizeBytes));
-            c2.CopyTo(ciphertext.Slice(offset + 2 * BlockSizeBytes));
-            c3.CopyTo(ciphertext.Slice(offset + 3 * BlockSizeBytes));
-            c4.CopyTo(ciphertext.Slice(offset + 4 * BlockSizeBytes));
-            c5.CopyTo(ciphertext.Slice(offset + 5 * BlockSizeBytes));
-            c6.CopyTo(ciphertext.Slice(offset + 6 * BlockSizeBytes));
-            c7.CopyTo(ciphertext.Slice(offset + 7 * BlockSizeBytes));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset), c0);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + BlockSizeBytes), c1);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes), c2);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes), c3);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 4 * BlockSizeBytes), c4);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 5 * BlockSizeBytes), c5);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 6 * BlockSizeBytes), c6);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 7 * BlockSizeBytes), c7);
 
             Vector128<byte> g0 = Sse2.Xor(y, Ssse3.Shuffle(c0, ByteSwapMask));
             Vector128<byte> g1 = Ssse3.Shuffle(c1, ByteSwapMask);
@@ -1454,10 +1476,10 @@ internal readonly struct GcmCore
 
 #if NET10_0_OR_GREATER
             y = _usePclmulV256 ?
-                GfMulReduce8Vpclmul(hPowers, g0, g1, g2, g3, g4, g5, g6, g7) :
-                GfMulReduce8(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
+                GfMulReduce8Vpclmul(ref hp, g0, g1, g2, g3, g4, g5, g6, g7) :
+                GfMulReduce8(ref hp, g0, g1, g2, g3, g4, g5, g6, g7);
 #else
-            y = GfMulReduce8(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
+            y = GfMulReduce8(ref hp, g0, g1, g2, g3, g4, g5, g6, g7);
 #endif
 
             offset += 8 * BlockSizeBytes;
@@ -1471,13 +1493,13 @@ internal readonly struct GcmCore
                 out var c0, out var c1, out var c2, out var c3);
 
             // Encrypt 4 counter blocks in parallel
-            AesCoreAesNi.EncryptBlocks4(ref c0, ref c1, ref c2, ref c3, roundKeys, rounds);
+            AesCoreAesNi.EncryptBlocks4(ref c0, ref c1, ref c2, ref c3, ref rk, rounds);
 
             // XOR with plaintext to produce ciphertext
-            var p0 = Vector128.Create(plaintext.Slice(offset, BlockSizeBytes));
-            var p1 = Vector128.Create(plaintext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
-            var p2 = Vector128.Create(plaintext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
-            var p3 = Vector128.Create(plaintext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
+            var p0 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset));
+            var p1 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + BlockSizeBytes));
+            var p2 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes));
+            var p3 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes));
 
             c0 = Sse2.Xor(c0, p0);
             c1 = Sse2.Xor(c1, p1);
@@ -1485,10 +1507,10 @@ internal readonly struct GcmCore
             c3 = Sse2.Xor(c3, p3);
 
             // Store ciphertext
-            c0.CopyTo(ciphertext.Slice(offset));
-            c1.CopyTo(ciphertext.Slice(offset + BlockSizeBytes));
-            c2.CopyTo(ciphertext.Slice(offset + 2 * BlockSizeBytes));
-            c3.CopyTo(ciphertext.Slice(offset + 3 * BlockSizeBytes));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset), c0);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + BlockSizeBytes), c1);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes), c2);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes), c3);
 
             // GHASH 4 ciphertext blocks with aggregated reduction
             // Byte-swap for GHASH (big-endian → little-endian)
@@ -1497,7 +1519,7 @@ internal readonly struct GcmCore
             Vector128<byte> g2 = Ssse3.Shuffle(c2, ByteSwapMask);
             Vector128<byte> g3 = Ssse3.Shuffle(c3, ByteSwapMask);
 
-            y = GfMulReduce4(hPowers, g0, g1, g2, g3);
+            y = GfMulReduce4(ref hp, g0, g1, g2, g3);
 
             offset += 4 * BlockSizeBytes;
         }
@@ -1507,15 +1529,13 @@ internal readonly struct GcmCore
         {
             Vector128<byte> c = counter;
             IncrementCounterVec(ref counter);
-            c.CopyTo(ctrBuf);
-            AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
+            var ks = AesCoreAesNi.EncryptBlock(c, ref rk, rounds);
 
-            var ks = Vector128.Create(ksBuf);
-            var pt = Vector128.Create(plaintext.Slice(offset, BlockSizeBytes));
-            Vector128<byte> ct = Sse2.Xor(pt, ks);
-            ct.CopyTo(ciphertext.Slice(offset));
+            var ptVec = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset));
+            Vector128<byte> ctVec = Sse2.Xor(ptVec, ks);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset), ctVec);
 
-            y = Sse2.Xor(y, Ssse3.Shuffle(ct, ByteSwapMask));
+            y = Sse2.Xor(y, Ssse3.Shuffle(ctVec, ByteSwapMask));
             y = GfMulClmul(_hClmul, y);
             offset += BlockSizeBytes;
         }
@@ -1524,11 +1544,13 @@ internal readonly struct GcmCore
         if (offset < len)
         {
             int remaining = len - offset;
-            counter.CopyTo(ctrBuf);
-            AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
+            var ksPartial = AesCoreAesNi.EncryptBlock(counter, ref rk, rounds);
+            ksPartial.CopyTo(ksBuf);
 
             for (int i = 0; i < remaining; i++)
+            {
                 ciphertext[offset + i] = (byte)(plaintext[offset + i] ^ ksBuf[i]);
+            }
 
             Span<byte> padded = stackalloc byte[BlockSizeBytes];
             padded.Clear();
@@ -1574,11 +1596,16 @@ internal readonly struct GcmCore
         Span<byte> plaintext, Span<byte> ghashOut)
     {
         Vector128<byte> y = Vector128<byte>.Zero;
-        Span<byte> ctrBuf = stackalloc byte[BlockSizeBytes];
         Span<byte> ksBuf = stackalloc byte[BlockSizeBytes];
 
         // Process AAD with single-block GHASH
         y = ProcessBlocksClmul(_hClmul, aad, y);
+
+        // references to vector/text arrays
+        ref Vector128<byte> rk = ref MemoryMarshal.GetReference(roundKeys);
+        ref Vector128<byte> hp = ref MemoryMarshal.GetReference(hPowers);
+        ref byte pt = ref MemoryMarshal.GetReference(plaintext);
+        ref byte ct = ref MemoryMarshal.GetReference(ciphertext);
 
         // Pipelined GHASH+GCTR for ciphertext
         var counter = Vector128.Create(icb);
@@ -1594,14 +1621,14 @@ internal readonly struct GcmCore
 #if NET10_0_OR_GREATER
             if (_usePclmulV256)
             {
-                offset = DecryptStitchedPclmulV256Loop(roundKeys, rounds, hPowers,
-                    ref counter, ref y, ciphertext, plaintext, offset, len);
+                offset = DecryptStitchedPclmulV256Loop(ref rk, rounds, ref hp,
+                    ref counter, ref y, ref ct, ref pt, offset, len);
             }
             else
 #endif
             {
-                offset = DecryptStitchedPclmul128Loop(roundKeys, rounds, hPowers,
-                    ref counter, ref y, ciphertext, plaintext, offset, len);
+                offset = DecryptStitchedPclmul128Loop(ref rk, rounds, ref hp,
+                    ref counter, ref y, ref ct, ref pt, offset, len);
             }
         }
 
@@ -1609,10 +1636,10 @@ internal readonly struct GcmCore
         while (offset + 4 * BlockSizeBytes <= len)
         {
             // Load 4 ciphertext blocks and GHASH them
-            var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
-            var ct1 = Vector128.Create(ciphertext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
-            var ct2 = Vector128.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
-            var ct3 = Vector128.Create(ciphertext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
+            var ct0 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset));
+            var ct1 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + BlockSizeBytes));
+            var ct2 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes));
+            var ct3 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes));
 
             Vector128<byte> g0 = Sse2.Xor(y, Ssse3.Shuffle(ct0, ByteSwapMask));
             Vector128<byte> g1 = Ssse3.Shuffle(ct1, ByteSwapMask);
@@ -1624,14 +1651,14 @@ internal readonly struct GcmCore
                 out var c0, out var c1, out var c2, out var c3);
 
             // GHASH and AES can overlap on different execution ports
-            y = GfMulReduce4(hPowers, g0, g1, g2, g3);
-            AesCoreAesNi.EncryptBlocks4(ref c0, ref c1, ref c2, ref c3, roundKeys, rounds);
+            y = GfMulReduce4(ref hp, g0, g1, g2, g3);
+            AesCoreAesNi.EncryptBlocks4(ref c0, ref c1, ref c2, ref c3, ref rk, rounds);
 
             // XOR keystream with ciphertext to produce plaintext
-            Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
-            Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
-            Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
-            Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset), Sse2.Xor(ct0, c0));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + BlockSizeBytes), Sse2.Xor(ct1, c1));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes), Sse2.Xor(ct2, c2));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes), Sse2.Xor(ct3, c3));
 
             offset += 4 * BlockSizeBytes;
         }
@@ -1639,17 +1666,15 @@ internal readonly struct GcmCore
         // Remaining full blocks (1-3)
         while (offset + BlockSizeBytes <= len)
         {
-            var ct = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
-            y = Sse2.Xor(y, Ssse3.Shuffle(ct, ByteSwapMask));
+            var ctVec = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset));
+            y = Sse2.Xor(y, Ssse3.Shuffle(ctVec, ByteSwapMask));
             y = GfMulClmul(_hClmul, y);
 
             Vector128<byte> c = counter;
             IncrementCounterVec(ref counter);
-            c.CopyTo(ctrBuf);
-            AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
+            var ksVec = AesCoreAesNi.EncryptBlock(c, ref rk, rounds);
 
-            var ksVec = Vector128.Create(ksBuf);
-            Sse2.Xor(ct, ksVec).CopyTo(plaintext.Slice(offset));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset), Sse2.Xor(ctVec, ksVec));
             offset += BlockSizeBytes;
         }
 
@@ -1665,8 +1690,8 @@ internal readonly struct GcmCore
             y = Sse2.Xor(y, block);
             y = GfMulClmul(_hClmul, y);
 
-            counter.CopyTo(ctrBuf);
-            AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
+            var ksPartialDec = AesCoreAesNi.EncryptBlock(counter, ref rk, rounds);
+            ksPartialDec.CopyTo(ksBuf);
             for (int i = 0; i < remaining; i++)
             {
                 plaintext[offset + i] = (byte)(ciphertext[offset + i] ^ ksBuf[i]);
@@ -1683,6 +1708,482 @@ internal readonly struct GcmCore
         Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
     }
 
+    /// <summary>
+    /// PCLMUL128 stitched 8-block encrypt loop: GHASH of previous ciphertext interleaved with AES-NI rounds.
+    /// </summary>
+    /// <remarks>
+    /// Uses a lagged pipeline: the first 8 blocks are encrypted without GHASH, then
+    /// the main loop interleaves GHASH(previous ciphertext) with AES(current counters).
+    /// After the loop, a final GHASH processes the last 8 ciphertext blocks.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static int EncryptStitchedPclmul128Loop(
+        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
+        ref Vector128<byte> hPowers,
+        ref Vector128<byte> counter, ref Vector128<byte> y,
+        ref byte pt, ref byte ct,
+        int offset, int len)
+    {
+        Vector128<ulong> h8 = hPowers.AsUInt64(); Vector128<ulong> h7 = Unsafe.Add(ref hPowers, 1).AsUInt64();
+        Vector128<ulong> h6 = Unsafe.Add(ref hPowers, 2).AsUInt64(); Vector128<ulong> h5 = Unsafe.Add(ref hPowers, 3).AsUInt64();
+        Vector128<ulong> h4 = Unsafe.Add(ref hPowers, 4).AsUInt64(); Vector128<ulong> h3 = Unsafe.Add(ref hPowers, 5).AsUInt64();
+        Vector128<ulong> h2 = Unsafe.Add(ref hPowers, 6).AsUInt64(); Vector128<ulong> h1 = Unsafe.Add(ref hPowers, 7).AsUInt64();
+
+        // First 8 blocks: encrypt only, no GHASH yet (no previous ciphertext)
+        GenerateCounterBlocks8(ref counter,
+            out var c0, out var c1, out var c2, out var c3,
+            out var c4, out var c5, out var c6, out var c7);
+
+        ref Vector128<byte> rk = ref MemoryMarshal.GetReference(roundKeys);
+        AesCoreAesNi.EncryptBlocks8(ref c0, ref c1, ref c2, ref c3,
+            ref c4, ref c5, ref c6, ref c7, ref rk, rounds);
+
+        c0 = Sse2.Xor(c0, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset)));
+        c1 = Sse2.Xor(c1, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + BlockSizeBytes)));
+        c2 = Sse2.Xor(c2, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes)));
+        c3 = Sse2.Xor(c3, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes)));
+        c4 = Sse2.Xor(c4, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 4 * BlockSizeBytes)));
+        c5 = Sse2.Xor(c5, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 5 * BlockSizeBytes)));
+        c6 = Sse2.Xor(c6, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 6 * BlockSizeBytes)));
+        c7 = Sse2.Xor(c7, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 7 * BlockSizeBytes)));
+
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset), c0);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + BlockSizeBytes), c1);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes), c2);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes), c3);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 4 * BlockSizeBytes), c4);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 5 * BlockSizeBytes), c5);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 6 * BlockSizeBytes), c6);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 7 * BlockSizeBytes), c7);
+
+        // Save previous ciphertext for lagged GHASH
+        var prev0 = c0; var prev1 = c1; var prev2 = c2; var prev3 = c3;
+        var prev4 = c4; var prev5 = c5; var prev6 = c6; var prev7 = c7;
+        offset += 8 * BlockSizeBytes;
+
+        // Main loop: GHASH(previous ciphertext) interleaved with AES(current counters)
+        while (offset + 8 * BlockSizeBytes <= len)
+        {
+            // Byte-swap previous ciphertext for GHASH
+            Vector128<ulong> d0 = Sse2.Xor(y, Ssse3.Shuffle(prev0, ByteSwapMask)).AsUInt64();
+            Vector128<ulong> d1 = Ssse3.Shuffle(prev1, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d2 = Ssse3.Shuffle(prev2, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d3 = Ssse3.Shuffle(prev3, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d4 = Ssse3.Shuffle(prev4, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d5 = Ssse3.Shuffle(prev5, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d6 = Ssse3.Shuffle(prev6, ByteSwapMask).AsUInt64();
+            Vector128<ulong> d7 = Ssse3.Shuffle(prev7, ByteSwapMask).AsUInt64();
+
+            GenerateCounterBlocks8(ref counter,
+                out c0, out c1, out c2, out c3,
+                out c4, out c5, out c6, out c7);
+
+            // AES whitening (round 0)
+            var rkVec = rk;
+            c0 = Sse2.Xor(c0, rkVec); c1 = Sse2.Xor(c1, rkVec);
+            c2 = Sse2.Xor(c2, rkVec); c3 = Sse2.Xor(c3, rkVec);
+            c4 = Sse2.Xor(c4, rkVec); c5 = Sse2.Xor(c5, rkVec);
+            c6 = Sse2.Xor(c6, rkVec); c7 = Sse2.Xor(c7, rkVec);
+
+            // AES round 1 + GHASH lo (blocks 0-3)
+            rkVec = Unsafe.Add(ref rk, 1);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            var lo = Pclmulqdq.CarrylessMultiply(h8.AsInt64(), d0.AsInt64(), 0x00).AsUInt64();
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h7.AsInt64(), d1.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h6.AsInt64(), d2.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 2 + GHASH lo (blocks 4-7)
+            rkVec = Unsafe.Add(ref rk, 2);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h4.AsInt64(), d4.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h3.AsInt64(), d5.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h2.AsInt64(), d6.AsInt64(), 0x00).AsUInt64());
+            lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 3 + GHASH hi (blocks 0-3)
+            rkVec = Unsafe.Add(ref rk, 3);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            var hi = Pclmulqdq.CarrylessMultiply(h8.AsInt64(), d0.AsInt64(), 0x11).AsUInt64();
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h7.AsInt64(), d1.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h6.AsInt64(), d2.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 4 + GHASH hi (blocks 4-7)
+            rkVec = Unsafe.Add(ref rk, 4);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h4.AsInt64(), d4.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h3.AsInt64(), d5.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h2.AsInt64(), d6.AsInt64(), 0x11).AsUInt64());
+            hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 5 + GHASH cross (Karatsuba, blocks 0-3)
+            rkVec = Unsafe.Add(ref rk, 5);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            Vector128<ulong> ht, dt;
+            ht = Sse2.Xor(Sse2.Shuffle(h8.AsUInt32(), 0x4E).AsUInt64(), h8);
+            dt = Sse2.Xor(Sse2.Shuffle(d0.AsUInt32(), 0x4E).AsUInt64(), d0);
+            var mid = Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64();
+            ht = Sse2.Xor(Sse2.Shuffle(h7.AsUInt32(), 0x4E).AsUInt64(), h7);
+            dt = Sse2.Xor(Sse2.Shuffle(d1.AsUInt32(), 0x4E).AsUInt64(), d1);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h6.AsUInt32(), 0x4E).AsUInt64(), h6);
+            dt = Sse2.Xor(Sse2.Shuffle(d2.AsUInt32(), 0x4E).AsUInt64(), d2);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h5.AsUInt32(), 0x4E).AsUInt64(), h5);
+            dt = Sse2.Xor(Sse2.Shuffle(d3.AsUInt32(), 0x4E).AsUInt64(), d3);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 6 + GHASH cross (blocks 4-7)
+            rkVec = Unsafe.Add(ref rk, 6);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            ht = Sse2.Xor(Sse2.Shuffle(h4.AsUInt32(), 0x4E).AsUInt64(), h4);
+            dt = Sse2.Xor(Sse2.Shuffle(d4.AsUInt32(), 0x4E).AsUInt64(), d4);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h3.AsUInt32(), 0x4E).AsUInt64(), h3);
+            dt = Sse2.Xor(Sse2.Shuffle(d5.AsUInt32(), 0x4E).AsUInt64(), d5);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h2.AsUInt32(), 0x4E).AsUInt64(), h2);
+            dt = Sse2.Xor(Sse2.Shuffle(d6.AsUInt32(), 0x4E).AsUInt64(), d6);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+            ht = Sse2.Xor(Sse2.Shuffle(h1.AsUInt32(), 0x4E).AsUInt64(), h1);
+            dt = Sse2.Xor(Sse2.Shuffle(d7.AsUInt32(), 0x4E).AsUInt64(), d7);
+            mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 7 + GHASH fold cross terms
+            rkVec = Unsafe.Add(ref rk, 7);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            mid = Sse2.Xor(mid, lo);
+            mid = Sse2.Xor(mid, hi);
+
+            // AES round 8 + GHASH MODREDUCE step 1
+            rkVec = Unsafe.Add(ref rk, 8);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            var vMul = Vector128.Create(GcmReductionConstant, 0UL).AsInt64();
+            var t0 = Pclmulqdq.CarrylessMultiply(lo.AsInt64(), vMul, 0x00).AsUInt64();
+            lo = Sse2.Shuffle(lo.AsUInt32(), 0x4E).AsUInt64();
+            mid = Sse2.Xor(mid, t0);
+            mid = Sse2.Xor(mid, lo);
+
+            // AES round 9 + GHASH MODREDUCE step 2
+            rkVec = Unsafe.Add(ref rk, 9);
+            c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+            c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+            c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+            c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            t0 = Pclmulqdq.CarrylessMultiply(
+                Sse2.ShiftLeftLogical(mid, 1).AsInt64(), vMul, 0x00).AsUInt64();
+            mid = Sse2.Shuffle(mid.AsUInt32(), 0x4E).AsUInt64();
+            var res = Sse2.Xor(hi, mid);
+
+            // AES remaining rounds for 192/256 key sizes
+            for (int i = 10; i < rounds; i++)
+            {
+                rkVec = Unsafe.Add(ref rk, i);
+                c0 = AesNi.Encrypt(c0, rkVec); c1 = AesNi.Encrypt(c1, rkVec);
+                c2 = AesNi.Encrypt(c2, rkVec); c3 = AesNi.Encrypt(c3, rkVec);
+                c4 = AesNi.Encrypt(c4, rkVec); c5 = AesNi.Encrypt(c5, rkVec);
+                c6 = AesNi.Encrypt(c6, rkVec); c7 = AesNi.Encrypt(c7, rkVec);
+            }
+
+            // AES last round + GHASH final reduction (rotate left by 1)
+            rkVec = Unsafe.Add(ref rk, rounds);
+            c0 = AesNi.EncryptLast(c0, rkVec); c1 = AesNi.EncryptLast(c1, rkVec);
+            c2 = AesNi.EncryptLast(c2, rkVec); c3 = AesNi.EncryptLast(c3, rkVec);
+            c4 = AesNi.EncryptLast(c4, rkVec); c5 = AesNi.EncryptLast(c5, rkVec);
+            c6 = AesNi.EncryptLast(c6, rkVec); c7 = AesNi.EncryptLast(c7, rkVec);
+            var t1 = Sse2.ShiftLeftLogical(res.AsUInt32(), 1).AsUInt64();
+            res = Sse2.ShiftRightLogical(res.AsUInt32(), 31).AsUInt64();
+            t0 = Sse2.Xor(t0, t1);
+            res = Sse2.Shuffle(res.AsUInt32(), 0x93).AsUInt64();
+            y = Sse2.Xor(res, t0).AsByte();
+
+            // XOR keystream with plaintext to produce ciphertext
+            c0 = Sse2.Xor(c0, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset)));
+            c1 = Sse2.Xor(c1, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + BlockSizeBytes)));
+            c2 = Sse2.Xor(c2, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes)));
+            c3 = Sse2.Xor(c3, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes)));
+            c4 = Sse2.Xor(c4, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 4 * BlockSizeBytes)));
+            c5 = Sse2.Xor(c5, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 5 * BlockSizeBytes)));
+            c6 = Sse2.Xor(c6, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 6 * BlockSizeBytes)));
+            c7 = Sse2.Xor(c7, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 7 * BlockSizeBytes)));
+
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset), c0);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + BlockSizeBytes), c1);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes), c2);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes), c3);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 4 * BlockSizeBytes), c4);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 5 * BlockSizeBytes), c5);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 6 * BlockSizeBytes), c6);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 7 * BlockSizeBytes), c7);
+
+            prev0 = c0; prev1 = c1; prev2 = c2; prev3 = c3;
+            prev4 = c4; prev5 = c5; prev6 = c6; prev7 = c7;
+            offset += 8 * BlockSizeBytes;
+        }
+
+        // Final GHASH for the last 8 ciphertext blocks
+        y = GfMulReduce8(ref hPowers,
+            Sse2.Xor(y, Ssse3.Shuffle(prev0, ByteSwapMask)),
+            Ssse3.Shuffle(prev1, ByteSwapMask),
+            Ssse3.Shuffle(prev2, ByteSwapMask),
+            Ssse3.Shuffle(prev3, ByteSwapMask),
+            Ssse3.Shuffle(prev4, ByteSwapMask),
+            Ssse3.Shuffle(prev5, ByteSwapMask),
+            Ssse3.Shuffle(prev6, ByteSwapMask),
+            Ssse3.Shuffle(prev7, ByteSwapMask));
+
+        return offset;
+    }
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// V256 stitched 8-block encrypt loop: VPCLMULQDQ GHASH of previous ciphertext interleaved with AES-NI rounds.
+    /// </summary>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static int EncryptStitchedPclmulV256Loop(
+        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
+        ref Vector128<byte> hPowers,
+        ref Vector128<byte> counter, ref Vector128<byte> y,
+        ref byte pt, ref byte ct,
+        int offset, int len)
+    {
+        var hp256 = MemoryMarshal.Cast<Vector128<byte>, Vector256<ulong>>(
+            MemoryMarshal.CreateReadOnlySpan(ref hPowers, 8));
+        var hp01 = hp256[0]; var hp23 = hp256[1]; var hp45 = hp256[2]; var hp67 = hp256[3];
+
+        // First 8 blocks: encrypt only, no GHASH yet
+        GenerateCounterBlocks8(ref counter,
+            out var c0, out var c1, out var c2, out var c3,
+            out var c4, out var c5, out var c6, out var c7);
+
+        ref Vector128<byte> rkPtr = ref MemoryMarshal.GetReference(roundKeys);
+        AesCoreAesNi.EncryptBlocks8(ref c0, ref c1, ref c2, ref c3,
+            ref c4, ref c5, ref c6, ref c7, ref rkPtr, rounds);
+
+        c0 = Sse2.Xor(c0, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset)));
+        c1 = Sse2.Xor(c1, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + BlockSizeBytes)));
+        c2 = Sse2.Xor(c2, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes)));
+        c3 = Sse2.Xor(c3, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes)));
+        c4 = Sse2.Xor(c4, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 4 * BlockSizeBytes)));
+        c5 = Sse2.Xor(c5, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 5 * BlockSizeBytes)));
+        c6 = Sse2.Xor(c6, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 6 * BlockSizeBytes)));
+        c7 = Sse2.Xor(c7, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 7 * BlockSizeBytes)));
+
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset), c0);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + BlockSizeBytes), c1);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes), c2);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes), c3);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 4 * BlockSizeBytes), c4);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 5 * BlockSizeBytes), c5);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 6 * BlockSizeBytes), c6);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 7 * BlockSizeBytes), c7);
+
+        var prev0 = c0; var prev1 = c1; var prev2 = c2; var prev3 = c3;
+        var prev4 = c4; var prev5 = c5; var prev6 = c6; var prev7 = c7;
+        offset += 8 * BlockSizeBytes;
+
+        // Main loop: VPCLMULQDQ GHASH(prev ciphertext) interleaved with AES(current)
+        while (offset + 8 * BlockSizeBytes <= len)
+        {
+            // Byte-swap previous ciphertext into 256-bit pairs for GHASH
+            var dp01 = Vector256.Create(
+                Sse2.Xor(y, Ssse3.Shuffle(prev0, ByteSwapMask)).AsUInt64(),
+                Ssse3.Shuffle(prev1, ByteSwapMask).AsUInt64());
+            var dp23 = Vector256.Create(
+                Ssse3.Shuffle(prev2, ByteSwapMask).AsUInt64(),
+                Ssse3.Shuffle(prev3, ByteSwapMask).AsUInt64());
+            var dp45 = Vector256.Create(
+                Ssse3.Shuffle(prev4, ByteSwapMask).AsUInt64(),
+                Ssse3.Shuffle(prev5, ByteSwapMask).AsUInt64());
+            var dp67 = Vector256.Create(
+                Ssse3.Shuffle(prev6, ByteSwapMask).AsUInt64(),
+                Ssse3.Shuffle(prev7, ByteSwapMask).AsUInt64());
+
+            GenerateCounterBlocks8(ref counter,
+                out c0, out c1, out c2, out c3,
+                out c4, out c5, out c6, out c7);
+
+            // AES whitening (round 0)
+            var roundKey = rkPtr;
+            c0 = Sse2.Xor(c0, roundKey); c1 = Sse2.Xor(c1, roundKey);
+            c2 = Sse2.Xor(c2, roundKey); c3 = Sse2.Xor(c3, roundKey);
+            c4 = Sse2.Xor(c4, roundKey); c5 = Sse2.Xor(c5, roundKey);
+            c6 = Sse2.Xor(c6, roundKey); c7 = Sse2.Xor(c7, roundKey);
+
+            // AES round 1 + GHASH lo
+            roundKey = Unsafe.Add(ref rkPtr, 1);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            var lo256 = Pclmulqdq.V256.CarrylessMultiply(hp01.AsInt64(), dp01.AsInt64(), 0x00).AsUInt64();
+            lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 2 + GHASH lo continued
+            roundKey = Unsafe.Add(ref rkPtr, 2);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp45.AsInt64(), dp45.AsInt64(), 0x00).AsUInt64());
+            lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 3 + GHASH hi
+            roundKey = Unsafe.Add(ref rkPtr, 3);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            var hi256 = Pclmulqdq.V256.CarrylessMultiply(hp01.AsInt64(), dp01.AsInt64(), 0x11).AsUInt64();
+            hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 4 + GHASH hi continued
+            roundKey = Unsafe.Add(ref rkPtr, 4);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp45.AsInt64(), dp45.AsInt64(), 0x11).AsUInt64());
+            hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x11).AsUInt64());
+
+            // AES round 5 + GHASH cross (Karatsuba prep + multiply)
+            roundKey = Unsafe.Add(ref rkPtr, 5);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            var ht01 = Avx2.Xor(Avx2.Shuffle(hp01.AsUInt32(), 0x4E).AsUInt64(), hp01);
+            var dt01 = Avx2.Xor(Avx2.Shuffle(dp01.AsUInt32(), 0x4E).AsUInt64(), dp01);
+            var mid256 = Pclmulqdq.V256.CarrylessMultiply(ht01.AsInt64(), dt01.AsInt64(), 0x00).AsUInt64();
+            var ht23 = Avx2.Xor(Avx2.Shuffle(hp23.AsUInt32(), 0x4E).AsUInt64(), hp23);
+            var dt23 = Avx2.Xor(Avx2.Shuffle(dp23.AsUInt32(), 0x4E).AsUInt64(), dp23);
+            mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht23.AsInt64(), dt23.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 6 + GHASH cross continued
+            roundKey = Unsafe.Add(ref rkPtr, 6);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            var ht45 = Avx2.Xor(Avx2.Shuffle(hp45.AsUInt32(), 0x4E).AsUInt64(), hp45);
+            var dt45 = Avx2.Xor(Avx2.Shuffle(dp45.AsUInt32(), 0x4E).AsUInt64(), dp45);
+            mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht45.AsInt64(), dt45.AsInt64(), 0x00).AsUInt64());
+            var ht67 = Avx2.Xor(Avx2.Shuffle(hp67.AsUInt32(), 0x4E).AsUInt64(), hp67);
+            var dt67 = Avx2.Xor(Avx2.Shuffle(dp67.AsUInt32(), 0x4E).AsUInt64(), dp67);
+            mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht67.AsInt64(), dt67.AsInt64(), 0x00).AsUInt64());
+
+            // AES round 7 + GHASH fold 256→128 using AVX2
+            roundKey = Unsafe.Add(ref rkPtr, 7);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            lo256 = Avx2.Xor(lo256, Avx2.Permute2x128(lo256, lo256, 0x01));
+            hi256 = Avx2.Xor(hi256, Avx2.Permute2x128(hi256, hi256, 0x01));
+            mid256 = Avx2.Xor(mid256, Avx2.Permute2x128(mid256, mid256, 0x01));
+            mid256 = Avx2.Xor(mid256, Avx2.Xor(lo256, hi256));
+
+            // AES round 8 + extract to 128-bit for MODREDUCE
+            roundKey = Unsafe.Add(ref rkPtr, 8);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            Vector128<ulong> lo = lo256.GetLower();
+            Vector128<ulong> mid = mid256.GetLower();
+            Vector128<ulong> hi = hi256.GetLower();
+
+            // AES round 9 + GHASH MODREDUCE (2 CLMUL)
+            roundKey = Unsafe.Add(ref rkPtr, 9);
+            c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+            c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+            c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+            c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            y = ModReduceClmul(lo, mid, hi);
+
+            // AES remaining rounds for 192/256 key sizes
+            for (int i = 10; i < rounds; i++)
+            {
+                roundKey = Unsafe.Add(ref rkPtr, i);
+                c0 = AesNi.Encrypt(c0, roundKey); c1 = AesNi.Encrypt(c1, roundKey);
+                c2 = AesNi.Encrypt(c2, roundKey); c3 = AesNi.Encrypt(c3, roundKey);
+                c4 = AesNi.Encrypt(c4, roundKey); c5 = AesNi.Encrypt(c5, roundKey);
+                c6 = AesNi.Encrypt(c6, roundKey); c7 = AesNi.Encrypt(c7, roundKey);
+            }
+
+            // AES last round
+            roundKey = Unsafe.Add(ref rkPtr, rounds);
+            c0 = AesNi.EncryptLast(c0, roundKey); c1 = AesNi.EncryptLast(c1, roundKey);
+            c2 = AesNi.EncryptLast(c2, roundKey); c3 = AesNi.EncryptLast(c3, roundKey);
+            c4 = AesNi.EncryptLast(c4, roundKey); c5 = AesNi.EncryptLast(c5, roundKey);
+            c6 = AesNi.EncryptLast(c6, roundKey); c7 = AesNi.EncryptLast(c7, roundKey);
+
+            // XOR keystream with plaintext to produce ciphertext
+            c0 = Sse2.Xor(c0, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset)));
+            c1 = Sse2.Xor(c1, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + BlockSizeBytes)));
+            c2 = Sse2.Xor(c2, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes)));
+            c3 = Sse2.Xor(c3, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes)));
+            c4 = Sse2.Xor(c4, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 4 * BlockSizeBytes)));
+            c5 = Sse2.Xor(c5, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 5 * BlockSizeBytes)));
+            c6 = Sse2.Xor(c6, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 6 * BlockSizeBytes)));
+            c7 = Sse2.Xor(c7, Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref pt, offset + 7 * BlockSizeBytes)));
+
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset), c0);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + BlockSizeBytes), c1);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes), c2);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes), c3);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 4 * BlockSizeBytes), c4);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 5 * BlockSizeBytes), c5);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 6 * BlockSizeBytes), c6);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref ct, offset + 7 * BlockSizeBytes), c7);
+
+            prev0 = c0; prev1 = c1; prev2 = c2; prev3 = c3;
+            prev4 = c4; prev5 = c5; prev6 = c6; prev7 = c7;
+            offset += 8 * BlockSizeBytes;
+        }
+
+        // Final GHASH for the last 8 ciphertext blocks
+        y = GfMulReduce8Vpclmul(ref hPowers,
+            Sse2.Xor(y, Ssse3.Shuffle(prev0, ByteSwapMask)),
+            Ssse3.Shuffle(prev1, ByteSwapMask),
+            Ssse3.Shuffle(prev2, ByteSwapMask),
+            Ssse3.Shuffle(prev3, ByteSwapMask),
+            Ssse3.Shuffle(prev4, ByteSwapMask),
+            Ssse3.Shuffle(prev5, ByteSwapMask),
+            Ssse3.Shuffle(prev6, ByteSwapMask),
+            Ssse3.Shuffle(prev7, ByteSwapMask));
+
+        return offset;
+    }
+#endif
+
 #if NET10_0_OR_GREATER
     /// <summary>
     /// V256 stitched 8-block decrypt loop: VPCLMULQDQ GHASH interleaved with AES-NI rounds.
@@ -1690,32 +2191,27 @@ internal readonly struct GcmCore
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static int DecryptStitchedPclmulV256Loop(
-        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
-        ReadOnlySpan<Vector128<byte>> hPowers,
+        ref Vector128<byte> roundKeys, int rounds,
+        ref Vector128<byte> hp,
         ref Vector128<byte> counter,
         ref Vector128<byte> y,
-        ReadOnlySpan<byte> ciphertext,
-        Span<byte> plaintext,
+        ref byte ct,
+        ref byte pt,
         int offset,
         int len)
     {
         // Single 256-bit loads from consecutive H power pairs
-        var hp256 = MemoryMarshal.Cast<Vector128<byte>, Vector256<ulong>>(hPowers);
-        var hp01 = hp256[0]; var hp23 = hp256[1]; var hp45 = hp256[2]; var hp67 = hp256[3];
+        ref var hp256 = ref Unsafe.As<Vector128<byte>, Vector256<ulong>>(ref hp);
+        var hp01 = hp256; var hp23 = Unsafe.Add(ref hp256, 1);
+        var hp45 = Unsafe.Add(ref hp256, 2); var hp67 = Unsafe.Add(ref hp256, 3);
 
         while (offset + 8 * BlockSizeBytes <= len)
         {
             // Load 8 ciphertext blocks as 256-bit pairs (single vmovdqu per pair)
-            var raw01 = Vector256.Create(ciphertext.Slice(offset, 2 * BlockSizeBytes));
-            var raw23 = Vector256.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, 2 * BlockSizeBytes));
-            var raw45 = Vector256.Create(ciphertext.Slice(offset + 4 * BlockSizeBytes, 2 * BlockSizeBytes));
-            var raw67 = Vector256.Create(ciphertext.Slice(offset + 6 * BlockSizeBytes, 2 * BlockSizeBytes));
-
-            // Extract individual 128-bit blocks for final XOR with keystream
-            var ct0 = raw01.GetLower(); var ct1 = raw01.GetUpper();
-            var ct2 = raw23.GetLower(); var ct3 = raw23.GetUpper();
-            var ct4 = raw45.GetLower(); var ct5 = raw45.GetUpper();
-            var ct6 = raw67.GetLower(); var ct7 = raw67.GetUpper();
+            var raw01 = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.Add(ref ct, offset));
+            var raw23 = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes));
+            var raw45 = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.Add(ref ct, offset + 4 * BlockSizeBytes));
+            var raw67 = Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.Add(ref ct, offset + 6 * BlockSizeBytes));
 
             // AVX2 byte-swap for GHASH inputs (vpshufb ymm, 2 blocks per op)
             var dp01 = Avx2.Shuffle(raw01, ByteSwapMask256).AsUInt64();
@@ -1732,14 +2228,14 @@ internal readonly struct GcmCore
                 out var c4, out var c5, out var c6, out var c7);
 
             // AES whitening (round 0)
-            var rk = roundKeys[0];
+            var rk = roundKeys;
             c0 = Sse2.Xor(c0, rk); c1 = Sse2.Xor(c1, rk);
             c2 = Sse2.Xor(c2, rk); c3 = Sse2.Xor(c3, rk);
             c4 = Sse2.Xor(c4, rk); c5 = Sse2.Xor(c5, rk);
             c6 = Sse2.Xor(c6, rk); c7 = Sse2.Xor(c7, rk);
 
             // AES round 1 + GHASH lo
-            rk = roundKeys[1];
+            rk = Unsafe.Add(ref roundKeys, 1);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1748,7 +2244,7 @@ internal readonly struct GcmCore
             lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x00).AsUInt64());
 
             // AES round 2 + GHASH lo continued
-            rk = roundKeys[2];
+            rk = Unsafe.Add(ref roundKeys, 2);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1757,7 +2253,7 @@ internal readonly struct GcmCore
             lo256 = Avx2.Xor(lo256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x00).AsUInt64());
 
             // AES round 3 + GHASH hi
-            rk = roundKeys[3];
+            rk = Unsafe.Add(ref roundKeys, 3);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1766,7 +2262,7 @@ internal readonly struct GcmCore
             hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp23.AsInt64(), dp23.AsInt64(), 0x11).AsUInt64());
 
             // AES round 4 + GHASH hi continued
-            rk = roundKeys[4];
+            rk = Unsafe.Add(ref roundKeys, 4);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1775,7 +2271,7 @@ internal readonly struct GcmCore
             hi256 = Avx2.Xor(hi256, Pclmulqdq.V256.CarrylessMultiply(hp67.AsInt64(), dp67.AsInt64(), 0x11).AsUInt64());
 
             // AES round 5 + GHASH cross (Karatsuba prep + multiply)
-            rk = roundKeys[5];
+            rk = Unsafe.Add(ref roundKeys, 5);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1788,7 +2284,7 @@ internal readonly struct GcmCore
             mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht23.AsInt64(), dt23.AsInt64(), 0x00).AsUInt64());
 
             // AES round 6 + GHASH cross continued
-            rk = roundKeys[6];
+            rk = Unsafe.Add(ref roundKeys, 6);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1801,7 +2297,7 @@ internal readonly struct GcmCore
             mid256 = Avx2.Xor(mid256, Pclmulqdq.V256.CarrylessMultiply(ht67.AsInt64(), dt67.AsInt64(), 0x00).AsUInt64());
 
             // AES round 7 + GHASH fold 256→128 using AVX2
-            rk = roundKeys[7];
+            rk = Unsafe.Add(ref roundKeys, 7);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1812,7 +2308,7 @@ internal readonly struct GcmCore
             mid256 = Avx2.Xor(mid256, Avx2.Xor(lo256, hi256));
 
             // AES round 8 + extract to 128-bit for MODREDUCE
-            rk = roundKeys[8];
+            rk = Unsafe.Add(ref roundKeys, 8);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1822,7 +2318,7 @@ internal readonly struct GcmCore
             Vector128<ulong> hi = hi256.GetLower();
 
             // AES round 9 + GHASH MODREDUCE (2 CLMUL)
-            rk = roundKeys[9];
+            rk = Unsafe.Add(ref roundKeys, 9);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1832,7 +2328,7 @@ internal readonly struct GcmCore
             // AES remaining rounds for 192/256 key sizes
             for (int i = 10; i < rounds; i++)
             {
-                rk = roundKeys[i];
+                rk = Unsafe.Add(ref roundKeys, i);
                 c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
                 c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
                 c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1840,22 +2336,16 @@ internal readonly struct GcmCore
             }
 
             // AES last round
-            rk = roundKeys[rounds];
+            rk = Unsafe.Add(ref roundKeys, rounds);
             c0 = AesNi.EncryptLast(c0, rk); c1 = AesNi.EncryptLast(c1, rk);
             c2 = AesNi.EncryptLast(c2, rk); c3 = AesNi.EncryptLast(c3, rk);
             c4 = AesNi.EncryptLast(c4, rk); c5 = AesNi.EncryptLast(c5, rk);
             c6 = AesNi.EncryptLast(c6, rk); c7 = AesNi.EncryptLast(c7, rk);
 
-            // XOR keystream with ciphertext to produce plaintext
-            Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
-            Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
-            Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
-            Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
-            Sse2.Xor(ct4, c4).CopyTo(plaintext.Slice(offset + 4 * BlockSizeBytes));
-            Sse2.Xor(ct5, c5).CopyTo(plaintext.Slice(offset + 5 * BlockSizeBytes));
-            Sse2.Xor(ct6, c6).CopyTo(plaintext.Slice(offset + 6 * BlockSizeBytes));
-            Sse2.Xor(ct7, c7).CopyTo(plaintext.Slice(offset + 7 * BlockSizeBytes));
-
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset), Avx2.Xor(raw01, Vector256.Create(c0.AsByte(), c1.AsByte())));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes), Avx2.Xor(raw23, Vector256.Create(c2.AsByte(), c3.AsByte())));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 4 * BlockSizeBytes), Avx2.Xor(raw45, Vector256.Create(c4.AsByte(), c5.AsByte())));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 6 * BlockSizeBytes), Avx2.Xor(raw67, Vector256.Create(c6.AsByte(), c7.AsByte())));
             offset += 8 * BlockSizeBytes;
         }
         return offset;
@@ -1868,27 +2358,27 @@ internal readonly struct GcmCore
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static int DecryptStitchedPclmul128Loop(
-        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
-        ReadOnlySpan<Vector128<byte>> hPowers,
+        ref Vector128<byte> rkBase128, int rounds,
+        ref Vector128<byte> hPowers,
         ref Vector128<byte> counter, ref Vector128<byte> y,
-        ReadOnlySpan<byte> ciphertext, Span<byte> plaintext,
+        ref byte ct, ref byte pt,
         int offset, int len)
     {
-        Vector128<ulong> h8 = hPowers[0].AsUInt64(); Vector128<ulong> h7 = hPowers[1].AsUInt64();
-        Vector128<ulong> h6 = hPowers[2].AsUInt64(); Vector128<ulong> h5 = hPowers[3].AsUInt64();
-        Vector128<ulong> h4 = hPowers[4].AsUInt64(); Vector128<ulong> h3 = hPowers[5].AsUInt64();
-        Vector128<ulong> h2 = hPowers[6].AsUInt64(); Vector128<ulong> h1 = hPowers[7].AsUInt64();
+        Vector128<ulong> h8 = hPowers.AsUInt64(); Vector128<ulong> h7 = Unsafe.Add(ref hPowers, 1).AsUInt64();
+        Vector128<ulong> h6 = Unsafe.Add(ref hPowers, 2).AsUInt64(); Vector128<ulong> h5 = Unsafe.Add(ref hPowers, 3).AsUInt64();
+        Vector128<ulong> h4 = Unsafe.Add(ref hPowers, 4).AsUInt64(); Vector128<ulong> h3 = Unsafe.Add(ref hPowers, 5).AsUInt64();
+        Vector128<ulong> h2 = Unsafe.Add(ref hPowers, 6).AsUInt64(); Vector128<ulong> h1 = Unsafe.Add(ref hPowers, 7).AsUInt64();
 
         while (offset + 8 * BlockSizeBytes <= len)
         {
-            var ct0 = Vector128.Create(ciphertext.Slice(offset, BlockSizeBytes));
-            var ct1 = Vector128.Create(ciphertext.Slice(offset + BlockSizeBytes, BlockSizeBytes));
-            var ct2 = Vector128.Create(ciphertext.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes));
-            var ct3 = Vector128.Create(ciphertext.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes));
-            var ct4 = Vector128.Create(ciphertext.Slice(offset + 4 * BlockSizeBytes, BlockSizeBytes));
-            var ct5 = Vector128.Create(ciphertext.Slice(offset + 5 * BlockSizeBytes, BlockSizeBytes));
-            var ct6 = Vector128.Create(ciphertext.Slice(offset + 6 * BlockSizeBytes, BlockSizeBytes));
-            var ct7 = Vector128.Create(ciphertext.Slice(offset + 7 * BlockSizeBytes, BlockSizeBytes));
+            var ct0 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset));
+            var ct1 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + BlockSizeBytes));
+            var ct2 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 2 * BlockSizeBytes));
+            var ct3 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 3 * BlockSizeBytes));
+            var ct4 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 4 * BlockSizeBytes));
+            var ct5 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 5 * BlockSizeBytes));
+            var ct6 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 6 * BlockSizeBytes));
+            var ct7 = Unsafe.ReadUnaligned<Vector128<byte>>(ref Unsafe.Add(ref ct, offset + 7 * BlockSizeBytes));
 
             Vector128<ulong> d0 = Sse2.Xor(y, Ssse3.Shuffle(ct0, ByteSwapMask)).AsUInt64();
             Vector128<ulong> d1 = Ssse3.Shuffle(ct1, ByteSwapMask).AsUInt64();
@@ -1904,14 +2394,14 @@ internal readonly struct GcmCore
                 out var c4, out var c5, out var c6, out var c7);
 
             // AES whitening (round 0)
-            var rk = roundKeys[0];
+            var rk = rkBase128;
             c0 = Sse2.Xor(c0, rk); c1 = Sse2.Xor(c1, rk);
             c2 = Sse2.Xor(c2, rk); c3 = Sse2.Xor(c3, rk);
             c4 = Sse2.Xor(c4, rk); c5 = Sse2.Xor(c5, rk);
             c6 = Sse2.Xor(c6, rk); c7 = Sse2.Xor(c7, rk);
 
             // AES round 1 + GHASH lo (blocks 0-3)
-            rk = roundKeys[1];
+            rk = Unsafe.Add(ref rkBase128, 1);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1922,7 +2412,7 @@ internal readonly struct GcmCore
             lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x00).AsUInt64());
 
             // AES round 2 + GHASH lo (blocks 4-7)
-            rk = roundKeys[2];
+            rk = Unsafe.Add(ref rkBase128, 2);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1933,7 +2423,7 @@ internal readonly struct GcmCore
             lo = Sse2.Xor(lo, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x00).AsUInt64());
 
             // AES round 3 + GHASH hi (blocks 0-3)
-            rk = roundKeys[3];
+            rk = Unsafe.Add(ref rkBase128, 3);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1944,7 +2434,7 @@ internal readonly struct GcmCore
             hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h5.AsInt64(), d3.AsInt64(), 0x11).AsUInt64());
 
             // AES round 4 + GHASH hi (blocks 4-7)
-            rk = roundKeys[4];
+            rk = Unsafe.Add(ref rkBase128, 4);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1955,7 +2445,7 @@ internal readonly struct GcmCore
             hi = Sse2.Xor(hi, Pclmulqdq.CarrylessMultiply(h1.AsInt64(), d7.AsInt64(), 0x11).AsUInt64());
 
             // AES round 5 + GHASH cross (Karatsuba, blocks 0-3)
-            rk = roundKeys[5];
+            rk = Unsafe.Add(ref rkBase128, 5);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1975,7 +2465,7 @@ internal readonly struct GcmCore
             mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
 
             // AES round 6 + GHASH cross (blocks 4-7)
-            rk = roundKeys[6];
+            rk = Unsafe.Add(ref rkBase128, 6);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -1994,7 +2484,7 @@ internal readonly struct GcmCore
             mid = Sse2.Xor(mid, Pclmulqdq.CarrylessMultiply(ht.AsInt64(), dt.AsInt64(), 0x00).AsUInt64());
 
             // AES round 7 + GHASH fold cross terms (CLMUL_3_POST)
-            rk = roundKeys[7];
+            rk = Unsafe.Add(ref rkBase128, 7);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -2003,7 +2493,7 @@ internal readonly struct GcmCore
             mid = Sse2.Xor(mid, hi);
 
             // AES round 8 + GHASH MODREDUCE step 1
-            rk = roundKeys[8];
+            rk = Unsafe.Add(ref rkBase128, 8);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -2015,7 +2505,7 @@ internal readonly struct GcmCore
             mid = Sse2.Xor(mid, lo);
 
             // AES round 9 + GHASH MODREDUCE step 2
-            rk = roundKeys[9];
+            rk = Unsafe.Add(ref rkBase128, 9);
             c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
             c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
             c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -2028,7 +2518,7 @@ internal readonly struct GcmCore
             // AES remaining rounds for 192/256 key sizes
             for (int i = 10; i < rounds; i++)
             {
-                rk = roundKeys[i];
+                rk = Unsafe.Add(ref rkBase128, i);
                 c0 = AesNi.Encrypt(c0, rk); c1 = AesNi.Encrypt(c1, rk);
                 c2 = AesNi.Encrypt(c2, rk); c3 = AesNi.Encrypt(c3, rk);
                 c4 = AesNi.Encrypt(c4, rk); c5 = AesNi.Encrypt(c5, rk);
@@ -2036,7 +2526,7 @@ internal readonly struct GcmCore
             }
 
             // AES last round + GHASH final reduction (rotate left by 1)
-            rk = roundKeys[rounds];
+            rk = Unsafe.Add(ref rkBase128, rounds);
             c0 = AesNi.EncryptLast(c0, rk); c1 = AesNi.EncryptLast(c1, rk);
             c2 = AesNi.EncryptLast(c2, rk); c3 = AesNi.EncryptLast(c3, rk);
             c4 = AesNi.EncryptLast(c4, rk); c5 = AesNi.EncryptLast(c5, rk);
@@ -2048,14 +2538,14 @@ internal readonly struct GcmCore
             y = Sse2.Xor(res, t0).AsByte();
 
             // XOR keystream with ciphertext to produce plaintext
-            Sse2.Xor(ct0, c0).CopyTo(plaintext.Slice(offset));
-            Sse2.Xor(ct1, c1).CopyTo(plaintext.Slice(offset + BlockSizeBytes));
-            Sse2.Xor(ct2, c2).CopyTo(plaintext.Slice(offset + 2 * BlockSizeBytes));
-            Sse2.Xor(ct3, c3).CopyTo(plaintext.Slice(offset + 3 * BlockSizeBytes));
-            Sse2.Xor(ct4, c4).CopyTo(plaintext.Slice(offset + 4 * BlockSizeBytes));
-            Sse2.Xor(ct5, c5).CopyTo(plaintext.Slice(offset + 5 * BlockSizeBytes));
-            Sse2.Xor(ct6, c6).CopyTo(plaintext.Slice(offset + 6 * BlockSizeBytes));
-            Sse2.Xor(ct7, c7).CopyTo(plaintext.Slice(offset + 7 * BlockSizeBytes));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset), Sse2.Xor(ct0, c0));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + BlockSizeBytes), Sse2.Xor(ct1, c1));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 2 * BlockSizeBytes), Sse2.Xor(ct2, c2));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 3 * BlockSizeBytes), Sse2.Xor(ct3, c3));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 4 * BlockSizeBytes), Sse2.Xor(ct4, c4));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 5 * BlockSizeBytes), Sse2.Xor(ct5, c5));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 6 * BlockSizeBytes), Sse2.Xor(ct6, c6));
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pt, offset + 7 * BlockSizeBytes), Sse2.Xor(ct7, c7));
 
             offset += 8 * BlockSizeBytes;
         }
