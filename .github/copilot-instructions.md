@@ -26,7 +26,13 @@ src/
 ├── Memory/                     # Memory utilities (pooling, buffers, streams)
 └── Security/Cryptography/      # Cryptographic algorithms
     ├── Hash/                   # Hash algorithms
-    ├── Mac/                    # Mac algorithms
+    ├── Mac/                    # Mac algorithms (HMAC, AES-CMAC, AES-GMAC, KMAC, Poly1305)
+    ├── Cipher/                 # Symmetric ciphers and AEAD
+    │   ├── Aes/                # AES block cipher
+    │   ├── ChaCha/             # ChaCha20, Poly1305Core, ChaCha20-Poly1305, XChaCha20-Poly1305
+    │   ├── Gcm/                # AES-GCM
+    │   └── Ccm/                # AES-CCM
+    ├── Kdf/                    # Key derivation functions (HKDF, KBKDF, Concat KDF, PBKDF2)
     └── shared/                 # common helpers and abstractions
 
 tests/

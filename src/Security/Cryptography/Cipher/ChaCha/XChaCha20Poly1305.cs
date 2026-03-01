@@ -159,7 +159,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         _chaChaCore.Transform(subkey, chacha20Nonce, 1, plaintext, ciphertext);
 
         // Compute Poly1305 MAC over AAD and ciphertext
-        Poly1305.ComputeAeadTag(poly1305Key.Slice(0, Poly1305.KeySizeBytes),
+        Poly1305Core.ComputeAeadTag(poly1305Key.Slice(0, Poly1305Core.KeySizeBytes),
             associatedData, ciphertext.Slice(0, plaintext.Length), tag);
     }
 
@@ -193,8 +193,8 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 
         // Verify Poly1305 MAC
         Span<byte> computedTag = stackalloc byte[TagSizeBytesConst];
-        Poly1305.ComputeAeadTag(poly1305Key.Slice(0, Poly1305.KeySizeBytes),
-                                associatedData, ciphertext, computedTag);
+        Poly1305Core.ComputeAeadTag(poly1305Key.Slice(0, Poly1305Core.KeySizeBytes),
+                                     associatedData, ciphertext, computedTag);
 
         // Constant-time comparison
         if (!CryptoUtils.FixedTimeEquals(tag, computedTag))

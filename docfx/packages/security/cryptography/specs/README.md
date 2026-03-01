@@ -172,6 +172,46 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 ---
 
+## MAC Algorithms
+
+### RFC 2104 / FIPS 198-1 (HMAC)
+
+| Algorithm | Hash | MAC Size | Status | Class |
+|-----------|------|----------|--------|-------|
+| HMAC-SHA-256 | SHA-256 | 32 bytes | ✅ Implemented | `HmacSha256` |
+| HMAC-SHA-384 | SHA-384 | 48 bytes | ✅ Implemented | `HmacSha384` |
+| HMAC-SHA-512 | SHA-512 | 64 bytes | ✅ Implemented | `HmacSha512` |
+| HMAC-SHA3-256 | SHA3-256 | 32 bytes | ✅ Implemented | `HmacSha3_256` |
+| HMAC-SHA-1 | SHA-1 | 20 bytes | ✅ Implemented (legacy) | `HmacSha1` |
+| HMAC-MD5 | MD5 | 16 bytes | ✅ Implemented (legacy) | `HmacMd5` |
+
+> **Note:** The `HmacCore` base class works with any `HashAlgorithm`, so custom HMAC variants
+> (HMAC-SM3, HMAC-Kupyna, etc.) can be created by subclassing.
+
+### SP 800-38B (AES-CMAC)
+
+| Algorithm | Key Size | MAC Size | Status | Class |
+|-----------|----------|----------|--------|-------|
+| AES-128-CMAC | 128 bits | 128 bits | ✅ Implemented | `AesCmac` |
+| AES-192-CMAC | 192 bits | 128 bits | ✅ Implemented | `AesCmac` |
+| AES-256-CMAC | 256 bits | 128 bits | ✅ Implemented | `AesCmac` |
+
+> **Hardware acceleration:** AES-NI on .NET 8+.
+> **Note:** .NET does not provide a portable CMAC implementation.
+
+### SP 800-38D (AES-GMAC)
+
+| Algorithm | Key Size | MAC Size | Status | Class |
+|-----------|----------|----------|--------|-------|
+| AES-128-GMAC | 128 bits | 128 bits | ✅ Implemented | `AesGmac` |
+| AES-192-GMAC | 192 bits | 128 bits | ✅ Implemented | `AesGmac` |
+| AES-256-GMAC | 256 bits | 128 bits | ✅ Implemented | `AesGmac` |
+
+> **Hardware acceleration:** AES-NI + PCLMULQDQ on .NET 8+, VPCLMULQDQ on .NET 10+.
+> **Note:** GMAC requires a unique nonce per invocation. .NET does not provide a standalone GMAC class.
+
+---
+
 ## Cipher Algorithms
 
 ### FIPS 197 (Advanced Encryption Standard)
@@ -285,6 +325,19 @@ Reference documentation for cSHAKE, KMAC, TupleHash, and ParallelHash:
 - **[NIST-SP-800-185.md](NIST-SP-800-185.md)** - Local reference with test vectors
 - [NIST SP 800-185 PDF](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf)
 
+#### HMAC (RFC 2104 / FIPS 198-1)
+
+- **[RFC-2104.md](RFC-2104.md)** - Local reference with algorithm details
+- [RFC 2104](https://www.rfc-editor.org/rfc/rfc2104) - HMAC: Keyed-Hashing for Message Authentication
+- [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231) - Test Vectors for HMAC-SHA-256, HMAC-SHA-384, HMAC-SHA-512
+- [FIPS 198-1](https://csrc.nist.gov/pubs/fips/198-1/final) - The Keyed-Hash Message Authentication Code (HMAC)
+
+#### AES-CMAC (SP 800-38B / RFC 4493)
+
+- **[NIST-SP-800-38B.md](NIST-SP-800-38B.md)** - Local reference with algorithm details and GMAC
+- [NIST SP 800-38B](https://csrc.nist.gov/pubs/sp/800-38b/upd1/final) - CMAC Mode for Authentication
+- [RFC 4493](https://www.rfc-editor.org/rfc/rfc4493) - The AES-CMAC Algorithm
+
 ### BLAKE2 (RFC 7693)
 
 The official RFC 7693 specification is available from IETF:
@@ -369,6 +422,9 @@ specs/
 ├── NIST-FIPS-197.md       # NIST FIPS 197 - AES reference
 ├── NIST-FIPS-202.md       # NIST FIPS 202 - SHA-3, SHAKE reference
 ├── NIST-SP-800-185.md     # NIST SP 800-185 - cSHAKE, KMAC reference
+├── RFC-2104.md            # RFC 2104 - HMAC reference
+├── NIST-SP-800-38B.md     # NIST SP 800-38B - CMAC, GMAC reference
+├── NIST-SP-800-232.md     # NIST SP 800-232 - Ascon hash and XOF reference
 ├── SHA1-vectors.md        # SHA-1 test vectors (legacy)
 ├── SHA2-vectors.md        # SHA-2 family test vectors
 ├── SHA3-vectors.md        # SHA-3 family test vectors
@@ -385,6 +441,8 @@ specs/
 ├── Kupyna-vectors.md      # Kupyna (DSTU 7564) test vectors
 ├── LSH-vectors.md         # LSH (KS X 3262) test vectors
 ├── MD5-vectors.md         # MD5 test vectors (legacy)
+├── HMAC-vectors.md        # HMAC-SHA-256/384/512 test vectors (RFC 4231)
+├── CMAC-vectors.md        # AES-CMAC test vectors (SP 800-38B)
 ├── AES-vectors.md         # AES ECB/GCM/CCM test vectors
 ├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
 └── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors

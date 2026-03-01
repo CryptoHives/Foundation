@@ -44,6 +44,12 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 ```
 
+### Key Derivation Functions
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
+```
+
 ## Implemented Algorithms
 
 ### Hash Algorithms
@@ -72,11 +78,37 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 | Algorithm | Security | Documentation |
 |-----------|----------|---------------|
+| HMAC-SHA-256 | 256 bits | [Details](mac-algorithms.md#hmac-hash-based-message-authentication-code) |
+| HMAC-SHA-384 | 384 bits | [Details](mac-algorithms.md#hmac-hash-based-message-authentication-code) |
+| HMAC-SHA-512 | 512 bits | [Details](mac-algorithms.md#hmac-hash-based-message-authentication-code) |
+| HMAC-SHA3-256 | 256 bits | [Details](mac-algorithms.md#hmac-sha3-256-cross-platform) |
+| AES-CMAC | 128 bits | [Details](mac-algorithms.md#aes-cmac-cipher-based-mac) |
+| AES-GMAC | 128 bits | [Details](mac-algorithms.md#aes-gmac-galois-mac) |
+| Poly1305 | 128 bits | [Details](mac-algorithms.md#poly1305) |
 | KMAC128 | 128 bits | [Details](mac-algorithms.md#kmac128) |
 | KMAC256 | 256 bits | [Details](mac-algorithms.md#kmac256) |
 | BLAKE2b (keyed) | Up to 256 bits | [Details](mac-algorithms.md#blake2-mac) |
 | BLAKE2s (keyed) | Up to 128 bits | [Details](mac-algorithms.md#blake2-mac) |
 | BLAKE3 (keyed) | 128 bits | [Details](mac-algorithms.md#blake3-mac) |
+
+### Key Derivation Functions (KDF)
+
+| Algorithm | Standard | Documentation |
+|-----------|----------|---------------|
+| HKDF | RFC 5869 | [Details](kdf-algorithms.md#hkdf-hmac-based-extract-and-expand-kdf) |
+| KBKDF Counter Mode | NIST SP 800-108r1 | [Details](kdf-algorithms.md#kbkdf--counter-mode-sp-800-108r1) |
+| Concat KDF | NIST SP 800-56A/56C | [Details](kdf-algorithms.md#concat-kdf--one-step-sp-800-56a--sp-800-56c) |
+| PBKDF2 | RFC 8018 | [Details](kdf-algorithms.md#pbkdf2-password-based-kdf) |
+| BLAKE3 DeriveKey | BLAKE3 Spec | [Details](hash-algorithms.md#blake3) |
+
+### Cipher Algorithms (Block/Stream)
+
+| Algorithm | Key Sizes | Modes | Documentation |
+|-----------|-----------|-------|---------------|
+| AES-128 | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| AES-192 | 192 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| AES-256 | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| ChaCha20 | 256 bits | Stream cipher | [Details](cipher-algorithms.md#chacha20) |
 
 ### Cipher Algorithms (AEAD)
 
@@ -123,26 +155,7 @@ Span<byte> mac = stackalloc byte[64];
 kmac.TryComputeHash(message, mac, out _);
 ```
 
-### Simple approach
-
-Use `ComputeHash` when convenience matters more than performance.
-This allocates a new `byte[]` for every call, which adds GC pressure in hot paths.
-
-```csharp
-using CryptoHives.Foundation.Security.Cryptography.Hash;
-
-// SHA-256
-using var sha256 = SHA256.Create();
-byte[] hash = sha256.ComputeHash(data);
-
-// SHA3-256
-using var sha3 = SHA3_256.Create();
-byte[] sha3Hash = sha3.ComputeHash(data);
-
-// BLAKE3
-using var blake3 = Blake3.Create();
-byte[] blake3Hash = blake3.ComputeHash(data);
-```
+> **Note:** The `ComputeHash(byte[])` method is also available for convenience but allocates a new `byte[]` on every call, which adds GC pressure in hot paths. Prefer `TryComputeHash` whenever possible.
 
 ## More Examples
 
@@ -151,11 +164,13 @@ byte[] blake3Hash = blake3.ComputeHash(data);
 ```csharp
 // SHAKE256 with 64-byte output
 using var shake = Shake256.Create(outputBytes: 64);
-byte[] output = shake.ComputeHash(data);
+Span<byte> output = stackalloc byte[64];
+shake.TryComputeHash(data, output, out _);
 
 // BLAKE3 with 128-byte output
 using var blake3 = Blake3.Create(outputBytes: 128);
-byte[] longHash = blake3.ComputeHash(data);
+Span<byte> longHash = stackalloc byte[128];
+blake3.TryComputeHash(data, longHash, out _);
 ```
 
 For allocation-free streaming XOF using `Absorb` / `Squeeze`, see [XOF Mode](xof-mode.md).
@@ -168,7 +183,8 @@ using var cshake = new CShake256(
     outputBytes: 64,
     functionName: "",
     customization: "My Application");
-byte[] customHash = cshake.ComputeHash(data);
+Span<byte> customHash = stackalloc byte[64];
+cshake.TryComputeHash(data, customHash, out _);
 ```
 
 ### Message Authentication Code (KMAC)
@@ -180,7 +196,8 @@ byte[] key = new byte[32]; // Your secret key
 
 // KMAC256
 using var kmac = KMac256.Create(key, outputBytes: 64, customization: "MyApp");
-byte[] mac = kmac.ComputeHash(message);
+Span<byte> mac = stackalloc byte[64];
+kmac.TryComputeHash(message, mac, out _);
 ```
 
 ### Authenticated Encryption (AEAD)
@@ -209,7 +226,8 @@ byte[] key = new byte[32]; // Must be exactly 32 bytes
 
 // BLAKE3 keyed mode
 using var blake3 = Blake3.CreateKeyed(key);
-byte[] mac = blake3.ComputeHash(message);
+Span<byte> mac = stackalloc byte[32];
+blake3.TryComputeHash(message, mac, out _);
 ```
 
 ### Key Derivation with BLAKE3
@@ -219,20 +237,41 @@ string context = "MyApp 2025-01-01 session key";
 
 // BLAKE3 derive key mode
 using var blake3 = Blake3.CreateDeriveKey(context);
-byte[] derivedKey = blake3.ComputeHash(inputKeyMaterial);
+Span<byte> derivedKey = stackalloc byte[32];
+blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 ```
+
+### Key Derivation with HKDF
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] sharedSecret = ...; // e.g., from ECDH key agreement
+byte[] salt = new byte[32];
+RandomNumberGenerator.Fill(salt);
+byte[] info = Encoding.UTF8.GetBytes("MyApp session key");
+
+// Derive a 32-byte key using HMAC-SHA-256
+byte[] derivedKey = Hkdf.DeriveKey(
+    key => new HmacSha256(key),
+    sharedSecret, outputLength: 32, salt, info);
+```
+
+See [KDF Algorithms](kdf-algorithms.md) for full HKDF documentation and protocol examples.
 
 ### Incremental Hashing
 
 ```csharp
 using var sha256 = SHA256.Create();
 
-// Process data in chunks
-sha256.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
-sha256.TransformBlock(chunk2, 0, chunk2.Length, null, 0);
-sha256.TransformFinalBlock(chunk3, 0, chunk3.Length);
+// Process data in chunks — zero allocations
+sha256.AppendData(chunk1);
+sha256.AppendData(chunk2);
+sha256.AppendData(chunk3);
 
-byte[] hash = sha256.Hash;
+Span<byte> hash = stackalloc byte[32];
+sha256.TryGetHashAndReset(hash, out _);
 ```
 
 ## Algorithm Selection Guide
@@ -252,9 +291,26 @@ byte[] hash = sha256.Hash;
 | Use Case | Recommended | Alternative |
 |----------|-------------|-------------|
 | Modern applications | KMAC256 | BLAKE3 keyed |
-| High performance | BLAKE3 keyed | BLAKE2b keyed |
-| NIST compliance | KMAC128/256 | - |
-| Short tags (≤16 bytes) | BLAKE2s keyed | KMAC128 |
+| Protocol compatibility (TLS, SSH) | HMAC-SHA-256 | HMAC-SHA-384 |
+| High performance | BLAKE3 keyed | Poly1305 (one-time) |
+| NIST compliance | KMAC128/256 | HMAC-SHA-256 |
+| Cipher-based (EAP, 802.11i) | AES-CMAC | AES-GMAC |
+| Cross-platform SHA-3 | HMAC-SHA3-256 | KMAC256 |
+| Short tags (≤16 bytes) | BLAKE2s keyed | AES-CMAC |
+
+### For Key Derivation
+
+| Use Case | Recommended | Alternative |
+|----------|-------------|-------------|
+| TLS 1.3 / HPKE / Signal | HKDF (SHA-256) | HKDF (SHA-384) |
+| ECDH key agreement | Concat KDF (hash-based) | HKDF |
+| JOSE/JWE (RFC 7518) | Concat KDF (SHA-256) | — |
+| Session key from master key | KBKDF (SP 800-108r1) | HKDF |
+| Multiple keys from one secret | HKDF (Extract + Expand) | KBKDF (vary label) |
+| CMAC-based PRF | KBKDF with AES-CMAC | — |
+| Password-based key derivation | PBKDF2 | — |
+| High performance | BLAKE3 DeriveKey | HKDF |
+| NIST compliance | HKDF, KBKDF, or Concat KDF | PBKDF2 |
 
 ### For Authenticated Encryption
 
@@ -265,6 +321,15 @@ byte[] hash = sha256.Hash;
 | Software-only | ChaCha20-Poly1305 | XChaCha20-Poly1305 |
 | IoT/constrained | AES-128-CCM | ChaCha20-Poly1305 |
 | Random nonces | XChaCha20-Poly1305 | AES-256-GCM |
+
+### For Block/Stream Ciphers
+
+| Use Case | Recommended | Alternative |
+|----------|-------------|-------------|
+| Disk/sector encryption | AES-256-CTR or AES-256-CBC | AES-128-CTR |
+| Stream encryption | ChaCha20 | AES-256-CTR |
+| Legacy compatibility | AES-128-CBC | AES-256-CBC |
+| Hardware acceleration | AES-256-CTR (AES-NI) | AES-128-CTR |
 
 ### For Specific Domains
 
@@ -282,9 +347,22 @@ byte[] hash = sha256.Hash;
 All implementations are verified against official test vectors:
 
 - **NIST FIPS 180-4**: SHA-1, SHA-2 family
+- **NIST FIPS 197**: AES (128/192/256)
 - **NIST FIPS 202**: SHA-3, SHAKE
+- **NIST SP 800-38B**: AES-CMAC
+- **NIST SP 800-38D**: AES-GCM
+- **NIST SP 800-108r1**: KBKDF Counter Mode
+- **NIST SP 800-56A/56C**: Concat KDF (One-Step)
 - **NIST SP 800-185**: cSHAKE, KMAC
+- **NIST SP 800-232**: Ascon-Hash256, Ascon-XOF128
+- **RFC 2104**: HMAC
+- **RFC 3610**: AES-CCM
+- **RFC 4231**: HMAC-SHA-2 test vectors
+- **RFC 5869**: HKDF (HMAC-based Key Derivation)
+- **RFC 8018**: PBKDF2 (Password-Based Key Derivation)
 - **RFC 7693**: BLAKE2
+- **RFC 8439**: ChaCha20, Poly1305, ChaCha20-Poly1305
+- **draft-irtf-cfrg-xchacha**: XChaCha20-Poly1305
 - **BLAKE3 Specification**: BLAKE3
 - **GB/T 32905-2016**: SM3
 - **GOST R 34.11-2012 / RFC 6986**: Streebog
@@ -327,6 +405,16 @@ All implementations use fixed-size internal buffers based on their block size. N
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |
 | KMAC support | Yes | .NET 9+ only |
+| HMAC (SHA-2/SHA-3) | Yes (all TFMs, cross-platform) | Yes (OS-dependent) |
+| AES-CMAC | Yes (managed + AES-NI) | No |
+| Poly1305 (standalone) | Yes | No |
+| AES-GCM/CCM | Yes (managed + AES-NI) | Yes (OS-dependent) |
+| ChaCha20-Poly1305 | Yes (managed + SSSE3/AVX2) | .NET 8+ only (OS-dependent) |
+| XChaCha20-Poly1305 | Yes | No |
+| AES block modes (ECB/CBC/CTR) | Yes (managed + AES-NI) | Yes (OS-dependent) |
+| ChaCha20 stream cipher | Yes (managed + SSSE3/AVX2) | No |
+| HKDF | Yes (all TFMs, pluggable HMAC) | .NET Core 3.0+ only |
+| XOF (SHAKE/cSHAKE/TurboSHAKE/BLAKE3) | Yes (Absorb/Squeeze API) | SHAKE only (.NET 9+) |
 | SM3/Streebog/Kupyna/LSH/Whirlpool | Yes | No |
 
 ## Thread Safety
@@ -335,10 +423,10 @@ All hash algorithm instances are **not thread-safe**. Create separate instances 
 
 ```csharp
 // Thread-safe pattern
-public byte[] ComputeHashThreadSafe(byte[] data)
+public bool ComputeHashThreadSafe(ReadOnlySpan<byte> data, Span<byte> destination)
 {
     using var sha256 = SHA256.Create(); // New instance per call
-    return sha256.ComputeHash(data);
+    return sha256.TryComputeHash(data, destination, out _);
 }
 ```
 
@@ -347,6 +435,7 @@ public byte[] ComputeHashThreadSafe(byte[] data)
 - [Hash Algorithms Reference](hash-algorithms.md)
 - [Cipher Algorithms Reference](cipher-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
+- [KDF Algorithms Reference](kdf-algorithms.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
 - [Hash Benchmarks](benchmarks-hash.md)
 - [Cipher Benchmarks](benchmarks-cipher.md)

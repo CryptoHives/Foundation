@@ -173,6 +173,7 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// <param name="bytesWritten">The number of bytes written into the buffer.</param>
     /// <returns><see langword="true"/> if the destination buffer was large enough; otherwise <see langword="false"/>.</returns>
     protected abstract bool TryHashFinal(Span<byte> destination, out int bytesWritten);
+#endif
 
     /// <summary>
     /// Attempts to compute the hash value for the specified read-only byte span
@@ -188,10 +189,18 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// otherwise, <see langword="false"/>.
     /// </returns>
     /// <remarks>
-    /// This polyfill enables zero-allocation hashing on .NET Framework and .NET Standard 2.0
-    /// where the base class does not provide this method.
+    /// <para>
+    /// The algorithm is automatically reset after a successful computation, allowing the
+    /// instance to be reused for subsequent <see cref="AppendData"/> calls or another
+    /// <see cref="TryComputeHash"/> without calling
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> first.
+    /// </para>
     /// </remarks>
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+    public new bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+#else
     public bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+#endif
     {
         if (destination.Length < HashSizeValue / 8)
         {
@@ -199,11 +208,17 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             return false;
         }
 
-        Initialize();
         HashCore(source);
-        return TryHashFinal(destination, out bytesWritten);
+
+        if (!TryHashFinal(destination, out bytesWritten))
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        Initialize();
+        return true;
     }
-#endif
 
     /// <inheritdoc/>
     protected sealed override byte[] HashFinal()
@@ -211,6 +226,64 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
         byte[] hash = new byte[HashSizeValue / 8];
         TryHashFinal(hash, out int bytesWritten);
         return hash;
+    }
+
+    /// <summary>
+    /// Appends the specified data to the data already processed in the hash algorithm.
+    /// </summary>
+    /// <param name="source">The input to append to the hash computation.</param>
+    /// <remarks>
+    /// <para>
+    /// This is a zero-allocation alternative to
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.TransformBlock(byte[], int, int, byte[], int)"/>
+    /// for incremental hashing with span-based buffers.
+    /// </para>
+    /// <para>
+    /// Call <see cref="TryGetHashAndReset"/> after all data has been appended to retrieve
+    /// the final hash value and reset the algorithm for reuse.
+    /// </para>
+    /// <code>
+    /// using var sha256 = SHA256.Create();
+    /// sha256.AppendData(chunk1);
+    /// sha256.AppendData(chunk2);
+    /// Span&lt;byte&gt; hash = stackalloc byte[32];
+    /// sha256.TryGetHashAndReset(hash, out _);
+    /// </code>
+    /// </remarks>
+    public void AppendData(ReadOnlySpan<byte> source)
+    {
+        HashCore(source);
+    }
+
+    /// <summary>
+    /// Finalizes the hash computation, writes the result into the provided buffer,
+    /// and resets the algorithm for reuse.
+    /// </summary>
+    /// <param name="destination">The buffer to receive the hash value.</param>
+    /// <param name="bytesWritten">
+    /// When this method returns, the total number of bytes written into <paramref name="destination"/>.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if <paramref name="destination"/> is long enough to receive the hash value;
+    /// otherwise, <see langword="false"/>.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This is a zero-allocation alternative to reading the
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Hash"/> property after
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.TransformFinalBlock(byte[], int, int)"/>.
+    /// </para>
+    /// <para>
+    /// The algorithm is automatically reset after a successful call, allowing the instance
+    /// to be reused for a new computation without calling <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/>.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public bool TryGetHashAndReset(Span<byte> destination, out int bytesWritten)
+    {
+        bool result = TryHashFinal(destination, out bytesWritten);
+        Initialize();
+        return result;
     }
 
     /// <summary>

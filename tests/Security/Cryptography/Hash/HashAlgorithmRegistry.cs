@@ -449,8 +449,10 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
             () => new HashifyNetBlake2bAdapter(512), Source.HashifyNet,
             excludeFromBenchmark: true));
+#if KONSCIOUS_BLAKE2
         list.Add(new("BLAKE2b-512", "Konscious", 512,
             () => new KonsciousBlake2Adapter(512), Source.Konscious));
+#endif
 
         // BLAKE2b-256
         if ((blake2bSimd & CHRoot.SimdSupport.Avx2) != 0)
@@ -465,8 +467,10 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
             () => new HashifyNetBlake2bAdapter(256), Source.HashifyNet,
             excludeFromBenchmark: true));
+#if KONSCIOUS_BLAKE2
         list.Add(new("BLAKE2b-256", "Konscious", 256,
             () => new KonsciousBlake2Adapter(256), Source.Konscious));
+#endif
 
         // BLAKE2s-256
         var blake2sSimd = CH.Blake2s.SimdSupport;
