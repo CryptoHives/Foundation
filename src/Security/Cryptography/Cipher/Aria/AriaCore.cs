@@ -319,14 +319,9 @@ internal static class AriaCore
             int srcIdx = (i - byteShift + 16) % 16;
             int prevIdx = (srcIdx - 1 + 16) % 16;
 
-            if (bitShift == 0)
-            {
-                output[i] = input[srcIdx];
-            }
-            else
-            {
-                output[i] = (byte)((input[srcIdx] >> bitShift) | (input[prevIdx] << (8 - bitShift)));
-            }
+            output[i] = bitShift == 0
+                ? input[srcIdx]
+                : (byte)((input[srcIdx] >> bitShift) | (input[prevIdx] << (8 - bitShift)));
         }
     }
 
