@@ -63,6 +63,8 @@ public static class CipherAlgorithmRegistry
         ChaCha20Poly1305,
         /// <summary>XChaCha20-Poly1305 (AEAD).</summary>
         XChaCha20Poly1305,
+        /// <summary>Ascon-AEAD128 (AEAD).</summary>
+        AsconAead128,
         /// <summary>Stream cipher.</summary>
         Stream
     }
@@ -254,8 +256,14 @@ public static class CipherAlgorithmRegistry
         // ChaCha Implementations
         AddChaChaImplementations(implementations);
 
+        // Ascon Implementations
+        AddAsconImplementations(implementations);
+
         // OS Implementations (.NET 8.0+)
         AddOSImplementations(implementations);
+
+        // Regional Cipher Implementations
+        AddRegionalImplementations(implementations);
 
         return implementations;
     }
@@ -835,6 +843,31 @@ public static class CipherAlgorithmRegistry
             Source.NaClCore));
     }
 
+    private static void AddAsconImplementations(List<CipherImplementation> implementations)
+    {
+        // Ascon-AEAD128 - Managed
+        implementations.Add(new CipherImplementation(
+            "Ascon-AEAD128",
+            "Managed",
+            128,
+            Mode.AsconAead128,
+            (byte[] key) => CH.Cipher.AsconAead128.Create(key),
+            Source.Managed));
+
+        // Ascon-AEAD128 - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Ascon-AEAD128",
+            "BouncyCastle",
+            128,
+            Mode.AsconAead128,
+            (byte[] key) => new BouncyCastleAeadAdapter(
+                new AsconAead128(),
+                key,
+                tagSizeBits: 128,
+                nonceSizeBytes: 16),
+            Source.BouncyCastle));
+    }
+
     private static void AddOSImplementations(List<CipherImplementation> implementations)
     {
 #if NET8_0_OR_GREATER
@@ -898,5 +931,206 @@ public static class CipherAlgorithmRegistry
             Source.OS,
             supportCheck: () => OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()));
 #endif
+    }
+
+    private static void AddRegionalImplementations(List<CipherImplementation> implementations)
+    {
+        // SM4-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "SM4-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var sm4 = CH.Cipher.Sm4.Create();
+                sm4.Mode = CH.Cipher.CipherMode.CBC;
+                sm4.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return sm4;
+            },
+            Source.Managed));
+
+        // SM4-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "SM4-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new SM4Engine(), 16, "SM4-CBC"),
+            Source.BouncyCastle));
+
+        // ARIA-128-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "ARIA-128-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var aria = CH.Cipher.Aria128.Create();
+                aria.Mode = CH.Cipher.CipherMode.CBC;
+                aria.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return aria;
+            },
+            Source.Managed));
+
+        // ARIA-128-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "ARIA-128-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 16, "ARIA-128-CBC"),
+            Source.BouncyCastle));
+
+        // ARIA-256-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "ARIA-256-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var aria = CH.Cipher.Aria256.Create();
+                aria.Mode = CH.Cipher.CipherMode.CBC;
+                aria.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return aria;
+            },
+            Source.Managed));
+
+        // ARIA-256-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "ARIA-256-CBC",
+            "BouncyCastle",
+            256,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 32, "ARIA-256-CBC"),
+            Source.BouncyCastle));
+
+        // Camellia-128-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Camellia-128-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var cam = CH.Cipher.Camellia128.Create();
+                cam.Mode = CH.Cipher.CipherMode.CBC;
+                cam.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return cam;
+            },
+            Source.Managed));
+
+        // Camellia-128-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Camellia-128-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 16, "Camellia-128-CBC"),
+            Source.BouncyCastle));
+
+        // Camellia-256-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Camellia-256-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var cam = CH.Cipher.Camellia256.Create();
+                cam.Mode = CH.Cipher.CipherMode.CBC;
+                cam.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return cam;
+            },
+            Source.Managed));
+
+        // Camellia-256-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Camellia-256-CBC",
+            "BouncyCastle",
+            256,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 32, "Camellia-256-CBC"),
+            Source.BouncyCastle));
+
+        // Kalyna-128-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Kalyna-128-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var kal = CH.Cipher.Kalyna128.Create();
+                kal.Mode = CH.Cipher.CipherMode.CBC;
+                kal.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return kal;
+            },
+            Source.Managed));
+
+        // Kalyna-128-CBC - BouncyCastle (Dstu7624Engine)
+        implementations.Add(new CipherImplementation(
+            "Kalyna-128-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(128), 16, "Kalyna-128-CBC"),
+            Source.BouncyCastle));
+
+        // Kalyna-256-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Kalyna-256-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var kal = CH.Cipher.Kalyna256.Create();
+                kal.Mode = CH.Cipher.CipherMode.CBC;
+                kal.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return kal;
+            },
+            Source.Managed));
+
+        // Kalyna-256-CBC - BouncyCastle (Dstu7624Engine)
+        implementations.Add(new CipherImplementation(
+            "Kalyna-256-CBC",
+            "BouncyCastle",
+            256,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(128), 32, "Kalyna-256-CBC"),
+            Source.BouncyCastle));
+
+        // Kuznyechik-CBC - Managed (no BouncyCastle engine available)
+        implementations.Add(new CipherImplementation(
+            "Kuznyechik-CBC",
+            "Managed",
+            256,
+            Mode.CBC,
+            () => {
+                var kuz = CH.Cipher.Kuznyechik.Create();
+                kuz.Mode = CH.Cipher.CipherMode.CBC;
+                kuz.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return kuz;
+            },
+            Source.Managed));
+
+        // SEED-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "SEED-CBC",
+            "Managed",
+            128,
+            Mode.CBC,
+            () => {
+                var seed = CH.Cipher.Seed.Create();
+                seed.Mode = CH.Cipher.CipherMode.CBC;
+                seed.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return seed;
+            },
+            Source.Managed));
+
+        // SEED-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "SEED-CBC",
+            "BouncyCastle",
+            128,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new SeedEngine(), 16, "SEED-CBC"),
+            Source.BouncyCastle));
     }
 }

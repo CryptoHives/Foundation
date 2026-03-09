@@ -84,6 +84,28 @@ internal sealed class BouncyCastleCipherAdapter : SymmetricCipher
     }
 
     /// <summary>
+    /// Creates a CBC adapter with PKCS7 padding for any BouncyCastle block cipher engine.
+    /// </summary>
+    /// <param name="engine">The block cipher engine to wrap.</param>
+    /// <param name="keySizeBytes">Key size in bytes.</param>
+    /// <param name="algorithmName">Display name for this cipher.</param>
+    /// <returns>A new <see cref="BouncyCastleCipherAdapter"/> instance.</returns>
+    public static BouncyCastleCipherAdapter CreateCbc(Org.BouncyCastle.Crypto.IBlockCipher engine, int keySizeBytes, string algorithmName)
+    {
+        var adapter = new BouncyCastleCipherAdapter(
+            $"{algorithmName} (BouncyCastle)",
+            () => new PaddedBufferedBlockCipher(
+                new CbcBlockCipher(engine),
+                new Pkcs7Padding()),
+            keySizeBits: keySizeBytes * 8,
+            blockSizeBits: engine.GetBlockSize() * 8,
+            ivSizeBytes: engine.GetBlockSize());
+        adapter.Mode = CipherMode.CBC;
+        adapter.Padding = PaddingMode.PKCS7;
+        return adapter;
+    }
+
+    /// <summary>
     /// Creates a ChaCha20 stream cipher adapter.
     /// </summary>
     /// <returns>A new <see cref="BouncyCastleCipherAdapter"/> instance.</returns>
