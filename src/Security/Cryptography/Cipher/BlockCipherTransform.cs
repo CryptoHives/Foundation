@@ -197,7 +197,6 @@ internal abstract class BlockCipherTransform : ICipherTransform
             }
             else if (_padding != PaddingMode.None && written > 0)
             {
-                int lastBlockStart = written - BlockSizeConst;
                 byte padValue = output[written - 1];
 
                 if (padValue < 1 || padValue > BlockSizeConst)
