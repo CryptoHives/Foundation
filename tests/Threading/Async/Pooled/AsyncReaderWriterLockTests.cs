@@ -27,12 +27,12 @@ public class AsyncReaderWriterLockTests
 
         using (await lockTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsReaderLockHeld, Is.True);
-            Assert.That(rwLock.IsWriterLockHeld, Is.False);
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
+            Assert.That(rwLock.IsWriteLockHeld, Is.False);
             Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
         }
 
-        Assert.That(rwLock.IsReaderLockHeld, Is.False);
+        Assert.That(rwLock.IsReadLockHeld, Is.False);
         Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
     }
 
@@ -46,11 +46,11 @@ public class AsyncReaderWriterLockTests
 
         using (await lockTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsWriterLockHeld, Is.True);
-            Assert.That(rwLock.IsReaderLockHeld, Is.False);
+            Assert.That(rwLock.IsWriteLockHeld, Is.True);
+            Assert.That(rwLock.IsReadLockHeld, Is.False);
         }
 
-        Assert.That(rwLock.IsWriterLockHeld, Is.False);
+        Assert.That(rwLock.IsWriteLockHeld, Is.False);
     }
 
     [Theory]
@@ -63,7 +63,7 @@ public class AsyncReaderWriterLockTests
         using (await rwLock.ReaderLockAsync().ConfigureAwait(false))
         {
             Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(3));
-            Assert.That(rwLock.IsReaderLockHeld, Is.True);
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
         }
 
         Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
@@ -86,7 +86,7 @@ public class AsyncReaderWriterLockTests
 
         using (await readerTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsReaderLockHeld, Is.True);
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
         }
 
         Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
@@ -109,7 +109,7 @@ public class AsyncReaderWriterLockTests
 
         using (await writerTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsWriterLockHeld, Is.True);
+            Assert.That(rwLock.IsWriteLockHeld, Is.True);
         }
 
         Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
