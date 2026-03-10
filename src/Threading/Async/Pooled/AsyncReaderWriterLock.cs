@@ -227,12 +227,25 @@ public sealed class AsyncReaderWriterLock
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the reader lock is acquired.</returns>
     public ValueTask<Releaser> ReaderLockAsync(CancellationToken cancellationToken = default)
     {
+        int status = Interlocked.CompareExchange(ref _status, 1, 0);
+        if (status == 0)
+        {
+            return new ValueTask<Releaser>(new Releaser(this, false));
+        }
+
         lock (_mutex)
         {
-            if (_status >= 0 && _waitingWriters.Count == 0)
+            if (_waitingWriters.Count == 0)
             {
-                _status++;
-                return new ValueTask<Releaser>(new Releaser(this, false));
+                status = Interlocked.CompareExchange(ref _status, 1, 0);
+                if (status >= 0)
+                {
+                    if (status > 0)
+                    {
+                        Interlocked.Increment(ref _status);
+                    }
+                    return new ValueTask<Releaser>(new Releaser(this, false));
+                }
             }
 
             if (cancellationToken.IsCancellationRequested)
@@ -278,11 +291,15 @@ public sealed class AsyncReaderWriterLock
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the writer lock is acquired.</returns>
     public ValueTask<Releaser> WriterLockAsync(CancellationToken cancellationToken = default)
     {
+        if (Interlocked.CompareExchange(ref _status, -1, 0) == 0)
+        {
+            return new ValueTask<Releaser>(new Releaser(this, true));
+        }
+
         lock (_mutex)
         {
-            if (_status == 0)
+            if (Interlocked.CompareExchange(ref _status, -1, 0) == 0)
             {
-                _status = -1;
                 return new ValueTask<Releaser>(new Releaser(this, true));
             }
 
@@ -334,13 +351,19 @@ public sealed class AsyncReaderWriterLock
 
         lock (_mutex)
         {
-            Debug.Assert(_status > 0, "Reader lock should be held.");
-            _status--;
-
-            if (_status == 0 && _waitingWriters.Count > 0)
+            // a reader or writer could steal the status here, check first if there is a waiting writer and skip the zero status
+            if (_waitingWriters.Count > 0)
             {
-                _status = -1;
-                toWake = _waitingWriters.Dequeue();
+                if (Interlocked.CompareExchange(ref _status, -1, 1) == 1)
+                {
+                    toWake = _waitingWriters.Dequeue();
+                }
+            }
+
+            if (toWake is null)
+            {
+                int status = Interlocked.Decrement(ref _status);
+                Debug.Assert(status >= 0, "Reader lock should be held.");
             }
         }
 
@@ -364,11 +387,11 @@ public sealed class AsyncReaderWriterLock
             else if (_waitingReaders.Count > 0)
             {
                 readerChain = _waitingReaders.DetachAll(out readerCount);
-                _status = readerCount;
+                Interlocked.Exchange(ref _status, readerCount);
             }
             else
             {
-                _status = 0;
+                Interlocked.Exchange(ref _status, 0);
             }
         }
 
@@ -376,7 +399,7 @@ public sealed class AsyncReaderWriterLock
         {
             writerToWake.SetResult(new Releaser(this, true));
         }
-        else
+        else if (readerChain is not null)
         {
             WaiterQueue<Releaser>.SetChainResult(readerChain, new Releaser(this, false));
         }
