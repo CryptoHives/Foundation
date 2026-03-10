@@ -17,67 +17,67 @@ using Threading.Tests.Pools;
 [Parallelizable(ParallelScope.All)]
 public class AsyncReaderWriterLockTests
 {
-    [Test]
-    public async Task SingleReaderAcquiresImmediately()
+    [Theory]
+    public async Task SingleReaderAcquiresImmediately(bool runContinuationAsynchronously)
     {
-        var rwLock = new AsyncReaderWriterLock();
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously);
 
         var lockTask = rwLock.ReaderLockAsync();
         Assert.That(lockTask.IsCompleted, Is.True);
 
         using (await lockTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsReaderLockHeld, Is.True);
-            Assert.That(rwLock.IsWriterLockHeld, Is.False);
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
+            Assert.That(rwLock.IsWriteLockHeld, Is.False);
             Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
         }
 
-        Assert.That(rwLock.IsReaderLockHeld, Is.False);
+        Assert.That(rwLock.IsReadLockHeld, Is.False);
         Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
     }
 
-    [Test]
-    public async Task SingleWriterAcquiresImmediately()
+    [Theory]
+    public async Task SingleWriterAcquiresImmediately(bool runContinuationAsynchronously)
     {
-        var rwLock = new AsyncReaderWriterLock();
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously);
 
         var lockTask = rwLock.WriterLockAsync();
         Assert.That(lockTask.IsCompleted, Is.True);
 
         using (await lockTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsWriterLockHeld, Is.True);
-            Assert.That(rwLock.IsReaderLockHeld, Is.False);
+            Assert.That(rwLock.IsWriteLockHeld, Is.True);
+            Assert.That(rwLock.IsReadLockHeld, Is.False);
         }
 
-        Assert.That(rwLock.IsWriterLockHeld, Is.False);
+        Assert.That(rwLock.IsWriteLockHeld, Is.False);
     }
 
-    [Test]
-    public async Task MultipleReadersCanAcquireConcurrently()
+    [Theory]
+    public async Task MultipleReadersCanAcquireConcurrently(bool runContinuationAsynchronously)
     {
-        var rwLock = new AsyncReaderWriterLock();
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously);
 
         using (await rwLock.ReaderLockAsync().ConfigureAwait(false))
         using (await rwLock.ReaderLockAsync().ConfigureAwait(false))
         using (await rwLock.ReaderLockAsync().ConfigureAwait(false))
         {
             Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(3));
-            Assert.That(rwLock.IsReaderLockHeld, Is.True);
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
         }
 
         Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
     }
 
-    [Test]
-    public async Task WriterBlocksReaders()
+    [Theory]
+    public async Task WriterBlocksReaders(bool runContinuationAsynchronously)
     {
         var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(pool: pool);
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously, pool: pool);
 
         var writerReleaser = await rwLock.WriterLockAsync().ConfigureAwait(false);
 
-        var readerTask = rwLock.ReaderLockAsync();
+        ValueTask<AsyncReaderWriterLock.Releaser> readerTask = rwLock.ReaderLockAsync();
         Assert.That(readerTask.IsCompleted, Is.False);
 
         Assert.That(rwLock.WaitingReaderCount, Is.EqualTo(1));
@@ -86,42 +86,41 @@ public class AsyncReaderWriterLockTests
 
         using (await readerTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsReaderLockHeld, Is.True);
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
         }
 
         Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
         Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
     }
 
-    [Test]
-    public async Task ReadersBlockWriter()
+    [Theory]
+    public async Task ReadersBlockWriter(bool runContinuationAsynchronously)
     {
         var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(pool: pool);
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously, pool: pool);
 
         var readerReleaser = await rwLock.ReaderLockAsync().ConfigureAwait(false);
 
-        var writerTask = rwLock.WriterLockAsync();
+        ValueTask<AsyncReaderWriterLock.Releaser> writerTask = rwLock.WriterLockAsync();
         Assert.That(writerTask.IsCompleted, Is.False);
-
         Assert.That(rwLock.WaitingWriterCount, Is.EqualTo(1));
 
         readerReleaser.Dispose();
 
         using (await writerTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsWriterLockHeld, Is.True);
+            Assert.That(rwLock.IsWriteLockHeld, Is.True);
         }
 
         Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
         Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
     }
 
-    [Test]
-    public async Task WriterPriorityOverNewReaders()
+    [Theory]
+    public async Task WriterPriorityOverNewReaders(bool runContinuationAsynchronously)
     {
         var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(pool: pool);
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously, pool: pool);
         var order = new System.Collections.Concurrent.ConcurrentQueue<string>();
 
         using (await rwLock.ReaderLockAsync().ConfigureAwait(false))
@@ -156,11 +155,11 @@ public class AsyncReaderWriterLockTests
         Assert.That(pool.ActiveCount, Is.EqualTo(0));
     }
 
-    [Test]
-    public async Task WriterReleasesAllPendingReaders()
+    [Theory]
+    public async Task WriterReleasesAllPendingReaders(bool runContinuationAsynchronously)
     {
         var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(pool: pool);
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously, pool: pool);
 
         ValueTask<AsyncReaderWriterLock.Releaser> r1, r2, r3;
 
@@ -189,11 +188,11 @@ public class AsyncReaderWriterLockTests
         Assert.That(pool.ActiveCount, Is.EqualTo(0));
     }
 
-    [Test]
-    public async Task ReaderReleaseCancellationThrows()
+    [Theory]
+    public async Task ReaderReleaseCancellationThrows(bool runContinuationAsynchronously)
     {
         var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(pool: pool);
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously, pool: pool);
         using var cts = new CancellationTokenSource();
 
         using (await rwLock.WriterLockAsync().ConfigureAwait(false))
@@ -214,11 +213,11 @@ public class AsyncReaderWriterLockTests
         Assert.That(pool.ActiveCount, Is.EqualTo(0));
     }
 
-    [Test]
-    public async Task WriterReleaseCancellationThrows()
+    [Theory]
+    public async Task WriterReleaseCancellationThrows(bool runContinuationAsynchronously)
     {
         var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(pool: pool);
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously, pool: pool);
         using var cts = new CancellationTokenSource();
 
         using (await rwLock.WriterLockAsync().ConfigureAwait(false))
@@ -240,10 +239,10 @@ public class AsyncReaderWriterLockTests
         Assert.That(pool.ActiveCount, Is.EqualTo(0));
     }
 
-    [Test]
-    public async Task PreCancelledReaderThrows()
+    [Theory]
+    public async Task PreCancelledReaderThrows(bool runContinuationAsynchronously)
     {
-        var rwLock = new AsyncReaderWriterLock();
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously);
         using var cts = new CancellationTokenSource();
 
         using (await rwLock.WriterLockAsync().ConfigureAwait(false))
@@ -256,10 +255,10 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    public async Task PreCancelledWriterThrows()
+    [Theory]
+    public async Task PreCancelledWriterThrows(bool runContinuationAsynchronously)
     {
-        var rwLock = new AsyncReaderWriterLock();
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously);
         using var cts = new CancellationTokenSource();
 
         using (await rwLock.WriterLockAsync().ConfigureAwait(false))
@@ -285,10 +284,10 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.RunContinuationAsynchronously, Is.True);
     }
 
-    [Test]
-    public void ReleaserEquality()
+    [Theory]
+    public void ReleaserEquality(bool runContinuationAsynchronously)
     {
-        var rwLock = new AsyncReaderWriterLock();
+        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: runContinuationAsynchronously);
         var releaser1 = rwLock.ReaderLockAsync().AsTask().GetAwaiter().GetResult();
         var releaser2 = rwLock.ReaderLockAsync().AsTask().GetAwaiter().GetResult();
 
