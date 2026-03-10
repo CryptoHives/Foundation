@@ -77,7 +77,7 @@ public sealed class AsyncReaderWriterLock
     private readonly object _mutex;
 #endif
 
-    private int _status;
+    private volatile int _status;
     private bool _runContinuationAsynchronously;
 
     /// <summary>
@@ -170,17 +170,17 @@ public sealed class AsyncReaderWriterLock
     /// <summary>
     /// Gets whether the lock is currently held by any readers.
     /// </summary>
-    public bool IsReaderLockHeld
+    public bool IsReadLockHeld
     {
-        get { lock (_mutex) return _status > 0; }
+        get { return _status > 0; }
     }
 
     /// <summary>
     /// Gets whether the lock is currently held by a writer.
     /// </summary>
-    public bool IsWriterLockHeld
+    public bool IsWriteLockHeld
     {
-        get { lock (_mutex) return _status < 0; }
+        get { return _status < 0; }
     }
 
     /// <summary>
@@ -188,7 +188,7 @@ public sealed class AsyncReaderWriterLock
     /// </summary>
     public int CurrentReaderCount
     {
-        get { lock (_mutex) return _status > 0 ? _status : 0; }
+        get { int status = _status; return status > 0 ? status : 0; }
     }
 
     /// <summary>
@@ -335,14 +335,8 @@ public sealed class AsyncReaderWriterLock
         }
     }
 
-    /// <summary>
-    /// Gets a value indicating whether the local reader waiter is currently in use.
-    /// </summary>
     internal bool InternalReaderWaiterInUse => _localReaderWaiter.InUse;
 
-    /// <summary>
-    /// Gets a value indicating whether the local writer waiter is currently in use.
-    /// </summary>
     internal bool InternalWriterWaiterInUse => _localWriterWaiter.InUse;
 
     private void ReleaseReaderLock()
