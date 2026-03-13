@@ -14,6 +14,48 @@ using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
 
+/*
+ State transition table (LockState encoding and allowed transitions)
+
+ Encoding (stored in _status):
+ - Uncontested (0): no holders.
+ - Reader (1..MaxReaderCount): number of concurrent readers.
+ - UpgradeableReader (MaxReaderCount + 1 .. MaxReaderCount + N): an upgradeable reader is present;
+   value = UpgradeableReader + (readerCount - 1). To get readerCount when >= UpgradeableReader: readerCount = status - UpgradeableReader + 1.
+ - Writer (-1): exclusive writer holds the lock.
+ - UpgradedWriter (-2): the upgradeable reader has upgraded to an exclusive writer.
+
+ Events and transitions (high level):
+ - Uncontested + ReaderLock -> Reader (1)
+ - Reader + ReaderLock -> Reader (increment)
+ - Reader release -> Reader (decrement) or Uncontested when count reaches 0
+ - Uncontested + WriterLock -> Writer (-1)
+ - Writer release ->
+     * If waiting writers exist -> next Writer
+     * else if waiting upgradeable readers exist -> UpgradeableReader (+ possible attached readers)
+     * else if waiting readers exist -> Reader chain (set reader count)
+     * else -> Uncontested
+ - Uncontested + UpgradeableReaderLock -> UpgradeableReader (UpgradeableReader + 0)
+ - UpgradeableReader + ReaderLock -> UpgradeableReader (increment encoded count)
+ - UpgradeableReader.EnterUpgradedWriter:
+     * If it is the only holder (no other readers) -> UpgradedWriter (-2)
+     * Otherwise enqueued in _waitingUpgradedWriters and will transition to UpgradedWriter when outstanding readers drop to zero (and writers have priority)
+ - UpgradedWriter release ->
+     * Set status back to UpgradeableReader (or wake readers if no writers waiting) and possibly wake reader chain
+
+ Cancellation semantics:
+ - If a waiter is cancelled while queued, it is removed from its WaiterQueue and a TaskCanceledException is set on the waiter.
+ - Cancellations do not modify _status unless the waiter had already been granted the lock (in which case disposal/release logic applies).
+
+ Priority rules:
+ - Waiting writers (including upgraded writers) are prioritized over new readers to avoid writer starvation.
+
+ Notes / invariants to test:
+ - status < 0 implies an exclusive holder (Writer or UpgradedWriter).
+ - status == UpgradedWriter implies UpgradeableReader has been converted into exclusive UpgradedWriter.
+ - status >= UpgradeableReader implies an upgradeable reader is present and CurrentReaderCount calculation must subtract UpgradeableReader.
+*/
+
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
 public class AsyncReaderWriterLockTests
