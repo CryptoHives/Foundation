@@ -13,7 +13,7 @@
     <PackageVersion Include="Konscious.Security.Cryptography.Blake2" Version="1.1.1" />
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
-    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.4" />
     <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="9.0.10" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
