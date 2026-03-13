@@ -201,7 +201,7 @@ public sealed class AsyncSemaphore
             _currentCount += remainingReleases;
         }
 
-        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
+        toReleaseChain?.SetChainResult(true);
     }
 
     /// <summary>

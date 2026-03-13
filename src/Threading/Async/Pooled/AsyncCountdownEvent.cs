@@ -215,7 +215,7 @@ public sealed class AsyncCountdownEvent
             }
         }
 
-        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
+        toReleaseChain?.SetChainResult(true);
     }
 
     /// <summary>

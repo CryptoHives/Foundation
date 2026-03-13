@@ -266,7 +266,7 @@ public sealed class AsyncAutoResetEvent
             toReleaseChain = _waiters.DetachAll(out _);
         }
 
-        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
+        toReleaseChain?.SetChainResult(true);
     }
 
 #if NET6_0_OR_GREATER

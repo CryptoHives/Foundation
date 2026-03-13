@@ -225,7 +225,7 @@ public sealed class AsyncManualResetEvent
             toReleaseChain = _waiters.DetachAll(out _);
         }
 
-        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
+        toReleaseChain?.SetChainResult(true);
     }
 
     /// <summary>
