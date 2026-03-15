@@ -146,7 +146,7 @@ public class ThreadingConfig : ManualConfig
             _inner.ExportToLog(summary, logger);
 
             consoleLogger.WriteLine($"  // * Results exported to: {filePath}");
-            return [filePath];
+            return new[] { filePath };
         }
 
         public void ExportToLog(Summary summary, ILogger logger)

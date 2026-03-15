@@ -1,9 +1,9 @@
-# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # run-benchmarks.ps1
 # Runs BenchmarkDotNet benchmarks for the Threading or Cryptography libraries
-# Usage: .\scripts\run-benchmarks.ps1 [-Project Threading] [-Filter "*AsyncLock*"] [-Framework net10.0]
+# Usage: .\scripts\run-benchmarks.ps1 -Project Threading [-Filter "*AsyncLock*"] [-Framework net10.0]
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
 
@@ -11,7 +11,10 @@
 param(
     [Parameter(HelpMessage = "Project to benchmark (Threading or Cryptography)")]
     [ValidateSet("Threading", "Cryptography")]
-    [string]$Project = "Threading",
+    [string]$Project,
+    
+    [Parameter(HelpMessage = "Show help and available families for Cryptography (prints families and exits)")]
+    [switch]$Help,
 
     [Parameter(HelpMessage = "Algorithm family to benchmark (Cryptography only)")]
     [ValidateSet(
@@ -85,6 +88,32 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# If invoked with no parameters, print concise supported-parameters summary and exit
+if (-not $Project -or $PSBoundParameters.Count -eq 0) {
+    Write-Host ""
+    Write-Host "Summary of supported parameters (name — choices — default):" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   - Project — Threading | Cryptography - select one"
+    Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
+    Write-Host "   - Filter — string globs applied to full benchmark name — \"*\"  "
+    Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
+    Write-Host "   - Runtimes — comma list (e.g. \"net10.0,net8.0\") — \"net10.0\"  "
+    Write-Host "   - Configuration — Release | Debug — Release  "
+    Write-Host "   - Verbosity — q | m | n | d | diag — n  "
+    Write-Host "   - List — switch (show benchmarks) — off  "
+    Write-Host "   - DryRun — switch (show command / minimal iterations) — off  "
+    Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
+    Write-Host ""
+    exit 0
+}
+
+# When parameters are provided, require -Project to be present
+if ($PSBoundParameters.Count -gt 0 -and -not $Project) {
+    Write-Host "ERROR: -Project is required when any options are supplied. Use -Help or run without arguments to see supported parameters." -ForegroundColor Red
+    exit 1
+}
+
 
 # Individual algorithm to benchmark category mapping
 $AlgorithmBenchmarkMap = @{
@@ -210,6 +239,12 @@ $GroupAliases = @{
     "Cipher"      = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
 }
 
+# 'All' should run all hash-related benchmarks (convenience alias)
+$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["Regional"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"]
+
+# 'Hash' alias groups the common hash families (excluding XOF-specific families)
+$GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["Regional"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"]
+
 # Get repository root
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptPath
@@ -217,25 +252,41 @@ $repoRoot = Split-Path -Parent $scriptPath
 # Determine test project path based on selection
 switch ($Project) {
     "Threading" {
-        $testProject = Join-Path $repoRoot "tests\Threading"
-        $projectTitle = "Threading"
+        # Use cross-platform path joining
+        $testProject = Join-Path $repoRoot 'tests' 'Threading'
+        $projectTitle = 'Threading'
     }
     "Cryptography" {
-        $testProject = Join-Path $repoRoot "tests\Security\Cryptography"
-        $projectTitle = "Security.Cryptography"
+        $testProject = Join-Path $repoRoot 'tests' 'Security' 'Cryptography'
+        $projectTitle = 'Security.Cryptography'
     }
 }
 
-# Resolve family to benchmark classes and build filter patterns
+# If no Family specified for Cryptography and no explicit filter, default
+# to running all cryptography hash benchmarks for convenience.
+if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
+    Write-Host "No family specified; running all Cryptography benchmarks by default." -ForegroundColor Yellow
+    $Family = "All"
+}
+
+# Resolve family to benchmark classes and build filter patterns (case-insensitive)
 $benchmarkClasses = @()
 $filterPatterns = @()
 if ($Project -eq "Cryptography" -and $Family) {
-    if ($GroupAliases.ContainsKey($Family)) {
-        foreach ($alg in $GroupAliases[$Family]) {
-            $benchmarkClasses += $AlgorithmBenchmarkMap[$alg]
+    $familyKey = $null
+    $lowerFamily = $Family.ToLower()
+    $familyKey = $GroupAliases.Keys | Where-Object { $_.ToLower() -eq $lowerFamily } | Select-Object -First 1
+    if ($familyKey) {
+        foreach ($alg in $GroupAliases[$familyKey]) {
+            if ($AlgorithmBenchmarkMap.ContainsKey($alg)) {
+                $benchmarkClasses += $AlgorithmBenchmarkMap[$alg]
+            }
         }
-    } elseif ($AlgorithmBenchmarkMap.ContainsKey($Family)) {
-        $benchmarkClasses += $AlgorithmBenchmarkMap[$Family]
+    } else {
+        $algKey = $AlgorithmBenchmarkMap.Keys | Where-Object { $_.ToLower() -eq $lowerFamily } | Select-Object -First 1
+        if ($algKey) {
+            $benchmarkClasses += $AlgorithmBenchmarkMap[$algKey]
+        }
     }
 
     if ($benchmarkClasses.Count -gt 0) {
@@ -261,10 +312,15 @@ Write-Host "  Filter:        $Filter"
 Write-Host "  Framework:     $Framework"
 Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
-Write-Host "  Path:          $testProject"
+try {
+    $resolvedTestProject = (Resolve-Path -LiteralPath $testProject -ErrorAction Stop).Path
+} catch {
+    $resolvedTestProject = $testProject
+}
+Write-Host "  Path:          $resolvedTestProject"
 Write-Host ""
 
-if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
+if ($Project -eq "Cryptography" -and (-not $Family -or $Help)) {
     Write-Host "Available hash algorithm families (each creates its own output table):" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  SHA-2:         -Family SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -323,6 +379,7 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family Cipher     runs: All cipher benchmarks"
     Write-Host "  -Family All        runs: All Hash benchmarks"
     Write-Host ""
+    exit 0
 }
 
 # Validate project exists
@@ -347,18 +404,21 @@ if ($List) {
     $dotnetArgs += "--filter"
     if ($filterPatterns.Count -gt 0) {
         foreach ($pattern in $filterPatterns) {
-            $dotnetArgs += $pattern
+            # Cast to string to avoid PowerShell wildcard expansion when splatting arguments
+            $dotnetArgs += [string]$pattern
         }
     } else {
-        $dotnetArgs += $Filter
+        $dotnetArgs += [string]$Filter
     }
     $dotnetArgs += "--runtimes"
-    $dotnetArgs += $Runtimes
+    $dotnetArgs += [string]$Runtimes
 }
 
 # Add any extra arguments
 if ($ExtraArgs) {
-    $dotnetArgs += $ExtraArgs
+    foreach ($arg in $ExtraArgs) {
+        $dotnetArgs += [string]$arg
+    }
 }
 
 # Show command
@@ -380,9 +440,11 @@ try {
     Write-Host "========================================"
     Write-Host ""
 
-    & dotnet @dotnetArgs
+    # Use Start-Process with ArgumentList to avoid PowerShell wildcard expansion when passing arguments
+    $dotnetPath = (Get-Command dotnet -ErrorAction Stop).Source
+    $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -Wait -PassThru
 
-    $exitCode = $LASTEXITCODE
+    $exitCode = $proc.ExitCode
     if ($exitCode -ne 0) {
         Write-Host ""
         Write-Host "Benchmarks failed with exit code: $exitCode" -ForegroundColor Red
@@ -395,7 +457,8 @@ try {
     Write-Host "========================================"
     Write-Host ""
     Write-Host "Results saved to:"
-    Write-Host "  $testProject\BenchmarkDotNet.Artifacts\results\"
+    $resultsPath = Join-Path $resolvedTestProject 'BenchmarkDotNet.Artifacts' 'results'
+    Write-Host "  $resultsPath"
     Write-Host ""
     
     if ($Project -eq "Cryptography") {

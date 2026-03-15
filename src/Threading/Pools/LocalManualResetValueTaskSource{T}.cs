@@ -79,6 +79,10 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
         => _core.SetResult(result);
 
     /// <inheritdoc/>
+    public override void SetChainResult(T result)
+        => WaiterQueue<T>.SetChainResult(this, result);
+
+    /// <inheritdoc/>
     public override void SetException(Exception ex)
         => _core.SetException(ex);
 

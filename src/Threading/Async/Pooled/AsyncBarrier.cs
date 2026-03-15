@@ -235,7 +235,7 @@ public sealed class AsyncBarrier
             return new ValueTask(Task.FromException(postPhaseException));
         }
 
-        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
+        toReleaseChain?.SetChainResult(true);
         return default;
     }
 
@@ -353,7 +353,7 @@ public sealed class AsyncBarrier
             throw postPhaseException;
         }
 
-        WaiterQueue<bool>.SetChainResult(toRelease, true);
+        toRelease?.SetChainResult(true);
     }
 
 #if NET6_0_OR_GREATER

@@ -43,7 +43,6 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
 {
     private volatile int _counter;
 
-
     /// <summary>
     /// Benchmark for unchecked increment.
     /// </summary>
