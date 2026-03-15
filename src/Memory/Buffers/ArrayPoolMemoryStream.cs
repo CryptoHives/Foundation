@@ -476,6 +476,28 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         }
     }
 
+    /// <summary>
+    /// Attempts to copy the stream content into the provided destination span.
+    /// Returns true on success, false if the destination is too small.
+    /// </summary>
+    public bool TryCopyTo(Span<byte> destination)
+    {
+        int absoluteLength = GetAbsoluteLength();
+        if (destination.Length < absoluteLength) return false;
+        int offset = 0;
+        foreach (ArraySegment<byte> buffer in _buffers)
+        {
+            if (buffer.Array != null)
+            {
+                int length = Math.Min(absoluteLength - offset, buffer.Count);
+                new ReadOnlySpan<byte>(buffer.Array, buffer.Offset, length).CopyTo(destination.Slice(offset));
+                offset += length;
+                if (offset >= absoluteLength) break;
+            }
+        }
+        return true;
+    }
+
     /// <inheritdoc/>
     public override byte[] ToArray()
     {

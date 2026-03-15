@@ -45,9 +45,9 @@ The Threading package provides high-performance async synchronization primitives
 
 ### 🔐 [Security.Cryptography Package](packages/security/cryptography/index.md)
 
-The Cryptography package provides specification-based implementations of cryptographic hash algorithms and message authentication codes (MACs), all implemented as fully managed code without OS dependencies.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), and cipher/AEAD algorithms, all implemented as fully managed code without OS dependencies.
 
-> **Note:** This package is currently in development and yet contains only hash and MAC algorithms.
+> **Note:** This package continues to expand and already includes hash, MAC, cipher (AES, ChaCha20-family), and AEAD implementations.
 
 **Key Features:**
 - SHA-1, SHA-2, SHA-3 family implementations with full test vector validation
