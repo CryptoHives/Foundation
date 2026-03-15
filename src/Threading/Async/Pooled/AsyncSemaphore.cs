@@ -195,7 +195,7 @@ public sealed class AsyncSemaphore
 
             if (waitersToRelease > 0)
             {
-                toReleaseChain = _waiters.DetachFirst(waitersToRelease, out _);
+                toReleaseChain = _waiters.DetachUpTo(waitersToRelease, out _);
             }
 
             _currentCount += remainingReleases;

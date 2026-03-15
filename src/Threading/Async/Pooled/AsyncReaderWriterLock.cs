@@ -429,8 +429,8 @@ public sealed class AsyncReaderWriterLock
             if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
             {
                 int status = Interlocked.CompareExchange(ref _status, (int)LockState.Reader, (int)LockState.Uncontested);
-                if ((status >= (int)LockState.Uncontested && status < MaxReaderCount) ||
-                    (status >= (int)LockState.UpgradeableReader && status < (int)LockState.UpgradeableReader + MaxReaderCount))
+                if (status is >= ((int)LockState.Uncontested) and < MaxReaderCount or
+                    >= ((int)LockState.UpgradeableReader) and < ((int)LockState.UpgradeableReader + MaxReaderCount))
                 {
                     if (status > (int)LockState.Uncontested)
                     {
@@ -497,7 +497,7 @@ public sealed class AsyncReaderWriterLock
             if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
             {
                 int status = Interlocked.CompareExchange(ref _status, (int)LockState.UpgradeableReader, (int)LockState.Uncontested);
-                if (status >= (int)LockState.Uncontested && status < MaxReaderCount)
+                if (status is >= ((int)LockState.Uncontested) and < MaxReaderCount)
                 {
                     if (status > (int)LockState.Uncontested)
                     {
@@ -800,7 +800,7 @@ public sealed class AsyncReaderWriterLock
 
                 if (_waitingReaders.Count > 0)
                 {
-                    readerChain = _waitingReaders.DetachAll(out readerCount);
+                    readerChain = _waitingReaders.DetachUpTo(MaxReaderCount, out readerCount);
                     newStatus += readerCount;
                 }
 
@@ -820,8 +820,9 @@ public sealed class AsyncReaderWriterLock
 
         lock (_mutex)
         {
-            Debug.Assert(_status == (int)LockState.UpgradedWriter ||
-                _status == (int)LockState.UpgradedWriterWithoutReader,
+            Debug.Assert(_status is
+                ((int)LockState.UpgradedWriter) or
+                ((int)LockState.UpgradedWriterWithoutReader),
                 "Upgraded writer lock should be held.");
 
             // another instance of an upgraded writer might be waiting
@@ -838,7 +839,7 @@ public sealed class AsyncReaderWriterLock
                 {
                     if (_waitingReaders.Count > 0)
                     {
-                        readerChain = _waitingReaders.DetachAll(out readerCount);
+                        readerChain = _waitingReaders.DetachUpTo(MaxReaderCount, out readerCount);
                     }
 
                     if (_status == (int)LockState.UpgradedWriterWithoutReader)

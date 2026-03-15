@@ -166,15 +166,14 @@ internal struct WaiterQueue<T>
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Used by <see cref="CryptoHives.Foundation.Threading.Async.Pooled.AsyncSemaphore"/> to release
-    /// a subset of waiters. The <see cref="ManualResetValueTaskSource{T}.Next"/> links are preserved
-    /// for traversal; the caller must clear each node's link after processing.
+    /// Used by async primitives to release a subset of waiters. The <see cref="ManualResetValueTaskSource{T}.Next"/>
+    /// links are preserved for traversal; the caller must clear each node's link after processing.
     /// </para>
     /// </remarks>
     /// <param name="maxCount">The maximum number of nodes to detach.</param>
     /// <param name="count">Receives the actual number of detached nodes.</param>
     /// <returns>The head of the detached chain, or <see langword="null"/> if the queue was empty.</returns>
-    public ManualResetValueTaskSource<T>? DetachFirst(int maxCount, out int count)
+    public ManualResetValueTaskSource<T>? DetachUpTo(int maxCount, out int count)
     {
         Debug.Assert(maxCount > 0, "maxCount must be positive.");
 
@@ -211,8 +210,6 @@ internal struct WaiterQueue<T>
 
         _count -= count;
 
-        // Clear Prev on head (it was tail's prev before, but head.Prev is already null for head node).
-        // head.Prev is already null since it was the queue head.
         return head;
     }
 
