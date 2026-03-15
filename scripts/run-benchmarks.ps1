@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # run-benchmarks.ps1
