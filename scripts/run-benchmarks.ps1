@@ -210,6 +210,12 @@ $GroupAliases = @{
     "Cipher"      = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
 }
 
+# 'All' should run all hash-related benchmarks (convenience alias)
+$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["Regional"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"]
+
+# 'Hash' alias groups the common hash families (excluding XOF-specific families)
+$GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["Regional"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"]
+
 # Get repository root
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptPath
@@ -226,16 +232,31 @@ switch ($Project) {
     }
 }
 
-# Resolve family to benchmark classes and build filter patterns
+# If no Family specified for Cryptography and no explicit filter, default
+# to running all cryptography hash benchmarks for convenience.
+if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
+    Write-Host "No family specified; running all Cryptography benchmarks by default." -ForegroundColor Yellow
+    $Family = "All"
+}
+
+# Resolve family to benchmark classes and build filter patterns (case-insensitive)
 $benchmarkClasses = @()
 $filterPatterns = @()
 if ($Project -eq "Cryptography" -and $Family) {
-    if ($GroupAliases.ContainsKey($Family)) {
-        foreach ($alg in $GroupAliases[$Family]) {
-            $benchmarkClasses += $AlgorithmBenchmarkMap[$alg]
+    $familyKey = $null
+    $lowerFamily = $Family.ToLower()
+    $familyKey = $GroupAliases.Keys | Where-Object { $_.ToLower() -eq $lowerFamily } | Select-Object -First 1
+    if ($familyKey) {
+        foreach ($alg in $GroupAliases[$familyKey]) {
+            if ($AlgorithmBenchmarkMap.ContainsKey($alg)) {
+                $benchmarkClasses += $AlgorithmBenchmarkMap[$alg]
+            }
         }
-    } elseif ($AlgorithmBenchmarkMap.ContainsKey($Family)) {
-        $benchmarkClasses += $AlgorithmBenchmarkMap[$Family]
+    } else {
+        $algKey = $AlgorithmBenchmarkMap.Keys | Where-Object { $_.ToLower() -eq $lowerFamily } | Select-Object -First 1
+        if ($algKey) {
+            $benchmarkClasses += $AlgorithmBenchmarkMap[$algKey]
+        }
     }
 
     if ($benchmarkClasses.Count -gt 0) {
