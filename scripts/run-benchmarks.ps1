@@ -223,12 +223,13 @@ $repoRoot = Split-Path -Parent $scriptPath
 # Determine test project path based on selection
 switch ($Project) {
     "Threading" {
-        $testProject = Join-Path $repoRoot "tests\Threading"
-        $projectTitle = "Threading"
+        # Use cross-platform path joining
+        $testProject = Join-Path $repoRoot 'tests' 'Threading'
+        $projectTitle = 'Threading'
     }
     "Cryptography" {
-        $testProject = Join-Path $repoRoot "tests\Security\Cryptography"
-        $projectTitle = "Security.Cryptography"
+        $testProject = Join-Path $repoRoot 'tests' 'Security' 'Cryptography'
+        $projectTitle = 'Security.Cryptography'
     }
 }
 
@@ -282,7 +283,12 @@ Write-Host "  Filter:        $Filter"
 Write-Host "  Framework:     $Framework"
 Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
-Write-Host "  Path:          $testProject"
+try {
+    $resolvedTestProject = (Resolve-Path -LiteralPath $testProject -ErrorAction Stop).Path
+} catch {
+    $resolvedTestProject = $testProject
+}
+Write-Host "  Path:          $resolvedTestProject"
 Write-Host ""
 
 if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
@@ -368,18 +374,21 @@ if ($List) {
     $dotnetArgs += "--filter"
     if ($filterPatterns.Count -gt 0) {
         foreach ($pattern in $filterPatterns) {
-            $dotnetArgs += $pattern
+            # Cast to string to avoid PowerShell wildcard expansion when splatting arguments
+            $dotnetArgs += [string]$pattern
         }
     } else {
-        $dotnetArgs += $Filter
+        $dotnetArgs += [string]$Filter
     }
     $dotnetArgs += "--runtimes"
-    $dotnetArgs += $Runtimes
+    $dotnetArgs += [string]$Runtimes
 }
 
 # Add any extra arguments
 if ($ExtraArgs) {
-    $dotnetArgs += $ExtraArgs
+    foreach ($arg in $ExtraArgs) {
+        $dotnetArgs += [string]$arg
+    }
 }
 
 # Show command
@@ -401,9 +410,11 @@ try {
     Write-Host "========================================"
     Write-Host ""
 
-    & dotnet @dotnetArgs
+    # Use Start-Process with ArgumentList to avoid PowerShell wildcard expansion when passing arguments
+    $dotnetPath = (Get-Command dotnet -ErrorAction Stop).Source
+    $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -Wait -PassThru
 
-    $exitCode = $LASTEXITCODE
+    $exitCode = $proc.ExitCode
     if ($exitCode -ne 0) {
         Write-Host ""
         Write-Host "Benchmarks failed with exit code: $exitCode" -ForegroundColor Red
@@ -416,7 +427,8 @@ try {
     Write-Host "========================================"
     Write-Host ""
     Write-Host "Results saved to:"
-    Write-Host "  $testProject\BenchmarkDotNet.Artifacts\results\"
+    $resultsPath = Join-Path $resolvedTestProject 'BenchmarkDotNet.Artifacts' 'results'
+    Write-Host "  $resultsPath"
     Write-Host ""
     
     if ($Project -eq "Cryptography") {
