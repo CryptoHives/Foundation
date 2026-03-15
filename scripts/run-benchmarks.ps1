@@ -3,15 +3,18 @@
 
 # run-benchmarks.ps1
 # Runs BenchmarkDotNet benchmarks for the Threading or Cryptography libraries
-# Usage: .\scripts\run-benchmarks.ps1 [-Project Threading] [-Filter "*AsyncLock*"] [-Framework net10.0]
+# Usage: .\scripts\run-benchmarks.ps1 -Project Threading [-Filter "*AsyncLock*"] [-Framework net10.0]
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
 
 [CmdletBinding()]
 param(
-    [Parameter(HelpMessage = "Project to benchmark (Threading or Cryptography)")]
+    [Parameter(HelpMessage = "Project to benchmark (Threading or Cryptography)", Mandatory=$true)]
     [ValidateSet("Threading", "Cryptography")]
-    [string]$Project = "Threading",
+    [string]$Project,
+    
+    [Parameter(HelpMessage = "Show help and available families for Cryptography (prints families and exits)")]
+    [switch]$Help,
 
     [Parameter(HelpMessage = "Algorithm family to benchmark (Cryptography only)")]
     [ValidateSet(
@@ -85,6 +88,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+
 
 # Individual algorithm to benchmark category mapping
 $AlgorithmBenchmarkMap = @{
@@ -291,7 +296,7 @@ try {
 Write-Host "  Path:          $resolvedTestProject"
 Write-Host ""
 
-if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
+if ($Project -eq "Cryptography" -and (-not $Family -or $Help)) {
     Write-Host "Available hash algorithm families (each creates its own output table):" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  SHA-2:         -Family SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -350,6 +355,7 @@ if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
     Write-Host "  -Family Cipher     runs: All cipher benchmarks"
     Write-Host "  -Family All        runs: All Hash benchmarks"
     Write-Host ""
+    exit 0
 }
 
 # Validate project exists
