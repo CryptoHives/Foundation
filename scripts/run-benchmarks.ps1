@@ -94,8 +94,8 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host ""
     Write-Host "Summary of supported parameters (name — choices — default):" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "   - Project — Threading | Cryptography — Threading  "
-    Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, Keccak, SHAKE, cSHAKE, KT, TurboSHAKE, BLAKE2, BLAKE, KMAC, XOF, AES-GCM, Cipher, All, etc.) — none (null)  "
+    Write-Host "   - Project — Threading | Cryptography - select one"
+    Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
     Write-Host "   - Filter — string globs applied to full benchmark name — \"*\"  "
     Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
     Write-Host "   - Runtimes — comma list (e.g. \"net10.0,net8.0\") — \"net10.0\"  "
