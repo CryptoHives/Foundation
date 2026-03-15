@@ -9,7 +9,7 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(HelpMessage = "Project to benchmark (Threading or Cryptography)", Mandatory=$true)]
+    [Parameter(HelpMessage = "Project to benchmark (Threading or Cryptography)")]
     [ValidateSet("Threading", "Cryptography")]
     [string]$Project,
     
@@ -89,6 +89,30 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# If invoked with no parameters, print concise supported-parameters summary and exit
+if (-not $Project -or $PSBoundParameters.Count -eq 0) {
+    Write-Host ""
+    Write-Host "Summary of supported parameters (name — choices — default):" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   - Project — Threading | Cryptography — Threading  "
+    Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, Keccak, SHAKE, cSHAKE, KT, TurboSHAKE, BLAKE2, BLAKE, KMAC, XOF, AES-GCM, Cipher, All, etc.) — none (null)  "
+    Write-Host "   - Filter — string globs applied to full benchmark name — \"*\"  "
+    Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
+    Write-Host "   - Runtimes — comma list (e.g. \"net10.0,net8.0\") — \"net10.0\"  "
+    Write-Host "   - Configuration — Release | Debug — Release  "
+    Write-Host "   - Verbosity — q | m | n | d | diag — n  "
+    Write-Host "   - List — switch (show benchmarks) — off  "
+    Write-Host "   - DryRun — switch (show command / minimal iterations) — off  "
+    Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
+    Write-Host ""
+    exit 0
+}
+
+# When parameters are provided, require -Project to be present
+if ($PSBoundParameters.Count -gt 0 -and -not $Project) {
+    Write-Host "ERROR: -Project is required when any options are supplied. Use -Help or run without arguments to see supported parameters." -ForegroundColor Red
+    exit 1
+}
 
 
 # Individual algorithm to benchmark category mapping
