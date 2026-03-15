@@ -7,6 +7,7 @@
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
+using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -81,8 +82,11 @@ using System.Threading.Tasks.Sources;
 /// 
 /// </code>
 /// </example>
+/// 
+/// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
+/// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
-public sealed class AsyncReaderWriterLock
+public sealed class AsyncReaderWriterLock : IResettable
 {
     /// <summary>
     /// Represents the maximum number of concurrent readers allowed by the lock.
@@ -315,6 +319,41 @@ public sealed class AsyncReaderWriterLock
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncReaderWriterLockReleaser;
 
         _status = 0;
+    }
+
+    /// <inheritdoc/>
+    public bool TryReset()
+    {
+        // check if lock is not in use before recycling the instance,
+        // if the lock is currently held, it cannot be reset and reused
+#if NET9_0_OR_GREATER
+        if (!_mutex.TryEnter())
+        {
+            return false;
+        }
+        _mutex.Exit();
+#else
+        if (!Monitor.TryEnter(_mutex))
+        {
+            return false;
+        }
+        Monitor.Exit(_mutex);
+#endif
+
+        _runContinuationAsynchronously = true;
+        _status = 0;
+
+        _waitingWriters = new ();
+        _waitingReaders = new();
+        _waitingUpgradeableReaders = new();
+        _waitingUpgradedWriters = new();
+
+        _localWriterWaiter.TryReset();
+        _localReaderWaiter.TryReset();
+        _localUpgradeableReaderWaiter.TryReset();
+        _localUpgradedWriterWaiter.TryReset();
+        
+        return true;
     }
 
     /// <summary>

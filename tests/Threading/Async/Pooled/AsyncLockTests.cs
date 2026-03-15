@@ -7,6 +7,7 @@ namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -413,6 +414,44 @@ public class AsyncLockTests
 
         Assert.That(al.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public void TryReset_SucceedsWhenNotInUse()
+    {
+        var ev = new AsyncLock();
+
+        Assert.That(ev.IsTaken, Is.False);
+
+        bool reset = ev.TryReset();
+        Assert.That(reset, Is.True);
+
+        Assert.That(ev.IsTaken, Is.False);
+    }
+
+    [Test]
+    public void TryReset_FailsWhenLocked()
+    {
+        var ev = new AsyncLock();
+
+        // Acquire internal mutex via reflection and hold it to simulate being in-use
+        var fld = typeof(AsyncLock).GetField("_mutex", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.That(fld, Is.Not.Null, "_mutex field not found");
+
+        var mutex = fld.GetValue(ev);
+        Assert.That(mutex, Is.Not.Null);
+
+        // Enter the mutex to block TryReset
+        Monitor.Enter(mutex);
+        try
+        {
+            bool reset = ev.TryReset();
+            Assert.That(reset, Is.False);
+        }
+        finally
+        {
+            Monitor.Exit(mutex);
+        }
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()

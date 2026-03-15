@@ -10,6 +10,7 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -1184,5 +1185,53 @@ public class AsyncReaderWriterLockTests
         releaser.Dispose();
     }
 #endif
+
+    [Test]
+    public void TryReset_SucceedsWhenNotInUse()
+    {
+        var ev = new AsyncReaderWriterLock();
+
+        Assert.That(ev.CurrentReaderCount, Is.Zero);
+        Assert.That(ev.WaitingReaderCount, Is.Zero);
+        Assert.That(ev.WaitingWriterCount, Is.Zero);
+        Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
+        Assert.That(ev.WaitingUpgradedWritersCount, Is.Zero);
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+
+        bool reset = ev.TryReset();
+        Assert.That(reset, Is.True);
+
+        Assert.That(ev.CurrentReaderCount, Is.Zero);
+        Assert.That(ev.WaitingReaderCount, Is.Zero);
+        Assert.That(ev.WaitingWriterCount, Is.Zero);
+        Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
+        Assert.That(ev.WaitingUpgradedWritersCount, Is.Zero);
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+    }
+
+    [Test]
+    public void TryReset_FailsWhenLocked()
+    {
+        var ev = new AsyncReaderWriterLock();
+
+        // Acquire internal mutex via reflection and hold it to simulate being in-use
+        var fld = typeof(AsyncReaderWriterLock).GetField("_mutex", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.That(fld, Is.Not.Null, "_mutex field not found");
+
+        var mutex = fld.GetValue(ev);
+        Assert.That(mutex, Is.Not.Null);
+
+        // Enter the mutex to block TryReset
+        Monitor.Enter(mutex);
+        try
+        {
+            bool reset = ev.TryReset();
+            Assert.That(reset, Is.False);
+        }
+        finally
+        {
+            Monitor.Exit(mutex);
+        }
+    }
 }
 

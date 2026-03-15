@@ -6,6 +6,7 @@
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
+using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -44,8 +45,11 @@ using System.Threading.Tasks;
 /// }
 /// </code>
 /// </example>
+/// 
+/// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
+/// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
-public sealed class AsyncLock
+public sealed class AsyncLock : IResettable
 {
     private WaiterQueue<Releaser> _waiters;
     private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter;
@@ -69,6 +73,34 @@ public sealed class AsyncLock
         _taken = 0;
         _localWaiter = new(this);
         _localWaiter.RunContinuationsAsynchronously = true;
+    }
+
+    /// <inheritdoc/>
+    public bool TryReset()
+    {
+        // check if lock is not in use before recycling the instance,
+        // if the lock is currently held, it cannot be reset and reused
+#if NET9_0_OR_GREATER
+        if (!_mutex.TryEnter())
+        {
+            return false;
+        }
+        _mutex.Exit();
+#else
+        if (!Monitor.TryEnter(_mutex))
+        {
+            return false;
+        }
+        Monitor.Exit(_mutex);
+#endif
+
+        _taken = 0;
+        _waiters = new();
+
+        _localWaiter.TryReset();
+        _localWaiter.RunContinuationsAsynchronously = true;
+
+        return true;
     }
 
     /// <summary>
