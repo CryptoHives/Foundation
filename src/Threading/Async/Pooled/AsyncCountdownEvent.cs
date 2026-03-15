@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1508 // Avoid dead conditional code
+
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
@@ -204,7 +206,6 @@ public sealed class AsyncCountdownEvent
             }
 
             _currentCount -= signalCount;
-
             if (_currentCount == 0)
             {
                 toReleaseChain = _waiters.DetachAll(out _);
@@ -337,8 +338,6 @@ public sealed class AsyncCountdownEvent
             }
         }
 
-#pragma warning disable CA1508 // Avoid dead conditional code
         toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
-#pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

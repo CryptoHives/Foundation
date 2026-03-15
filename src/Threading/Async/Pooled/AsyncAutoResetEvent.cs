@@ -245,7 +245,7 @@ public sealed class AsyncAutoResetEvent
     /// </summary>
     internal void Reset()
     {
-        Interlocked.Exchange(ref _signaled, 0);
+        _ = Interlocked.Exchange(ref _signaled, 0);
     }
 
     /// <summary>

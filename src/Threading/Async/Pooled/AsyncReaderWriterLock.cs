@@ -89,10 +89,11 @@ public sealed class AsyncReaderWriterLock
     /// </summary>
     /// <remarks>
     /// This constant is used to limit the number of simultaneous readers incl. the upgradeable reader.
-    /// The value is set to half of the maximum value of a 32-bit integer to allow to express the state
-    /// when an upgradeable reader is present by using a count above this threshold.
+    /// The value is set to a reasonable count to prevent too many active tasks.
+    /// More readers are queued and released in batches to prevent excessive spinning and CPU usage
+    /// when there are many waiting readers.
     /// </remarks>
-    private const int MaxReaderCount = (int.MaxValue / 2) - 1;
+    private const int MaxReaderCount = 1000;
 
     /// <summary>
     /// The internal fixed states used by the lock status.
@@ -116,7 +117,8 @@ public sealed class AsyncReaderWriterLock
         Reader = 1,
         Writer = -1,
         UpgradedWriter = -2,
-        UpgradeableReader = MaxReaderCount + 1
+        UpgradedWriterWithoutReader = -3,
+        UpgradeableReader = 0x40000000
     }
 
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
@@ -204,21 +206,21 @@ public sealed class AsyncReaderWriterLock
         {
             if (_owner is not null)
             {
-                if (_releaserType == ReleaserType.Writer)
-                {
-                    _owner.ReleaseWriterLock();
-                }
-                else if (_releaserType == ReleaserType.UpgradedWriter)
-                {
-                    _owner.ReleaseUpgradedWriterLock();
-                }
-                else if (_releaserType == ReleaserType.Reader)
+                if (_releaserType == ReleaserType.Reader)
                 {
                     _owner.ReleaseReaderLock();
+                }
+                else if (_releaserType == ReleaserType.Writer)
+                {
+                    _owner.ReleaseWriterLock();
                 }
                 else if (_releaserType == ReleaserType.UpgradeableReader)
                 {
                     _owner.ReleaseUpgradeableReaderLock();
+                }
+                else if (_releaserType == ReleaserType.UpgradedWriter)
+                {
+                    _owner.ReleaseUpgradedWriterLock();
                 }
                 else
                 {
@@ -427,7 +429,8 @@ public sealed class AsyncReaderWriterLock
             if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
             {
                 int status = Interlocked.CompareExchange(ref _status, (int)LockState.Reader, (int)LockState.Uncontested);
-                if (status >= (int)LockState.Uncontested)
+                if ((status >= (int)LockState.Uncontested && status < MaxReaderCount) ||
+                    (status >= (int)LockState.UpgradeableReader && status < (int)LockState.UpgradeableReader + MaxReaderCount))
                 {
                     if (status > (int)LockState.Uncontested)
                     {
@@ -491,10 +494,10 @@ public sealed class AsyncReaderWriterLock
 
         lock (_mutex)
         {
-            if (_waitingWriters.Count == 0)
+            if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
             {
                 int status = Interlocked.CompareExchange(ref _status, (int)LockState.UpgradeableReader, (int)LockState.Uncontested);
-                if (status >= (int)LockState.Uncontested && status < (int)LockState.UpgradeableReader)
+                if (status >= (int)LockState.Uncontested && status < MaxReaderCount)
                 {
                     if (status > (int)LockState.Uncontested)
                     {
@@ -667,20 +670,29 @@ public sealed class AsyncReaderWriterLock
             // a writer lock.
             if (_waitingUpgradedWriters.Count > 0)
             {
-                if (Interlocked.CompareExchange(ref _status, (int)LockState.UpgradedWriter, (int)LockState.UpgradeableReader + 1) == ((int)LockState.UpgradeableReader + 1))
+                if (Interlocked.CompareExchange(ref _status, (int)LockState.UpgradedWriter, (int)LockState.UpgradeableReader + 1) == ((int)LockState.UpgradeableReader + 1) ||
+                    Interlocked.CompareExchange(ref _status, (int)LockState.UpgradedWriterWithoutReader, (int)LockState.Reader) == ((int)LockState.Reader))
                 {
                     toWake = _waitingUpgradedWriters.Dequeue();
                     releaser = new Releaser(this, Releaser.ReleaserType.UpgradedWriter);
                 }
             }
 
-            if (toWake is null && _waitingWriters.Count > 0)
+            // if there were upgraded writers, the lock needs to process them first, hence only check in else case
+            else if (_waitingWriters.Count > 0)
             {
                 if (Interlocked.CompareExchange(ref _status, (int)LockState.Writer, (int)LockState.Reader) == (int)LockState.Reader)
                 {
                     toWake = _waitingWriters.Dequeue();
                     releaser = new Releaser(this, Releaser.ReleaserType.Writer);
                 }
+            }
+
+            // activate a waiting reader
+            else if (_waitingReaders.Count > 0)
+            {
+                toWake = _waitingReaders.Dequeue();
+                releaser = new Releaser(this, Releaser.ReleaserType.Reader);
             }
 
             if (toWake is null)
@@ -702,12 +714,8 @@ public sealed class AsyncReaderWriterLock
         {
             if (_status == (int)LockState.UpgradedWriter)
             {
-                throw new InvalidOperationException("An upgradeable reader lock is released while the writer is still upgraded.");
-            }
-
-            if (_waitingUpgradedWriters.Count > 0)
-            {
-                throw new InvalidOperationException("An upgradeable reader lock is released while there are still writer waiting for an upgrade.");
+                Interlocked.Exchange(ref _status, (int)LockState.UpgradedWriterWithoutReader);
+                return;
             }
 
             Debug.Assert(_status >= (int)LockState.UpgradeableReader, "Upgradeable reader lock should be held.");
@@ -716,14 +724,21 @@ public sealed class AsyncReaderWriterLock
             // writer and transition directly to writer lock
             if (_waitingUpgradedWriters.Count > 0)
             {
-                if (Interlocked.CompareExchange(ref _status, (int)LockState.UpgradedWriter, (int)LockState.UpgradeableReader + 1) == ((int)LockState.UpgradeableReader + 1))
+                if (Interlocked.CompareExchange(ref _status, (int)LockState.UpgradedWriterWithoutReader, (int)LockState.UpgradeableReader) == ((int)LockState.UpgradeableReader))
                 {
                     toWake = _waitingUpgradedWriters.Dequeue();
                     releaser = new Releaser(this, Releaser.ReleaserType.UpgradedWriter);
                 }
+                else
+                {
+                    // intentionally no action in this case, let the state transition happen
+                    // since there are still upgraded writers waiting, no (upgradeable) reader can be
+                    // activated until all upgraded writers are served
+                }
             }
 
-            if (_waitingWriters.Count > 0)
+            // if there were upgraded writers, the lock needs to process them first, hence only check in else case
+            else if (_waitingWriters.Count > 0)
             {
                 if (Interlocked.CompareExchange(ref _status, (int)LockState.Writer, (int)LockState.UpgradeableReader) == (int)LockState.UpgradeableReader)
                 {
@@ -732,10 +747,18 @@ public sealed class AsyncReaderWriterLock
                 }
             }
 
-            if (toWake is null && _waitingUpgradeableReaders.Count > 0)
+            else if (_waitingUpgradeableReaders.Count > 0)
             {
                 toWake = _waitingUpgradeableReaders.Dequeue();
                 releaser = new Releaser(this, Releaser.ReleaserType.UpgradeableReader);
+            }
+
+            else if (_waitingReaders.Count > 0)
+            {
+                toWake = _waitingReaders.Dequeue();
+                releaser = new Releaser(this, Releaser.ReleaserType.Reader);
+                int status = Interlocked.Add(ref _status, 1 - (int)LockState.UpgradeableReader);
+                Debug.Assert(status >= 0, "Upgradeable Reader lock should be held.");
             }
 
             if (toWake is null)
@@ -786,7 +809,6 @@ public sealed class AsyncReaderWriterLock
         }
 
         toWake?.SetResult(releaser);
-
         readerChain?.SetChainResult(new Releaser(this, Releaser.ReleaserType.Reader));
     }
 
@@ -794,15 +816,19 @@ public sealed class AsyncReaderWriterLock
     {
         ManualResetValueTaskSource<Releaser>? readerChain = null;
         ManualResetValueTaskSource<Releaser>? toWake = null;
+        Releaser releaser = default;
 
         lock (_mutex)
         {
-            Debug.Assert(_status == (int)LockState.UpgradedWriter, "Upgraded writer lock should be held.");
+            Debug.Assert(_status == (int)LockState.UpgradedWriter ||
+                _status == (int)LockState.UpgradedWriterWithoutReader,
+                "Upgraded writer lock should be held.");
 
             // another instance of an upgraded writer might be waiting
             if (_waitingUpgradedWriters.Count > 0)
             {
                 toWake = _waitingUpgradedWriters.Dequeue();
+                releaser = new Releaser(this, Releaser.ReleaserType.UpgradedWriter);
             }
             else
             {
@@ -814,14 +840,37 @@ public sealed class AsyncReaderWriterLock
                     {
                         readerChain = _waitingReaders.DetachAll(out readerCount);
                     }
+
+                    if (_status == (int)LockState.UpgradedWriterWithoutReader)
+                    {
+                        if (_waitingUpgradeableReaders.Count > 0)
+                        {
+                            toWake = _waitingUpgradeableReaders.Dequeue();
+                            releaser = new Releaser(this, Releaser.ReleaserType.UpgradeableReader);
+                            readerCount += (int)LockState.UpgradeableReader;
+                        }
+                    }
+                    else
+                    {
+                        readerCount += (int)LockState.UpgradeableReader;
+                    }
+                }
+                else if (_status == (int)LockState.UpgradedWriterWithoutReader)
+                {
+                    toWake = _waitingWriters.Dequeue();
+                    releaser = new Releaser(this, Releaser.ReleaserType.Writer);
+                    readerCount = (int)LockState.Writer;
+                }
+                else
+                {
+                    readerCount = (int)LockState.UpgradeableReader;
                 }
 
-                Interlocked.Exchange(ref _status, readerCount + (int)LockState.UpgradeableReader);
+                Interlocked.Exchange(ref _status, readerCount);
             }
         }
 
-        toWake?.SetResult(new Releaser(this, Releaser.ReleaserType.UpgradedWriter));
-
+        toWake?.SetResult(releaser);
         readerChain?.SetChainResult(new Releaser(this, Releaser.ReleaserType.Reader));
     }
 
