@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 
 <Project Sdk="Microsoft.NET.Sdk">
@@ -33,7 +33,7 @@
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
-        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="Microsoft.Bcl.Hashcode" />
         <PackageReference Include="System.Threading.Tasks.Extensions" />
       </ItemGroup>
     </When>
@@ -46,7 +46,7 @@
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
-        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="Microsoft.Bcl.Hashcode" />
         <PackageReference Include="System.Threading.Tasks.Extensions" />
       </ItemGroup>
     </When>
@@ -62,9 +62,7 @@
 
   <!-- Include the Threading.Analyzers in this package for transitive analyzer support -->
   <ItemGroup>
-    <ProjectReference Include="..\Threading.Analyzers\Threading.Analyzers.csproj" 
-                      PrivateAssets="all" 
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Threading.Analyzers\Threading.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Pack the analyzer DLL into the analyzers folder - this makes it transitive to consumers -->

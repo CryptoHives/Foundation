@@ -10,7 +10,7 @@ using System.Threading;
 /// <summary>
 /// A group of cancellation types for tests.
 /// </summary>
-public class CancellationType : IFormattable
+public partial class CancellationType : IFormattable
 {
     public static readonly CancellationType None = new(nameof(None), CancellationToken.None);
     public static readonly CancellationType Cancelled = new(nameof(Cancelled), new CancellationToken(true));

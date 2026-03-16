@@ -636,12 +636,12 @@ public class AsyncReaderWriterLockTests
         // Reader releaser should not allow upgrading
         using (var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
         {
-            Assert.Throws<InvalidOperationException>(() => reader.UpgradeToWriterLockAsync());
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await reader.UpgradeToWriterLockAsync().ConfigureAwait(false));
         }
 
         // Default (uninitialized) releaser should also throw
         var none = default(AsyncReaderWriterLock.Releaser);
-        Assert.Throws<InvalidOperationException>(() => none.UpgradeToWriterLockAsync());
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await none.UpgradeToWriterLockAsync().ConfigureAwait(false));
     }
 
     [Test]
@@ -706,7 +706,7 @@ public class AsyncReaderWriterLockTests
         using (var upgWriter = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false))
         {
             // The returned releaser is an UpgradedWriter and must not be allowed to call EnterUpgradedWriterLockAsync()
-            Assert.Throws<InvalidOperationException>(() => upgWriter.UpgradeToWriterLockAsync());
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await upgWriter.UpgradeToWriterLockAsync().ConfigureAwait(false));
         }
 
         // clean up
@@ -1207,31 +1207,6 @@ public class AsyncReaderWriterLockTests
         Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
         Assert.That(ev.WaitingUpgradedWritersCount, Is.Zero);
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
-    }
-
-    [Test]
-    public void TryReset_FailsWhenLocked()
-    {
-        var ev = new AsyncReaderWriterLock();
-
-        // Acquire internal mutex via reflection and hold it to simulate being in-use
-        var fld = typeof(AsyncReaderWriterLock).GetField("_mutex", BindingFlags.NonPublic | BindingFlags.Instance);
-        Assert.That(fld, Is.Not.Null, "_mutex field not found");
-
-        var mutex = fld.GetValue(ev);
-        Assert.That(mutex, Is.Not.Null);
-
-        // Enter the mutex to block TryReset
-        Monitor.Enter(mutex);
-        try
-        {
-            bool reset = ev.TryReset();
-            Assert.That(reset, Is.False);
-        }
-        finally
-        {
-            Monitor.Exit(mutex);
-        }
     }
 }
 

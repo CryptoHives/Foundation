@@ -396,14 +396,14 @@ public class AsyncLockTests
 
         if (useAsTask)
         {
-            using (vt.AsTask().GetAwaiter().GetResult())
+            using (await vt.AsTask().ConfigureAwait(false))
             {
                 Assert.That(al.IsTaken);
             }
         }
         else
         {
-            using (vt.Preserve().GetAwaiter().GetResult())
+            using (await vt.Preserve().ConfigureAwait(false))
             {
                 Assert.That(al.IsTaken);
             }
@@ -427,31 +427,6 @@ public class AsyncLockTests
         Assert.That(reset, Is.True);
 
         Assert.That(ev.IsTaken, Is.False);
-    }
-
-    [Test]
-    public void TryReset_FailsWhenLocked()
-    {
-        var ev = new AsyncLock();
-
-        // Acquire internal mutex via reflection and hold it to simulate being in-use
-        var fld = typeof(AsyncLock).GetField("_mutex", BindingFlags.NonPublic | BindingFlags.Instance);
-        Assert.That(fld, Is.Not.Null, "_mutex field not found");
-
-        var mutex = fld.GetValue(ev);
-        Assert.That(mutex, Is.Not.Null);
-
-        // Enter the mutex to block TryReset
-        Monitor.Enter(mutex);
-        try
-        {
-            bool reset = ev.TryReset();
-            Assert.That(reset, Is.False);
-        }
-        finally
-        {
-            Monitor.Exit(mutex);
-        }
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()

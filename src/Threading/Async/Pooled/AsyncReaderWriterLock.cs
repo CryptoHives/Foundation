@@ -25,12 +25,29 @@ using System.Threading.Tasks.Sources;
 /// of <see cref="TaskCompletionSource{TResult}"/> and <see cref="Task"/>.
 /// </para>
 /// <para>
-/// The lock supports multiple concurrent readers,
-/// concurrent readers and one single upgradeable reader,
+/// The lock supports multiple concurrent readers, concurrent readers with an upgradeable reader,
 /// a single exclusive writer or a single upgraded exclusive writer.
 /// Writer and upgraded writer requests are prioritized over new reader requests
-/// to prevent writer starvation.
+/// to prevent writer starvation. New readers are released in batches to avoid excessive Task wakeup.
 /// </para>
+/// <devnotes>
+/// Considering this class to be a state machine, the states are:
+/// <code>
+/// <![CDATA[
+///    ------------
+///    |          | <-----> READERS
+///    |          | <-----> UPGRADEABLE READER + READERS
+///    |   IDLE   | <-----> UPGRADEABLE READER -----> UPGRADED WRITER --\
+///    | NO LOCKS |         ^                                           |
+///    |          |         |------- DEMOTE TO UPGRADEABLE READER    <--/
+///    |          | <--------------- DEMOTE TO IDLE WITHOUT READER   <--/
+///    |          | <-----> WRITER
+///    ------------
+/// ]]>
+/// </code>
+/// Each state employs a queue for waiting tasks, and the transitions between states
+/// are managed through atomic operations and a lock to ensure thread safety.
+/// </devnotes>
 /// <para>
 /// <b>Important Usage Note:</b> Awaiting on <see cref="ValueTask"/> has its own caveats, as it
 /// is a struct that can only be awaited or converted with AsTask() ONE single time.
@@ -93,7 +110,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </summary>
     /// <remarks>
     /// This constant is used to limit the number of simultaneous readers incl. the upgradeable reader.
-    /// The value is set to a reasonable count to prevent too many active tasks.
+    /// The value is set to a reasonable count to prevent too many active concurrent tasks.
     /// More readers are queued and released in batches to prevent excessive spinning and CPU usage
     /// when there are many waiting readers.
     /// </remarks>

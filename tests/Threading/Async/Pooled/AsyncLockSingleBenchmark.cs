@@ -121,10 +121,36 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Interlocked.Increment")]
+    [BenchmarkCategory("Lock", "System", "Interlocked.Inc")]
     public void InterlockedIncrementSingle()
     {
-        Interlocked.Increment(ref _counter);
+        _ = Interlocked.Increment(ref _counter);
+    }
+
+    /// <summary>
+    /// Benchmark for Interlocked.Add vs C# lock statements.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("Lock", "System", "Interlocked.Add")]
+    public void InterlockedAdd()
+    {
+        _ = Interlocked.Add(ref _counter, 1);
+    }
+
+    /// <summary>
+    /// Benchmark for Interlocked.CompareExchange vs C# lock statements.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("Lock", "System", "Interlocked.CmpX")]
+    public void InterlockedCompareExchange()
+    {
+        // perform the increment in an unchecked context to match other increment benchmarks
+        unchecked {
+            // compare always succeeds
+            _ = Interlocked.CompareExchange(ref _counter, _counter + 1, _counter);
+        }
     }
 
     /// <summary>
@@ -224,10 +250,43 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
             unchecked { _counter++; }
         }
     }
+
+    /// <summary>
+    /// Benchmark for the NeoSmart AsyncLock implementation.
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path performance of the third party NeoSmart implementation.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("LockAsync", "ProtoPromise")]
+    public async Task LockUnlockProtoPromiseSingleAsync()
+    {
+        using (await _lockProtoPromise.LockAsync())
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+    }
 #endif
 
     /// <summary>
-    /// Benchmark for reference implementation async lock (single uncontended acquisition, baseline).
+    /// Benchmark for Visual Studio Threading async semaphore used as an async lock.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("LockAsync", "VS.Threading", "AsyncSemaphore")]
+    public async Task LockUnlockVSThreadingSingleAsync()
+    {
+        using (await _lockVSThreading.EnterAsync().ConfigureAwait(false))
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+    }
+
+    /// <summary>
+    /// Benchmark for reference implementation async lock.
     /// </summary>
     /// <remarks>
     /// Measures the fast-path performance of the TaskCompletionSource-based reference implementation.

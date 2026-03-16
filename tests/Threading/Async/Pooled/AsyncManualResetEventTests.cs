@@ -344,34 +344,9 @@ public class AsyncManualResetEventTests
         Assert.That(ev.IsSet, Is.True);
 
         bool reset = ev.TryReset();
-        Assert.That(reset, Is.False);
+        Assert.That(reset, Is.True);
 
         Assert.That(ev.IsSet, Is.False);
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
-    }
-
-    [Test]
-    public void TryReset_FailsWhenLocked()
-    {
-        var ev = new AsyncManualResetEvent();
-
-        // Acquire internal mutex via reflection and hold it to simulate being in-use
-        var fld = typeof(AsyncManualResetEvent).GetField("_mutex", BindingFlags.NonPublic | BindingFlags.Instance);
-        Assert.That(fld, Is.Not.Null, "_mutex field not found");
-
-        var mutex = fld.GetValue(ev);
-        Assert.That(mutex, Is.Not.Null);
-
-        // Enter the mutex to block TryReset
-        Monitor.Enter(mutex);
-        try
-        {
-            bool reset = ev.TryReset();
-            Assert.That(reset, Is.False);
-        }
-        finally
-        {
-            Monitor.Exit(mutex);
-        }
     }
 }

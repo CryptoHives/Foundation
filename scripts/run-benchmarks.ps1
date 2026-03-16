@@ -92,7 +92,7 @@ $ErrorActionPreference = "Stop"
 # If invoked with no parameters, print concise supported-parameters summary and exit
 if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host ""
-    Write-Host "Summary of supported parameters (name — choices — default):" -ForegroundColor Yellow
+    Write-Host "Summary of supported parameters (name - choices - default):" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "   - Project — Threading | Cryptography - select one"
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "

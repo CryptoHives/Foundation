@@ -28,8 +28,10 @@ public abstract class AsyncLockBaseBenchmark
     private protected NitoAsyncEx.AsyncLock _lockNitoAsync;
     private protected AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
     private protected RefImpl.AsyncLock _lockRefImp;
+    private protected Microsoft.VisualStudio.Threading.AsyncSemaphore _lockVSThreading;
 #if !NETFRAMEWORK
     private protected NeoSmart.AsyncLock.AsyncLock _lockNeoSmart;
+    private protected Proto.Promises.Threading.AsyncLock _lockProtoPromise;
 #endif
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
@@ -50,8 +52,10 @@ public abstract class AsyncLockBaseBenchmark
         _lockNitoAsync = new();
         _lockNonKeyed = new();
         _lockRefImp = new();
+        _lockVSThreading = new(1);
 #if !NETFRAMEWORK
         _lockNeoSmart = new();
+        _lockProtoPromise = new();
 #endif
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
@@ -66,5 +70,6 @@ public abstract class AsyncLockBaseBenchmark
     {
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
+        _lockVSThreading?.Dispose();
     }
 }
