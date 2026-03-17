@@ -42,7 +42,7 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("WriterLock", "System", "ReaderWriterLockSlim")]
+    [BenchmarkCategory("WriterLock", "System", "RWLockSlim")]
     public void WriteLockReaderWriterLockSlim()
     {
         _rwLockSlim.EnterWriteLock();
@@ -99,4 +99,30 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
             unchecked { _counter++; }
         }
     }
+
+    /// <summary>
+    /// Benchmark for VS Threading library reader-writer lock (writer).
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("WriterLock", "VS.Threading")]
+    public async Task ReaderLockVSThreadingAsync()
+    {
+        using var result = await _rwLockVSThreading.WriteLockAsync();
+        unchecked { _counter++; }
+    }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Benchmark for Proto Promises library reader-writer lock (writer).
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("WriterLock", "ProtoPromises")]
+    public async Task ReaderLockProtoPromisesAsync()
+    {
+        using var result = await _rwLockProtoPromises.WriterLockAsync();
+        unchecked { _counter++; }
+    }
+#endif
 }

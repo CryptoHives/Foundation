@@ -22,6 +22,7 @@ public abstract class AsyncSemaphoreBaseBenchmark
     private protected AsyncSemaphore _semaphorePooled;
     private protected NitoAsyncEx.AsyncSemaphore _semaphoreNitoAsync;
     private protected RefImpl.AsyncSemaphore _semaphoreRefImp;
+    private protected Microsoft.VisualStudio.Threading.AsyncSemaphore _semaphoreVSThreading;
     private protected SemaphoreSlim _semaphoreSlim;
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
@@ -37,6 +38,7 @@ public abstract class AsyncSemaphoreBaseBenchmark
         _semaphoreNitoAsync = new NitoAsyncEx.AsyncSemaphore(1);
         _semaphoreRefImp = new RefImpl.AsyncSemaphore(1);
         _semaphoreSlim = new SemaphoreSlim(1, 1);
+        _semaphoreVSThreading = new Microsoft.VisualStudio.Threading.AsyncSemaphore(1);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
     }
@@ -51,5 +53,6 @@ public abstract class AsyncSemaphoreBaseBenchmark
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
         _semaphoreSlim?.Dispose();
+        _semaphoreVSThreading?.Dispose();
     }
 }

@@ -34,6 +34,8 @@ using System.Threading.Tasks;
 /// <item><description><b>Pooled (Task):</b> Same pooled implementation converted to Task via AsTask() (incurs allocation).</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based lock and IDisposable releaser.</description></item>
 /// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and Task.</description></item>
+/// <item><description><b>VisualStudio.Threading:</b> VS threading library using AsyncSemaphore for locking.</description></item>
+/// <item><description><b>Proto.Promises:</b> Threading library implementing AsyncLock for locking via promises.</description></item>
 /// <item><description><b>AsyncKeyedLock (NonKeyed):</b> Third-party high-performance async lock library.</description></item>
 /// </list>
 /// <para>

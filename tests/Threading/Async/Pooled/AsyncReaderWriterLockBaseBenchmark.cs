@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable VSTHRD012 // Provide JoinableTaskFactory where allowed
+
 namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
@@ -22,6 +24,10 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
     private protected AsyncReaderWriterLock _rwLockPooled;
     private protected NitoAsyncEx.AsyncReaderWriterLock _rwLockNitoAsync;
     private protected RefImpl.AsyncReaderWriterLock _rwLockRefImp;
+    private protected Microsoft.VisualStudio.Threading.AsyncReaderWriterLock _rwLockVSThreading;
+#if !NETFRAMEWORK
+    private protected Proto.Promises.Threading.AsyncReaderWriterLock _rwLockProtoPromises;
+#endif
     private protected ReaderWriterLockSlim _rwLockSlim;
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
@@ -36,7 +42,11 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
         _rwLockPooled = new AsyncReaderWriterLock();
         _rwLockNitoAsync = new NitoAsyncEx.AsyncReaderWriterLock();
         _rwLockRefImp = new RefImpl.AsyncReaderWriterLock();
-        _rwLockSlim = new ReaderWriterLockSlim();
+        _rwLockVSThreading = new Microsoft.VisualStudio.Threading.AsyncReaderWriterLock();
+#if !NETFRAMEWORK
+        _rwLockProtoPromises = new Proto.Promises.Threading.AsyncReaderWriterLock();
+#endif
+        _rwLockSlim = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
     }
@@ -51,5 +61,6 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
         _rwLockSlim?.Dispose();
+        _rwLockVSThreading?.Dispose();
     }
 }
