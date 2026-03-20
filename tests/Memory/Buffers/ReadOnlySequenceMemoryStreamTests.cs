@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Memory.Tests.Buffers;
@@ -64,5 +64,31 @@ public class ReadOnlySequenceMemoryStreamTests
         Assert.That(stream.ToArray(), Is.Empty);
 
         Assert.DoesNotThrow(() => Act());
+    }
+
+    [Test]
+    public void ReadOnlySequenceMemoryStreamSeekWithinSlicedSingleSegmentShouldReadExpectedBytes()
+    {
+        byte[] source = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        ReadOnlySequence<byte> sequence = new(source, 2, 5);
+
+        using ReadOnlySequenceMemoryStream stream = new(sequence);
+
+        Assert.That(stream.Seek(2, SeekOrigin.Begin), Is.EqualTo(2));
+        Assert.That(stream.ReadByte(), Is.EqualTo(4));
+        Assert.That(stream.Position, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void ReadOnlySequenceMemoryStreamSeekToEndOnSlicedSingleSegmentShouldSucceed()
+    {
+        byte[] source = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        ReadOnlySequence<byte> sequence = new(source, 2, 5);
+
+        using ReadOnlySequenceMemoryStream stream = new(sequence);
+
+        Assert.That(stream.Seek(sequence.Length, SeekOrigin.Begin), Is.EqualTo(sequence.Length));
+        Assert.That(stream.ReadByte(), Is.EqualTo(-1));
+        Assert.That(stream.Position, Is.EqualTo(sequence.Length));
     }
 }

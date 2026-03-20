@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1725 // Change names of parameters to match base declaration
@@ -480,10 +480,21 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// Attempts to copy the stream content into the provided destination span.
     /// Returns true on success, false if the destination is too small.
     /// </summary>
-    public bool TryCopyTo(Span<byte> destination)
+    /// <param name="destination">The destination span that receives the stream content.</param>
+    /// <param name="bytesWritten">When this method returns, contains the number of bytes written to <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if the content was copied; otherwise <see langword="false"/>.</returns>
+    public bool TryCopyTo(Span<byte> destination, out int bytesWritten)
     {
         int absoluteLength = GetAbsoluteLength();
-        if (destination.Length < absoluteLength) return false;
+
+        if (destination.Length < absoluteLength)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        bytesWritten = absoluteLength;
+
         int offset = 0;
         foreach (ArraySegment<byte> buffer in _buffers)
         {
@@ -492,7 +503,10 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
                 int length = Math.Min(absoluteLength - offset, buffer.Count);
                 new ReadOnlySpan<byte>(buffer.Array, buffer.Offset, length).CopyTo(destination.Slice(offset));
                 offset += length;
-                if (offset >= absoluteLength) break;
+                if (offset >= absoluteLength)
+                {
+                    break;
+                }
             }
         }
         return true;
