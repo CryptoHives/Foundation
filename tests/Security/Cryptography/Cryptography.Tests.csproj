@@ -46,7 +46,9 @@
 
   <!-- Exclude IndexRange transitive dependency from NaCl.Core to avoid conflict with Microsoft.Bcl.Memory on net48 -->
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
-    <PackageReference Include="IndexRange" ExcludeAssets="all" PrivateAssets="all" />
+    <PackageReference Include="IndexRange" ExcludeAssets="all" PrivateAssets="all">
+      <IncludeAssets>none</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <!-- Blake3 NuGet package only supports .NET 8+ and is not strong name signed-->

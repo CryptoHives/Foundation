@@ -86,8 +86,6 @@ public AsyncReaderWriterLock(
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `IsReaderLockHeld` | `bool` | Gets whether any readers hold the lock. |
-| `IsWriterLockHeld` | `bool` | Gets whether a writer holds the lock. |
 | `CurrentReaderCount` | `int` | Gets the number of readers holding the lock. |
 | `WaitingWriterCount` | `int` | Gets the number of writers waiting. |
 | `WaitingReaderCount` | `int` | Gets the number of readers waiting. |
