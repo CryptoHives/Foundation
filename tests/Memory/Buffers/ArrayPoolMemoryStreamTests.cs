@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Memory.Tests.Buffers;
@@ -15,6 +15,36 @@ using System.IO;
 [Parallelizable(ParallelScope.All)]
 public class ArrayPoolMemoryStreamTests
 {
+    [Test]
+    public void ArrayPoolMemoryStreamTryCopyToShouldReturnWrittenLength()
+    {
+        using ArrayPoolMemoryStream stream = new();
+        byte[] source = [0xaa, 0x55, 0x33];
+        stream.Write(source, 0, source.Length);
+
+        long positionBefore = stream.Position;
+
+        Span<byte> tooSmall = stackalloc byte[2];
+        bool tooSmallResult = stream.TryCopyTo(tooSmall, out int tooSmallWritten);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(tooSmallResult, Is.False);
+            Assert.That(tooSmallWritten, Is.Zero);
+        }
+
+        Span<byte> destination = stackalloc byte[3];
+        bool copied = stream.TryCopyTo(destination, out int bytesWritten);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(copied, Is.True);
+            Assert.That(bytesWritten, Is.EqualTo(source.Length));
+            Assert.That(destination.ToArray(), Is.EqualTo(source));
+            Assert.That(stream.Position, Is.EqualTo(positionBefore));
+        }
+    }
+
     /// <summary>
     /// Test the default behavior of <see cref="ArrayPoolMemoryStream"/>.
     /// </summary>

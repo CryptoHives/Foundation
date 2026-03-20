@@ -1,4 +1,4 @@
-﻿# ArrayPoolMemoryStream Class
+# ArrayPoolMemoryStream Class
 
 A memory-backed stream implementation that rents fixed-size buffers from `ArrayPool<byte>.Shared` and stores data in multiple segments.
 
@@ -74,13 +74,16 @@ public override void WriteByte(byte value)
 public override long Seek(long offset, SeekOrigin loc)
 ```
 
-### Zero-Copy Access
+### Zero-Allocation/Zero-Copy Access
 
 ```csharp
 public ReadOnlySequence<byte> GetReadOnlySequence()
+public bool TryCopyTo(Span<byte> destination, out int bytesWritten)
 ```
 
-Returns a `ReadOnlySequence<byte>` representing all data in the stream. The sequence is valid until the next write operation or disposal.
+Returns a `ReadOnlySequence<byte>` representing all data in the stream. The sequence is valid until the next write operation or disposal. There is no allocation or copy involved in the service call. This is the recommended way to use the streamed data, but it requires extra lifetime management of the stream.
+
+`TryCopyTo` provides a non-throwing copy path for callers that already own a destination buffer. The `bytesWritten` variable reports the copied length on success and `0` when the destination is too small.
 
 ### Other Methods
 
@@ -221,6 +224,23 @@ using var destination = new FileStream("output.dat", FileMode.Create);
 await source.CopyToAsync(destination);
 ```
 
+### TryCopyTo into a Preallocated Buffer
+
+```csharp
+using var stream = new ArrayPoolMemoryStream();
+await WriteDataAsync(stream);
+
+Span<byte> destination = stackalloc byte[256];
+if (stream.TryCopyTo(destination, out int bytesWritten))
+{
+    ProcessData(destination.Slice(0, bytesWritten));
+}
+else
+{
+    // destination is too small
+}
+```
+
 ## Performance Considerations
 
 ### When to Use
@@ -270,4 +290,4 @@ var sequence = stream.GetReadOnlySequence();
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives
