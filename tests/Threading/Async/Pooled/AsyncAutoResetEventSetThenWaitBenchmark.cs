@@ -117,5 +117,19 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
         _eventRefImp.Set();
         await _eventRefImp.WaitAsync().ConfigureAwait(false);
     }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Benchmark for ProtoPromises async auto-reset event Set-then-Wait.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetThenWait", "ProtoPromise")]
+    public async Task ProtoPromiseAsyncAutoResetEventSetThenWaitAsync()
+    {
+        _eventProtoPromises.Set();
+        await _eventProtoPromises.WaitAsync();
+    }
+#endif
 }
 

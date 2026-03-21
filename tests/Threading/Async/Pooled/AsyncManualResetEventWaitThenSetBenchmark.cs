@@ -68,6 +68,9 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
 {
     private Task?[] _task;
     private ValueTask[] _valueTask;
+#if !NETFRAMEWORK
+    private Proto.Promises.Promise[]? _promise;
+#endif
 
     public static readonly object[] FixtureArgs = {
         new object[] { 1 },
@@ -99,6 +102,9 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
 
         _task = new Task[Iterations];
         _valueTask = new ValueTask[Iterations];
+    #if !NETFRAMEWORK
+        _promise = new Proto.Promises.Promise[Iterations];
+    #endif
     }
 
     /// <summary>
@@ -288,7 +294,6 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// allows the underlying ManualResetValueTaskSourceCore to complete synchronously when possible.
     /// </para>
     /// </remarks>
-    [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Pooled (AsValueTask)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
@@ -333,7 +338,6 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// Never store AsTask() results across signaling boundaries.
     /// </para>
     /// </remarks>
-    [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Pooled (AsTask)")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
@@ -371,7 +375,6 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// Serves as a Task-based reference for comparing against pooled ValueTask implementations.
     /// </para>
     /// </remarks>
-    [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "Nito.AsyncEx")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
@@ -411,7 +414,6 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     /// characteristics when processing batched wait/signal operations.
     /// </para>
     /// </remarks>
-    [Test]
     [Benchmark]
     [BenchmarkCategory("WaitThenSet", "RefImpl")]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
@@ -432,4 +434,35 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
             await _task[i]!.ConfigureAwait(false);
         }
     }
+
+#if !NETFRAMEWORK
+    [GlobalSetup(Target = nameof(ProtoPromiseAsyncManualResetEventWaitThenSetAsync))]
+    public void ProtoPromisesGlobalSetup()
+    {
+        GlobalSetup();
+        _promise = new Proto.Promises.Promise[Iterations];
+    }
+
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
+    [Benchmark]
+    [BenchmarkCategory("WaitThenSet", "ProtoPromise")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
+    public async Task ProtoPromiseAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
+    {
+        _eventProtoPromises.Reset();
+
+        for (int i = 0; i < Iterations; i++)
+        {
+            _promise![i] = _eventProtoPromises.TryWaitAsync(cancellationType.CancelationToken);
+        }
+
+        _eventProtoPromises.Set();
+
+        for (int i = 0; i < Iterations; i++)
+        {
+            await _promise![i];
+        }
+    }
+#endif
 }

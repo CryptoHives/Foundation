@@ -67,6 +67,9 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 {
     private Task?[] _task;
     private ValueTask[] _valueTask;
+#if !NETFRAMEWORK
+    private Proto.Promises.Promise[]? _promise;
+#endif
 
     public static readonly object[] FixtureArgs = {
         new object[] { 1 },
@@ -98,6 +101,9 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 
         _task = new Task[Iterations];
         _valueTask = new ValueTask[Iterations];
+    #if !NETFRAMEWORK
+        _promise = new Proto.Promises.Promise[Iterations];
+    #endif
     }
 
     /// <summary>
@@ -355,6 +361,44 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
             await _task[i]!.ConfigureAwait(false);
         }
     }
+
+#if !NETFRAMEWORK
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
+    public Task ProtoPromiseAsyncAutoResetEventWaitThenSetTestAsync(CancellationType cancellationType)
+    {
+        ProtoPromisesGlobalSetup();
+        return ProtoPromiseAsyncAutoResetEventWaitThenSetAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(ProtoPromiseAsyncAutoResetEventWaitThenSetAsync))]
+    public void ProtoPromisesGlobalSetup()
+    {
+        GlobalSetup();
+        _promise = new Proto.Promises.Promise[Iterations];
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("WaitThenSet", "ProtoPromise")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
+    public async Task ProtoPromiseAsyncAutoResetEventWaitThenSetAsync(CancellationType cancellationType)
+    {
+        for (int i = 0; i < Iterations; i++)
+        {
+            _promise![i] = _eventProtoPromises.TryWaitAsync(cancellationType.CancelationToken);
+        }
+
+        for (int i = 0; i < Iterations; i++)
+        {
+            _eventProtoPromises.Set();
+        }
+
+        for (int i = 0; i < Iterations; i++)
+        {
+            await _promise![i];
+        }
+    }
+#endif
 
 #if !SIGNASSEMBLY
     /// <summary>

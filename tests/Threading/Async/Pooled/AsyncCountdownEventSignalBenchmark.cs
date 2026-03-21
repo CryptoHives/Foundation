@@ -140,4 +140,41 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
         }
         await task.ConfigureAwait(false);
     }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Benchmark for ProtoPromises async countdown event Signal and Wait.
+    /// </summary>
+    [Test]
+    [Repeat(10)]
+    [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "ProtoPromise")]
+    public async Task SignalAndWaitProtoPromisesAsync()
+    {
+        _countdownProtoPromises.Reset();
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            _countdownProtoPromises.Signal();
+        }
+        await _countdownProtoPromises.TryWaitAsync(Proto.Promises.CancelationToken.None);
+    }
+
+    /// <summary>
+    /// Benchmark for ProtoPromises async countdown event Wait and Signal.
+    /// </summary>
+    [Test]
+    [Repeat(10)]
+    [Benchmark]
+    [BenchmarkCategory("WaitAndSignal", "ProtoPromise")]
+    public async Task WaitAndSignalProtoPromisesAsync()
+    {
+        _countdownProtoPromises.Reset();
+        var promise = _countdownProtoPromises.TryWaitAsync(Proto.Promises.CancelationToken.None);
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            _countdownProtoPromises.Signal();
+        }
+        await promise;
+    }
+#endif
 }

@@ -310,24 +310,24 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     }
 
     /// <summary>
-    /// <b>Out of contest:</b> Benchmark for NeoSmart.AsyncLock with multiple queued waiters.
+    /// <Benchmark for ProtoPromise.AsyncLock with multiple queued waiters.
     /// </summary>
     /// <remarks>
-    /// Measures the performance of the third-party NeoSmart.AsyncLock library under contention.
-    /// This implementation uses Task-based disposable primitives.
-    /// Since NeoSmart has a means of detecting that the lock is a nested acquisition by the same
-    /// Task, the behavior differs here as it can directly pass a completed task for nested waits.
+    /// Measures the performance of the third-party ProtoPromises.AsyncLock library under contention.
+    /// This implementation uses Promises-based disposable primitives.
+    /// Since ProtoPromises has custom implementations of pooling and waiter management, 
+    /// the behavior under contention may differ significantly from Task- or ValueTask-based implementations.
     /// </remarks>
     [Benchmark]
     [BenchmarkCategory("Multiple", "ProtoPromise")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
     public async Task LockUnlockProtoPromiseMultipleAsync(CancellationType cancellationType)
     {
-        using (await _lockProtoPromise.LockAsync(cancellationType.CancelationToken))
+        using (await _lockProtoPromise.LockAsync(cancellationType.CancelationToken, false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockProtoPromiseHandle![i] = _lockProtoPromise.LockAsync(cancellationType.CancelationToken);
+                _lockProtoPromiseHandle![i] = _lockProtoPromise.LockAsync(cancellationType.CancelationToken, false);
             }
         }
 

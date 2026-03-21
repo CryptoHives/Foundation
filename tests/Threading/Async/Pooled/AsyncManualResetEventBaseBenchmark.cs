@@ -22,6 +22,9 @@ public abstract class AsyncManualResetEventBaseBenchmark
     private protected AsyncManualResetEvent _eventPooled;
     private protected NitoAsyncEx.AsyncManualResetEvent _eventNitoAsync;
     private protected RefImpl.AsyncManualResetEvent _eventRefImp;
+#if !NETFRAMEWORK
+    private protected Proto.Promises.Threading.AsyncManualResetEvent _eventProtoPromises;
+#endif
     private protected ManualResetEvent _eventStandard;
     private protected ManualResetEventSlim _eventSlim;
     private protected CancellationTokenSource _cancellationTokenSource;
@@ -37,6 +40,9 @@ public abstract class AsyncManualResetEventBaseBenchmark
         _eventPooled = new AsyncManualResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncManualResetEvent();
         _eventRefImp = new RefImpl.AsyncManualResetEvent();
+    #if !NETFRAMEWORK
+        _eventProtoPromises = new Proto.Promises.Threading.AsyncManualResetEvent();
+    #endif
         _eventStandard = new ManualResetEvent(false);
         _eventSlim = new ManualResetEventSlim(false);
         _cancellationTokenSource = new CancellationTokenSource();

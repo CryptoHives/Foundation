@@ -138,4 +138,19 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
         await _eventRefImp.WaitAsync().ConfigureAwait(false);
         _eventRefImp.Reset();
     }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Benchmark for ProtoPromises async manual-reset event Set-then-Wait.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetThenWait", "ProtoPromise")]
+    public async Task ProtoPromiseAsyncManualResetEventSetThenWaitAsync()
+    {
+        _eventProtoPromises.Set();
+        await _eventProtoPromises.WaitAsync();
+        _eventProtoPromises.Reset();
+    }
+#endif
 }

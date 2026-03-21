@@ -117,4 +117,25 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
             _semaphoreRefImp.Release();
         }
     }
+
+    /// <summary>
+    /// Benchmark for ProtoPromises async semaphore (single uncontended acquisition).
+    /// </summary>
+#if !NETFRAMEWORK
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("WaitRelease", "ProtoPromise")]
+    public async Task WaitReleaseProtoPromiseSingleAsync()
+    {
+        await _semaphoreProtoPromises.WaitAsync();
+        try
+        {
+            unchecked { _counter++; }
+        }
+        finally
+        {
+            _semaphoreProtoPromises.Release();
+        }
+    }
+#endif
 }
