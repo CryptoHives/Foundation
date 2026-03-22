@@ -454,7 +454,7 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
 
         for (int i = 0; i < Iterations; i++)
         {
-            _promise![i] = _eventProtoPromises.TryWaitAsync(cancellationType.CancelationToken);
+            _promise![i] = _eventProtoPromises.TryWaitAsync(cancellationType.CancelationToken, false);
         }
 
         _eventProtoPromises.Set();

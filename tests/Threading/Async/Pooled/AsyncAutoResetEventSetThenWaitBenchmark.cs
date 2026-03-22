@@ -128,7 +128,7 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     public async Task ProtoPromiseAsyncAutoResetEventSetThenWaitAsync()
     {
         _eventProtoPromises.Set();
-        await _eventProtoPromises.WaitAsync();
+        await _eventProtoPromises.WaitAsync(false);
     }
 #endif
 }

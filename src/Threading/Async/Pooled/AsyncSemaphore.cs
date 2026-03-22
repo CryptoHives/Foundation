@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 using CryptoHives.Foundation.Threading.Pools;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -57,11 +58,7 @@ public sealed class AsyncSemaphore
     private WaiterQueue<bool> _waiters;
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
+    private Internal.SpinLock _spinLock;
     private int _currentCount;
     private bool _runContinuationAsynchronously;
 
@@ -81,7 +78,7 @@ public sealed class AsyncSemaphore
 
         _currentCount = initialCount;
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _mutex = new();
+        _spinLock = new();
         _waiters = new();
         _localWaiter = new(this);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
@@ -120,21 +117,39 @@ public sealed class AsyncSemaphore
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that completes when a permit is acquired.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
-        lock (_mutex)
+        while (true)
         {
-            if (_currentCount > 0)
+            int observed = Volatile.Read(ref _currentCount);
+            if (observed <= 0)
             {
-                _currentCount--;
+                break;
+            }
+
+            if (Interlocked.CompareExchange(ref _currentCount, observed - 1, observed) == observed)
+            {
                 return default;
             }
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
-            }
+            // retry until race condition succeeds
+        }
 
+        return WaitAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
+        }
+
+        _spinLock.Enter();
+        try
+        {
             if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -159,6 +174,10 @@ public sealed class AsyncSemaphore
 
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
     }
 
@@ -188,7 +207,8 @@ public sealed class AsyncSemaphore
 
         ManualResetValueTaskSource<bool>? toReleaseChain = null;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             int waitersToRelease = Math.Min(releaseCount, _waiters.Count);
             int remainingReleases = releaseCount - waitersToRelease;
@@ -198,7 +218,11 @@ public sealed class AsyncSemaphore
                 toReleaseChain = _waiters.DetachUpTo(waitersToRelease, out _);
             }
 
-            _currentCount += remainingReleases;
+            Interlocked.Add(ref _currentCount, remainingReleases);
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
 
         toReleaseChain?.SetChainResult(true);
@@ -229,16 +253,22 @@ public sealed class AsyncSemaphore
 
         // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
 #pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
 #pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

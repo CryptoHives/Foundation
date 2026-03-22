@@ -10,6 +10,7 @@ using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -156,12 +157,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     private WaiterQueue<Releaser> _waitingUpgradedWriters;
     private readonly LocalManualResetValueTaskSource<Releaser> _localUpgradedWriterWaiter;
 
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
-
+    private Internal.SpinLock _spinLock;
     private volatile int _status;
     private bool _runContinuationAsynchronously;
 
@@ -319,7 +315,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _mutex = new();
+        _spinLock = new();
 
         _waitingWriters = new();
         _localWriterWaiter = new(this);
@@ -343,19 +339,11 @@ public sealed class AsyncReaderWriterLock : IResettable
     {
         // check if lock is not in use before recycling the instance,
         // if the lock is currently held, it cannot be reset and reused
-#if NET9_0_OR_GREATER
-        if (!_mutex.TryEnter())
+        if (!_spinLock.TryEnter())
         {
             return false;
         }
-        _mutex.Exit();
-#else
-        if (!Monitor.TryEnter(_mutex))
-        {
-            return false;
-        }
-        Monitor.Exit(_mutex);
-#endif
+        _spinLock.Exit();
 
         _runContinuationAsynchronously = true;
         _status = 0;
@@ -427,7 +415,18 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </summary>
     public int WaitingWriterCount
     {
-        get { lock (_mutex) return _waitingWriters.Count; }
+        get
+        {
+            _spinLock.Enter();
+            try
+            {
+                return _waitingWriters.Count;
+            }
+            finally
+            {
+                _spinLock.Exit();
+            }
+        }
     }
 
     /// <summary>
@@ -435,7 +434,18 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </summary>
     public int WaitingReaderCount
     {
-        get { lock (_mutex) return _waitingReaders.Count; }
+        get
+        {
+            _spinLock.Enter();
+            try
+            {
+                return _waitingReaders.Count;
+            }
+            finally
+            {
+                _spinLock.Exit();
+            }
+        }
     }
 
     /// <summary>
@@ -443,7 +453,18 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </summary>
     public int WaitingUpgradeableReaderCount
     {
-        get { lock (_mutex) return _waitingUpgradeableReaders.Count; }
+        get
+        {
+            _spinLock.Enter();
+            try
+            {
+                return _waitingUpgradeableReaders.Count;
+            }
+            finally
+            {
+                _spinLock.Exit();
+            }
+        }
     }
 
     /// <summary>
@@ -451,7 +472,17 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </summary>
     public int WaitingUpgradedWritersCount
     {
-        get { lock (_mutex) return _waitingUpgradedWriters.Count; }
+        get
+        {
+            _spinLock.Enter(); try
+            {
+                return _waitingUpgradedWriters.Count;
+            }
+            finally
+            {
+                _spinLock.Exit();
+            }
+        }
     }
 
     /// <summary>
@@ -472,6 +503,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the reader lock is acquired.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> ReaderLockAsync(CancellationToken cancellationToken = default)
     {
         // fast path for uncontested reader lock acquisition
@@ -480,7 +512,14 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Reader));
         }
 
-        lock (_mutex)
+        return ReaderLockAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask<Releaser> ReaderLockAsyncImpl(CancellationToken cancellationToken)
+    {
+        _spinLock.Enter();
+        try
         {
             if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
             {
@@ -526,6 +565,10 @@ public sealed class AsyncReaderWriterLock : IResettable
             _waitingReaders.Enqueue(waiter);
             return new ValueTask<Releaser>(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -540,6 +583,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the upgradeable reader lock is acquired.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> UpgradeableReaderLockAsync(CancellationToken cancellationToken = default)
     {
         // fast path for uncontested upgradeable reader lock acquisition
@@ -548,7 +592,14 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.UpgradeableReader));
         }
 
-        lock (_mutex)
+        return UpgradeableReaderLockAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask<Releaser> UpgradeableReaderLockAsyncImpl(CancellationToken cancellationToken)
+    {
+        _spinLock.Enter();
+        try
         {
             if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
             {
@@ -593,6 +644,10 @@ public sealed class AsyncReaderWriterLock : IResettable
             _waitingUpgradeableReaders.Enqueue(waiter);
             return new ValueTask<Releaser>(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -604,6 +659,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask{Releaser}"/> that completes when the writer lock is acquired.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> WriterLockAsync(CancellationToken cancellationToken = default)
     {
         // fast path for uncontested writer lock acquisition
@@ -612,7 +668,14 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Writer));
         }
 
-        lock (_mutex)
+        return WriterLockAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask<Releaser> WriterLockAsyncImpl(CancellationToken cancellationToken)
+    {
+        _spinLock.Enter();
+        try
         {
             // double check for race conditions
             if (Interlocked.CompareExchange(ref _status, (int)LockState.Writer, (int)LockState.Uncontested) == (int)LockState.Uncontested)
@@ -650,6 +713,10 @@ public sealed class AsyncReaderWriterLock : IResettable
             _waitingWriters.Enqueue(waiter);
             return new ValueTask<Releaser>(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -664,7 +731,8 @@ public sealed class AsyncReaderWriterLock : IResettable
     {
         // no fast path because the upgrade always transitions from a contested state
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             // upgrade only if only the upgradeable reader is active
             if (Interlocked.CompareExchange(ref _status, (int)LockState.UpgradedWriter, (int)LockState.UpgradeableReader) == (int)LockState.UpgradeableReader)
@@ -702,6 +770,10 @@ public sealed class AsyncReaderWriterLock : IResettable
             _waitingUpgradedWriters.Enqueue(waiter);
             return new ValueTask<Releaser>(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     internal bool InternalReaderWaiterInUse => _localReaderWaiter.InUse;
@@ -717,7 +789,8 @@ public sealed class AsyncReaderWriterLock : IResettable
         ManualResetValueTaskSource<Releaser>? toWake = null;
         Releaser releaser = default;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             Debug.Assert(_status >= (int)LockState.Reader, "Reader lock should be held.");
 
@@ -757,6 +830,10 @@ public sealed class AsyncReaderWriterLock : IResettable
                 Debug.Assert(status >= (int)LockState.Uncontested, "Reader lock should be held.");
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
         toWake?.SetResult(releaser);
     }
@@ -766,7 +843,8 @@ public sealed class AsyncReaderWriterLock : IResettable
         ManualResetValueTaskSource<Releaser>? toWake = null;
         Releaser releaser = default;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_status == (int)LockState.UpgradedWriter)
             {
@@ -823,6 +901,10 @@ public sealed class AsyncReaderWriterLock : IResettable
                 Debug.Assert(status >= 0, "Upgradeable Reader lock should be held.");
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
         toWake?.SetResult(releaser);
     }
@@ -834,7 +916,8 @@ public sealed class AsyncReaderWriterLock : IResettable
         Releaser releaser = default;
         int readerCount = 0;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             Debug.Assert(_status == (int)LockState.Writer, "Writer lock should be held.");
 
@@ -863,6 +946,10 @@ public sealed class AsyncReaderWriterLock : IResettable
                 Interlocked.Exchange(ref _status, newStatus);
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
         toWake?.SetResult(releaser);
         readerChain?.SetChainResult(new Releaser(this, Releaser.ReleaserType.Reader));
@@ -874,7 +961,8 @@ public sealed class AsyncReaderWriterLock : IResettable
         ManualResetValueTaskSource<Releaser>? toWake = null;
         Releaser releaser = default;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             Debug.Assert(_status is
                 ((int)LockState.UpgradedWriter) or
@@ -926,6 +1014,10 @@ public sealed class AsyncReaderWriterLock : IResettable
                 Interlocked.Exchange(ref _status, readerCount);
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
         toWake?.SetResult(releaser);
         readerChain?.SetChainResult(new Releaser(this, Releaser.ReleaserType.Reader));
@@ -950,15 +1042,21 @@ public sealed class AsyncReaderWriterLock : IResettable
 #endif
 
         ManualResetValueTaskSource<Releaser>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waitingReaders.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
 #if NET6_0_OR_GREATER
@@ -980,15 +1078,21 @@ public sealed class AsyncReaderWriterLock : IResettable
 #endif
 
         ManualResetValueTaskSource<Releaser>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waitingUpgradeableReaders.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
 #if NET6_0_OR_GREATER
@@ -1010,15 +1114,21 @@ public sealed class AsyncReaderWriterLock : IResettable
 #endif
 
         ManualResetValueTaskSource<Releaser>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waitingWriters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
 #if NET6_0_OR_GREATER
@@ -1040,14 +1150,20 @@ public sealed class AsyncReaderWriterLock : IResettable
 #endif
 
         ManualResetValueTaskSource<Releaser>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waitingUpgradedWriters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 }

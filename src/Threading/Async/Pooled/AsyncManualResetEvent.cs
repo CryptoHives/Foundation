@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -75,11 +76,7 @@ public sealed class AsyncManualResetEvent : IResettable
     private WaiterQueue<bool> _waiters;
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
+    private Internal.SpinLock _spinLock;
     private volatile bool _signaled;
     private bool _runContinuationAsynchronously;
 
@@ -91,7 +88,7 @@ public sealed class AsyncManualResetEvent : IResettable
     /// <param name="pool">Custom pool for this instance.</param>
     public AsyncManualResetEvent(bool set = false, bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource<bool>? pool = null)
     {
-        _mutex = new();
+        _spinLock = new();
         _signaled = set;
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _waiters = new();
@@ -104,19 +101,11 @@ public sealed class AsyncManualResetEvent : IResettable
     {
         // check if lock is not in use before recycling the instance,
         // if the lock is currently held, it cannot be reset and reused
-#if NET9_0_OR_GREATER
-        if (!_mutex.TryEnter())
+        if (!_spinLock.TryEnter())
         {
             return false;
         }
-        _mutex.Exit();
-#else
-        if (!Monitor.TryEnter(_mutex))
-        {
-            return false;
-        }
-        Monitor.Exit(_mutex);
-#endif
+        _spinLock.Exit();
 
         _signaled = false;
         _runContinuationAsynchronously = true;
@@ -192,9 +181,22 @@ public sealed class AsyncManualResetEvent : IResettable
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
-        lock (_mutex)
+        if (_signaled)
+        {
+            return default;
+        }
+
+        return WaitAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken = default)
+    {
+        _spinLock.Enter();
+        try
         {
             if (_signaled)
             {
@@ -232,6 +234,10 @@ public sealed class AsyncManualResetEvent : IResettable
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -245,7 +251,8 @@ public sealed class AsyncManualResetEvent : IResettable
     {
         ManualResetValueTaskSource<bool>? toReleaseChain;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_signaled)
             {
@@ -254,6 +261,10 @@ public sealed class AsyncManualResetEvent : IResettable
 
             _signaled = true;
             toReleaseChain = _waiters.DetachAll(out _);
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
 
         toReleaseChain?.SetChainResult(true);
@@ -265,10 +276,15 @@ public sealed class AsyncManualResetEvent : IResettable
     /// </summary>
     public void Reset()
     {
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             Debug.Assert(_waiters.Count == 0, "There should be no waiters when resetting the event.");
             _signaled = false;
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
     }
 
@@ -295,18 +311,23 @@ public sealed class AsyncManualResetEvent : IResettable
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
 #pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
 #pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

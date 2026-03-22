@@ -149,7 +149,7 @@ public class AsyncManualResetEventSetThenWaitBenchmark : AsyncManualResetEventBa
     public async Task ProtoPromiseAsyncManualResetEventSetThenWaitAsync()
     {
         _eventProtoPromises.Set();
-        await _eventProtoPromises.WaitAsync();
+        await _eventProtoPromises.WaitAsync(false);
         _eventProtoPromises.Reset();
     }
 #endif

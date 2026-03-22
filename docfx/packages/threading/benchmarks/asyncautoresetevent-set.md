@@ -1,6 +1,7 @@
-﻿| Description                         | Mean       | Ratio | Allocated | 
-|------------------------------------ |-----------:|------:|----------:|
-| Set · AsyncAutoReset · Pooled       |   3.607 ns |  1.00 |         - | 
-| Set · AsyncAutoReset · RefImpl      |   4.125 ns |  1.14 |         - | 
-| Set · AsyncAutoReset · Nito.AsyncEx |   4.162 ns |  1.15 |         - | 
-| Set · AutoResetEvent · System       | 219.411 ns | 60.83 |         - |
+﻿| Description                         | Mean        | Ratio | Allocated | 
+|------------------------------------ |------------:|------:|----------:|
+| Set · AsyncAutoReset · ProtoPromise |   0.5562 ns |  0.16 |         - | 
+| Set · AsyncAutoReset · Pooled       |   3.5224 ns |  1.00 |         - | 
+| Set · AsyncAutoReset · RefImpl      |   4.1753 ns |  1.19 |         - | 
+| Set · AsyncAutoReset · Nito.AsyncEx |   4.2775 ns |  1.21 |         - | 
+| Set · AutoResetEvent · System       | 216.2537 ns | 61.39 |         - |

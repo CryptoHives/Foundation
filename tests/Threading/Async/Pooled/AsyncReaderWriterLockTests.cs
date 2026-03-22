@@ -368,7 +368,7 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-            Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await readerTask.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
@@ -394,7 +394,7 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-            Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await readerTask.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
@@ -420,7 +420,7 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-            Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await writerTask.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
@@ -447,7 +447,7 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-            Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await writerTask.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
@@ -661,7 +661,7 @@ public class AsyncReaderWriterLockTests
         // cancel and ensure waiter cleaned up
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiting.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiting.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
     }
@@ -684,7 +684,7 @@ public class AsyncReaderWriterLockTests
         // cancel the upgrade attempt and ensure it is removed from waiter queue
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
         Assert.That(rwLock.InternalUpgradedWriterWaiterInUse, Is.False);
@@ -750,7 +750,7 @@ public class AsyncReaderWriterLockTests
         // cancel the upgrade attempt and ensure it is removed from waiter queue
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
         Assert.That(rwLock.InternalUpgradedWriterWaiterInUse, Is.False);
@@ -843,7 +843,7 @@ public class AsyncReaderWriterLockTests
         using var upgr1 = await t1.ConfigureAwait(false);
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await t2.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
 

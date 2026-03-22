@@ -154,7 +154,7 @@ public class AsyncAutoResetEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter2.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
 
         ev.Set();
         await waiter1.ConfigureAwait(false);
@@ -182,8 +182,8 @@ public class AsyncAutoResetEventTests
         await AsyncAssert.CancelAsync(cts1).ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts3).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter1.ConfigureAwait(false));
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter3.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter1.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter3.ConfigureAwait(false));
 
         ev.Set();
         await waiter2.ConfigureAwait(false);
@@ -493,13 +493,17 @@ public class AsyncAutoResetEventTests
         {
             Task t = ev.WaitAsync(cts.Token).AsTask();
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+#if NETFRAMEWORK
             Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
+#else
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await t.ConfigureAwait(false));
+#endif
         }
         else
         {
             ValueTask vt = ev.WaitAsync(cts.Token);
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-            Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
         }
 
         Assert.That(ev.InternalWaiterInUse, Is.False);

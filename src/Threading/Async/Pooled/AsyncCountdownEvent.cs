@@ -54,11 +54,7 @@ public sealed class AsyncCountdownEvent
 {
     private WaiterQueue<bool> _waiters;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
+    private Internal.SpinLock _spinLock;
     private int _currentCount;
     private int _initialCount;
     private bool _runContinuationAsynchronously;
@@ -80,7 +76,7 @@ public sealed class AsyncCountdownEvent
         _currentCount = initialCount;
         _initialCount = initialCount;
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _mutex = new();
+        _spinLock = new();
         _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
@@ -129,7 +125,8 @@ public sealed class AsyncCountdownEvent
     /// <returns>A <see cref="ValueTask"/> that completes when the countdown reaches zero.</returns>
     public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -164,6 +161,10 @@ public sealed class AsyncCountdownEvent
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -193,7 +194,8 @@ public sealed class AsyncCountdownEvent
 
         ManualResetValueTaskSource<bool>? toReleaseChain = null;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -214,6 +216,10 @@ public sealed class AsyncCountdownEvent
             {
                 return;
             }
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
 
         toReleaseChain?.SetChainResult(true);
@@ -252,7 +258,8 @@ public sealed class AsyncCountdownEvent
             throw new ArgumentOutOfRangeException(nameof(signalCount), signalCount, "Signal count must be at least 1.");
         }
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -260,6 +267,10 @@ public sealed class AsyncCountdownEvent
             }
 
             _currentCount += signalCount;
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
     }
 
@@ -275,7 +286,8 @@ public sealed class AsyncCountdownEvent
             return false;
         }
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -284,6 +296,10 @@ public sealed class AsyncCountdownEvent
 
             _currentCount += signalCount;
             return true;
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
     }
 
@@ -299,7 +315,8 @@ public sealed class AsyncCountdownEvent
             throw new ArgumentOutOfRangeException(nameof(count), count, "Count must be non-negative.");
         }
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             Debug.Assert(_waiters.Count == 0, "There should be no waiters when resetting the countdown.");
             _currentCount = count > 0 ? count : _initialCount;
@@ -308,6 +325,11 @@ public sealed class AsyncCountdownEvent
                 _initialCount = count;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
     }
 
 #if NET6_0_OR_GREATER
@@ -328,16 +350,21 @@ public sealed class AsyncCountdownEvent
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 }

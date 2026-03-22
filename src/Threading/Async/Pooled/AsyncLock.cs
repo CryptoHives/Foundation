@@ -9,6 +9,7 @@ using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -54,11 +55,7 @@ public sealed class AsyncLock : IResettable
     private WaiterQueue<Releaser> _waiters;
     private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
+    private Internal.SpinLock _spinLock;
     private volatile int _taken;
 
     /// <summary>
@@ -69,7 +66,7 @@ public sealed class AsyncLock : IResettable
     {
         _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
-        _mutex = new();
+        _spinLock = new();
         _taken = 0;
         _localWaiter = new(this);
         _localWaiter.RunContinuationsAsynchronously = true;
@@ -80,19 +77,11 @@ public sealed class AsyncLock : IResettable
     {
         // check if lock is not in use before recycling the instance,
         // if the lock is currently held, it cannot be reset and reused
-#if NET9_0_OR_GREATER
-        if (!_mutex.TryEnter())
+        if (!_spinLock.TryEnter())
         {
             return false;
         }
-        _mutex.Exit();
-#else
-        if (!Monitor.TryEnter(_mutex))
-        {
-            return false;
-        }
-        Monitor.Exit(_mutex);
-#endif
+        _spinLock.Exit();
 
         _taken = 0;
         _waiters = new();
@@ -184,6 +173,7 @@ public sealed class AsyncLock : IResettable
     /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.
     /// Dispose the returned releaser to release the lock.
     /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _taken, 1) == 0)
@@ -191,7 +181,14 @@ public sealed class AsyncLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this));
         }
 
-        lock (_mutex)
+        return LockAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask<Releaser> LockAsyncImpl(CancellationToken cancellationToken)
+    {
+        _spinLock.Enter();
+        try
         {
             if (Interlocked.Exchange(ref _taken, 1) == 0)
             {
@@ -230,6 +227,10 @@ public sealed class AsyncLock : IResettable
             _waiters.Enqueue(waiter);
             return new ValueTask<Releaser>(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -249,7 +250,8 @@ public sealed class AsyncLock : IResettable
     {
         ManualResetValueTaskSource<Releaser> toRelease;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Count == 0)
             {
@@ -258,6 +260,10 @@ public sealed class AsyncLock : IResettable
             }
 
             toRelease = _waiters.Dequeue();
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
 
         toRelease.SetResult(new Releaser(this));
@@ -283,16 +289,22 @@ public sealed class AsyncLock : IResettable
 
         // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<Releaser>? toCancel = null;
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
 
 #pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<Releaser>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
 #pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

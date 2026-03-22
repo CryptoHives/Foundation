@@ -8,6 +8,7 @@ using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -76,11 +77,7 @@ public sealed class AsyncAutoResetEvent : IResettable
     private WaiterQueue<bool> _waiters;
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
+    private Internal.SpinLock _spinLock;
     private volatile int _signaled;
     private bool _runContinuationAsynchronously;
 
@@ -94,7 +91,7 @@ public sealed class AsyncAutoResetEvent : IResettable
     {
         _signaled = initialState ? 1 : 0;
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _mutex = new();
+        _spinLock = new();
         _waiters = new();
         _localWaiter = new(this);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
@@ -105,19 +102,11 @@ public sealed class AsyncAutoResetEvent : IResettable
     {
         // check if lock is not in use before recycling the instance,
         // if the lock is currently held, it cannot be reset and reused
-#if NET9_0_OR_GREATER
-        if (!_mutex.TryEnter())
+        if (!_spinLock.TryEnter())
         {
             return false;
         }
-        _mutex.Exit();
-#else
-        if (!Monitor.TryEnter(_mutex))
-        {
-            return false;
-        }
-        Monitor.Exit(_mutex);
-#endif
+        _spinLock.Exit();
 
         _signaled = 0;
         _waiters = new();
@@ -192,6 +181,7 @@ public sealed class AsyncAutoResetEvent : IResettable
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
         // fast path without lock
@@ -200,9 +190,16 @@ public sealed class AsyncAutoResetEvent : IResettable
             return default;
         }
 
-        lock (_mutex)
+        return WaitAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken)
+    {
+        _spinLock.Enter();
+        try
         {
-            // due to race conditions, _signalled may have changed until the lock is taken
+            // due to race conditions, _signaled may have changed until the lock is taken
             if (Interlocked.Exchange(ref _signaled, 0) != 0)
             {
                 return default;
@@ -239,6 +236,10 @@ public sealed class AsyncAutoResetEvent : IResettable
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -252,7 +253,8 @@ public sealed class AsyncAutoResetEvent : IResettable
     {
         ManualResetValueTaskSource<bool>? toRelease;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Count == 0)
             {
@@ -261,6 +263,10 @@ public sealed class AsyncAutoResetEvent : IResettable
             }
 
             toRelease = _waiters.Dequeue();
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
 
         toRelease.SetResult(true);
@@ -286,7 +292,8 @@ public sealed class AsyncAutoResetEvent : IResettable
     {
         ManualResetValueTaskSource<bool>? toReleaseChain;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Count == 0)
             {
@@ -295,6 +302,10 @@ public sealed class AsyncAutoResetEvent : IResettable
             }
 
             toReleaseChain = _waiters.DetachAll(out _);
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
 
         toReleaseChain?.SetChainResult(true);
@@ -319,16 +330,22 @@ public sealed class AsyncAutoResetEvent : IResettable
 #endif
         // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
 #pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
 #pragma warning restore CA1508 // Avoid dead conditional code
     }
 }
