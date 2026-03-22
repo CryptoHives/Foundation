@@ -65,10 +65,10 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncBarrier
 {
-    private WaiterQueue<bool> _waiters;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private readonly Action<AsyncBarrier>? _postPhaseAction;
     private Internal.SpinLock _spinLock;
+    private WaiterQueue<bool> _waiters;
     private int _participantCount;
     private int _participantsRemaining;
     private long _currentPhase;
@@ -262,7 +262,7 @@ public sealed class AsyncBarrier
         if (participantCount < 1) throw new ArgumentOutOfRangeException(nameof(participantCount), participantCount, "The participantCount argument must be a positive value.");
 
         _spinLock.Enter();
-try
+        try
         {
             // Check for overflow
             if (_participantCount > int.MaxValue - participantCount)
@@ -397,7 +397,7 @@ try
                 _participantsRemaining++;
             }
         }
-                finally
+        finally
         {
             _spinLock.Exit();
         }

@@ -52,9 +52,9 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncCountdownEvent
 {
-    private WaiterQueue<bool> _waiters;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private Internal.SpinLock _spinLock;
+    private WaiterQueue<bool> _waiters;
     private int _currentCount;
     private int _initialCount;
     private bool _runContinuationAsynchronously;

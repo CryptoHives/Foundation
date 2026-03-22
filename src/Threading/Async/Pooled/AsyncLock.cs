@@ -52,10 +52,10 @@ using System.Threading.Tasks;
 /// </remarks>
 public sealed class AsyncLock : IResettable
 {
-    private WaiterQueue<Releaser> _waiters;
     private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
     private Internal.SpinLock _spinLock;
+    private WaiterQueue<Releaser> _waiters;
     private volatile int _taken;
 
     /// <summary>

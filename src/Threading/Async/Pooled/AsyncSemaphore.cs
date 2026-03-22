@@ -55,9 +55,9 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncSemaphore
 {
-    private WaiterQueue<bool> _waiters;
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
+    private WaiterQueue<bool> _waiters;
     private Internal.SpinLock _spinLock;
     private int _currentCount;
     private bool _runContinuationAsynchronously;

@@ -74,10 +74,10 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncAutoResetEvent : IResettable
 {
-    private WaiterQueue<bool> _waiters;
     private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private Internal.SpinLock _spinLock;
+    private WaiterQueue<bool> _waiters;
     private volatile int _signaled;
     private bool _runContinuationAsynchronously;
 
