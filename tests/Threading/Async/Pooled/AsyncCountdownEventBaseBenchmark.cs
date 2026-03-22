@@ -42,9 +42,9 @@ public abstract class AsyncCountdownEventBaseBenchmark
         _countdownPooled = new AsyncCountdownEvent(ParticipantCount);
         _countdownNitoAsync = new NitoAsyncEx.AsyncCountdownEvent(ParticipantCount);
         _countdownRefImp = new RefImpl.AsyncCountdownEvent(ParticipantCount);
-    #if !NETFRAMEWORK
+#if !NETFRAMEWORK
         _countdownProtoPromises = new Proto.Promises.Threading.AsyncCountdownEvent(ParticipantCount);
-    #endif
+#endif
         _countdownStandard = new CountdownEvent(ParticipantCount);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;

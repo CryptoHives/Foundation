@@ -40,9 +40,9 @@ public abstract class AsyncSemaphoreBaseBenchmark
         _semaphorePooled = new AsyncSemaphore(1);
         _semaphoreNitoAsync = new NitoAsyncEx.AsyncSemaphore(1);
         _semaphoreRefImp = new RefImpl.AsyncSemaphore(1);
-    #if !NETFRAMEWORK
+#if !NETFRAMEWORK
         _semaphoreProtoPromises = new Proto.Promises.Threading.AsyncSemaphore(1);
-    #endif
+#endif
         _semaphoreSlim = new SemaphoreSlim(1, 1);
         _semaphoreVSThreading = new Microsoft.VisualStudio.Threading.AsyncSemaphore(1);
         _cancellationTokenSource = new CancellationTokenSource();

@@ -40,9 +40,9 @@ public abstract class AsyncManualResetEventBaseBenchmark
         _eventPooled = new AsyncManualResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncManualResetEvent();
         _eventRefImp = new RefImpl.AsyncManualResetEvent();
-    #if !NETFRAMEWORK
+#if !NETFRAMEWORK
         _eventProtoPromises = new Proto.Promises.Threading.AsyncManualResetEvent();
-    #endif
+#endif
         _eventStandard = new ManualResetEvent(false);
         _eventSlim = new ManualResetEventSlim(false);
         _cancellationTokenSource = new CancellationTokenSource();

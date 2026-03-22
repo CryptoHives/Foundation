@@ -360,7 +360,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         _runContinuationAsynchronously = true;
         _status = 0;
 
-        _waitingWriters = new ();
+        _waitingWriters = new();
         _waitingReaders = new();
         _waitingUpgradeableReaders = new();
         _waitingUpgradedWriters = new();
@@ -369,7 +369,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         _localReaderWaiter.TryReset();
         _localUpgradeableReaderWaiter.TryReset();
         _localUpgradedWriterWaiter.TryReset();
-        
+
         return true;
     }
 

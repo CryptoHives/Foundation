@@ -147,7 +147,8 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     public void InterlockedCompareExchange()
     {
         // perform the increment in an unchecked context to match other increment benchmarks
-        unchecked {
+        unchecked
+        {
             // compare always succeeds
             _ = Interlocked.CompareExchange(ref _counter, _counter + 1, _counter);
         }

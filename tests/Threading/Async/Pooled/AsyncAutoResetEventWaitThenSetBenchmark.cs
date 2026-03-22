@@ -101,9 +101,9 @@ public class AsyncAutoResetEventWaitThenSetBenchmark : AsyncAutoResetEventBaseBe
 
         _task = new Task[Iterations];
         _valueTask = new ValueTask[Iterations];
-    #if !NETFRAMEWORK
+#if !NETFRAMEWORK
         _promise = new Proto.Promises.Promise[Iterations];
-    #endif
+#endif
     }
 
     /// <summary>

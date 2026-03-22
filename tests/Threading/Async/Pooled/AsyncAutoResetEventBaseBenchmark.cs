@@ -39,9 +39,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
         _eventPooled = new AsyncAutoResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
         _eventRefImp = new RefImpl.AsyncAutoResetEvent();
-    #if !NETFRAMEWORK
+#if !NETFRAMEWORK
         _eventProtoPromises = new Proto.Promises.Threading.AsyncAutoResetEvent();
-    #endif
+#endif
         _eventStandard = new AutoResetEvent(false);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
