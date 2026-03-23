@@ -7,19 +7,19 @@ A pooled, allocation-free async reader-writer lock that supports multiple concur
 `AsyncReaderWriterLock` is an async-compatible reader-writer lock. It allows multiple readers to enter the lock concurrently, but only one writer can hold the lock exclusively. Writers are prioritized over readers to prevent writer starvation. One upgradeable reader at a time can share access with multiple other readers. Once the
 upgradeable reader is upgraded to writer, it may have to wait until all readers release the lock. An upgradeable reader may release the lock while still upgraded writers are queued for write access.
 
-/// <code>
-/// <![CDATA[
-///    ------------
-///    |          | <-----> READERS
-///    |          | <-----> UPGRADEABLE READER + READERS
-///    |   IDLE   | <-----> UPGRADEABLE READER -----> UPGRADED WRITER --\
-///    | NO LOCKS |         ^                                           |
-///    |          |         |------- DEMOTE TO UPGRADEABLE READER    <--/
-///    |          | <--------------- DEMOTE TO IDLE WITHOUT READER   <--/
-///    |          | <-----> WRITER
-///    ------------
-/// ]]>
-/// </code>
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│    ------------                                                             │
+│    |          | <-----> READERS                                             │
+│    |          | <-----> UPGRADEABLE READER + READERS                        │
+│    |   IDLE   | <-----> UPGRADEABLE READER -----> UPGRADED WRITER --\       │
+│    | NO LOCKS |         ^                                           |       │
+│    |          |         |------- DEMOTE TO UPGRADEABLE READER    <--/       │
+│    |          | <--------------- DEMOTE TO IDLE WITHOUT READER   <--/       │
+│    |          | <-----> WRITER                                              │
+│    ------------                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Usage
 
