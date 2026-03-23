@@ -150,6 +150,7 @@ The implementation provides an internal `Reset()` helper used in tests/benchmark
 The benchmarks compare various `AsyncAutoResetEvent` implementations:
 
 - PooledAsyncAutoResetEvent: The pooled implementation from this library
+- ProtoPromiseAsyncAutoResetEvent: The implementation from the Proto.Promises.Threading library which uses custom awaiter and cancelation tokens
 - RefImplAsyncAutoResetEvent: The reference `TaskCompletionSource`-based implementation from Stephen Toub's blog, which does not support cancellation tokens
 - NitoAsyncAutoResetEvent: The implementation from Nito.AsyncEx library
 - AutoResetEvent: The .NET built-in `AutoResetEvent` which lacks the async API
@@ -174,8 +175,8 @@ Measures the pattern where a waiter is queued before the event is signaled (asyn
 Each iteration level is also measured with a default and a cancellable token to show the overhead of cancellation support.
 Due to the different behavior of the pooled implementations with AsTask(), ValueTask and the RunContinuationAsynchronously flag, these variations are measured separately.
 The RefImpl and Nito implementations do not have the RunContinuationAsynchronously option and always complete asynchronously.
-The RefImpl implementation is sometimes the fastest despite a memory allocation per waiter for a TaskCompletionSource. Also it does not support cancellation tokens and is out of contest for cancellable waits.
-The Nito implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
+ProtoPromise is now included as an additional low-allocation competitor and is often the fastest published implementation for the wait-then-set pattern. The caveat of the ProtoPromise library is the custom implementation of Promises as replacement for ValueTask and the custom cancelation tokens. The RefImpl implementation is also sometimes the fastest despite a memory allocation per waiter for a TaskCompletionSource. Also it does not support cancellation tokens and is out of contest for cancellable waits.
+The Nito.AsyncEx implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
 The pooled implementation starts to allocate memory only when the pool is exhausted (high contention), when the ValueTask is converted to Task by AsTask() or when cancellable tokens are used in legacy .NET versions prior to .NET 6 (due to registration overhead).
 
 [!INCLUDE[Wait Then Set Benchmark](benchmarks/asyncautoresetevent-waitthenset.md)]
@@ -186,7 +187,7 @@ The pooled implementation starts to allocate memory only when the pool is exhaus
 
 1. **Synchronous Completion**: When the event is already signaled, `WaitAsync()` completes synchronously with zero allocations, matching or exceeding `Nito.AsyncEx` performance.
 
-2. **Pooled Waiter Advantage**: The local waiter optimization ensures the first queued waiter incurs no allocation. Under typical producer-consumer patterns, this covers the common case.
+2. **Pooled Waiter Advantage**: The local waiter optimization ensures the first queued waiter incurs no allocation. Under typical producer-consumer patterns, this covers the common case even though ProtoPromise can currently win some throughput-only comparisons.
 
 3. **Memory Efficiency**: Compared to `TaskCompletionSource`-based implementations, the pooled approach significantly reduces GC pressure in high-frequency signaling scenarios. For fined tuned approaches, the memory allocations can be zeroed out entirely.
 
