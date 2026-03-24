@@ -25,6 +25,8 @@ public abstract class AsyncLockBaseBenchmark
     private protected object _objectLock;
     private protected AsyncLock _lockPooled;
     private protected SemaphoreSlim _semaphoreSlim;
+    private protected SpinLock _spinLock;
+    private protected CryptoHives.Foundation.Threading.Internal.SpinLock _spinLockCryptoHives;
     private protected NitoAsyncEx.AsyncLock _lockNitoAsync;
     private protected AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
     private protected RefImpl.AsyncLock _lockRefImp;
@@ -49,6 +51,8 @@ public abstract class AsyncLockBaseBenchmark
         _objectLock = new();
         _lockPooled = new();
         _semaphoreSlim = new(1, 1);
+        _spinLock = new();
+        _spinLockCryptoHives = new();
         _lockNitoAsync = new();
         _lockNonKeyed = new();
         _lockRefImp = new();

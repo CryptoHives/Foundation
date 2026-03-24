@@ -12,7 +12,7 @@ using System.Threading;
 /// </summary>
 internal struct SpinLock
 {
-    private int _state;
+    private volatile int _state;
 
     public SpinLock()
         => _state = 0;
@@ -30,21 +30,19 @@ internal struct SpinLock
         }
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void EnterCore()
     {
         // Spin forever
         var spinWait = new SpinWait();
-        spinWait.SpinOnce();
-
-        while (!TryEnter())
+        do
         {
             // SpinOnce yields based on .NET heuristics 
             spinWait.SpinOnce();
-        }
+        } while (!TryEnter());
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal void Exit()
-        => Interlocked.Exchange(ref _state, 0);
+        => _state = 0;
 }

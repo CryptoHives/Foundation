@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Fast-path overhead and memory allocations when no contention exists.
-/// This represents the optimal case for async lock implementations.
+/// This represents the optimal case for (async) lock implementations.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -49,6 +49,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// <remarks>
     /// Measures the performance of the increment operation.
     /// </remarks>
+    [Test]
     [Benchmark]
     [BenchmarkCategory("Lock", "System", "Increment")]
     public void IncrementSingle()
@@ -117,6 +118,18 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     }
 
     /// <summary>
+    /// Benchmark for SpinWait.SpinOnce.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SpinWait", "System", "SpinOnce")]
+    public void SpinWaitSingle()
+    {
+        var spinWait = new SpinWait();
+        spinWait.SpinOnce();
+    }
+
+    /// <summary>
     /// Benchmark for Interlocked.Increment vs C# lock statements.
     /// </summary>
     [Test]
@@ -151,6 +164,47 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         {
             // compare always succeeds
             _ = Interlocked.CompareExchange(ref _counter, _counter + 1, _counter);
+        }
+    }
+
+    /// <summary>
+    /// Benchmark for System SpinLock.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SpinLock", "System", "SpinLock")]
+    public async Task LockUnlockSpinLockSingleAsync()
+    {
+        bool lockTaken = false;
+        _spinLock.Enter(ref lockTaken);
+        try
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+    }
+
+    /// <summary>
+    /// Benchmark for Crypto Hives Internal SpinLock.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SpinLock", "CryptoHives", "SpinLock")]
+    public async Task LockUnlockCryptoHivesSpinLockSingleAsync()
+    {
+        _spinLockCryptoHives.Enter();
+        try
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+        finally
+        {
+            _spinLockCryptoHives.Exit();
         }
     }
 
@@ -263,7 +317,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [BenchmarkCategory("LockAsync", "ProtoPromise")]
     public async Task LockUnlockProtoPromiseSingleAsync()
     {
-        using (await _lockProtoPromise.LockAsync())
+        using (await _lockProtoPromise.LockAsync(false))
         {
             // simulate work
             unchecked { _counter++; }
