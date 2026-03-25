@@ -430,7 +430,10 @@ public class XofReferenceTests
     [TestCase(256)]
     public void Shake128XofMatchesOsImplementation(int outputSize)
     {
-        Assume.That(System.Security.Cryptography.Shake128.IsSupported, "OS SHAKE128 not supported on this platform.");
+        if (!System.Security.Cryptography.Shake128.IsSupported)
+        {
+            Assert.Ignore("OS SHAKE128 not supported on this platform.");
+        }
 
         foreach (byte[] input in new[] { EmptyInput, ShortInput, MediumInput })
         {
@@ -460,7 +463,10 @@ public class XofReferenceTests
     [TestCase(256)]
     public void Shake256XofMatchesOsImplementation(int outputSize)
     {
-        Assume.That(System.Security.Cryptography.Shake256.IsSupported, "OS SHAKE256 not supported on this platform.");
+        if (!System.Security.Cryptography.Shake256.IsSupported)
+        {
+            Assert.Ignore("OS SHAKE256 not supported on this platform.");
+        }
 
         foreach (byte[] input in new[] { EmptyInput, ShortInput, MediumInput })
         {
