@@ -12,7 +12,7 @@ using System.Threading;
 /// </summary>
 public partial class CancellationType : IFormattable
 {
-    private static CancellationTokenSource _cancellationSource = new CancellationTokenSource();
+    private static readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
     public static readonly CancellationType None = new(nameof(None), CancellationToken.None);
     public static readonly CancellationType Cancelled = new(nameof(Cancelled), new CancellationToken(canceled: true));
     public static readonly CancellationType NotCancelled = new(nameof(NotCancelled), _cancellationSource.Token);
