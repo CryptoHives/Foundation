@@ -12,9 +12,10 @@ using System.Threading;
 /// </summary>
 public class CancellationType : IFormattable
 {
+    private static CancellationTokenSource _cancellationSource = new CancellationTokenSource();
     public static readonly CancellationType None = new(nameof(None), CancellationToken.None);
-    public static readonly CancellationType Cancelled = new(nameof(Cancelled), new CancellationToken(true));
-    public static readonly CancellationType NotCancelled = new(nameof(NotCancelled), new CancellationTokenSource().Token);
+    public static readonly CancellationType Cancelled = new(nameof(Cancelled), new CancellationToken(canceled: true));
+    public static readonly CancellationType NotCancelled = new(nameof(NotCancelled), _cancellationSource.Token);
 
     /// <summary>
     /// Provides a predefined array of cancellation type groups representing None, cancelled, and not cancelled token
@@ -53,7 +54,7 @@ public class CancellationType : IFormattable
 
     public string Description { get; }
 
-    public CancellationToken CancellationToken { get; }
+    public CancellationToken CancellationToken { get; } = CancellationToken.None;
 
     public string ToString(string? format, IFormatProvider? formatProvider)
     {
