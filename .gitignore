@@ -427,3 +427,9 @@ FodyWeavers.xsd
 !docfx/packages/*
 docfx/_site/
 docfx/api/
+
+# macOS 
+.DS_Store   
+.AppleDouble
+.LSOverride
+
