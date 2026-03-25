@@ -343,22 +343,31 @@ public sealed class AsyncReaderWriterLock : IResettable
         {
             return false;
         }
-        _spinLock.Exit();
 
-        _runContinuationAsynchronously = true;
-        _status = 0;
+        try
+        {
+            // If the lock is actively held or any waiters are queued the instance is still
+            // in active use; decline the reset.
+            if (_status != (int)LockState.Uncontested ||
+                _waitingWriters.Count != 0 ||
+                _waitingReaders.Count != 0 ||
+                _waitingUpgradeableReaders.Count != 0 ||
+                _waitingUpgradedWriters.Count != 0)
+            {
+                return false;
+            }
 
-        _waitingWriters = new();
-        _waitingReaders = new();
-        _waitingUpgradeableReaders = new();
-        _waitingUpgradedWriters = new();
-
-        _localWriterWaiter.TryReset();
-        _localReaderWaiter.TryReset();
-        _localUpgradeableReaderWaiter.TryReset();
-        _localUpgradedWriterWaiter.TryReset();
-
-        return true;
+            _runContinuationAsynchronously = true;
+            _localWriterWaiter.TryReset();
+            _localReaderWaiter.TryReset();
+            _localUpgradeableReaderWaiter.TryReset();
+            _localUpgradedWriterWaiter.TryReset();
+            return true;
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -390,7 +399,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// </summary>
     public bool IsUpgradedWriterLockHeld
     {
-        get { return _status == (int)LockState.UpgradedWriter; }
+        get { return _status is (int)LockState.UpgradedWriter or (int)LockState.UpgradedWriterWithoutReader; }
     }
 
     /// <summary>
@@ -470,11 +479,12 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// <summary>
     /// Gets the number of upgraded writers waiting for the lock.
     /// </summary>
-    public int WaitingUpgradedWritersCount
+    public int WaitingUpgradedWriterCount
     {
         get
         {
-            _spinLock.Enter(); try
+            _spinLock.Enter();
+            try
             {
                 return _waitingUpgradedWriters.Count;
             }

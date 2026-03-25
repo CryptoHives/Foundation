@@ -129,11 +129,11 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
-    public async Task WaitAsyncAfterSetAllWithNoWaitersCompletesImmediately()
+    public async Task WaitAsyncAfterPulseAllWithNoWaitersCompletesImmediately()
     {
         var ev = new AsyncAutoResetEvent();
 
-        ev.SetAll();
+        ev.PulseAll();
 
         var waiter = ev.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.True);
@@ -367,7 +367,7 @@ public class AsyncAutoResetEventTests
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(5)]
-    public async Task SetAllReleasesAllQueuedWaiters(int numberOfWaiters)
+    public async Task PulseAllReleasesAllQueuedWaiters(int numberOfWaiters)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
@@ -396,7 +396,7 @@ public class AsyncAutoResetEventTests
         Assert.That(ev.InternalWaiterInUse, Is.True);
         Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters * 2 - 1));
 
-        ev.SetAll();
+        ev.PulseAll();
 
         for (int i = 0; i < numberOfWaiters; i++)
         {
@@ -431,12 +431,12 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
-    public async Task SetAllWithNoWaitersSetsSignalForNextWaiter()
+    public async Task PulseAllWithNoWaitersSetsSignalForNextWaiter()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
-        ev.SetAll();
+        ev.PulseAll();
 
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.True);

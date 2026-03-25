@@ -105,14 +105,24 @@ public sealed class AsyncManualResetEvent : IResettable
         {
             return false;
         }
-        _spinLock.Exit();
 
-        _signaled = false;
-        _runContinuationAsynchronously = true;
-        _waiters = new();
-        _localWaiter.TryReset();
+        try
+        {
+            // If waiters are queued the instance is still in active use; decline the reset.
+            if (_waiters.Count != 0)
+            {
+                return false;
+            }
 
-        return true;
+            _signaled = false;
+            _runContinuationAsynchronously = true;
+            _localWaiter.TryReset();
+            return true;
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>

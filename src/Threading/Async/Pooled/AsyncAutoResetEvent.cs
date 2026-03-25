@@ -7,7 +7,6 @@ using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Diagnostics;
-using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -106,13 +105,23 @@ public sealed class AsyncAutoResetEvent : IResettable
         {
             return false;
         }
-        _spinLock.Exit();
 
-        _signaled = 0;
-        _waiters = new();
-        _localWaiter.TryReset();
+        try
+        {
+            // If waiters are queued the instance is still in active use; decline the reset.
+            if (_waiters.Count != 0)
+            {
+                return false;
+            }
 
-        return true;
+            _ = Interlocked.Exchange(ref _signaled, 0);
+            _localWaiter.TryReset();
+            return true;
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -261,7 +270,7 @@ public sealed class AsyncAutoResetEvent : IResettable
                 _ = Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
-
+  
             toRelease = _waiters.Dequeue();
         }
         finally
@@ -288,7 +297,7 @@ public sealed class AsyncAutoResetEvent : IResettable
     /// <summary>
     /// Signals all waiting tasks to complete successfully.
     /// </summary>
-    public void SetAll()
+    public void PulseAll()
     {
         ManualResetValueTaskSource<bool>? toReleaseChain;
 

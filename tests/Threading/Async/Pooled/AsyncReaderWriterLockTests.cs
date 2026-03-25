@@ -1008,7 +1008,7 @@ public class AsyncReaderWriterLockTests
 
     [Test]
     [CancelAfter(CancelAfterMS)]
-    public async Task WaitingUpgradedWritersCount_IncrementsWhenQueued(CancellationToken ct)
+    public async Task WaitingUpgradedWriterCount_IncrementsWhenQueued(CancellationToken ct)
     {
         var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
         using var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
@@ -1016,7 +1016,7 @@ public class AsyncReaderWriterLockTests
 
         var attempt = upgr.UpgradeToWriterLockAsync(ct);
         Assert.That(attempt.IsCompleted, Is.False);
-        Assert.That(rw.WaitingUpgradedWritersCount, Is.EqualTo(1));
+        Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
 
         other.Dispose();
         using (await attempt.ConfigureAwait(false)) { }
@@ -1122,7 +1122,7 @@ public class AsyncReaderWriterLockTests
         // queue an upgraded writer which will wait due to additional reader
         var upgradeAttempt = upgr.UpgradeToWriterLockAsync(ct);
         Assert.That(upgradeAttempt.IsCompleted, Is.False);
-        Assert.That(rw.WaitingUpgradedWritersCount, Is.EqualTo(1));
+        Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
 
         // Now dispose the extra reader to allow the upgrade to proceed and exercise the CompareExchange path
         r.Dispose();
@@ -1195,7 +1195,7 @@ public class AsyncReaderWriterLockTests
         Assert.That(ev.WaitingReaderCount, Is.Zero);
         Assert.That(ev.WaitingWriterCount, Is.Zero);
         Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
-        Assert.That(ev.WaitingUpgradedWritersCount, Is.Zero);
+        Assert.That(ev.WaitingUpgradedWriterCount, Is.Zero);
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
 
         bool reset = ev.TryReset();
@@ -1205,8 +1205,63 @@ public class AsyncReaderWriterLockTests
         Assert.That(ev.WaitingReaderCount, Is.Zero);
         Assert.That(ev.WaitingWriterCount, Is.Zero);
         Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
-        Assert.That(ev.WaitingUpgradedWritersCount, Is.Zero);
+        Assert.That(ev.WaitingUpgradedWriterCount, Is.Zero);
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
+    }
+
+    [Test]
+    [CancelAfter(CancelAfterMS)]
+    public async Task TryReset_FailsWhenReaderLockHeld(CancellationToken ct)
+    {
+        var rwLock = new AsyncReaderWriterLock();
+        using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        {
+            Assert.That(rwLock.TryReset(), Is.False);
+        }
+        Assert.That(rwLock.TryReset(), Is.True);
+    }
+
+    [Test]
+    [CancelAfter(CancelAfterMS)]
+    public async Task TryReset_FailsWhenWriterLockHeld(CancellationToken ct)
+    {
+        var rwLock = new AsyncReaderWriterLock();
+        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        {
+            Assert.That(rwLock.TryReset(), Is.False);
+        }
+        Assert.That(rwLock.TryReset(), Is.True);
+    }
+
+    [Test]
+    [CancelAfter(CancelAfterMS)]
+    public async Task IsUpgradedWriterLockHeld_TrueWhenUpgradeableReaderReleasedFirst(CancellationToken ct)
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        // Acquire both an upgradeable reader and an extra regular reader so that
+        // the upgrade must wait until the regular reader is released.
+        var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
+        var regular = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
+
+        var upgradeTask = upgr.UpgradeToWriterLockAsync(ct);
+        Assert.That(upgradeTask.IsCompleted, Is.False);
+
+        // Release the regular reader: upgrade can now become active.
+        regular.Dispose();
+        var upgWriter = await upgradeTask.ConfigureAwait(false);
+
+        // Release the upgradeable-reader slot while the upgraded writer is still held.
+        // This transitions status to UpgradedWriterWithoutReader.
+        upgr.Dispose();
+
+        Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.True);
+        Assert.That(rwLock.IsWriteLockHeld, Is.True);
+
+        upgWriter.Dispose();
+
+        Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.False);
+        Assert.That(rwLock.IsWriteLockHeld, Is.False);
     }
 }
 

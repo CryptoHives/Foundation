@@ -117,10 +117,10 @@ public void Set()
 
 Signals the event, releasing **one** waiting waiter if any are queued. If no waiters are queued the event is set to a signaled state so that the next `WaitAsync()` completes synchronously.
 
-### SetAll
+### PulseAll
 
 ```csharp
-public void SetAll()
+public void PulseAll()
 ```
 
 Signals all currently queued waiters. If no waiters are queued the event becomes signaled so that the next `WaitAsync()` completes synchronously. This method is useful when broadcasting a single notification to all waiters.
@@ -128,6 +128,39 @@ Signals all currently queued waiters. If no waiters are queued the event becomes
 ### (Internal) Reset
 
 The implementation provides an internal `Reset()` helper used in tests/benchmarks to clear the signaled flag. Consumers typically do not call a reset on an auto-reset event since each `Set()` releases a single waiter.
+
+### TryReset
+
+```csharp
+public bool TryReset()
+```
+
+Implements `IResettable` to allow returning this instance to a `DefaultObjectPool<AsyncAutoResetEvent>`.
+
+**Behavior**:
+- Attempts to acquire the internal spin lock. If the lock is already held (a concurrent `Set()` or `WaitAsync()` is in progress), the method returns `false` immediately and the pool discards the instance.
+- If the lock is acquired and waiters are currently queued, the method returns `false` — the instance is still in active use and must not be recycled.
+- If the lock is acquired and no waiters are queued, the signaled flag is cleared and the local waiter is reset; the method returns `true`.
+
+**Thread Safety**: `TryReset()` is safe to call concurrently with other operations. It will simply return `false` if the instance is in use.
+
+**Example**:
+
+```csharp
+// Using AsyncAutoResetEvent with an object pool
+var pool = new DefaultObjectPool<AsyncAutoResetEvent>(
+    new DefaultPooledObjectPolicy<AsyncAutoResetEvent>());
+
+var ev = pool.Get();
+try
+{
+    await ev.WaitAsync(ct);
+}
+finally
+{
+    pool.Return(ev); // calls TryReset() internally
+}
+```
 
 ## Cancellation Notes
 
@@ -141,7 +174,7 @@ The implementation provides an internal `Reset()` helper used in tests/benchmark
 ## Performance Characteristics
 
 - **Set()**: O(1) operation
-- **SetAll()**: O(n) for n waiters
+- **PulseAll()**: O(n) for n waiters
 - **WaitAsync()**: O(1) when signaled, otherwise enqueues waiter
 - **Memory**: Zero allocations when waiters can be satisfied from the local waiter or the configured pool; allocations happen only when the pool is exhausted or when cancellation registrations/Task wrappers are required.
 

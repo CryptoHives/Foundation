@@ -81,15 +81,24 @@ public sealed class AsyncLock : IResettable
         {
             return false;
         }
-        _spinLock.Exit();
 
-        _taken = 0;
-        _waiters = new();
+        try
+        {
+            // If the lock is held or waiters are queued the instance is still in active use;
+            // decline the reset.
+            if (_taken != 0 || _waiters.Count != 0)
+            {
+                return false;
+            }
 
-        _localWaiter.TryReset();
-        _localWaiter.RunContinuationsAsynchronously = true;
-
-        return true;
+            _localWaiter.TryReset();
+            _localWaiter.RunContinuationsAsynchronously = true;
+            return true;
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>

@@ -11,7 +11,7 @@ CryptoHives.Foundation.Threading.Async.Pooled
 ## Syntax
 
 ```csharp
-public sealed class AsyncLock
+public sealed class AsyncLock : IResettable
 ```
 
 ## Overview
@@ -68,6 +68,42 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 
 **Throws**:
 - `OperationCanceledException` - If the operation is canceled via the cancellation token.
+
+### TryReset
+
+```csharp
+public bool TryReset()
+```
+
+Implements `IResettable` to allow returning this instance to a `DefaultObjectPool<AsyncLock>`.
+
+**Behavior**:
+- Attempts to acquire the internal spin lock. If the lock is already held by a concurrent operation, the method returns `false` immediately and the pool discards the instance.
+- If the lock is acquired but the logical lock is currently held (`IsTaken == true`) or waiters are queued, the method returns `false` — the instance is still in active use and must not be recycled.
+- Otherwise the local waiter is reset and the method returns `true`.
+
+**Thread Safety**: `TryReset()` is safe to call concurrently with other operations. It will simply return `false` if the instance is in use.
+
+**Example**:
+
+```csharp
+// Using AsyncLock with an object pool
+var pool = new DefaultObjectPool<AsyncLock>(
+    new DefaultPooledObjectPolicy<AsyncLock>());
+
+var lk = pool.Get();
+try
+{
+    using (await lk.LockAsync(ct))
+    {
+        // critical section
+    }
+}
+finally
+{
+    pool.Return(lk); // calls TryReset() internally
+}
+```
 
 ## Thread Safety
 
