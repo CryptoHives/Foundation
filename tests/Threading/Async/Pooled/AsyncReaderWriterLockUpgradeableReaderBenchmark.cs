@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1849 // Call async methods when in an async method
-#pragma warning disable CS0165 //
+#pragma warning disable CS0165 // 
+#pragma warning disable VSTHRD110 // Observe result of async calls
 
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -92,7 +94,8 @@ public class AsyncReaderWriterLockUpgradeableReaderBenchmark : AsyncReaderWriter
             {
                 _rwLockSlim.ExitReadLock();
             }
-        }).GetAwaiter().GetResult();
+        });
+        Thread.Sleep(1);
         base.GlobalCleanup();
     }
 
@@ -154,7 +157,8 @@ public class AsyncReaderWriterLockUpgradeableReaderBenchmark : AsyncReaderWriter
             {
                 _rwLockPooledHandle![0].Dispose();
             }
-        }).GetAwaiter().GetResult();
+        });
+        Thread.Sleep(1);
         base.GlobalCleanup();
     }
 
@@ -211,7 +215,8 @@ public class AsyncReaderWriterLockUpgradeableReaderBenchmark : AsyncReaderWriter
             {
                 _rwlockVSThreadingHandle![0].Dispose();
             }
-        }).GetAwaiter().GetResult();
+        });
+        Thread.Sleep(1);
         base.GlobalCleanup();
     }
 
@@ -269,7 +274,8 @@ public class AsyncReaderWriterLockUpgradeableReaderBenchmark : AsyncReaderWriter
             {
                 _rwlockProtoPromisesHandle![0].Dispose();
             }
-        }).GetAwaiter().GetResult();
+        });
+        Thread.Sleep(1);
         base.GlobalCleanup();
     }
 
