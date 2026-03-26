@@ -27,8 +27,6 @@ public abstract class AsyncSemaphoreBaseBenchmark
 #endif
     private protected Microsoft.VisualStudio.Threading.AsyncSemaphore _semaphoreVSThreading;
     private protected SemaphoreSlim _semaphoreSlim;
-    private protected CancellationTokenSource _cancellationTokenSource;
-    private protected CancellationToken _cancellationToken;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -45,8 +43,6 @@ public abstract class AsyncSemaphoreBaseBenchmark
 #endif
         _semaphoreSlim = new SemaphoreSlim(1, 1);
         _semaphoreVSThreading = new Microsoft.VisualStudio.Threading.AsyncSemaphore(1);
-        _cancellationTokenSource = new CancellationTokenSource();
-        _cancellationToken = _cancellationTokenSource.Token;
     }
 
     /// <summary>
@@ -56,8 +52,6 @@ public abstract class AsyncSemaphoreBaseBenchmark
     [GlobalCleanup]
     public virtual void GlobalCleanup()
     {
-        _cancellationTokenSource?.Cancel();
-        _cancellationTokenSource?.Dispose();
         _semaphoreSlim?.Dispose();
         _semaphoreVSThreading?.Dispose();
     }

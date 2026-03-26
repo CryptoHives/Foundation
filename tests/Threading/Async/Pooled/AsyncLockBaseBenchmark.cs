@@ -35,8 +35,6 @@ public abstract class AsyncLockBaseBenchmark
     private protected NeoSmart.AsyncLock.AsyncLock _lockNeoSmart;
     private protected Proto.Promises.Threading.AsyncLock _lockProtoPromise;
 #endif
-    private protected CancellationTokenSource _cancellationTokenSource;
-    private protected CancellationToken _cancellationToken;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -61,8 +59,6 @@ public abstract class AsyncLockBaseBenchmark
         _lockNeoSmart = new();
         _lockProtoPromise = new();
 #endif
-        _cancellationTokenSource = new CancellationTokenSource();
-        _cancellationToken = _cancellationTokenSource.Token;
     }
 
     /// <summary>
@@ -72,8 +68,6 @@ public abstract class AsyncLockBaseBenchmark
     [GlobalCleanup]
     public void GlobalCleanup()
     {
-        _cancellationTokenSource?.Cancel();
-        _cancellationTokenSource?.Dispose();
         _lockVSThreading?.Dispose();
     }
 }
