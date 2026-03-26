@@ -24,10 +24,12 @@ using System.Threading.Tasks;
 /// </para>
 /// <list type="bullet">
 /// <item><description><b>Standard (lock):</b> Synchronous C# lock statement (Monitor-based).</description></item>
-/// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource with struct releaser.</description></item>
+/// <item><description><b>Pooled (baseline):</b> Allocation-free async implementation using pooled IValueTaskSource with struct releaser.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based lock and IDisposable releaser.</description></item>
 /// <item><description><b>AsyncKeyedLock (NonKeyed):</b> Third-party high-performance async lock library.</description></item>
-/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and Task.</description></item>
+/// <item><description><b>NeoSmart:</b> Third-party async lock library with nested-acquisition detection.</description></item>
+/// <item><description><b>VS.Threading:</b> Third-party async library using AsyncSemaphore as a lock.</description></item>
+/// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Fast-path overhead and memory allocations when no contention exists.
@@ -307,10 +309,10 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     }
 
     /// <summary>
-    /// Benchmark for the NeoSmart AsyncLock implementation.
+    /// Benchmark for the Proto.Promises async lock implementation.
     /// </summary>
     /// <remarks>
-    /// Measures the fast-path performance of the third party NeoSmart implementation.
+    /// Measures the fast-path performance of the third party Proto.Promises implementation.
     /// </remarks>
     [Test]
     [Benchmark]

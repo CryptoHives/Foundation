@@ -25,8 +25,8 @@ using System.Threading.Tasks;
 /// </para>
 /// <list type="bullet">
 /// <item><description><b>Barrier:</b> .NET built-in synchronous barrier.</description></item>
-/// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
-/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and Task.</description></item>
+/// <item><description><b>Pooled (baseline):</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
+/// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// </remarks>
 [TestFixture]

@@ -89,7 +89,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     }
 
     /// <summary>
-    /// Benchmark for pooled async countdown event.
+    /// Benchmark for pooled async countdown event (wait-then-signal pattern).
     /// </summary>
     [Test]
     [Repeat(10)]

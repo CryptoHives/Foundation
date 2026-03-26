@@ -23,9 +23,10 @@ using System.Threading.Tasks;
 /// </para>
 /// <list type="bullet">
 /// <item><description><b>SemaphoreSlim:</b> .NET built-in async semaphore.</description></item>
-/// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
+/// <item><description><b>Pooled (baseline):</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based semaphore.</description></item>
-/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and Task.</description></item>
+/// <item><description><b>Proto.Promises:</b> Third-party async library with Promises-based semaphore.</description></item>
+/// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Fast-path overhead and memory allocations when no contention exists.
@@ -100,25 +101,6 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
 #endif
 
     /// <summary>
-    /// Benchmark for reference implementation async semaphore (single uncontended acquisition).
-    /// </summary>
-    [Test]
-    [Benchmark]
-    [BenchmarkCategory("WaitRelease", "RefImpl")]
-    public async Task WaitReleaseRefImplSingleAsync()
-    {
-        await _semaphoreRefImp.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            unchecked { _counter++; }
-        }
-        finally
-        {
-            _semaphoreRefImp.Release();
-        }
-    }
-
-    /// <summary>
     /// Benchmark for ProtoPromises async semaphore (single uncontended acquisition).
     /// </summary>
 #if !NETFRAMEWORK
@@ -138,4 +120,23 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
         }
     }
 #endif
+
+    /// <summary>
+    /// Benchmark for reference implementation async semaphore (single uncontended acquisition).
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("WaitRelease", "RefImpl")]
+    public async Task WaitReleaseRefImplSingleAsync()
+    {
+        await _semaphoreRefImp.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            unchecked { _counter++; }
+        }
+        finally
+        {
+            _semaphoreRefImp.Release();
+        }
+    }
 }

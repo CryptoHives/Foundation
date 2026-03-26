@@ -225,7 +225,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     }
 
     /// <summary>
-    /// Benchmark for reference implementation async reader-writer lock (reader).
+    /// Benchmark for VS.Threading async reader-writer lock (reader).
     /// </summary>
     [Benchmark]
     [BenchmarkCategory("ReaderLock", "VS.Threading")]
@@ -262,7 +262,7 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     }
 
     /// <summary>
-    /// Benchmark for reference implementation async reader-writer lock (reader).
+    /// Benchmark for Proto.Promises async reader-writer lock (reader).
     /// </summary>
     [Benchmark]
     [BenchmarkCategory("ReaderLock", "Proto.Promises")]

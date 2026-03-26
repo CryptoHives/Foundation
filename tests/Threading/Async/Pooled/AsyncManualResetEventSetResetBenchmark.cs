@@ -7,7 +7,7 @@ using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 
 /// <summary>
-/// Benchmarks measuring Set the Reset operation overhead on ManualResetEvent implementations.
+/// Benchmarks measuring Set and Reset operation overhead on ManualResetEvent implementations.
 /// </summary>
 /// <remarks>
 /// <para>

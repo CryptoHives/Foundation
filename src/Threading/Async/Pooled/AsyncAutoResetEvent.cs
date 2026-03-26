@@ -270,7 +270,7 @@ public sealed class AsyncAutoResetEvent : IResettable
                 _ = Interlocked.Exchange(ref _signaled, 1);
                 return;
             }
-  
+
             toRelease = _waiters.Dequeue();
         }
         finally
