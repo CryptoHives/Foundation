@@ -150,7 +150,22 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [BenchmarkCategory("Lock", "System", "Interlocked.Add")]
     public void InterlockedAdd()
     {
-        _ = Interlocked.Add(ref _counter, 1);
+        _ = Interlocked.Add(ref _counter, 13);
+    }
+
+    /// <summary>
+    /// Benchmark for Interlocked.Exchange vs C# lock statements.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("Lock", "System", "Interlocked.Exchange")]
+    public void InterlockedExchange()
+    {
+        // perform the increment in an unchecked context to match other increment benchmarks
+        unchecked
+        {
+            _ = Interlocked.Exchange(ref _counter, 0x123);
+        }
     }
 
     /// <summary>

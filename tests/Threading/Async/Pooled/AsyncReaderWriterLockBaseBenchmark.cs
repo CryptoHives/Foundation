@@ -29,8 +29,6 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
     private protected Proto.Promises.Threading.AsyncReaderWriterLock _rwLockProtoPromises;
 #endif
     private protected ReaderWriterLockSlim _rwLockSlim;
-    private protected CancellationTokenSource _cancellationTokenSource;
-    private protected CancellationToken _cancellationToken;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -47,8 +45,6 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
         _rwLockProtoPromises = new Proto.Promises.Threading.AsyncReaderWriterLock();
 #endif
         _rwLockSlim = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
-        _cancellationTokenSource = new CancellationTokenSource();
-        _cancellationToken = _cancellationTokenSource.Token;
     }
 
     /// <summary>
@@ -58,8 +54,6 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
     [GlobalCleanup]
     public virtual void GlobalCleanup()
     {
-        _cancellationTokenSource?.Cancel();
-        _cancellationTokenSource?.Dispose();
         _rwLockSlim?.Dispose();
         _rwLockVSThreading?.Dispose();
     }

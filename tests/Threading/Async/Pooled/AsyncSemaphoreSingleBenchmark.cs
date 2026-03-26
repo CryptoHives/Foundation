@@ -109,7 +109,7 @@ public class AsyncSemaphoreSingleBenchmark : AsyncSemaphoreBaseBenchmark
     [BenchmarkCategory("WaitRelease", "ProtoPromise")]
     public async Task WaitReleaseProtoPromiseSingleAsync()
     {
-        await _semaphoreProtoPromises.WaitAsync();
+        await _semaphoreProtoPromises.WaitAsync(false);
         try
         {
             unchecked { _counter++; }

@@ -43,7 +43,10 @@ $packageConfigurations = @{
             @{ Source = "AsyncCountdownEventSignalBenchmark-report.md"; Target = "asynccountdownevent-signal.md" }
             @{ Source = "AsyncBarrierSignalAndWaitBenchmark-report.md"; Target = "asyncbarrier-signalandwait.md" }
             @{ Source = "AsyncReaderWriterLockReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-reader.md" }
+            @{ Source = "AsyncReaderWriterLockUpgradeableReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradeablereader.md" }
+            @{ Source = "AsyncReaderWriterLockUpgradedWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradedwriter.md" }
             @{ Source = "AsyncReaderWriterLockWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-writer.md" }
+            @{ Source = "AsyncReaderWriterLockContentionBenchmark-report.md"; Target = "asyncreaderwriterlock-contention.md" }
         )
     }
 

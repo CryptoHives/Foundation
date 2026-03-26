@@ -156,7 +156,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
         {
             _countdownProtoPromises.Signal();
         }
-        await _countdownProtoPromises.TryWaitAsync(Proto.Promises.CancelationToken.None);
+        await _countdownProtoPromises.WaitAsync(false);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     public async Task WaitAndSignalProtoPromisesAsync()
     {
         _countdownProtoPromises.Reset();
-        var promise = _countdownProtoPromises.TryWaitAsync(Proto.Promises.CancelationToken.None);
+        var promise = _countdownProtoPromises.WaitAsync(false);
         for (int i = 0; i < ParticipantCount; i++)
         {
             _countdownProtoPromises.Signal();

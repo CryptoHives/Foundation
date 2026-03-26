@@ -108,7 +108,7 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
     [Test]
     [Benchmark]
     [BenchmarkCategory("WriterLock", "VS.Threading")]
-    public async Task ReaderLockVSThreadingAsync()
+    public async Task WriterLockVSThreadingAsync()
     {
         using var result = await _rwLockVSThreading.WriteLockAsync();
         unchecked { _counter++; }
@@ -120,10 +120,10 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("WriterLock", "ProtoPromises")]
-    public async Task ReaderLockProtoPromisesAsync()
+    [BenchmarkCategory("WriterLock", "Proto.Promises")]
+    public async Task WriterLockProtoPromisesAsync()
     {
-        using var result = await _rwLockProtoPromises.WriterLockAsync();
+        using var result = await _rwLockProtoPromises.WriterLockAsync(false);
         unchecked { _counter++; }
     }
 #endif

@@ -269,10 +269,10 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
     public async Task ReaderLockProtoPromisesAsync(CancellationType cancellationType)
     {
-        using var result = await _rwLockProtoPromises.ReaderLockAsync(cancellationType.CancelationToken);
+        using var result = await _rwLockProtoPromises.ReaderLockAsync(cancellationType.CancelationToken, false);
         for (int i = 0; i < Iterations; i++)
         {
-            _rwlockProtoPromisesHandle![i] = await _rwLockProtoPromises.ReaderLockAsync(cancellationType.CancelationToken);
+            _rwlockProtoPromisesHandle![i] = await _rwLockProtoPromises.ReaderLockAsync(cancellationType.CancelationToken, false);
             unchecked { _counter++; }
         }
 
