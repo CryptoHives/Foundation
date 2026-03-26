@@ -99,12 +99,12 @@ Releases one or more permits back to the semaphore.
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncSemaphore` against `SemaphoreSlim`, `Nito.AsyncEx.AsyncSemaphore` and a Task based reference implementation.
+The following benchmarks compare `AsyncSemaphore` against `SemaphoreSlim`, `Nito.AsyncEx.AsyncSemaphore`, `Proto.Promises.Threading.AsyncSemaphore` and a Task based reference implementation.
 TODO: Currently benchmarks are only available on uncontended scenarios to measure the overhead of a semaphore acquisition and release.
 
 ### Single Wait/Release Benchmark
 
-Measures the performance of acquiring and releasing a single permit.
+Measures the performance of acquiring and releasing a single permit. In the current published results, ProtoPromise is slightly faster than the pooled implementation on raw uncontended throughput, while the pooled implementation preserves the same `ValueTask`-first design and behavior used across this library.
 
 [!INCLUDE[Semaphore Benchmark](benchmarks/asyncsemaphore-single.md)]
 
@@ -112,7 +112,7 @@ Measures the performance of acquiring and releasing a single permit.
 
 **Key Findings:**
 
-1. **Fast Path Performance**: When permits are available, `AsyncSemaphore` completes synchronously with zero allocations, providing excellent performance for uncontended scenarios.
+1. **Fast Path Performance**: When permits are available, `AsyncSemaphore` completes synchronously with zero allocations, providing excellent performance for uncontended scenarios even though ProtoPromise currently posts the best published raw throughput.
 
 2. **Contention Handling**: Under contention, the pooled `IValueTaskSource` approach reduces allocation pressure compared to `SemaphoreSlim.WaitAsync()`.
 

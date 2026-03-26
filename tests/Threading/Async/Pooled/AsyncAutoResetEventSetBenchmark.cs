@@ -98,5 +98,18 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     {
         _eventRefImp.Set();
     }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Benchmark for ProtoPromises async auto-reset event Set operation.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("Set", "ProtoPromise")]
+    public void ProtoPromiseAsyncAutoResetEventSet()
+    {
+        _eventProtoPromises.Set();
+    }
+#endif
 }
 

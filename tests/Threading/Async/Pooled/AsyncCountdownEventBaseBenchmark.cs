@@ -22,6 +22,9 @@ public abstract class AsyncCountdownEventBaseBenchmark
     private protected AsyncCountdownEvent _countdownPooled;
     private protected NitoAsyncEx.AsyncCountdownEvent _countdownNitoAsync;
     private protected RefImpl.AsyncCountdownEvent _countdownRefImp;
+#if !NETFRAMEWORK
+    private protected Proto.Promises.Threading.AsyncCountdownEvent _countdownProtoPromises;
+#endif
     private protected CountdownEvent _countdownStandard;
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
@@ -39,6 +42,9 @@ public abstract class AsyncCountdownEventBaseBenchmark
         _countdownPooled = new AsyncCountdownEvent(ParticipantCount);
         _countdownNitoAsync = new NitoAsyncEx.AsyncCountdownEvent(ParticipantCount);
         _countdownRefImp = new RefImpl.AsyncCountdownEvent(ParticipantCount);
+#if !NETFRAMEWORK
+        _countdownProtoPromises = new Proto.Promises.Threading.AsyncCountdownEvent(ParticipantCount);
+#endif
         _countdownStandard = new CountdownEvent(ParticipantCount);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;

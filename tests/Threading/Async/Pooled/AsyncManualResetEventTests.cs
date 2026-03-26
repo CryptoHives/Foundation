@@ -8,7 +8,9 @@ namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
+using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -265,7 +267,7 @@ public class AsyncManualResetEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
 
         Assert.That(ev.InternalWaiterInUse, Is.False);
         Assert.That(tpvts.ActiveCount, Is.Zero);
@@ -304,7 +306,7 @@ public class AsyncManualResetEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter2.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
 
         Assert.That(ev.InternalWaiterInUse, Is.True);
         Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
@@ -333,5 +335,19 @@ public class AsyncManualResetEventTests
         await waiter.ConfigureAwait(false);
 
         Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public void TryReset_SucceedsWhenNotInUse()
+    {
+        var ev = new AsyncManualResetEvent(set: true);
+
+        Assert.That(ev.IsSet, Is.True);
+
+        bool reset = ev.TryReset();
+        Assert.That(reset, Is.True);
+
+        Assert.That(ev.IsSet, Is.False);
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
     }
 }

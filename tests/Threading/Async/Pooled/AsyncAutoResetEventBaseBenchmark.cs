@@ -22,6 +22,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
     private protected AsyncAutoResetEvent _eventPooled;
     private protected NitoAsyncEx.AsyncAutoResetEvent _eventNitoAsync;
     private protected RefImpl.AsyncAutoResetEvent _eventRefImp;
+#if !NETFRAMEWORK
+    private protected Proto.Promises.Threading.AsyncAutoResetEvent _eventProtoPromises;
+#endif
     private protected AutoResetEvent _eventStandard;
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
@@ -36,6 +39,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
         _eventPooled = new AsyncAutoResetEvent();
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
         _eventRefImp = new RefImpl.AsyncAutoResetEvent();
+#if !NETFRAMEWORK
+        _eventProtoPromises = new Proto.Promises.Threading.AsyncAutoResetEvent();
+#endif
         _eventStandard = new AutoResetEvent(false);
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;

@@ -7,7 +7,13 @@
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
     <!-- NUnit1028: The non-test method is public; AD0001: Analyzer exception -->
-    <NoWarn>$(NoWarn);NUnit1028;AD0001</NoWarn>
+    <!-- The following are related to async methods that are used in tests:
+      VSTHRD200: Use "Async" suffix for async methods; 
+      VSTHRD103: Call async methods when in an async method; 
+      VSTHRD003: Avoid awaiting foreign Tasks; 
+      VSTHRD002: Avoid problematic synchronous waits 
+      -->
+    <NoWarn>$(NoWarn);NUnit1028;AD0001;VSTHRD200;VSTHRD103;VSTHRD003;VSTHRD002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,14 +50,14 @@
     <PackageReference Condition="'$(SignAssembly)' != 'true'" Include="Nito.AsyncEx" />
     <PackageReference Include="AsyncKeyedLock" />
     <PackageReference Condition="'$(TargetFramework)' != 'net462' AND '$(TargetFramework)' != 'net48'" Include="NeoSmart.AsyncLock" />
+    <PackageReference Condition="'$(TargetFramework)' != 'net462' AND '$(TargetFramework)' != 'net48'" Include="ProtoPromise" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
     <!-- Reference the analyzer project to run CHT* diagnostics during build -->
-    <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

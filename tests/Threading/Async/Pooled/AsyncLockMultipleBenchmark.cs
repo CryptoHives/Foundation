@@ -30,11 +30,14 @@ using System.Threading.Tasks;
 /// <b>Compared implementations:</b>
 /// </para>
 /// <list type="bullet">
-/// <item><description><b>Pooled (ValueTask):</b> Allocation-free implementation using pooled IValueTaskSource with struct releaser.</description></item>
+/// <item><description><b>Pooled (ValueTask) (baseline):</b> Allocation-free implementation using pooled IValueTaskSource with struct releaser.</description></item>
 /// <item><description><b>Pooled (Task):</b> Same pooled implementation converted to Task via AsTask() (incurs allocation).</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based lock and IDisposable releaser.</description></item>
-/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and Task.</description></item>
+/// <item><description><b>VS.Threading:</b> VS threading library using AsyncSemaphore for locking.</description></item>
+/// <item><description><b>NeoSmart:</b> Third-party async lock library with nested-acquisition detection.</description></item>
+/// <item><description><b>Proto.Promises:</b> Threading library implementing AsyncLock for locking via promises.</description></item>
 /// <item><description><b>AsyncKeyedLock (NonKeyed):</b> Third-party high-performance async lock library.</description></item>
+/// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Execution time and memory allocations under contention with varying numbers
@@ -55,8 +58,10 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     private Nito.AsyncEx.AwaitableDisposable<IDisposable>[]? _lockNitoHandle;
 #endif
     private ValueTask<AsyncKeyedLock.AsyncNonKeyedLockReleaser>[]? _lockNonKeyedHandle;
+    private Task<Microsoft.VisualStudio.Threading.AsyncSemaphore.Releaser>[]? _lockVSThreadingHandle;
 #if !NETFRAMEWORK
     private Task<IDisposable>[]? _lockNeoSmartHandle;
+    private Proto.Promises.Promise<Proto.Promises.Threading.AsyncLock.Key>[]? _lockProtoPromiseHandle;
 #endif
     private Task<RefImpl.AsyncLock.Releaser>[]? _lockRefImplHandle;
 
@@ -289,8 +294,50 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             using (await handle.ConfigureAwait(false)) { }
         }
     }
-#endif
 
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
+    public Task LockUnlockProtoPromiseMultipleTestAsync(CancellationType cancelationType)
+    {
+        ProtoPromiseGlobalSetup();
+        return LockUnlockProtoPromiseMultipleAsync(cancelationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockProtoPromiseMultipleAsync))]
+    public void ProtoPromiseGlobalSetup()
+    {
+        base.GlobalSetup();
+        _lockProtoPromiseHandle = new Proto.Promises.Promise<Proto.Promises.Threading.AsyncLock.Key>[Iterations];
+    }
+
+    /// <summary>
+    /// Benchmark for Proto.Promises async lock with multiple queued waiters.
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of the third-party Proto.Promises async lock library under contention.
+    /// This implementation uses Promises-based disposable primitives.
+    /// Since ProtoPromises has custom implementations of pooling and waiter management, 
+    /// the behavior under contention may differ significantly from Task- or ValueTask-based implementations.
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "ProtoPromise")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.ProtoPromisesNoneNotCanceledGroup))]
+    public async Task LockUnlockProtoPromiseMultipleAsync(CancellationType cancellationType)
+    {
+        using (await _lockProtoPromise.LockAsync(cancellationType.CancelationToken, false))
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _lockProtoPromiseHandle![i] = _lockProtoPromise.LockAsync(cancellationType.CancelationToken, false);
+            }
+        }
+
+        foreach (var handle in _lockProtoPromiseHandle!)
+        {
+            using (await handle) { }
+        }
+    }
+#endif
 
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
@@ -370,6 +417,43 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
         }
 
         foreach (ValueTask<AsyncKeyedLock.AsyncNonKeyedLockReleaser> handle in _lockNonKeyedHandle!)
+        {
+            using (await handle.ConfigureAwait(false)) { }
+        }
+    }
+
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockVSThreadingMultipleTestAsync(CancellationType cancellationType)
+    {
+        VSThreadingGlobalSetup();
+        return LockUnlockVSThreadingMultipleAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockVSThreadingMultipleAsync))]
+    public void VSThreadingGlobalSetup()
+    {
+        base.GlobalSetup();
+        _lockVSThreadingHandle = new Task<Microsoft.VisualStudio.Threading.AsyncSemaphore.Releaser>[Iterations];
+    }
+
+    /// <summary>
+    /// Benchmark for Visual Studio Threading async semaphore used as an async lock with multiple queued waiters.
+    /// </summary>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "VS.Threading", "AsyncSemaphore")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockVSThreadingMultipleAsync(CancellationType cancellationType)
+    {
+        using (await _lockVSThreading.EnterAsync(cancellationType.CancellationToken).ConfigureAwait(false))
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _lockVSThreadingHandle![i] = _lockVSThreading.EnterAsync(cancellationType.CancellationToken);
+            }
+        }
+
+        foreach (var handle in _lockVSThreadingHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
         }

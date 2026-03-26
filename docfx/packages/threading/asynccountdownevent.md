@@ -147,12 +147,13 @@ Resets the countdown to the specified count, or to the initial count if not spec
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncCountdownEvent` against `Nito.AsyncEx.AsyncCountdownEvent` and reference implementations.
+The following benchmarks compare `AsyncCountdownEvent` against `CountdownEvent`, `Proto.Promises.Threading.AsyncCountdownEvent`, `Nito.AsyncEx.AsyncCountdownEvent` and reference implementations.
 
 ### Signal Operation Benchmark
 
 Measures the performance of signaling and waiting on the countdown event.
 The standard implementation does not support `Task`-based waiters, while `AsyncCountdownEvent` uses pooled `IValueTaskSource` instances. Hence the tests run only uncontested for standard implementations.
+ProtoPromise is included as an additional comparison point and is faster than the pooled implementation in the published `SignalAndWait` results, while the pooled implementation is much faster in the published `WaitAndSignal` scenario.
 Only the pooled `AsyncCountdownEvent` is benchmarked in a contested and a uncontested scenario to proof that no memory allocations occur.
 The Nito.Async implementation can not be benchmarked due to its internal design which doesn't allow to Reset the event, a new allocation for the AsyncCountdownEvent were necessary for each run so it was left out of contest.
 
@@ -162,7 +163,7 @@ The Nito.Async implementation can not be benchmarked due to its internal design 
 
 **Key Findings:**
 
-1. **Signal Performance**: The `Signal()` operation is O(1) until the final signal triggers the broadcast to all waiters.
+1. **Signal Performance**: The `Signal()` operation is O(1) until the final signal triggers the broadcast to all waiters. ProtoPromise currently leads the published `SignalAndWait` microbenchmark, while the pooled implementation performs better in the `WaitAndSignal` pattern.
 
 2. **Memory Efficiency**: Pooled `IValueTaskSource` instances reduce allocation pressure in repeated countdown cycles (e.g., using `Reset()` to reuse the countdown). CancellationTokens do not add memory allocations.
 

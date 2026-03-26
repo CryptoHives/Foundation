@@ -23,9 +23,11 @@ using System.Threading.Tasks;
 /// </para>
 /// <list type="bullet">
 /// <item><description><b>ReaderWriterLockSlim:</b> .NET built-in synchronous reader-writer lock.</description></item>
-/// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
+/// <item><description><b>Pooled (baseline):</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based reader-writer lock.</description></item>
-/// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and Task.</description></item>
+/// <item><description><b>VS.Threading:</b> Third-party async library with custom Task-based reader-writer lock.</description></item>
+/// <item><description><b>Proto.Promises:</b> Third-party async library with Promises-based reader-writer lock.</description></item>
+/// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// </remarks>
 [TestFixture]
@@ -42,7 +44,7 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("WriterLock", "System", "ReaderWriterLockSlim")]
+    [BenchmarkCategory("WriterLock", "System", "RWLockSlim")]
     public void WriteLockReaderWriterLockSlim()
     {
         _rwLockSlim.EnterWriteLock();
@@ -99,4 +101,30 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
             unchecked { _counter++; }
         }
     }
+
+    /// <summary>
+    /// Benchmark for VS.Threading async reader-writer lock (writer).
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("WriterLock", "VS.Threading")]
+    public async Task WriterLockVSThreadingAsync()
+    {
+        using var result = await _rwLockVSThreading.WriteLockAsync();
+        unchecked { _counter++; }
+    }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Benchmark for Proto.Promises async reader-writer lock (writer).
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("WriterLock", "Proto.Promises")]
+    public async Task WriterLockProtoPromisesAsync()
+    {
+        using var result = await _rwLockProtoPromises.WriterLockAsync(false);
+        unchecked { _counter++; }
+    }
+#endif
 }
