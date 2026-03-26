@@ -13,6 +13,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 
 /// <summary>
@@ -100,6 +101,7 @@ public sealed partial class Blake2b : HashAlgorithm
         {
             var support = SimdSupport.None;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
             return support;
         }
     }

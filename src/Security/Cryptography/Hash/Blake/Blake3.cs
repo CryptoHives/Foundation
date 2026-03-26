@@ -162,6 +162,11 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
             _compressBlock = CompressBlockSsse3;
             _squeezeRootBlock = SqueezeRootBlockSsse3;
         }
+        else if ((simdSupport & SimdSupport & SimdSupport.Neon) != 0)
+        {
+            _compressBlock = CompressBlockNeon;
+            _squeezeRootBlock = SqueezeRootBlockNeon;
+        }
         else
 #endif
         {
@@ -209,6 +214,11 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
         {
             _compressBlock = CompressBlockSsse3;
             _squeezeRootBlock = SqueezeRootBlockSsse3;
+        }
+        else if ((simdSupport & SimdSupport & SimdSupport.Neon) != 0)
+        {
+            _compressBlock = CompressBlockNeon;
+            _squeezeRootBlock = SqueezeRootBlockNeon;
         }
         else
 #endif
