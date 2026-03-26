@@ -188,32 +188,45 @@ This upgrades the currently held upgradeable reader to an exclusive writer lock.
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLockSlim`, `Nito.AsyncEx.AsyncReaderWriterLock`, `Proto.Promises.Threading.AsyncReaderWriterLock`, `Microsoft.VisualStudio.Threading.AsyncReaderWriterLock` and a reference implementation.
-TODO: Currently benchmarks are only available on uncontended scenarios to measure the overhead of a single lock acquisition and release.
+The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLockSlim`, `Nito.AsyncEx.AsyncReaderWriterLock`, `Proto.Promises.Threading.AsyncReaderWriterLock`, `Microsoft.VisualStudio.Threading.AsyncReaderWriterLock`, and a reference implementation. Not all implementations support every lock mode; the set of compared implementations varies per benchmark.
 
 ### Reader Lock Benchmark
 
-Measures the performance of acquiring and releasing reader locks. In the current published results, ProtoPromise is often faster than the pooled implementation for pure reader throughput, while VS.Threading is substantially slower in these microbenchmarks.
+Measures the performance of acquiring and releasing reader locks with varying numbers of nested acquisitions. At the lowest iteration count (Iterations = 0), the pooled implementation achieves lower latency than Proto.Promises; from Iterations = 1 onward, Proto.Promises achieves lower per-operation latency, reflecting a lower per-lock-call overhead at the cost of a slightly higher fixed invocation overhead. Both operate with zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency at all iteration counts.
 
 [!INCLUDE[Reader Lock Benchmark](benchmarks/asyncreaderwriterlock-reader.md)]
 
 ### Writer Lock Benchmark
 
-Measures the performance of acquiring and releasing writer locks. ProtoPromise is again a strong uncontended competitor and can beat the pooled implementation on raw throughput, while VS.Threading is included as a practical comparison point but is much slower in this benchmark.
+Measures the performance of acquiring and releasing a single writer lock. Proto.Promises achieves lower uncontended latency than the pooled implementation, with both operating at zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency.
 
 [!INCLUDE[Writer Lock Benchmark](benchmarks/asyncreaderwriterlock-writer.md)]
+
+### Upgradeable Reader Lock Benchmark
+
+Measures the performance of acquiring an upgradeable reader lock in combination with varying numbers of additional reader locks. At the lowest iteration count (Iterations = 0), the pooled implementation is marginally faster; Proto.Promises achieves lower per-operation latency as the number of additional reader locks increases. Both operate with zero allocations. VS.Threading allocates per acquisition and shows substantially higher latency across all iteration counts.
+
+[!INCLUDE[Upgradeable Reader Lock Benchmark](benchmarks/asyncreaderwriterlock-upgradeablereader.md)]
+
+### Upgraded Writer Lock Benchmark
+
+Measures the performance of acquiring an upgradeable reader lock, holding additional reader locks concurrently, then upgrading to an exclusive writer lock. The pooled implementation is marginally faster at the lowest iteration count (Iterations = 0); Proto.Promises achieves lower per-operation latency as the number of held reader locks increases. Both operate with zero allocations. VS.Threading allocates proportionally to the number of held reader locks and shows substantially higher latency across all configurations.
+
+[!INCLUDE[Upgraded Writer Lock Benchmark](benchmarks/asyncreaderwriterlock-upgradedwriter.md)]
 
 ### Benchmark Analysis
 
 **Key Findings:**
 
-1. **Reader Performance**: Uncontended reader lock acquisition is extremely fast with zero allocations. Multiple concurrent readers can proceed without blocking each other, although ProtoPromise currently leads several of the published reader benchmarks on throughput.
+1. **Reader and upgradeable reader performance**: At a single acquisition per call, the pooled implementation has a slight latency advantage. As the number of lock operations per call increases, Proto.Promises achieves lower per-operation latency in both the reader and upgradeable reader benchmarks, with zero allocations in both cases.
 
-2. **Writer Priority**: The writer-priority design prevents starvation but may impact reader throughput when writers are frequently waiting.
+2. **Writer and upgraded writer performance**: For single-operation writer lock acquisition, Proto.Promises achieves lower uncontended latency than the pooled implementation. The same pattern holds for the upgraded writer benchmark: the pooled implementation is marginally faster at minimal load, while Proto.Promises achieves lower per-operation latency as the number of additionally held reader locks increases. Both implementations operate with zero allocations.
 
-3. **Memory Efficiency**: One pool for readers and writers allow fine-tuned pool sizing based on workload characteristics. The pooled implementation stays allocation-free across the published reader and writer microbenchmarks, even in cases where ProtoPromise is slightly faster.
+3. **Writer priority**: The writer-priority design prevents writer starvation but may reduce reader throughput when writers are frequently queued.
 
-4. **Releaser Struct**: The value-type `Releaser` ensures no allocation for the lock handle itself, only for the `IValueTaskSource` when contention occurs.
+4. **Memory efficiency**: A shared pool for readers, upgradeable readers, and writers allows fine-tuned pool sizing. The pooled implementation maintains zero allocations across all published benchmarks, matching Proto.Promises. Nito.AsyncEx allocates per acquisition in the reader and writer benchmarks. VS.Threading allocates per acquisition in all benchmarks, with memory usage growing proportionally to the number of concurrently held locks.
+
+5. **Releaser struct**: The value-type `Releaser` produces no allocation for the lock handle itself. Allocations occur only for the pooled `IValueTaskSource` when the pool is exhausted under sustained contention.
 
 **When to Choose AsyncReaderWriterLock:**
 

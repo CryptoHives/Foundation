@@ -1,9 +1,9 @@
-﻿| Description                            | ParticipantCount | Mean         | Ratio | Allocated | 
-|--------------------------------------- |----------------- |-------------:|------:|----------:|
-| SignalAndWait · AsyncBarrier · Pooled  | 1                |     11.35 ns |  1.00 |         - | 
-| SignalAndWait · Barrier · System       | 1                |    449.92 ns | 39.65 |     239 B | 
-| SignalAndWait · AsyncBarrier · RefImpl | 1                |  1,133.18 ns | 99.86 |    8385 B | 
-|                                        |                  |              |       |           | 
-| SignalAndWait · AsyncBarrier · Pooled  | 10               |    264.58 ns |  1.00 |         - | 
-| SignalAndWait · AsyncBarrier · RefImpl | 10               |  1,776.59 ns |  6.72 |    9857 B | 
-| SignalAndWait · Barrier · System       | 10               | 13,639.13 ns | 51.56 |    1398 B |
+﻿| Description                            | ParticipantCount | Mean        | Ratio | Allocated | 
+|--------------------------------------- |----------------- |------------:|------:|----------:|
+| SignalAndWait · AsyncBarrier · Pooled  | 1                |    11.05 ns |  1.00 |         - | 
+| SignalAndWait · Barrier · System       | 1                |   447.08 ns | 40.47 |     238 B | 
+| SignalAndWait · AsyncBarrier · RefImpl | 1                |   945.56 ns | 85.60 |    8362 B | 
+|                                        |                  |             |       |           | 
+| SignalAndWait · AsyncBarrier · Pooled  | 10               |   281.96 ns |  1.00 |         - | 
+| SignalAndWait · AsyncBarrier · RefImpl | 10               | 1,647.19 ns |  5.84 |    9991 B | 
+| SignalAndWait · Barrier · System       | 10               | 4,273.74 ns | 15.16 |    1392 B |
