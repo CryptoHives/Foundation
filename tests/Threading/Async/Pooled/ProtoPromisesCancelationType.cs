@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 public partial class CancellationType
 {
-    private static Proto.Promises.CancelationSource _cancelationSource = Proto.Promises.CancelationSource.New();
+    private static readonly Proto.Promises.CancelationSource _cancelationSource = Proto.Promises.CancelationSource.New();
     public static readonly CancellationType ProtoPromisesNone = new (nameof(None), Proto.Promises.CancelationToken.None);
     public static readonly CancellationType ProtoPromisesCancelled = new(nameof(NotCancelled), new Proto.Promises.CancelationToken(canceled: true));
     public static readonly CancellationType ProtoPromisesNotCancelled = new (nameof(NotCancelled), _cancelationSource.Token);
