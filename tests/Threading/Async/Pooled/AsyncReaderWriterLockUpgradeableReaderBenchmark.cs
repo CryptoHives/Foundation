@@ -245,37 +245,31 @@ public class AsyncReaderWriterLockUpgradeableReaderBenchmark : AsyncReaderWriter
 #if !NETFRAMEWORK
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task ReaderLockProtoPromisesTestAsync(CancellationType cancellationType)
+    public async Task UpgradeableReaderLockProtoPromisesTestAsync(CancellationType cancellationType)
     {
-        ProtoPromisesGlobalSetup();
-        var result = UpgradeableReaderLockProtoPromisesAsync(cancellationType);
+        await ProtoPromisesGlobalSetup().ConfigureAwait(false);
+        await UpgradeableReaderLockProtoPromisesAsync(cancellationType).ConfigureAwait(false);
         ProtoPromisesGlobalCleanup();
-        return result;
     }
 
     [GlobalSetup(Target = nameof(UpgradeableReaderLockProtoPromisesAsync))]
-    public void ProtoPromisesGlobalSetup()
+    public async Task ProtoPromisesGlobalSetup()
     {
         base.GlobalSetup();
         _rwlockProtoPromisesHandle = new Proto.Promises.Threading.AsyncReaderWriterLock.ReaderKey[Iterations];
-        Task.Run(() => {
-            if (Iterations > 0)
-            {
-                _rwlockProtoPromisesHandle![0] = _rwLockProtoPromises.ReaderLockAsync(false).GetAwaiter().GetResult();
-            }
-        }).GetAwaiter().GetResult();
+        if (Iterations > 0)
+        {
+            _rwlockProtoPromisesHandle![0] = _rwLockProtoPromises.ReaderLockAsync(false).AsValueTask().AsTask().GetAwaiter().GetResult();
+        }
     }
 
     [GlobalCleanup(Target = nameof(UpgradeableReaderLockProtoPromisesAsync))]
     public void ProtoPromisesGlobalCleanup()
     {
-        Task.Run(() => {
-            if (Iterations > 0)
-            {
-                _rwlockProtoPromisesHandle![0].Dispose();
-            }
-        });
-        Thread.Sleep(1);
+        if (Iterations > 0)
+        {
+            _rwlockProtoPromisesHandle![0].Dispose();
+        }
         base.GlobalCleanup();
     }
 

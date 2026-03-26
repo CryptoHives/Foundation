@@ -197,7 +197,7 @@ public class AsyncReaderWriterLockUpgradedWriterBenchmark : AsyncReaderWriterLoc
 #if !NETFRAMEWORK
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    public Task ReaderLockProtoPromisesTestAsync(CancellationType cancellationType)
+    public Task UpgradedWriterLockProtoPromisesTestAsync(CancellationType cancellationType)
     {
         ProtoPromisesGlobalSetup();
         var result = UpgradedWriterLockProtoPromisesAsync(cancellationType);
