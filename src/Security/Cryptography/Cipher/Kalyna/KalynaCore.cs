@@ -135,6 +135,23 @@ internal static class KalynaCore
     };
 #pragma warning restore CA1814
 
+    // Precomputed GF(2^8) multiplication tables for forward MDS constants
+    private static readonly byte[] Gf04 = ComputeGfMulTable(0x04);
+    private static readonly byte[] Gf05 = ComputeGfMulTable(0x05);
+    private static readonly byte[] Gf06 = ComputeGfMulTable(0x06);
+    private static readonly byte[] Gf07 = ComputeGfMulTable(0x07);
+    private static readonly byte[] Gf08 = ComputeGfMulTable(0x08);
+
+    // Precomputed GF(2^8) multiplication tables for inverse MDS constants
+    private static readonly byte[] Gf2F = ComputeGfMulTable(0x2F);
+    private static readonly byte[] Gf49 = ComputeGfMulTable(0x49);
+    private static readonly byte[] Gf76 = ComputeGfMulTable(0x76);
+    private static readonly byte[] Gf95 = ComputeGfMulTable(0x95);
+    private static readonly byte[] GfA8 = ComputeGfMulTable(0xA8);
+    private static readonly byte[] GfAD = ComputeGfMulTable(0xAD);
+    private static readonly byte[] GfCA = ComputeGfMulTable(0xCA);
+    private static readonly byte[] GfD7 = ComputeGfMulTable(0xD7);
+
     /// <summary>
     /// Expands a Kalyna cipher key into round keys.
     /// </summary>
@@ -279,37 +296,43 @@ internal static class KalynaCore
 
     private static void MixColumns(Span<byte> state)
     {
-        Span<byte> temp = stackalloc byte[8];
-
+        // Unrolled MDS matrix multiply using precomputed GF(2^8) lookup tables.
+        // MDS row pattern (circulant): 01, 01, 05, 01, 08, 06, 07, 04
         for (int col = 0; col < NumWords; col++)
         {
-            var column = state.Slice(col * 8, 8);
-            for (int i = 0; i < 8; i++)
-            {
-                byte val = 0;
-                for (int j = 0; j < 8; j++)
-                    val ^= GfMul(MdsMatrix[i, j], column[j]);
-                temp[i] = val;
-            }
-            temp.CopyTo(column);
+            int off = col * 8;
+            byte b0 = state[off], b1 = state[off + 1], b2 = state[off + 2], b3 = state[off + 3];
+            byte b4 = state[off + 4], b5 = state[off + 5], b6 = state[off + 6], b7 = state[off + 7];
+
+            state[off + 0] = (byte)(b0 ^ b1 ^ Gf05[b2] ^ b3 ^ Gf08[b4] ^ Gf06[b5] ^ Gf07[b6] ^ Gf04[b7]);
+            state[off + 1] = (byte)(Gf04[b0] ^ b1 ^ b2 ^ Gf05[b3] ^ b4 ^ Gf08[b5] ^ Gf06[b6] ^ Gf07[b7]);
+            state[off + 2] = (byte)(Gf07[b0] ^ Gf04[b1] ^ b2 ^ b3 ^ Gf05[b4] ^ b5 ^ Gf08[b6] ^ Gf06[b7]);
+            state[off + 3] = (byte)(Gf06[b0] ^ Gf07[b1] ^ Gf04[b2] ^ b3 ^ b4 ^ Gf05[b5] ^ b6 ^ Gf08[b7]);
+            state[off + 4] = (byte)(Gf08[b0] ^ Gf06[b1] ^ Gf07[b2] ^ Gf04[b3] ^ b4 ^ b5 ^ Gf05[b6] ^ b7);
+            state[off + 5] = (byte)(b0 ^ Gf08[b1] ^ Gf06[b2] ^ Gf07[b3] ^ Gf04[b4] ^ b5 ^ b6 ^ Gf05[b7]);
+            state[off + 6] = (byte)(Gf05[b0] ^ b1 ^ Gf08[b2] ^ Gf06[b3] ^ Gf07[b4] ^ Gf04[b5] ^ b6 ^ b7);
+            state[off + 7] = (byte)(b0 ^ Gf05[b1] ^ b2 ^ Gf08[b3] ^ Gf06[b4] ^ Gf07[b5] ^ Gf04[b6] ^ b7);
         }
     }
 
     private static void InvMixColumns(Span<byte> state)
     {
-        Span<byte> temp = stackalloc byte[8];
-
+        // Unrolled inverse MDS matrix multiply using precomputed GF(2^8) lookup tables.
+        // Inverse MDS row pattern (circulant): AD, 95, 76, A8, 2F, 49, D7, CA
         for (int col = 0; col < NumWords; col++)
         {
-            var column = state.Slice(col * 8, 8);
-            for (int i = 0; i < 8; i++)
-            {
-                byte val = 0;
-                for (int j = 0; j < 8; j++)
-                    val ^= GfMul(InvMdsMatrix[i, j], column[j]);
-                temp[i] = val;
-            }
-            temp.CopyTo(column);
+            int off = col * 8;
+            byte b0 = state[off], b1 = state[off + 1], b2 = state[off + 2], b3 = state[off + 3];
+            byte b4 = state[off + 4], b5 = state[off + 5], b6 = state[off + 6], b7 = state[off + 7];
+
+            state[off + 0] = (byte)(GfAD[b0] ^ Gf95[b1] ^ Gf76[b2] ^ GfA8[b3] ^ Gf2F[b4] ^ Gf49[b5] ^ GfD7[b6] ^ GfCA[b7]);
+            state[off + 1] = (byte)(GfCA[b0] ^ GfAD[b1] ^ Gf95[b2] ^ Gf76[b3] ^ GfA8[b4] ^ Gf2F[b5] ^ Gf49[b6] ^ GfD7[b7]);
+            state[off + 2] = (byte)(GfD7[b0] ^ GfCA[b1] ^ GfAD[b2] ^ Gf95[b3] ^ Gf76[b4] ^ GfA8[b5] ^ Gf2F[b6] ^ Gf49[b7]);
+            state[off + 3] = (byte)(Gf49[b0] ^ GfD7[b1] ^ GfCA[b2] ^ GfAD[b3] ^ Gf95[b4] ^ Gf76[b5] ^ GfA8[b6] ^ Gf2F[b7]);
+            state[off + 4] = (byte)(Gf2F[b0] ^ Gf49[b1] ^ GfD7[b2] ^ GfCA[b3] ^ GfAD[b4] ^ Gf95[b5] ^ Gf76[b6] ^ GfA8[b7]);
+            state[off + 5] = (byte)(GfA8[b0] ^ Gf2F[b1] ^ Gf49[b2] ^ GfD7[b3] ^ GfCA[b4] ^ GfAD[b5] ^ Gf95[b6] ^ Gf76[b7]);
+            state[off + 6] = (byte)(Gf76[b0] ^ GfA8[b1] ^ Gf2F[b2] ^ Gf49[b3] ^ GfD7[b4] ^ GfCA[b5] ^ GfAD[b6] ^ Gf95[b7]);
+            state[off + 7] = (byte)(Gf95[b0] ^ Gf76[b1] ^ GfA8[b2] ^ Gf2F[b3] ^ Gf49[b4] ^ GfD7[b5] ^ GfCA[b6] ^ GfAD[b7]);
         }
     }
 
@@ -363,6 +386,14 @@ internal static class KalynaCore
         for (int i = 0; i < 256; i++)
             inv[sbox[i]] = (byte)i;
         return inv;
+    }
+
+    private static byte[] ComputeGfMulTable(byte a)
+    {
+        byte[] table = new byte[256];
+        for (int b = 0; b < 256; b++)
+            table[b] = GfMul(a, (byte)b);
+        return table;
     }
 
     // Key expansion: compute intermediate key Kt
