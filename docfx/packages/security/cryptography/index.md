@@ -9,8 +9,9 @@ The Cryptography package provides specification-based implementations of cryptog
 - **Specification-Based Implementations**: Written based on official specifications (NIST, RFC, ISO)
 - **No OS Dependencies**: Works identically on all platforms without calling OS crypto APIs
 - **Hardware Acceleration**: Optional AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics with automatic fallback
-- **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, and many more
-- **AEAD Support**: Authenticated encryption with AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305
+- **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and many more
+- **AEAD Support**: Authenticated encryption with AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128
+- **Key Management Support**: AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
 - **Variable Output**: XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
 - **Keyed Hashing**: Built-in MAC modes for BLAKE2, BLAKE3, and KMAC
 - **Standards Compliant**: Verified against NIST, RFC, and ISO test vectors
@@ -129,6 +130,13 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 | AES-CCM | 128/192/256 bits | 7-13 bytes | 4-16 bytes | [Details](cipher-algorithms.md#aes-ccm-counter-with-cbc-mac) |
 | ChaCha20-Poly1305 | 256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#chacha20-poly1305) |
 | XChaCha20-Poly1305 | 256 bits | 24 bytes | 16 bytes | [Details](cipher-algorithms.md#xchacha20-poly1305) |
+| Ascon-AEAD128 | 128 bits | 16 bytes | 16 bytes | [Details](cipher-algorithms.md#ascon-aead128) |
+
+### Cipher Utilities (Key Management)
+
+| Algorithm | Standard | Purpose | Documentation |
+|-----------|----------|---------|---------------|
+| AES Key Wrap / KWP (`AesKeyWrapPad`) | RFC 3394, RFC 5649, NIST SP 800-38F | KEK-based key material wrapping and integrity validation | [Details](cipher-algorithms.md#aes-key-wrap--key-wrap-with-padding) |
 
 ## Getting Started
 

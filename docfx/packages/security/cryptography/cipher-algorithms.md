@@ -175,6 +175,95 @@ byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
 - [XChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#xchacha20-poly1305)
 - [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#chacha20-poly1305)
 
+### Ascon-AEAD128
+
+```csharp
+public sealed class AsconAead128 : IAeadCipher
+```
+
+**Properties:**
+- Key Size: 128 bits (16 bytes)
+- Nonce Size: 128 bits (16 bytes)
+- Tag Size: 128 bits (16 bytes)
+- Performance: Lightweight permutation-based AEAD, optimized for constrained environments
+
+**Security:**
+- ✅ NIST Lightweight Cryptography standard (SP 800-232)
+- ✅ Winner of NIST LWC competition
+- ✅ No lookup-table S-boxes (timing-attack resilient design)
+- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+
+**Usage:**
+```csharp
+byte[] key = new byte[16];
+byte[] nonce = new byte[16];
+
+using var ascon = AsconAead128.Create(key);
+
+// Encrypt (ciphertext and tag split)
+byte[] plaintext = Encoding.UTF8.GetBytes("payload");
+byte[] aad = Encoding.UTF8.GetBytes("header");
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[16];
+
+ascon.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+
+// Decrypt + verify
+byte[] decrypted = new byte[plaintext.Length];
+bool valid = ascon.Decrypt(nonce, ciphertext, tag, decrypted, aad);
+```
+
+**See Also:**
+- [Ascon Hash/XOF](hash-algorithms.md#ascon)
+
+---
+
+## Key Wrap Utilities
+
+Key wrap algorithms are specialized ciphers for protecting cryptographic keys (KEK-based wrapping), not general-purpose message encryption.
+
+### AES Key Wrap / Key Wrap with Padding
+
+```csharp
+public sealed class AesKeyWrapPad : IDisposable
+```
+
+**Standards:**
+- RFC 3394 (AES Key Wrap, no padding)
+- RFC 5649 (AES Key Wrap with Padding)
+- NIST SP 800-38F
+
+**Properties:**
+- KEK Sizes: 128, 192, or 256 bits
+- RFC 3394 input requirements: at least 16 bytes and multiple of 8 bytes
+- RFC 5649 input requirements: 1 byte or more (arbitrary length)
+- Deterministic wrapping (same KEK + input → same wrapped output)
+
+**Usage (RFC 5649, padded):**
+```csharp
+byte[] kek = new byte[32]; // 256-bit key-encryption key
+byte[] keyMaterial = new byte[37]; // arbitrary length
+
+using var kwp = new AesKeyWrapPad(kek);
+
+byte[] wrapped = kwp.WrapKey(keyMaterial);
+byte[] unwrapped = kwp.UnwrapKey(wrapped);
+```
+
+**Usage (RFC 3394, no padding):**
+```csharp
+byte[] kek = new byte[16];
+byte[] keyMaterial = new byte[32]; // must be multiple of 8
+
+using var kw = new AesKeyWrapPad(kek);
+
+byte[] wrapped = kw.WrapKeyNoPad(keyMaterial);
+byte[] unwrapped = kw.UnwrapKeyNoPad(wrapped);
+```
+
+> [!NOTE]
+> AES-KW/AES-KWP provide integrity checks for wrapped key blobs. They are intended for key management workflows and should not be used as a replacement for AEAD data encryption.
+
 ---
 
 ## Block Ciphers
@@ -257,7 +346,7 @@ written = encryptor.TransformFinalBlock(lastChunk, output);
 > [!WARNING]
 > **ECB mode** encrypts each block independently. Identical plaintext blocks produce
 > identical ciphertext, leaking patterns. Use **CTR** or **CBC** mode instead.
-> For authenticated encryption, prefer [AES-GCM](#aes-gcm-galoisscounter-mode) or
+> For authenticated encryption, prefer [AES-GCM](#aes-gcm-galoiscounter-mode) or
 > [AES-CCM](#aes-ccm-counter-with-cbc-mac).
 
 ---
@@ -362,6 +451,7 @@ chacha.IV = nonce;
 | **AES-CCM** | 128/192/256 | 7-13 bytes | 4-16 bytes | Moderate* | AES-NI | IoT, small messages |
 | **ChaCha20-Poly1305** | 256 | 12 bytes | 16 bytes | Fast | SSSE3/AVX2 | Software-only, mobile |
 | **XChaCha20-Poly1305** | 256 | 24 bytes | 16 bytes | Fast | SSSE3/AVX2 | Random nonces safe |
+| **Ascon-AEAD128** | 128 | 16 bytes | 16 bytes | Fast | - | Lightweight, embedded |
 
 *With AES-NI hardware acceleration. Without hardware: ChaCha20 is typically faster.
 
@@ -604,6 +694,7 @@ seed.Padding = PaddingMode.PKCS7;
 seed.Key = key; // 16 bytes
 seed.IV = iv;   // 16 bytes
 byte[] ciphertext = seed.Encrypt(plaintext);
+byte[] decrypted = seed.Decrypt(ciphertext);
 ```
 
 ### Regional Cipher Comparison

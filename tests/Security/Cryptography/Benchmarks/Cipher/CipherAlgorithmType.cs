@@ -230,6 +230,14 @@ public sealed class CipherAlgorithmType : IFormattable
     }
 
     /// <summary>
+    /// Returns Ascon-AEAD128 implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AsconAead128()
+    {
+        return FromRegistry("Ascon-AEAD128", CipherAlgorithmRegistry.Mode.AsconAead128, 128);
+    }
+
+    /// <summary>
     /// Returns all AEAD cipher implementations for benchmarking.
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AEAD()
@@ -238,6 +246,7 @@ public sealed class CipherAlgorithmType : IFormattable
         foreach (var alg in AesCcm()) yield return alg;
         foreach (var alg in ChaCha20Poly1305()) yield return alg;
         foreach (var alg in XChaCha20Poly1305()) yield return alg;
+        foreach (var alg in AsconAead128()) yield return alg;
     }
 
     // ========================================================================
@@ -261,6 +270,14 @@ public sealed class CipherAlgorithmType : IFormattable
     }
 
     /// <summary>
+    /// Returns ARIA-192-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AriaCbc192()
+    {
+        return FromRegistry("ARIA-192-CBC", CipherAlgorithmRegistry.Mode.CBC, 192);
+    }
+
+    /// <summary>
     /// Returns ARIA-256-CBC implementations for benchmarking.
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> AriaCbc256()
@@ -274,6 +291,14 @@ public sealed class CipherAlgorithmType : IFormattable
     public static IEnumerable<CipherAlgorithmType> CamelliaCbc128()
     {
         return FromRegistry("Camellia-128-CBC", CipherAlgorithmRegistry.Mode.CBC, 128);
+    }
+
+    /// <summary>
+    /// Returns Camellia-192-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> CamelliaCbc192()
+    {
+        return FromRegistry("Camellia-192-CBC", CipherAlgorithmRegistry.Mode.CBC, 192);
     }
 
     /// <summary>
@@ -323,8 +348,10 @@ public sealed class CipherAlgorithmType : IFormattable
     {
         foreach (var alg in Sm4Cbc()) yield return alg;
         foreach (var alg in AriaCbc128()) yield return alg;
+        foreach (var alg in AriaCbc192()) yield return alg;
         foreach (var alg in AriaCbc256()) yield return alg;
         foreach (var alg in CamelliaCbc128()) yield return alg;
+        foreach (var alg in CamelliaCbc192()) yield return alg;
         foreach (var alg in CamelliaCbc256()) yield return alg;
         foreach (var alg in KuznyechikCbc()) yield return alg;
         foreach (var alg in KalynaCbc128()) yield return alg;
@@ -394,6 +421,7 @@ public sealed class CipherAlgorithmType : IFormattable
         return mode == CipherAlgorithmRegistry.Mode.GCM ||
                mode == CipherAlgorithmRegistry.Mode.CCM ||
                mode == CipherAlgorithmRegistry.Mode.ChaCha20Poly1305 ||
-               mode == CipherAlgorithmRegistry.Mode.XChaCha20Poly1305;
+               mode == CipherAlgorithmRegistry.Mode.XChaCha20Poly1305 ||
+               mode == CipherAlgorithmRegistry.Mode.AsconAead128;
     }
 }

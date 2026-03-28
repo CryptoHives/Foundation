@@ -501,7 +501,6 @@ public static class CipherAlgorithmRegistry
             Source.BouncyCastle));
 
         var ccmSimd = CH.Cipher.AesCcm128.SimdSupport;
-
         // AES-128-CCM - AES-NI
         if ((ccmSimd & CH.SimdSupport.AesNi) != 0)
         {
@@ -1131,6 +1130,52 @@ public static class CipherAlgorithmRegistry
             128,
             Mode.CBC,
             () => BouncyCastleCipherAdapter.CreateCbc(new SeedEngine(), 16, "SEED-CBC"),
+            Source.BouncyCastle));
+
+        // ARIA-192-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "ARIA-192-CBC",
+            "Managed",
+            192,
+            Mode.CBC,
+            () => {
+                var aria = CH.Cipher.Aria192.Create();
+                aria.Mode = CH.Cipher.CipherMode.CBC;
+                aria.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return aria;
+            },
+            Source.Managed));
+
+        // ARIA-192-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "ARIA-192-CBC",
+            "BouncyCastle",
+            192,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 24, "ARIA-192-CBC"),
+            Source.BouncyCastle));
+
+        // Camellia-192-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Camellia-192-CBC",
+            "Managed",
+            192,
+            Mode.CBC,
+            () => {
+                var cam = CH.Cipher.Camellia192.Create();
+                cam.Mode = CH.Cipher.CipherMode.CBC;
+                cam.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return cam;
+            },
+            Source.Managed));
+
+        // Camellia-192-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Camellia-192-CBC",
+            "BouncyCastle",
+            192,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 24, "Camellia-192-CBC"),
             Source.BouncyCastle));
     }
 }

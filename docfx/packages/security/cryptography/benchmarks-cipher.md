@@ -188,7 +188,7 @@ SM4 is the Chinese national block cipher (GB/T 32907-2016). It uses a 128-bit ke
 
 - **Managed**: Lookup-table implementation with 32-bit word operations. Zero allocation.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/sm4-cbc.md)]
 
 ### ARIA-128-CBC (Korea)
 
@@ -196,13 +196,13 @@ ARIA is a Korean national cipher (KS X 1213) with an involutional SPN structure.
 
 - **Managed**: S-box substitution with byte-level diffusion layer. Zero allocation.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/aria-cbc-128.md)]
 
 ### ARIA-256-CBC (Korea)
 
 ARIA-256 uses 16 rounds for 256-bit key security. The same SPN structure applies with additional rounds.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/aria-cbc-256.md)]
 
 ### Camellia-128-CBC (Japan)
 
@@ -210,13 +210,13 @@ Camellia is a Japanese CRYPTREC/NESSIE cipher (RFC 3713) with a Feistel structur
 
 - **Managed**: Pre-computed SP-box tables with 6 S-boxes. Zero allocation.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/camellia-cbc-128.md)]
 
 ### Camellia-256-CBC (Japan)
 
 Camellia-256 uses 24 rounds (vs 18 for 128-bit). The additional FL/FL⁻¹ layers add minimal overhead.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/camellia-cbc-256.md)]
 
 ### Kuznyechik-CBC (Russia)
 
@@ -224,7 +224,7 @@ Kuznyechik (GOST R 34.12-2015) is the modern Russian cipher with a 256-bit key a
 
 - **Managed**: Pre-computed S-box and linear transformation tables. Zero allocation.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/kuznyechik-cbc.md)]
 
 ### Kalyna-128-CBC (Ukraine)
 
@@ -232,13 +232,13 @@ Kalyna (DSTU 7624:2014) is the Ukrainian national cipher paired with the Kupyna 
 
 - **Managed**: S-box substitution with MDS matrix multiplication. Zero allocation.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/kalyna-cbc-128.md)]
 
 ### Kalyna-256-CBC (Ukraine)
 
 Kalyna-256 uses 14 rounds (vs 10 for 128-bit key). The same MDS-based architecture applies.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/kalyna-cbc-256.md)]
 
 ### SEED-CBC (Korea)
 
@@ -246,7 +246,7 @@ SEED is a Korean cipher (RFC 4269, KISA) with a 128-bit key and 16-round Feistel
 
 - **Managed**: Pre-computed 32-bit SS-boxes (SS0–SS3). Zero allocation.
 
-Benchmark results will be published after a full BenchmarkDotNet run.
+[!INCLUDE[](benchmarks/seed-cbc.md)]
 
 ---
 
