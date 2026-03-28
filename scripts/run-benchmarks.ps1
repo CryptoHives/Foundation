@@ -67,7 +67,7 @@ param(
     [string]$Family,
 
     [Parameter(HelpMessage = "Filter for benchmark names (e.g., '*AsyncLock*', '*SHA256*')")]
-    [string]$Filter = "*",
+    [string[]]$Filter = @("*"),
 
     [Parameter(HelpMessage = "Target framework to build against (e.g., net10.0, net8.0)")]
     [ValidateSet("net10.0", "net8.0", "net48")]
@@ -91,10 +91,24 @@ param(
     [switch]$DryRun,
 
     [Parameter(HelpMessage = "Additional arguments to pass to BenchmarkDotNet")]
-    [string[]]$ExtraArgs
+    [string[]]$ExtraArgs,
+
+    [Parameter(HelpMessage = "Optional timeout in minutes for the benchmark process (0 disables timeout)")]
+    [ValidateRange(0, 1440)]
+    [int]$TimeoutMinutes = 0,
+
+    [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
+    [switch]$ShutdownBuildServers
 )
 
 $ErrorActionPreference = "Stop"
+
+$filterArgs = @($Filter | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+if ($filterArgs.Count -eq 0) {
+    $filterArgs = @("*")
+}
+$defaultFilterRequested = $filterArgs.Count -eq 1 -and $filterArgs[0] -eq "*"
+$filterDisplay = $filterArgs -join " "
 
 # If invoked with no parameters, print concise supported-parameters summary and exit
 if (-not $Project -or $PSBoundParameters.Count -eq 0) {
@@ -103,7 +117,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host ""
     Write-Host "   - Project — Threading | Cryptography - select one"
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
-    Write-Host "   - Filter — string globs applied to full benchmark name — \"*\"  "
+    Write-Host "   - Filter — one or more string globs applied to full benchmark name — \"*\"  "
     Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
     Write-Host "   - Runtimes — comma list (e.g. \"net10.0,net8.0\") — \"net10.0\"  "
     Write-Host "   - Configuration — Release | Debug — Release  "
@@ -111,6 +125,8 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - List — switch (show benchmarks) — off  "
     Write-Host "   - DryRun — switch (show command / minimal iterations) — off  "
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
+    Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
+    Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
     Write-Host ""
     exit 0
 }
@@ -282,7 +298,7 @@ switch ($Project) {
 
 # If no Family specified for Cryptography and no explicit filter, default
 # to running all cryptography hash benchmarks for convenience.
-if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
+if ($Project -eq "Cryptography" -and -not $Family -and $defaultFilterRequested) {
     Write-Host "No family specified; running all Cryptography benchmarks by default." -ForegroundColor Yellow
     $Family = "All"
 }
@@ -326,7 +342,7 @@ if ($Family) {
         Write-Host "  Benchmarks:    $($benchmarkClasses -join ', ')"
     }
 }
-Write-Host "  Filter:        $Filter"
+Write-Host "  Filter:        $filterDisplay"
 Write-Host "  Framework:     $Framework"
 Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
@@ -338,7 +354,7 @@ try {
 Write-Host "  Path:          $resolvedTestProject"
 Write-Host ""
 
-if ($Project -eq "Cryptography" -and (-not $Family -or $Help)) {
+if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "Available hash algorithm families (each creates its own output table):" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  SHA-2:         -Family SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -429,7 +445,9 @@ if ($List) {
             $dotnetArgs += [string]$pattern
         }
     } else {
-        $dotnetArgs += [string]$Filter
+        foreach ($pattern in $filterArgs) {
+            $dotnetArgs += [string]$pattern
+        }
     }
     $dotnetArgs += "--runtimes"
     $dotnetArgs += [string]$Runtimes
@@ -463,7 +481,27 @@ try {
 
     # Use Start-Process with ArgumentList to avoid PowerShell wildcard expansion when passing arguments
     $dotnetPath = (Get-Command dotnet -ErrorAction Stop).Source
-    $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -Wait -PassThru
+    $runStart = Get-Date
+    $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -PassThru
+
+    if ($TimeoutMinutes -gt 0) {
+        $timeout = [TimeSpan]::FromMinutes($TimeoutMinutes)
+        if (-not $proc.WaitForExit([int]$timeout.TotalMilliseconds)) {
+            Write-Host ""
+            Write-Host "ERROR: Benchmark process exceeded timeout of $TimeoutMinutes minute(s). Stopping process..." -ForegroundColor Red
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            exit 124
+        }
+
+        # Ensure process has fully exited after timeout-based wait.
+        $proc.WaitForExit()
+    }
+    else {
+        $proc.WaitForExit()
+    }
+
+    $elapsed = (Get-Date) - $runStart
+    Write-Host "Benchmark host process exited (code: $($proc.ExitCode), elapsed: $([math]::Round($elapsed.TotalSeconds, 2))s)." -ForegroundColor DarkGray
 
     $exitCode = $proc.ExitCode
     if ($exitCode -ne 0) {
@@ -493,4 +531,13 @@ try {
 }
 finally {
     Pop-Location
+
+    if ($ShutdownBuildServers) {
+        Write-Host ""
+        Write-Host "Shutting down dotnet build servers..." -ForegroundColor DarkGray
+        & dotnet build-server shutdown | Out-Host
+    }
 }
+
+
+
