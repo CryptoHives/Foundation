@@ -16,8 +16,6 @@ public abstract class AsyncBarrierBaseBenchmark
     private protected AsyncBarrier _barrierPooled;
     private protected RefImpl.AsyncBarrier _barrierRefImp;
     private protected Barrier _barrierStandard;
-    private protected CancellationTokenSource _cancellationTokenSource;
-    private protected CancellationToken _cancellationToken;
 
     [Params(1, 10)]
     public int ParticipantCount { get; set; } = 5;
@@ -32,8 +30,6 @@ public abstract class AsyncBarrierBaseBenchmark
         _barrierPooled = new AsyncBarrier(ParticipantCount);
         _barrierRefImp = new RefImpl.AsyncBarrier(ParticipantCount);
         _barrierStandard = new Barrier(ParticipantCount);
-        _cancellationTokenSource = new CancellationTokenSource();
-        _cancellationToken = _cancellationTokenSource.Token;
     }
 
     /// <summary>
@@ -43,8 +39,6 @@ public abstract class AsyncBarrierBaseBenchmark
     [GlobalCleanup]
     public virtual void GlobalCleanup()
     {
-        _cancellationTokenSource?.Cancel();
-        _cancellationTokenSource?.Dispose();
         _barrierStandard?.Dispose();
     }
 }

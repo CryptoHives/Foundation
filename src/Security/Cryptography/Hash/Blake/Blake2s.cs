@@ -176,6 +176,12 @@ public sealed partial class Blake2s : HashAlgorithm
             _initializeState = InitializeStateSse2;
             _extractOutput = ExtractOutputSse2;
         }
+        else if ((simdSupport & SimdSupport.Neon) != 0)
+        {
+            _compress = CompressNeon;
+            _initializeState = InitializeStateNeon;
+            _extractOutput = ExtractOutputSse2;  // portable: only uses CopyTo on Vector128<uint>
+        }
         else
 #endif
         {
@@ -217,6 +223,7 @@ public sealed partial class Blake2s : HashAlgorithm
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
             if (Sse2.IsSupported) support |= SimdSupport.Sse2;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+            if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
 #endif
             return support;
         }

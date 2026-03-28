@@ -1,11 +1,15 @@
-﻿| Description                                | ParticipantCount | Mean      | Ratio | Allocated | 
-|------------------------------------------- |----------------- |----------:|------:|----------:|
-| SignalAndWait · CountdownEvent · System    | 1                |  6.640 ns |  0.39 |         - | 
-| SignalAndWait · AsyncCountdownEv · RefImpl | 1                | 16.552 ns |  0.98 |      96 B | 
-| SignalAndWait · AsyncCountdownEv · Pooled  | 1                | 16.975 ns |  1.00 |         - | 
-| WaitAndSignal · AsyncCountdownEv · Pooled  | 1                | 64.162 ns |  3.78 |         - | 
-|                                            |                  |           |       |           | 
-| SignalAndWait · CountdownEvent · System    | 10               | 20.155 ns |  0.39 |         - | 
-| SignalAndWait · AsyncCountdownEv · RefImpl | 10               | 28.064 ns |  0.54 |      96 B | 
-| SignalAndWait · AsyncCountdownEv · Pooled  | 10               | 51.714 ns |  1.00 |         - | 
-| WaitAndSignal · AsyncCountdownEv · Pooled  | 10               | 79.711 ns |  1.54 |         - |
+﻿| Description                                     | ParticipantCount | Mean      | Ratio | Allocated | 
+|------------------------------------------------ |----------------- |----------:|------:|----------:|
+| SignalAndWait · CountdownEvent · System         | 1                |  6.939 ns |  0.80 |         - | 
+| SignalAndWait · AsyncCountdownEv · ProtoPromise | 1                |  7.493 ns |  0.86 |         - | 
+| SignalAndWait · AsyncCountdownEv · Pooled       | 1                |  8.691 ns |  1.00 |         - | 
+| SignalAndWait · AsyncCountdownEv · RefImpl      | 1                | 16.718 ns |  1.92 |      96 B | 
+| WaitAndSignal · AsyncCountdownEv · ProtoPromise | 1                | 19.096 ns |  2.20 |         - | 
+| WaitAndSignal · AsyncCountdownEv · Pooled       | 1                | 41.424 ns |  4.77 |         - | 
+|                                                 |                  |           |       |           | 
+| SignalAndWait · AsyncCountdownEv · ProtoPromise | 10               | 17.113 ns |  0.73 |         - | 
+| SignalAndWait · CountdownEvent · System         | 10               | 20.424 ns |  0.87 |         - | 
+| SignalAndWait · AsyncCountdownEv · Pooled       | 10               | 23.508 ns |  1.00 |         - | 
+| WaitAndSignal · AsyncCountdownEv · ProtoPromise | 10               | 28.820 ns |  1.23 |         - | 
+| SignalAndWait · AsyncCountdownEv · RefImpl      | 10               | 29.256 ns |  1.24 |      96 B | 
+| WaitAndSignal · AsyncCountdownEv · Pooled       | 10               | 57.756 ns |  2.46 |         - |

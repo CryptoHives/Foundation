@@ -65,14 +65,10 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncBarrier
 {
-    private WaiterQueue<bool> _waiters;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private readonly Action<AsyncBarrier>? _postPhaseAction;
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
+    private Internal.SpinLock _spinLock;
+    private WaiterQueue<bool> _waiters;
     private int _participantCount;
     private int _participantsRemaining;
     private long _currentPhase;
@@ -111,7 +107,7 @@ public sealed class AsyncBarrier
         _currentPhase = 0;
         _postPhaseAction = postPhaseAction;
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _mutex = new();
+        _spinLock = new();
         _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
@@ -169,7 +165,8 @@ public sealed class AsyncBarrier
         ManualResetValueTaskSource<bool>? toReleaseChain = null;
         Exception? postPhaseException = null;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_participantsRemaining <= 0)
             {
@@ -228,6 +225,10 @@ public sealed class AsyncBarrier
 
             toReleaseChain = _waiters.DetachAll(out _);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
         if (postPhaseException is not null)
         {
@@ -235,7 +236,7 @@ public sealed class AsyncBarrier
             return new ValueTask(Task.FromException(postPhaseException));
         }
 
-        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
+        toReleaseChain?.SetChainResult(true);
         return default;
     }
 
@@ -260,7 +261,8 @@ public sealed class AsyncBarrier
     {
         if (participantCount < 1) throw new ArgumentOutOfRangeException(nameof(participantCount), participantCount, "The participantCount argument must be a positive value.");
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             // Check for overflow
             if (_participantCount > int.MaxValue - participantCount)
@@ -271,6 +273,10 @@ public sealed class AsyncBarrier
             _participantCount += participantCount;
             _participantsRemaining += participantCount;
             return _currentPhase;
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
     }
 
@@ -296,7 +302,8 @@ public sealed class AsyncBarrier
         ManualResetValueTaskSource<bool>? toRelease = null;
         Exception? postPhaseException = null;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (participantCount > _participantCount)
             {
@@ -346,6 +353,10 @@ public sealed class AsyncBarrier
                 return;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
         if (postPhaseException is not null)
         {
@@ -353,7 +364,7 @@ public sealed class AsyncBarrier
             throw postPhaseException;
         }
 
-        WaiterQueue<bool>.SetChainResult(toRelease, true);
+        toRelease?.SetChainResult(true);
     }
 
 #if NET6_0_OR_GREATER
@@ -375,9 +386,10 @@ public sealed class AsyncBarrier
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Remove(waiter))
             {
@@ -385,9 +397,14 @@ public sealed class AsyncBarrier
                 _participantsRemaining++;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
 
 #pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
 #pragma warning restore CA1508 // Avoid dead conditional code
     }
 }

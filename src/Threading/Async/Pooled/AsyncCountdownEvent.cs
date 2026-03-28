@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1508 // Avoid dead conditional code
+
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Pools;
@@ -50,13 +52,9 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncCountdownEvent
 {
-    private WaiterQueue<bool> _waiters;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
-#if NET9_0_OR_GREATER
-    private readonly Lock _mutex;
-#else
-    private readonly object _mutex;
-#endif
+    private Internal.SpinLock _spinLock;
+    private WaiterQueue<bool> _waiters;
     private int _currentCount;
     private int _initialCount;
     private bool _runContinuationAsynchronously;
@@ -78,7 +76,7 @@ public sealed class AsyncCountdownEvent
         _currentCount = initialCount;
         _initialCount = initialCount;
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _mutex = new();
+        _spinLock = new();
         _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
@@ -127,7 +125,8 @@ public sealed class AsyncCountdownEvent
     /// <returns>A <see cref="ValueTask"/> that completes when the countdown reaches zero.</returns>
     public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -162,6 +161,10 @@ public sealed class AsyncCountdownEvent
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
     }
 
     /// <summary>
@@ -191,7 +194,8 @@ public sealed class AsyncCountdownEvent
 
         ManualResetValueTaskSource<bool>? toReleaseChain = null;
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -204,7 +208,6 @@ public sealed class AsyncCountdownEvent
             }
 
             _currentCount -= signalCount;
-
             if (_currentCount == 0)
             {
                 toReleaseChain = _waiters.DetachAll(out _);
@@ -214,8 +217,12 @@ public sealed class AsyncCountdownEvent
                 return;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
-        WaiterQueue<bool>.SetChainResult(toReleaseChain, true);
+        toReleaseChain?.SetChainResult(true);
     }
 
     /// <summary>
@@ -251,7 +258,8 @@ public sealed class AsyncCountdownEvent
             throw new ArgumentOutOfRangeException(nameof(signalCount), signalCount, "Signal count must be at least 1.");
         }
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -259,6 +267,10 @@ public sealed class AsyncCountdownEvent
             }
 
             _currentCount += signalCount;
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
     }
 
@@ -274,7 +286,8 @@ public sealed class AsyncCountdownEvent
             return false;
         }
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             if (_currentCount == 0)
             {
@@ -283,6 +296,10 @@ public sealed class AsyncCountdownEvent
 
             _currentCount += signalCount;
             return true;
+        }
+        finally
+        {
+            _spinLock.Exit();
         }
     }
 
@@ -298,7 +315,8 @@ public sealed class AsyncCountdownEvent
             throw new ArgumentOutOfRangeException(nameof(count), count, "Count must be non-negative.");
         }
 
-        lock (_mutex)
+        _spinLock.Enter();
+        try
         {
             Debug.Assert(_waiters.Count == 0, "There should be no waiters when resetting the countdown.");
             _currentCount = count > 0 ? count : _initialCount;
@@ -307,6 +325,11 @@ public sealed class AsyncCountdownEvent
                 _initialCount = count;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
     }
 
 #if NET6_0_OR_GREATER
@@ -327,18 +350,21 @@ public sealed class AsyncCountdownEvent
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
         ManualResetValueTaskSource<bool>? toCancel = null;
-        lock (_mutex)
+
+        _spinLock.Enter();
+        try
         {
             if (_waiters.Remove(waiter))
             {
                 toCancel = waiter;
             }
         }
+        finally
+        {
+            _spinLock.Exit();
+        }
 
-#pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new TaskCanceledException(Task.FromCanceled<bool>(waiter.CancellationToken)));
-#pragma warning restore CA1508 // Avoid dead conditional code
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 }

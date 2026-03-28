@@ -165,6 +165,12 @@ public sealed partial class Blake2b : HashAlgorithm
             _initializeState = InitializeStateAvx2;
             _extractOutput = ExtractOutputAvx2;
         }
+        else if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Neon) != 0)
+        {
+            _compress = CompressNeon;
+            _initializeState = InitializeStateNeon;
+            _extractOutput = ExtractOutputNeon;
+        }
         else
 #endif
         {

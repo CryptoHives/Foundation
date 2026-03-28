@@ -25,14 +25,16 @@ public abstract class AsyncLockBaseBenchmark
     private protected object _objectLock;
     private protected AsyncLock _lockPooled;
     private protected SemaphoreSlim _semaphoreSlim;
+    private protected SpinLock _spinLock;
+    private protected CryptoHives.Foundation.Threading.Internal.SpinLock _spinLockCryptoHives;
     private protected NitoAsyncEx.AsyncLock _lockNitoAsync;
     private protected AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
     private protected RefImpl.AsyncLock _lockRefImp;
+    private protected Microsoft.VisualStudio.Threading.AsyncSemaphore _lockVSThreading;
 #if !NETFRAMEWORK
     private protected NeoSmart.AsyncLock.AsyncLock _lockNeoSmart;
+    private protected Proto.Promises.Threading.AsyncLock _lockProtoPromise;
 #endif
-    private protected CancellationTokenSource _cancellationTokenSource;
-    private protected CancellationToken _cancellationToken;
 
     /// <summary>
     /// Global Setup for benchmarks and tests.
@@ -47,14 +49,16 @@ public abstract class AsyncLockBaseBenchmark
         _objectLock = new();
         _lockPooled = new();
         _semaphoreSlim = new(1, 1);
+        _spinLock = new();
+        _spinLockCryptoHives = new();
         _lockNitoAsync = new();
         _lockNonKeyed = new();
         _lockRefImp = new();
+        _lockVSThreading = new(1);
 #if !NETFRAMEWORK
         _lockNeoSmart = new();
+        _lockProtoPromise = new();
 #endif
-        _cancellationTokenSource = new CancellationTokenSource();
-        _cancellationToken = _cancellationTokenSource.Token;
     }
 
     /// <summary>
@@ -64,7 +68,6 @@ public abstract class AsyncLockBaseBenchmark
     [GlobalCleanup]
     public void GlobalCleanup()
     {
-        _cancellationTokenSource?.Cancel();
-        _cancellationTokenSource?.Dispose();
+        _lockVSThreading?.Dispose();
     }
 }

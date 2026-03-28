@@ -13,7 +13,7 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 ## Class Declaration
 
 ```csharp
-public sealed class AsyncManualResetEvent
+public sealed class AsyncManualResetEvent : IResettable
 ```
 
 ## Key Features
@@ -129,6 +129,39 @@ Resets the event to the non-signaled state.
 
 **Behavior**:
 - Future `WaitAsync()` calls will wait until `Set()` is called again.
+
+### TryReset
+
+```csharp
+public bool TryReset()
+```
+
+Implements `IResettable` to allow returning this instance to a `DefaultObjectPool<AsyncManualResetEvent>`.
+
+**Behavior**:
+- Attempts to acquire the internal spin lock. If the lock is already held (a concurrent `Set()` or `WaitAsync()` is in progress), the method returns `false` immediately and the pool discards the instance.
+- If the lock is acquired and waiters are currently queued, the method returns `false` — the instance is still in active use and must not be recycled.
+- If the lock is acquired and no waiters are queued, the signaled flag and options are reset to initial defaults and the local waiter is reset; the method returns `true`.
+
+**Thread Safety**: `TryReset()` is safe to call concurrently with other operations. It will simply return `false` if the instance is in use.
+
+**Example**:
+
+```csharp
+// Using AsyncManualResetEvent with an object pool
+var pool = new DefaultObjectPool<AsyncManualResetEvent>(
+    new DefaultPooledObjectPolicy<AsyncManualResetEvent>());
+
+var ev = pool.Get();
+try
+{
+    await ev.WaitAsync(ct);
+}
+finally
+{
+    pool.Return(ev); // calls TryReset() internally
+}
+```
 
 ## Cancellation Notes
 

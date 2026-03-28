@@ -319,7 +319,7 @@ public class WaiterQueueTests
         queue.Enqueue(c);
         queue.Enqueue(d);
 
-        var head = queue.DetachFirst(2, out int count);
+        var head = queue.DetachUpTo(2, out int count);
 
         using (Assert.EnterMultipleScope())
         {
@@ -345,7 +345,7 @@ public class WaiterQueueTests
         queue.Enqueue(a);
         queue.Enqueue(b);
 
-        var head = queue.DetachFirst(5, out int count);
+        var head = queue.DetachUpTo(5, out int count);
 
         using (Assert.EnterMultipleScope())
         {
