@@ -12,6 +12,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 
 /// <summary>
@@ -56,6 +57,7 @@ public sealed partial class Blake3 : HashAlgorithm
         {
             var support = SimdSupport.None;
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
             return support;
         }
     }

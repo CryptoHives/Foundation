@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1308 // Normalize strings to uppercase
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
 
 using NUnit.Framework;
 using System;

@@ -10,6 +10,7 @@ namespace Threading.Tests.Async.Pooled;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -128,11 +129,11 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
-    public async Task WaitAsyncAfterSetAllWithNoWaitersCompletesImmediately()
+    public async Task WaitAsyncAfterPulseAllWithNoWaitersCompletesImmediately()
     {
         var ev = new AsyncAutoResetEvent();
 
-        ev.SetAll();
+        ev.PulseAll();
 
         var waiter = ev.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.True);
@@ -153,7 +154,7 @@ public class AsyncAutoResetEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter2.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
 
         ev.Set();
         await waiter1.ConfigureAwait(false);
@@ -181,8 +182,8 @@ public class AsyncAutoResetEventTests
         await AsyncAssert.CancelAsync(cts1).ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts3).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter1.ConfigureAwait(false));
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await waiter3.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter1.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter3.ConfigureAwait(false));
 
         ev.Set();
         await waiter2.ConfigureAwait(false);
@@ -366,7 +367,7 @@ public class AsyncAutoResetEventTests
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(5)]
-    public async Task SetAllReleasesAllQueuedWaiters(int numberOfWaiters)
+    public async Task PulseAllReleasesAllQueuedWaiters(int numberOfWaiters)
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
@@ -395,7 +396,7 @@ public class AsyncAutoResetEventTests
         Assert.That(ev.InternalWaiterInUse, Is.True);
         Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters * 2 - 1));
 
-        ev.SetAll();
+        ev.PulseAll();
 
         for (int i = 0; i < numberOfWaiters; i++)
         {
@@ -430,12 +431,12 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
-    public async Task SetAllWithNoWaitersSetsSignalForNextWaiter()
+    public async Task PulseAllWithNoWaitersSetsSignalForNextWaiter()
     {
         var tpvts = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
-        ev.SetAll();
+        ev.PulseAll();
 
         ValueTask vt = ev.WaitAsync();
         Assert.That(vt.IsCompleted, Is.True);
@@ -492,13 +493,17 @@ public class AsyncAutoResetEventTests
         {
             Task t = ev.WaitAsync(cts.Token).AsTask();
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+#if NETFRAMEWORK
             Assert.ThrowsAsync<TaskCanceledException>(async () => await t.ConfigureAwait(false));
+#else
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await t.ConfigureAwait(false));
+#endif
         }
         else
         {
             ValueTask vt = ev.WaitAsync(cts.Token);
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-            Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
         }
 
         Assert.That(ev.InternalWaiterInUse, Is.False);
@@ -526,6 +531,20 @@ public class AsyncAutoResetEventTests
 
         Assert.That(ev.InternalWaiterInUse, Is.False);
         Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public void TryReset_SucceedsWhenNotInUse()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+        Assert.That(ev.IsSet, Is.False);
+
+        bool reset = ev.TryReset();
+        Assert.That(reset, Is.True);
+
+        Assert.That(ev.IsSet, Is.False);
+        Assert.That(ev.RunContinuationAsynchronously, Is.True);
     }
 }
 

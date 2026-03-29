@@ -11,7 +11,7 @@ CryptoHives.Foundation.Threading.Async.Pooled
 ## Syntax
 
 ```csharp
-public sealed class AsyncLock
+public sealed class AsyncLock : IResettable
 ```
 
 ## Overview
@@ -21,8 +21,8 @@ public sealed class AsyncLock
 ## Benefits
 
 - **Zero-allocation fast path**: When the lock is uncontended the operation completes synchronously without heap allocations.
-- **Pooled Task Sources**: Reuses `IValueTaskSource<AsyncLockReleaser>` instances from an object pool when waiters are queued.
-- **ValueTask-Based**: Returns `ValueTask<AsyncLockReleaser>` for minimal allocation when the lock is available.
+- **Pooled Task Sources**: Reuses `IValueTaskSource<Releaser>` instances from an object pool when waiters are queued.
+- **ValueTask-Based**: Returns `ValueTask<Releaser>` for minimal allocation when the lock is available.
 - **RAII Pattern**: Uses disposable lock handles for automatic release.
 - **Cancellation Support (optimized)**: Supports `CancellationToken` for queued waiters; on .NET 6+ registration uses `UnsafeRegister` with a static delegate to reduce execution-context capture and per-registration overhead.
 - **High Performance**: Optimized for both uncontended and contended scenarios while keeping allocations low.
@@ -40,12 +40,18 @@ public AsyncLock(
 
 > **Note:** Unlike other primitives in this library, `AsyncLock` always runs continuations asynchronously (hardcoded to `true`). This prevents potential deadlocks in common lock usage patterns.
 
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `IsTaken` | `bool` | Gets whether the lock is currently held by a caller or queued handoff. |
+
 ## Methods
 
 ### LockAsync
 
 ```csharp
-public ValueTask<AsyncLockReleaser> LockAsync(CancellationToken cancellationToken = default)
+public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default)
 ```
 
 Asynchronously acquires the lock. Returns a disposable that releases the lock when disposed.
@@ -53,7 +59,7 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 **Parameters**:
 - `cancellationToken` - Optional cancellation token; only observed if the lock cannot be acquired immediately.
 
-**Returns**: A `ValueTask<AsyncLockReleaser>` that completes when the lock is acquired. Dispose the result to release the lock.
+**Returns**: A `ValueTask<Releaser>` that completes when the lock is acquired. Dispose the result to release the lock.
 
 **Notes on allocations and cancellation**:
 - The **fast path** (uncontended) completes synchronously and performs no heap allocations.
@@ -62,6 +68,42 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 
 **Throws**:
 - `OperationCanceledException` - If the operation is canceled via the cancellation token.
+
+### TryReset
+
+```csharp
+public bool TryReset()
+```
+
+Implements `IResettable` to allow returning this instance to a `DefaultObjectPool<AsyncLock>`.
+
+**Behavior**:
+- Attempts to acquire the internal spin lock. If the lock is already held by a concurrent operation, the method returns `false` immediately and the pool discards the instance.
+- If the lock is acquired but the logical lock is currently held (`IsTaken == true`) or waiters are queued, the method returns `false` — the instance is still in active use and must not be recycled.
+- Otherwise the local waiter is reset and the method returns `true`.
+
+**Thread Safety**: `TryReset()` is safe to call concurrently with other operations. It will simply return `false` if the instance is in use.
+
+**Example**:
+
+```csharp
+// Using AsyncLock with an object pool
+var pool = new DefaultObjectPool<AsyncLock>(
+    new DefaultPooledObjectPolicy<AsyncLock>());
+
+var lk = pool.Get();
+try
+{
+    using (await lk.LockAsync(ct))
+    {
+        // critical section
+    }
+}
+finally
+{
+    pool.Return(lk); // calls TryReset() internally
+}
+```
 
 ## Thread Safety
 
@@ -79,17 +121,19 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 The benchmarks compare various `AsyncLock` implementations:
 
 - PooledAsyncLock: The pooled implementation from this library
+- ProtoPromiseAsyncLock: The implementation from the Proto.Promises.Threading library
 - RefImplAsyncLock: The reference implementation from Stephen Toub's blog, which does not support cancellation tokens
 - NitoAsyncLock: The implementation from the Nito.AsyncEx library
 - NeoSmartAsyncLock: The implementation from the NeoSmart.AsyncLock library
 - AsyncNonKeyedLocker: An implementation from the AsyncKeyedLock.AsyncNonKeyedLocker library which uses SemaphoreSlim internally
 - SemaphoreSlim: The .NET built-in synchronization primitive
+- VS.Threading AsyncSemaphore: The Microsoft.VisualStudio.Threading semaphore used as a lock-compatible baseline
 
 ### Single Lock Benchmark
 
 This benchmark measures the performance of acquiring and releasing a single lock in an uncontended scenario.
 In order to understand the impact of moving from a `lock` or `Interlocked` implementation to an async lock, the `InterlockedIncrement`, `lock` and .NET 9 `Lock` with `EnterScope()` are also measured with a integer increment as workload.
-The benchmark shows both throughput (operations per second) and allocations per operation.
+The benchmark shows both throughput (operations per second) and allocations per operation. ProtoPromise is currently a strong uncontended competitor and can beat the pooled implementation on raw throughput, while the pooled implementation stays allocation-free and keeps the same API shape and cancellation behavior used throughout this library. VS.Threading is also included as a semaphore-based comparison point, but in the published uncontended results it trails both ProtoPromise and the pooled implementation.
 The new .NET 9 `Lock` primitive shows slighlty better performance than the well known lock on an object, but `AsyncLock` remains competitive due to the fast path implementation with Interlocked variable based state.
 
 [!INCLUDE[Single Lock Benchmark](benchmarks/asynclock-single.md)]
@@ -98,8 +142,8 @@ The new .NET 9 `Lock` primitive shows slighlty better performance than the well 
 
 This benchmark measures performance under contention with multiple concurrent lock requests (iterations).
 The benchmark shows both throughput (operations per second) and allocations per operation. Zero iterations duplicates the uncontended scenario.
-It is noticable that all implementations except the pooled one require memory allocations on contention, as long as the ValueTask is not converted to Task.
-The only implementation that slightly outperforms the pooled `AsyncLock` with a default cancellation token is the `SemaphoreSlim`, but at the cost of memory allocations on every lock acquisition.
+It is noticable that all implementations except the pooled one and ProtoPromise require memory allocations on contention, as long as the `ValueTask` is not converted to `Task`.
+ProtoPromise is particularly competitive here and can outperform the pooled `AsyncLock` in several low- and mid-contention cases, especially when comparing pure throughput. The pooled implementation still distinguishes itself by combining allocation-free `ValueTask` usage with built-in cancellation support and predictable behavior when integrated with the rest of this library. VS.Threading is included as another real-world baseline, but its semaphore-based path is slower and allocates under contention in the published results.
 
 [!INCLUDE[Multiple Lock Benchmark](benchmarks/asynclock-multiple.md)]
 
@@ -111,7 +155,7 @@ The only implementation that slightly outperforms the pooled `AsyncLock` with a 
 
 2. **Memory Efficiency**: The pooled `IValueTaskSource` approach significantly reduces allocations compared to `TaskCompletionSource`-based implementations. This is especially beneficial in high-throughput scenarios.
 
-3. **Contended Scenarios**: Under contention, the local waiter optimization ensures the first queued waiter incurs no allocation, while subsequent waiters benefit from pool reuse. Only `SemaphoreSlim` slightly outperforms in throughput with a non cancellable token but always at the cost of allocations.
+3. **Contended Scenarios**: Under contention, the local waiter optimization ensures the first queued waiter incurs no allocation, while subsequent waiters benefit from pool reuse. ProtoPromise can outperform the pooled implementation in several published throughput measurements, while `SemaphoreSlim` is also competitive in some cases but always at the cost of allocations.
 
 4. **ValueTask Advantage**: Returning `ValueTask<Releaser>` instead of `Task` allows always allocation free completion.
 
@@ -165,6 +209,12 @@ If you expect many concurrent waiters, provide a custom object pool with a large
 public async Task OperationAsync()
 {
     var lock = new AsyncLock(); // Don't do this!
+    Task.Run(async ()=> await Work(lock));
+    Task.Run(async ()=> await Work(lock));
+}
+
+public async Task Work(AsyncLock lock)
+{
     using (await lock.LockAsync())
     {
         // Work...

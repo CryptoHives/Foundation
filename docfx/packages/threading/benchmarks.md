@@ -32,6 +32,7 @@ The included benchmarks try uncontested and contested scenarios:
 - Run with multiple concurrent waiters to measure contention behavior. The number of waiters is increased to measure memory allocations and execution time.
 - All pooled implementations are tested with cancellable and default CancellationTokens.
 - For the pooled implementations, variations with AsTask() and await are separately benchmarked to capture the overhead.
+- Newer comparison sets include ProtoPromise and Microsoft.VisualStudio.Threading where the corresponding primitive exists and can be exercised fairly on the target framework.
 - Some implementations that are tested against for reference do not support cancellation tokens and hence their benchmark result is out of contest.
 - Some .NET built-in primitives (e.g. SemaphoreSlim) do not have async wait APIs and hence may not qualify to be tested in a single benchmark function because they would require multiple threads to emulate the tested behavior.
 

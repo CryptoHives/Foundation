@@ -7,6 +7,8 @@ namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
+using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -158,7 +160,7 @@ public class AsyncLockTests
         await taskReady.Task.ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await task.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await task.ConfigureAwait(false));
         Assert.That(task.IsCanceled, Is.True);
         await unlock.DisposeAsync().ConfigureAwait(false);
 
@@ -315,7 +317,7 @@ public class AsyncLockTests
             // Cancel after queuing
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
@@ -376,7 +378,7 @@ public class AsyncLockTests
         using (await vt.ConfigureAwait(false))
         {
             Assert.That(al.IsTaken);
-            Assert.ThrowsAsync<TaskCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
@@ -395,14 +397,14 @@ public class AsyncLockTests
 
         if (useAsTask)
         {
-            using (vt.AsTask().GetAwaiter().GetResult())
+            using (await vt.AsTask().ConfigureAwait(false))
             {
                 Assert.That(al.IsTaken);
             }
         }
         else
         {
-            using (vt.Preserve().GetAwaiter().GetResult())
+            using (await vt.Preserve().ConfigureAwait(false))
             {
                 Assert.That(al.IsTaken);
             }
@@ -413,6 +415,19 @@ public class AsyncLockTests
 
         Assert.That(al.InternalWaiterInUse, Is.False);
         Assert.That(customPool.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public void TryReset_SucceedsWhenNotInUse()
+    {
+        var ev = new AsyncLock();
+
+        Assert.That(ev.IsTaken, Is.False);
+
+        bool reset = ev.TryReset();
+        Assert.That(reset, Is.True);
+
+        Assert.That(ev.IsTaken, Is.False);
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()

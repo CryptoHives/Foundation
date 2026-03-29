@@ -1,4 +1,4 @@
-﻿# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # run-benchmarks.ps1
@@ -6,6 +6,7 @@
 # Usage: .\scripts\run-benchmarks.ps1 -Project Threading [-Filter "*AsyncLock*"] [-Framework net10.0]
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
+#        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher  (runs SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED)
 
 [CmdletBinding()]
 param(
@@ -48,19 +49,25 @@ param(
         "AesCbc128", "AesCbc256",
         "ChaCha20",
         "ChaCha20Poly1305", "XChaCha20Poly1305",
+        # Regional cipher algorithms (individual)
+        "Sm4Cbc", "AriaCbc128", "AriaCbc256",
+        "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256",
+        "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256",
+        "SeedCbc",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
-        "Legacy", "Regional", "Kupyna", "LSH", "Ascon", "KMAC",
+        "Legacy", "RegionalHash", "Kupyna", "LSH", "Ascon", "KMAC",
         "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
         "AES-GCM", "AES-CCM", "AES-CBC", "ChaCha",
+        "RegionalCipher",
         "Cipher", "AEAD",
         "All"
     )]
     [string]$Family,
 
     [Parameter(HelpMessage = "Filter for benchmark names (e.g., '*AsyncLock*', '*SHA256*')")]
-    [string]$Filter = "*",
+    [string[]]$Filter = @("*"),
 
     [Parameter(HelpMessage = "Target framework to build against (e.g., net10.0, net8.0)")]
     [ValidateSet("net10.0", "net8.0", "net48")]
@@ -84,10 +91,24 @@ param(
     [switch]$DryRun,
 
     [Parameter(HelpMessage = "Additional arguments to pass to BenchmarkDotNet")]
-    [string[]]$ExtraArgs
+    [string[]]$ExtraArgs,
+
+    [Parameter(HelpMessage = "Optional timeout in minutes for the benchmark process (0 disables timeout)")]
+    [ValidateRange(0, 1440)]
+    [int]$TimeoutMinutes = 0,
+
+    [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
+    [switch]$ShutdownBuildServers
 )
 
 $ErrorActionPreference = "Stop"
+
+$filterArgs = @($Filter | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+if ($filterArgs.Count -eq 0) {
+    $filterArgs = @("*")
+}
+$defaultFilterRequested = $filterArgs.Count -eq 1 -and $filterArgs[0] -eq "*"
+$filterDisplay = $filterArgs -join " "
 
 # If invoked with no parameters, print concise supported-parameters summary and exit
 if (-not $Project -or $PSBoundParameters.Count -eq 0) {
@@ -96,7 +117,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host ""
     Write-Host "   - Project — Threading | Cryptography - select one"
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
-    Write-Host "   - Filter — string globs applied to full benchmark name — \"*\"  "
+    Write-Host "   - Filter — one or more string globs applied to full benchmark name — \"*\"  "
     Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
     Write-Host "   - Runtimes — comma list (e.g. \"net10.0,net8.0\") — \"net10.0\"  "
     Write-Host "   - Configuration — Release | Debug — Release  "
@@ -104,6 +125,8 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - List — switch (show benchmarks) — off  "
     Write-Host "   - DryRun — switch (show command / minimal iterations) — off  "
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
+    Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
+    Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
     Write-Host ""
     exit 0
 }
@@ -156,7 +179,7 @@ $AlgorithmBenchmarkMap = @{
     # Legacy
     "MD5"         = "MD5"
     "SHA1"        = "SHA1"
-    # Regional
+    # Regional Hash
     "SM3"         = "SM3"
     "Streebog256" = "Streebog256"
     "Streebog512" = "Streebog512"
@@ -203,6 +226,17 @@ $AlgorithmBenchmarkMap = @{
     "ChaCha20"    = "ChaCha20"
     "ChaCha20Poly1305" = "ChaCha20Poly1305"
     "XChaCha20Poly1305" = "XChaCha20Poly1305"
+    # Ciphers - Regional
+    "Sm4Cbc"      = "Sm4Cbc"
+    "AriaCbc128"  = "AriaCbc128"
+    "AriaCbc256"  = "AriaCbc256"
+    "CamelliaCbc128" = "CamelliaCbc128"
+    "CamelliaCbc192" = "CamelliaCbc192"
+    "CamelliaCbc256" = "CamelliaCbc256"
+    "KuznyechikCbc" = "KuznyechikCbc"
+    "KalynaCbc128" = "KalynaCbc128"
+    "KalynaCbc256" = "KalynaCbc256"
+    "SeedCbc"     = "SeedCbc"
     # Group Aliases
     "All"         = "Hash"
 }
@@ -221,7 +255,7 @@ $GroupAliases = @{
     "BLAKE2s"     = @("Blake2s256", "Blake2s128")
     "BLAKE"       = @("Blake3", "Blake2s256", "Blake2b256", "Blake2s128", "Blake2b512")
     "Legacy"      = @("MD5", "SHA1")
-    "Regional"    = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160", "Kupyna256", "Kupyna384", "Kupyna512", "Lsh256_256", "Lsh512_256", "Lsh512_512")
+    "RegionalHash"= @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160", "Kupyna256", "Kupyna384", "Kupyna512", "Lsh256_256", "Lsh512_256", "Lsh512_512")
     "Kupyna"      = @("Kupyna256", "Kupyna384", "Kupyna512")
     "LSH"         = @("Lsh256_256", "Lsh512_256", "Lsh512_512")
     "Ascon"       = @("AsconHash256", "AsconXof128")
@@ -235,15 +269,16 @@ $GroupAliases = @{
     "AES-CCM"     = @("AesCcm128", "AesCcm256")
     "AES-CBC"     = @("AesCbc128", "AesCbc256")
     "ChaCha"      = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
     "AEAD"        = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "Cipher"      = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "Cipher"      = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
 }
 
 # 'All' should run all hash-related benchmarks (convenience alias)
-$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["Regional"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"]
+$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"]
 
 # 'Hash' alias groups the common hash families (excluding XOF-specific families)
-$GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["Regional"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"]
+$GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"]
 
 # Get repository root
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -264,7 +299,7 @@ switch ($Project) {
 
 # If no Family specified for Cryptography and no explicit filter, default
 # to running all cryptography hash benchmarks for convenience.
-if ($Project -eq "Cryptography" -and -not $Family -and $Filter -eq "*") {
+if ($Project -eq "Cryptography" -and -not $Family -and $defaultFilterRequested) {
     Write-Host "No family specified; running all Cryptography benchmarks by default." -ForegroundColor Yellow
     $Family = "All"
 }
@@ -308,7 +343,7 @@ if ($Family) {
         Write-Host "  Benchmarks:    $($benchmarkClasses -join ', ')"
     }
 }
-Write-Host "  Filter:        $Filter"
+Write-Host "  Filter:        $filterDisplay"
 Write-Host "  Framework:     $Framework"
 Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
@@ -320,7 +355,7 @@ try {
 Write-Host "  Path:          $resolvedTestProject"
 Write-Host ""
 
-if ($Project -eq "Cryptography" -and (-not $Family -or $Help)) {
+if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "Available hash algorithm families (each creates its own output table):" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  SHA-2:         -Family SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -348,6 +383,8 @@ if ($Project -eq "Cryptography" -and (-not $Family -or $Help)) {
     Write-Host "  AES-CCM:       -Family AesCcm128, AesCcm256"
     Write-Host "  AES-CBC:       -Family AesCbc128, AesCbc256"
     Write-Host "  ChaCha:        -Family ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
+    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
+    Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, SeedCbc"
     Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -361,7 +398,7 @@ if ($Project -eq "Cryptography" -and (-not $Family -or $Help)) {
     Write-Host "  -Family BLAKE2s    runs: Blake2s128, Blake2s256"
     Write-Host "  -Family BLAKE      runs: Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3"
     Write-Host "  -Family Legacy     runs: MD5, SHA1"
-    Write-Host "  -Family Regional   runs: SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512, Lsh256_256, Lsh512_256, Lsh512_512"
+    Write-Host "  -Family RegionalHash   : SM3, Streebog256, Streebog512, Whirlpool, Ripemd160, Kupyna256, Kupyna384, Kupyna512, Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  -Family Kupyna     runs: Kupyna256, Kupyna384, Kupyna512"
     Write-Host "  -Family LSH        runs: Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
@@ -376,7 +413,8 @@ if ($Project -eq "Cryptography" -and (-not $Family -or $Help)) {
     Write-Host "  -Family AES-CBC    runs: AesCbc128, AesCbc256"
     Write-Host "  -Family ChaCha     runs: ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
     Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
-    Write-Host "  -Family Cipher     runs: All cipher benchmarks"
+    Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA, Camellia-128/192/256, Kuznyechik, Kalyna, SEED)"
+    Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
     Write-Host "  -Family All        runs: All Hash benchmarks"
     Write-Host ""
     exit 0
@@ -408,7 +446,9 @@ if ($List) {
             $dotnetArgs += [string]$pattern
         }
     } else {
-        $dotnetArgs += [string]$Filter
+        foreach ($pattern in $filterArgs) {
+            $dotnetArgs += [string]$pattern
+        }
     }
     $dotnetArgs += "--runtimes"
     $dotnetArgs += [string]$Runtimes
@@ -442,7 +482,27 @@ try {
 
     # Use Start-Process with ArgumentList to avoid PowerShell wildcard expansion when passing arguments
     $dotnetPath = (Get-Command dotnet -ErrorAction Stop).Source
-    $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -Wait -PassThru
+    $runStart = Get-Date
+    $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -PassThru
+
+    if ($TimeoutMinutes -gt 0) {
+        $timeout = [TimeSpan]::FromMinutes($TimeoutMinutes)
+        if (-not $proc.WaitForExit([int]$timeout.TotalMilliseconds)) {
+            Write-Host ""
+            Write-Host "ERROR: Benchmark process exceeded timeout of $TimeoutMinutes minute(s). Stopping process..." -ForegroundColor Red
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            exit 124
+        }
+
+        # Ensure process has fully exited after timeout-based wait.
+        $proc.WaitForExit()
+    }
+    else {
+        $proc.WaitForExit()
+    }
+
+    $elapsed = (Get-Date) - $runStart
+    Write-Host "Benchmark host process exited (code: $($proc.ExitCode), elapsed: $([math]::Round($elapsed.TotalSeconds, 2))s)." -ForegroundColor DarkGray
 
     $exitCode = $proc.ExitCode
     if ($exitCode -ne 0) {
@@ -472,4 +532,11 @@ try {
 }
 finally {
     Pop-Location
+
+    if ($ShutdownBuildServers) {
+        Write-Host ""
+        Write-Host "Shutting down dotnet build servers..." -ForegroundColor DarkGray
+        & dotnet build-server shutdown | Out-Host
+    }
 }
+

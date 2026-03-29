@@ -11,6 +11,15 @@ Each package is designed for security, interoperability, and clarity — making 
 
 ---
 
+## 📚 Documentation
+
+- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and examples
+- 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
+- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
+- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+
+---
+
 ## 🧬 Features and Design Principles
 
 ### 🧱 Orthogonal Design
@@ -80,6 +89,7 @@ No OS crypto dependency — deterministic results on every platform. Hardware ac
 | MAC | KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
 | Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/256), ChaCha20-Poly1305, XChaCha20-Poly1305 |
 | Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
+| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256), SEED |
 | Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5 (backward compatibility only) |
 
@@ -109,15 +119,6 @@ All packages are published under the `CryptoHives.Foundation` prefix and namespa
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 [![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
-
----
-
-## 📚 Documentation
-
-- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and examples
-- 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
-- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
-- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
 
 ---
 

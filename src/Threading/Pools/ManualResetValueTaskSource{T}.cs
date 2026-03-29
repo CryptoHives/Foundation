@@ -76,6 +76,14 @@ public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValu
     public abstract void SetResult(T result);
 
     /// <summary>
+    /// Signals the completion of an operation, setting the result to T for a chain of operations.
+    /// </summary>
+    /// <remarks>
+    /// This method is typically used to indicate that a chain of asynchronous operations has completed successfully.
+    /// </remarks>
+    public abstract void SetChainResult(T result);
+
+    /// <summary>
     /// Sets the specified exception to be associated with the current operation.
     /// </summary>
     public abstract void SetException(Exception ex);

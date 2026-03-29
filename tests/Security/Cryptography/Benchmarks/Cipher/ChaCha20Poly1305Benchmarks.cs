@@ -198,3 +198,4 @@ public class XChaCha20Poly1305Benchmark : AeadBenchmarkBase
         AeadCipher!.Decrypt(DecryptNonce, EncryptedData, Tag, OutputData, Aad);
     }
 }
+
