@@ -1,13 +1,13 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Cipher.Seed;
 
-using System;
-using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using Cryptography.Tests.Adapter.Cipher;
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Engines;
+using System;
 
 /// <summary>
 /// Tests for the SEED block cipher (KISA, RFC 4269).

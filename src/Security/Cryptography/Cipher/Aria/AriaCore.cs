@@ -118,8 +118,7 @@ internal static class AriaCore
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> encRoundKeys)
     {
-        int nr = key.Length switch
-        {
+        int nr = key.Length switch {
             16 => 12,
             24 => 14,
             32 => 16,
@@ -237,9 +236,9 @@ internal static class AriaCore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SubstLayerOdd(Span<byte> x)
     {
-        x[0]  = SB1[x[0]];  x[1]  = SB2[x[1]];  x[2]  = SB3[x[2]];  x[3]  = SB4[x[3]];
-        x[4]  = SB1[x[4]];  x[5]  = SB2[x[5]];  x[6]  = SB3[x[6]];  x[7]  = SB4[x[7]];
-        x[8]  = SB1[x[8]];  x[9]  = SB2[x[9]];  x[10] = SB3[x[10]]; x[11] = SB4[x[11]];
+        x[0] = SB1[x[0]]; x[1] = SB2[x[1]]; x[2] = SB3[x[2]]; x[3] = SB4[x[3]];
+        x[4] = SB1[x[4]]; x[5] = SB2[x[5]]; x[6] = SB3[x[6]]; x[7] = SB4[x[7]];
+        x[8] = SB1[x[8]]; x[9] = SB2[x[9]]; x[10] = SB3[x[10]]; x[11] = SB4[x[11]];
         x[12] = SB1[x[12]]; x[13] = SB2[x[13]]; x[14] = SB3[x[14]]; x[15] = SB4[x[15]];
     }
 
@@ -247,31 +246,31 @@ internal static class AriaCore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SubstLayerEven(Span<byte> x)
     {
-        x[0]  = SB3[x[0]];  x[1]  = SB4[x[1]];  x[2]  = SB1[x[2]];  x[3]  = SB2[x[3]];
-        x[4]  = SB3[x[4]];  x[5]  = SB4[x[5]];  x[6]  = SB1[x[6]];  x[7]  = SB2[x[7]];
-        x[8]  = SB3[x[8]];  x[9]  = SB4[x[9]];  x[10] = SB1[x[10]]; x[11] = SB2[x[11]];
+        x[0] = SB3[x[0]]; x[1] = SB4[x[1]]; x[2] = SB1[x[2]]; x[3] = SB2[x[3]];
+        x[4] = SB3[x[4]]; x[5] = SB4[x[5]]; x[6] = SB1[x[6]]; x[7] = SB2[x[7]];
+        x[8] = SB3[x[8]]; x[9] = SB4[x[9]]; x[10] = SB1[x[10]]; x[11] = SB2[x[11]];
         x[12] = SB3[x[12]]; x[13] = SB4[x[13]]; x[14] = SB1[x[14]]; x[15] = SB2[x[15]];
     }
 
     // Diffusion layer A (binary matrix from RFC 5794)
     private static void DiffuseA(ReadOnlySpan<byte> x, Span<byte> y)
     {
-        y[0]  = (byte)(x[3] ^ x[4] ^ x[6] ^ x[8]  ^ x[9]  ^ x[13] ^ x[14]);
-        y[1]  = (byte)(x[2] ^ x[5] ^ x[7] ^ x[8]  ^ x[9]  ^ x[12] ^ x[15]);
-        y[2]  = (byte)(x[1] ^ x[4] ^ x[6] ^ x[10] ^ x[11] ^ x[12] ^ x[15]);
-        y[3]  = (byte)(x[0] ^ x[5] ^ x[7] ^ x[10] ^ x[11] ^ x[13] ^ x[14]);
-        y[4]  = (byte)(x[0] ^ x[2] ^ x[5] ^ x[8]  ^ x[11] ^ x[14] ^ x[15]);
-        y[5]  = (byte)(x[1] ^ x[3] ^ x[4] ^ x[9]  ^ x[10] ^ x[14] ^ x[15]);
-        y[6]  = (byte)(x[0] ^ x[2] ^ x[7] ^ x[9]  ^ x[10] ^ x[12] ^ x[13]);
-        y[7]  = (byte)(x[1] ^ x[3] ^ x[6] ^ x[8]  ^ x[11] ^ x[12] ^ x[13]);
-        y[8]  = (byte)(x[0] ^ x[1] ^ x[4] ^ x[7]  ^ x[10] ^ x[13] ^ x[15]);
-        y[9]  = (byte)(x[0] ^ x[1] ^ x[5] ^ x[6]  ^ x[11] ^ x[12] ^ x[14]);
-        y[10] = (byte)(x[2] ^ x[3] ^ x[5] ^ x[6]  ^ x[8]  ^ x[13] ^ x[15]);
-        y[11] = (byte)(x[2] ^ x[3] ^ x[4] ^ x[7]  ^ x[9]  ^ x[12] ^ x[14]);
-        y[12] = (byte)(x[1] ^ x[2] ^ x[6] ^ x[7]  ^ x[9]  ^ x[11] ^ x[12]);
-        y[13] = (byte)(x[0] ^ x[3] ^ x[6] ^ x[7]  ^ x[8]  ^ x[10] ^ x[13]);
-        y[14] = (byte)(x[0] ^ x[3] ^ x[4] ^ x[5]  ^ x[9]  ^ x[11] ^ x[14]);
-        y[15] = (byte)(x[1] ^ x[2] ^ x[4] ^ x[5]  ^ x[8]  ^ x[10] ^ x[15]);
+        y[0] = (byte)(x[3] ^ x[4] ^ x[6] ^ x[8] ^ x[9] ^ x[13] ^ x[14]);
+        y[1] = (byte)(x[2] ^ x[5] ^ x[7] ^ x[8] ^ x[9] ^ x[12] ^ x[15]);
+        y[2] = (byte)(x[1] ^ x[4] ^ x[6] ^ x[10] ^ x[11] ^ x[12] ^ x[15]);
+        y[3] = (byte)(x[0] ^ x[5] ^ x[7] ^ x[10] ^ x[11] ^ x[13] ^ x[14]);
+        y[4] = (byte)(x[0] ^ x[2] ^ x[5] ^ x[8] ^ x[11] ^ x[14] ^ x[15]);
+        y[5] = (byte)(x[1] ^ x[3] ^ x[4] ^ x[9] ^ x[10] ^ x[14] ^ x[15]);
+        y[6] = (byte)(x[0] ^ x[2] ^ x[7] ^ x[9] ^ x[10] ^ x[12] ^ x[13]);
+        y[7] = (byte)(x[1] ^ x[3] ^ x[6] ^ x[8] ^ x[11] ^ x[12] ^ x[13]);
+        y[8] = (byte)(x[0] ^ x[1] ^ x[4] ^ x[7] ^ x[10] ^ x[13] ^ x[15]);
+        y[9] = (byte)(x[0] ^ x[1] ^ x[5] ^ x[6] ^ x[11] ^ x[12] ^ x[14]);
+        y[10] = (byte)(x[2] ^ x[3] ^ x[5] ^ x[6] ^ x[8] ^ x[13] ^ x[15]);
+        y[11] = (byte)(x[2] ^ x[3] ^ x[4] ^ x[7] ^ x[9] ^ x[12] ^ x[14]);
+        y[12] = (byte)(x[1] ^ x[2] ^ x[6] ^ x[7] ^ x[9] ^ x[11] ^ x[12]);
+        y[13] = (byte)(x[0] ^ x[3] ^ x[6] ^ x[7] ^ x[8] ^ x[10] ^ x[13]);
+        y[14] = (byte)(x[0] ^ x[3] ^ x[4] ^ x[5] ^ x[9] ^ x[11] ^ x[14]);
+        y[15] = (byte)(x[1] ^ x[2] ^ x[4] ^ x[5] ^ x[8] ^ x[10] ^ x[15]);
     }
 
     // FO: Odd round function (substitution layer 1 + diffusion)

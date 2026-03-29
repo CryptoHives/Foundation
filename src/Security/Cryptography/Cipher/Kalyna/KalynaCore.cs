@@ -160,8 +160,7 @@ internal static class KalynaCore
     /// <returns>Number of rounds (10 for 128-bit key, 14 for 256-bit key).</returns>
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> roundKeys)
     {
-        int nr = key.Length switch
-        {
+        int nr = key.Length switch {
             16 => 10,
             32 => 14,
             _ => throw new ArgumentException("Key must be 16 or 32 bytes for 128-bit block.", nameof(key))

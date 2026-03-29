@@ -48,7 +48,7 @@ internal static class SeedCore
         0x779B99E3, 0xEF3733C6, 0xDE6E678D, 0xBCDCCF1B
     ];
 
-    #pragma warning disable CA1814
+#pragma warning disable CA1814
 
     private static readonly uint[] SS0 =
     [
@@ -194,7 +194,7 @@ internal static class SeedCore
         0xC9D1D819, 0x4C404C0C, 0x83838003, 0x8F838C0F, 0xCEC2CC0E, 0x0B33383B, 0x4A42480A, 0x87B3B437
     ];
 
-    #pragma warning restore CA1814
+#pragma warning restore CA1814
 
     /// <summary>
     /// Expands a 128-bit key into 32 round key words.
