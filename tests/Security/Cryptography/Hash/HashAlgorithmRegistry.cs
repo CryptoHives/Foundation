@@ -262,12 +262,23 @@ public static class HashAlgorithmRegistry
     private static void AddSha2(List<HashImplementation> list)
     {
         // SHA-224
+        var sha256Simd = CH.SHA256.SimdSupport;
+        if ((sha256Simd & CHRoot.SimdSupport.ArmSha256) != 0)
+        {
+            list.Add(new("SHA-224", "ArmSha256", 224,
+                () => CH.SHA224.Create(CHRoot.SimdSupport.ArmSha256), Source.Simd));
+        }
         list.Add(new HashImplementation("SHA-224", "Managed", 224, CH.SHA224.Create, Source.Managed));
         list.Add(new("SHA-224", "BouncyCastle", 224,
             () => new BouncyCastleHashAdapter(new BC.Sha224Digest()), Source.BouncyCastle));
 
         // SHA-256
         list.Add(new HashImplementation("SHA-256", "OS", 256, SHA256.Create, Source.OS));
+        if ((sha256Simd & CHRoot.SimdSupport.ArmSha256) != 0)
+        {
+            list.Add(new("SHA-256", "ArmSha256", 256,
+                () => CH.SHA256.Create(CHRoot.SimdSupport.ArmSha256), Source.Simd));
+        }
         list.Add(new HashImplementation("SHA-256", "Managed", 256, CH.SHA256.Create, Source.Managed));
         list.Add(new("SHA-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Sha256Digest()), Source.BouncyCastle));

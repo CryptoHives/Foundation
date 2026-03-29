@@ -157,6 +157,12 @@ internal partial struct ChaChaCore
             TransformSsse3(key, nonce, counter, input, output);
             return;
         }
+
+        if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            TransformNeon(key, nonce, counter, input, output);
+            return;
+        }
 #endif
         TransformScalar(key, nonce, counter, input, output);
     }

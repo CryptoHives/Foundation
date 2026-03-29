@@ -72,9 +72,14 @@ internal enum SimdSupport
     ArmPmull = 1 << 9,
 
     /// <summary>
+    /// ARM SHA-256 cryptographic extension support.
+    /// </summary>
+    ArmSha256 = 1 << 10,
+
+    /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
-    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256 | ArmAes | ArmPmull,
+    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256 | ArmAes | ArmPmull | ArmSha256,
 
     /// <summary>
     /// The default optimization to use for Keccak based algorithms.

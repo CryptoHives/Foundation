@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 #endif
 
@@ -44,6 +45,7 @@ internal partial struct ChaChaCore
 #if NET8_0_OR_GREATER
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
 #endif
             return support;
         }

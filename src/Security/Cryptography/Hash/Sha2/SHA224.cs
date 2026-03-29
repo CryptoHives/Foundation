@@ -32,11 +32,22 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     /// </summary>
     public const int HashSizeBytes = HashSizeBits / 8;
 
+    private readonly SimdSupport _simdSupport;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA224"/> class.
     /// </summary>
-    public SHA224()
+    public SHA224() : this(SimdSupport.All)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SHA224"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    internal SHA224(SimdSupport simdSupport)
+    {
+        _simdSupport = simdSupport & SHA256.SimdSupport;
         HashSizeValue = HashSizeBits;
     }
 
@@ -53,10 +64,25 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     protected override int OutputSizeBytes => HashSizeBytes;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by SHA-224 on the current platform.
+    /// </summary>
+    /// <remarks>
+    /// SHA-224 uses the same compression function as SHA-256.
+    /// </remarks>
+    internal new static SimdSupport SimdSupport => SHA256.SimdSupport;
+
+    /// <summary>
     /// Creates a new instance of the <see cref="SHA224"/> class.
     /// </summary>
     /// <returns>A new SHA-224 hash algorithm instance.</returns>
     public static new SHA224 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="SHA224"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new SHA-224 hash algorithm instance.</returns>
+    internal static SHA224 Create(SimdSupport simdSupport) => new(simdSupport);
 
     /// <inheritdoc/>
     protected override void InitializeState()
@@ -75,6 +101,13 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     /// <inheritdoc/>
     protected override void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.ArmSha256) != 0)
+        {
+            SHA256Core.ProcessBlockArm(block, state);
+            return;
+        }
+#endif
         SHA256Core.ProcessBlock(block, state);
     }
 

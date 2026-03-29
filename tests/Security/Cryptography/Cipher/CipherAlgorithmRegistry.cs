@@ -868,6 +868,18 @@ public static class CipherAlgorithmRegistry
                 Source.Simd));
         }
 
+        // ChaCha20 (stream) - Neon
+        if ((chachaSimd & CH.SimdSupport.Neon) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "ChaCha20",
+                "Neon",
+                256,
+                Mode.Stream,
+                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Neon),
+                Source.Simd));
+        }
+
         // ChaCha20 (stream) - Managed (scalar)
         implementations.Add(new CipherImplementation(
             "ChaCha20",
@@ -916,6 +928,18 @@ public static class CipherAlgorithmRegistry
                 256,
                 Mode.ChaCha20Poly1305,
                 (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, key),
+                Source.Simd));
+        }
+
+        // ChaCha20-Poly1305 - Neon
+        if ((chachaSimd & CH.SimdSupport.Neon) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "ChaCha20-Poly1305",
+                "Neon",
+                256,
+                Mode.ChaCha20Poly1305,
+                (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Neon, key),
                 Source.Simd));
         }
 
@@ -971,6 +995,18 @@ public static class CipherAlgorithmRegistry
                 256,
                 Mode.XChaCha20Poly1305,
                 (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, key),
+                Source.Simd));
+        }
+
+        // XChaCha20-Poly1305 - Neon
+        if ((chachaSimd & CH.SimdSupport.Neon) != 0)
+        {
+            implementations.Add(new CipherImplementation(
+                "XChaCha20-Poly1305",
+                "Neon",
+                256,
+                Mode.XChaCha20Poly1305,
+                (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Neon, key),
                 Source.Simd));
         }
 
