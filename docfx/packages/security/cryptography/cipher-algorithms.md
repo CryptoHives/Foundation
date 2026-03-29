@@ -175,6 +175,95 @@ byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
 - [XChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#xchacha20-poly1305)
 - [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#chacha20-poly1305)
 
+### Ascon-AEAD128
+
+```csharp
+public sealed class AsconAead128 : IAeadCipher
+```
+
+**Properties:**
+- Key Size: 128 bits (16 bytes)
+- Nonce Size: 128 bits (16 bytes)
+- Tag Size: 128 bits (16 bytes)
+- Performance: Lightweight permutation-based AEAD, optimized for constrained environments
+
+**Security:**
+- ✅ NIST Lightweight Cryptography standard (SP 800-232)
+- ✅ Winner of NIST LWC competition
+- ✅ No lookup-table S-boxes (timing-attack resilient design)
+- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+
+**Usage:**
+```csharp
+byte[] key = new byte[16];
+byte[] nonce = new byte[16];
+
+using var ascon = AsconAead128.Create(key);
+
+// Encrypt (ciphertext and tag split)
+byte[] plaintext = Encoding.UTF8.GetBytes("payload");
+byte[] aad = Encoding.UTF8.GetBytes("header");
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[16];
+
+ascon.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+
+// Decrypt + verify
+byte[] decrypted = new byte[plaintext.Length];
+bool valid = ascon.Decrypt(nonce, ciphertext, tag, decrypted, aad);
+```
+
+**See Also:**
+- [Ascon Hash/XOF](hash-algorithms.md#ascon)
+
+---
+
+## Key Wrap Utilities
+
+Key wrap algorithms are specialized ciphers for protecting cryptographic keys (KEK-based wrapping), not general-purpose message encryption.
+
+### AES Key Wrap / Key Wrap with Padding
+
+```csharp
+public sealed class AesKeyWrapPad : IDisposable
+```
+
+**Standards:**
+- RFC 3394 (AES Key Wrap, no padding)
+- RFC 5649 (AES Key Wrap with Padding)
+- NIST SP 800-38F
+
+**Properties:**
+- KEK Sizes: 128, 192, or 256 bits
+- RFC 3394 input requirements: at least 16 bytes and multiple of 8 bytes
+- RFC 5649 input requirements: 1 byte or more (arbitrary length)
+- Deterministic wrapping (same KEK + input → same wrapped output)
+
+**Usage (RFC 5649, padded):**
+```csharp
+byte[] kek = new byte[32]; // 256-bit key-encryption key
+byte[] keyMaterial = new byte[37]; // arbitrary length
+
+using var kwp = new AesKeyWrapPad(kek);
+
+byte[] wrapped = kwp.WrapKey(keyMaterial);
+byte[] unwrapped = kwp.UnwrapKey(wrapped);
+```
+
+**Usage (RFC 3394, no padding):**
+```csharp
+byte[] kek = new byte[16];
+byte[] keyMaterial = new byte[32]; // must be multiple of 8
+
+using var kw = new AesKeyWrapPad(kek);
+
+byte[] wrapped = kw.WrapKeyNoPad(keyMaterial);
+byte[] unwrapped = kw.UnwrapKeyNoPad(wrapped);
+```
+
+> [!NOTE]
+> AES-KW/AES-KWP provide integrity checks for wrapped key blobs. They are intended for key management workflows and should not be used as a replacement for AEAD data encryption.
+
 ---
 
 ## Block Ciphers
@@ -257,7 +346,7 @@ written = encryptor.TransformFinalBlock(lastChunk, output);
 > [!WARNING]
 > **ECB mode** encrypts each block independently. Identical plaintext blocks produce
 > identical ciphertext, leaking patterns. Use **CTR** or **CBC** mode instead.
-> For authenticated encryption, prefer [AES-GCM](#aes-gcm-galoisscounter-mode) or
+> For authenticated encryption, prefer [AES-GCM](#aes-gcm-galoiscounter-mode) or
 > [AES-CCM](#aes-ccm-counter-with-cbc-mac).
 
 ---
@@ -362,6 +451,7 @@ chacha.IV = nonce;
 | **AES-CCM** | 128/192/256 | 7-13 bytes | 4-16 bytes | Moderate* | AES-NI | IoT, small messages |
 | **ChaCha20-Poly1305** | 256 | 12 bytes | 16 bytes | Fast | SSSE3/AVX2 | Software-only, mobile |
 | **XChaCha20-Poly1305** | 256 | 24 bytes | 16 bytes | Fast | SSSE3/AVX2 | Random nonces safe |
+| **Ascon-AEAD128** | 128 | 16 bytes | 16 bytes | Fast | - | Lightweight, embedded |
 
 *With AES-NI hardware acceleration. Without hardware: ChaCha20 is typically faster.
 
@@ -434,6 +524,195 @@ aesGcm.Encrypt(nonce, message, ciphertext, tag, header);
 
 ---
 
+## Regional Block Ciphers
+
+Regional block ciphers complement the hash family coverage and provide national standard encryption algorithms. All implementations support ECB, CBC, and CTR modes via the shared `BlockCipherTransform` infrastructure.
+
+### SM4 (China)
+
+```csharp
+public sealed class Sm4 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Size: 128 bits
+- Block Size: 128 bits
+- Rounds: 32
+- Standard: GB/T 32907-2016
+
+**Security:**
+- ✅ Chinese national standard, mandatory for commercial use in China
+- ✅ Used in Chinese TLS implementations and WAPI (WLAN security)
+- ✅ ISO/IEC 18033-3:2010 listed
+
+**Usage:**
+```csharp
+using var sm4 = Sm4.Create();
+sm4.Mode = CipherMode.CBC;
+sm4.Padding = PaddingMode.PKCS7;
+sm4.Key = key; // 16 bytes
+sm4.IV = iv;   // 16 bytes
+byte[] ciphertext = sm4.Encrypt(plaintext);
+byte[] decrypted = sm4.Decrypt(ciphertext);
+```
+
+### ARIA (Korea)
+
+```csharp
+public sealed class Aria128 : BlockCipherTransform
+public sealed class Aria192 : BlockCipherTransform
+public sealed class Aria256 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Sizes: 128, 192, or 256 bits
+- Block Size: 128 bits
+- Rounds: 12 (128-bit key), 14 (192-bit key), 16 (256-bit key)
+- Standard: KS X 1213, RFC 5794
+
+**Security:**
+- ✅ Korean national standard
+- ✅ Used in Korean government and financial systems
+- ✅ RFC 5794 specification
+
+**Usage:**
+```csharp
+using var aria = Aria256.Create();
+aria.Mode = CipherMode.CBC;
+aria.Padding = PaddingMode.PKCS7;
+aria.Key = key; // 32 bytes
+aria.IV = iv;   // 16 bytes
+byte[] ciphertext = aria.Encrypt(plaintext);
+```
+
+### Camellia (Japan)
+
+```csharp
+public sealed class Camellia128 : BlockCipherTransform
+public sealed class Camellia192 : BlockCipherTransform
+public sealed class Camellia256 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Sizes: 128, 192, or 256 bits
+- Block Size: 128 bits
+- Rounds: 18 (128-bit key), 24 (192/256-bit key)
+- Standard: RFC 3713, ISO/IEC 18033-3
+
+**Security:**
+- ✅ Japanese CRYPTREC recommended cipher
+- ✅ NESSIE selected algorithm (EU)
+- ✅ Comparable security level to AES
+
+**Usage:**
+```csharp
+using var camellia = Camellia128.Create();
+camellia.Mode = CipherMode.CBC;
+camellia.Padding = PaddingMode.PKCS7;
+camellia.Key = key; // 16 bytes
+camellia.IV = iv;   // 16 bytes
+byte[] ciphertext = camellia.Encrypt(plaintext);
+```
+
+### Kuznyechik (Russia)
+
+```csharp
+public sealed class Kuznyechik : BlockCipherTransform
+```
+
+**Properties:**
+- Key Size: 256 bits
+- Block Size: 128 bits
+- Rounds: 10
+- Standard: GOST R 34.12-2015
+
+**Security:**
+- ✅ Russian national standard (successor to GOST 28147-89)
+- ✅ Used in Russian government and banking systems
+- ✅ Paired with Streebog hash family
+
+**Usage:**
+```csharp
+using var kuz = Kuznyechik.Create();
+kuz.Mode = CipherMode.CBC;
+kuz.Padding = PaddingMode.PKCS7;
+kuz.Key = key; // 32 bytes
+kuz.IV = iv;   // 16 bytes
+byte[] ciphertext = kuz.Encrypt(plaintext);
+```
+
+### Kalyna (Ukraine)
+
+```csharp
+public sealed class Kalyna128 : BlockCipherTransform
+public sealed class Kalyna256 : BlockCipherTransform
+```
+
+**Properties:**
+- Key Sizes: 128 or 256 bits
+- Block Size: 128 bits
+- Rounds: 10 (128-bit key), 14 (256-bit key)
+- Standard: DSTU 7624:2014
+
+**Security:**
+- ✅ Ukrainian national standard
+- ✅ Paired with Kupyna hash family
+- ✅ Uses MDS matrix-based diffusion layer
+
+**Usage:**
+```csharp
+using var kalyna = Kalyna256.Create();
+kalyna.Mode = CipherMode.CBC;
+kalyna.Padding = PaddingMode.PKCS7;
+kalyna.Key = key; // 32 bytes
+kalyna.IV = iv;   // 16 bytes
+byte[] ciphertext = kalyna.Encrypt(plaintext);
+```
+
+### SEED (Korea)
+
+```csharp
+public sealed class Seed : BlockCipherTransform
+```
+
+**Properties:**
+- Key Size: 128 bits
+- Block Size: 128 bits
+- Rounds: 16
+- Standard: RFC 4269, KISA
+
+**Security:**
+- ✅ Korean national standard (KISA)
+- ✅ Used in Korean financial and government systems
+- ✅ 16-round Feistel structure with S-boxes derived from the golden ratio
+
+**Usage:**
+```csharp
+using var seed = Seed.Create();
+seed.Mode = CipherMode.CBC;
+seed.Padding = PaddingMode.PKCS7;
+seed.Key = key; // 16 bytes
+seed.IV = iv;   // 16 bytes
+byte[] ciphertext = seed.Encrypt(plaintext);
+byte[] decrypted = seed.Decrypt(ciphertext);
+```
+
+### Regional Cipher Comparison
+
+| Algorithm | Origin | Key Sizes | Block Size | Rounds | Standard |
+|-----------|--------|-----------|------------|--------|----------|
+| **SM4** | China | 128 | 128 bits | 32 | GB/T 32907-2016 |
+| **ARIA** | Korea | 128/192/256 | 128 bits | 12/14/16 | KS X 1213, RFC 5794 |
+| **Camellia** | Japan | 128/192/256 | 128 bits | 18/24 | RFC 3713, ISO 18033-3 |
+| **Kuznyechik** | Russia | 256 | 128 bits | 10 | GOST R 34.12-2015 |
+| **Kalyna** | Ukraine | 128/256 | 128 bits | 10/14 | DSTU 7624:2014 |
+| **SEED** | Korea | 128 | 128 bits | 16 | RFC 4269 |
+
+**See Also:**
+- [Regional Cipher Benchmarks](benchmarks-cipher.md#regional-block-ciphers)
+
+---
+
 ## References
 
 ### Standards
@@ -445,6 +724,14 @@ aesGcm.Encrypt(nonce, message, ciphertext, tag, header);
 - **RFC 8439** - ChaCha20 and Poly1305 for IETF Protocols
 - **draft-irtf-cfrg-xchacha** - XChaCha20-Poly1305
 
+### Regional Standards
+- **GB/T 32907-2016** - SM4 Block Cipher (China)
+- **KS X 1213** - ARIA Block Cipher (Korea)
+- **RFC 3713** - Camellia Encryption Algorithm (Japan, CRYPTREC)
+- **GOST R 34.12-2015** - Kuznyechik Block Cipher (Russia)
+- **DSTU 7624:2014** - Kalyna Block Cipher (Ukraine)
+- **RFC 4269** - SEED Encryption Algorithm (Korea, KISA)
+
 ### Test Vectors
 
 Test vector documentation is coming soon.
@@ -454,3 +741,4 @@ Test vector documentation is coming soon.
 - [AES-GCM Performance](benchmarks-cipher.md#aes-128-gcm)
 - [ChaCha20-Poly1305 Performance](benchmarks-cipher.md#chacha20-poly1305)
 - [XChaCha20-Poly1305 Performance](benchmarks-cipher.md#xchacha20-poly1305)
+- [Regional Cipher Benchmarks](benchmarks-cipher.md#regional-block-ciphers)
