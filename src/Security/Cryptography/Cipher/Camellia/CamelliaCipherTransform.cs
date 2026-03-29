@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Camellia cipher transform for encryption or decryption operations.
@@ -36,12 +37,14 @@ internal sealed class CamelliaCipherTransform : BlockCipherTransform
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     protected override void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         CamelliaCore.EncryptBlock(input, output, _subkeys, _rounds);
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     protected override void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         CamelliaCore.DecryptBlock(input, output, _subkeys, _rounds);

@@ -1026,6 +1026,29 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 16, "Camellia-128-CBC"),
             Source.BouncyCastle));
 
+        // Camellia-192-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Camellia-192-CBC",
+            "Managed",
+            192,
+            Mode.CBC,
+            () => {
+                var cam = CH.Cipher.Camellia192.Create();
+                cam.Mode = CH.Cipher.CipherMode.CBC;
+                cam.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return cam;
+            },
+            Source.Managed));
+
+        // Camellia-192-CBC - BouncyCastle
+        implementations.Add(new CipherImplementation(
+            "Camellia-192-CBC",
+            "BouncyCastle",
+            192,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 24, "Camellia-192-CBC"),
+            Source.BouncyCastle));
+
         // Camellia-256-CBC - Managed
         implementations.Add(new CipherImplementation(
             "Camellia-256-CBC",
@@ -1155,27 +1178,5 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 24, "ARIA-192-CBC"),
             Source.BouncyCastle));
 
-        // Camellia-192-CBC - Managed
-        implementations.Add(new CipherImplementation(
-            "Camellia-192-CBC",
-            "Managed",
-            192,
-            Mode.CBC,
-            () => {
-                var cam = CH.Cipher.Camellia192.Create();
-                cam.Mode = CH.Cipher.CipherMode.CBC;
-                cam.Padding = CH.Cipher.PaddingMode.PKCS7;
-                return cam;
-            },
-            Source.Managed));
-
-        // Camellia-192-CBC - BouncyCastle
-        implementations.Add(new CipherImplementation(
-            "Camellia-192-CBC",
-            "BouncyCastle",
-            192,
-            Mode.CBC,
-            () => BouncyCastleCipherAdapter.CreateCbc(new CamelliaEngine(), 24, "Camellia-192-CBC"),
-            Source.BouncyCastle));
     }
 }
