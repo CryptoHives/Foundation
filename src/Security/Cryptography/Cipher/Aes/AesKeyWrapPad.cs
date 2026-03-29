@@ -86,6 +86,7 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
     private bool _disposed;
 #if NET8_0_OR_GREATER
     private readonly bool _useAesNi;
+    private readonly bool _useArmAes;
 #endif
 
     /// <summary>
@@ -132,6 +133,15 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
 
                 var decView = MemoryMarshal.Cast<uint, Vector128<byte>>(decKeys);
                 AesCoreAesNi.CreateDecryptionKeys(encView, decView, _rounds);
+            }
+            else if ((simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
+            {
+                _useArmAes = true;
+                var encView = MemoryMarshal.Cast<uint, Vector128<byte>>(encKeys);
+                _rounds = AesCoreArm.ExpandKey(kek, encView);
+
+                var decView = MemoryMarshal.Cast<uint, Vector128<byte>>(decKeys);
+                AesCoreArm.CreateDecryptionKeys(encView, decView, _rounds);
             }
             else
 #endif
@@ -418,6 +428,13 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
+
+            if (_useArmAes)
+            {
+                AesCoreArm.EncryptBlock(input, output,
+                    MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
+                return;
+            }
 #endif
             AesCore.EncryptBlock(input, output, roundKeys, _rounds);
         }
@@ -433,6 +450,13 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
             if (_useAesNi)
             {
                 AesCoreAesNi.DecryptBlock(input, output,
+                    MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
+                return;
+            }
+
+            if (_useArmAes)
+            {
+                AesCoreArm.DecryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }

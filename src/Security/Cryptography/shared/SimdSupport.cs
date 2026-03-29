@@ -62,9 +62,19 @@ internal enum SimdSupport
     PClMulV256 = 1 << 7,
 
     /// <summary>
+    /// ARM AES cryptographic extension support (hardware AES acceleration).
+    /// </summary>
+    ArmAes = 1 << 8,
+
+    /// <summary>
+    /// ARM PMULL polynomial multiply extension support (carry-less multiply).
+    /// </summary>
+    ArmPmull = 1 << 9,
+
+    /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
-    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256,
+    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256 | ArmAes | ArmPmull,
 
     /// <summary>
     /// The default optimization to use for Keccak based algorithms.

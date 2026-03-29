@@ -11,7 +11,9 @@ using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Runtime.Intrinsics.Arm;
 using AesNi = System.Runtime.Intrinsics.X86.Aes;
+using ArmAes = System.Runtime.Intrinsics.Arm.Aes;
 #endif
 
 /// <summary>
@@ -117,6 +119,8 @@ internal readonly struct GcmCore
     private readonly bool _usePclmul;
     private readonly bool _usePipeline;
     private readonly bool _usePclmulV256;
+    private readonly bool _useArmAes;
+    private readonly bool _useArmPmull;
     private readonly Vector128<byte> _hClmul;
     private readonly Vector128<byte>[] _hPowers;
 #endif
@@ -151,6 +155,12 @@ internal readonly struct GcmCore
             _rounds = AesCoreAesNi.ExpandKey(key, AesNiRoundKeys);
             AesCoreAesNi.EncryptBlock(zeroBlock, _h, AesNiRoundKeys, _rounds);
         }
+        else if ((simdSupport & SimdSupport.ArmAes) != 0)
+        {
+            _useArmAes = true;
+            _rounds = AesCoreArm.ExpandKey(key, AesNiRoundKeys);
+            AesCoreArm.EncryptBlock(zeroBlock, _h, AesNiRoundKeys, _rounds);
+        }
         else
 #endif
         {
@@ -170,12 +180,13 @@ internal readonly struct GcmCore
         _hPowers = null!;
         _usePclmul = (simdSupport & SimdSupport.PClMul) != 0;
         _usePclmulV256 = (simdSupport & SimdSupport.PClMulV256) != 0;
-        if (_usePclmul || _usePclmulV256)
+        _useArmPmull = (simdSupport & SimdSupport.ArmPmull) != 0;
+        if (_usePclmul || _usePclmulV256 || _useArmPmull)
         {
             _hClmul = PrepareH(_h);
             if (_useAesNi)
             {
-                _usePipeline = true;
+                _usePipeline = _usePclmul || _usePclmulV256;
                 _hPowers = PrepareHPowers(_hClmul);
             }
         }
@@ -199,8 +210,10 @@ internal readonly struct GcmCore
     internal static SimdSupport SimdSupport =>
 #if NET8_0_OR_GREATER
         (AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None) |
+        (AesCoreArm.IsSupported ? SimdSupport.ArmAes : SimdSupport.None) |
         (IsPclmulSupported ? SimdSupport.PClMul : SimdSupport.None) |
-        (IsPclmulV256Supported ? SimdSupport.PClMulV256 : SimdSupport.None);
+        (IsPclmulV256Supported ? SimdSupport.PClMulV256 : SimdSupport.None) |
+        (IsPmullSupported ? SimdSupport.ArmPmull : SimdSupport.None);
 #else
         SimdSupport.None;
 #endif
@@ -491,6 +504,57 @@ internal readonly struct GcmCore
         while (offset < input.Length)
         {
             AesCoreAesNi.EncryptBlock(counter, keystream, roundKeys, rounds);
+
+            int remaining = input.Length - offset;
+
+            if (remaining >= BlockSizeBytes)
+            {
+                ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
+                ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
+                Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
+                dst[0] = src[0] ^ ks[0];
+                dst[1] = src[1] ^ ks[1];
+            }
+            else
+            {
+                for (int i = 0; i < remaining; i++)
+                {
+                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
+                }
+            }
+
+            IncrementCounter(counter);
+            offset += BlockSizeBytes;
+        }
+    }
+
+    /// <summary>
+    /// Performs GCTR using ARM AES crypto extension hardware-accelerated encryption.
+    /// </summary>
+    /// <param name="roundKeys">The ARM AES round keys.</param>
+    /// <param name="rounds">Number of AES rounds.</param>
+    /// <param name="icb">The initial counter block.</param>
+    /// <param name="input">The input data.</param>
+    /// <param name="output">The output buffer.</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public static void GctrArmAes(
+        ReadOnlySpan<Vector128<byte>> roundKeys, int rounds,
+        ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        if (input.Length == 0)
+        {
+            return;
+        }
+
+        Span<byte> counter = stackalloc byte[BlockSizeBytes];
+        Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        icb.CopyTo(counter);
+
+        int offset = 0;
+        while (offset < input.Length)
+        {
+            AesCoreArm.EncryptBlock(counter, keystream, roundKeys, rounds);
 
             int remaining = input.Length - offset;
 
@@ -840,6 +904,12 @@ internal readonly struct GcmCore
             GctrAesNi(AesNiRoundKeys, _rounds, icb, input, output);
             return;
         }
+
+        if (_useArmAes)
+        {
+            GctrArmAes(AesNiRoundKeys, _rounds, icb, input, output);
+            return;
+        }
 #endif
         GctrAes(_encRoundKeys, _rounds, icb, input, output);
     }
@@ -851,6 +921,12 @@ internal readonly struct GcmCore
         if (_usePclmul)
         {
             GHashCompletePclmul(_hClmul, aad, ciphertext, output);
+            return;
+        }
+
+        if (_useArmPmull)
+        {
+            GHashCompletePmull(_hClmul, aad, ciphertext, output);
             return;
         }
 #endif
@@ -925,7 +1001,15 @@ internal readonly struct GcmCore
     }
 
     /// <summary>
-    /// Prepares the hash subkey H for use with PCLMULQDQ-based GHASH.
+    /// Gets whether ARM PMULL hardware acceleration is available.
+    /// </summary>
+    private static bool IsPmullSupported
+    {
+        get => ArmAes.IsSupported;
+    }
+
+    /// <summary>
+    /// Prepares the hash subkey H for use with hardware-accelerated GHASH.
     /// </summary>
     /// <remarks>
     /// Loads H from big-endian byte order and byte-reverses it for CLMUL processing.
@@ -936,7 +1020,7 @@ internal readonly struct GcmCore
     private static Vector128<byte> PrepareH(ReadOnlySpan<byte> h)
     {
         var v = Vector128.Create(h);
-        return Ssse3.Shuffle(v, ByteSwapMask);
+        return Vector128.Shuffle(v, ByteSwapMask);
     }
 
     /// <summary>
@@ -1028,6 +1112,145 @@ internal readonly struct GcmCore
         res = Sse2.Xor(res, t0);
 
         return res.AsByte();
+    }
+
+    /// <summary>
+    /// Performs GF(2^128) multiplication using ARM PMULL (polynomial multiply long)
+    /// with the same reduction approach as the PCLMULQDQ path.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Maps PCLMULQDQ operations to ARM equivalents:
+    /// PCLMULQDQ(a, b, 0x00) → PolynomialMultiplyWideningLower (lower halves),
+    /// PCLMULQDQ(a, b, 0x11) → PolynomialMultiplyWideningUpper (upper halves),
+    /// PCLMULQDQ(a, b, 0x01/0x10) → PolynomialMultiplyWideningLower with extracted halves.
+    /// </para>
+    /// </remarks>
+    /// <param name="a">First operand (byte-reversed H).</param>
+    /// <param name="b">Second operand (byte-reversed input block).</param>
+    /// <returns>The GF(2^128) product, reduced modulo the GHASH polynomial.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal static Vector128<byte> GfMulPmull(Vector128<byte> a, Vector128<byte> b)
+    {
+        // Carry-less multiply: 128×128 → 256 bits
+        // 0x00: lower(a) × lower(b)
+        Vector128<long> rl = ArmAes.PolynomialMultiplyWideningLower(
+            a.AsInt64().GetLower(), b.AsInt64().GetLower());
+        // 0x11: upper(a) × upper(b)
+        Vector128<long> rh = ArmAes.PolynomialMultiplyWideningUpper(a.AsInt64(), b.AsInt64());
+        // Cross terms: 0x10 ⊕ 0x01
+        Vector128<long> rm = ArmAes.PolynomialMultiplyWideningLower(
+            a.AsInt64().GetLower(), b.AsInt64().GetUpper());
+        rm ^= ArmAes.PolynomialMultiplyWideningLower(
+            a.AsInt64().GetUpper(), b.AsInt64().GetLower());
+
+        return ModReducePmull(rl.AsUInt64(), rm.AsUInt64(), rh.AsUInt64());
+    }
+
+    /// <summary>
+    /// ARM PMULL-based modular reduction of a 256-bit carryless product.
+    /// </summary>
+    /// <remarks>
+    /// Equivalent to <see cref="ModReduceClmul"/> but using ARM PMULL instructions
+    /// for the reduction multiply steps. The algorithm is identical: fold lo→mid→hi
+    /// through the GCM reduction polynomial with reflected bit correction.
+    /// </remarks>
+    /// <param name="rl">Low 128 bits of the carryless product.</param>
+    /// <param name="rm">Middle 128 bits (cross-terms).</param>
+    /// <param name="rh">High 128 bits of the carryless product.</param>
+    /// <returns>The 128-bit reduced result in GF(2^128).</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<byte> ModReducePmull(
+        Vector128<ulong> rl, Vector128<ulong> rm, Vector128<ulong> rh)
+    {
+        var vMul = Vector128.Create(GcmReductionConstant, 0UL);
+
+        // Fold rl into rm through the reduction polynomial
+        // PCLMULQDQ(rl, vMul, 0x00) → PMULL lower(rl) × lower(vMul)
+        var t0 = ArmAes.PolynomialMultiplyWideningLower(
+            rl.AsInt64().GetLower(), vMul.AsInt64().GetLower()).AsUInt64();
+        // Shuffle 0x4E = swap 64-bit halves
+        rl = Vector128.Create(rl.GetElement(1), rl.GetElement(0));
+        rm ^= t0;
+        rm ^= rl;
+
+        // Fold rm into rh with pre-shift for reflected bit order
+        var rmShifted = AdvSimd.ShiftLeftLogical(rm, 1);
+        t0 = ArmAes.PolynomialMultiplyWideningLower(
+            rmShifted.AsInt64().GetLower(), vMul.AsInt64().GetLower()).AsUInt64();
+        // Shuffle 0x4E = swap 64-bit halves
+        rm = Vector128.Create(rm.GetElement(1), rm.GetElement(0));
+        var res = rh ^ rm;
+
+        // Rotate res left by 1 and accumulate
+        var t1 = AdvSimd.ShiftLeftLogical(res.AsUInt32(), 1).AsUInt64();
+        res = AdvSimd.ShiftRightLogical(res.AsUInt32(), 31).AsUInt64();
+        t0 ^= t1;
+        // Shuffle 0x93 = _MM_SHUFFLE(2,1,0,3) → rotate uint32 elements right by 1
+        res = Vector128.Shuffle(res.AsUInt32(),
+            Vector128.Create(3u, 0u, 1u, 2u)).AsUInt64();
+        res ^= t0;
+
+        return res.AsByte();
+    }
+
+    /// <summary>
+    /// Computes GHASH over AAD and ciphertext using ARM PMULL hardware acceleration.
+    /// </summary>
+    /// <param name="hSwapped">The byte-reversed hash subkey from <see cref="PrepareH"/>.</param>
+    /// <param name="aad">Additional authenticated data.</param>
+    /// <param name="ciphertext">The ciphertext.</param>
+    /// <param name="output">The 16-byte output buffer for the GHASH result.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    internal static void GHashCompletePmull(
+        Vector128<byte> hSwapped, ReadOnlySpan<byte> aad,
+        ReadOnlySpan<byte> ciphertext, Span<byte> output)
+    {
+        Vector128<byte> y = Vector128<byte>.Zero;
+
+        y = ProcessBlocksPmull(hSwapped, aad, y);
+        y = ProcessBlocksPmull(hSwapped, ciphertext, y);
+
+        // Length block: [aadBits || cBits] in big-endian, then byte-reversed
+        ulong aadBits = (ulong)aad.Length * 8;
+        ulong cBits = (ulong)ciphertext.Length * 8;
+        Vector128<byte> lenBlock = Vector128.Create(cBits, aadBits).AsByte();
+        y ^= lenBlock;
+        y = GfMulPmull(hSwapped, y);
+
+        // Byte-reverse back to big-endian for output
+        y = Vector128.Shuffle(y, ByteSwapMask);
+        y.CopyTo(output);
+    }
+
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<byte> ProcessBlocksPmull(
+        Vector128<byte> hSwapped, ReadOnlySpan<byte> data, Vector128<byte> y)
+    {
+        int offset = 0;
+
+        while (offset + BlockSizeBytes <= data.Length)
+        {
+            var block = Vector128.Create(data.Slice(offset, BlockSizeBytes));
+            block = Vector128.Shuffle(block, ByteSwapMask);
+            y ^= block;
+            y = GfMulPmull(hSwapped, y);
+            offset += BlockSizeBytes;
+        }
+
+        if (offset < data.Length)
+        {
+            Span<byte> padded = stackalloc byte[BlockSizeBytes];
+            data.Slice(offset).CopyTo(padded);
+            padded.Slice(data.Length - offset).Clear();
+            var block = Vector128.Create(padded);
+            block = Vector128.Shuffle(block, ByteSwapMask);
+            y ^= block;
+            y = GfMulPmull(hSwapped, y);
+        }
+
+        return y;
     }
 
     /// <summary>
