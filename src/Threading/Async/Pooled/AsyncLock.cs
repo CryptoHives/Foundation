@@ -264,7 +264,7 @@ public sealed class AsyncLock : IResettable
         {
             if (_waiters.Count == 0)
             {
-                Interlocked.Exchange(ref _taken, 0);
+                _taken = 0;
                 return;
             }
 
