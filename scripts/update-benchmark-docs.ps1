@@ -1,4 +1,4 @@
-﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # update-benchmark-docs.ps1
@@ -49,7 +49,6 @@ $packageConfigurations = @{
             @{ Source = "AsyncReaderWriterLockUpgradeableReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradeablereader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradedWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradedwriter.md" }
             @{ Source = "AsyncReaderWriterLockWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-writer.md" }
-            @{ Source = "AsyncReaderWriterLockContentionBenchmark-report.md"; Target = "asyncreaderwriterlock-contention.md" }
         )
     }
 

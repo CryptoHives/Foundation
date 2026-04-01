@@ -1,7 +1,7 @@
 ﻿| Description                                         | Mean      | Ratio | Allocated | 
 |---------------------------------------------------- |----------:|------:|----------:|
-| SetThenWait · AsyncManualReset · ProtoPromise       |  6.566 ns |  0.87 |         - | 
-| SetThenWait · AsyncManualReset · Pooled (ValueTask) |  7.536 ns |  1.00 |         - | 
-| SetThenWait · AsyncManualReset · Pooled (AsTask)    |  8.976 ns |  1.19 |         - | 
-| SetThenWait · AsyncManualReset · RefImpl            | 14.156 ns |  1.88 |      96 B | 
-| SetThenWait · AsyncManualReset · Nito.AsyncEx       | 24.939 ns |  3.31 |      96 B |
+| SetThenWait · AsyncManualReset · ProtoPromise       |  6.130 ns |  0.71 |         - | 
+| SetThenWait · AsyncManualReset · Pooled (ValueTask) |  8.679 ns |  1.00 |         - | 
+| SetThenWait · AsyncManualReset · Pooled (AsTask)    | 10.352 ns |  1.19 |         - | 
+| SetThenWait · AsyncManualReset · RefImpl            | 14.084 ns |  1.62 |      96 B | 
+| SetThenWait · AsyncManualReset · Nito.AsyncEx       | 24.532 ns |  2.83 |      96 B |

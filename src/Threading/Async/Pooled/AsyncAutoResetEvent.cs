@@ -267,7 +267,7 @@ public sealed class AsyncAutoResetEvent : IResettable
         {
             if (_waiters.Count == 0)
             {
-                _ = Interlocked.Exchange(ref _signaled, 1);
+                _signaled = 1;
                 return;
             }
 
@@ -291,7 +291,7 @@ public sealed class AsyncAutoResetEvent : IResettable
     /// </summary>
     internal void Reset()
     {
-        _ = Interlocked.Exchange(ref _signaled, 0);
+        _signaled = 0;
     }
 
     /// <summary>
@@ -306,7 +306,7 @@ public sealed class AsyncAutoResetEvent : IResettable
         {
             if (_waiters.Count == 0)
             {
-                _ = Interlocked.Exchange(ref _signaled, 1);
+                _signaled = 1;
                 return;
             }
 

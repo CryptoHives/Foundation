@@ -8,6 +8,7 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled;
 using CryptoHives.Foundation.Threading.Pools;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
@@ -123,7 +124,19 @@ public sealed class AsyncCountdownEvent
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that completes when the countdown reaches zero.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask WaitAsync(CancellationToken cancellationToken = default)
+    {
+        if (Volatile.Read(ref _currentCount) == 0)
+        {
+            return default;
+        }
+
+        return WaitAsyncImpl(cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken)
     {
         _spinLock.Enter();
         try
