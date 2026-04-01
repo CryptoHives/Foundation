@@ -1,8 +1,8 @@
-﻿| Description                              | Mean         | Ratio  | Allocated | 
-|----------------------------------------- |-------------:|-------:|----------:|
-| WriterLock · RWLockSlim · System         |     6.947 ns |   0.68 |         - | 
-| WriterLock · AsyncRWLock · ProtoPromises |     8.378 ns |   0.82 |         - | 
-| WriterLock · AsyncRWLock · Pooled        |    10.164 ns |   1.00 |         - | 
-| WriterLock · AsyncRWLock · RefImpl       |    19.056 ns |   1.87 |         - | 
-| WriterLock · AsyncRWLock · Nito.AsyncEx  |    53.690 ns |   5.28 |     496 B | 
-| WriterLock · AsyncRWLock · VS.Threading  | 1,103.223 ns | 108.54 |     584 B |
+﻿| Description                               | Mean         | Ratio | Allocated | 
+|------------------------------------------ |-------------:|------:|----------:|
+| WriterLock · RWLockSlim · System          |     6.905 ns |  0.66 |         - | 
+| WriterLock · AsyncRWLock · Proto.Promises |     8.379 ns |  0.80 |         - | 
+| WriterLock · AsyncRWLock · Pooled         |    10.460 ns |  1.00 |         - | 
+| WriterLock · AsyncRWLock · RefImpl        |    18.797 ns |  1.80 |         - | 
+| WriterLock · AsyncRWLock · Nito.AsyncEx   |    54.581 ns |  5.22 |     496 B | 
+| WriterLock · AsyncRWLock · VS.Threading   | 1,027.868 ns | 98.27 |     584 B |
