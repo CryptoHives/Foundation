@@ -6,11 +6,19 @@ This page collects the BenchmarkDotNet measurements for every cryptographic algo
 
 ### [Hash Algorithm Benchmarks](benchmarks-hash.md)
 
-Performance measurements for all hash algorithm implementations including SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards (SM3, Streebog, Kupyna, LSH, Whirlpool).
+Platform-indexed performance measurements for all hash algorithm implementations including SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards (SM3, Streebog, Kupyna, LSH, Whirlpool).
 
 ### [Cipher Algorithm Benchmarks](benchmarks-cipher.md)
 
-Performance measurements for all cipher algorithm implementations including AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and regional block ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED).
+Platform-indexed performance measurements for all cipher algorithm implementations including AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and regional block ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED).
+
+## Published Benchmark Runs
+
+| Platform ID | Host | Published Pages |
+|-------------|------|-----------------|
+| `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Hash](benchmarks/macos-arm64-apple-m4/hash.md), [Cipher](benchmarks/macos-arm64-apple-m4/cipher.md) |
+
+Platform-specific pages keep benchmark tables isolated per machine so later runs such as Windows x64, Linux Arm64, or additional macOS hosts can be added without mixing incompatible numbers into the same page.
 
 ## Memory Footprint
 
@@ -120,13 +128,9 @@ The following tables show the per-instance memory footprint (internal state + bu
    ```
 2. Mirror the freshly generated markdown into the documentation folder:
    ```powershell
-   .\scripts\update-benchmark-docs.ps1 -Package Cryptography
+   .\scripts\update-benchmark-docs.ps1 -Project Cryptography
    ```
-   The script trims the machine header from the BenchmarkDotNet export, writes it once to `benchmarks/machine-spec.md`, and stores each algorithm's benchmark table in its own file.
-
-## Machine profile
-
-[!INCLUDE[](benchmarks/machine-spec.md)]
+   The script trims the machine header from the BenchmarkDotNet export, writes it once to a platform-local `machine-spec.md`, and stores each algorithm's benchmark table under the derived platform folder.
 
 ## See also
 
