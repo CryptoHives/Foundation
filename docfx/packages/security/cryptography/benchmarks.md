@@ -1,24 +1,36 @@
 # Cryptography Benchmarks
 
-This page collects the BenchmarkDotNet measurements for every cryptographic algorithm implementation that ships with `CryptoHives.Foundation.Security.Cryptography`. Each algorithm family has its own benchmark, measuring performance across representative payload sizes (128 bytes through 128 KiB) to capture both latency and throughput characteristics.
+This page collects BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` and organizes them by platform run. Each run is stored in its own platform folder so values from different hosts are never mixed.
 
 ## Benchmark Categories
 
 ### [Hash Algorithm Benchmarks](benchmarks-hash.md)
 
-Platform-indexed performance measurements for all hash algorithm implementations including SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards (SM3, Streebog, Kupyna, LSH, Whirlpool).
+Run selector and platform-specific hash results (SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards).
 
 ### [Cipher Algorithm Benchmarks](benchmarks-cipher.md)
 
-Platform-indexed performance measurements for all cipher algorithm implementations including AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and regional block ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED).
+Run selector and platform-specific cipher results (AES-CBC/GCM/CCM, ChaCha family, and regional block ciphers).
 
 ## Published Benchmark Runs
 
 | Platform ID | Host | Published Pages |
 |-------------|------|-----------------|
 | `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Hash](benchmarks/macos-arm64-apple-m4/hash.md), [Cipher](benchmarks/macos-arm64-apple-m4/cipher.md) |
+| `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Hash](benchmarks/windows-x64-amd-ryzen-5-7600x/hash.md), [Cipher](benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.md) |
 
-Platform-specific pages keep benchmark tables isolated per machine so later runs such as Windows x64, Linux Arm64, or additional macOS hosts can be added without mixing incompatible numbers into the same page.
+Platform-specific pages keep benchmark tables isolated per machine so later runs such as Linux Arm64 or additional macOS/Windows hosts can be added without mixing incompatible numbers into the same page.
+
+## UI Structure Recommendation
+
+For a feasible long-term docfx UI:
+
+1. Keep this page as the top-level run catalog.
+2. Keep `benchmarks-hash.md` and `benchmarks-cipher.md` as selectors only (no raw table dumps).
+3. Keep full benchmark tables only in platform pages (`benchmarks/<platform-id>/hash.md` and `benchmarks/<platform-id>/cipher.md`).
+4. Add a tiny comparison summary table (5-10 representative algorithms) on selector pages for quick cross-platform snapshots.
+
+This keeps pages small, avoids duplicate content, and scales cleanly as platform count grows.
 
 ## Memory Footprint
 

@@ -14,6 +14,16 @@ The platform identifier format is:
 - `<os>-<architecture>-<cpu-slug>`
 
 That keeps operating system, ISA, and CPU model visible in the path and avoids mixing results from incompatible hosts.
+
+## Suggested Docfx UI Structure
+
+Use a three-level navigation model:
+
+1. Overview page: `../benchmarks.md`
+2. Family selector pages: `../benchmarks-hash.md` and `../benchmarks-cipher.md`
+3. Platform pages: `./<platform-id>/hash.md` and `./<platform-id>/cipher.md`
+
+This keeps the top-level pages short and comparable, while full benchmark tables remain in platform-specific pages.
 ## File Structure
 
 | File | Description |
@@ -100,3 +110,5 @@ The helper script:
 - removes the duplicated machine header from each benchmark table
 
 If you publish a new platform, add matching docfx entry pages for that folder so it appears from [benchmarks-hash.md](../benchmarks-hash.md) and [benchmarks-cipher.md](../benchmarks-cipher.md).
+
+For a feasible long-term workflow, keep a compact comparison section in selector pages (only a handful of representative algorithms) and keep detailed full tables in platform pages only.
