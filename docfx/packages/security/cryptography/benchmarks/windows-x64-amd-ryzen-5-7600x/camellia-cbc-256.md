@@ -1,25 +1,25 @@
-﻿| Description                               | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|------------------------------------------ |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · Camellia-256-CBC (BouncyCastle) | 128B         |     1.314 μs | 0.0022 μs | 0.0018 μs |     592 B |
-| Decrypt · Camellia-256-CBC (Managed)      | 128B         |     1.880 μs | 0.0057 μs | 0.0054 μs |         - |
-|                                           |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle) | 128B         |     1.318 μs | 0.0048 μs | 0.0045 μs |     592 B |
-| Encrypt · Camellia-256-CBC (Managed)      | 128B         |     1.879 μs | 0.0041 μs | 0.0036 μs |         - |
-|                                           |              |              |           |           |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle) | 1KB          |     8.758 μs | 0.0194 μs | 0.0172 μs |    2832 B |
-| Decrypt · Camellia-256-CBC (Managed)      | 1KB          |    13.508 μs | 0.0265 μs | 0.0235 μs |         - |
-|                                           |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle) | 1KB          |     8.687 μs | 0.0231 μs | 0.0193 μs |    2832 B |
-| Encrypt · Camellia-256-CBC (Managed)      | 1KB          |    13.585 μs | 0.0338 μs | 0.0316 μs |         - |
-|                                           |              |              |           |           |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle) | 8KB          |    68.821 μs | 0.1365 μs | 0.1276 μs |   20752 B |
-| Decrypt · Camellia-256-CBC (Managed)      | 8KB          |   106.792 μs | 0.2561 μs | 0.2396 μs |         - |
-|                                           |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle) | 8KB          |    67.883 μs | 0.0961 μs | 0.0852 μs |   20752 B |
-| Encrypt · Camellia-256-CBC (Managed)      | 8KB          |   106.302 μs | 0.2407 μs | 0.2252 μs |         - |
-|                                           |              |              |           |           |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle) | 128KB        | 1,089.015 μs | 2.9223 μs | 2.2816 μs |  327952 B |
-| Decrypt · Camellia-256-CBC (Managed)      | 128KB        | 1,689.340 μs | 2.9251 μs | 2.7361 μs |         - |
-|                                           |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle) | 128KB        | 1,081.240 μs | 2.0574 μs | 1.6063 μs |  327952 B |
-| Encrypt · Camellia-256-CBC (Managed)      | 128KB        | 1,718.049 μs | 7.6664 μs | 6.7960 μs |         - |
+﻿| Description                               | TestDataSize | Mean         | Error      | StdDev     | Allocated |
+|------------------------------------------ |------------- |-------------:|-----------:|-----------:|----------:|
+| Decrypt · Camellia-256-CBC (BouncyCastle) | 128B         |     1.267 μs |  0.0136 μs |  0.0114 μs |     592 B |
+| Decrypt · Camellia-256-CBC (Managed)      | 128B         |     1.791 μs |  0.0067 μs |  0.0056 μs |         - |
+|                                           |              |              |            |            |           |
+| Encrypt · Camellia-256-CBC (BouncyCastle) | 128B         |     1.259 μs |  0.0164 μs |  0.0154 μs |     592 B |
+| Encrypt · Camellia-256-CBC (Managed)      | 128B         |     1.786 μs |  0.0164 μs |  0.0154 μs |         - |
+|                                           |              |              |            |            |           |
+| Decrypt · Camellia-256-CBC (BouncyCastle) | 1KB          |     8.313 μs |  0.0652 μs |  0.0578 μs |    2832 B |
+| Decrypt · Camellia-256-CBC (Managed)      | 1KB          |    12.811 μs |  0.1201 μs |  0.1003 μs |         - |
+|                                           |              |              |            |            |           |
+| Encrypt · Camellia-256-CBC (BouncyCastle) | 1KB          |     8.251 μs |  0.1520 μs |  0.1348 μs |    2832 B |
+| Encrypt · Camellia-256-CBC (Managed)      | 1KB          |    13.033 μs |  0.2203 μs |  0.1840 μs |         - |
+|                                           |              |              |            |            |           |
+| Decrypt · Camellia-256-CBC (BouncyCastle) | 8KB          |    64.386 μs |  0.2426 μs |  0.2150 μs |   20752 B |
+| Decrypt · Camellia-256-CBC (Managed)      | 8KB          |   100.900 μs |  0.3446 μs |  0.2690 μs |         - |
+|                                           |              |              |            |            |           |
+| Encrypt · Camellia-256-CBC (BouncyCastle) | 8KB          |    63.958 μs |  0.3796 μs |  0.3550 μs |   20752 B |
+| Encrypt · Camellia-256-CBC (Managed)      | 8KB          |   100.337 μs |  0.3747 μs |  0.3321 μs |         - |
+|                                           |              |              |            |            |           |
+| Decrypt · Camellia-256-CBC (BouncyCastle) | 128KB        | 1,026.042 μs |  5.1160 μs |  4.5352 μs |  327952 B |
+| Decrypt · Camellia-256-CBC (Managed)      | 128KB        | 1,597.316 μs |  3.9247 μs |  3.6712 μs |         - |
+|                                           |              |              |            |            |           |
+| Encrypt · Camellia-256-CBC (BouncyCastle) | 128KB        | 1,027.007 μs | 16.1018 μs | 15.0616 μs |  327952 B |
+| Encrypt · Camellia-256-CBC (Managed)      | 128KB        | 1,624.906 μs |  8.7419 μs |  6.8251 μs |         - |

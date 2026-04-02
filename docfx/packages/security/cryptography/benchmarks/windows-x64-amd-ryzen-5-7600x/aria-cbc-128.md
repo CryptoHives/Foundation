@@ -1,25 +1,25 @@
 ﻿| Description                           | TestDataSize | Mean         | Error      | StdDev     | Allocated |
 |-------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|
-| Decrypt · ARIA-128-CBC (Managed)      | 128B         |     2.714 μs |  0.0529 μs |  0.0588 μs |         - |
-| Decrypt · ARIA-128-CBC (BouncyCastle) | 128B         |     2.784 μs |  0.0551 μs |  0.0735 μs |    1288 B |
+| Decrypt · ARIA-128-CBC (BouncyCastle) | 128B         |     2.447 μs |  0.0090 μs |  0.0080 μs |    1288 B |
+| Decrypt · ARIA-128-CBC (Managed)      | 128B         |     2.458 μs |  0.0176 μs |  0.0147 μs |         - |
 |                                       |              |              |            |            |           |
-| Encrypt · ARIA-128-CBC (BouncyCastle) | 128B         |     2.640 μs |  0.0472 μs |  0.0418 μs |    1288 B |
-| Encrypt · ARIA-128-CBC (Managed)      | 128B         |     2.792 μs |  0.0343 μs |  0.0321 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle) | 128B         |     2.383 μs |  0.0350 μs |  0.0328 μs |    1288 B |
+| Encrypt · ARIA-128-CBC (Managed)      | 128B         |     2.534 μs |  0.0498 μs |  0.0489 μs |         - |
 |                                       |              |              |            |            |           |
-| Decrypt · ARIA-128-CBC (BouncyCastle) | 1KB          |    17.006 μs |  0.3281 μs |  0.3906 μs |    3528 B |
-| Decrypt · ARIA-128-CBC (Managed)      | 1KB          |    19.115 μs |  0.1618 μs |  0.1263 μs |         - |
+| Decrypt · ARIA-128-CBC (BouncyCastle) | 1KB          |    15.246 μs |  0.1806 μs |  0.1601 μs |    3528 B |
+| Decrypt · ARIA-128-CBC (Managed)      | 1KB          |    17.551 μs |  0.0637 μs |  0.0565 μs |         - |
 |                                       |              |              |            |            |           |
-| Encrypt · ARIA-128-CBC (BouncyCastle) | 1KB          |    17.171 μs |  0.3305 μs |  0.3934 μs |    3528 B |
-| Encrypt · ARIA-128-CBC (Managed)      | 1KB          |    19.702 μs |  0.2550 μs |  0.2385 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle) | 1KB          |    15.710 μs |  0.3127 μs |  0.3955 μs |    3528 B |
+| Encrypt · ARIA-128-CBC (Managed)      | 1KB          |    17.795 μs |  0.2146 μs |  0.1792 μs |         - |
 |                                       |              |              |            |            |           |
-| Decrypt · ARIA-128-CBC (BouncyCastle) | 8KB          |   129.665 μs |  1.4121 μs |  1.3209 μs |   21448 B |
-| Decrypt · ARIA-128-CBC (Managed)      | 8KB          |   154.274 μs |  2.0972 μs |  1.9617 μs |         - |
+| Decrypt · ARIA-128-CBC (BouncyCastle) | 8KB          |   118.020 μs |  1.2635 μs |  1.1201 μs |   21448 B |
+| Decrypt · ARIA-128-CBC (Managed)      | 8KB          |   138.427 μs |  0.5805 μs |  0.4532 μs |         - |
 |                                       |              |              |            |            |           |
-| Encrypt · ARIA-128-CBC (BouncyCastle) | 8KB          |   132.466 μs |  2.5480 μs |  2.5025 μs |   21448 B |
-| Encrypt · ARIA-128-CBC (Managed)      | 8KB          |   155.422 μs |  3.0345 μs |  2.9803 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle) | 8KB          |   118.737 μs |  0.7789 μs |  0.7285 μs |   21448 B |
+| Encrypt · ARIA-128-CBC (Managed)      | 8KB          |   143.474 μs |  2.1698 μs |  2.0296 μs |         - |
 |                                       |              |              |            |            |           |
-| Decrypt · ARIA-128-CBC (BouncyCastle) | 128KB        | 2,111.599 μs | 41.6075 μs | 46.2466 μs |  328648 B |
-| Decrypt · ARIA-128-CBC (Managed)      | 128KB        | 2,420.193 μs | 19.2853 μs | 16.1041 μs |         - |
+| Decrypt · ARIA-128-CBC (BouncyCastle) | 128KB        | 1,868.992 μs | 14.7834 μs | 13.1051 μs |  328648 B |
+| Decrypt · ARIA-128-CBC (Managed)      | 128KB        | 2,244.941 μs | 26.0349 μs | 21.7403 μs |         - |
 |                                       |              |              |            |            |           |
-| Encrypt · ARIA-128-CBC (BouncyCastle) | 128KB        | 2,136.619 μs | 42.7241 μs | 41.9607 μs |  328648 B |
-| Encrypt · ARIA-128-CBC (Managed)      | 128KB        | 2,471.062 μs | 47.0090 μs | 43.9722 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle) | 128KB        | 1,903.041 μs | 19.0678 μs | 17.8360 μs |  328648 B |
+| Encrypt · ARIA-128-CBC (Managed)      | 128KB        | 2,241.878 μs | 10.3547 μs |  9.1791 μs |         - |

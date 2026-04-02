@@ -1,25 +1,25 @@
 ﻿| Description                      | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |--------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · SM4-CBC (Managed)      | 128B         |     1.146 μs | 0.0075 μs | 0.0070 μs |         - |
-| Decrypt · SM4-CBC (BouncyCastle) | 128B         |     1.389 μs | 0.0086 μs | 0.0072 μs |      40 B |
+| Decrypt · SM4-CBC (Managed)      | 128B         |     1.086 μs | 0.0186 μs | 0.0174 μs |         - |
+| Decrypt · SM4-CBC (BouncyCastle) | 128B         |     1.296 μs | 0.0040 μs | 0.0033 μs |      40 B |
 |                                  |              |              |           |           |           |
-| Encrypt · SM4-CBC (Managed)      | 128B         |     1.193 μs | 0.0175 μs | 0.0155 μs |         - |
-| Encrypt · SM4-CBC (BouncyCastle) | 128B         |     1.414 μs | 0.0104 μs | 0.0098 μs |      40 B |
+| Encrypt · SM4-CBC (Managed)      | 128B         |     1.094 μs | 0.0025 μs | 0.0020 μs |         - |
+| Encrypt · SM4-CBC (BouncyCastle) | 128B         |     1.318 μs | 0.0039 μs | 0.0037 μs |      40 B |
 |                                  |              |              |           |           |           |
-| Decrypt · SM4-CBC (Managed)      | 1KB          |     8.215 μs | 0.0622 μs | 0.0582 μs |         - |
-| Decrypt · SM4-CBC (BouncyCastle) | 1KB          |     8.855 μs | 0.1030 μs | 0.0964 μs |      40 B |
+| Decrypt · SM4-CBC (Managed)      | 1KB          |     7.578 μs | 0.0115 μs | 0.0102 μs |         - |
+| Decrypt · SM4-CBC (BouncyCastle) | 1KB          |     8.161 μs | 0.0359 μs | 0.0336 μs |      40 B |
 |                                  |              |              |           |           |           |
-| Encrypt · SM4-CBC (Managed)      | 1KB          |     8.487 μs | 0.0874 μs | 0.0817 μs |         - |
-| Encrypt · SM4-CBC (BouncyCastle) | 1KB          |     8.963 μs | 0.0623 μs | 0.0583 μs |      40 B |
+| Encrypt · SM4-CBC (Managed)      | 1KB          |     7.818 μs | 0.0111 μs | 0.0093 μs |         - |
+| Encrypt · SM4-CBC (BouncyCastle) | 1KB          |     8.300 μs | 0.0232 μs | 0.0206 μs |      40 B |
 |                                  |              |              |           |           |           |
-| Decrypt · SM4-CBC (Managed)      | 8KB          |    64.437 μs | 0.5847 μs | 0.5470 μs |         - |
-| Decrypt · SM4-CBC (BouncyCastle) | 8KB          |    68.904 μs | 0.7151 μs | 0.6689 μs |      40 B |
+| Decrypt · SM4-CBC (Managed)      | 8KB          |    59.993 μs | 0.1543 μs | 0.1367 μs |         - |
+| Decrypt · SM4-CBC (BouncyCastle) | 8KB          |    63.112 μs | 0.2370 μs | 0.2101 μs |      40 B |
 |                                  |              |              |           |           |           |
-| Encrypt · SM4-CBC (Managed)      | 8KB          |    67.052 μs | 0.5293 μs | 0.4951 μs |         - |
-| Encrypt · SM4-CBC (BouncyCastle) | 8KB          |    69.439 μs | 0.5220 μs | 0.4883 μs |      40 B |
+| Encrypt · SM4-CBC (Managed)      | 8KB          |    61.726 μs | 0.2238 μs | 0.1984 μs |         - |
+| Encrypt · SM4-CBC (BouncyCastle) | 8KB          |    64.366 μs | 0.2745 μs | 0.2434 μs |      40 B |
 |                                  |              |              |           |           |           |
-| Decrypt · SM4-CBC (Managed)      | 128KB        | 1,034.984 μs | 7.2486 μs | 6.7804 μs |         - |
-| Decrypt · SM4-CBC (BouncyCastle) | 128KB        | 1,087.291 μs | 9.1024 μs | 8.5144 μs |      40 B |
+| Decrypt · SM4-CBC (Managed)      | 128KB        |   954.227 μs | 2.1403 μs | 2.0021 μs |         - |
+| Decrypt · SM4-CBC (BouncyCastle) | 128KB        | 1,005.145 μs | 3.4621 μs | 3.0690 μs |      40 B |
 |                                  |              |              |           |           |           |
-| Encrypt · SM4-CBC (Managed)      | 128KB        | 1,065.050 μs | 8.3059 μs | 7.7694 μs |         - |
-| Encrypt · SM4-CBC (BouncyCastle) | 128KB        | 1,104.398 μs | 7.6148 μs | 7.1229 μs |      40 B |
+| Encrypt · SM4-CBC (Managed)      | 128KB        |   985.653 μs | 5.0841 μs | 4.5069 μs |         - |
+| Encrypt · SM4-CBC (BouncyCastle) | 128KB        | 1,022.094 μs | 1.9403 μs | 1.7200 μs |      40 B |
