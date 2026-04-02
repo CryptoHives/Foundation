@@ -2,6 +2,13 @@
   href: index.md
 - name: Benchmarks
   href: benchmarks.md
+  items:
+    - name: Overview
+      href: benchmarks.md
+    - name: macOS ARM64 (Apple M4)
+      href: benchmarks/macos-arm64-apple-m4/threading.md
+    - name: Windows X64 (AMD Ryzen 5 7600X)
+      href: benchmarks/windows-x64-amd-ryzen-5-7600x/threading.md
 - name: Synchronization Primitives
   items:
     - name: AsyncLock

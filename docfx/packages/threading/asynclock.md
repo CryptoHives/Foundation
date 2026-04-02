@@ -136,7 +136,7 @@ In order to understand the impact of moving from a `lock` or `Interlocked` imple
 The benchmark shows both throughput (operations per second) and allocations per operation. ProtoPromise is currently a strong uncontended competitor and can beat the pooled implementation on raw throughput, while the pooled implementation stays allocation-free and keeps the same API shape and cancellation behavior used throughout this library. VS.Threading is also included as a semaphore-based comparison point, but in the published uncontended results it trails both ProtoPromise and the pooled implementation.
 The new .NET 9 `Lock` primitive shows slighlty better performance than the well known lock on an object, but `AsyncLock` remains competitive due to the fast path implementation with Interlocked variable based state.
 
-[!INCLUDE[Single Lock Benchmark](benchmarks/asynclock-single.md)]
+[!INCLUDE[Single Lock Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asynclock-single.md)]
 
 ### Multiple Concurrent Lock Benchmark
 
@@ -145,7 +145,7 @@ The benchmark shows both throughput (operations per second) and allocations per 
 It is noticable that all implementations except the pooled one and ProtoPromise require memory allocations on contention, as long as the `ValueTask` is not converted to `Task`.
 ProtoPromise is particularly competitive here and can outperform the pooled `AsyncLock` in several low- and mid-contention cases, especially when comparing pure throughput. The pooled implementation still distinguishes itself by combining allocation-free `ValueTask` usage with built-in cancellation support and predictable behavior when integrated with the rest of this library. VS.Threading is included as another real-world baseline, but its semaphore-based path is slower and allocates under contention in the published results.
 
-[!INCLUDE[Multiple Lock Benchmark](benchmarks/asynclock-multiple.md)]
+[!INCLUDE[Multiple Lock Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asynclock-multiple.md)]
 
 ### Benchmark Analysis
 

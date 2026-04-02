@@ -54,6 +54,7 @@ public sealed class AesCmac : IMac
     private bool _disposed;
 #if NET8_0_OR_GREATER
     private readonly bool _useAesNi;
+    private readonly bool _useArmAes;
     private readonly Vector128<byte>[]? _niRoundKeys;
 #endif
 
@@ -88,6 +89,13 @@ public sealed class AesCmac : IMac
             _useAesNi = true;
             _niRoundKeys = new Vector128<byte>[15];
             _rounds = AesCoreAesNi.ExpandKey(key, _niRoundKeys);
+            _roundKeys = [];
+        }
+        else if (AesCoreArm.IsSupported)
+        {
+            _useArmAes = true;
+            _niRoundKeys = new Vector128<byte>[15];
+            _rounds = AesCoreArm.ExpandKey(key, _niRoundKeys);
             _roundKeys = [];
         }
         else
@@ -269,6 +277,12 @@ public sealed class AesCmac : IMac
         if (_useAesNi)
         {
             AesCoreAesNi.EncryptBlock(input, output, _niRoundKeys, _rounds);
+            return;
+        }
+
+        if (_useArmAes)
+        {
+            AesCoreArm.EncryptBlock(input, output, _niRoundKeys, _rounds);
             return;
         }
 #endif

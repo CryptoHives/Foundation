@@ -262,38 +262,51 @@ public static class HashAlgorithmRegistry
     private static void AddSha2(List<HashImplementation> list)
     {
         // SHA-224
-        list.Add(new HashImplementation("SHA-224", "Managed", 224, CH.SHA224.Create, Source.Managed));
+        var sha256Simd = CH.SHA256.SimdSupport;
+        if ((sha256Simd & CHRoot.SimdSupport.ArmSha256) != 0)
+        {
+            list.Add(new("SHA-224", "ArmSha256", 224,
+                () => CH.SHA224.Create(CHRoot.SimdSupport.ArmSha256), Source.Simd));
+        }
+        list.Add(new HashImplementation("SHA-224", "Managed", 224,
+            () => CH.SHA224.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-224", "BouncyCastle", 224,
             () => new BouncyCastleHashAdapter(new BC.Sha224Digest()), Source.BouncyCastle));
 
         // SHA-256
         list.Add(new HashImplementation("SHA-256", "OS", 256, SHA256.Create, Source.OS));
-        list.Add(new HashImplementation("SHA-256", "Managed", 256, CH.SHA256.Create, Source.Managed));
+        if ((sha256Simd & CHRoot.SimdSupport.ArmSha256) != 0)
+        {
+            list.Add(new("SHA-256", "ArmSha256", 256,
+                () => CH.SHA256.Create(CHRoot.SimdSupport.ArmSha256), Source.Simd));
+        }
+        list.Add(new HashImplementation("SHA-256", "Managed", 256,
+            () => CH.SHA256.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Sha256Digest()), Source.BouncyCastle));
 
         // SHA-384
         list.Add(new HashImplementation("SHA-384", "OS", 384, SHA384.Create, Source.OS));
-        list.Add(new("SHA-384", "Managed", 384, () => CH.SHA384.Create(), Source.Managed));
+        list.Add(new("SHA-384", "Managed", 384, CH.SHA384.Create, Source.Managed));
         list.Add(new("SHA-384", "BouncyCastle", 384,
             () => new BouncyCastleHashAdapter(new BC.Sha384Digest()), Source.BouncyCastle));
 
         // SHA-512
         list.Add(new HashImplementation("SHA-512", "OS", 512, SHA512.Create, Source.OS));
         list.Add(new("SHA-512", "Managed", 512,
-            () => CH.SHA512.Create(), Source.Managed));
+            CH.SHA512.Create, Source.Managed));
         list.Add(new("SHA-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Sha512Digest()), Source.BouncyCastle));
 
         // SHA-512/224
         list.Add(new("SHA-512/224", "Managed", 224,
-            () => CH.SHA512_224.Create(), Source.Managed));
+            CH.SHA512_224.Create, Source.Managed));
         list.Add(new("SHA-512/224", "BouncyCastle", 224,
             () => new BouncyCastleHashAdapter(new BC.Sha512tDigest(224)), Source.BouncyCastle));
 
         // SHA-512/256
         list.Add(new("SHA-512/256", "Managed", 256,
-            () => CH.SHA512_256.Create(), Source.Managed));
+            CH.SHA512_256.Create, Source.Managed));
         list.Add(new("SHA-512/256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Sha512tDigest(256)), Source.BouncyCastle));
     }
@@ -305,10 +318,10 @@ public static class HashAlgorithmRegistry
     private static void AddSha3(List<HashImplementation> list)
     {
         AddSha3Variant(list, "SHA3-224", 224, CH.SHA3_224.SimdSupport,
-            simd => CH.SHA3_224.Create(simd), () => new BC.Sha3Digest(224));
+            CH.SHA3_224.Create, () => new BC.Sha3Digest(224));
 
         AddSha3Variant(list, "SHA3-256", 256, CH.SHA3_256.SimdSupport,
-            simd => CH.SHA3_256.Create(simd), () => new BC.Sha3Digest(256),
+            CH.SHA3_256.Create, () => new BC.Sha3Digest(256),
 #if NET8_0_OR_GREATER
             () => SHA3_256.IsSupported ? SHA3_256.Create() : null
 #else
@@ -317,7 +330,7 @@ public static class HashAlgorithmRegistry
         );
 
         AddSha3Variant(list, "SHA3-384", 384, CH.SHA3_384.SimdSupport,
-            simd => CH.SHA3_384.Create(simd), () => new BC.Sha3Digest(384),
+            CH.SHA3_384.Create, () => new BC.Sha3Digest(384),
 #if NET8_0_OR_GREATER
             () => SHA3_384.IsSupported ? SHA3_384.Create() : null
 #else
@@ -326,7 +339,7 @@ public static class HashAlgorithmRegistry
         );
 
         AddSha3Variant(list, "SHA3-512", 512, CH.SHA3_512.SimdSupport,
-            simd => CH.SHA3_512.Create(simd), () => new BC.Sha3Digest(512),
+            CH.SHA3_512.Create, () => new BC.Sha3Digest(512),
 #if NET8_0_OR_GREATER
             () => SHA3_512.IsSupported ? SHA3_512.Create() : null
 #else
@@ -570,13 +583,13 @@ public static class HashAlgorithmRegistry
     private static void AddKeccak(List<HashImplementation> list)
     {
         AddKeccakVariant(list, "Keccak-256", 256, CH.Keccak256.SimdSupport,
-            s => CH.Keccak256.Create(s), () => new BC.KeccakDigest(256));
+            CH.Keccak256.Create, () => new BC.KeccakDigest(256));
 
         AddKeccakVariant(list, "Keccak-384", 384, CH.Keccak384.SimdSupport,
-            s => CH.Keccak384.Create(s), () => new BC.KeccakDigest(384));
+            CH.Keccak384.Create, () => new BC.KeccakDigest(384));
 
         AddKeccakVariant(list, "Keccak-512", 512, CH.Keccak512.SimdSupport,
-            s => CH.Keccak512.Create(s), () => new BC.KeccakDigest(512));
+            CH.Keccak512.Create, () => new BC.KeccakDigest(512));
     }
 
     private static void AddKeccakVariant(
@@ -706,7 +719,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_256Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-256", "OpenGost", 256,
-            () => OpenGost.Security.Cryptography.Streebog256.Create(), Source.OpenGost));
+            OpenGost.Security.Cryptography.Streebog256.Create, Source.OpenGost));
 
         // Streebog-512
         list.Add(new("Streebog-512", "Managed", 512,
@@ -714,7 +727,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_512Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-512", "OpenGost", 512,
-            () => OpenGost.Security.Cryptography.Streebog512.Create(), Source.OpenGost));
+            OpenGost.Security.Cryptography.Streebog512.Create, Source.OpenGost));
     }
 
     #endregion

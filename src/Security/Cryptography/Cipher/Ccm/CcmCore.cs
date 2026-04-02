@@ -64,6 +64,7 @@ internal unsafe struct CcmCore
     private readonly int _rounds;
 #if NET8_0_OR_GREATER
     private readonly bool _useAesNi;
+    private readonly bool _useArmAes;
 #endif
 
     /// <summary>
@@ -82,6 +83,11 @@ internal unsafe struct CcmCore
                 _useAesNi = true;
                 _rounds = AesCoreAesNi.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
             }
+            else if ((simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
+            {
+                _useArmAes = true;
+                _rounds = AesCoreArm.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
+            }
             else
 #endif
             {
@@ -95,7 +101,8 @@ internal unsafe struct CcmCore
     /// </summary>
     internal static SimdSupport SimdSupport =>
 #if NET8_0_OR_GREATER
-        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
+        (AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None) |
+        (AesCoreArm.IsSupported ? SimdSupport.ArmAes : SimdSupport.None);
 #else
         SimdSupport.None;
 #endif
@@ -396,7 +403,7 @@ internal unsafe struct CcmCore
     }
 
     /// <summary>
-    /// Dispatches a single AES block encryption to AES-NI or managed implementation.
+    /// Dispatches a single AES block encryption to hardware-accelerated or managed implementation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void EncryptBlockDispatch(Span<byte> input, Span<byte> output)
@@ -408,6 +415,13 @@ internal unsafe struct CcmCore
             if (_useAesNi)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
+                    MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
+                return;
+            }
+
+            if (_useArmAes)
+            {
+                AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }

@@ -193,14 +193,14 @@ The benchmarks compare various `AsyncAutoResetEvent` implementations:
 
 Measures the performance of signaling the event when no waiters are queued. There is no contention and no allocation cost in all implementations.
 
-[!INCLUDE[Set Benchmark](benchmarks/asyncautoresetevent-set.md)]
+[!INCLUDE[Set Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-set.md)]
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before a waiter arrives (synchronous completion path).
 For the pooled implementation this is the fast path and an immediate return from WaitAsync is possible. There is no contention and no allocation cost in all implementations.
 
-[!INCLUDE[Set Then Wait Benchmark](benchmarks/asyncautoresetevent-setthenw.md)]
+[!INCLUDE[Set Then Wait Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-setthenw.md)]
 
 ### Wait Then Set Benchmark
 
@@ -212,7 +212,7 @@ ProtoPromise is now included as an additional low-allocation competitor and is o
 The Nito.AsyncEx implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
 The pooled implementation starts to allocate memory only when the pool is exhausted (high contention), when the ValueTask is converted to Task by AsTask() or when cancellable tokens are used in legacy .NET versions prior to .NET 6 (due to registration overhead).
 
-[!INCLUDE[Wait Then Set Benchmark](benchmarks/asyncautoresetevent-waitthenset.md)]
+[!INCLUDE[Wait Then Set Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-waitthenset.md)]
 
 ### Benchmark Analysis
 

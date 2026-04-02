@@ -9,7 +9,7 @@ BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Thread
 ### Updating Benchmark Results
 
 First run the benchmarks locally (see below).
-Benchmark results are stored in `docfx/packages/threading/benchmarks/` and can be updated after a local benchmark run using:
+Benchmark results are stored in `docfx/packages/threading/benchmarks/<platform-id>/` and can be updated after a local benchmark run using:
 
 ```cmd
 scripts\update-benchmark-docs.cmd
@@ -22,6 +22,13 @@ Or on PowerShell:
 ```
 
 See [benchmarks/README.md](benchmarks/README.md) for details.
+
+### Published Runs
+
+| Platform ID | Host | Page |
+|-------------|------|------|
+| `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Open Threading Results](benchmarks/macos-arm64-apple-m4/threading.md) |
+| `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Open Threading Results](benchmarks/windows-x64-amd-ryzen-5-7600x/threading.md) |
 
 ### Included benchmark suites
 

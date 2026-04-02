@@ -106,7 +106,7 @@ TODO: Currently benchmarks are only available on uncontended scenarios to measur
 
 Measures the performance of acquiring and releasing a single permit. In the current published results, ProtoPromise is slightly faster than the pooled implementation on raw uncontended throughput, while the pooled implementation preserves the same `ValueTask`-first design and behavior used across this library.
 
-[!INCLUDE[Semaphore Benchmark](benchmarks/asyncsemaphore-single.md)]
+[!INCLUDE[Semaphore Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncsemaphore-single.md)]
 
 ### Benchmark Analysis
 
