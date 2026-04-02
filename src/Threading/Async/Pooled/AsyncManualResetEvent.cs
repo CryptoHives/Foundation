@@ -191,19 +191,8 @@ public sealed class AsyncManualResetEvent : IResettable
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that is used for the asynchronous wait operation.</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    public ValueTask WaitAsync(CancellationToken cancellationToken = default)
-    {
-        if (_signaled)
-        {
-            return default;
-        }
-
-        return WaitAsyncImpl(cancellationToken);
-    }
-
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken = default)
+    public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
         _spinLock.Enter();
         try
