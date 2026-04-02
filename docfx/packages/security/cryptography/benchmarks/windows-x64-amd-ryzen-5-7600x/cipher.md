@@ -35,10 +35,6 @@ Each cipher family exposes multiple acceleration tiers. The runtime automaticall
 - **No hardware AES**: Use ChaCha20-Poly1305 — it is designed for software-only execution and outperforms managed AES-GCM by 10–20×.
 - **IoT / constrained devices**: AES-CCM with AES-NI provides ~3× speedup over managed. Supports variable nonce (7–13 bytes) and tag sizes.
 
-## Machine Profile
-
-[!INCLUDE[](benchmarks/machine-spec.md)]
-
 ## Highlights
 
 | Family | Leader | Key Insight |

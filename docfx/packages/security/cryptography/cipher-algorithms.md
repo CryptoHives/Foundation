@@ -54,7 +54,7 @@ bool success = aesGcm.Decrypt(nonce, ciphertext, tag, decrypted, aad);
 ```
 
 **See Also:**
-- [AES-GCM Benchmarks](benchmarks-cipher.md#aes-128-gcm)
+- [AES-GCM Benchmarks](benchmarks-cipher.md)
 
 ### AES-CCM (Counter with CBC-MAC)
 
@@ -133,7 +133,7 @@ byte[] decrypted = chacha.Decrypt(nonce, ciphertext);
 ```
 
 **See Also:**
-- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#chacha20-poly1305)
+- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md)
 
 ### XChaCha20-Poly1305
 
@@ -172,8 +172,8 @@ byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
 ```
 
 **See Also:**
-- [XChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#xchacha20-poly1305)
-- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md#chacha20-poly1305)
+- [XChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md)
+- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md)
 
 ### Ascon-AEAD128
 
@@ -709,7 +709,7 @@ byte[] decrypted = seed.Decrypt(ciphertext);
 | **SEED** | Korea | 128 | 128 bits | 16 | RFC 4269 |
 
 **See Also:**
-- [Regional Cipher Benchmarks](benchmarks-cipher.md#regional-block-ciphers)
+- [Regional Cipher Benchmarks](benchmarks-cipher.md)
 
 ---
 
@@ -738,7 +738,7 @@ Test vector documentation is coming soon.
 
 ### Benchmarks
 - [All Cipher Benchmarks](benchmarks-cipher.md)
-- [AES-GCM Performance](benchmarks-cipher.md#aes-128-gcm)
-- [ChaCha20-Poly1305 Performance](benchmarks-cipher.md#chacha20-poly1305)
-- [XChaCha20-Poly1305 Performance](benchmarks-cipher.md#xchacha20-poly1305)
-- [Regional Cipher Benchmarks](benchmarks-cipher.md#regional-block-ciphers)
+- [AES-GCM Performance](benchmarks-cipher.md)
+- [ChaCha20-Poly1305 Performance](benchmarks-cipher.md)
+- [XChaCha20-Poly1305 Performance](benchmarks-cipher.md)
+- [Regional Cipher Benchmarks](benchmarks-cipher.md)

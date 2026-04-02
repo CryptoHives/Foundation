@@ -268,7 +268,8 @@ public static class HashAlgorithmRegistry
             list.Add(new("SHA-224", "ArmSha256", 224,
                 () => CH.SHA224.Create(CHRoot.SimdSupport.ArmSha256), Source.Simd));
         }
-        list.Add(new HashImplementation("SHA-224", "Managed", 224, CH.SHA224.Create, Source.Managed));
+        list.Add(new HashImplementation("SHA-224", "Managed", 224, 
+            () => CH.SHA224.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-224", "BouncyCastle", 224,
             () => new BouncyCastleHashAdapter(new BC.Sha224Digest()), Source.BouncyCastle));
 
@@ -279,7 +280,8 @@ public static class HashAlgorithmRegistry
             list.Add(new("SHA-256", "ArmSha256", 256,
                 () => CH.SHA256.Create(CHRoot.SimdSupport.ArmSha256), Source.Simd));
         }
-        list.Add(new HashImplementation("SHA-256", "Managed", 256, CH.SHA256.Create, Source.Managed));
+        list.Add(new HashImplementation("SHA-256", "Managed", 256, 
+            () => CH.SHA256.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Sha256Digest()), Source.BouncyCastle));
 
@@ -292,7 +294,7 @@ public static class HashAlgorithmRegistry
         // SHA-512
         list.Add(new HashImplementation("SHA-512", "OS", 512, SHA512.Create, Source.OS));
         list.Add(new("SHA-512", "Managed", 512,
-            () => CH.SHA512.Create(), Source.Managed));
+            () => CH.SHA224.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Sha512Digest()), Source.BouncyCastle));
 
@@ -304,7 +306,7 @@ public static class HashAlgorithmRegistry
 
         // SHA-512/256
         list.Add(new("SHA-512/256", "Managed", 256,
-            () => CH.SHA512_256.Create(), Source.Managed));
+            () => CH.SHA224.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-512/256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Sha512tDigest(256)), Source.BouncyCastle));
     }

@@ -13,10 +13,6 @@ Implementations are compared against:
 - **Managed** — CryptoHives managed implementation (scalar)
 - **SIMD** — CryptoHives SIMD variants (SSE2, SSSE3, AVX2, AVX-512F)
 
-## Machine profile
-
-[!INCLUDE[](benchmarks/machine-spec.md)]
-
 ## Highlights
 
 | Family | Leader | Key Insight |
@@ -42,22 +38,22 @@ The OS SHA-256/SHA-512 implementations leverage **SHA-NI hardware instructions**
 - **BouncyCastle**: Reference scalar implementation
 
 ### SHA-224
-[!INCLUDE[](benchmarks/sha224.md)]
+[!INCLUDE[](sha224.md)]
 
 ### SHA-256
-[!INCLUDE[](benchmarks/sha256.md)]
+[!INCLUDE[](sha256.md)]
 
 ### SHA-384
-[!INCLUDE[](benchmarks/sha384.md)]
+[!INCLUDE[](sha384.md)]
 
 ### SHA-512
-[!INCLUDE[](benchmarks/sha512.md)]
+[!INCLUDE[](sha512.md)]
 
 ### SHA-512/224
-[!INCLUDE[](benchmarks/sha512-224.md)]
+[!INCLUDE[](sha512-224.md)]
 
 ### SHA-512/256
-[!INCLUDE[](benchmarks/sha512-256.md)]
+[!INCLUDE[](sha512-256.md)]
 
 ---
 
@@ -73,59 +69,59 @@ The managed Keccak core uses an optimized **scalar implementation** that outperf
 ### SHA-3 Family
 
 #### SHA3-224
-[!INCLUDE[](benchmarks/sha3-224.md)]
+[!INCLUDE[](sha3-224.md)]
 
 #### SHA3-256
-[!INCLUDE[](benchmarks/sha3-256.md)]
+[!INCLUDE[](sha3-256.md)]
 
 #### SHA3-384
-[!INCLUDE[](benchmarks/sha3-384.md)]
+[!INCLUDE[](sha3-384.md)]
 
 #### SHA3-512
-[!INCLUDE[](benchmarks/sha3-512.md)]
+[!INCLUDE[](sha3-512.md)]
 
 ### Keccak Family
 
 #### Keccak-256
-[!INCLUDE[](benchmarks/keccak256.md)]
+[!INCLUDE[](keccak256.md)]
 
 #### Keccak-384
-[!INCLUDE[](benchmarks/keccak384.md)]
+[!INCLUDE[](keccak384.md)]
 
 #### Keccak-512
-[!INCLUDE[](benchmarks/keccak512.md)]
+[!INCLUDE[](keccak512.md)]
 
 ### SHAKE Family
 
 #### SHAKE128
-[!INCLUDE[](benchmarks/shake128.md)]
+[!INCLUDE[](shake128.md)]
 
 #### SHAKE256
-[!INCLUDE[](benchmarks/shake256.md)]
+[!INCLUDE[](shake256.md)]
 
 ### cSHAKE Family
 
 #### cSHAKE128
-[!INCLUDE[](benchmarks/cshake128.md)]
+[!INCLUDE[](cshake128.md)]
 
 #### cSHAKE256
-[!INCLUDE[](benchmarks/cshake256.md)]
+[!INCLUDE[](cshake256.md)]
 
 ### KangarooTwelve Family
 
 #### KT128
-[!INCLUDE[](benchmarks/kt128.md)]
+[!INCLUDE[](kt128.md)]
 
 #### KT256
-[!INCLUDE[](benchmarks/kt256.md)]
+[!INCLUDE[](kt256.md)]
 
 ### TurboSHAKE Family
 
 #### TurboSHAKE128
-[!INCLUDE[](benchmarks/turboshake128.md)]
+[!INCLUDE[](turboshake128.md)]
 
 #### TurboSHAKE256
-[!INCLUDE[](benchmarks/turboshake256.md)]
+[!INCLUDE[](turboshake256.md)]
 
 ---
 
@@ -139,16 +135,16 @@ BouncyCastle leads the BLAKE2 benchmarks due to highly optimized native code. Th
 - **Managed scalar**: Fallback for non-SIMD platforms
 
 ### BLAKE2b-256
-[!INCLUDE[](benchmarks/blake2b256.md)]
+[!INCLUDE[](blake2b256.md)]
 
 ### BLAKE2b-512
-[!INCLUDE[](benchmarks/blake2b512.md)]
+[!INCLUDE[](blake2b512.md)]
 
 ### BLAKE2s-128
-[!INCLUDE[](benchmarks/blake2s128.md)]
+[!INCLUDE[](blake2s128.md)]
 
 ### BLAKE2s-256
-[!INCLUDE[](benchmarks/blake2s256.md)]
+[!INCLUDE[](blake2s256.md)]
 
 ---
 
@@ -158,7 +154,7 @@ BLAKE3 is a modern hash function designed for extreme parallelism and speed. It 
 
 The managed CryptoHives implementation uses SSSE3 SIMD instructions with optimized state management. At small inputs (128B-1kb), the SSSE3 path is ~1.4× slower than the native Rust implementation and ~9× faster than BouncyCastle. At large inputs (128KB), the gap widens to ~12× because the native implementation parallelizes chunk compression across SIMD lanes (AVX2/AVX-512 `hash_many`), while the managed version processes chunks sequentially.
 
-[!INCLUDE[](benchmarks/blake3.md)]
+[!INCLUDE[](blake3.md)]
 
 ---
 
@@ -169,10 +165,10 @@ Ascon is a lightweight authenticated encryption and hashing family, selected as 
 The managed implementation is approximately **33% faster** than BouncyCastle across all input sizes, with consistent zero-allocation behavior regardless of input size—ideal for memory-constrained environments.
 
 ### Ascon-Hash256
-[!INCLUDE[](benchmarks/asconhash256.md)]
+[!INCLUDE[](asconhash256.md)]
 
 ### Ascon-XOF128
-[!INCLUDE[](benchmarks/asconxof128.md)]
+[!INCLUDE[](asconxof128.md)]
 
 ---
 
@@ -183,10 +179,10 @@ KMAC (Keccak Message Authentication Code) is defined in NIST SP 800-185 and prov
 The managed CryptoHives implementation is the **fastest at all input sizes**, outperforming the OS-provided KMAC by ~30% and BouncyCastle by ~48%. This advantage comes from the highly optimized scalar Keccak core that benefits both the hash computation and the KMAC-specific cSHAKE encoding overhead.
 
 ### KMAC128
-[!INCLUDE[](benchmarks/kmac128.md)]
+[!INCLUDE[](kmac128.md)]
 
 ### KMAC256
-[!INCLUDE[](benchmarks/kmac256.md)]
+[!INCLUDE[](kmac256.md)]
 
 ---
 
@@ -200,10 +196,10 @@ MD5 and SHA-1 are provided **exclusively for backward compatibility** with legac
 The OS implementations are fastest due to potential hardware acceleration. The managed implementations prioritize correctness and portability over optimization, as these algorithms should only be used for non-security purposes.
 
 ### MD5
-[!INCLUDE[](benchmarks/md5.md)]
+[!INCLUDE[](md5.md)]
 
 ### SHA-1
-[!INCLUDE[](benchmarks/sha1.md)]
+[!INCLUDE[](sha1.md)]
 
 ---
 
@@ -223,37 +219,37 @@ These algorithms serve **regulatory compliance requirements** in specific jurisd
 The managed Streebog implementation is notably faster (1.4–1.8×) than reference implementations while using less memory—important for embedded systems in constrained environments. The managed Kupyna implementation uses T-table optimization (combining SubBytes, ShiftBytes, and MixColumns) to outperform BouncyCastle by 30–45%.
 
 ### SM3
-[!INCLUDE[](benchmarks/sm3.md)]
+[!INCLUDE[](sm3.md)]
 
 ### Streebog-256
-[!INCLUDE[](benchmarks/streebog256.md)]
+[!INCLUDE[](streebog256.md)]
 
 ### Streebog-512
-[!INCLUDE[](benchmarks/streebog512.md)]
+[!INCLUDE[](streebog512.md)]
 
 ### Whirlpool
-[!INCLUDE[](benchmarks/whirlpool.md)]
+[!INCLUDE[](whirlpool.md)]
 
 ### RIPEMD-160
-[!INCLUDE[](benchmarks/ripemd160.md)]
+[!INCLUDE[](ripemd160.md)]
 
 ### Kupyna-256 (DSTU 7564)
-[!INCLUDE[](benchmarks/kupyna256.md)]
+[!INCLUDE[](kupyna256.md)]
 
 ### Kupyna-384 (DSTU 7564)
-[!INCLUDE[](benchmarks/kupyna384.md)]
+[!INCLUDE[](kupyna384.md)]
 
 ### Kupyna-512 (DSTU 7564)
-[!INCLUDE[](benchmarks/kupyna512.md)]
+[!INCLUDE[](kupyna512.md)]
 
 ### LSH-256-256 (KS X 3262)
-[!INCLUDE[](benchmarks/lsh256-256.md)]
+[!INCLUDE[](lsh256-256.md)]
 
 ### LSH-512-256 (KS X 3262)
-[!INCLUDE[](benchmarks/lsh512-256.md)]
+[!INCLUDE[](lsh512-256.md)]
 
 ### LSH-512-512 (KS X 3262)
-[!INCLUDE[](benchmarks/lsh512-512.md)]
+[!INCLUDE[](lsh512-512.md)]
 
 ---
 

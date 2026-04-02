@@ -108,6 +108,7 @@ internal static class KalynaCore
     private static readonly byte[] IS2 = ComputeInverse(S2);
     private static readonly byte[] IS3 = ComputeInverse(S3);
 
+#if NOT_USED
     // MDS matrix for MixColumns (8x8 matrix over GF(2^8))
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
     private static readonly byte[,] MdsMatrix =
@@ -134,6 +135,7 @@ internal static class KalynaCore
         { 0x95, 0x76, 0xA8, 0x2F, 0x49, 0xD7, 0xCA, 0xAD },
     };
 #pragma warning restore CA1814
+#endif
 
     // Precomputed GF(2^8) multiplication tables for forward MDS constants
     private static readonly byte[] Gf04 = ComputeGfMulTable(0x04);
