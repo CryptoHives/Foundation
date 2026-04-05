@@ -387,6 +387,9 @@ public static class HashAlgorithmRegistry
                 () => (simdSupport & CHRoot.SimdSupport.Ssse3) != 0));
         }
 
+        list.Add(new(family, "Arm64", hashSizeBits,
+            () => factory(CHRoot.SimdSupport.Neon), Source.Managed));
+
         list.Add(new(family, "Managed", hashSizeBits,
             () => factory(CHRoot.SimdSupport.None), Source.Managed));
 

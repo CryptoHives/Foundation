@@ -14,6 +14,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 #endif
 
@@ -80,6 +81,7 @@ internal unsafe struct KeccakCoreState
 #if NET8_0_OR_GREATER
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Avx512F.IsSupported) support |= SimdSupport.Avx512F;
+            support |= SimdSupport.Neon;
 #endif
             return support;
         }
@@ -145,6 +147,11 @@ internal unsafe struct KeccakCoreState
         if ((_simdSupport & SimdSupport.Avx2) != 0)
         {
             PermuteAvx2();
+            return;
+        }
+        if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            PermuteScalarArm();
             return;
         }
 #endif
@@ -1083,6 +1090,136 @@ internal unsafe struct KeccakCoreState
             state[4] = abu; state[3] = abo; state[2] = abi; state[1] = abe; state[0] = aba;
         }
     }
+    #endregion
+
+    #region ARM Scalar Implementation
+
+    /// <summary>
+    /// Pointer-based scalar Keccak-f[1600] permutation optimized for ARM64.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Unlike <see cref="PermuteScalar"/> which uses 50+ named local variables (causing
+    /// excessive register spills on ARM64's 31 GPRs), this implementation reads and
+    /// writes state through pointers, keeping at most ~13 values live at any time
+    /// (2 pointers + 5 D values + 5 B values + round counter).
+    /// </para>
+    /// <para>
+    /// Each round reads from a source buffer and writes to a destination buffer, then
+    /// the two buffers are swapped. For even round counts (24 for SHA-3, 12 for
+    /// TurboSHAKE), the final result lands in the original state buffer without
+    /// requiring an extra copy.
+    /// </para>
+    /// <para>
+    /// Based on register-pressure analysis from "Hybrid scalar/vector implementations
+    /// of Keccak and SPHINCS+ on AArch64" (Becker &amp; Kannwischer, 2022).
+    /// </para>
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public void PermuteScalarArm()
+    {
+        fixed (ulong* statePtr = _state)
+        {
+            ulong* tmp = stackalloc ulong[StateSize];
+            ulong* src = statePtr;
+            ulong* dst = tmp;
+
+            for (int round = _startRound; round < Rounds; round++)
+            {
+                // θ step: column parity
+                ulong c0 = src[0] ^ src[5] ^ src[10] ^ src[15] ^ src[20];
+                ulong c1 = src[1] ^ src[6] ^ src[11] ^ src[16] ^ src[21];
+                ulong c2 = src[2] ^ src[7] ^ src[12] ^ src[17] ^ src[22];
+                ulong c3 = src[3] ^ src[8] ^ src[13] ^ src[18] ^ src[23];
+                ulong c4 = src[4] ^ src[9] ^ src[14] ^ src[19] ^ src[24];
+
+                // θ step: D[x] = C[(x+4)%5] ^ RotateLeft(C[(x+1)%5], 1)
+                ulong d0 = c4 ^ BitOperations.RotateLeft(c1, 1);
+                ulong d1 = c0 ^ BitOperations.RotateLeft(c2, 1);
+                ulong d2 = c1 ^ BitOperations.RotateLeft(c3, 1);
+                ulong d3 = c2 ^ BitOperations.RotateLeft(c4, 1);
+                ulong d4 = c3 ^ BitOperations.RotateLeft(c0, 1);
+
+                // Combined ρ+π+χ+ι: each row computes B[x'] = RotL(A[π⁻¹(x',y')] ^ D[x_src], ρ_offset)
+                // then dst[x'+5y'] = B[x'] ^ (~B[(x'+1)%5] & B[(x'+2)%5])
+                ulong b0, b1, b2, b3, b4;
+
+                // Row y'=0: src indices [0,6,12,18,24], D indices [0,1,2,3,4], rotations [0,44,43,21,14]
+                b0 = src[0] ^ d0;
+                b1 = BitOperations.RotateLeft(src[6] ^ d1, 44);
+                b2 = BitOperations.RotateLeft(src[12] ^ d2, 43);
+                b3 = BitOperations.RotateLeft(src[18] ^ d3, 21);
+                b4 = BitOperations.RotateLeft(src[24] ^ d4, 14);
+                dst[0] = b0 ^ (~b1 & b2) ^ GetRoundConstants(round);
+                dst[1] = b1 ^ (~b2 & b3);
+                dst[2] = b2 ^ (~b3 & b4);
+                dst[3] = b3 ^ (~b4 & b0);
+                dst[4] = b4 ^ (~b0 & b1);
+
+                // Row y'=1: src indices [3,9,10,16,22], D indices [3,4,0,1,2], rotations [28,20,3,45,61]
+                b0 = BitOperations.RotateLeft(src[3] ^ d3, 28);
+                b1 = BitOperations.RotateLeft(src[9] ^ d4, 20);
+                b2 = BitOperations.RotateLeft(src[10] ^ d0, 3);
+                b3 = BitOperations.RotateLeft(src[16] ^ d1, 45);
+                b4 = BitOperations.RotateLeft(src[22] ^ d2, 61);
+                dst[5] = b0 ^ (~b1 & b2);
+                dst[6] = b1 ^ (~b2 & b3);
+                dst[7] = b2 ^ (~b3 & b4);
+                dst[8] = b3 ^ (~b4 & b0);
+                dst[9] = b4 ^ (~b0 & b1);
+
+                // Row y'=2: src indices [1,7,13,19,20], D indices [1,2,3,4,0], rotations [1,6,25,8,18]
+                b0 = BitOperations.RotateLeft(src[1] ^ d1, 1);
+                b1 = BitOperations.RotateLeft(src[7] ^ d2, 6);
+                b2 = BitOperations.RotateLeft(src[13] ^ d3, 25);
+                b3 = BitOperations.RotateLeft(src[19] ^ d4, 8);
+                b4 = BitOperations.RotateLeft(src[20] ^ d0, 18);
+                dst[10] = b0 ^ (~b1 & b2);
+                dst[11] = b1 ^ (~b2 & b3);
+                dst[12] = b2 ^ (~b3 & b4);
+                dst[13] = b3 ^ (~b4 & b0);
+                dst[14] = b4 ^ (~b0 & b1);
+
+                // Row y'=3: src indices [4,5,11,17,23], D indices [4,0,1,2,3], rotations [27,36,10,15,56]
+                b0 = BitOperations.RotateLeft(src[4] ^ d4, 27);
+                b1 = BitOperations.RotateLeft(src[5] ^ d0, 36);
+                b2 = BitOperations.RotateLeft(src[11] ^ d1, 10);
+                b3 = BitOperations.RotateLeft(src[17] ^ d2, 15);
+                b4 = BitOperations.RotateLeft(src[23] ^ d3, 56);
+                dst[15] = b0 ^ (~b1 & b2);
+                dst[16] = b1 ^ (~b2 & b3);
+                dst[17] = b2 ^ (~b3 & b4);
+                dst[18] = b3 ^ (~b4 & b0);
+                dst[19] = b4 ^ (~b0 & b1);
+
+                // Row y'=4: src indices [2,8,14,15,21], D indices [2,3,4,0,1], rotations [62,55,39,41,2]
+                b0 = BitOperations.RotateLeft(src[2] ^ d2, 62);
+                b1 = BitOperations.RotateLeft(src[8] ^ d3, 55);
+                b2 = BitOperations.RotateLeft(src[14] ^ d4, 39);
+                b3 = BitOperations.RotateLeft(src[15] ^ d0, 41);
+                b4 = BitOperations.RotateLeft(src[21] ^ d1, 2);
+                dst[20] = b0 ^ (~b1 & b2);
+                dst[21] = b1 ^ (~b2 & b3);
+                dst[22] = b2 ^ (~b3 & b4);
+                dst[23] = b3 ^ (~b4 & b0);
+                dst[24] = b4 ^ (~b0 & b1);
+
+                // Swap src/dst for next round
+                ulong* swap = src;
+                src = dst;
+                dst = swap;
+            }
+
+            // After the loop, src points to the result (due to the post-swap).
+            // For even round counts (24, 12), result is already in statePtr.
+            if (src != statePtr)
+            {
+                new ReadOnlySpan<ulong>(src, StateSize).CopyTo(new Span<ulong>(statePtr, StateSize));
+            }
+        }
+    }
+
     #endregion
 
     /// <summary>
