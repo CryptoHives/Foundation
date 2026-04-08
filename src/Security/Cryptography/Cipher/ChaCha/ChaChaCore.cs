@@ -64,9 +64,14 @@ internal partial struct ChaChaCore
     private const int StateWords = 16;
 
     /// <summary>
+    /// The SimD instruction sets to use for this instance.
+    /// </summary>
+    private readonly SimdSupport _simdSupport;
+
+    /// <summary>
     /// ChaCha constant "expand 32-byte k" as four 32-bit little-endian words.
     /// </summary>
-    private static readonly uint[] Sigma =
+    public static readonly uint[] Sigma =
     [
         0x61707865, // "expa"
         0x3320646e, // "nd 3"
@@ -75,9 +80,38 @@ internal partial struct ChaChaCore
     ];
 
     /// <summary>
-    /// The SimD instruction sets to use for this instance.
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
     /// </summary>
-    private readonly SimdSupport _simdSupport;
+    public static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            support |= ChaChaCore_Neon.SimdSupport;
+            support |= ChaChaCore_Ssse3.SimdSupport;
+            support |= ChaChaCore_AVX2.SimdSupport;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
+    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
+    /// </summary>
+    /// <param name="key">The 32-byte key.</param>
+    /// <param name="nonce">The 12-byte nonce.</param>
+    /// <param name="counter">The initial block counter.</param>
+    /// <param name="input">The input data.</param>
+    /// <param name="output">The output buffer (must be same size as input).</param>
+    public delegate void TransformCall(
+        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
+        ReadOnlySpan<byte> input, Span<byte> output);
+
+    /// <summary>
+    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
+    /// </summary>
+    public readonly TransformCall Transform;
 
     /// <summary>
     /// Initializes a new instance of the ChaChaCore class with the specified SIMD support settings.
@@ -85,6 +119,21 @@ internal partial struct ChaChaCore
     public ChaChaCore(SimdSupport simdSupport = SimdSupport.All)
     {
         _simdSupport = simdSupport & SimdSupport;
+        Transform = TransformScalar;
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        {
+            Transform = ChaChaCore_AVX2.Transform;
+        }
+        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            Transform = ChaChaCore_Ssse3.Transform;
+        }
+        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            Transform = ChaChaCore_Neon.Transform;
+        }
+#endif
     }
 
     /// <summary>
@@ -132,40 +181,6 @@ internal partial struct ChaChaCore
         BinarySpans.WriteUInt32LittleEndian(wState.Slice(0, StateWords), output);
     }
 
-    /// <summary>
-    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
-    /// </summary>
-    /// <param name="key">The 32-byte key.</param>
-    /// <param name="nonce">The 12-byte nonce.</param>
-    /// <param name="counter">The initial block counter.</param>
-    /// <param name="input">The input data.</param>
-    /// <param name="output">The output buffer (must be same size as input).</param>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Transform(
-        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-        ReadOnlySpan<byte> input, Span<byte> output)
-    {
-#if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
-        {
-            TransformAvx2(key, nonce, counter, input, output);
-            return;
-        }
-
-        if ((_simdSupport & SimdSupport.Ssse3) != 0)
-        {
-            TransformSsse3(key, nonce, counter, input, output);
-            return;
-        }
-
-        if ((_simdSupport & SimdSupport.Neon) != 0)
-        {
-            TransformNeon(key, nonce, counter, input, output);
-            return;
-        }
-#endif
-        TransformScalar(key, nonce, counter, input, output);
-    }
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]

@@ -197,7 +197,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
                                      associatedData, ciphertext, computedTag);
 
         // Constant-time comparison
-        if (!CryptoUtils.FixedTimeEquals(tag, computedTag))
+        if (!CryptographicOperations.FixedTimeEquals(tag, computedTag))
         {
             plaintext.Clear();
             return false;

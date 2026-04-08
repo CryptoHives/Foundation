@@ -3,16 +3,15 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+#if NET8_0_OR_GREATER
+
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-#if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
-#endif
 
 /// <summary>
 /// Core ChaCha20 operations as specified in RFC 8439.
@@ -32,26 +31,8 @@ using System.Runtime.Intrinsics.X86;
 /// </list>
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal static class ChaChaCore_Ssse3
 {
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport
-    {
-        get
-        {
-            var support = SimdSupport.None;
-#if NET8_0_OR_GREATER
-            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
-#endif
-            return support;
-        }
-    }
-
-#if NET8_0_OR_GREATER
     // Byte-shuffle masks for SSSE3 rotate-left on packed 32-bit words.
     // ROL16: swap the two 16-bit halves within each 32-bit lane.
     private static readonly Vector128<byte> RotateLeftMask16 = Vector128.Create(
@@ -63,6 +44,19 @@ internal partial struct ChaChaCore
 
     // Vector constant for incrementing the block counter without scalar round-trip.
     private static readonly Vector128<uint> CounterIncrement = Vector128.Create(1u, 0u, 0u, 0u);
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// </summary>
+    public static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+            return support;
+        }
+    }
 
     /// <summary>
     /// SSSE3-accelerated ChaCha20 Transform operating on 4 × <see cref="Vector128{T}"/> rows.
@@ -83,14 +77,14 @@ internal partial struct ChaChaCore
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void TransformSsse3(
+    public static void Transform(
         ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
         ReadOnlySpan<byte> input, Span<byte> output)
     {
         // Load initial state into 4 Vector128<uint> rows.
         // SSSE3 implies x86 (always little-endian), so we can load key/nonce directly.
         Vector128<uint> row0 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetArrayDataReference(Sigma));
+            ref MemoryMarshal.GetArrayDataReference(ChaChaCore.Sigma));
 
         ref byte keyRef = ref MemoryMarshal.GetReference(key);
         Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
@@ -102,7 +96,7 @@ internal partial struct ChaChaCore
 
 
         int offset = 0;
-        Span<byte> ks = stackalloc byte[BlockSizeBytes];
+        Span<byte> ks = stackalloc byte[ChaChaCore.BlockSizeBytes];
         while (offset < input.Length)
         {
             // Working copy (row3 has per-block counter)
@@ -110,7 +104,7 @@ internal partial struct ChaChaCore
             Vector128<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
 
             // 10 double-rounds
-            for (int i = 0; i < Rounds; i += 2)
+            for (int i = 0; i < ChaChaCore.Rounds; i += 2)
             {
                 // Column round
                 QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
@@ -131,7 +125,7 @@ internal partial struct ChaChaCore
 
             int remaining = input.Length - offset;
 
-            if (remaining >= BlockSizeBytes)
+            if (remaining >= ChaChaCore.BlockSizeBytes)
             {
                 // Full block: XOR keystream with input
                 ref byte inRef = ref MemoryMarshal.GetReference(input.Slice(offset));
@@ -161,7 +155,7 @@ internal partial struct ChaChaCore
                 }
             }
 
-            offset += BlockSizeBytes;
+            offset += ChaChaCore.BlockSizeBytes;
 
             // Increment counter in vector domain (no scalar round-trip)
             row3Base = Sse2.Add(row3Base, CounterIncrement);
@@ -202,5 +196,5 @@ internal partial struct ChaChaCore
         b = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftLeftLogical(b, 7), Sse2.ShiftRightLogical(b, 25));
     }
-#endif
 }
+#endif

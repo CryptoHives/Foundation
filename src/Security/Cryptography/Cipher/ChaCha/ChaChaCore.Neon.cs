@@ -26,7 +26,7 @@ using System.Runtime.Intrinsics.Arm;
 /// for element rotation, following the pattern established in <c>Blake2s.Neon.cs</c>.
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal static class ChaChaCore_Neon
 {
     // Byte-shuffle masks for NEON VectorTableLookup rotate-left on packed 32-bit words.
     // These are identical to the SSSE3 PSHUFB masks on little-endian systems.
@@ -43,6 +43,19 @@ internal partial struct ChaChaCore
     private static readonly Vector128<uint> NeonCounterIncrement = Vector128.Create(1u, 0u, 0u, 0u);
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// </summary>
+    public static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+            return support;
+        }
+    }
+
+    /// <summary>
     /// NEON-accelerated ChaCha20 Transform operating on 4 × <see cref="Vector128{T}"/> rows.
     /// </summary>
     /// <remarks>
@@ -52,14 +65,14 @@ internal partial struct ChaChaCore
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void TransformNeon(
+    public static void Transform(
         ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
         ReadOnlySpan<byte> input, Span<byte> output)
     {
         // Load initial state into 4 Vector128<uint> rows.
         // ARM64 is always little-endian, so we can load key/nonce directly.
         Vector128<uint> row0 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetArrayDataReference(Sigma));
+            ref MemoryMarshal.GetArrayDataReference(ChaChaCore.Sigma));
 
         ref byte keyRef = ref MemoryMarshal.GetReference(key);
         Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
@@ -70,7 +83,7 @@ internal partial struct ChaChaCore
             counter, nonceUInt[0], nonceUInt[1], nonceUInt[2]);
 
         int offset = 0;
-        Span<byte> ks = stackalloc byte[BlockSizeBytes];
+        Span<byte> ks = stackalloc byte[ChaChaCore.BlockSizeBytes];
         while (offset < input.Length)
         {
             // Working copy (row3 has per-block counter)
@@ -78,7 +91,7 @@ internal partial struct ChaChaCore
             Vector128<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
 
             // 10 double-rounds
-            for (int i = 0; i < Rounds; i += 2)
+            for (int i = 0; i < ChaChaCore.Rounds; i += 2)
             {
                 // Column round
                 QRoundNeon(ref w0, ref w1, ref w2, ref w3);
@@ -99,7 +112,7 @@ internal partial struct ChaChaCore
 
             int remaining = input.Length - offset;
 
-            if (remaining >= BlockSizeBytes)
+            if (remaining >= ChaChaCore.BlockSizeBytes)
             {
                 // Full block: XOR keystream with input
                 ref byte inRef = ref MemoryMarshal.GetReference(input.Slice(offset));
@@ -129,7 +142,7 @@ internal partial struct ChaChaCore
                 }
             }
 
-            offset += BlockSizeBytes;
+            offset += ChaChaCore.BlockSizeBytes;
 
             // Increment counter in vector domain (no scalar round-trip)
             row3Base = AdvSimd.Add(row3Base, NeonCounterIncrement);

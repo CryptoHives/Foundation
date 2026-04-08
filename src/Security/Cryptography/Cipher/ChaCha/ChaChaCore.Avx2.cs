@@ -3,14 +3,13 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+#if NET8_0_OR_GREATER
+
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
-#if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-#endif
 
 /// <summary>
 /// AVX2-accelerated ChaCha20 transform processing two 64-byte blocks in parallel.
@@ -27,13 +26,12 @@ using System.Runtime.Intrinsics.X86;
 /// byte-aligned rotations (ROL16, ROL8) and AVX2 shift+or for ROL12 and ROL7.
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal static class ChaChaCore_AVX2
 {
-#if NET8_0_OR_GREATER
     /// <summary>
     /// The number of bytes produced per AVX2 iteration (2 × 64 = 128 bytes).
     /// </summary>
-    private const int DualBlockSizeBytes = BlockSizeBytes * 2;
+    private const int DualBlockSizeBytes = ChaChaCore.BlockSizeBytes * 2;
 
     // VPSHUFB masks for AVX2 rotate-left on packed 32-bit words.
     // Same byte pattern in both 128-bit lanes.
@@ -49,25 +47,41 @@ internal partial struct ChaChaCore
     private static readonly Vector256<uint> DualCounterIncrement = Vector256.Create(2u, 0u, 0u, 0u, 2u, 0u, 0u, 0u);
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// </summary>
+    public static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+            if (Avx2.IsSupported && Ssse3.IsSupported) support |= SimdSupport.Ssse3 | SimdSupport.Avx2;
+            return support;
+        }
+    }
+
+    /// <summary>
     /// AVX2-accelerated ChaCha20 Transform operating on 4 × Vector256 rows,
     /// processing two blocks per iteration.
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void TransformAvx2(
-        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-        ReadOnlySpan<byte> input, Span<byte> output)
+    public static void Transform(
+        ReadOnlySpan<byte> key,
+        ReadOnlySpan<byte> nonce,
+        uint counter,
+        ReadOnlySpan<byte> input,
+        Span<byte> output)
     {
         // small blocks: delegate to SSSE3 single-block path.
         if (DualBlockSizeBytes > input.Length)
         {
-            TransformSsse3(key, nonce, counter, input, output);
+            ChaChaCore_Ssse3.Transform(key, nonce, counter, input, output);
             return;
         }
 
         // Load initial 128-bit state rows.
         Vector128<uint> row0_128 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetArrayDataReference(Sigma));
+            ref MemoryMarshal.GetArrayDataReference(ChaChaCore.Sigma));
         Vector128<uint> row1_128 = Vector128.LoadUnsafe(
             ref MemoryMarshal.GetReference(key)).AsUInt32();
         Vector128<uint> row2_128 = Vector128.LoadUnsafe(
@@ -92,7 +106,7 @@ internal partial struct ChaChaCore
             Vector256<uint> row3 = row3Base;
             Vector256<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
 
-            for (int i = 0; i < Rounds; i += 2)
+            for (int i = 0; i < ChaChaCore.Rounds; i += 2)
             {
                 // Column round
                 QRoundAvx2(ref w0, ref w1, ref w2, ref w3);
@@ -147,7 +161,7 @@ internal partial struct ChaChaCore
         {
             // Recover the current counter from the lower lane of row3Base.
             uint currentCounter = row3Base.GetElement(0);
-            TransformSsse3(key, nonce, currentCounter, input.Slice(offset), output.Slice(offset));
+            ChaChaCore_Ssse3.Transform(key, nonce, currentCounter, input.Slice(offset), output.Slice(offset));
         }
     }
 
@@ -182,5 +196,5 @@ internal partial struct ChaChaCore
         b = Avx2.Xor(b, c);
         b = Avx2.Or(Avx2.ShiftLeftLogical(b, 7), Avx2.ShiftRightLogical(b, 25));
     }
-#endif
 }
+#endif

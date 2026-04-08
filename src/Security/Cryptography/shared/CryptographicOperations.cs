@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
+namespace CryptoHives.Foundation.Security.Cryptography;
 
 using System;
 using System.Runtime.CompilerServices;
@@ -9,8 +9,31 @@ using System.Runtime.CompilerServices;
 /// <summary>
 /// Cryptographic utility methods.
 /// </summary>
-internal static class CryptoUtils
+internal static class CryptographicOperations
 {
+    /// <summary>
+    /// Fills a span with zeros in a way that's not subject to compiler optimizations.
+    /// </summary>
+    /// <param name="buffer">The buffer to clear.</param>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    public static void ZeroMemory(Span<byte> buffer)
+    {
+        buffer.Clear();
+    }
+
+    /// <summary>
+    /// Fills an array with zeros in a way that's not subject to compiler optimizations.
+    /// </summary>
+    /// <param name="buffer">The buffer to clear.</param>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    public static void ZeroMemory(byte[] buffer)
+    {
+        if (buffer != null)
+        {
+            Array.Clear(buffer, 0, buffer.Length);
+        }
+    }
+
     /// <summary>
     /// Compares two byte spans in constant time to prevent timing attacks.
     /// </summary>
