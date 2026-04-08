@@ -13,7 +13,7 @@ using Sys = System.Security.Cryptography;
 public class RandomNumberGenerator : IDisposable
 {
     private Sys.RandomNumberGenerator? _rng;
-    private static RandomNumberGenerator? _instance = new RandomNumberGenerator();
+    private static readonly RandomNumberGenerator? _instance = new RandomNumberGenerator();
 
     private RandomNumberGenerator()
     {
