@@ -96,22 +96,12 @@ internal partial struct ChaChaCore
         }
     }
 
+#if NET8_0_OR_GREATER
     /// <summary>
     /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
     /// </summary>
-    /// <param name="key">The 32-byte key.</param>
-    /// <param name="nonce">The 12-byte nonce.</param>
-    /// <param name="counter">The initial block counter.</param>
-    /// <param name="input">The input data.</param>
-    /// <param name="output">The output buffer (must be same size as input).</param>
-    public delegate void TransformCall(
-        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-        ReadOnlySpan<byte> input, Span<byte> output);
-
-    /// <summary>
-    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
-    /// </summary>
-    public readonly TransformCall Transform;
+    private readonly unsafe delegate* managed<ReadOnlySpan<byte>, ReadOnlySpan<byte>, uint, ReadOnlySpan<byte>, Span<byte>, void> _transform;
+#endif
 
     /// <summary>
     /// Initializes a new instance of the ChaChaCore class with the specified SIMD support settings.
@@ -119,20 +109,49 @@ internal partial struct ChaChaCore
     public ChaChaCore(SimdSupport simdSupport = SimdSupport.All)
     {
         _simdSupport = simdSupport & SimdSupport;
-        Transform = TransformScalar;
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        unsafe
         {
-            Transform = ChaChaCore_AVX2.Transform;
+            _transform = &TransformScalar;
+            if ((_simdSupport & SimdSupport.Avx2) != 0)
+            {
+                _transform = &ChaChaCore_AVX2.Transform;
+            }
+            else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+            {
+                _transform = &ChaChaCore_Ssse3.Transform;
+            }
+            else if ((_simdSupport & SimdSupport.Neon) != 0)
+            {
+                _transform = &ChaChaCore_Neon.Transform;
+            }
         }
-        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+#endif
+    }
+
+    /// <summary>
+    /// Encrypts or decrypts data using ChaCha20 with the configured transform implementation.
+    /// </summary>
+    /// <param name="key">The 32-byte key.</param>
+    /// <param name="nonce">The 12-byte nonce.</param>
+    /// <param name="counter">The initial block counter.</param>
+    /// <param name="input">The input data.</param>
+    /// <param name="output">The output buffer (must be same size as input).</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public readonly void Transform(
+        ReadOnlySpan<byte> key,
+        ReadOnlySpan<byte> nonce,
+        uint counter,
+        ReadOnlySpan<byte> input,
+        Span<byte> output)
+    {
+#if NET8_0_OR_GREATER
+        unsafe
         {
-            Transform = ChaChaCore_Ssse3.Transform;
+            _transform(key, nonce, counter, input, output);
         }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
-        {
-            Transform = ChaChaCore_Neon.Transform;
-        }
+#else
+        TransformScalar(key, nonce, counter, input, output);
 #endif
     }
 
@@ -180,7 +199,6 @@ internal partial struct ChaChaCore
 
         BinarySpans.WriteUInt32LittleEndian(wState.Slice(0, StateWords), output);
     }
-
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
