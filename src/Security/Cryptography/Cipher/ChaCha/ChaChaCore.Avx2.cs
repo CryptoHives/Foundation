@@ -26,7 +26,7 @@ using System.Runtime.Intrinsics.X86;
 /// byte-aligned rotations (ROL16, ROL8) and AVX2 shift+or for ROL12 and ROL7.
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal readonly partial struct ChaChaCore
 {
     /// <summary>
     /// The number of bytes produced per AVX2 iteration (2 × 64 = 128 bytes).
@@ -65,7 +65,7 @@ internal partial struct ChaChaCore
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void TransformAVX2(
+    public static void TransformAvx2(
         ReadOnlySpan<byte> key,
         ReadOnlySpan<byte> nonce,
         uint counter,

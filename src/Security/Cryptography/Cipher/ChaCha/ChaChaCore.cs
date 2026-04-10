@@ -26,7 +26,7 @@ using System.Runtime.InteropServices;
 /// </list>
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal readonly partial struct ChaChaCore
 {
     /// <summary>
     /// ChaCha20 block size in bytes (512 bits = 64 bytes).
@@ -71,7 +71,7 @@ internal partial struct ChaChaCore
     /// <summary>
     /// ChaCha constant "expand 32-byte k" as four 32-bit little-endian words.
     /// </summary>
-    public static readonly uint[] Sigma =
+    private static readonly uint[] Sigma =
     [
         0x61707865, // "expa"
         0x3320646e, // "nd 3"
@@ -96,41 +96,16 @@ internal partial struct ChaChaCore
         }
     }
 
-#if NET8_0_OR_GREATER
-    /// <summary>
-    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
-    /// </summary>
-    private readonly unsafe delegate* managed<ReadOnlySpan<byte>, ReadOnlySpan<byte>, uint, ReadOnlySpan<byte>, Span<byte>, void> _transform;
-#endif
-
     /// <summary>
     /// Initializes a new instance of the ChaChaCore class with the specified SIMD support settings.
     /// </summary>
     public ChaChaCore(SimdSupport simdSupport = SimdSupport.All)
     {
         _simdSupport = simdSupport & SimdSupport;
-#if NET8_0_OR_GREATER
-        unsafe
-        {
-            _transform = &TransformScalar;
-            if ((_simdSupport & SimdSupport.Avx2) != 0)
-            {
-                _transform = &TransformAVX2;
-            }
-            else if ((_simdSupport & SimdSupport.Ssse3) != 0)
-            {
-                _transform = &TransformSsse3;
-            }
-            else if ((_simdSupport & SimdSupport.Neon) != 0)
-            {
-                _transform = &TransformNeon;
-            }
-        }
-#endif
     }
 
     /// <summary>
-    /// Encrypts or decrypts data using ChaCha20 with the configured transform implementation.
+    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
     /// <param name="nonce">The 12-byte nonce.</param>
@@ -139,20 +114,30 @@ internal partial struct ChaChaCore
     /// <param name="output">The output buffer (must be same size as input).</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public readonly void Transform(
-        ReadOnlySpan<byte> key,
-        ReadOnlySpan<byte> nonce,
-        uint counter,
-        ReadOnlySpan<byte> input,
-        Span<byte> output)
+        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
+        ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        unsafe
+        if ((_simdSupport & SimdSupport.Avx2) != 0)
         {
-            _transform(key, nonce, counter, input, output);
+            TransformAvx2(key, nonce, counter, input, output);
+            return;
         }
-#else
-        TransformScalar(key, nonce, counter, input, output);
+        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            TransformSsse3(key, nonce, counter, input, output);
+            return;
+        }
+        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            TransformNeon(key, nonce, counter, input, output);
+            return;
+        }
+        else
 #endif
+        {
+            TransformScalar(key, nonce, counter, input, output);
+        }
     }
 
     /// <summary>
@@ -164,7 +149,7 @@ internal partial struct ChaChaCore
     /// <param name="output">The 64-byte output buffer for the keystream.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
+    public readonly void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
     {
         Span<uint> state = stackalloc uint[StateWords];
         Span<uint> wState = stackalloc uint[StateWords];
@@ -340,7 +325,6 @@ internal partial struct ChaChaCore
     /// </code>
     /// Where c = constant, k = key, b = block counter, n = nonce.
     /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void InitializeState(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<uint> state)
     {
         // Constants (words 0-3)
@@ -403,7 +387,7 @@ internal partial struct ChaChaCore
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void HChaCha20(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, Span<byte> subkey)
+    public static void HChaCha20(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, Span<byte> subkey)
     {
         if (key.Length != KeySizeBytes)
             throw new ArgumentException($"Key must be {KeySizeBytes} bytes.", nameof(key));

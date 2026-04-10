@@ -144,7 +144,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 
         // Derive subkey using HChaCha20
         Span<byte> subkey = stackalloc byte[ChaChaCore.KeySizeBytes];
-        _chaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
+        ChaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
 
         // Construct ChaCha20 nonce: 4 zero bytes + last 8 bytes of XChaCha20 nonce
         Span<byte> chacha20Nonce = stackalloc byte[ChaChaCore.NonceSizeBytes];
@@ -180,7 +180,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 
         // Derive subkey using HChaCha20
         Span<byte> subkey = stackalloc byte[ChaChaCore.KeySizeBytes];
-        _chaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
+        ChaChaCore.HChaCha20(_key, nonce.Slice(0, ChaChaCore.HNonceSizeBytes), subkey);
 
         // Construct ChaCha20 nonce: 4 zero bytes + last 8 bytes of XChaCha20 nonce
         Span<byte> chacha20Nonce = stackalloc byte[ChaChaCore.NonceSizeBytes];

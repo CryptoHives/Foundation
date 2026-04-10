@@ -26,7 +26,7 @@ using System.Runtime.Intrinsics.Arm;
 /// for element rotation, following the pattern established in <c>Blake2s.Neon.cs</c>.
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal readonly partial struct ChaChaCore
 {
     // Byte-shuffle masks for NEON VectorTableLookup rotate-left on packed 32-bit words.
     // These are identical to the SSSE3 PSHUFB masks on little-endian systems.
@@ -190,17 +190,17 @@ internal partial struct ChaChaCore
         ref Vector128<uint> c, ref Vector128<uint> d)
     {
         a = AdvSimd.Add(a, b);
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), NeonRotateLeftMask16).AsUInt32();
+        d = AdvSimd.Arm64.VectorTableLookup(AdvSimd.Xor(d, a).AsByte(), NeonRotateLeftMask16).AsUInt32();
 
         c = AdvSimd.Add(c, d);
-        var t = b ^ c;
+        var t = AdvSimd.Xor(b, c);
         b = AdvSimd.Or(AdvSimd.ShiftLeftLogical(t, 12), AdvSimd.ShiftRightLogical(t, 20));
 
         a = AdvSimd.Add(a, b);
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), NeonRotateLeftMask8).AsUInt32();
+        d = AdvSimd.Arm64.VectorTableLookup(AdvSimd.Xor(d, a).AsByte(), NeonRotateLeftMask8).AsUInt32();
 
         c = AdvSimd.Add(c, d);
-        t = b ^ c;
+        t = AdvSimd.Xor(b, c);
         b = AdvSimd.Or(AdvSimd.ShiftLeftLogical(t, 7), AdvSimd.ShiftRightLogical(t, 25));
     }
 }

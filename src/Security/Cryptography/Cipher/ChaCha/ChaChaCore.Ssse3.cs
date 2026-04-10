@@ -30,7 +30,7 @@ using System.Runtime.Intrinsics.X86;
 /// </list>
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal readonly partial struct ChaChaCore
 {
     // Byte-shuffle masks for SSSE3 rotate-left on packed 32-bit words.
     // ROL16: swap the two 16-bit halves within each 32-bit lane.

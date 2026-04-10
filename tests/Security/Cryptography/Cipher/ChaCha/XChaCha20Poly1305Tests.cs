@@ -66,7 +66,7 @@ public class XChaCha20Poly1305Tests
             "a0f9e4d58a74a853c12ec41326d3ecdc");
 
         byte[] subkey = new byte[32];
-        chaChaCore.HChaCha20(key, nonce, subkey);
+        ChaChaCore.HChaCha20(key, nonce, subkey);
 
         Assert.That(subkey, Is.EqualTo(expectedSubkey));
     }
