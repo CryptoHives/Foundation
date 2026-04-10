@@ -9,7 +9,6 @@ using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -77,7 +76,7 @@ internal static class ChaChaCore_Ssse3
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Transform(
+    public static void TransformSsse3(
         ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
         ReadOnlySpan<byte> input, Span<byte> output)
     {
@@ -90,10 +89,15 @@ internal static class ChaChaCore_Ssse3
         Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
         Vector128<uint> row2 = Vector128.LoadUnsafe(ref keyRef, 16).AsUInt32();
 
-        ReadOnlySpan<uint> nonceUInt = MemoryMarshal.Cast<byte, uint>(nonce);
+        ref byte nonceRef = ref MemoryMarshal.GetReference(nonce);
+        uint nc0 = Unsafe.ReadUnaligned<uint>(ref nonceRef);
+        uint nc1 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 4));
+        uint nc2 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 8));
         Vector128<uint> row3Base = Vector128.Create(
-            counter, nonceUInt[0], nonceUInt[1], nonceUInt[2]);
+            counter, nc0, nc1, nc2);
 
+        ref byte inputBase = ref MemoryMarshal.GetReference(input);
+        ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
         int offset = 0;
         Span<byte> ks = stackalloc byte[ChaChaCore.BlockSizeBytes];
@@ -128,8 +132,8 @@ internal static class ChaChaCore_Ssse3
             if (remaining >= ChaChaCore.BlockSizeBytes)
             {
                 // Full block: XOR keystream with input
-                ref byte inRef = ref MemoryMarshal.GetReference(input.Slice(offset));
-                ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(offset));
+                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
 
                 Vector128<byte> in0 = Vector128.LoadUnsafe(ref inRef);
                 Vector128<byte> in1 = Vector128.LoadUnsafe(ref inRef, 16);
@@ -149,9 +153,12 @@ internal static class ChaChaCore_Ssse3
                 w2.AsByte().CopyTo(ks.Slice(32));
                 w3.AsByte().CopyTo(ks.Slice(48));
 
+                ref byte pInRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte pOutRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+                ref byte pKsRef = ref MemoryMarshal.GetReference(ks);
                 for (int i = 0; i < remaining; i++)
                 {
-                    output[offset + i] = (byte)(input[offset + i] ^ ks[i]);
+                    Unsafe.Add(ref pOutRef, i) = (byte)(Unsafe.Add(ref pInRef, i) ^ Unsafe.Add(ref pKsRef, i));
                 }
             }
 

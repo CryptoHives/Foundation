@@ -26,7 +26,7 @@ using System.Runtime.InteropServices;
 /// </list>
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal struct ChaChaCore
 {
     /// <summary>
     /// ChaCha20 block size in bytes (512 bits = 64 bytes).
@@ -115,15 +115,15 @@ internal partial struct ChaChaCore
             _transform = &TransformScalar;
             if ((_simdSupport & SimdSupport.Avx2) != 0)
             {
-                _transform = &ChaChaCore_AVX2.Transform;
+                _transform = &ChaChaCore_AVX2.TransformAVX2;
             }
             else if ((_simdSupport & SimdSupport.Ssse3) != 0)
             {
-                _transform = &ChaChaCore_Ssse3.Transform;
+                _transform = &ChaChaCore_Ssse3.TransformSsse3;
             }
             else if ((_simdSupport & SimdSupport.Neon) != 0)
             {
-                _transform = &ChaChaCore_Neon.Transform;
+                _transform = &ChaChaCore_Neon.TransformNeon;
             }
         }
 #endif
@@ -212,6 +212,9 @@ internal partial struct ChaChaCore
         // Initialize base state once (counter updated per block)
         InitializeState(key, nonce, counter, state);
 
+        ref byte inputBase = ref MemoryMarshal.GetReference(input);
+        ref byte outputBase = ref MemoryMarshal.GetReference(output);
+
         int offset = 0;
         Span<byte> ks = stackalloc byte[BlockSizeBytes];
         while (offset < input.Length)
@@ -244,10 +247,9 @@ internal partial struct ChaChaCore
             if (remaining >= BlockSizeBytes)
             {
                 // Full block: XOR keystream with input using widened operations
-                XorBlock(
-                    input.Slice(offset, BlockSizeBytes),
-                    MemoryMarshal.AsBytes(wState),
-                    output.Slice(offset, BlockSizeBytes));
+                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+                XorBlock(ref inRef, MemoryMarshal.AsBytes(wState), ref outRef);
             }
             else
             {
@@ -259,9 +261,11 @@ internal partial struct ChaChaCore
                     keystream = ks;
                 }
 
+                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
                 for (int i = 0; i < remaining; i++)
                 {
-                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
+                    Unsafe.Add(ref outRef, i) = (byte)(Unsafe.Add(ref inRef, i) ^ keystream[i]);
                 }
             }
 
@@ -276,35 +280,45 @@ internal partial struct ChaChaCore
     /// XORs a full 64-byte block using ulong-sized operations for throughput.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void XorBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
+    private static void XorBlock(ref byte input, ReadOnlySpan<byte> keystream, ref byte output)
     {
         if (BitConverter.IsLittleEndian)
         {
-            // Fast path: keystream is already in memory-native order
-            ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input);
-            ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
-            Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output);
+            ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
 
-            // 64 bytes / 8 = 8 ulongs
-            dst[0] = src[0] ^ ks[0];
-            dst[1] = src[1] ^ ks[1];
-            dst[2] = src[2] ^ ks[2];
-            dst[3] = src[3] ^ ks[3];
-            dst[4] = src[4] ^ ks[4];
-            dst[5] = src[5] ^ ks[5];
-            dst[6] = src[6] ^ ks[6];
-            dst[7] = src[7] ^ ks[7];
+            Unsafe.WriteUnaligned(ref output,
+                Unsafe.ReadUnaligned<ulong>(ref input) ^ Unsafe.ReadUnaligned<ulong>(ref ksRef));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 8),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 8)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 8)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 16),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 16)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 16)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 24),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 24)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 24)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 32),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 32)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 32)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 40),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 40)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 40)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 48),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 48)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 48)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 56),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 56)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 56)));
         }
         else
         {
-            // Big-endian: serialize keystream to LE bytes, then XOR
             Span<byte> ks = stackalloc byte[BlockSizeBytes];
             ReadOnlySpan<uint> ksWords = MemoryMarshal.Cast<byte, uint>(keystream);
             BinarySpans.WriteUInt32LittleEndian(ksWords.Slice(0, StateWords), ks);
 
             for (int i = 0; i < BlockSizeBytes; i++)
             {
-                output[i] = (byte)(input[i] ^ ks[i]);
+                Unsafe.Add(ref output, i) = (byte)(Unsafe.Add(ref input, i) ^ ks[i]);
             }
         }
     }

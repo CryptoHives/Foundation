@@ -65,7 +65,7 @@ internal static class ChaChaCore_AVX2
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Transform(
+    public static void TransformAVX2(
         ReadOnlySpan<byte> key,
         ReadOnlySpan<byte> nonce,
         uint counter,
@@ -75,7 +75,7 @@ internal static class ChaChaCore_AVX2
         // small blocks: delegate to SSSE3 single-block path.
         if (DualBlockSizeBytes > input.Length)
         {
-            ChaChaCore_Ssse3.Transform(key, nonce, counter, input, output);
+            ChaChaCore_Ssse3.TransformSsse3(key, nonce, counter, input, output);
             return;
         }
 
@@ -93,11 +93,15 @@ internal static class ChaChaCore_AVX2
         Vector256<uint> row2 = Vector256.Create(row2_128, row2_128);
 
         // Row 3: lower lane gets counter, upper lane gets counter+1.
-        uint n0 = MemoryMarshal.Cast<byte, uint>(nonce)[0];
-        uint n1 = MemoryMarshal.Cast<byte, uint>(nonce)[1];
-        uint n2 = MemoryMarshal.Cast<byte, uint>(nonce)[2];
+        ref byte nonceRef = ref MemoryMarshal.GetReference(nonce);
+        uint n0 = Unsafe.ReadUnaligned<uint>(ref nonceRef);
+        uint n1 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 4));
+        uint n2 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 8));
 
         Vector256<uint> row3Base = Vector256.Create(counter, n0, n1, n2, counter + 1, n0, n1, n2);
+
+        ref byte inputBase = ref MemoryMarshal.GetReference(input);
+        ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
         // Main loop: process 2 blocks (128 bytes) per iteration.
         int offset = 0;
@@ -128,8 +132,8 @@ internal static class ChaChaCore_AVX2
             // Extract lower and upper 128-bit lanes, then XOR with input.
             // Block N (lower lane): rows w0..w3 lower halves → bytes [offset .. offset+63]
             // Block N+1 (upper lane): rows w0..w3 upper halves → bytes [offset+64 .. offset+127]
-            ref byte inRef = ref MemoryMarshal.GetReference(input.Slice(offset));
-            ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(offset));
+            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
 
             // Block N (lower lanes)
             Vector128<byte> in0 = Vector128.LoadUnsafe(ref inRef);
@@ -161,7 +165,7 @@ internal static class ChaChaCore_AVX2
         {
             // Recover the current counter from the lower lane of row3Base.
             uint currentCounter = row3Base.GetElement(0);
-            ChaChaCore_Ssse3.Transform(key, nonce, currentCounter, input.Slice(offset), output.Slice(offset));
+            ChaChaCore_Ssse3.TransformSsse3(key, nonce, currentCounter, input.Slice(offset), output.Slice(offset));
         }
     }
 
