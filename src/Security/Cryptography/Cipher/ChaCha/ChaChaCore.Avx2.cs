@@ -26,20 +26,20 @@ using System.Runtime.Intrinsics.X86;
 /// byte-aligned rotations (ROL16, ROL8) and AVX2 shift+or for ROL12 and ROL7.
 /// </para>
 /// </remarks>
-internal static class ChaChaCore_AVX2
+internal partial struct ChaChaCore
 {
     /// <summary>
     /// The number of bytes produced per AVX2 iteration (2 × 64 = 128 bytes).
     /// </summary>
-    private const int DualBlockSizeBytes = ChaChaCore.BlockSizeBytes * 2;
+    private const int DualBlockSizeBytes = BlockSizeBytes * 2;
 
     // VPSHUFB masks for AVX2 rotate-left on packed 32-bit words.
     // Same byte pattern in both 128-bit lanes.
-    private static readonly Vector256<byte> Avx2RotateLeftMask16 = Vector256.Create(
+    private static readonly Vector256<byte> RotateLeftMask16Avx2 = Vector256.Create(
         (byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13,
         2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
 
-    private static readonly Vector256<byte> Avx2RotateLeftMask8 = Vector256.Create(
+    private static readonly Vector256<byte> RotateLeftMask8Avx2 = Vector256.Create(
         (byte)3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14,
         3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14);
 
@@ -47,9 +47,9 @@ internal static class ChaChaCore_AVX2
     private static readonly Vector256<uint> DualCounterIncrement = Vector256.Create(2u, 0u, 0u, 0u, 2u, 0u, 0u, 0u);
 
     /// <summary>
-    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// Gets the SIMD instruction sets supported by ChaCha20 on AVX2.
     /// </summary>
-    public static SimdSupport SimdSupport
+    private static SimdSupport SimdSupportAvx2
     {
         get
         {
@@ -75,13 +75,13 @@ internal static class ChaChaCore_AVX2
         // small blocks: delegate to SSSE3 single-block path.
         if (DualBlockSizeBytes > input.Length)
         {
-            ChaChaCore_Ssse3.TransformSsse3(key, nonce, counter, input, output);
+            TransformSsse3(key, nonce, counter, input, output);
             return;
         }
 
         // Load initial 128-bit state rows.
         Vector128<uint> row0_128 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetArrayDataReference(ChaChaCore.Sigma));
+            ref MemoryMarshal.GetArrayDataReference(Sigma));
         Vector128<uint> row1_128 = Vector128.LoadUnsafe(
             ref MemoryMarshal.GetReference(key)).AsUInt32();
         Vector128<uint> row2_128 = Vector128.LoadUnsafe(
@@ -110,7 +110,7 @@ internal static class ChaChaCore_AVX2
             Vector256<uint> row3 = row3Base;
             Vector256<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
 
-            for (int i = 0; i < ChaChaCore.Rounds; i += 2)
+            for (int i = 0; i < Rounds; i += 2)
             {
                 // Column round
                 QRoundAvx2(ref w0, ref w1, ref w2, ref w3);
@@ -165,7 +165,7 @@ internal static class ChaChaCore_AVX2
         {
             // Recover the current counter from the lower lane of row3Base.
             uint currentCounter = row3Base.GetElement(0);
-            ChaChaCore_Ssse3.TransformSsse3(key, nonce, currentCounter, input.Slice(offset), output.Slice(offset));
+            TransformSsse3(key, nonce, currentCounter, input.Slice(offset), output.Slice(offset));
         }
     }
 
@@ -187,14 +187,14 @@ internal static class ChaChaCore_AVX2
         ref Vector256<uint> c, ref Vector256<uint> d)
     {
         a = Avx2.Add(a, b);
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), Avx2RotateLeftMask16).AsUInt32();
+        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateLeftMask16Avx2).AsUInt32();
 
         c = Avx2.Add(c, d);
         b = Avx2.Xor(b, c);
         b = Avx2.Or(Avx2.ShiftLeftLogical(b, 12), Avx2.ShiftRightLogical(b, 20));
 
         a = Avx2.Add(a, b);
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), Avx2RotateLeftMask8).AsUInt32();
+        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateLeftMask8Avx2).AsUInt32();
 
         c = Avx2.Add(c, d);
         b = Avx2.Xor(b, c);

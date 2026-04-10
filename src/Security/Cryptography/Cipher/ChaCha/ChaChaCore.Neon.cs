@@ -26,7 +26,7 @@ using System.Runtime.Intrinsics.Arm;
 /// for element rotation, following the pattern established in <c>Blake2s.Neon.cs</c>.
 /// </para>
 /// </remarks>
-internal static class ChaChaCore_Neon
+internal partial struct ChaChaCore
 {
     // Byte-shuffle masks for NEON VectorTableLookup rotate-left on packed 32-bit words.
     // These are identical to the SSSE3 PSHUFB masks on little-endian systems.
@@ -45,7 +45,7 @@ internal static class ChaChaCore_Neon
     /// <summary>
     /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
     /// </summary>
-    public static SimdSupport SimdSupport
+    private static SimdSupport SimdSupportNeon
     {
         get
         {
@@ -72,7 +72,7 @@ internal static class ChaChaCore_Neon
         // Load initial state into 4 Vector128<uint> rows.
         // ARM64 is always little-endian, so we can load key/nonce directly.
         Vector128<uint> row0 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetArrayDataReference(ChaChaCore.Sigma));
+            ref MemoryMarshal.GetArrayDataReference(Sigma));
 
         ref byte keyRef = ref MemoryMarshal.GetReference(key);
         Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
@@ -89,7 +89,7 @@ internal static class ChaChaCore_Neon
         ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
         int offset = 0;
-        Span<byte> ks = stackalloc byte[ChaChaCore.BlockSizeBytes];
+        Span<byte> ks = stackalloc byte[BlockSizeBytes];
         while (offset < input.Length)
         {
             // Working copy (row3 has per-block counter)
@@ -97,7 +97,7 @@ internal static class ChaChaCore_Neon
             Vector128<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
 
             // 10 double-rounds
-            for (int i = 0; i < ChaChaCore.Rounds; i += 2)
+            for (int i = 0; i < Rounds; i += 2)
             {
                 // Column round
                 QRoundNeon(ref w0, ref w1, ref w2, ref w3);
@@ -118,7 +118,7 @@ internal static class ChaChaCore_Neon
 
             int remaining = input.Length - offset;
 
-            if (remaining >= ChaChaCore.BlockSizeBytes)
+            if (remaining >= BlockSizeBytes)
             {
                 // Full block: XOR keystream with input
                 ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
@@ -151,7 +151,7 @@ internal static class ChaChaCore_Neon
                 }
             }
 
-            offset += ChaChaCore.BlockSizeBytes;
+            offset += BlockSizeBytes;
 
             // Increment counter in vector domain (no scalar round-trip)
             row3Base = AdvSimd.Add(row3Base, NeonCounterIncrement);

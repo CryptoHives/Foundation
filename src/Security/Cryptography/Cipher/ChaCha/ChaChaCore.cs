@@ -26,7 +26,7 @@ using System.Runtime.InteropServices;
 /// </list>
 /// </para>
 /// </remarks>
-internal struct ChaChaCore
+internal partial struct ChaChaCore
 {
     /// <summary>
     /// ChaCha20 block size in bytes (512 bits = 64 bytes).
@@ -88,9 +88,9 @@ internal struct ChaChaCore
         {
             var support = SimdSupport.None;
 #if NET8_0_OR_GREATER
-            support |= ChaChaCore_Neon.SimdSupport;
-            support |= ChaChaCore_Ssse3.SimdSupport;
-            support |= ChaChaCore_AVX2.SimdSupport;
+            support |= SimdSupportSsse3;
+            support |= SimdSupportAvx2;
+            support |= SimdSupportNeon;
 #endif
             return support;
         }
@@ -115,15 +115,15 @@ internal struct ChaChaCore
             _transform = &TransformScalar;
             if ((_simdSupport & SimdSupport.Avx2) != 0)
             {
-                _transform = &ChaChaCore_AVX2.TransformAVX2;
+                _transform = &TransformAVX2;
             }
             else if ((_simdSupport & SimdSupport.Ssse3) != 0)
             {
-                _transform = &ChaChaCore_Ssse3.TransformSsse3;
+                _transform = &TransformSsse3;
             }
             else if ((_simdSupport & SimdSupport.Neon) != 0)
             {
-                _transform = &ChaChaCore_Neon.TransformNeon;
+                _transform = &TransformNeon;
             }
         }
 #endif

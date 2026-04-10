@@ -30,7 +30,7 @@ using System.Runtime.Intrinsics.X86;
 /// </list>
 /// </para>
 /// </remarks>
-internal static class ChaChaCore_Ssse3
+internal partial struct ChaChaCore
 {
     // Byte-shuffle masks for SSSE3 rotate-left on packed 32-bit words.
     // ROL16: swap the two 16-bit halves within each 32-bit lane.
@@ -47,7 +47,7 @@ internal static class ChaChaCore_Ssse3
     /// <summary>
     /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
     /// </summary>
-    public static SimdSupport SimdSupport
+    private static SimdSupport SimdSupportSsse3
     {
         get
         {
@@ -83,7 +83,7 @@ internal static class ChaChaCore_Ssse3
         // Load initial state into 4 Vector128<uint> rows.
         // SSSE3 implies x86 (always little-endian), so we can load key/nonce directly.
         Vector128<uint> row0 = Vector128.LoadUnsafe(
-            ref MemoryMarshal.GetArrayDataReference(ChaChaCore.Sigma));
+            ref MemoryMarshal.GetArrayDataReference(Sigma));
 
         ref byte keyRef = ref MemoryMarshal.GetReference(key);
         Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
@@ -100,7 +100,7 @@ internal static class ChaChaCore_Ssse3
         ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
         int offset = 0;
-        Span<byte> ks = stackalloc byte[ChaChaCore.BlockSizeBytes];
+        Span<byte> ks = stackalloc byte[BlockSizeBytes];
         while (offset < input.Length)
         {
             // Working copy (row3 has per-block counter)
@@ -108,7 +108,7 @@ internal static class ChaChaCore_Ssse3
             Vector128<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
 
             // 10 double-rounds
-            for (int i = 0; i < ChaChaCore.Rounds; i += 2)
+            for (int i = 0; i < Rounds; i += 2)
             {
                 // Column round
                 QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
@@ -129,7 +129,7 @@ internal static class ChaChaCore_Ssse3
 
             int remaining = input.Length - offset;
 
-            if (remaining >= ChaChaCore.BlockSizeBytes)
+            if (remaining >= BlockSizeBytes)
             {
                 // Full block: XOR keystream with input
                 ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
@@ -162,7 +162,7 @@ internal static class ChaChaCore_Ssse3
                 }
             }
 
-            offset += ChaChaCore.BlockSizeBytes;
+            offset += BlockSizeBytes;
 
             // Increment counter in vector domain (no scalar round-trip)
             row3Base = Sse2.Add(row3Base, CounterIncrement);
