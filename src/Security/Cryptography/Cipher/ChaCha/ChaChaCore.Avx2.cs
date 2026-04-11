@@ -65,7 +65,7 @@ internal readonly partial struct ChaChaCore
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void TransformAvx2(
+    private static void TransformAvx2(
         ReadOnlySpan<byte> key,
         ReadOnlySpan<byte> nonce,
         uint counter,

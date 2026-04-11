@@ -76,7 +76,7 @@ internal readonly partial struct ChaChaCore
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void TransformSsse3(
+    private static void TransformSsse3(
         ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
         ReadOnlySpan<byte> input, Span<byte> output)
     {
@@ -167,6 +167,53 @@ internal readonly partial struct ChaChaCore
             // Increment counter in vector domain (no scalar round-trip)
             row3Base = Sse2.Add(row3Base, CounterIncrement);
         }
+    }
+
+    /// <summary>
+    /// SSSE3-accelerated generation of a single 64-byte ChaCha20 keystream block.
+    /// </summary>
+    /// <remarks>
+    /// Equivalent to <see cref="TransformSsse3"/> over a zero-filled single block, but without
+    /// the XOR step. Used by <see cref="ChaChaCore.Block"/> to avoid scalar overhead when SIMD
+    /// is available, most notably for Poly1305 key generation in ChaCha20-Poly1305.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void BlockSsse3(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
+    {
+        Vector128<uint> row0 = Vector128.LoadUnsafe(
+            ref MemoryMarshal.GetArrayDataReference(Sigma));
+
+        ref byte keyRef = ref MemoryMarshal.GetReference(key);
+        Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
+        Vector128<uint> row2 = Vector128.LoadUnsafe(ref keyRef, 16).AsUInt32();
+
+        ref byte nonceRef = ref MemoryMarshal.GetReference(nonce);
+        uint nc0 = Unsafe.ReadUnaligned<uint>(ref nonceRef);
+        uint nc1 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 4));
+        uint nc2 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 8));
+        Vector128<uint> row3 = Vector128.Create(counter, nc0, nc1, nc2);
+
+        Vector128<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
+
+        for (int i = 0; i < Rounds; i += 2)
+        {
+            QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
+            DiagPermuteSse2(ref w1, ref w2, ref w3);
+            QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
+            DiagPermuteSse2(ref w3, ref w2, ref w1);
+        }
+
+        w0 = Sse2.Add(w0, row0);
+        w1 = Sse2.Add(w1, row1);
+        w2 = Sse2.Add(w2, row2);
+        w3 = Sse2.Add(w3, row3);
+
+        ref byte outRef = ref MemoryMarshal.GetReference(output);
+        w0.AsByte().StoreUnsafe(ref outRef);
+        w1.AsByte().StoreUnsafe(ref outRef, 16);
+        w2.AsByte().StoreUnsafe(ref outRef, 32);
+        w3.AsByte().StoreUnsafe(ref outRef, 48);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
