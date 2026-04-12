@@ -198,7 +198,7 @@ internal unsafe struct CcmCore
         }
 
         // Constant-time comparison
-        return CryptoUtils.FixedTimeEquals(tag, expectedTag);
+        return CryptographicOperations.FixedTimeEquals(tag, expectedTag);
     }
 
     private void ComputeCbcMac(

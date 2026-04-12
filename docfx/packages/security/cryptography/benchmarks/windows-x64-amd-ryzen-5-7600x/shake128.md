@@ -1,37 +1,37 @@
 ﻿| Description                              | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |----------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · SHAKE128 · Managed      | 128B         |     244.1 ns |     1.31 ns |     1.10 ns |         - |
-| TryComputeHash · SHAKE128 · AVX2         | 128B         |     315.8 ns |     0.92 ns |     0.86 ns |         - |
-| TryComputeHash · SHAKE128 · AVX512F      | 128B         |     324.6 ns |     0.87 ns |     0.82 ns |         - |
-| TryComputeHash · SHAKE128 · BouncyCastle | 128B         |     334.0 ns |     1.54 ns |     1.44 ns |         - |
-| TryComputeHash · SHAKE128 · OS Native    | 128B         |     358.6 ns |     1.62 ns |     1.52 ns |         - |
+| TryComputeHash · SHAKE128 · Managed      | 128B         |     247.4 ns |     1.82 ns |     1.71 ns |         - |
+| TryComputeHash · SHAKE128 · AVX2         | 128B         |     317.0 ns |     1.06 ns |     0.89 ns |         - |
+| TryComputeHash · SHAKE128 · AVX512F      | 128B         |     324.0 ns |     0.68 ns |     0.60 ns |         - |
+| TryComputeHash · SHAKE128 · BouncyCastle | 128B         |     336.9 ns |     2.21 ns |     1.84 ns |         - |
+| TryComputeHash · SHAKE128 · OS Native    | 128B         |     357.4 ns |     1.62 ns |     1.51 ns |         - |
 |                                          |              |              |             |             |           |
-| TryComputeHash · SHAKE128 · Managed      | 137B         |     241.7 ns |     1.52 ns |     1.35 ns |         - |
-| TryComputeHash · SHAKE128 · AVX2         | 137B         |     312.8 ns |     0.63 ns |     0.55 ns |         - |
-| TryComputeHash · SHAKE128 · AVX512F      | 137B         |     320.6 ns |     1.04 ns |     0.98 ns |         - |
-| TryComputeHash · SHAKE128 · BouncyCastle | 137B         |     333.0 ns |     1.64 ns |     1.53 ns |         - |
-| TryComputeHash · SHAKE128 · OS Native    | 137B         |     358.8 ns |     2.54 ns |     2.37 ns |         - |
+| TryComputeHash · SHAKE128 · Managed      | 137B         |     243.7 ns |     2.29 ns |     1.91 ns |         - |
+| TryComputeHash · SHAKE128 · AVX2         | 137B         |     313.3 ns |     1.87 ns |     1.75 ns |         - |
+| TryComputeHash · SHAKE128 · AVX512F      | 137B         |     320.7 ns |     1.57 ns |     1.39 ns |         - |
+| TryComputeHash · SHAKE128 · BouncyCastle | 137B         |     336.9 ns |     2.19 ns |     2.05 ns |         - |
+| TryComputeHash · SHAKE128 · OS Native    | 137B         |     360.3 ns |     2.72 ns |     2.55 ns |         - |
 |                                          |              |              |             |             |           |
-| TryComputeHash · SHAKE128 · Managed      | 1KB          |   1,485.8 ns |     4.89 ns |     4.33 ns |         - |
-| TryComputeHash · SHAKE128 · OS Native    | 1KB          |   1,777.4 ns |     4.11 ns |     3.43 ns |         - |
-| TryComputeHash · SHAKE128 · AVX2         | 1KB          |   1,996.8 ns |     7.95 ns |     7.44 ns |         - |
-| TryComputeHash · SHAKE128 · AVX512F      | 1KB          |   2,042.9 ns |     5.80 ns |     5.14 ns |         - |
-| TryComputeHash · SHAKE128 · BouncyCastle | 1KB          |   2,170.9 ns |     7.58 ns |     6.72 ns |         - |
+| TryComputeHash · SHAKE128 · Managed      | 1KB          |   1,499.6 ns |    13.76 ns |    12.88 ns |         - |
+| TryComputeHash · SHAKE128 · OS Native    | 1KB          |   1,808.6 ns |     9.14 ns |     8.55 ns |         - |
+| TryComputeHash · SHAKE128 · AVX2         | 1KB          |   1,996.3 ns |     8.52 ns |     7.12 ns |         - |
+| TryComputeHash · SHAKE128 · AVX512F      | 1KB          |   2,043.3 ns |     5.86 ns |     5.48 ns |         - |
+| TryComputeHash · SHAKE128 · BouncyCastle | 1KB          |   2,188.1 ns |    13.31 ns |    11.80 ns |         - |
 |                                          |              |              |             |             |           |
-| TryComputeHash · SHAKE128 · Managed      | 1025B        |   1,485.0 ns |    10.08 ns |     9.43 ns |         - |
-| TryComputeHash · SHAKE128 · OS Native    | 1025B        |   1,773.7 ns |     6.55 ns |     6.12 ns |         - |
-| TryComputeHash · SHAKE128 · AVX2         | 1025B        |   1,992.2 ns |     5.76 ns |     5.39 ns |         - |
-| TryComputeHash · SHAKE128 · AVX512F      | 1025B        |   2,043.4 ns |     3.80 ns |     3.55 ns |         - |
-| TryComputeHash · SHAKE128 · BouncyCastle | 1025B        |   2,161.2 ns |     9.79 ns |     8.68 ns |         - |
+| TryComputeHash · SHAKE128 · Managed      | 1025B        |   1,518.6 ns |    24.97 ns |    20.85 ns |         - |
+| TryComputeHash · SHAKE128 · OS Native    | 1025B        |   1,803.3 ns |    13.42 ns |    12.55 ns |         - |
+| TryComputeHash · SHAKE128 · AVX2         | 1025B        |   1,995.4 ns |     4.65 ns |     3.88 ns |         - |
+| TryComputeHash · SHAKE128 · AVX512F      | 1025B        |   2,048.1 ns |     9.38 ns |     7.83 ns |         - |
+| TryComputeHash · SHAKE128 · BouncyCastle | 1025B        |   2,184.4 ns |    17.74 ns |    14.81 ns |         - |
 |                                          |              |              |             |             |           |
-| TryComputeHash · SHAKE128 · Managed      | 8KB          |   9,773.8 ns |    52.26 ns |    48.89 ns |         - |
-| TryComputeHash · SHAKE128 · OS Native    | 8KB          |  11,695.0 ns |    39.91 ns |    35.38 ns |         - |
-| TryComputeHash · SHAKE128 · AVX2         | 8KB          |  13,288.0 ns |    17.78 ns |    15.76 ns |         - |
-| TryComputeHash · SHAKE128 · AVX512F      | 8KB          |  13,611.2 ns |    22.10 ns |    19.59 ns |         - |
-| TryComputeHash · SHAKE128 · BouncyCastle | 8KB          |  14,992.4 ns |    50.70 ns |    47.42 ns |         - |
+| TryComputeHash · SHAKE128 · Managed      | 8KB          |   9,933.0 ns |    95.42 ns |    89.26 ns |         - |
+| TryComputeHash · SHAKE128 · OS Native    | 8KB          |  11,876.1 ns |    70.84 ns |    62.80 ns |         - |
+| TryComputeHash · SHAKE128 · AVX2         | 8KB          |  13,312.3 ns |    27.91 ns |    26.11 ns |         - |
+| TryComputeHash · SHAKE128 · AVX512F      | 8KB          |  13,609.7 ns |    33.44 ns |    29.65 ns |         - |
+| TryComputeHash · SHAKE128 · BouncyCastle | 8KB          |  15,199.7 ns |    67.32 ns |    59.68 ns |         - |
 |                                          |              |              |             |             |           |
-| TryComputeHash · SHAKE128 · Managed      | 128KB        | 155,257.5 ns | 1,757.42 ns | 1,643.89 ns |         - |
-| TryComputeHash · SHAKE128 · OS Native    | 128KB        | 184,993.6 ns | 1,302.82 ns | 1,218.66 ns |         - |
-| TryComputeHash · SHAKE128 · AVX2         | 128KB        | 211,627.5 ns |   490.62 ns |   458.93 ns |         - |
-| TryComputeHash · SHAKE128 · AVX512F      | 128KB        | 215,844.5 ns |   401.85 ns |   375.89 ns |         - |
-| TryComputeHash · SHAKE128 · BouncyCastle | 128KB        | 239,279.5 ns |   951.13 ns |   889.69 ns |         - |
+| TryComputeHash · SHAKE128 · Managed      | 128KB        | 156,778.3 ns | 1,127.35 ns |   999.36 ns |         - |
+| TryComputeHash · SHAKE128 · OS Native    | 128KB        | 187,637.4 ns | 1,208.23 ns | 1,130.18 ns |         - |
+| TryComputeHash · SHAKE128 · AVX2         | 128KB        | 211,420.1 ns |   408.31 ns |   361.96 ns |         - |
+| TryComputeHash · SHAKE128 · AVX512F      | 128KB        | 216,188.8 ns |   623.52 ns |   583.24 ns |         - |
+| TryComputeHash · SHAKE128 · BouncyCastle | 128KB        | 242,281.1 ns | 1,203.73 ns | 1,125.97 ns |         - |

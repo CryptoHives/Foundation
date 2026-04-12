@@ -3,14 +3,13 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+#if NET8_0_OR_GREATER
+
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
-#if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-#endif
 
 /// <summary>
 /// AVX2-accelerated ChaCha20 transform processing two 64-byte blocks in parallel.
@@ -27,9 +26,8 @@ using System.Runtime.Intrinsics.X86;
 /// byte-aligned rotations (ROL16, ROL8) and AVX2 shift+or for ROL12 and ROL7.
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal readonly partial struct ChaChaCore
 {
-#if NET8_0_OR_GREATER
     /// <summary>
     /// The number of bytes produced per AVX2 iteration (2 × 64 = 128 bytes).
     /// </summary>
@@ -37,16 +35,29 @@ internal partial struct ChaChaCore
 
     // VPSHUFB masks for AVX2 rotate-left on packed 32-bit words.
     // Same byte pattern in both 128-bit lanes.
-    private static readonly Vector256<byte> Avx2RotateLeftMask16 = Vector256.Create(
+    private static readonly Vector256<byte> RotateLeftMask16Avx2 = Vector256.Create(
         (byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13,
         2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
 
-    private static readonly Vector256<byte> Avx2RotateLeftMask8 = Vector256.Create(
+    private static readonly Vector256<byte> RotateLeftMask8Avx2 = Vector256.Create(
         (byte)3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14,
         3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14);
 
     // Counter increment for the upper lane: lower lane gets counter+0, upper lane gets counter+1.
     private static readonly Vector256<uint> DualCounterIncrement = Vector256.Create(2u, 0u, 0u, 0u, 2u, 0u, 0u, 0u);
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on AVX2.
+    /// </summary>
+    private static SimdSupport SimdSupportAvx2
+    {
+        get
+        {
+            var support = SimdSupport.None;
+            if (Avx2.IsSupported && Ssse3.IsSupported) support |= SimdSupport.Ssse3 | SimdSupport.Avx2;
+            return support;
+        }
+    }
 
     /// <summary>
     /// AVX2-accelerated ChaCha20 Transform operating on 4 × Vector256 rows,
@@ -55,8 +66,11 @@ internal partial struct ChaChaCore
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void TransformAvx2(
-        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-        ReadOnlySpan<byte> input, Span<byte> output)
+        ReadOnlySpan<byte> key,
+        ReadOnlySpan<byte> nonce,
+        uint counter,
+        ReadOnlySpan<byte> input,
+        Span<byte> output)
     {
         // small blocks: delegate to SSSE3 single-block path.
         if (DualBlockSizeBytes > input.Length)
@@ -79,11 +93,15 @@ internal partial struct ChaChaCore
         Vector256<uint> row2 = Vector256.Create(row2_128, row2_128);
 
         // Row 3: lower lane gets counter, upper lane gets counter+1.
-        uint n0 = MemoryMarshal.Cast<byte, uint>(nonce)[0];
-        uint n1 = MemoryMarshal.Cast<byte, uint>(nonce)[1];
-        uint n2 = MemoryMarshal.Cast<byte, uint>(nonce)[2];
+        ref byte nonceRef = ref MemoryMarshal.GetReference(nonce);
+        uint n0 = Unsafe.ReadUnaligned<uint>(ref nonceRef);
+        uint n1 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 4));
+        uint n2 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 8));
 
         Vector256<uint> row3Base = Vector256.Create(counter, n0, n1, n2, counter + 1, n0, n1, n2);
+
+        ref byte inputBase = ref MemoryMarshal.GetReference(input);
+        ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
         // Main loop: process 2 blocks (128 bytes) per iteration.
         int offset = 0;
@@ -114,8 +132,8 @@ internal partial struct ChaChaCore
             // Extract lower and upper 128-bit lanes, then XOR with input.
             // Block N (lower lane): rows w0..w3 lower halves → bytes [offset .. offset+63]
             // Block N+1 (upper lane): rows w0..w3 upper halves → bytes [offset+64 .. offset+127]
-            ref byte inRef = ref MemoryMarshal.GetReference(input.Slice(offset));
-            ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(offset));
+            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
 
             // Block N (lower lanes)
             Vector128<byte> in0 = Vector128.LoadUnsafe(ref inRef);
@@ -169,18 +187,18 @@ internal partial struct ChaChaCore
         ref Vector256<uint> c, ref Vector256<uint> d)
     {
         a = Avx2.Add(a, b);
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), Avx2RotateLeftMask16).AsUInt32();
+        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateLeftMask16Avx2).AsUInt32();
 
         c = Avx2.Add(c, d);
         b = Avx2.Xor(b, c);
         b = Avx2.Or(Avx2.ShiftLeftLogical(b, 12), Avx2.ShiftRightLogical(b, 20));
 
         a = Avx2.Add(a, b);
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), Avx2RotateLeftMask8).AsUInt32();
+        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateLeftMask8Avx2).AsUInt32();
 
         c = Avx2.Add(c, d);
         b = Avx2.Xor(b, c);
         b = Avx2.Or(Avx2.ShiftLeftLogical(b, 7), Avx2.ShiftRightLogical(b, 25));
     }
-#endif
 }
+#endif

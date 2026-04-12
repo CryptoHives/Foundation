@@ -149,7 +149,7 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
-        if (!CryptoUtils.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
+        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;

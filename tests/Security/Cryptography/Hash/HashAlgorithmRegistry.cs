@@ -26,6 +26,13 @@ using CHRoot = CryptoHives.Foundation.Security.Cryptography;
 /// </remarks>
 public static class HashAlgorithmRegistry
 {
+    private static readonly (CHRoot.SimdSupport Flag, string VariantName)[] KeccakSimdVariants =
+    [
+        (CHRoot.SimdSupport.Avx512F, "AVX512F"),
+        (CHRoot.SimdSupport.Avx2, "AVX2"),
+        (CHRoot.SimdSupport.Ssse3, "SSSE3")
+    ];
+
     /// <summary>
     /// Implementation source type.
     /// </summary>
@@ -317,10 +324,12 @@ public static class HashAlgorithmRegistry
 
     private static void AddSha3(List<HashImplementation> list)
     {
-        AddSha3Variant(list, "SHA3-224", 224, CH.SHA3_224.SimdSupport,
+        var simdSupport = CH.KeccakCore.SimdSupport;
+
+        AddKeccakFamilyVariant(list, "SHA3-224", 224, simdSupport,
             CH.SHA3_224.Create, () => new BC.Sha3Digest(224));
 
-        AddSha3Variant(list, "SHA3-256", 256, CH.SHA3_256.SimdSupport,
+        AddKeccakFamilyVariant(list, "SHA3-256", 256, simdSupport,
             CH.SHA3_256.Create, () => new BC.Sha3Digest(256),
 #if NET8_0_OR_GREATER
             () => SHA3_256.IsSupported ? SHA3_256.Create() : null
@@ -329,7 +338,7 @@ public static class HashAlgorithmRegistry
 #endif
         );
 
-        AddSha3Variant(list, "SHA3-384", 384, CH.SHA3_384.SimdSupport,
+        AddKeccakFamilyVariant(list, "SHA3-384", 384, simdSupport,
             CH.SHA3_384.Create, () => new BC.Sha3Digest(384),
 #if NET8_0_OR_GREATER
             () => SHA3_384.IsSupported ? SHA3_384.Create() : null
@@ -338,7 +347,7 @@ public static class HashAlgorithmRegistry
 #endif
         );
 
-        AddSha3Variant(list, "SHA3-512", 512, CH.SHA3_512.SimdSupport,
+        AddKeccakFamilyVariant(list, "SHA3-512", 512, simdSupport,
             CH.SHA3_512.Create, () => new BC.Sha3Digest(512),
 #if NET8_0_OR_GREATER
             () => SHA3_512.IsSupported ? SHA3_512.Create() : null
@@ -348,13 +357,13 @@ public static class HashAlgorithmRegistry
         );
     }
 
-    private static void AddSha3Variant(
+    private static void AddKeccakFamilyVariant(
         List<HashImplementation> list,
         string family,
         int hashSizeBits,
         CHRoot.SimdSupport simdSupport,
         Func<CHRoot.SimdSupport, HashAlgorithm> factory,
-        Func<Org.BouncyCastle.Crypto.IDigest> bcFactory,
+        Func<Org.BouncyCastle.Crypto.IDigest>? bcFactory = null,
         Func<HashAlgorithm?>? osFactory = null)
     {
 #if NET8_0_OR_GREATER
@@ -366,25 +375,14 @@ public static class HashAlgorithmRegistry
         }
 #endif
 
-        if ((simdSupport & CHRoot.SimdSupport.Avx512F) != 0)
+        foreach (var (flag, variantName) in KeccakSimdVariants)
         {
-            list.Add(new(family, "AVX512F", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Avx512F), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Avx512F) != 0));
-        }
-
-        if ((simdSupport & CHRoot.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new(family, "AVX2", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Avx2), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Avx2) != 0));
-        }
-
-        if ((simdSupport & CHRoot.SimdSupport.Ssse3) != 0)
-        {
-            list.Add(new(family, "SSSE3", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Ssse3), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Ssse3) != 0));
+            if ((simdSupport & flag) != 0)
+            {
+                list.Add(new(family, variantName, hashSizeBits,
+                    () => factory(flag), Source.Simd,
+                    () => (simdSupport & flag) != 0));
+            }
         }
 
         list.Add(new(family, "Arm64", hashSizeBits,
@@ -393,8 +391,11 @@ public static class HashAlgorithmRegistry
         list.Add(new(family, "Managed", hashSizeBits,
             () => factory(CHRoot.SimdSupport.None), Source.Managed));
 
-        list.Add(new(family, "BouncyCastle", hashSizeBits,
-            () => new BouncyCastleHashAdapter(bcFactory()), Source.BouncyCastle));
+        if (bcFactory != null)
+        {
+            list.Add(new(family, "BouncyCastle", hashSizeBits,
+                () => new BouncyCastleHashAdapter(bcFactory()), Source.BouncyCastle));
+        }
     }
 
     #endregion
@@ -415,12 +416,12 @@ public static class HashAlgorithmRegistry
             () => Shake256.IsSupported));
 #endif
 
-        AddKeccakSimdVariants(list, "SHAKE128", 256, simdSupport,
+        AddKeccakFamilyVariant(list, "SHAKE128", 256, simdSupport,
             s => CH.Shake128.Create(s, 32));
         list.Add(new("SHAKE128", "BouncyCastle", 256,
             () => new BouncyCastleXofAdapter(new BC.ShakeDigest(128), 32), Source.BouncyCastle));
 
-        AddKeccakSimdVariants(list, "SHAKE256", 512, simdSupport,
+        AddKeccakFamilyVariant(list, "SHAKE256", 512, simdSupport,
             s => CH.Shake256.Create(s, 64));
         list.Add(new("SHAKE256", "BouncyCastle", 512,
             () => new BouncyCastleXofAdapter(new BC.ShakeDigest(256), 64), Source.BouncyCastle));
@@ -434,12 +435,12 @@ public static class HashAlgorithmRegistry
     {
         var simdSupport = CH.KeccakCore.SimdSupport;
 
-        AddKeccakSimdVariants(list, "cSHAKE128", 256, simdSupport,
+        AddKeccakFamilyVariant(list, "cSHAKE128", 256, simdSupport,
             s => CH.CShake128.Create(s, 32));
         list.Add(new("cSHAKE128", "BouncyCastle", 256,
             () => new BouncyCastleCShakeAdapter(128, null, null, 32), Source.BouncyCastle));
 
-        AddKeccakSimdVariants(list, "cSHAKE256", 512, simdSupport,
+        AddKeccakFamilyVariant(list, "cSHAKE256", 512, simdSupport,
             s => CH.CShake256.Create(s, 64));
         list.Add(new("cSHAKE256", "BouncyCastle", 512,
             () => new BouncyCastleCShakeAdapter(256, null, null, 64), Source.BouncyCastle));
@@ -585,82 +586,16 @@ public static class HashAlgorithmRegistry
 
     private static void AddKeccak(List<HashImplementation> list)
     {
-        AddKeccakVariant(list, "Keccak-256", 256, CH.Keccak256.SimdSupport,
+        var simdSupport = CH.KeccakCore.SimdSupport;
+
+        AddKeccakFamilyVariant(list, "Keccak-256", 256, simdSupport,
             CH.Keccak256.Create, () => new BC.KeccakDigest(256));
 
-        AddKeccakVariant(list, "Keccak-384", 384, CH.Keccak384.SimdSupport,
+        AddKeccakFamilyVariant(list, "Keccak-384", 384, simdSupport,
             CH.Keccak384.Create, () => new BC.KeccakDigest(384));
 
-        AddKeccakVariant(list, "Keccak-512", 512, CH.Keccak512.SimdSupport,
+        AddKeccakFamilyVariant(list, "Keccak-512", 512, simdSupport,
             CH.Keccak512.Create, () => new BC.KeccakDigest(512));
-    }
-
-    private static void AddKeccakVariant(
-        List<HashImplementation> list,
-        string family,
-        int hashSizeBits,
-        CHRoot.SimdSupport simdSupport,
-        Func<CHRoot.SimdSupport, HashAlgorithm> factory,
-        Func<Org.BouncyCastle.Crypto.IDigest> bcFactory)
-    {
-        if ((simdSupport & CHRoot.SimdSupport.Avx512F) != 0)
-        {
-            list.Add(new(family, "AVX512F", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Avx512F), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Avx512F) != 0));
-        }
-
-        if ((simdSupport & CHRoot.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new(family, "AVX2", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Avx2), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Avx2) != 0));
-        }
-
-        if ((simdSupport & CHRoot.SimdSupport.Ssse3) != 0)
-        {
-            list.Add(new(family, "SSSE3", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Ssse3), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Ssse3) != 0));
-        }
-
-        list.Add(new(family, "Managed", hashSizeBits,
-            () => factory(CHRoot.SimdSupport.None), Source.Managed));
-
-        list.Add(new(family, "BouncyCastle", hashSizeBits,
-            () => new BouncyCastleHashAdapter(bcFactory()), Source.BouncyCastle));
-    }
-
-    private static void AddKeccakSimdVariants(
-        List<HashImplementation> list,
-        string family,
-        int hashSizeBits,
-        CHRoot.SimdSupport simdSupport,
-        Func<CHRoot.SimdSupport, HashAlgorithm> factory)
-    {
-        if ((simdSupport & CHRoot.SimdSupport.Avx512F) != 0)
-        {
-            list.Add(new(family, "AVX512F", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Avx512F), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Avx512F) != 0));
-        }
-
-        if ((simdSupport & CHRoot.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new(family, "AVX2", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Avx2), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Avx2) != 0));
-        }
-
-        if ((simdSupport & CHRoot.SimdSupport.Ssse3) != 0)
-        {
-            list.Add(new(family, "SSSE3", hashSizeBits,
-                () => factory(CHRoot.SimdSupport.Ssse3), Source.Simd,
-                () => (simdSupport & CHRoot.SimdSupport.Ssse3) != 0));
-        }
-
-        list.Add(new(family, "Managed", hashSizeBits,
-            () => factory(CHRoot.SimdSupport.None), Source.Managed));
     }
 
     #endregion
@@ -786,11 +721,11 @@ public static class HashAlgorithmRegistry
         var simdSupport = CH.KeccakCore.SimdSupport;
 
         // KT128 (32-byte output)
-        AddKeccakSimdVariants(list, "KT128", 256, simdSupport,
+        AddKeccakFamilyVariant(list, "KT128", 256, simdSupport,
             s => CH.KT128.Create(s, 32));
 
         // KT256 (64-byte output)
-        AddKeccakSimdVariants(list, "KT256", 512, simdSupport,
+        AddKeccakFamilyVariant(list, "KT256", 512, simdSupport,
             s => CH.KT256.Create(s, 64));
     }
 
@@ -803,15 +738,15 @@ public static class HashAlgorithmRegistry
         var simdSupport = CH.KeccakCore.SimdSupport;
 
         // TurboShake128 (32-byte output)
-        AddKeccakSimdVariants(list, "TurboSHAKE128-32", 256, simdSupport,
+        AddKeccakFamilyVariant(list, "TurboSHAKE128-32", 256, simdSupport,
             s => CH.TurboShake128.Create(s, 32));
 
         // TurboShake128 (64-byte output)
-        AddKeccakSimdVariants(list, "TurboSHAKE128-64", 512, simdSupport,
+        AddKeccakFamilyVariant(list, "TurboSHAKE128-64", 512, simdSupport,
             s => CH.TurboShake128.Create(s, 64));
 
         // TurboShake256 (64-byte output)
-        AddKeccakSimdVariants(list, "TurboSHAKE256", 512, simdSupport,
+        AddKeccakFamilyVariant(list, "TurboSHAKE256", 512, simdSupport,
             s => CH.TurboShake256.Create(s, 64));
     }
 

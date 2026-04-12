@@ -4,6 +4,8 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 /// <summary>
@@ -93,16 +95,19 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
             int available = ChaChaCore.BlockSizeBytes - _keystreamPosition;
             int toProcess = Math.Min(available, input.Length);
 
+            ref byte inRef = ref MemoryMarshal.GetReference(input);
+            ref byte outRef = ref MemoryMarshal.GetReference(output);
+            ref byte ksRef = ref _keystreamBuffer[_keystreamPosition];
             for (int i = 0; i < toProcess; i++)
             {
-                output[i] = (byte)(input[i] ^ _keystreamBuffer[_keystreamPosition + i]);
+                Unsafe.Add(ref outRef, i) = (byte)(Unsafe.Add(ref inRef, i) ^ Unsafe.Add(ref ksRef, i));
             }
 
             processed = toProcess;
             _keystreamPosition += toProcess;
         }
 
-        // Bulk path: delegate full blocks to ChaChaCore.Transform (SSE2-accelerated)
+        // Bulk path: delegate full blocks to ChaChaCore.Transform
         int remaining = input.Length - processed;
         int bulkBytes = remaining & ~(ChaChaCore.BlockSizeBytes - 1); // round down to block boundary
 
@@ -122,9 +127,12 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
             _counter++;
             _keystreamPosition = 0;
 
+            ref byte trailInRef = ref Unsafe.Add(ref MemoryMarshal.GetReference(input), processed);
+            ref byte trailOutRef = ref Unsafe.Add(ref MemoryMarshal.GetReference(output), processed);
+            ref byte trailKsRef = ref _keystreamBuffer[0];
             for (int i = 0; i < remaining; i++)
             {
-                output[processed + i] = (byte)(input[processed + i] ^ _keystreamBuffer[i]);
+                Unsafe.Add(ref trailOutRef, i) = (byte)(Unsafe.Add(ref trailInRef, i) ^ Unsafe.Add(ref trailKsRef, i));
             }
 
             _keystreamPosition = remaining;

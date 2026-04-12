@@ -201,11 +201,11 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         }
 #endif
 
-        int bytesProcessed = 0;
+        int offset = 0;
         for (int i = 0; i < blocks; i++)
         {
-            var inBlock = input.Slice(i * BlockSize, BlockSize);
-            var outBlock = output.Slice(i * BlockSize, BlockSize);
+            var inBlock = input.Slice(offset, BlockSize);
+            var outBlock = output.Slice(offset, BlockSize);
 
             switch (_mode)
             {
@@ -222,10 +222,10 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     throw new NotSupportedException($"Cipher mode {_mode} is not supported.");
             }
 
-            bytesProcessed += BlockSize;
+            offset += BlockSize;
         }
 
-        return bytesProcessed;
+        return offset;
     }
 
     /// <inheritdoc/>

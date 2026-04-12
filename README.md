@@ -2,12 +2,20 @@
 
 An open, community-driven cryptography and performance library collection for the .NET ecosystem.
 
+While .NET has become a powerful platform for building secure and high-performance applications for any use case on many platforms, there is a need to expose high performance patterns as simple-to-use libraries and to rethink how cryptography is relying on vastly different OS implementations with varying feature and performance characteristics.
+The goal of the CryptoHives Open Source Initiative is to provide a collection of packages for that matter.
+
 ---
 
 ## 🏛️ CryptoHives .NET Foundation Libraries
 
 The **CryptoHives Open Source Initiative** is a collection of modern, high-assurance libraries for .NET, developed and maintained by **The Keepers of the CryptoHives**. 
 Each package is designed for security, interoperability, and clarity — making it easy to build secure systems for high performance transformation pipelines and for cryptography workloads without sacrificing developer experience.
+
+Each library targets a specific use case:
+- **Threading** — high-performance async synchronization primitives optimized for no/low allocation and high throughput scenarios using ValueTask-based waiters and ObjectPool-backed resource management
+- **Memory** — pooled buffer management utilities leveraging ArrayPool<T> and modern .NET memory APIs to minimize GC pressure for transformation pipelines and cryptographic workloads which use ReadOnlySpan or IBufferWriter
+- **Cryptography** — OS independent implementation of all .NET cryptography as a plug in replacement
 
 ---
 
@@ -233,3 +241,4 @@ Please see the [Contributing Guide](https://github.com/CryptoHives/.github/blob/
 ---
 
 © 2026 The Keepers of the CryptoHives
+

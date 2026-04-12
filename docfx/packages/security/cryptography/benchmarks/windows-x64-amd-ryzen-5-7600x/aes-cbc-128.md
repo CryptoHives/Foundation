@@ -1,41 +1,41 @@
-﻿| Description                          | TestDataSize | Mean          | Error        | StdDev       | Median        | Allocated |
-|------------------------------------- |------------- |--------------:|-------------:|-------------:|--------------:|----------:|
-| Decrypt · AES-128-CBC (AES-NI)       | 128B         |      29.90 ns |     0.382 ns |     0.358 ns |      29.78 ns |         - |
-| Decrypt · AES-128-CBC (OS)           | 128B         |     246.44 ns |     2.508 ns |     2.346 ns |     246.90 ns |     128 B |
-| Decrypt · AES-128-CBC (Managed)      | 128B         |     439.76 ns |     2.413 ns |     2.257 ns |     439.81 ns |         - |
-| Decrypt · AES-128-CBC (BouncyCastle) | 128B         |     692.44 ns |     4.885 ns |     4.570 ns |     690.71 ns |     832 B |
-|                                      |              |               |              |              |               |           |
-| Encrypt · AES-128-CBC (AES-NI)       | 128B         |     171.33 ns |     3.327 ns |     3.112 ns |     171.54 ns |         - |
-| Encrypt · AES-128-CBC (OS)           | 128B         |     274.43 ns |     2.993 ns |     2.800 ns |     274.02 ns |     128 B |
-| Encrypt · AES-128-CBC (Managed)      | 128B         |     445.61 ns |     2.419 ns |     2.020 ns |     445.70 ns |         - |
-| Encrypt · AES-128-CBC (BouncyCastle) | 128B         |     636.11 ns |     1.403 ns |     1.096 ns |     635.65 ns |     832 B |
-|                                      |              |               |              |              |               |           |
-| Decrypt · AES-128-CBC (AES-NI)       | 1KB          |      89.56 ns |     1.163 ns |     1.087 ns |      88.75 ns |         - |
-| Decrypt · AES-128-CBC (OS)           | 1KB          |     303.75 ns |     1.647 ns |     1.460 ns |     303.25 ns |     128 B |
-| Decrypt · AES-128-CBC (Managed)      | 1KB          |   3,111.00 ns |    31.577 ns |    29.537 ns |   3,102.28 ns |         - |
-| Decrypt · AES-128-CBC (BouncyCastle) | 1KB          |   3,895.86 ns |    31.179 ns |    29.165 ns |   3,884.31 ns |     832 B |
-|                                      |              |               |              |              |               |           |
-| Encrypt · AES-128-CBC (OS)           | 1KB          |     698.81 ns |     3.463 ns |     3.070 ns |     697.70 ns |     128 B |
-| Encrypt · AES-128-CBC (AES-NI)       | 1KB          |   1,175.13 ns |     5.550 ns |     5.192 ns |   1,174.18 ns |         - |
-| Encrypt · AES-128-CBC (Managed)      | 1KB          |   3,120.67 ns |    23.789 ns |    21.088 ns |   3,119.42 ns |         - |
-| Encrypt · AES-128-CBC (BouncyCastle) | 1KB          |   3,725.55 ns |    27.872 ns |    26.072 ns |   3,724.62 ns |     832 B |
-|                                      |              |               |              |              |               |           |
-| Decrypt · AES-128-CBC (AES-NI)       | 8KB          |     568.19 ns |     2.719 ns |     2.543 ns |     566.98 ns |         - |
-| Decrypt · AES-128-CBC (OS)           | 8KB          |     732.64 ns |     4.745 ns |     4.207 ns |     733.30 ns |     128 B |
-| Decrypt · AES-128-CBC (Managed)      | 8KB          |  24,283.63 ns |   122.578 ns |   108.662 ns |  24,280.46 ns |         - |
-| Decrypt · AES-128-CBC (BouncyCastle) | 8KB          |  29,166.53 ns |   261.978 ns |   245.054 ns |  29,099.30 ns |     832 B |
-|                                      |              |               |              |              |               |           |
-| Encrypt · AES-128-CBC (OS)           | 8KB          |   4,278.31 ns |    53.715 ns |    50.245 ns |   4,266.29 ns |     128 B |
-| Encrypt · AES-128-CBC (AES-NI)       | 8KB          |   9,100.45 ns |    64.454 ns |    60.290 ns |   9,084.92 ns |         - |
-| Encrypt · AES-128-CBC (Managed)      | 8KB          |  24,549.96 ns |   159.960 ns |   149.627 ns |  24,565.28 ns |         - |
-| Encrypt · AES-128-CBC (BouncyCastle) | 8KB          |  29,835.58 ns |   592.595 ns | 1,419.820 ns |  29,307.96 ns |     832 B |
-|                                      |              |               |              |              |               |           |
-| Decrypt · AES-128-CBC (OS)           | 128KB        |   8,302.64 ns |    55.443 ns |    51.861 ns |   8,291.44 ns |     128 B |
-| Decrypt · AES-128-CBC (AES-NI)       | 128KB        |   8,849.10 ns |    89.091 ns |    83.335 ns |   8,857.57 ns |         - |
-| Decrypt · AES-128-CBC (Managed)      | 128KB        | 391,412.22 ns | 3,635.462 ns | 3,400.614 ns | 390,479.98 ns |         - |
-| Decrypt · AES-128-CBC (BouncyCastle) | 128KB        | 461,918.15 ns | 2,776.376 ns | 2,597.024 ns | 461,417.43 ns |     832 B |
-|                                      |              |               |              |              |               |           |
-| Encrypt · AES-128-CBC (OS)           | 128KB        |  65,933.87 ns |   421.309 ns |   373.479 ns |  65,859.27 ns |     128 B |
-| Encrypt · AES-128-CBC (AES-NI)       | 128KB        | 144,081.35 ns |   590.215 ns |   523.210 ns | 143,899.71 ns |         - |
-| Encrypt · AES-128-CBC (Managed)      | 128KB        | 391,274.38 ns | 4,268.993 ns | 3,993.219 ns | 389,712.01 ns |         - |
-| Encrypt · AES-128-CBC (BouncyCastle) | 128KB        | 451,990.97 ns | 3,184.885 ns | 2,486.549 ns | 452,597.80 ns |     832 B |
+﻿| Description                          | TestDataSize | Mean          | Error        | StdDev       | Allocated |
+|------------------------------------- |------------- |--------------:|-------------:|-------------:|----------:|
+| Decrypt · AES-128-CBC (AES-NI)       | 128B         |      44.10 ns |     0.704 ns |     0.659 ns |         - |
+| Decrypt · AES-128-CBC (OS)           | 128B         |     249.41 ns |     4.923 ns |     5.267 ns |     128 B |
+| Decrypt · AES-128-CBC (Managed)      | 128B         |     459.12 ns |     5.508 ns |     4.883 ns |         - |
+| Decrypt · AES-128-CBC (BouncyCastle) | 128B         |     719.11 ns |    11.461 ns |    10.721 ns |     832 B |
+|                                      |              |               |              |              |           |
+| Encrypt · AES-128-CBC (AES-NI)       | 128B         |     184.99 ns |     3.682 ns |     4.092 ns |         - |
+| Encrypt · AES-128-CBC (OS)           | 128B         |     288.63 ns |     5.632 ns |     5.531 ns |     128 B |
+| Encrypt · AES-128-CBC (Managed)      | 128B         |     466.20 ns |     4.816 ns |     4.505 ns |         - |
+| Encrypt · AES-128-CBC (BouncyCastle) | 128B         |     649.70 ns |    12.379 ns |    12.713 ns |     832 B |
+|                                      |              |               |              |              |           |
+| Decrypt · AES-128-CBC (AES-NI)       | 1KB          |     216.81 ns |     2.639 ns |     2.468 ns |         - |
+| Decrypt · AES-128-CBC (OS)           | 1KB          |     301.84 ns |     5.993 ns |     5.886 ns |     128 B |
+| Decrypt · AES-128-CBC (Managed)      | 1KB          |   3,220.48 ns |    35.684 ns |    33.379 ns |         - |
+| Decrypt · AES-128-CBC (BouncyCastle) | 1KB          |   3,980.14 ns |    54.817 ns |    51.276 ns |     832 B |
+|                                      |              |               |              |              |           |
+| Encrypt · AES-128-CBC (OS)           | 1KB          |     714.63 ns |     7.584 ns |     7.094 ns |     128 B |
+| Encrypt · AES-128-CBC (AES-NI)       | 1KB          |   1,197.31 ns |     9.733 ns |     9.105 ns |         - |
+| Encrypt · AES-128-CBC (Managed)      | 1KB          |   3,267.34 ns |    49.117 ns |    43.541 ns |         - |
+| Encrypt · AES-128-CBC (BouncyCastle) | 1KB          |   3,835.67 ns |    34.186 ns |    30.305 ns |     832 B |
+|                                      |              |               |              |              |           |
+| Decrypt · AES-128-CBC (OS)           | 8KB          |     763.33 ns |     4.377 ns |     3.655 ns |     128 B |
+| Decrypt · AES-128-CBC (AES-NI)       | 8KB          |   1,574.64 ns |    14.412 ns |    13.481 ns |         - |
+| Decrypt · AES-128-CBC (Managed)      | 8KB          |  25,255.76 ns |   174.010 ns |   162.769 ns |         - |
+| Decrypt · AES-128-CBC (BouncyCastle) | 8KB          |  29,994.72 ns |   209.370 ns |   185.601 ns |     832 B |
+|                                      |              |               |              |              |           |
+| Encrypt · AES-128-CBC (OS)           | 8KB          |   4,128.28 ns |    35.744 ns |    33.435 ns |     128 B |
+| Encrypt · AES-128-CBC (AES-NI)       | 8KB          |   9,335.69 ns |   100.379 ns |    93.895 ns |         - |
+| Encrypt · AES-128-CBC (Managed)      | 8KB          |  25,437.86 ns |   321.076 ns |   284.625 ns |         - |
+| Encrypt · AES-128-CBC (BouncyCastle) | 8KB          |  29,313.08 ns |   172.208 ns |   161.084 ns |     832 B |
+|                                      |              |               |              |              |           |
+| Decrypt · AES-128-CBC (OS)           | 128KB        |   8,411.33 ns |   109.823 ns |   102.729 ns |     128 B |
+| Decrypt · AES-128-CBC (AES-NI)       | 128KB        |  25,147.51 ns |   236.561 ns |   221.279 ns |         - |
+| Decrypt · AES-128-CBC (Managed)      | 128KB        | 403,154.61 ns | 7,645.144 ns | 6,777.221 ns |         - |
+| Decrypt · AES-128-CBC (BouncyCastle) | 128KB        | 475,362.74 ns | 3,881.115 ns | 3,440.507 ns |     832 B |
+|                                      |              |               |              |              |           |
+| Encrypt · AES-128-CBC (OS)           | 128KB        |  65,522.78 ns |   401.916 ns |   356.288 ns |     128 B |
+| Encrypt · AES-128-CBC (AES-NI)       | 128KB        | 150,644.67 ns | 1,605.531 ns | 1,423.262 ns |         - |
+| Encrypt · AES-128-CBC (Managed)      | 128KB        | 407,184.16 ns | 5,165.444 ns | 4,831.760 ns |         - |
+| Encrypt · AES-128-CBC (BouncyCastle) | 128KB        | 467,072.69 ns | 7,661.957 ns | 7,167.000 ns |     832 B |
