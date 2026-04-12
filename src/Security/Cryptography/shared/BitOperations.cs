@@ -11,16 +11,16 @@ using System.Runtime.CompilerServices;
 internal class BitOperations
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint RotateLeft(uint x, int n) => (x << n) | (x >> (32 - n));
+    public static uint RotateLeft(uint x, int n) => ((x << n) | (x >> -n));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong RotateLeft(ulong x, int n) => (x << n) | (x >> (64 - n));
+    public static ulong RotateLeft(ulong x, int n) => (x << n) | (x >> -n);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint RotateRight(uint x, int n) => (x >> n) | (x << (32 - n));
+    public static uint RotateRight(uint x, int n) => (x >> n) | (x << -n);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong RotateRight(ulong x, int n) => (x >> n) | (x << (64 - n));
+    public static ulong RotateRight(ulong x, int n) => (x >> n) | (x << -n);
 }
 
 /// <summary>

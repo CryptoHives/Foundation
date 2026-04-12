@@ -10,6 +10,13 @@ Welcome to the **CryptoHives .NET Foundation** documentation!
 
 The CryptoHives .NET Foundation provides libraries for .NET applications focusing on high performance memory management, threading primitives, and cryptographic algorithms.
 
+## Ecosystem
+
+The initiative currently includes:
+- [Threading](packages/threading/index.md) — high-performance async synchronization primitives optimized for no/low allocation and high throughput scenarios using ValueTask-based waiters and ObjectPool-backed resource management
+- [Memory](packages/memory/index.md) — pooled buffer management utilities leveraging ArrayPool<T> and modern .NET memory APIs to minimize GC pressure for transformation pipelines and cryptographic workloads which use ReadOnlySpan or IBufferWriter
+- [Cryptography](packages/security/cryptography/index.md) — OS independent implementation of all .NET cryptography as a plug in replacement
+
 ## Available Packages
 
 ### 💾 [Memory Package](packages/memory/index.md)
@@ -64,14 +71,6 @@ The Cryptography package provides specification-based implementations of cryptog
 
 [Explore Security.Cryptography Package](packages/security/cryptography/index.md)
 
-## Quick Start
-
-Each package page includes installation, quick-start examples, and API documentation:
-
-1. [Memory Package](packages/memory/index.md) — pooled buffers and streams
-2. [Threading Package](packages/threading/index.md) — async synchronization primitives
-3. [Security.Cryptography Package](packages/security/cryptography/index.md) — hash algorithms and MACs
-
 ## Platform Support
 
 - .NET 10.0
@@ -95,3 +94,4 @@ This project is licensed under the MIT License. See the [LICENSE](https://github
 [Impressum (Legal Notice)](impressum.md)
 
 © 2026 The Keepers of the CryptoHives
+

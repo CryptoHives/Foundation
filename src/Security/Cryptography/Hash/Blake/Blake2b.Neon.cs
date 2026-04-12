@@ -9,6 +9,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -18,8 +19,8 @@ using System.Runtime.Intrinsics.Arm;
 /// BLAKE2b ARM NEON-accelerated compression using AdvSimd intrinsics.
 /// </summary>
 /// <remarks>
-/// AVX2 operates on 256-bit registers (4 × ulong per row). NEON provides only 128-bit registers,
-/// so each logical row is split into a lo half (elements 0–1) and a hi half (elements 2–3).
+/// NEON provides only 128-bit registers, so each logical row is split into a lo half
+/// (elements 0–1) and a hi half (elements 2–3).
 /// </remarks>
 public sealed partial class Blake2b : HashAlgorithm
 {
@@ -96,11 +97,14 @@ public sealed partial class Blake2b : HashAlgorithm
 
         // Each logical 256-bit row is split into lo (elements 0–1) and hi (elements 2–3).
         // row0 = v[0..3] = state[0..7], row2 = v[8..11] = IV[0..3], row3 = v[12..15] = IV[4..7] + counter
-        var r0L = _neonState0; var r0H = _neonState1;
-        var r1L = _neonState2; var r1H = _neonState3;
-        var r2L = s_ivNeon0;   var r2H = s_ivNeon1;
-        var r3L = s_ivNeon2 ^ Vector128.Create(_bytesCompressed, 0UL);
-        var r3H = isFinal ? s_ivNeon3 ^ s_neonFinalMask : s_ivNeon3;
+        Vector128<ulong> r0L = _neonState0;
+        Vector128<ulong> r0H = _neonState1;
+        Vector128<ulong> r1L = _neonState2;
+        Vector128<ulong> r1H = _neonState3;
+        Vector128<ulong> r2L = s_ivNeon0;
+        Vector128<ulong> r2H = s_ivNeon1;
+        Vector128<ulong> r3L = s_ivNeon2 ^ Vector128.Create(_bytesCompressed, 0UL);
+        Vector128<ulong> r3H = isFinal ? s_ivNeon3 ^ s_neonFinalMask : s_ivNeon3;
 
         // Parse message block into 16 little-endian 64-bit words
         Span<ulong> m = stackalloc ulong[ScratchSize];
@@ -174,6 +178,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// </list>
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "False negative, false constant provided in .NET 8.0 runtime")]
     private static void GRoundXNeon(
         ref Vector128<ulong> aL, ref Vector128<ulong> aH,
         ref Vector128<ulong> bL, ref Vector128<ulong> bH,
@@ -185,16 +190,16 @@ public sealed partial class Blake2b : HashAlgorithm
         aL = AdvSimd.Add(aL, AdvSimd.Add(bL, xL));
         aH = AdvSimd.Add(aH, AdvSimd.Add(bH, xH));
         // d = ror64(d ^ a, 32) — shift+or (32-bit swap within each 64-bit element)
-        var dxL = dL ^ aL;
-        var dxH = dH ^ aH;
+        Vector128<ulong> dxL = dL ^ aL;
+        Vector128<ulong> dxH = dH ^ aH;
         dL = AdvSimd.Or(AdvSimd.ShiftRightLogical(dxL, 32), AdvSimd.ShiftLeftLogical(dxL, 32));
         dH = AdvSimd.Or(AdvSimd.ShiftRightLogical(dxH, 32), AdvSimd.ShiftLeftLogical(dxH, 32));
         // c += d
         cL = AdvSimd.Add(cL, dL);
         cH = AdvSimd.Add(cH, dH);
         // b = ror64(b ^ c, 24) — TBL byte shuffle
-        var bxL = bL ^ cL;
-        var bxH = bH ^ cH;
+        Vector128<ulong> bxL = bL ^ cL;
+        Vector128<ulong> bxH = bH ^ cH;
         bL = AdvSimd.Arm64.VectorTableLookup(bxL.AsByte(), s_neonRotMask24).AsUInt64();
         bH = AdvSimd.Arm64.VectorTableLookup(bxH.AsByte(), s_neonRotMask24).AsUInt64();
     }
@@ -209,6 +214,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// </list>
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "False negative, false constant provided in .NET 8.0 runtime")]
     private static void GRoundYNeon(
         ref Vector128<ulong> aL, ref Vector128<ulong> aH,
         ref Vector128<ulong> bL, ref Vector128<ulong> bH,
@@ -220,16 +226,16 @@ public sealed partial class Blake2b : HashAlgorithm
         aL = AdvSimd.Add(aL, AdvSimd.Add(bL, yL));
         aH = AdvSimd.Add(aH, AdvSimd.Add(bH, yH));
         // d = ror64(d ^ a, 16) — TBL byte shuffle
-        var dxL = dL ^ aL;
-        var dxH = dH ^ aH;
+        Vector128<ulong> dxL = dL ^ aL;
+        Vector128<ulong> dxH = dH ^ aH;
         dL = AdvSimd.Arm64.VectorTableLookup(dxL.AsByte(), s_neonRotMask16).AsUInt64();
         dH = AdvSimd.Arm64.VectorTableLookup(dxH.AsByte(), s_neonRotMask16).AsUInt64();
         // c += d
         cL = AdvSimd.Add(cL, dL);
         cH = AdvSimd.Add(cH, dH);
         // b = ror64(b ^ c, 63) — shift+or; Add(t,t) == ShiftLeft(t,1)
-        var tL = bL ^ cL;
-        var tH = bH ^ cH;
+        Vector128<ulong> tL = bL ^ cL;
+        Vector128<ulong> tH = bH ^ cH;
         bL = AdvSimd.Or(AdvSimd.ShiftRightLogical(tL, 63), AdvSimd.Add(tL, tL));
         bH = AdvSimd.Or(AdvSimd.ShiftRightLogical(tH, 63), AdvSimd.Add(tH, tH));
     }
@@ -263,8 +269,8 @@ public sealed partial class Blake2b : HashAlgorithm
         ref Vector128<ulong> cL, ref Vector128<ulong> cH)
     {
         // a: rotate left 1 → [a1, a2, a3, a0]
-        var newAL = AdvSimd.ExtractVector128(aL.AsByte(), aH.AsByte(), 8).AsUInt64();
-        var newAH = AdvSimd.ExtractVector128(aH.AsByte(), aL.AsByte(), 8).AsUInt64();
+        Vector128<ulong> newAL = AdvSimd.ExtractVector128(aL.AsByte(), aH.AsByte(), 8).AsUInt64();
+        Vector128<ulong> newAH = AdvSimd.ExtractVector128(aH.AsByte(), aL.AsByte(), 8).AsUInt64();
         aL = newAL;
         aH = newAH;
 
@@ -272,8 +278,8 @@ public sealed partial class Blake2b : HashAlgorithm
         (bL, bH) = (bH, bL);
 
         // c: rotate right 1 → [c3, c0, c1, c2]
-        var newCL = AdvSimd.ExtractVector128(cH.AsByte(), cL.AsByte(), 8).AsUInt64();
-        var newCH = AdvSimd.ExtractVector128(cL.AsByte(), cH.AsByte(), 8).AsUInt64();
+        Vector128<ulong> newCL = AdvSimd.ExtractVector128(cH.AsByte(), cL.AsByte(), 8).AsUInt64();
+        Vector128<ulong> newCH = AdvSimd.ExtractVector128(cL.AsByte(), cH.AsByte(), 8).AsUInt64();
         cL = newCL;
         cH = newCH;
     }

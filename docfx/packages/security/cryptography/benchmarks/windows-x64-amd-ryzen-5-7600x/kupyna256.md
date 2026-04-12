@@ -1,19 +1,19 @@
 ﻿| Description                                | TestDataSize | Mean         | Error      | StdDev     | Allocated |
 |------------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|
-| TryComputeHash · Kupyna-256 · Managed      | 128B         |     2.219 μs |  0.0095 μs |  0.0079 μs |         - |
-| TryComputeHash · Kupyna-256 · BouncyCastle | 128B         |     3.254 μs |  0.0117 μs |  0.0104 μs |         - |
+| TryComputeHash · Kupyna-256 · Managed      | 128B         |     2.251 μs |  0.0141 μs |  0.0125 μs |         - |
+| TryComputeHash · Kupyna-256 · BouncyCastle | 128B         |     3.285 μs |  0.0222 μs |  0.0208 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-256 · Managed      | 137B         |     2.215 μs |  0.0149 μs |  0.0132 μs |         - |
-| TryComputeHash · Kupyna-256 · BouncyCastle | 137B         |     3.259 μs |  0.0130 μs |  0.0122 μs |         - |
+| TryComputeHash · Kupyna-256 · Managed      | 137B         |     2.250 μs |  0.0217 μs |  0.0192 μs |         - |
+| TryComputeHash · Kupyna-256 · BouncyCastle | 137B         |     3.298 μs |  0.0223 μs |  0.0198 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-256 · Managed      | 1KB          |    11.039 μs |  0.0720 μs |  0.0673 μs |         - |
-| TryComputeHash · Kupyna-256 · BouncyCastle | 1KB          |    16.235 μs |  0.0594 μs |  0.0496 μs |         - |
+| TryComputeHash · Kupyna-256 · Managed      | 1KB          |    11.162 μs |  0.1024 μs |  0.0958 μs |         - |
+| TryComputeHash · Kupyna-256 · BouncyCastle | 1KB          |    16.495 μs |  0.1794 μs |  0.1678 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-256 · Managed      | 1025B        |    11.032 μs |  0.1018 μs |  0.0953 μs |         - |
-| TryComputeHash · Kupyna-256 · BouncyCastle | 1025B        |    16.327 μs |  0.1228 μs |  0.1149 μs |         - |
+| TryComputeHash · Kupyna-256 · Managed      | 1025B        |    11.163 μs |  0.1083 μs |  0.0960 μs |         - |
+| TryComputeHash · Kupyna-256 · BouncyCastle | 1025B        |    16.471 μs |  0.2205 μs |  0.2063 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-256 · Managed      | 8KB          |    81.341 μs |  0.4505 μs |  0.3994 μs |         - |
-| TryComputeHash · Kupyna-256 · BouncyCastle | 8KB          |   120.315 μs |  0.6395 μs |  0.5982 μs |         - |
+| TryComputeHash · Kupyna-256 · Managed      | 8KB          |    82.489 μs |  0.6107 μs |  0.5413 μs |         - |
+| TryComputeHash · Kupyna-256 · BouncyCastle | 8KB          |   121.252 μs |  0.6471 μs |  0.6053 μs |         - |
 |                                            |              |              |            |            |           |
-| TryComputeHash · Kupyna-256 · Managed      | 128KB        | 1,290.112 μs | 11.5268 μs | 10.7822 μs |         - |
-| TryComputeHash · Kupyna-256 · BouncyCastle | 128KB        | 1,894.703 μs |  2.8173 μs |  2.1996 μs |         - |
+| TryComputeHash · Kupyna-256 · Managed      | 128KB        | 1,306.078 μs | 13.4454 μs | 11.2275 μs |         - |
+| TryComputeHash · Kupyna-256 · BouncyCastle | 128KB        | 1,915.927 μs | 11.9961 μs | 10.6342 μs |         - |

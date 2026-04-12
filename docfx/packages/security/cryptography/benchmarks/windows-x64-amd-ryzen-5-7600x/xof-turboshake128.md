@@ -1,9 +1,9 @@
 ﻿| Description                             | TestDataSize | Mean       | Error     | StdDev    | Allocated |
 |---------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · TurboSHAKE128 · Managed | 128B         |   1.539 μs | 0.0093 μs | 0.0087 μs |         - |
+| AbsorbSqueeze · TurboSHAKE128 · Managed | 128B         |   1.564 μs | 0.0181 μs | 0.0169 μs |         - |
 |                                         |              |            |           |           |           |
-| AbsorbSqueeze · TurboSHAKE128 · Managed | 1KB          |   2.697 μs | 0.0099 μs | 0.0093 μs |         - |
+| AbsorbSqueeze · TurboSHAKE128 · Managed | 1KB          |   2.733 μs | 0.0249 μs | 0.0208 μs |         - |
 |                                         |              |            |           |           |           |
-| AbsorbSqueeze · TurboSHAKE128 · Managed | 8KB          |  11.373 μs | 0.0399 μs | 0.0333 μs |         - |
+| AbsorbSqueeze · TurboSHAKE128 · Managed | 8KB          |  11.532 μs | 0.0810 μs | 0.0676 μs |         - |
 |                                         |              |            |           |           |           |
-| AbsorbSqueeze · TurboSHAKE128 · Managed | 128KB        | 161.458 μs | 0.7666 μs | 0.7170 μs |         - |
+| AbsorbSqueeze · TurboSHAKE128 · Managed | 128KB        | 163.195 μs | 1.9672 μs | 1.6427 μs |         - |

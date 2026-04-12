@@ -1,19 +1,19 @@
 ﻿| Description                         | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |------------------------------------ |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · SM3 · Managed      | 128B         |     692.6 ns |     2.28 ns |     2.14 ns |         - |
-| TryComputeHash · SM3 · BouncyCastle | 128B         |     782.8 ns |     6.58 ns |     5.14 ns |         - |
+| TryComputeHash · SM3 · Managed      | 128B         |     695.1 ns |     3.22 ns |     3.02 ns |         - |
+| TryComputeHash · SM3 · BouncyCastle | 128B         |     789.5 ns |     2.53 ns |     2.37 ns |         - |
 |                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · Managed      | 137B         |     698.3 ns |     3.23 ns |     3.02 ns |         - |
-| TryComputeHash · SM3 · BouncyCastle | 137B         |     782.5 ns |     3.93 ns |     3.49 ns |         - |
+| TryComputeHash · SM3 · Managed      | 137B         |     698.3 ns |     4.28 ns |     4.00 ns |         - |
+| TryComputeHash · SM3 · BouncyCastle | 137B         |     784.1 ns |     3.92 ns |     3.67 ns |         - |
 |                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · Managed      | 1KB          |   3,876.5 ns |    21.10 ns |    19.74 ns |         - |
-| TryComputeHash · SM3 · BouncyCastle | 1KB          |   4,387.0 ns |    32.79 ns |    27.38 ns |         - |
+| TryComputeHash · SM3 · Managed      | 1KB          |   3,894.9 ns |    20.04 ns |    18.74 ns |         - |
+| TryComputeHash · SM3 · BouncyCastle | 1KB          |   4,377.7 ns |    37.57 ns |    33.31 ns |         - |
 |                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · Managed      | 1025B        |   3,896.0 ns |    24.37 ns |    22.80 ns |         - |
-| TryComputeHash · SM3 · BouncyCastle | 1025B        |   4,372.0 ns |    28.28 ns |    26.45 ns |         - |
+| TryComputeHash · SM3 · Managed      | 1025B        |   3,888.7 ns |    18.66 ns |    16.54 ns |         - |
+| TryComputeHash · SM3 · BouncyCastle | 1025B        |   4,433.6 ns |    36.70 ns |    34.33 ns |         - |
 |                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · Managed      | 8KB          |  29,382.2 ns |   136.44 ns |   113.93 ns |         - |
-| TryComputeHash · SM3 · BouncyCastle | 8KB          |  33,101.4 ns |   311.18 ns |   275.85 ns |         - |
+| TryComputeHash · SM3 · Managed      | 8KB          |  29,273.6 ns |   120.08 ns |   106.45 ns |         - |
+| TryComputeHash · SM3 · BouncyCastle | 8KB          |  33,550.4 ns |   211.56 ns |   197.89 ns |         - |
 |                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · Managed      | 128KB        | 465,447.6 ns | 3,096.12 ns | 2,744.63 ns |         - |
-| TryComputeHash · SM3 · BouncyCastle | 128KB        | 523,842.6 ns | 2,370.73 ns | 2,101.59 ns |         - |
+| TryComputeHash · SM3 · Managed      | 128KB        | 463,355.4 ns | 1,495.30 ns | 1,248.64 ns |         - |
+| TryComputeHash · SM3 · BouncyCastle | 128KB        | 533,243.6 ns | 3,809.45 ns | 3,563.37 ns |         - |

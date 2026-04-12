@@ -1,19 +1,19 @@
-﻿| Description                               | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|------------------------------------------ |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · cSHAKE128 · BouncyCastle | 128B         |     179.7 ns |   0.47 ns |   0.44 ns |         - |
-| TryComputeHash · cSHAKE128 · Managed      | 128B         |     257.8 ns |   3.90 ns |   3.65 ns |         - |
-|                                           |              |              |           |           |           |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 137B         |     179.6 ns |   0.34 ns |   0.26 ns |         - |
-| TryComputeHash · cSHAKE128 · Managed      | 137B         |     244.1 ns |   2.45 ns |   2.29 ns |         - |
-|                                           |              |              |           |           |           |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 1KB          |   1,122.5 ns |   3.05 ns |   2.85 ns |         - |
-| TryComputeHash · cSHAKE128 · Managed      | 1KB          |   1,438.8 ns |   8.04 ns |   7.52 ns |         - |
-|                                           |              |              |           |           |           |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 1025B        |   1,118.7 ns |   4.02 ns |   3.57 ns |         - |
-| TryComputeHash · cSHAKE128 · Managed      | 1025B        |   1,399.7 ns |   6.28 ns |   5.88 ns |         - |
-|                                           |              |              |           |           |           |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 8KB          |   7,749.0 ns |  25.77 ns |  24.10 ns |         - |
-| TryComputeHash · cSHAKE128 · Managed      | 8KB          |   7,931.3 ns |  14.68 ns |  13.73 ns |         - |
-|                                           |              |              |           |           |           |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 128KB        | 122,967.8 ns | 963.52 ns | 854.13 ns |         - |
-| TryComputeHash · cSHAKE128 · Managed      | 128KB        | 124,838.3 ns | 200.26 ns | 187.32 ns |         - |
+﻿| Description                               | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|------------------------------------------ |------------- |-------------:|------------:|------------:|----------:|
+| TryComputeHash · cSHAKE128 · BouncyCastle | 128B         |     180.6 ns |     0.87 ns |     0.81 ns |         - |
+| TryComputeHash · cSHAKE128 · Managed      | 128B         |     263.0 ns |     3.16 ns |     2.96 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · cSHAKE128 · BouncyCastle | 137B         |     180.4 ns |     0.75 ns |     0.70 ns |         - |
+| TryComputeHash · cSHAKE128 · Managed      | 137B         |     244.0 ns |     2.93 ns |     2.74 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · cSHAKE128 · BouncyCastle | 1KB          |   1,122.1 ns |     0.68 ns |     0.57 ns |         - |
+| TryComputeHash · cSHAKE128 · Managed      | 1KB          |   1,407.2 ns |     6.56 ns |     6.13 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · cSHAKE128 · BouncyCastle | 1025B        |   1,117.6 ns |     1.26 ns |     0.99 ns |         - |
+| TryComputeHash · cSHAKE128 · Managed      | 1025B        |   1,402.1 ns |     6.56 ns |     6.14 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · cSHAKE128 · BouncyCastle | 8KB          |   7,698.3 ns |     6.80 ns |     5.31 ns |         - |
+| TryComputeHash · cSHAKE128 · Managed      | 8KB          |   7,933.8 ns |    11.49 ns |    10.75 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · cSHAKE128 · BouncyCastle | 128KB        | 122,753.4 ns | 1,120.55 ns | 1,048.17 ns |         - |
+| TryComputeHash · cSHAKE128 · Managed      | 128KB        | 125,003.6 ns |   176.54 ns |   165.14 ns |         - |

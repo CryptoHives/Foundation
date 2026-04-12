@@ -1,19 +1,19 @@
 ﻿| Description                                | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · Keccak-256 · Managed      | 128B         |     174.3 ns |   0.33 ns |   0.27 ns |         - |
-| TryComputeHash · Keccak-256 · BouncyCastle | 128B         |     177.5 ns |   0.43 ns |   0.36 ns |         - |
+| TryComputeHash · Keccak-256 · Managed      | 128B         |     175.5 ns |   0.21 ns |   0.18 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle | 128B         |     177.5 ns |   0.64 ns |   0.60 ns |         - |
 |                                            |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · BouncyCastle | 137B         |     323.8 ns |   1.42 ns |   1.26 ns |         - |
-| TryComputeHash · Keccak-256 · Managed      | 137B         |     536.2 ns |   8.60 ns |   8.05 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle | 137B         |     323.2 ns |   0.68 ns |   0.57 ns |         - |
+| TryComputeHash · Keccak-256 · Managed      | 137B         |     507.0 ns |  10.15 ns |  20.50 ns |         - |
 |                                            |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · BouncyCastle | 1KB          |   1,258.5 ns |   1.17 ns |   1.04 ns |         - |
-| TryComputeHash · Keccak-256 · Managed      | 1KB          |   1,373.1 ns |   6.88 ns |   6.44 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle | 1KB          |   1,261.4 ns |   3.47 ns |   3.08 ns |         - |
+| TryComputeHash · Keccak-256 · Managed      | 1KB          |   1,370.4 ns |   5.57 ns |   5.21 ns |         - |
 |                                            |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · BouncyCastle | 1025B        |   1,270.2 ns |  11.39 ns |  10.65 ns |         - |
-| TryComputeHash · Keccak-256 · Managed      | 1025B        |   1,380.4 ns |   4.54 ns |   4.25 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle | 1025B        |   1,263.1 ns |   5.63 ns |   4.70 ns |         - |
+| TryComputeHash · Keccak-256 · Managed      | 1025B        |   1,370.9 ns |   6.46 ns |   6.05 ns |         - |
 |                                            |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · BouncyCastle | 8KB          |   9,453.5 ns |  66.12 ns |  61.85 ns |         - |
-| TryComputeHash · Keccak-256 · Managed      | 8KB          |   9,864.7 ns |   9.46 ns |   7.90 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle | 8KB          |   9,428.5 ns |  44.11 ns |  36.83 ns |         - |
+| TryComputeHash · Keccak-256 · Managed      | 8KB          |   9,881.5 ns |  17.67 ns |  16.53 ns |         - |
 |                                            |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · BouncyCastle | 128KB        | 148,905.0 ns | 576.05 ns | 449.74 ns |         - |
-| TryComputeHash · Keccak-256 · Managed      | 128KB        | 153,314.5 ns | 124.84 ns | 104.24 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle | 128KB        | 149,163.1 ns | 593.91 ns | 495.94 ns |         - |
+| TryComputeHash · Keccak-256 · Managed      | 128KB        | 153,581.2 ns |  97.72 ns |  81.60 ns |         - |

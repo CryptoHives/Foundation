@@ -1,25 +1,25 @@
 ﻿| Description                       | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |---------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · SEED-CBC (Managed)      | 128B         |     1.198 μs | 0.0043 μs | 0.0038 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle) | 128B         |     1.293 μs | 0.0050 μs | 0.0047 μs |     152 B |
+| Decrypt · SEED-CBC (Managed)      | 128B         |     1.197 μs | 0.0028 μs | 0.0024 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle) | 128B         |     1.297 μs | 0.0060 μs | 0.0050 μs |     152 B |
 |                                   |              |              |           |           |           |
-| Encrypt · SEED-CBC (Managed)      | 128B         |     1.215 μs | 0.0121 μs | 0.0113 μs |         - |
-| Encrypt · SEED-CBC (BouncyCastle) | 128B         |     1.294 μs | 0.0041 μs | 0.0038 μs |     152 B |
+| Encrypt · SEED-CBC (Managed)      | 128B         |     1.206 μs | 0.0034 μs | 0.0030 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle) | 128B         |     1.294 μs | 0.0049 μs | 0.0046 μs |     152 B |
 |                                   |              |              |           |           |           |
-| Decrypt · SEED-CBC (Managed)      | 1KB          |     8.562 μs | 0.0207 μs | 0.0183 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle) | 1KB          |     8.788 μs | 0.0269 μs | 0.0239 μs |     152 B |
+| Decrypt · SEED-CBC (Managed)      | 1KB          |     8.571 μs | 0.0171 μs | 0.0160 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle) | 1KB          |     8.791 μs | 0.0294 μs | 0.0275 μs |     152 B |
 |                                   |              |              |           |           |           |
-| Encrypt · SEED-CBC (Managed)      | 1KB          |     8.646 μs | 0.0202 μs | 0.0189 μs |         - |
-| Encrypt · SEED-CBC (BouncyCastle) | 1KB          |     8.844 μs | 0.0254 μs | 0.0225 μs |     152 B |
+| Encrypt · SEED-CBC (Managed)      | 1KB          |     8.644 μs | 0.0170 μs | 0.0151 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle) | 1KB          |     8.837 μs | 0.0318 μs | 0.0297 μs |     152 B |
 |                                   |              |              |           |           |           |
-| Decrypt · SEED-CBC (Managed)      | 8KB          |    67.443 μs | 0.1916 μs | 0.1792 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle) | 8KB          |    68.622 μs | 0.1889 μs | 0.1767 μs |     152 B |
+| Decrypt · SEED-CBC (Managed)      | 8KB          |    67.551 μs | 0.2498 μs | 0.2214 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle) | 8KB          |    76.017 μs | 0.1365 μs | 0.1277 μs |     152 B |
 |                                   |              |              |           |           |           |
-| Encrypt · SEED-CBC (Managed)      | 8KB          |    68.410 μs | 0.4197 μs | 0.3926 μs |         - |
-| Encrypt · SEED-CBC (BouncyCastle) | 8KB          |    69.088 μs | 0.1708 μs | 0.1514 μs |     152 B |
+| Encrypt · SEED-CBC (Managed)      | 8KB          |    68.199 μs | 0.2854 μs | 0.2383 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle) | 8KB          |    69.151 μs | 0.2095 μs | 0.1960 μs |     152 B |
 |                                   |              |              |           |           |           |
-| Decrypt · SEED-CBC (Managed)      | 128KB        | 1,078.606 μs | 3.6863 μs | 3.2678 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle) | 128KB        | 1,097.185 μs | 5.0076 μs | 4.6841 μs |     152 B |
+| Decrypt · SEED-CBC (Managed)      | 128KB        | 1,078.671 μs | 1.9491 μs | 1.8232 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle) | 128KB        | 1,096.086 μs | 3.2371 μs | 2.8696 μs |     152 B |
 |                                   |              |              |           |           |           |
-| Encrypt · SEED-CBC (Managed)      | 128KB        | 1,093.699 μs | 3.7858 μs | 3.5412 μs |         - |
-| Encrypt · SEED-CBC (BouncyCastle) | 128KB        | 1,104.333 μs | 2.6994 μs | 2.3929 μs |     152 B |
+| Encrypt · SEED-CBC (Managed)      | 128KB        | 1,089.535 μs | 1.9477 μs | 1.8219 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle) | 128KB        | 1,102.210 μs | 2.6167 μs | 2.3197 μs |     152 B |

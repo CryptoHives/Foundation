@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA5401 // Symmetric encryption uses non-default initialization vector, which could be potentially repeatable
+
 namespace Cryptography.Tests.Cipher.Sm4;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
