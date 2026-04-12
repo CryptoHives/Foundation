@@ -1,31 +1,31 @@
 ﻿| Description                                            | TestDataSize | Mean          | Error        | StdDev       | Allocated |
 |------------------------------------------------------- |------------- |--------------:|-------------:|-------------:|----------:|
-| TryComputeHash · BLAKE2b-512 · AVX2                    | 128B         |      87.74 ns |     0.489 ns |     0.457 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 128B         |     104.92 ns |     0.978 ns |     0.817 ns |         - |
-| TryComputeHash · BLAKE2b-512 · Managed                 | 128B         |     384.08 ns |     7.299 ns |     7.495 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 128B         |     531.44 ns |    10.630 ns |    15.245 ns |    1216 B |
+| TryComputeHash · BLAKE2b-512 · AVX2                    | 128B         |      93.30 ns |     0.591 ns |     0.524 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 128B         |     103.63 ns |     0.862 ns |     0.806 ns |         - |
+| TryComputeHash · BLAKE2b-512 · Managed                 | 128B         |     391.19 ns |     6.748 ns |     5.982 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 128B         |     546.46 ns |    10.293 ns |    10.109 ns |    1216 B |
 |                                                        |              |               |              |              |           |
-| TryComputeHash · BLAKE2b-512 · AVX2                    | 137B         |     168.07 ns |     0.845 ns |     0.749 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 137B         |     186.91 ns |     3.166 ns |     2.961 ns |         - |
-| TryComputeHash · BLAKE2b-512 · Managed                 | 137B         |     755.03 ns |    14.912 ns |    14.646 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 137B         |     969.46 ns |    16.571 ns |    15.500 ns |    1232 B |
+| TryComputeHash · BLAKE2b-512 · AVX2                    | 137B         |     168.64 ns |     2.053 ns |     1.820 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 137B         |     184.92 ns |     1.468 ns |     1.373 ns |         - |
+| TryComputeHash · BLAKE2b-512 · Managed                 | 137B         |     758.14 ns |     7.946 ns |     7.044 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 137B         |     981.01 ns |    10.051 ns |     8.393 ns |    1232 B |
 |                                                        |              |               |              |              |           |
-| TryComputeHash · BLAKE2b-512 · AVX2                    | 1KB          |     632.14 ns |     3.317 ns |     3.102 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 1KB          |     723.32 ns |     5.715 ns |     5.346 ns |         - |
-| TryComputeHash · BLAKE2b-512 · Managed                 | 1KB          |   2,984.66 ns |    57.453 ns |    53.741 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 1KB          |   3,187.52 ns |    35.358 ns |    31.344 ns |    2112 B |
+| TryComputeHash · BLAKE2b-512 · AVX2                    | 1KB          |     631.26 ns |     5.331 ns |     4.451 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 1KB          |     737.01 ns |    14.751 ns |    15.784 ns |         - |
+| TryComputeHash · BLAKE2b-512 · Managed                 | 1KB          |   3,002.58 ns |    30.921 ns |    28.924 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 1KB          |   3,227.18 ns |    63.402 ns |    77.863 ns |    2112 B |
 |                                                        |              |               |              |              |           |
-| TryComputeHash · BLAKE2b-512 · AVX2                    | 1025B        |     715.55 ns |     4.179 ns |     3.909 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 1025B        |     807.60 ns |     6.285 ns |     5.879 ns |         - |
-| TryComputeHash · BLAKE2b-512 · Managed                 | 1025B        |   3,367.87 ns |    66.353 ns |    65.167 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 1025B        |   3,630.80 ns |    65.039 ns |    57.656 ns |    2120 B |
+| TryComputeHash · BLAKE2b-512 · AVX2                    | 1025B        |     717.65 ns |     9.831 ns |     8.210 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 1025B        |     817.71 ns |    12.836 ns |    12.007 ns |         - |
+| TryComputeHash · BLAKE2b-512 · Managed                 | 1025B        |   3,360.37 ns |    64.421 ns |    63.270 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 1025B        |   3,636.10 ns |    46.117 ns |    43.138 ns |    2120 B |
 |                                                        |              |               |              |              |           |
-| TryComputeHash · BLAKE2b-512 · AVX2                    | 8KB          |   5,014.34 ns |    38.857 ns |    34.446 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 8KB          |   5,644.53 ns |    29.162 ns |    27.279 ns |         - |
-| TryComputeHash · BLAKE2b-512 · Managed                 | 8KB          |  23,834.69 ns |   311.551 ns |   276.182 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 8KB          |  24,378.11 ns |   187.710 ns |   175.585 ns |    9280 B |
+| TryComputeHash · BLAKE2b-512 · AVX2                    | 8KB          |   5,092.52 ns |    69.561 ns |    58.086 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 8KB          |   5,624.61 ns |    26.204 ns |    21.882 ns |         - |
+| TryComputeHash · BLAKE2b-512 · Managed                 | 8KB          |  24,000.15 ns |   360.452 ns |   319.531 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 8KB          |  24,450.98 ns |   219.652 ns |   205.463 ns |    9280 B |
 |                                                        |              |               |              |              |           |
-| TryComputeHash · BLAKE2b-512 · AVX2                    | 128KB        |  80,025.78 ns |   358.905 ns |   335.720 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 128KB        |  90,141.16 ns |   445.854 ns |   417.052 ns |         - |
-| TryComputeHash · BLAKE2b-512 · Managed                 | 128KB        | 380,325.03 ns | 4,191.431 ns | 3,920.667 ns |         - |
-| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 128KB        | 417,042.78 ns | 4,849.698 ns | 4,536.410 ns |  132174 B |
+| TryComputeHash · BLAKE2b-512 · AVX2                    | 128KB        |  79,929.28 ns |   525.261 ns |   465.630 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BouncyCastle            | 128KB        |  90,545.56 ns |   382.308 ns |   319.244 ns |         - |
+| TryComputeHash · BLAKE2b-512 · Managed                 | 128KB        | 378,555.34 ns | 3,928.400 ns | 3,482.424 ns |         - |
+| TryComputeHash · BLAKE2b-512 · BLAKE2b-512 (Konscious) | 128KB        | 415,197.55 ns | 2,259.150 ns | 1,886.493 ns |  132174 B |
