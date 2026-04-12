@@ -1,41 +1,41 @@
 ﻿| Description                              | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |----------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| Decrypt · XChaCha20-Poly1305 (AVX2)      | 128B         |     725.1 ns |     7.09 ns |     6.63 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 128B         |     785.8 ns |     5.35 ns |     5.01 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 128B         |     924.3 ns |     6.29 ns |     5.57 ns |      48 B |
-| Decrypt · XChaCha20-Poly1305 (Managed)   | 128B         |   1,118.9 ns |    11.24 ns |     9.39 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (AVX2)      | 128B         |     550.6 ns |     2.01 ns |     1.88 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 128B         |     608.0 ns |     3.53 ns |     3.30 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 128B         |     913.6 ns |     2.45 ns |     2.05 ns |      48 B |
+| Decrypt · XChaCha20-Poly1305 (Managed)   | 128B         |   1,096.1 ns |     7.12 ns |     6.31 ns |         - |
 |                                          |              |              |             |             |           |
-| Encrypt · XChaCha20-Poly1305 (AVX2)      | 128B         |     679.0 ns |     8.01 ns |     7.49 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 128B         |     744.6 ns |     4.53 ns |     4.02 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 128B         |     880.4 ns |     3.45 ns |     2.88 ns |      48 B |
-| Encrypt · XChaCha20-Poly1305 (Managed)   | 128B         |   1,075.3 ns |    17.35 ns |    16.23 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (AVX2)      | 128B         |     499.8 ns |     3.26 ns |     3.05 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 128B         |     560.8 ns |     1.85 ns |     1.55 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 128B         |     874.1 ns |     2.15 ns |     2.01 ns |      48 B |
+| Encrypt · XChaCha20-Poly1305 (Managed)   | 128B         |   1,062.0 ns |     4.24 ns |     3.75 ns |         - |
 |                                          |              |              |             |             |           |
-| Decrypt · XChaCha20-Poly1305 (AVX2)      | 1KB          |   1,670.7 ns |    14.81 ns |    11.56 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 1KB          |   2,117.7 ns |    12.87 ns |    12.04 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 1KB          |   4,104.0 ns |    24.44 ns |    20.41 ns |      72 B |
-| Decrypt · XChaCha20-Poly1305 (Managed)   | 1KB          |   4,776.0 ns |    52.43 ns |    46.48 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (AVX2)      | 1KB          |   1,478.7 ns |     3.74 ns |     3.32 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 1KB          |   1,939.0 ns |     7.48 ns |     7.00 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 1KB          |   4,066.4 ns |    26.09 ns |    24.41 ns |      72 B |
+| Decrypt · XChaCha20-Poly1305 (Managed)   | 1KB          |   4,711.4 ns |    15.42 ns |    14.43 ns |         - |
 |                                          |              |              |             |             |           |
-| Encrypt · XChaCha20-Poly1305 (AVX2)      | 1KB          |   1,616.2 ns |     7.39 ns |     6.92 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 1KB          |   2,081.2 ns |    14.78 ns |    13.82 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 1KB          |   4,082.5 ns |    52.02 ns |    46.11 ns |      72 B |
-| Encrypt · XChaCha20-Poly1305 (Managed)   | 1KB          |   4,742.8 ns |    45.40 ns |    42.47 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (AVX2)      | 1KB          |   1,445.8 ns |     4.05 ns |     3.79 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 1KB          |   1,891.0 ns |     3.99 ns |     3.33 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 1KB          |   4,030.9 ns |     8.66 ns |     7.68 ns |      72 B |
+| Encrypt · XChaCha20-Poly1305 (Managed)   | 1KB          |   4,659.2 ns |    14.88 ns |    13.19 ns |         - |
 |                                          |              |              |             |             |           |
-| Decrypt · XChaCha20-Poly1305 (AVX2)      | 8KB          |   9,177.1 ns |    91.75 ns |    85.82 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 8KB          |  12,859.4 ns |    93.95 ns |    87.88 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 8KB          |  29,328.7 ns |   171.96 ns |   152.44 ns |      72 B |
-| Decrypt · XChaCha20-Poly1305 (Managed)   | 8KB          |  34,221.7 ns |   480.24 ns |   425.72 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (AVX2)      | 8KB          |   8,923.0 ns |    23.40 ns |    21.89 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 8KB          |  12,580.9 ns |    18.88 ns |    17.66 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 8KB          |  29,072.0 ns |    56.67 ns |    53.01 ns |      72 B |
+| Decrypt · XChaCha20-Poly1305 (Managed)   | 8KB          |  33,565.8 ns |   232.85 ns |   181.79 ns |         - |
 |                                          |              |              |             |             |           |
-| Encrypt · XChaCha20-Poly1305 (AVX2)      | 8KB          |   9,086.0 ns |    57.12 ns |    53.43 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 8KB          |  12,789.8 ns |    75.60 ns |    70.71 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 8KB          |  29,308.0 ns |   130.13 ns |   108.67 ns |      72 B |
-| Encrypt · XChaCha20-Poly1305 (Managed)   | 8KB          |  34,047.6 ns |   341.42 ns |   319.37 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (AVX2)      | 8KB          |   8,854.1 ns |    25.72 ns |    22.80 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 8KB          |  12,536.7 ns |    16.22 ns |    14.38 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 8KB          |  28,998.2 ns |   104.39 ns |    92.54 ns |      72 B |
+| Encrypt · XChaCha20-Poly1305 (Managed)   | 8KB          |  33,542.7 ns |   151.53 ns |   141.74 ns |         - |
 |                                          |              |              |             |             |           |
-| Decrypt · XChaCha20-Poly1305 (AVX2)      | 128KB        | 137,400.6 ns |   727.48 ns |   607.47 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 128KB        | 196,140.5 ns | 1,288.52 ns | 1,205.28 ns |         - |
-| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 128KB        | 465,290.5 ns | 4,263.50 ns | 3,988.08 ns |      72 B |
-| Decrypt · XChaCha20-Poly1305 (Managed)   | 128KB        | 536,320.4 ns | 5,700.02 ns | 5,052.92 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (AVX2)      | 128KB        | 136,085.2 ns |   458.91 ns |   406.81 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (SSSE3)     | 128KB        | 194,735.1 ns |   216.12 ns |   191.58 ns |         - |
+| Decrypt · XChaCha20-Poly1305 (NaCl.Core) | 128KB        | 475,150.6 ns |   954.11 ns |   845.79 ns |      72 B |
+| Decrypt · XChaCha20-Poly1305 (Managed)   | 128KB        | 528,259.8 ns | 1,760.73 ns | 1,470.29 ns |         - |
 |                                          |              |              |             |             |           |
-| Encrypt · XChaCha20-Poly1305 (AVX2)      | 128KB        | 137,744.8 ns |   998.02 ns |   933.55 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 128KB        | 196,605.4 ns | 1,191.00 ns | 1,055.79 ns |         - |
-| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 128KB        | 463,343.7 ns | 2,687.58 ns | 2,513.97 ns |      72 B |
-| Encrypt · XChaCha20-Poly1305 (Managed)   | 128KB        | 535,693.4 ns | 7,461.92 ns | 6,614.80 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (AVX2)      | 128KB        | 136,004.9 ns |   462.57 ns |   361.14 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (SSSE3)     | 128KB        | 194,845.0 ns |   293.70 ns |   245.25 ns |         - |
+| Encrypt · XChaCha20-Poly1305 (NaCl.Core) | 128KB        | 458,992.1 ns | 1,039.60 ns |   921.58 ns |      72 B |
+| Encrypt · XChaCha20-Poly1305 (Managed)   | 128KB        | 529,076.4 ns | 3,045.35 ns | 2,848.62 ns |         - |

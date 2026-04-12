@@ -1,17 +1,17 @@
 ﻿| Description                             | TestDataSize | Mean       | Error     | StdDev    | Allocated |
 |---------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · SHAKE128 · Managed      | 128B         |   2.720 μs | 0.0137 μs | 0.0128 μs |         - |
-| AbsorbSqueeze · SHAKE128 · OS Native    | 128B         |   3.243 μs | 0.0200 μs | 0.0187 μs |         - |
-| AbsorbSqueeze · SHAKE128 · BouncyCastle | 128B         |   3.998 μs | 0.0187 μs | 0.0156 μs |         - |
+| AbsorbSqueeze · SHAKE128 · Managed      | 128B         |   2.760 μs | 0.0185 μs | 0.0173 μs |         - |
+| AbsorbSqueeze · SHAKE128 · OS Native    | 128B         |   3.276 μs | 0.0242 μs | 0.0226 μs |         - |
+| AbsorbSqueeze · SHAKE128 · BouncyCastle | 128B         |   4.050 μs | 0.0259 μs | 0.0242 μs |         - |
 |                                         |              |            |           |           |           |
-| AbsorbSqueeze · SHAKE128 · Managed      | 1KB          |   4.426 μs | 0.0280 μs | 0.0248 μs |         - |
-| AbsorbSqueeze · SHAKE128 · OS Native    | 1KB          |   4.677 μs | 0.0385 μs | 0.0360 μs |         - |
-| AbsorbSqueeze · SHAKE128 · BouncyCastle | 1KB          |   5.918 μs | 0.0386 μs | 0.0361 μs |    1152 B |
+| AbsorbSqueeze · SHAKE128 · Managed      | 1KB          |   4.458 μs | 0.0244 μs | 0.0204 μs |         - |
+| AbsorbSqueeze · SHAKE128 · OS Native    | 1KB          |   4.722 μs | 0.0347 μs | 0.0324 μs |         - |
+| AbsorbSqueeze · SHAKE128 · BouncyCastle | 1KB          |   5.988 μs | 0.0216 μs | 0.0169 μs |    1152 B |
 |                                         |              |            |           |           |           |
-| AbsorbSqueeze · SHAKE128 · OS Native    | 8KB          |  14.587 μs | 0.0576 μs | 0.0511 μs |         - |
-| AbsorbSqueeze · SHAKE128 · Managed      | 8KB          |  16.924 μs | 0.1154 μs | 0.1080 μs |         - |
-| AbsorbSqueeze · SHAKE128 · BouncyCastle | 8KB          |  19.362 μs | 0.1191 μs | 0.1114 μs |    9216 B |
+| AbsorbSqueeze · SHAKE128 · OS Native    | 8KB          |  14.804 μs | 0.0906 μs | 0.0803 μs |         - |
+| AbsorbSqueeze · SHAKE128 · Managed      | 8KB          |  17.109 μs | 0.1303 μs | 0.1088 μs |         - |
+| AbsorbSqueeze · SHAKE128 · BouncyCastle | 8KB          |  19.552 μs | 0.1473 μs | 0.1378 μs |    9216 B |
 |                                         |              |            |           |           |           |
-| AbsorbSqueeze · SHAKE128 · OS Native    | 128KB        | 187.459 μs | 0.8724 μs | 0.7734 μs |         - |
-| AbsorbSqueeze · SHAKE128 · Managed      | 128KB        | 232.700 μs | 1.6526 μs | 1.5458 μs |         - |
-| AbsorbSqueeze · SHAKE128 · BouncyCastle | 128KB        | 254.371 μs | 1.0497 μs | 0.9305 μs |  149760 B |
+| AbsorbSqueeze · SHAKE128 · OS Native    | 128KB        | 190.730 μs | 1.3111 μs | 1.2264 μs |         - |
+| AbsorbSqueeze · SHAKE128 · Managed      | 128KB        | 235.864 μs | 1.4776 μs | 1.2339 μs |         - |
+| AbsorbSqueeze · SHAKE128 · BouncyCastle | 128KB        | 257.714 μs | 1.4397 μs | 1.3467 μs |  149760 B |

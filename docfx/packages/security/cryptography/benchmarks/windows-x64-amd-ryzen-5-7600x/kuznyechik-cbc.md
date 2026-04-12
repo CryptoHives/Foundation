@@ -1,17 +1,17 @@
 ﻿| Description                        | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |----------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| Decrypt · Kuznyechik-CBC (Managed) | 128B         |     424.8 μs |     2.44 μs |     2.28 μs |         - |
+| Decrypt · Kuznyechik-CBC (Managed) | 128B         |     422.1 μs |     1.12 μs |     1.00 μs |         - |
 |                                    |              |              |             |             |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 128B         |     426.1 μs |     2.86 μs |     2.39 μs |         - |
+| Encrypt · Kuznyechik-CBC (Managed) | 128B         |     446.9 μs |     2.96 μs |     2.77 μs |         - |
 |                                    |              |              |             |             |           |
-| Decrypt · Kuznyechik-CBC (Managed) | 1KB          |   3,139.8 μs |    18.71 μs |    15.63 μs |         - |
+| Decrypt · Kuznyechik-CBC (Managed) | 1KB          |   3,176.8 μs |    24.90 μs |    22.07 μs |         - |
 |                                    |              |              |             |             |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 1KB          |   3,122.3 μs |    19.20 μs |    17.02 μs |         - |
+| Encrypt · Kuznyechik-CBC (Managed) | 1KB          |   3,154.2 μs |    18.31 μs |    17.13 μs |         - |
 |                                    |              |              |             |             |           |
-| Decrypt · Kuznyechik-CBC (Managed) | 8KB          |  25,015.4 μs |   167.37 μs |   139.76 μs |         - |
+| Decrypt · Kuznyechik-CBC (Managed) | 8KB          |  24,619.7 μs |   153.02 μs |   143.13 μs |         - |
 |                                    |              |              |             |             |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 8KB          |  25,523.1 μs |   152.09 μs |   142.26 μs |         - |
+| Encrypt · Kuznyechik-CBC (Managed) | 8KB          |  25,092.2 μs |    76.86 μs |    71.90 μs |         - |
 |                                    |              |              |             |             |           |
-| Decrypt · Kuznyechik-CBC (Managed) | 128KB        | 413,695.5 μs | 2,583.04 μs | 2,156.95 μs |         - |
+| Decrypt · Kuznyechik-CBC (Managed) | 128KB        | 393,420.8 μs | 2,600.17 μs | 2,432.20 μs |         - |
 |                                    |              |              |             |             |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 128KB        | 393,110.4 μs | 3,615.69 μs | 3,019.26 μs |         - |
+| Encrypt · Kuznyechik-CBC (Managed) | 128KB        | 394,258.7 μs | 1,502.42 μs | 1,405.36 μs |         - |
