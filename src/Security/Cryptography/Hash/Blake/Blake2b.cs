@@ -1,7 +1,8 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
+#pragma warning disable CS0414  // _simdSupport is read inside #if NET8_0_OR_GREATER guard
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -93,15 +94,14 @@ public sealed partial class Blake2b : HashAlgorithm
     };
 
     // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
-    private delegate void CompressAction(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal);
     private delegate void InitializeStateAction(ulong paramBlock);
     private delegate void ExtractOutputAction(Span<byte> destination);
 
-    private readonly CompressAction _compress;
     private readonly InitializeStateAction _initializeState;
     private readonly ExtractOutputAction _extractOutput;
 
     // Scalar state for non-AVX2 path and output extraction
+    private readonly SimdSupport _simdSupport;
     private readonly ulong[] _state;
     private readonly byte[] _buffer;
     private readonly byte[]? _key;
@@ -158,26 +158,17 @@ public sealed partial class Blake2b : HashAlgorithm
         _state = new ulong[StateSize];
         _buffer = new byte[BlockSizeBytes];
 
+        _simdSupport = SimdSupport.None;
+        _initializeState = InitializeStateScalar;
+        _extractOutput = ExtractOutputScalar;
 #if NET8_0_OR_GREATER
-        if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Avx2) != 0)
+        _simdSupport = simdSupport & Blake2b.SimdSupport;
+        if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Neon) != 0)
         {
-            _compress = CompressAvx2;
-            _initializeState = InitializeStateAvx2;
-            _extractOutput = ExtractOutputAvx2;
-        }
-        else if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Neon) != 0)
-        {
-            _compress = CompressNeon;
             _initializeState = InitializeStateNeon;
             _extractOutput = ExtractOutputNeon;
         }
-        else
 #endif
-        {
-            _compress = CompressScalar;
-            _initializeState = InitializeStateScalar;
-            _extractOutput = ExtractOutputScalar;
-        }
 
         if (key != null && key.Length > 0)
         {
@@ -264,6 +255,25 @@ public sealed partial class Blake2b : HashAlgorithm
         }
     }
 
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void Compress(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
+    {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        {
+            CompressAvx2(block, bytesConsumed, isFinal);
+        }
+        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            CompressNeon(block, bytesConsumed, isFinal);
+        }
+        else
+#endif
+        {
+            CompressScalar(block, bytesConsumed, isFinal);
+        }
+    }
+
     private void InitializeStateScalar(ulong paramBlock)
     {
         Array.Copy(IV, _state, StateSize);
@@ -287,7 +297,7 @@ public sealed partial class Blake2b : HashAlgorithm
             // (we need to keep the last block for finalization)
             if (_bufferLength == BlockSizeBytes && offset < source.Length)
             {
-                _compress(_buffer, BlockSizeBytes, false);
+                Compress(_buffer, BlockSizeBytes, false);
                 _bufferLength = 0;
             }
         }
@@ -295,7 +305,7 @@ public sealed partial class Blake2b : HashAlgorithm
         // Process full blocks, but always keep at least one block for finalization
         while (offset + BlockSizeBytes < source.Length)
         {
-            _compress(source.Slice(offset, BlockSizeBytes), BlockSizeBytes, false);
+            Compress(source.Slice(offset, BlockSizeBytes), BlockSizeBytes, false);
             offset += BlockSizeBytes;
         }
 
@@ -330,7 +340,7 @@ public sealed partial class Blake2b : HashAlgorithm
         _buffer.AsSpan(_bufferLength).Clear();
 
         // Compress final block
-        _compress(_buffer, _bufferLength, true);
+        Compress(_buffer, _bufferLength, true);
 
         // Extract output using dispatch delegate
         _extractOutput(destination);
@@ -360,10 +370,6 @@ public sealed partial class Blake2b : HashAlgorithm
     {
         if (disposing)
         {
-#if NET8_0_OR_GREATER
-            _stateVec0 = default;
-            _stateVec1 = default;
-#endif
             Array.Clear(_state, 0, _state.Length);
             ClearBuffer(_buffer);
             if (_key != null)

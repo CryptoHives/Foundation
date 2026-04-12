@@ -53,7 +53,9 @@ public static class HashAlgorithmRegistry
         /// <summary>Native implementation.</summary>
         Native,
         /// <summary>Konscious.Security.Cryptography implementation.</summary>
-        Konscious
+        Konscious,
+        /// <summary>SauceControl.Blake2Fast implementation.</summary>
+        Blake2Fast
     }
 
     /// <summary>
@@ -472,6 +474,10 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-512", "Konscious", 512,
             () => new KonsciousBlake2Adapter(512), Source.Konscious));
 #endif
+#if BLAKE2FAST
+        list.Add(new("BLAKE2b-512", "Blake2Fast", 512,
+            () => new Blake2FastAdapter(512), Source.Blake2Fast));
+#endif
 
         // BLAKE2b-256
         if ((blake2bSimd & CHRoot.SimdSupport.Avx2) != 0)
@@ -494,6 +500,10 @@ public static class HashAlgorithmRegistry
 #if KONSCIOUS_BLAKE2
         list.Add(new("BLAKE2b-256", "Konscious", 256,
             () => new KonsciousBlake2Adapter(256), Source.Konscious));
+#endif
+#if BLAKE2FAST
+        list.Add(new("BLAKE2b-256", "Blake2Fast", 256,
+            () => new Blake2FastAdapter(256), Source.Blake2Fast));
 #endif
 
         // BLAKE2s-256

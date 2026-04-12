@@ -38,6 +38,7 @@
     <PackageVersion Include="OpenGost.Security.Cryptography" Version="0.3.0" />
     <PackageVersion Include="ProtoPromise" Version="3.5.1" />
     <PackageVersion Include="SharpFuzz" Version="2.2.0" />
+    <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>

@@ -95,8 +95,6 @@ public sealed partial class Blake2b : HashAlgorithm
     {
         _bytesCompressed += (ulong)bytesConsumed;
 
-        // Each logical 256-bit row is split into lo (elements 0–1) and hi (elements 2–3).
-        // row0 = v[0..3] = state[0..7], row2 = v[8..11] = IV[0..3], row3 = v[12..15] = IV[4..7] + counter
         Vector128<ulong> r0L = _neonState0;
         Vector128<ulong> r0H = _neonState1;
         Vector128<ulong> r1L = _neonState2;
@@ -106,64 +104,133 @@ public sealed partial class Blake2b : HashAlgorithm
         Vector128<ulong> r3L = s_ivNeon2 ^ Vector128.Create(_bytesCompressed, 0UL);
         Vector128<ulong> r3H = isFinal ? s_ivNeon3 ^ s_neonFinalMask : s_ivNeon3;
 
-        // Parse message block into 16 little-endian 64-bit words
-        Span<ulong> m = stackalloc ulong[ScratchSize];
-        BinarySpans.ReadUInt64LittleEndian(block, m);
+        // Pre-load all 16 message words into locals — eliminates Sigma indirection from inner rounds
+        Span<ulong> msg = stackalloc ulong[ScratchSize];
+        BinarySpans.ReadUInt64LittleEndian(block, msg);
+        ulong w0 = msg[0]; ulong w1 = msg[1]; ulong w2 = msg[2]; ulong w3 = msg[3];
+        ulong w4 = msg[4]; ulong w5 = msg[5]; ulong w6 = msg[6]; ulong w7 = msg[7];
+        ulong w8 = msg[8]; ulong w9 = msg[9]; ulong w10 = msg[10]; ulong w11 = msg[11];
+        ulong w12 = msg[12]; ulong w13 = msg[13]; ulong w14 = msg[14]; ulong w15 = msg[15];
 
-        ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);
-        ref ulong mBase = ref MemoryMarshal.GetReference(m);
+        // ROUND 1 — Sigma: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w0, w2), Vector128.Create(w4, w6),
+            Vector128.Create(w1, w3), Vector128.Create(w5, w7),
+            Vector128.Create(w8, w10), Vector128.Create(w12, w14),
+            Vector128.Create(w9, w11), Vector128.Create(w13, w15));
 
-        // 12 rounds of mixing
-        for (int sigmaIdx = 0; sigmaIdx < Rounds * ScratchSize; sigmaIdx += ScratchSize)
-        {
-            // Column X step: load m[sigma[0]], m[sigma[2]], m[sigma[4]], m[sigma[6]]
-            var mxL = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 0)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 2)));
-            var mxH = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 4)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 6)));
-            GRoundXNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, mxL, mxH);
+        // ROUND 2 — Sigma: 14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w14, w4), Vector128.Create(w9, w13),
+            Vector128.Create(w10, w8), Vector128.Create(w15, w6),
+            Vector128.Create(w1, w0), Vector128.Create(w11, w5),
+            Vector128.Create(w12, w2), Vector128.Create(w7, w3));
 
-            // Column Y step: load m[sigma[1]], m[sigma[3]], m[sigma[5]], m[sigma[7]]
-            var myL = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 1)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 3)));
-            var myH = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 5)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 7)));
-            GRoundYNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, myL, myH);
+        // ROUND 3 — Sigma: 11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w11, w12), Vector128.Create(w5, w15),
+            Vector128.Create(w8, w0), Vector128.Create(w2, w13),
+            Vector128.Create(w10, w3), Vector128.Create(w7, w9),
+            Vector128.Create(w14, w6), Vector128.Create(w1, w4));
 
-            // Diagonal permutation: Permute(row1, row2, row3)
-            PermuteNeon(ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H);
+        // ROUND 4 — Sigma: 7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w7, w3), Vector128.Create(w13, w11),
+            Vector128.Create(w9, w1), Vector128.Create(w12, w14),
+            Vector128.Create(w2, w5), Vector128.Create(w4, w15),
+            Vector128.Create(w6, w10), Vector128.Create(w0, w8));
 
-            // Diagonal X step: load m[sigma[8]], m[sigma[10]], m[sigma[12]], m[sigma[14]]
-            mxL = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 8)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 10)));
-            mxH = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 12)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 14)));
-            GRoundXNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, mxL, mxH);
+        // ROUND 5 — Sigma: 9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w9, w5), Vector128.Create(w2, w10),
+            Vector128.Create(w0, w7), Vector128.Create(w4, w15),
+            Vector128.Create(w14, w11), Vector128.Create(w6, w3),
+            Vector128.Create(w1, w12), Vector128.Create(w8, w13));
 
-            // Diagonal Y step: load m[sigma[9]], m[sigma[11]], m[sigma[13]], m[sigma[15]]
-            myL = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 9)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 11)));
-            myH = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 13)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 15)));
-            GRoundYNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, myL, myH);
+        // ROUND 6 — Sigma: 2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w2, w6), Vector128.Create(w0, w8),
+            Vector128.Create(w12, w10), Vector128.Create(w11, w3),
+            Vector128.Create(w4, w7), Vector128.Create(w15, w1),
+            Vector128.Create(w13, w5), Vector128.Create(w14, w9));
 
-            // Un-permute: Permute(row3, row2, row1)
-            PermuteNeon(ref r3L, ref r3H, ref r2L, ref r2H, ref r1L, ref r1H);
-        }
+        // ROUND 7 — Sigma: 12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w12, w1), Vector128.Create(w14, w4),
+            Vector128.Create(w5, w15), Vector128.Create(w13, w10),
+            Vector128.Create(w0, w6), Vector128.Create(w9, w8),
+            Vector128.Create(w7, w3), Vector128.Create(w2, w11));
+
+        // ROUND 8 — Sigma: 13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w13, w7), Vector128.Create(w12, w3),
+            Vector128.Create(w11, w14), Vector128.Create(w1, w9),
+            Vector128.Create(w5, w15), Vector128.Create(w8, w2),
+            Vector128.Create(w0, w4), Vector128.Create(w6, w10));
+
+        // ROUND 9 — Sigma: 6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w6, w14), Vector128.Create(w11, w0),
+            Vector128.Create(w15, w9), Vector128.Create(w3, w8),
+            Vector128.Create(w12, w13), Vector128.Create(w1, w10),
+            Vector128.Create(w2, w7), Vector128.Create(w4, w5));
+
+        // ROUND 10 — Sigma: 10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w10, w8), Vector128.Create(w7, w1),
+            Vector128.Create(w2, w4), Vector128.Create(w6, w5),
+            Vector128.Create(w15, w9), Vector128.Create(w3, w13),
+            Vector128.Create(w11, w14), Vector128.Create(w12, w0));
+
+        // ROUND 11 — (same as round 1)
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w0, w2), Vector128.Create(w4, w6),
+            Vector128.Create(w1, w3), Vector128.Create(w5, w7),
+            Vector128.Create(w8, w10), Vector128.Create(w12, w14),
+            Vector128.Create(w9, w11), Vector128.Create(w13, w15));
+
+        // ROUND 12 — (same as round 2)
+        NeonRound(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H,
+            Vector128.Create(w14, w4), Vector128.Create(w9, w13),
+            Vector128.Create(w10, w8), Vector128.Create(w15, w6),
+            Vector128.Create(w1, w0), Vector128.Create(w11, w5),
+            Vector128.Create(w12, w2), Vector128.Create(w7, w3));
 
         // Finalize: state[i] ^= v[i] ^ v[i+8]
         _neonState0 ^= r0L ^ r2L;
         _neonState1 ^= r0H ^ r2H;
         _neonState2 ^= r1L ^ r3L;
         _neonState3 ^= r1H ^ r3H;
+    }
+
+    /// <summary>
+    /// Performs one full BLAKE2b round (column step + diagonal step) using NEON.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "False negative, false constant provided in .NET 8.0 runtime")]
+    private static void NeonRound(
+        ref Vector128<ulong> r0L, ref Vector128<ulong> r0H,
+        ref Vector128<ulong> r1L, ref Vector128<ulong> r1H,
+        ref Vector128<ulong> r2L, ref Vector128<ulong> r2H,
+        ref Vector128<ulong> r3L, ref Vector128<ulong> r3H,
+        Vector128<ulong> mxL, Vector128<ulong> mxH,
+        Vector128<ulong> myL, Vector128<ulong> myH,
+        Vector128<ulong> dxL, Vector128<ulong> dxH,
+        Vector128<ulong> dyL, Vector128<ulong> dyH)
+    {
+        // Column step
+        GRoundXNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, mxL, mxH);
+        GRoundYNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, myL, myH);
+
+        // Diagonalize
+        PermuteNeon(ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H);
+
+        // Diagonal step
+        GRoundXNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, dxL, dxH);
+        GRoundYNeon(ref r0L, ref r0H, ref r1L, ref r1H, ref r2L, ref r2H, ref r3L, ref r3H, dyL, dyH);
+
+        // Un-diagonalize
+        PermuteNeon(ref r3L, ref r3H, ref r2L, ref r2H, ref r1L, ref r1H);
     }
 
     /// <summary>
