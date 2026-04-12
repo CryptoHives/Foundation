@@ -1,19 +1,19 @@
 ﻿| Description                              | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |----------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · KMAC-128 · Managed      | 128B         |     557.4 ns |   1.25 ns |   1.11 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle | 128B         |   1,074.6 ns |   3.61 ns |   3.20 ns |     256 B |
+| TryComputeHash · KMAC-128 · Managed      | 128B         |     555.1 ns |   0.77 ns |   0.68 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle | 128B         |   1,058.3 ns |   2.60 ns |   2.43 ns |     256 B |
 |                                          |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · Managed      | 137B         |     546.3 ns |   0.87 ns |   0.77 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle | 137B         |   1,075.0 ns |   4.42 ns |   3.92 ns |     256 B |
+| TryComputeHash · KMAC-128 · Managed      | 137B         |     546.6 ns |   0.66 ns |   0.58 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle | 137B         |   1,057.2 ns |   4.91 ns |   4.59 ns |     256 B |
 |                                          |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · Managed      | 1KB          |   1,594.5 ns |   2.98 ns |   2.49 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle | 1KB          |   2,212.7 ns |   8.83 ns |   7.83 ns |     256 B |
+| TryComputeHash · KMAC-128 · Managed      | 1KB          |   1,597.7 ns |   1.50 ns |   1.40 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle | 1KB          |   2,212.6 ns |   3.59 ns |   2.99 ns |     256 B |
 |                                          |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · Managed      | 1025B        |   1,594.4 ns |   4.10 ns |   3.43 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle | 1025B        |   2,027.5 ns |   5.90 ns |   5.23 ns |     256 B |
+| TryComputeHash · KMAC-128 · Managed      | 1025B        |   1,594.2 ns |   2.26 ns |   2.11 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle | 1025B        |   1,990.9 ns |   2.93 ns |   2.60 ns |     256 B |
 |                                          |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · Managed      | 8KB          |   8,228.1 ns |  23.48 ns |  19.61 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle | 8KB          |   9,826.3 ns |  22.68 ns |  20.11 ns |     256 B |
+| TryComputeHash · KMAC-128 · Managed      | 8KB          |   8,200.8 ns |  11.84 ns |  11.07 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle | 8KB          |   9,855.3 ns |  36.28 ns |  33.94 ns |     256 B |
 |                                          |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · BouncyCastle | 128KB        | 122,909.7 ns | 205.37 ns | 182.05 ns |     256 B |
-| TryComputeHash · KMAC-128 · Managed      | 128KB        | 125,100.2 ns | 154.87 ns | 129.32 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle | 128KB        | 122,715.2 ns | 398.03 ns | 332.38 ns |     256 B |
+| TryComputeHash · KMAC-128 · Managed      | 128KB        | 124,887.9 ns | 226.64 ns | 189.25 ns |         - |

@@ -1,81 +1,81 @@
 ﻿| Description                             | TestDataSize | Mean          | Error        | StdDev       | Median        | Allocated |
 |---------------------------------------- |------------- |--------------:|-------------:|-------------:|--------------:|----------:|
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 17B          |      88.64 ns |     0.816 ns |     1.386 ns |      88.48 ns |         - |
-| Decrypt · AES-192-GCM (Managed)         | 17B          |     384.55 ns |     2.477 ns |     2.317 ns |     383.82 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 17B          |     644.88 ns |     2.070 ns |     1.936 ns |     644.89 ns |    1640 B |
-| Decrypt · AES-192-GCM (OS)              | 17B          |   1,961.31 ns |     9.998 ns |     9.352 ns |   1,963.25 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 17B          |      82.04 ns |     0.445 ns |     0.416 ns |      81.89 ns |         - |
+| Decrypt · AES-192-GCM (Managed)         | 17B          |     371.81 ns |     0.964 ns |     0.752 ns |     372.03 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 17B          |     624.67 ns |     2.119 ns |     1.879 ns |     623.96 ns |    1640 B |
+| Decrypt · AES-192-GCM (OS)              | 17B          |   1,925.40 ns |    17.206 ns |    16.094 ns |   1,927.36 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 17B          |      54.83 ns |     0.363 ns |     0.339 ns |      54.80 ns |         - |
-| Encrypt · AES-192-GCM (Managed)         | 17B          |     337.99 ns |     0.361 ns |     0.301 ns |     337.96 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 17B          |     539.33 ns |     1.369 ns |     1.213 ns |     539.13 ns |    1624 B |
-| Encrypt · AES-192-GCM (OS)              | 17B          |   1,724.67 ns |    11.283 ns |    10.002 ns |   1,725.28 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 17B          |     254.74 ns |     0.465 ns |     0.412 ns |     254.51 ns |         - |
+| Encrypt · AES-192-GCM (Managed)         | 17B          |   1,608.59 ns |    19.011 ns |    17.783 ns |   1,611.46 ns |         - |
+| Encrypt · AES-192-GCM (OS)              | 17B          |   2,303.71 ns |    80.030 ns |   223.092 ns |   2,354.96 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 17B          |   2,524.75 ns |     4.076 ns |     3.613 ns |   2,523.79 ns |    1624 B |
 |                                         |              |               |              |              |               |           |
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 65B          |     127.00 ns |     0.526 ns |     0.466 ns |     126.98 ns |         - |
-| Decrypt · AES-192-GCM (Managed)         | 65B          |     678.65 ns |     3.988 ns |     3.535 ns |     678.16 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 65B          |     875.62 ns |     6.169 ns |     5.469 ns |     873.15 ns |    1640 B |
-| Decrypt · AES-192-GCM (OS)              | 65B          |   1,961.01 ns |     8.769 ns |     8.203 ns |   1,960.41 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 65B          |     119.86 ns |     0.387 ns |     0.343 ns |     119.94 ns |         - |
+| Decrypt · AES-192-GCM (Managed)         | 65B          |     651.45 ns |     1.328 ns |     1.109 ns |     651.20 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 65B          |     863.70 ns |    16.963 ns |    24.327 ns |     854.11 ns |    1640 B |
+| Decrypt · AES-192-GCM (OS)              | 65B          |   1,924.23 ns |    32.562 ns |    30.458 ns |   1,920.53 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 65B          |      85.93 ns |     0.357 ns |     0.334 ns |      86.04 ns |         - |
-| Encrypt · AES-192-GCM (Managed)         | 65B          |     621.38 ns |     5.008 ns |     4.439 ns |     620.10 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 65B          |     768.43 ns |     1.952 ns |     1.630 ns |     767.94 ns |    1624 B |
-| Encrypt · AES-192-GCM (OS)              | 65B          |   1,699.25 ns |     6.290 ns |     5.884 ns |   1,697.84 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 65B          |     101.50 ns |     0.554 ns |     0.433 ns |     101.58 ns |         - |
+| Encrypt · AES-192-GCM (Managed)         | 65B          |     742.09 ns |     4.185 ns |     3.915 ns |     740.78 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 65B          |   1,861.71 ns |   424.211 ns | 1,250.795 ns |   1,004.66 ns |    1624 B |
+| Encrypt · AES-192-GCM (OS)              | 65B          |   2,277.32 ns |    71.619 ns |   192.400 ns |   2,349.89 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 128B         |     165.14 ns |     0.953 ns |     0.892 ns |     165.07 ns |         - |
-| Decrypt · AES-192-GCM (Managed)         | 128B         |     963.21 ns |     5.582 ns |     4.948 ns |     964.87 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 128B         |   1,123.41 ns |     2.551 ns |     2.386 ns |   1,123.69 ns |    1640 B |
-| Decrypt · AES-192-GCM (OS)              | 128B         |   2,013.48 ns |    25.533 ns |    23.884 ns |   2,016.24 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 128B         |     159.57 ns |     2.466 ns |     2.059 ns |     158.90 ns |         - |
+| Decrypt · AES-192-GCM (Managed)         | 128B         |     932.85 ns |     4.098 ns |     3.422 ns |     931.35 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 128B         |   1,066.19 ns |     1.225 ns |     1.146 ns |   1,065.96 ns |    1640 B |
+| Decrypt · AES-192-GCM (OS)              | 128B         |   1,909.83 ns |    12.667 ns |    10.578 ns |   1,909.93 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 128B         |     119.79 ns |     0.434 ns |     0.406 ns |     119.74 ns |         - |
-| Encrypt · AES-192-GCM (Managed)         | 128B         |     900.18 ns |     1.336 ns |     1.185 ns |     899.74 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 128B         |   1,011.73 ns |     1.451 ns |     1.357 ns |   1,011.96 ns |    1624 B |
-| Encrypt · AES-192-GCM (OS)              | 128B         |   1,721.26 ns |     9.321 ns |     8.719 ns |   1,720.09 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 128B         |     137.61 ns |     0.964 ns |     0.902 ns |     137.44 ns |         - |
+| Encrypt · AES-192-GCM (Managed)         | 128B         |   1,074.42 ns |     3.996 ns |     3.542 ns |   1,074.97 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 128B         |   1,271.47 ns |     6.567 ns |     6.143 ns |   1,270.90 ns |    1624 B |
+| Encrypt · AES-192-GCM (OS)              | 128B         |   2,432.80 ns |    21.943 ns |    20.525 ns |   2,429.71 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 152B         |     197.90 ns |     0.479 ns |     0.425 ns |     197.89 ns |         - |
-| Decrypt · AES-192-GCM (Managed)         | 152B         |   1,186.42 ns |     3.950 ns |     3.695 ns |   1,187.44 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 152B         |   1,269.90 ns |     7.636 ns |     7.143 ns |   1,269.82 ns |    1640 B |
-| Decrypt · AES-192-GCM (OS)              | 152B         |   2,026.10 ns |    21.096 ns |    19.733 ns |   2,028.72 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 152B         |     196.24 ns |     1.112 ns |     1.040 ns |     196.19 ns |         - |
+| Decrypt · AES-192-GCM (Managed)         | 152B         |   1,132.78 ns |     1.061 ns |     0.940 ns |   1,133.06 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 152B         |   1,209.02 ns |     0.777 ns |     0.649 ns |   1,209.01 ns |    1640 B |
+| Decrypt · AES-192-GCM (OS)              | 152B         |   1,926.46 ns |     9.776 ns |     8.666 ns |   1,928.22 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 152B         |     148.07 ns |     0.826 ns |     0.773 ns |     147.96 ns |         - |
-| Encrypt · AES-192-GCM (Managed)         | 152B         |   1,083.81 ns |     2.450 ns |     2.172 ns |   1,083.46 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 152B         |   1,156.93 ns |     1.140 ns |     1.011 ns |   1,156.88 ns |    1624 B |
-| Encrypt · AES-192-GCM (OS)              | 152B         |   1,886.51 ns |    37.631 ns |    77.714 ns |   1,921.00 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 152B         |     170.57 ns |     1.987 ns |     1.659 ns |     169.86 ns |         - |
+| Encrypt · AES-192-GCM (Managed)         | 152B         |   1,295.30 ns |     3.954 ns |     3.087 ns |   1,296.33 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 152B         |   5,459.54 ns |    14.133 ns |    13.220 ns |   5,460.17 ns |    1624 B |
+| Encrypt · AES-192-GCM (OS)              | 152B         |   8,167.08 ns |   102.394 ns |    95.779 ns |   8,145.52 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 256B         |     274.20 ns |     1.219 ns |     1.140 ns |     274.24 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 256B         |   1,716.26 ns |     5.456 ns |     5.104 ns |   1,715.83 ns |    1640 B |
-| Decrypt · AES-192-GCM (Managed)         | 256B         |   1,777.79 ns |     4.789 ns |     4.480 ns |   1,777.46 ns |         - |
-| Decrypt · AES-192-GCM (OS)              | 256B         |   2,006.89 ns |     5.787 ns |     5.414 ns |   2,006.84 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 256B         |     263.45 ns |     1.963 ns |     1.836 ns |     263.31 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 256B         |   1,632.74 ns |     0.448 ns |     0.397 ns |   1,632.80 ns |    1640 B |
+| Decrypt · AES-192-GCM (Managed)         | 256B         |   1,694.01 ns |     0.517 ns |     0.458 ns |   1,694.15 ns |         - |
+| Decrypt · AES-192-GCM (OS)              | 256B         |   1,938.34 ns |    21.466 ns |    19.029 ns |   1,935.70 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 256B         |     245.46 ns |     3.782 ns |     3.538 ns |     246.90 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 256B         |   1,784.07 ns |    13.793 ns |    12.902 ns |   1,785.44 ns |    1624 B |
-| Encrypt · AES-192-GCM (Managed)         | 256B         |   1,826.82 ns |    16.124 ns |    15.082 ns |   1,832.15 ns |         - |
-| Encrypt · AES-192-GCM (OS)              | 256B         |   1,942.43 ns |    26.472 ns |    23.467 ns |   1,944.04 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 256B         |   1,084.32 ns |     0.929 ns |     0.823 ns |   1,084.53 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 256B         |   1,605.75 ns |    10.122 ns |     7.903 ns |   1,603.49 ns |    1624 B |
+| Encrypt · AES-192-GCM (OS)              | 256B         |   2,415.88 ns |    16.897 ns |    15.806 ns |   2,411.39 ns |         - |
+| Encrypt · AES-192-GCM (Managed)         | 256B         |   7,814.87 ns |     2.166 ns |     1.920 ns |   7,814.94 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 1KB          |     919.98 ns |    17.348 ns |    23.747 ns |     910.43 ns |         - |
-| Decrypt · AES-192-GCM (OS)              | 1KB          |   2,129.58 ns |    29.742 ns |    24.836 ns |   2,125.08 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 1KB          |   5,155.56 ns |    83.072 ns |   119.140 ns |   5,093.43 ns |    1640 B |
-| Decrypt · AES-192-GCM (Managed)         | 1KB          |   6,220.61 ns |    20.487 ns |    19.164 ns |   6,220.82 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 1KB          |     849.00 ns |     3.396 ns |     3.176 ns |     849.06 ns |         - |
+| Decrypt · AES-192-GCM (OS)              | 1KB          |   2,079.32 ns |    22.645 ns |    20.074 ns |   2,074.50 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 1KB          |   5,013.23 ns |     3.704 ns |     3.465 ns |   5,013.90 ns |    1640 B |
+| Decrypt · AES-192-GCM (Managed)         | 1KB          |   6,101.80 ns |     1.567 ns |     1.389 ns |   6,102.02 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 1KB          |     911.15 ns |    15.261 ns |    14.275 ns |     914.45 ns |         - |
-| Encrypt · AES-192-GCM (OS)              | 1KB          |   2,084.34 ns |    18.503 ns |    16.402 ns |   2,084.09 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 1KB          |   5,806.63 ns |    41.236 ns |    38.572 ns |   5,816.79 ns |    1624 B |
-| Encrypt · AES-192-GCM (Managed)         | 1KB          |   6,625.54 ns |    56.436 ns |    52.790 ns |   6,646.75 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 1KB          |     884.75 ns |     7.884 ns |     7.375 ns |     884.49 ns |         - |
+| Encrypt · AES-192-GCM (OS)              | 1KB          |   2,614.93 ns |    13.374 ns |    11.855 ns |   2,615.90 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 1KB          |   6,468.48 ns |    50.445 ns |    44.719 ns |   6,447.75 ns |    1624 B |
+| Encrypt · AES-192-GCM (Managed)         | 1KB          |   7,220.48 ns |    90.916 ns |    85.043 ns |   7,176.90 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Decrypt · AES-192-GCM (OS)              | 8KB          |   3,192.92 ns |    41.167 ns |    38.507 ns |   3,197.00 ns |         - |
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 8KB          |   6,861.46 ns |    96.269 ns |    85.340 ns |   6,846.07 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 8KB          |  36,794.07 ns |   157.620 ns |   147.438 ns |  36,746.45 ns |    1640 B |
-| Decrypt · AES-192-GCM (Managed)         | 8KB          |  47,855.32 ns |   115.413 ns |   107.957 ns |  47,853.18 ns |         - |
+| Decrypt · AES-192-GCM (OS)              | 8KB          |   3,007.79 ns |    20.712 ns |    18.360 ns |   3,002.69 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 8KB          |   6,308.71 ns |    29.151 ns |    27.267 ns |   6,320.44 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 8KB          |  36,066.42 ns |    20.644 ns |    18.300 ns |  36,066.62 ns |    1640 B |
+| Decrypt · AES-192-GCM (Managed)         | 8KB          |  46,954.59 ns |    20.787 ns |    19.444 ns |  46,953.34 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (OS)              | 8KB          |   3,216.31 ns |    25.133 ns |    22.280 ns |   3,216.80 ns |         - |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 8KB          |   7,275.47 ns |   143.373 ns |   147.234 ns |   7,293.49 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 8KB          |  42,470.61 ns |   342.962 ns |   320.807 ns |  42,536.57 ns |    1624 B |
-| Encrypt · AES-192-GCM (Managed)         | 8KB          |  51,352.26 ns | 1,025.780 ns | 1,566.475 ns |  51,974.95 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 8KB          |   6,751.94 ns |   132.677 ns |   255.624 ns |   6,605.52 ns |         - |
+| Encrypt · AES-192-GCM (OS)              | 8KB          |  13,533.73 ns |   127.474 ns |   113.002 ns |  13,507.57 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 8KB          |  47,516.11 ns |   163.867 ns |   136.836 ns |  47,469.53 ns |    1624 B |
+| Encrypt · AES-192-GCM (Managed)         | 8KB          |  56,363.90 ns |   243.825 ns |   190.362 ns |  56,325.70 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Decrypt · AES-192-GCM (OS)              | 128KB        |  21,617.22 ns |    41.413 ns |    38.738 ns |  21,625.07 ns |         - |
-| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 128KB        | 108,670.67 ns | 1,473.814 ns | 3,502.675 ns | 108,040.67 ns |         - |
-| Decrypt · AES-192-GCM (BouncyCastle)    | 128KB        | 569,932.15 ns |   197.979 ns |   175.504 ns | 569,919.62 ns |    1640 B |
-| Decrypt · AES-192-GCM (Managed)         | 128KB        | 747,764.92 ns |   339.076 ns |   283.143 ns | 747,864.68 ns |         - |
+| Decrypt · AES-192-GCM (OS)              | 128KB        |  19,595.86 ns |   120.168 ns |   112.405 ns |  19,578.22 ns |         - |
+| Decrypt · AES-192-GCM (ArmAes+ArmPmull) | 128KB        | 100,682.31 ns |   307.547 ns |   256.815 ns | 100,687.01 ns |         - |
+| Decrypt · AES-192-GCM (BouncyCastle)    | 128KB        | 569,435.36 ns |   401.136 ns |   375.223 ns | 569,564.82 ns |    1640 B |
+| Decrypt · AES-192-GCM (Managed)         | 128KB        | 747,591.70 ns |   113.232 ns |   105.918 ns | 747,564.33 ns |         - |
 |                                         |              |               |              |              |               |           |
-| Encrypt · AES-192-GCM (OS)              | 128KB        |  23,587.42 ns |   129.504 ns |   114.802 ns |  23,599.07 ns |         - |
-| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 128KB        | 112,051.01 ns | 2,663.548 ns | 7,246.378 ns | 113,045.82 ns |         - |
-| Encrypt · AES-192-GCM (BouncyCastle)    | 128KB        | 643,812.16 ns | 7,453.016 ns | 6,971.556 ns | 644,847.05 ns |    1624 B |
-| Encrypt · AES-192-GCM (Managed)         | 128KB        | 796,955.76 ns | 5,329.920 ns | 4,450.725 ns | 797,598.18 ns |         - |
+| Encrypt · AES-192-GCM (OS)              | 128KB        |  20,655.55 ns |   220.860 ns |   206.592 ns |  20,689.25 ns |         - |
+| Encrypt · AES-192-GCM (ArmAes+ArmPmull) | 128KB        | 106,459.25 ns | 1,093.094 ns |   912.783 ns | 106,012.59 ns |         - |
+| Encrypt · AES-192-GCM (BouncyCastle)    | 128KB        | 609,978.36 ns |   913.929 ns |   854.890 ns | 609,633.10 ns |    1624 B |
+| Encrypt · AES-192-GCM (Managed)         | 128KB        | 747,381.37 ns |   902.260 ns |   753.428 ns | 747,352.86 ns |         - |
