@@ -4,7 +4,9 @@
 namespace Cryptography.Tests.Adapter.Hash;
 
 using Blake2Fast;
+using Blake2Fast.Implementation;
 using System;
+using System.Runtime.CompilerServices;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
@@ -12,10 +14,11 @@ using CH = CryptoHives.Foundation.Security.Cryptography;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The common <see cref="IBlake2Incremental"/> interface is used for both BLAKE2b and BLAKE2s,
-/// making the adapter variant-agnostic. The underlying struct is boxed once per
-/// <see cref="Initialize"/> call; all subsequent <c>Update</c> and <c>TryFinish</c> calls
-/// are interface dispatch on the existing boxed instance with no additional allocation.
+/// The underlying hash state struct is boxed once at construction and stored as
+/// <see cref="IBlake2Incremental"/>. On <see cref="Initialize"/>, <see cref="Unsafe.Unbox{T}"/>
+/// returns a managed reference directly into the existing boxed object, allowing the struct to be
+/// overwritten in-place — zero allocation per benchmark iteration on .NET 6+.
+/// On older frameworks the box is recreated (benchmarks target .NET 8+).
 /// </para>
 /// <para>
 /// Use <see cref="CreateBlake2b"/> or <see cref="CreateBlake2s"/> to construct instances.
@@ -23,31 +26,31 @@ using CH = CryptoHives.Foundation.Security.Cryptography;
 /// </remarks>
 internal sealed class Blake2FastAdapter : CH.Hash.HashAlgorithm
 {
-    private readonly Func<IBlake2Incremental> _factory;
     private readonly string _algorithmName;
     private readonly int _blockSize;
+    private readonly int _outputBytes;
+    private readonly bool _isBlake2b;
     private IBlake2Incremental _state;
 
-    private Blake2FastAdapter(Func<IBlake2Incremental> factory, string algorithmName, int blockSize, int hashSizeBits)
+    private Blake2FastAdapter(bool isBlake2b, int hashSizeBits)
     {
-        _factory = factory;
-        _algorithmName = algorithmName;
-        _blockSize = blockSize;
+        _isBlake2b = isBlake2b;
+        _outputBytes = hashSizeBits / 8;
+        _algorithmName = $"BLAKE2{(isBlake2b ? 'b' : 's')}-{hashSizeBits} (Blake2Fast)";
+        _blockSize = isBlake2b ? 128 : 64;
         HashSizeValue = hashSizeBits;
-        _state = factory();
+        _state = isBlake2b
+            ? (IBlake2Incremental)Blake2b.CreateIncrementalHasher(_outputBytes)
+            : (IBlake2Incremental)Blake2s.CreateIncrementalHasher(_outputBytes);
     }
 
     /// <summary>Creates a BLAKE2b adapter with the specified output size.</summary>
     /// <param name="hashSizeBits">Output size in bits (e.g. 256, 512).</param>
-    public static Blake2FastAdapter CreateBlake2b(int hashSizeBits) => new(
-        () => Blake2b.CreateIncrementalHasher(hashSizeBits / 8),
-        $"BLAKE2b-{hashSizeBits} (Blake2Fast)", blockSize: 128, hashSizeBits);
+    public static Blake2FastAdapter CreateBlake2b(int hashSizeBits) => new(isBlake2b: true, hashSizeBits);
 
     /// <summary>Creates a BLAKE2s adapter with the specified output size.</summary>
     /// <param name="hashSizeBits">Output size in bits (e.g. 128, 256).</param>
-    public static Blake2FastAdapter CreateBlake2s(int hashSizeBits) => new(
-        () => Blake2s.CreateIncrementalHasher(hashSizeBits / 8),
-        $"BLAKE2s-{hashSizeBits} (Blake2Fast)", blockSize: 64, hashSizeBits);
+    public static Blake2FastAdapter CreateBlake2s(int hashSizeBits) => new(isBlake2b: false, hashSizeBits);
 
     /// <inheritdoc/>
     public override string AlgorithmName => _algorithmName;
@@ -63,5 +66,19 @@ internal sealed class Blake2FastAdapter : CH.Hash.HashAlgorithm
         _state.TryFinish(destination, out bytesWritten);
 
     /// <inheritdoc/>
-    public override void Initialize() => _state = _factory();
+    public override void Initialize()
+    {
+#if NET6_0_OR_GREATER
+        // Overwrite the already-boxed struct in-place via a managed interior ref — no allocation.
+        if (_isBlake2b)
+            Unsafe.Unbox<Blake2bHashState>(_state) = Blake2b.CreateIncrementalHasher(_outputBytes);
+        else
+            Unsafe.Unbox<Blake2sHashState>(_state) = Blake2s.CreateIncrementalHasher(_outputBytes);
+#else
+        // Benchmarks target .NET 8+; re-boxing is acceptable on legacy frameworks.
+        _state = _isBlake2b
+            ? (IBlake2Incremental)Blake2b.CreateIncrementalHasher(_outputBytes)
+            : (IBlake2Incremental)Blake2s.CreateIncrementalHasher(_outputBytes);
+#endif
+    }
 }
