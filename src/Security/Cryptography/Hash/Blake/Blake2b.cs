@@ -10,10 +10,6 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-#if NET8_0_OR_GREATER
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-#endif
 
 /// <summary>
 /// Computes the BLAKE2b hash for the input data.
@@ -76,6 +72,7 @@ public sealed partial class Blake2b : HashAlgorithm
         0x5be0cd19137e2179UL
     ];
 
+#if NOT_USED
     // BLAKE2b sigma permutations for message scheduling
     private static readonly byte[] Sigma = new byte[Rounds * ScratchSize]
     {
@@ -92,13 +89,7 @@ public sealed partial class Blake2b : HashAlgorithm
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3
     };
-
-    // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
-    private delegate void InitializeStateAction(ulong paramBlock);
-    private delegate void ExtractOutputAction(Span<byte> destination);
-
-    private readonly InitializeStateAction _initializeState;
-    private readonly ExtractOutputAction _extractOutput;
+#endif
 
     // Scalar state for non-AVX2 path and output extraction
     private readonly SimdSupport _simdSupport;
@@ -159,15 +150,8 @@ public sealed partial class Blake2b : HashAlgorithm
         _buffer = new byte[BlockSizeBytes];
 
         _simdSupport = SimdSupport.None;
-        _initializeState = InitializeStateScalar;
-        _extractOutput = ExtractOutputScalar;
 #if NET8_0_OR_GREATER
         _simdSupport = simdSupport & Blake2b.SimdSupport;
-        if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Neon) != 0)
-        {
-            _initializeState = InitializeStateNeon;
-            _extractOutput = ExtractOutputNeon;
-        }
 #endif
 
         if (key != null && key.Length > 0)
@@ -241,7 +225,7 @@ public sealed partial class Blake2b : HashAlgorithm
         int keyLength = _key?.Length ?? 0;
         ulong paramBlock = 0x01010000UL | ((ulong)keyLength << 8) | (uint)_outputBytes;
 
-        _initializeState(paramBlock);
+        InitializeState(paramBlock);
 
         _bytesCompressed = 0;
         _bufferLength = 0;
@@ -274,7 +258,7 @@ public sealed partial class Blake2b : HashAlgorithm
         }
     }
 
-    private void InitializeStateScalar(ulong paramBlock)
+    private void InitializeState(ulong paramBlock)
     {
         Array.Copy(IV, _state, StateSize);
         _state[0] ^= paramBlock;
@@ -342,14 +326,14 @@ public sealed partial class Blake2b : HashAlgorithm
         // Compress final block
         Compress(_buffer, _bufferLength, true);
 
-        // Extract output using dispatch delegate
-        _extractOutput(destination);
+        // Extract output
+        ExtractOutput(destination);
 
         bytesWritten = _outputBytes;
         return true;
     }
 
-    private void ExtractOutputScalar(Span<byte> destination)
+    private void ExtractOutput(Span<byte> destination)
     {
         int fullWords = _outputBytes / sizeof(UInt64);
 
