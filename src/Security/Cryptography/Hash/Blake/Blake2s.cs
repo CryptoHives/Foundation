@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
+#pragma warning disable CS0414  // _simdSupport is read inside #if NET8_0_OR_GREATER guard
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -9,10 +10,6 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-#if NET8_0_OR_GREATER
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-#endif
 
 /// <summary>
 /// Computes the BLAKE2s hash for the input data.
@@ -90,22 +87,13 @@ public sealed partial class Blake2s : HashAlgorithm
         10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0
     };
 
-    // Scalar state for non-SSE path and output extraction
+    private readonly SimdSupport _simdSupport;
     private readonly uint[] _state;
     private readonly byte[] _buffer;
     private readonly byte[]? _key;
     private readonly int _outputBytes;
     private ulong _bytesCompressed;
     private int _bufferLength;
-
-    // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
-    private delegate void CompressAction(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal);
-    private delegate void InitializeStateAction(uint paramBlock);
-    private delegate void ExtractOutputAction(Span<byte> destination);
-
-    private readonly CompressAction _compress;
-    private readonly InitializeStateAction _initializeState;
-    private readonly ExtractOutputAction _extractOutput;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2s"/> class with default output size (32 bytes).
@@ -156,39 +144,10 @@ public sealed partial class Blake2s : HashAlgorithm
         _state = new uint[StateSize];
         _buffer = new byte[BlockSizeBytes];
 
-        simdSupport &= Blake2s.SimdSupport;
+        _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport.Avx2) != 0)
-        {
-            _compress = CompressAvx2;
-            _initializeState = InitializeStateSse2;
-            _extractOutput = ExtractOutputSse2;
-        }
-        else if ((simdSupport & SimdSupport.Ssse3) != 0)
-        {
-            _compress = CompressSsse3;
-            _initializeState = InitializeStateSse2;
-            _extractOutput = ExtractOutputSse2;
-        }
-        else if ((simdSupport & SimdSupport.Sse2) != 0)
-        {
-            _compress = CompressSse2;
-            _initializeState = InitializeStateSse2;
-            _extractOutput = ExtractOutputSse2;
-        }
-        else if ((simdSupport & SimdSupport.Neon) != 0)
-        {
-            _compress = CompressNeon;
-            _initializeState = InitializeStateNeon;
-            _extractOutput = ExtractOutputSse2;  // portable: only uses CopyTo on Vector128<uint>
-        }
-        else
+        _simdSupport = simdSupport & SimdSupport;
 #endif
-        {
-            _compress = CompressScalar;
-            _initializeState = InitializeStateScalar;
-            _extractOutput = ExtractOutputScalar;
-        }
 
         if (key != null && key.Length > 0)
         {
@@ -209,25 +168,6 @@ public sealed partial class Blake2s : HashAlgorithm
     /// Gets a value indicating whether this instance is configured for keyed hashing (MAC mode).
     /// </summary>
     public bool IsKeyed => _key != null;
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
-    /// </summary>
-    /// <returns>Flags indicating which SIMD instruction sets are available.</returns>
-    internal static new SimdSupport SimdSupport
-    {
-        get
-        {
-            var support = SimdSupport.None;
-#if NET8_0_OR_GREATER
-            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
-            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
-            if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
-#endif
-            return support;
-        }
-    }
 
     /// <summary>
     /// Creates a new instance of the <see cref="Blake2s"/> class with default output size.
@@ -280,7 +220,8 @@ public sealed partial class Blake2s : HashAlgorithm
         int keyLength = _key?.Length ?? 0;
         uint paramBlock = 0x01010000U | ((uint)keyLength << 8) | (uint)_outputBytes;
 
-        _initializeState(paramBlock);
+        Array.Copy(IV, _state, StateSize);
+        _state[0] ^= paramBlock;
 
         _bytesCompressed = 0;
         _bufferLength = 0;
@@ -294,14 +235,47 @@ public sealed partial class Blake2s : HashAlgorithm
         }
     }
 
-    private void InitializeStateScalar(uint paramBlock)
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private unsafe void Compress(byte* msgPtr, uint* state, int bytesConsumed, bool isFinal)
     {
-        Array.Copy(IV, _state, StateSize);
-        _state[0] ^= paramBlock;
+        _bytesCompressed += (ulong)bytesConsumed;
+
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        {
+            CompressAvx2(msgPtr, state, _bytesCompressed, isFinal);
+        }
+        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            CompressSsse3(msgPtr, state, _bytesCompressed, isFinal);
+        }
+        else if ((_simdSupport & SimdSupport.Sse2) != 0)
+        {
+            CompressSse2(msgPtr, state, _bytesCompressed, isFinal);
+        }
+        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            CompressNeon(msgPtr, state, _bytesCompressed, isFinal);
+        }
+        else
+#endif
+        {
+            CompressScalar(msgPtr, state, _bytesCompressed, isFinal);
+        }
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private unsafe void Compress(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
+    {
+        fixed (uint* state = _state)
+        fixed (byte* msgPtr = block)
+        {
+            Compress(msgPtr, state, bytesConsumed, isFinal);
+        }
     }
 
     /// <inheritdoc/>
-    protected override void HashCore(ReadOnlySpan<byte> source)
+    protected override unsafe void HashCore(ReadOnlySpan<byte> source)
     {
         int offset = 0;
 
@@ -316,16 +290,20 @@ public sealed partial class Blake2s : HashAlgorithm
             // Only compress if buffer is full AND there's more data coming
             if (_bufferLength == BlockSizeBytes && offset < source.Length)
             {
-                _compress(_buffer, BlockSizeBytes, false);
+                Compress(_buffer, BlockSizeBytes, false);
                 _bufferLength = 0;
             }
         }
 
         // Process full blocks, but always keep at least one block for finalization
-        while (offset + BlockSizeBytes < source.Length)
+        fixed (uint* state = _state)
+        fixed (byte* msgPtr = source)
         {
-            _compress(source.Slice(offset, BlockSizeBytes), BlockSizeBytes, false);
-            offset += BlockSizeBytes;
+            while (offset + BlockSizeBytes < source.Length)
+            {
+                Compress(msgPtr + offset, state, BlockSizeBytes, false);
+                offset += BlockSizeBytes;
+            }
         }
 
         // Store remaining bytes in buffer
@@ -358,16 +336,16 @@ public sealed partial class Blake2s : HashAlgorithm
         _buffer.AsSpan(_bufferLength).Clear();
 
         // Compress final block
-        _compress(_buffer, _bufferLength, true);
+        Compress(_buffer, _bufferLength, true);
 
-        // Extract output using dispatch delegate
-        _extractOutput(destination);
+        // Extract output
+        ExtractOutput(destination);
 
         bytesWritten = _outputBytes;
         return true;
     }
 
-    private void ExtractOutputScalar(Span<byte> destination)
+    private void ExtractOutput(Span<byte> destination)
     {
         int fullWords = _outputBytes / sizeof(UInt32);
 
@@ -388,10 +366,6 @@ public sealed partial class Blake2s : HashAlgorithm
     {
         if (disposing)
         {
-#if NET8_0_OR_GREATER
-            _stateVec0 = default;
-            _stateVec1 = default;
-#endif
             Array.Clear(_state, 0, _state.Length);
             ClearBuffer(_buffer);
             if (_key != null)
@@ -404,59 +378,86 @@ public sealed partial class Blake2s : HashAlgorithm
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressScalar(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
+    private static unsafe void CompressScalar(byte* msgPtr, uint* state, ulong bytesCompressed, bool isFinal)
     {
-        // Update counter
-        _bytesCompressed += (ulong)bytesConsumed;
-
-        // Parse message block into 16 32-bit words (little-endian)
-        Span<uint> m = stackalloc uint[ScratchSize];
-        BinarySpans.ReadUInt32LittleEndian(block, m);
-
-        // Initialize working vector
-        Span<uint> v = stackalloc uint[ScratchSize];
-        v[0] = _state[0];
-        v[1] = _state[1];
-        v[2] = _state[2];
-        v[3] = _state[3];
-        v[4] = _state[4];
-        v[5] = _state[5];
-        v[6] = _state[6];
-        v[7] = _state[7];
-        v[8] = IV[0];
-        v[9] = IV[1];
-        v[10] = IV[2];
-        v[11] = IV[3];
-        v[12] = IV[4] ^ (uint)_bytesCompressed;
-        v[13] = IV[5] ^ (uint)(_bytesCompressed >> 32);
-        v[14] = isFinal ? ~IV[6] : IV[6];
-        v[15] = IV[7];
-
-        // 10 rounds of mixing
-        for (int round = 0; round < Rounds * ScratchSize; round += ScratchSize)
+        uint* mr = (uint*)msgPtr;
+        if (!BitConverter.IsLittleEndian)
         {
-            // Column step
-            G(ref v[0], ref v[4], ref v[8], ref v[12], m[Sigma[round + 0]], m[Sigma[round + 1]]);
-            G(ref v[1], ref v[5], ref v[9], ref v[13], m[Sigma[round + 2]], m[Sigma[round + 3]]);
-            G(ref v[2], ref v[6], ref v[10], ref v[14], m[Sigma[round + 4]], m[Sigma[round + 5]]);
-            G(ref v[3], ref v[7], ref v[11], ref v[15], m[Sigma[round + 6]], m[Sigma[round + 7]]);
-
-            // Diagonal step
-            G(ref v[0], ref v[5], ref v[10], ref v[15], m[Sigma[round + 8]], m[Sigma[round + 9]]);
-            G(ref v[1], ref v[6], ref v[11], ref v[12], m[Sigma[round + 10]], m[Sigma[round + 11]]);
-            G(ref v[2], ref v[7], ref v[8], ref v[13], m[Sigma[round + 12]], m[Sigma[round + 13]]);
-            G(ref v[3], ref v[4], ref v[9], ref v[14], m[Sigma[round + 14]], m[Sigma[round + 15]]);
+            uint* scratch = stackalloc uint[ScratchSize];
+            BinarySpans.ReadUInt32LittleEndian(msgPtr, scratch, ScratchSize);
+            mr = scratch;
         }
 
-        // Finalize state
-        _state[0] ^= v[0] ^ v[8];
-        _state[1] ^= v[1] ^ v[9];
-        _state[2] ^= v[2] ^ v[10];
-        _state[3] ^= v[3] ^ v[11];
-        _state[4] ^= v[4] ^ v[12];
-        _state[5] ^= v[5] ^ v[13];
-        _state[6] ^= v[6] ^ v[14];
-        _state[7] ^= v[7] ^ v[15];
+        uint m0 = mr[0], m1 = mr[1], m2 = mr[2], m3 = mr[3],
+             m4 = mr[4], m5 = mr[5], m6 = mr[6], m7 = mr[7],
+             m8 = mr[8], m9 = mr[9], m10 = mr[10], m11 = mr[11],
+             m12 = mr[12], m13 = mr[13], m14 = mr[14], m15 = mr[15];
+
+        uint v0 = state[0], v1 = state[1], v2 = state[2], v3 = state[3],
+             v4 = state[4], v5 = state[5], v6 = state[6], v7 = state[7];
+
+        uint v8  = 0x6a09e667U, v9 = 0xbb67ae85U,
+             v10 = 0x3c6ef372U, v11 = 0xa54ff53aU,
+             v12 = 0x510e527fU ^ (uint)bytesCompressed,
+             v13 = 0x9b05688cU ^ (uint)(bytesCompressed >> 32),
+             v14 = isFinal ? ~0x1f83d9abU : 0x1f83d9abU,
+             v15 = 0x5be0cd19U;
+
+        // Round 0 — sigma: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+        G(ref v0, ref v4, ref v8, ref v12, m0, m1); G(ref v1, ref v5, ref v9, ref v13, m2, m3);
+        G(ref v2, ref v6, ref v10, ref v14, m4, m5); G(ref v3, ref v7, ref v11, ref v15, m6, m7);
+        G(ref v0, ref v5, ref v10, ref v15, m8, m9); G(ref v1, ref v6, ref v11, ref v12, m10, m11);
+        G(ref v2, ref v7, ref v8, ref v13, m12, m13); G(ref v3, ref v4, ref v9, ref v14, m14, m15);
+        // Round 1 — sigma: 14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3
+        G(ref v0, ref v4, ref v8, ref v12, m14, m10); G(ref v1, ref v5, ref v9, ref v13, m4, m8);
+        G(ref v2, ref v6, ref v10, ref v14, m9, m15); G(ref v3, ref v7, ref v11, ref v15, m13, m6);
+        G(ref v0, ref v5, ref v10, ref v15, m1, m12); G(ref v1, ref v6, ref v11, ref v12, m0, m2);
+        G(ref v2, ref v7, ref v8, ref v13, m11, m7); G(ref v3, ref v4, ref v9, ref v14, m5, m3);
+        // Round 2 — sigma: 11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4
+        G(ref v0, ref v4, ref v8, ref v12, m11, m8); G(ref v1, ref v5, ref v9, ref v13, m12, m0);
+        G(ref v2, ref v6, ref v10, ref v14, m5, m2); G(ref v3, ref v7, ref v11, ref v15, m15, m13);
+        G(ref v0, ref v5, ref v10, ref v15, m10, m14); G(ref v1, ref v6, ref v11, ref v12, m3, m6);
+        G(ref v2, ref v7, ref v8, ref v13, m7, m1); G(ref v3, ref v4, ref v9, ref v14, m9, m4);
+        // Round 3 — sigma: 7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8
+        G(ref v0, ref v4, ref v8, ref v12, m7, m9); G(ref v1, ref v5, ref v9, ref v13, m3, m1);
+        G(ref v2, ref v6, ref v10, ref v14, m13, m12); G(ref v3, ref v7, ref v11, ref v15, m11, m14);
+        G(ref v0, ref v5, ref v10, ref v15, m2, m6); G(ref v1, ref v6, ref v11, ref v12, m5, m10);
+        G(ref v2, ref v7, ref v8, ref v13, m4, m0); G(ref v3, ref v4, ref v9, ref v14, m15, m8);
+        // Round 4 — sigma: 9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13
+        G(ref v0, ref v4, ref v8, ref v12, m9, m0); G(ref v1, ref v5, ref v9, ref v13, m5, m7);
+        G(ref v2, ref v6, ref v10, ref v14, m2, m4); G(ref v3, ref v7, ref v11, ref v15, m10, m15);
+        G(ref v0, ref v5, ref v10, ref v15, m14, m1); G(ref v1, ref v6, ref v11, ref v12, m11, m12);
+        G(ref v2, ref v7, ref v8, ref v13, m6, m8); G(ref v3, ref v4, ref v9, ref v14, m3, m13);
+        // Round 5 — sigma: 2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9
+        G(ref v0, ref v4, ref v8, ref v12, m2, m12); G(ref v1, ref v5, ref v9, ref v13, m6, m10);
+        G(ref v2, ref v6, ref v10, ref v14, m0, m11); G(ref v3, ref v7, ref v11, ref v15, m8, m3);
+        G(ref v0, ref v5, ref v10, ref v15, m4, m13); G(ref v1, ref v6, ref v11, ref v12, m7, m5);
+        G(ref v2, ref v7, ref v8, ref v13, m15, m14); G(ref v3, ref v4, ref v9, ref v14, m1, m9);
+        // Round 6 — sigma: 12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11
+        G(ref v0, ref v4, ref v8, ref v12, m12, m5); G(ref v1, ref v5, ref v9, ref v13, m1, m15);
+        G(ref v2, ref v6, ref v10, ref v14, m14, m13); G(ref v3, ref v7, ref v11, ref v15, m4, m10);
+        G(ref v0, ref v5, ref v10, ref v15, m0, m7); G(ref v1, ref v6, ref v11, ref v12, m6, m3);
+        G(ref v2, ref v7, ref v8, ref v13, m9, m2); G(ref v3, ref v4, ref v9, ref v14, m8, m11);
+        // Round 7 — sigma: 13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10
+        G(ref v0, ref v4, ref v8, ref v12, m13, m11); G(ref v1, ref v5, ref v9, ref v13, m7, m14);
+        G(ref v2, ref v6, ref v10, ref v14, m12, m1); G(ref v3, ref v7, ref v11, ref v15, m3, m9);
+        G(ref v0, ref v5, ref v10, ref v15, m5, m0); G(ref v1, ref v6, ref v11, ref v12, m15, m4);
+        G(ref v2, ref v7, ref v8, ref v13, m8, m6); G(ref v3, ref v4, ref v9, ref v14, m2, m10);
+        // Round 8 — sigma: 6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5
+        G(ref v0, ref v4, ref v8, ref v12, m6, m15); G(ref v1, ref v5, ref v9, ref v13, m14, m9);
+        G(ref v2, ref v6, ref v10, ref v14, m11, m3); G(ref v3, ref v7, ref v11, ref v15, m0, m8);
+        G(ref v0, ref v5, ref v10, ref v15, m12, m2); G(ref v1, ref v6, ref v11, ref v12, m13, m7);
+        G(ref v2, ref v7, ref v8, ref v13, m1, m4); G(ref v3, ref v4, ref v9, ref v14, m10, m5);
+        // Round 9 — sigma: 10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0
+        G(ref v0, ref v4, ref v8, ref v12, m10, m2); G(ref v1, ref v5, ref v9, ref v13, m8, m4);
+        G(ref v2, ref v6, ref v10, ref v14, m7, m6); G(ref v3, ref v7, ref v11, ref v15, m1, m5);
+        G(ref v0, ref v5, ref v10, ref v15, m15, m11); G(ref v1, ref v6, ref v11, ref v12, m9, m14);
+        G(ref v2, ref v7, ref v8, ref v13, m3, m12); G(ref v3, ref v4, ref v9, ref v14, m13, m0);
+
+        state[0] ^= v0 ^ v8; state[1] ^= v1 ^ v9;
+        state[2] ^= v2 ^ v10; state[3] ^= v3 ^ v11;
+        state[4] ^= v4 ^ v12; state[5] ^= v5 ^ v13;
+        state[6] ^= v6 ^ v14; state[7] ^= v7 ^ v15;
     }
 
     /// <summary>
