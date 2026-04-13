@@ -71,11 +71,15 @@ internal sealed class Blake2FastAdapter : CH.Hash.HashAlgorithm
 #if NET6_0_OR_GREATER
         // Overwrite the already-boxed struct in-place via a managed interior ref — no allocation.
         if (_isBlake2b)
+        {
             Unsafe.Unbox<Blake2bHashState>(_state) = Blake2b.CreateIncrementalHasher(_outputBytes);
+        }
         else
+        {
             Unsafe.Unbox<Blake2sHashState>(_state) = Blake2s.CreateIncrementalHasher(_outputBytes);
+        }
 #else
-        // Benchmarks target .NET 8+; re-boxing is acceptable on legacy frameworks.
+        // Benchmarks target < .NET 6+; re-boxing is acceptable on legacy frameworks.
         _state = _isBlake2b
             ? (IBlake2Incremental)Blake2b.CreateIncrementalHasher(_outputBytes)
             : (IBlake2Incremental)Blake2s.CreateIncrementalHasher(_outputBytes);
