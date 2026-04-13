@@ -36,6 +36,25 @@ public sealed partial class Blake2s
 
     private static readonly Vector128<uint> FinalMask = Vector128.Create(0U, 0U, ~0U, 0U);
 
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    internal static new SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+#if EXPERIMENTAL
+            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+#endif
+            return support;
+        }
+    }
+
+#if EXPERIMENTAL
     // Pre-computed Vector128<int> indices for gather operations (scaled by 4 for uint stride)
     private static readonly Vector128<int>[] GatherIndicesX = new Vector128<int>[Rounds * 2];
     private static readonly Vector128<int>[] GatherIndicesY = new Vector128<int>[Rounds * 2];
@@ -61,22 +80,6 @@ public sealed partial class Blake2s
             GatherIndicesY[round * 2 + 1] = Vector128.Create(
                 Sigma[offset + 9] * 4, Sigma[offset + 11] * 4,
                 Sigma[offset + 13] * 4, Sigma[offset + 15] * 4);
-        }
-    }
-
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
-    /// </summary>
-    internal static new SimdSupport SimdSupport
-    {
-        get
-        {
-            var support = SimdSupport.None;
-            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
-            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
-            return support;
         }
     }
 
@@ -134,6 +137,7 @@ public sealed partial class Blake2s
         Sse2.Store(state, row0);
         Sse2.Store(state + 4, row1);
     }
+#endif
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -185,6 +189,7 @@ public sealed partial class Blake2s
         Sse2.Store(state + 4, row1);
     }
 
+#if EXPERIMENTAL
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static unsafe void CompressAvx2(byte* mPtr, uint* state, ulong bytesCompressed, bool isFinal)
@@ -275,6 +280,7 @@ public sealed partial class Blake2s
         var t3 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t3, 7), Sse2.ShiftLeftLogical(t3, 25));
     }
+#endif
 
     /// <summary>
     /// Performs one G round on 4 parallel lanes using SSSE3 shuffle for byte-aligned rotations.

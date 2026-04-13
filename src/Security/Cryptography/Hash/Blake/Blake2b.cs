@@ -230,10 +230,12 @@ public sealed partial class Blake2b : HashAlgorithm
         {
             CompressAvx2(msgPtr, state, _bytesCompressed, isFinal);
         }
+#if EXPERIMENTAL
         else if ((_simdSupport & SimdSupport.Neon) != 0)
         {
             CompressNeon(msgPtr, state, _bytesCompressed, isFinal);
         }
+#endif
         else
 #endif
         {

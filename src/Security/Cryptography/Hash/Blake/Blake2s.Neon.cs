@@ -5,7 +5,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
-#if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER && EXPERIMENTAL
 
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;

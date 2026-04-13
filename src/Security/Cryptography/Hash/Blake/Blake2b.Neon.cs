@@ -5,7 +5,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
-#if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER && EXPERIMENTAL
 
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -48,7 +48,7 @@ public sealed partial class Blake2b : HashAlgorithm
         var r2L = Vector128.Create(IV[0], IV[1]);
         var r2H = Vector128.Create(IV[2], IV[3]);
         var r3L = Vector128.Create(IV[4] ^ bytesCompressed, IV[5]);
-        var r3H = Vector128.Create(isFinal ? IV[6] ^ ~0UL : IV[6] , IV[7]);
+        var r3H = Vector128.Create(isFinal ? IV[6] ^ ~0UL : IV[6], IV[7]);
 
         // Save original state for finalization
         var orig0L = r0L;

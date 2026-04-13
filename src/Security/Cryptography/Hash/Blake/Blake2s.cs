@@ -241,13 +241,14 @@ public sealed partial class Blake2s : HashAlgorithm
         _bytesCompressed += (ulong)bytesConsumed;
 
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
-        {
-            CompressAvx2(msgPtr, state, _bytesCompressed, isFinal);
-        }
-        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        if ((_simdSupport & SimdSupport.Ssse3) != 0)
         {
             CompressSsse3(msgPtr, state, _bytesCompressed, isFinal);
+        }
+#if EXPERIMENTAL
+        else if ((_simdSupport & SimdSupport.Avx2) != 0)
+        {
+            CompressAvx2(msgPtr, state, _bytesCompressed, isFinal);
         }
         else if ((_simdSupport & SimdSupport.Sse2) != 0)
         {
@@ -258,6 +259,7 @@ public sealed partial class Blake2s : HashAlgorithm
             CompressNeon(msgPtr, state, _bytesCompressed, isFinal);
         }
         else
+#endif
 #endif
         {
             CompressScalar(msgPtr, state, _bytesCompressed, isFinal);
@@ -396,7 +398,7 @@ public sealed partial class Blake2s : HashAlgorithm
         uint v0 = state[0], v1 = state[1], v2 = state[2], v3 = state[3],
              v4 = state[4], v5 = state[5], v6 = state[6], v7 = state[7];
 
-        uint v8  = 0x6a09e667U, v9 = 0xbb67ae85U,
+        uint v8 = 0x6a09e667U, v9 = 0xbb67ae85U,
              v10 = 0x3c6ef372U, v11 = 0xa54ff53aU,
              v12 = 0x510e527fU ^ (uint)bytesCompressed,
              v13 = 0x9b05688cU ^ (uint)(bytesCompressed >> 32),
