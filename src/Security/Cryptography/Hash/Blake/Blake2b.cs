@@ -10,7 +10,6 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the BLAKE2b hash for the input data.
@@ -52,7 +51,7 @@ public sealed partial class Blake2b : HashAlgorithm
     public const int BlockSizeBytes = 128;
 
     // Rounds of mixing
-    private const int Rounds = 12;
+    // private const int Rounds = 12;
 
     // The size of the state buffer
     private const int StateSize = 8;
@@ -72,25 +71,6 @@ public sealed partial class Blake2b : HashAlgorithm
         0x1f83d9abfb41bd6bUL,
         0x5be0cd19137e2179UL
     ];
-
-#if NOT_USED
-    // BLAKE2b sigma permutations for message scheduling
-    private static readonly byte[] Sigma = new byte[Rounds * ScratchSize]
-    {
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-        14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3,
-        11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4,
-        7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8,
-        9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13,
-        2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9,
-        12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11,
-        13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10,
-        6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5,
-        10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0,
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-        14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3
-    };
-#endif
 
     // Scalar state for non-AVX2 path and output extraction
     private readonly SimdSupport _simdSupport;
@@ -152,7 +132,7 @@ public sealed partial class Blake2b : HashAlgorithm
 
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & Blake2b.SimdSupport;
+        _simdSupport = simdSupport & SimdSupport;
 #endif
 
         if (key != null && key.Length > 0)
@@ -241,21 +221,42 @@ public sealed partial class Blake2b : HashAlgorithm
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void Compress(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
+    private unsafe void Compress(byte* msgPtr, ulong* state, int bytesConsumed, bool isFinal)
     {
+        _bytesCompressed += (ulong)bytesConsumed;
+
 #if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.Avx2) != 0)
         {
-            CompressAvx2(block, bytesConsumed, isFinal);
+            CompressAvx2(msgPtr, state, _bytesCompressed, isFinal);
         }
         else if ((_simdSupport & SimdSupport.Neon) != 0)
         {
-            CompressNeon(block, bytesConsumed, isFinal);
+            CompressNeon(msgPtr, state, _bytesCompressed, isFinal);
         }
         else
 #endif
         {
-            CompressScalar(block, bytesConsumed, isFinal);
+            CompressScalar(msgPtr, state, _bytesCompressed, isFinal);
+        }
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private unsafe void Compress(ReadOnlySpan<byte> block, ulong* state, int bytesConsumed, bool isFinal)
+    {
+        fixed (byte* msgPtr = block)
+        {
+            Compress(msgPtr, state, bytesConsumed, isFinal);
+        }
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private unsafe void Compress(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
+    {
+        fixed (ulong* state = _state)
+        fixed (byte* msgPtr = block)
+        {
+            Compress(msgPtr, state, bytesConsumed, isFinal);
         }
     }
 
@@ -266,32 +267,38 @@ public sealed partial class Blake2b : HashAlgorithm
     }
 
     /// <inheritdoc/>
-    protected override void HashCore(ReadOnlySpan<byte> source)
+    protected override unsafe void HashCore(ReadOnlySpan<byte> source)
     {
         int offset = 0;
 
-        // If we have data in buffer, fill it first
-        if (_bufferLength > 0)
+        fixed (ulong* state = _state)
         {
-            int toCopy = Math.Min(BlockSizeBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            // Only compress if buffer is full AND there's more data coming
-            // (we need to keep the last block for finalization)
-            if (_bufferLength == BlockSizeBytes && offset < source.Length)
+            // If we have data in buffer, fill it first
+            if (_bufferLength > 0)
             {
-                Compress(_buffer, BlockSizeBytes, false);
-                _bufferLength = 0;
-            }
-        }
+                int toCopy = Math.Min(BlockSizeBytes - _bufferLength, source.Length);
+                source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
+                _bufferLength += toCopy;
+                offset += toCopy;
 
-        // Process full blocks, but always keep at least one block for finalization
-        while (offset + BlockSizeBytes < source.Length)
-        {
-            Compress(source.Slice(offset, BlockSizeBytes), BlockSizeBytes, false);
-            offset += BlockSizeBytes;
+                // Only compress if buffer is full AND there's more data coming
+                // (we need to keep the last block for finalization)
+                if (_bufferLength == BlockSizeBytes && offset < source.Length)
+                {
+                    Compress(_buffer, state, BlockSizeBytes, false);
+                    _bufferLength = 0;
+                }
+            }
+
+            // Process full blocks, but always keep at least one block for finalization
+            fixed (byte* msgPtr = source)
+            {
+                while (offset + BlockSizeBytes < source.Length)
+                {
+                    Compress(msgPtr + offset, state, BlockSizeBytes, false);
+                    offset += BlockSizeBytes;
+                }
+            }
         }
 
         // Store remaining bytes in buffer
@@ -367,51 +374,36 @@ public sealed partial class Blake2b : HashAlgorithm
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressScalar(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
+    private static unsafe void CompressScalar(byte* msgPtr, ulong* state, ulong bytesCompressed, bool isFinal)
     {
-        _bytesCompressed += (ulong)bytesConsumed;
-
-        // Load all 16 message words into locals — eliminates span bounds checks and
-        // Sigma array indirections from the 12 fully-unrolled rounds below.
-        Span<ulong> msgBuf = stackalloc ulong[ScratchSize];
-        ref ulong mr = ref msgBuf[0];
-        ref byte br = ref MemoryMarshal.GetReference(block);
-        if (BitConverter.IsLittleEndian && IsAlignedForUlong(ref br))
+        // On little-endian platforms (all current .NET targets), the message bytes can be
+        // interpreted directly as ulong words via pointer cast — unaligned reads are handled
+        // correctly by all x86-64 and ARM64 hardware. On big-endian, we byte-swap into a
+        // scratch buffer via BinarySpans. BitConverter.IsLittleEndian is a JIT constant,
+        // so the dead branch and its stackalloc are eliminated entirely.
+        ulong* mr = (ulong*)msgPtr;
+        if (!BitConverter.IsLittleEndian)
         {
-            mr = ref Unsafe.As<byte, ulong>(ref br);
+            ulong* scratch = stackalloc ulong[ScratchSize];
+            BinarySpans.ReadUInt64LittleEndian(msgPtr, scratch, ScratchSize);
+            mr = scratch;
         }
-        else
-        {
-            // If the platform is big-endian, we need to reverse byte order and use the scratch buffer.
-            BinarySpans.ReadUInt64LittleEndian(block, msgBuf);
-        }
-
-        ulong m0 = mr, m1 = Unsafe.Add(ref mr, 1),
-              m2 = Unsafe.Add(ref mr, 2), m3 = Unsafe.Add(ref mr, 3),
-              m4 = Unsafe.Add(ref mr, 4), m5 = Unsafe.Add(ref mr, 5),
-              m6 = Unsafe.Add(ref mr, 6), m7 = Unsafe.Add(ref mr, 7),
-              m8 = Unsafe.Add(ref mr, 8), m9 = Unsafe.Add(ref mr, 9),
-              m10 = Unsafe.Add(ref mr, 10), m11 = Unsafe.Add(ref mr, 11),
-              m12 = Unsafe.Add(ref mr, 12), m13 = Unsafe.Add(ref mr, 13),
-              m14 = Unsafe.Add(ref mr, 14), m15 = Unsafe.Add(ref mr, 15);
 
         // Load current hash state into 16 local working-vector variables.
-        // The JIT can allocate these in registers — unlike Span<ulong> which forces
-        // every element access through a bounds-checked memory dereference.
-        ref ulong sr = ref _state[0];
-        ulong v0 = sr, v1 = Unsafe.Add(ref sr, 1),
-              v2 = Unsafe.Add(ref sr, 2), v3 = Unsafe.Add(ref sr, 3),
-              v4 = Unsafe.Add(ref sr, 4), v5 = Unsafe.Add(ref sr, 5),
-              v6 = Unsafe.Add(ref sr, 6), v7 = Unsafe.Add(ref sr, 7);
+        // Pointer dereference — no bounds checks, no ref tracking overhead.
+        ulong v0 = state[0], v1 = state[1], v2 = state[2], v3 = state[3],
+              v4 = state[4], v5 = state[5], v6 = state[6], v7 = state[7];
 
         // IV constants
-        ulong v8 = IV[0], v9 = IV[1],
-              v10 = IV[2], v11 = IV[3],
-              v12 = IV[4] ^ _bytesCompressed,
-              v13 = IV[5],
-              v14 = isFinal ? ~IV[6] : IV[6],
-              v15 = IV[7];
-              
+        ulong v8 = IV[0], v9 = IV[1], v10 = IV[2], v11 = IV[3],
+              v12 = IV[4] ^ bytesCompressed, v13 = IV[5],
+              v14 = isFinal ? ~IV[6] : IV[6], v15 = IV[7];
+
+        ulong m0 = mr[0], m1 = mr[1], m2 = mr[2], m3 = mr[3],
+              m4 = mr[4], m5 = mr[5], m6 = mr[6], m7 = mr[7],
+              m8 = mr[8], m9 = mr[9], m10 = mr[10], m11 = mr[11],
+              m12 = mr[12], m13 = mr[13], m14 = mr[14], m15 = mr[15];
+
         bool step11and12 = false;
         while (true)
         {
@@ -472,15 +464,11 @@ public sealed partial class Blake2b : HashAlgorithm
             G(ref v2, ref v7, ref v8, ref v13, m3, m12); G(ref v3, ref v4, ref v9, ref v14, m13, m0);
         }
 
-        // Finalize: state[i] ^= v[i] ^ v[i+8] — bounds-check-free via Unsafe.Add
-        sr ^= v0 ^ v8;
-        Unsafe.Add(ref sr, 1) ^= v1 ^ v9;
-        Unsafe.Add(ref sr, 2) ^= v2 ^ v10;
-        Unsafe.Add(ref sr, 3) ^= v3 ^ v11;
-        Unsafe.Add(ref sr, 4) ^= v4 ^ v12;
-        Unsafe.Add(ref sr, 5) ^= v5 ^ v13;
-        Unsafe.Add(ref sr, 6) ^= v6 ^ v14;
-        Unsafe.Add(ref sr, 7) ^= v7 ^ v15;
+        // Finalize: state[i] ^= v[i] ^ v[i+8]
+        state[0] ^= v0 ^ v8; state[1] ^= v1 ^ v9;
+        state[2] ^= v2 ^ v10; state[3] ^= v3 ^ v11;
+        state[4] ^= v4 ^ v12; state[5] ^= v5 ^ v13;
+        state[6] ^= v6 ^ v14; state[7] ^= v7 ^ v15;
     }
 
     /// <summary>
@@ -500,12 +488,5 @@ public sealed partial class Blake2b : HashAlgorithm
             c = c + d;
             b = BitOperations.RotateRight(b ^ c, 63);
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private unsafe static bool IsAlignedForUlong<T>(ref T value) where T : unmanaged
-    {
-        void* p = Unsafe.AsPointer(ref value);
-        return (((nuint)p) & ((nuint)sizeof(ulong) - 1)) == 0;
     }
 }

@@ -69,6 +69,52 @@ internal static class BinarySpans
     }
 
     /// <summary>
+    /// Reads little-endian <see cref="UInt32"/> words from a byte pointer into a destination pointer.
+    /// </summary>
+    /// <param name="source">Pointer to the source bytes (at least <paramref name="count"/> × 4 bytes).</param>
+    /// <param name="destination">Pointer to the destination words.</param>
+    /// <param name="count">The number of 64-bit words to read.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void ReadUInt32LittleEndian(byte* source, uint* destination, int count)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            Unsafe.CopyBlockUnaligned(destination, source, (uint)(count * sizeof(uint)));
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
+            {
+                destination[i] = BinaryPrimitives.ReadUInt32LittleEndian(
+                    new ReadOnlySpan<byte>(source + i * sizeof(uint), sizeof(uint)));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reads little-endian <see cref="UInt64"/> words from a byte pointer into a destination pointer.
+    /// </summary>
+    /// <param name="source">Pointer to the source bytes (at least <paramref name="count"/> × 8 bytes).</param>
+    /// <param name="destination">Pointer to the destination words.</param>
+    /// <param name="count">The number of 64-bit words to read.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void ReadUInt64LittleEndian(byte* source, ulong* destination, int count)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            Unsafe.CopyBlockUnaligned(destination, source, (uint)(count * sizeof(ulong)));
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
+            {
+                destination[i] = BinaryPrimitives.ReadUInt64LittleEndian(
+                    new ReadOnlySpan<byte>(source + i * sizeof(ulong), sizeof(ulong)));
+            }
+        }
+    }
+
+    /// <summary>
     /// Writes <see cref="UInt32"/> words to a byte span in little-endian order.
     /// </summary>
     /// <param name="source">The source word span.</param>
