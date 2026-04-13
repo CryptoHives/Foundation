@@ -10,6 +10,7 @@ using System;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the BLAKE2b hash for the input data.
@@ -373,13 +374,23 @@ public sealed partial class Blake2b : HashAlgorithm
         // Load all 16 message words into locals — eliminates span bounds checks and
         // Sigma array indirections from the 12 fully-unrolled rounds below.
         Span<ulong> msgBuf = stackalloc ulong[ScratchSize];
-        BinarySpans.ReadUInt64LittleEndian(block, msgBuf);
         ref ulong mr = ref msgBuf[0];
-        ulong m0  = mr,                     m1  = Unsafe.Add(ref mr, 1),
-              m2  = Unsafe.Add(ref mr, 2),  m3  = Unsafe.Add(ref mr, 3),
-              m4  = Unsafe.Add(ref mr, 4),  m5  = Unsafe.Add(ref mr, 5),
-              m6  = Unsafe.Add(ref mr, 6),  m7  = Unsafe.Add(ref mr, 7),
-              m8  = Unsafe.Add(ref mr, 8),  m9  = Unsafe.Add(ref mr, 9),
+        ref byte br = ref MemoryMarshal.GetReference(block);
+        if (BitConverter.IsLittleEndian && IsAlignedForUlong(ref br))
+        {
+            mr = ref Unsafe.As<byte, ulong>(ref br);
+        }
+        else
+        {
+            // If the platform is big-endian, we need to reverse byte order and use the scratch buffer.
+            BinarySpans.ReadUInt64LittleEndian(block, msgBuf);
+        }
+
+        ulong m0 = mr, m1 = Unsafe.Add(ref mr, 1),
+              m2 = Unsafe.Add(ref mr, 2), m3 = Unsafe.Add(ref mr, 3),
+              m4 = Unsafe.Add(ref mr, 4), m5 = Unsafe.Add(ref mr, 5),
+              m6 = Unsafe.Add(ref mr, 6), m7 = Unsafe.Add(ref mr, 7),
+              m8 = Unsafe.Add(ref mr, 8), m9 = Unsafe.Add(ref mr, 9),
               m10 = Unsafe.Add(ref mr, 10), m11 = Unsafe.Add(ref mr, 11),
               m12 = Unsafe.Add(ref mr, 12), m13 = Unsafe.Add(ref mr, 13),
               m14 = Unsafe.Add(ref mr, 14), m15 = Unsafe.Add(ref mr, 15);
@@ -388,90 +399,88 @@ public sealed partial class Blake2b : HashAlgorithm
         // The JIT can allocate these in registers — unlike Span<ulong> which forces
         // every element access through a bounds-checked memory dereference.
         ref ulong sr = ref _state[0];
-        ulong v0  = sr,                     v1  = Unsafe.Add(ref sr, 1),
-              v2  = Unsafe.Add(ref sr, 2),  v3  = Unsafe.Add(ref sr, 3),
-              v4  = Unsafe.Add(ref sr, 4),  v5  = Unsafe.Add(ref sr, 5),
-              v6  = Unsafe.Add(ref sr, 6),  v7  = Unsafe.Add(ref sr, 7);
+        ulong v0 = sr, v1 = Unsafe.Add(ref sr, 1),
+              v2 = Unsafe.Add(ref sr, 2), v3 = Unsafe.Add(ref sr, 3),
+              v4 = Unsafe.Add(ref sr, 4), v5 = Unsafe.Add(ref sr, 5),
+              v6 = Unsafe.Add(ref sr, 6), v7 = Unsafe.Add(ref sr, 7);
 
         // IV constants
-        ulong v8  = IV[0], v9  = IV[1],
+        ulong v8 = IV[0], v9 = IV[1],
               v10 = IV[2], v11 = IV[3],
               v12 = IV[4] ^ _bytesCompressed,
               v13 = IV[5],
               v14 = isFinal ? ~IV[6] : IV[6],
               v15 = IV[7];
+              
+        bool step11and12 = false;
+        while (true)
+        {
+            // 10+2 rounds, fully unrolled — no loop counter, no Sigma table access at runtime.
+            // Round 0 — sigma: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+            G(ref v0, ref v4, ref v8, ref v12, m0, m1); G(ref v1, ref v5, ref v9, ref v13, m2, m3);
+            G(ref v2, ref v6, ref v10, ref v14, m4, m5); G(ref v3, ref v7, ref v11, ref v15, m6, m7);
+            G(ref v0, ref v5, ref v10, ref v15, m8, m9); G(ref v1, ref v6, ref v11, ref v12, m10, m11);
+            G(ref v2, ref v7, ref v8, ref v13, m12, m13); G(ref v3, ref v4, ref v9, ref v14, m14, m15);
+            // Round 1 — sigma: 14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3
+            G(ref v0, ref v4, ref v8, ref v12, m14, m10); G(ref v1, ref v5, ref v9, ref v13, m4, m8);
+            G(ref v2, ref v6, ref v10, ref v14, m9, m15); G(ref v3, ref v7, ref v11, ref v15, m13, m6);
+            G(ref v0, ref v5, ref v10, ref v15, m1, m12); G(ref v1, ref v6, ref v11, ref v12, m0, m2);
+            G(ref v2, ref v7, ref v8, ref v13, m11, m7); G(ref v3, ref v4, ref v9, ref v14, m5, m3);
 
-        // 10+2 rounds, fully unrolled — no loop counter, no Sigma table access at runtime.
-        // Round 0 — sigma: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-        G(ref v0, ref v4, ref v8,  ref v12, m0,  m1);  G(ref v1, ref v5, ref v9,  ref v13, m2,  m3);
-        G(ref v2, ref v6, ref v10, ref v14, m4,  m5);  G(ref v3, ref v7, ref v11, ref v15, m6,  m7);
-        G(ref v0, ref v5, ref v10, ref v15, m8,  m9);  G(ref v1, ref v6, ref v11, ref v12, m10, m11);
-        G(ref v2, ref v7, ref v8,  ref v13, m12, m13); G(ref v3, ref v4, ref v9,  ref v14, m14, m15);
-        // Round 1 — sigma: 14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3
-        G(ref v0, ref v4, ref v8,  ref v12, m14, m10); G(ref v1, ref v5, ref v9,  ref v13, m4,  m8);
-        G(ref v2, ref v6, ref v10, ref v14, m9,  m15); G(ref v3, ref v7, ref v11, ref v15, m13, m6);
-        G(ref v0, ref v5, ref v10, ref v15, m1,  m12); G(ref v1, ref v6, ref v11, ref v12, m0,  m2);
-        G(ref v2, ref v7, ref v8,  ref v13, m11, m7);  G(ref v3, ref v4, ref v9,  ref v14, m5,  m3);
-        // Round 2 — sigma: 11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4
-        G(ref v0, ref v4, ref v8,  ref v12, m11, m8);  G(ref v1, ref v5, ref v9,  ref v13, m12, m0);
-        G(ref v2, ref v6, ref v10, ref v14, m5,  m2);  G(ref v3, ref v7, ref v11, ref v15, m15, m13);
-        G(ref v0, ref v5, ref v10, ref v15, m10, m14); G(ref v1, ref v6, ref v11, ref v12, m3,  m6);
-        G(ref v2, ref v7, ref v8,  ref v13, m7,  m1);  G(ref v3, ref v4, ref v9,  ref v14, m9,  m4);
-        // Round 3 — sigma: 7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8
-        G(ref v0, ref v4, ref v8,  ref v12, m7,  m9);  G(ref v1, ref v5, ref v9,  ref v13, m3,  m1);
-        G(ref v2, ref v6, ref v10, ref v14, m13, m12); G(ref v3, ref v7, ref v11, ref v15, m11, m14);
-        G(ref v0, ref v5, ref v10, ref v15, m2,  m6);  G(ref v1, ref v6, ref v11, ref v12, m5,  m10);
-        G(ref v2, ref v7, ref v8,  ref v13, m4,  m0);  G(ref v3, ref v4, ref v9,  ref v14, m15, m8);
-        // Round 4 — sigma: 9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13
-        G(ref v0, ref v4, ref v8,  ref v12, m9,  m0);  G(ref v1, ref v5, ref v9,  ref v13, m5,  m7);
-        G(ref v2, ref v6, ref v10, ref v14, m2,  m4);  G(ref v3, ref v7, ref v11, ref v15, m10, m15);
-        G(ref v0, ref v5, ref v10, ref v15, m14, m1);  G(ref v1, ref v6, ref v11, ref v12, m11, m12);
-        G(ref v2, ref v7, ref v8,  ref v13, m6,  m8);  G(ref v3, ref v4, ref v9,  ref v14, m3,  m13);
-        // Round 5 — sigma: 2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9
-        G(ref v0, ref v4, ref v8,  ref v12, m2,  m12); G(ref v1, ref v5, ref v9,  ref v13, m6,  m10);
-        G(ref v2, ref v6, ref v10, ref v14, m0,  m11); G(ref v3, ref v7, ref v11, ref v15, m8,  m3);
-        G(ref v0, ref v5, ref v10, ref v15, m4,  m13); G(ref v1, ref v6, ref v11, ref v12, m7,  m5);
-        G(ref v2, ref v7, ref v8,  ref v13, m15, m14); G(ref v3, ref v4, ref v9,  ref v14, m1,  m9);
-        // Round 6 — sigma: 12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11
-        G(ref v0, ref v4, ref v8,  ref v12, m12, m5);  G(ref v1, ref v5, ref v9,  ref v13, m1,  m15);
-        G(ref v2, ref v6, ref v10, ref v14, m14, m13); G(ref v3, ref v7, ref v11, ref v15, m4,  m10);
-        G(ref v0, ref v5, ref v10, ref v15, m0,  m7);  G(ref v1, ref v6, ref v11, ref v12, m6,  m3);
-        G(ref v2, ref v7, ref v8,  ref v13, m9,  m2);  G(ref v3, ref v4, ref v9,  ref v14, m8,  m11);
-        // Round 7 — sigma: 13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10
-        G(ref v0, ref v4, ref v8,  ref v12, m13, m11); G(ref v1, ref v5, ref v9,  ref v13, m7,  m14);
-        G(ref v2, ref v6, ref v10, ref v14, m12, m1);  G(ref v3, ref v7, ref v11, ref v15, m3,  m9);
-        G(ref v0, ref v5, ref v10, ref v15, m5,  m0);  G(ref v1, ref v6, ref v11, ref v12, m15, m4);
-        G(ref v2, ref v7, ref v8,  ref v13, m8,  m6);  G(ref v3, ref v4, ref v9,  ref v14, m2,  m10);
-        // Round 8 — sigma: 6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5
-        G(ref v0, ref v4, ref v8,  ref v12, m6,  m15); G(ref v1, ref v5, ref v9,  ref v13, m14, m9);
-        G(ref v2, ref v6, ref v10, ref v14, m11, m3);  G(ref v3, ref v7, ref v11, ref v15, m0,  m8);
-        G(ref v0, ref v5, ref v10, ref v15, m12, m2);  G(ref v1, ref v6, ref v11, ref v12, m13, m7);
-        G(ref v2, ref v7, ref v8,  ref v13, m1,  m4);  G(ref v3, ref v4, ref v9,  ref v14, m10, m5);
-        // Round 9 — sigma: 10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0
-        G(ref v0, ref v4, ref v8,  ref v12, m10, m2);  G(ref v1, ref v5, ref v9,  ref v13, m8,  m4);
-        G(ref v2, ref v6, ref v10, ref v14, m7,  m6);  G(ref v3, ref v7, ref v11, ref v15, m1,  m5);
-        G(ref v0, ref v5, ref v10, ref v15, m15, m11); G(ref v1, ref v6, ref v11, ref v12, m9,  m14);
-        G(ref v2, ref v7, ref v8,  ref v13, m3,  m12); G(ref v3, ref v4, ref v9,  ref v14, m13, m0);
-        // Round 10 — (same as round 0)
-        G(ref v0, ref v4, ref v8,  ref v12, m0,  m1);  G(ref v1, ref v5, ref v9,  ref v13, m2,  m3);
-        G(ref v2, ref v6, ref v10, ref v14, m4,  m5);  G(ref v3, ref v7, ref v11, ref v15, m6,  m7);
-        G(ref v0, ref v5, ref v10, ref v15, m8,  m9);  G(ref v1, ref v6, ref v11, ref v12, m10, m11);
-        G(ref v2, ref v7, ref v8,  ref v13, m12, m13); G(ref v3, ref v4, ref v9,  ref v14, m14, m15);
-        // Round 11 — (same as round 1)
-        G(ref v0, ref v4, ref v8,  ref v12, m14, m10); G(ref v1, ref v5, ref v9,  ref v13, m4,  m8);
-        G(ref v2, ref v6, ref v10, ref v14, m9,  m15); G(ref v3, ref v7, ref v11, ref v15, m13, m6);
-        G(ref v0, ref v5, ref v10, ref v15, m1,  m12); G(ref v1, ref v6, ref v11, ref v12, m0,  m2);
-        G(ref v2, ref v7, ref v8,  ref v13, m11, m7);  G(ref v3, ref v4, ref v9,  ref v14, m5,  m3);
+            if (step11and12) break;
+            step11and12 = true;
+
+            // Round 2 — sigma: 11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4
+            G(ref v0, ref v4, ref v8, ref v12, m11, m8); G(ref v1, ref v5, ref v9, ref v13, m12, m0);
+            G(ref v2, ref v6, ref v10, ref v14, m5, m2); G(ref v3, ref v7, ref v11, ref v15, m15, m13);
+            G(ref v0, ref v5, ref v10, ref v15, m10, m14); G(ref v1, ref v6, ref v11, ref v12, m3, m6);
+            G(ref v2, ref v7, ref v8, ref v13, m7, m1); G(ref v3, ref v4, ref v9, ref v14, m9, m4);
+            // Round 3 — sigma: 7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8
+            G(ref v0, ref v4, ref v8, ref v12, m7, m9); G(ref v1, ref v5, ref v9, ref v13, m3, m1);
+            G(ref v2, ref v6, ref v10, ref v14, m13, m12); G(ref v3, ref v7, ref v11, ref v15, m11, m14);
+            G(ref v0, ref v5, ref v10, ref v15, m2, m6); G(ref v1, ref v6, ref v11, ref v12, m5, m10);
+            G(ref v2, ref v7, ref v8, ref v13, m4, m0); G(ref v3, ref v4, ref v9, ref v14, m15, m8);
+            // Round 4 — sigma: 9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13
+            G(ref v0, ref v4, ref v8, ref v12, m9, m0); G(ref v1, ref v5, ref v9, ref v13, m5, m7);
+            G(ref v2, ref v6, ref v10, ref v14, m2, m4); G(ref v3, ref v7, ref v11, ref v15, m10, m15);
+            G(ref v0, ref v5, ref v10, ref v15, m14, m1); G(ref v1, ref v6, ref v11, ref v12, m11, m12);
+            G(ref v2, ref v7, ref v8, ref v13, m6, m8); G(ref v3, ref v4, ref v9, ref v14, m3, m13);
+            // Round 5 — sigma: 2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9
+            G(ref v0, ref v4, ref v8, ref v12, m2, m12); G(ref v1, ref v5, ref v9, ref v13, m6, m10);
+            G(ref v2, ref v6, ref v10, ref v14, m0, m11); G(ref v3, ref v7, ref v11, ref v15, m8, m3);
+            G(ref v0, ref v5, ref v10, ref v15, m4, m13); G(ref v1, ref v6, ref v11, ref v12, m7, m5);
+            G(ref v2, ref v7, ref v8, ref v13, m15, m14); G(ref v3, ref v4, ref v9, ref v14, m1, m9);
+            // Round 6 — sigma: 12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11
+            G(ref v0, ref v4, ref v8, ref v12, m12, m5); G(ref v1, ref v5, ref v9, ref v13, m1, m15);
+            G(ref v2, ref v6, ref v10, ref v14, m14, m13); G(ref v3, ref v7, ref v11, ref v15, m4, m10);
+            G(ref v0, ref v5, ref v10, ref v15, m0, m7); G(ref v1, ref v6, ref v11, ref v12, m6, m3);
+            G(ref v2, ref v7, ref v8, ref v13, m9, m2); G(ref v3, ref v4, ref v9, ref v14, m8, m11);
+            // Round 7 — sigma: 13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10
+            G(ref v0, ref v4, ref v8, ref v12, m13, m11); G(ref v1, ref v5, ref v9, ref v13, m7, m14);
+            G(ref v2, ref v6, ref v10, ref v14, m12, m1); G(ref v3, ref v7, ref v11, ref v15, m3, m9);
+            G(ref v0, ref v5, ref v10, ref v15, m5, m0); G(ref v1, ref v6, ref v11, ref v12, m15, m4);
+            G(ref v2, ref v7, ref v8, ref v13, m8, m6); G(ref v3, ref v4, ref v9, ref v14, m2, m10);
+            // Round 8 — sigma: 6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5
+            G(ref v0, ref v4, ref v8, ref v12, m6, m15); G(ref v1, ref v5, ref v9, ref v13, m14, m9);
+            G(ref v2, ref v6, ref v10, ref v14, m11, m3); G(ref v3, ref v7, ref v11, ref v15, m0, m8);
+            G(ref v0, ref v5, ref v10, ref v15, m12, m2); G(ref v1, ref v6, ref v11, ref v12, m13, m7);
+            G(ref v2, ref v7, ref v8, ref v13, m1, m4); G(ref v3, ref v4, ref v9, ref v14, m10, m5);
+            // Round 9 — sigma: 10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0
+            G(ref v0, ref v4, ref v8, ref v12, m10, m2); G(ref v1, ref v5, ref v9, ref v13, m8, m4);
+            G(ref v2, ref v6, ref v10, ref v14, m7, m6); G(ref v3, ref v7, ref v11, ref v15, m1, m5);
+            G(ref v0, ref v5, ref v10, ref v15, m15, m11); G(ref v1, ref v6, ref v11, ref v12, m9, m14);
+            G(ref v2, ref v7, ref v8, ref v13, m3, m12); G(ref v3, ref v4, ref v9, ref v14, m13, m0);
+        }
 
         // Finalize: state[i] ^= v[i] ^ v[i+8] — bounds-check-free via Unsafe.Add
-        sr                      ^= v0 ^ v8;
-        Unsafe.Add(ref sr, 1)   ^= v1 ^ v9;
-        Unsafe.Add(ref sr, 2)   ^= v2 ^ v10;
-        Unsafe.Add(ref sr, 3)   ^= v3 ^ v11;
-        Unsafe.Add(ref sr, 4)   ^= v4 ^ v12;
-        Unsafe.Add(ref sr, 5)   ^= v5 ^ v13;
-        Unsafe.Add(ref sr, 6)   ^= v6 ^ v14;
-        Unsafe.Add(ref sr, 7)   ^= v7 ^ v15;
+        sr ^= v0 ^ v8;
+        Unsafe.Add(ref sr, 1) ^= v1 ^ v9;
+        Unsafe.Add(ref sr, 2) ^= v2 ^ v10;
+        Unsafe.Add(ref sr, 3) ^= v3 ^ v11;
+        Unsafe.Add(ref sr, 4) ^= v4 ^ v12;
+        Unsafe.Add(ref sr, 5) ^= v5 ^ v13;
+        Unsafe.Add(ref sr, 6) ^= v6 ^ v14;
+        Unsafe.Add(ref sr, 7) ^= v7 ^ v15;
     }
 
     /// <summary>
@@ -491,5 +500,12 @@ public sealed partial class Blake2b : HashAlgorithm
             c = c + d;
             b = BitOperations.RotateRight(b ^ c, 63);
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private unsafe static bool IsAlignedForUlong<T>(ref T value) where T : unmanaged
+    {
+        void* p = Unsafe.AsPointer(ref value);
+        return (((nuint)p) & ((nuint)sizeof(ulong) - 1)) == 0;
     }
 }
