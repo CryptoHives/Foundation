@@ -59,7 +59,9 @@ public sealed partial class Blake2b : HashAlgorithm
         {
             SimdSupport support = SimdSupport.None;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+#if EXPERIMENTAL
             if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+#endif
             return support;
         }
     }
