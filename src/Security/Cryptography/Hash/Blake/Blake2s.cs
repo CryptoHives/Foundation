@@ -258,8 +258,8 @@ public sealed partial class Blake2s : HashAlgorithm
         {
             CompressNeon(msgPtr, state, _bytesCompressed, isFinal);
         }
-        else
 #endif
+        else
 #endif
         {
             CompressScalar(msgPtr, state, _bytesCompressed, isFinal);

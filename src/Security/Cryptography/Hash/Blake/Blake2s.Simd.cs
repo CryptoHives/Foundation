@@ -48,7 +48,7 @@ public sealed partial class Blake2s
 #if EXPERIMENTAL
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Sse2.IsSupported) support |= SimdSupport.Sse2;
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+            if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
 #endif
             return support;
         }
