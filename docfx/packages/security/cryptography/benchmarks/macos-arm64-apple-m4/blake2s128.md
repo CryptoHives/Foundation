@@ -1,25 +1,25 @@
-﻿| Description                                       | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|-------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 128B         |     196.3 ns |     0.11 ns |     0.10 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Neon) | 128B         |     351.6 ns |     0.06 ns |     0.05 ns |         - |
-| TryComputeHash · BLAKE2s-128 · Managed            | 128B         |     638.4 ns |     2.20 ns |     2.06 ns |         - |
-|                                                   |              |              |             |             |           |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 137B         |     284.9 ns |     0.41 ns |     0.38 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Neon) | 137B         |     529.2 ns |     0.65 ns |     0.61 ns |         - |
-| TryComputeHash · BLAKE2s-128 · Managed            | 137B         |     954.6 ns |     5.61 ns |     5.24 ns |         - |
-|                                                   |              |              |             |             |           |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 1KB          |   1,450.7 ns |     1.67 ns |     1.56 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Neon) | 1KB          |   2,782.0 ns |     0.46 ns |     0.41 ns |         - |
-| TryComputeHash · BLAKE2s-128 · Managed            | 1KB          |   5,046.4 ns |    17.74 ns |    16.59 ns |         - |
-|                                                   |              |              |             |             |           |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 1025B        |   1,542.9 ns |     2.03 ns |     1.90 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Neon) | 1025B        |   2,955.0 ns |     0.56 ns |     0.50 ns |         - |
-| TryComputeHash · BLAKE2s-128 · Managed            | 1025B        |   5,370.2 ns |    12.82 ns |    11.99 ns |         - |
-|                                                   |              |              |             |             |           |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 8KB          |  11,482.9 ns |    11.26 ns |    10.53 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Neon) | 8KB          |  22,202.1 ns |     5.10 ns |     4.26 ns |         - |
-| TryComputeHash · BLAKE2s-128 · Managed            | 8KB          |  40,334.1 ns |   128.89 ns |   120.56 ns |         - |
-|                                                   |              |              |             |             |           |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 128KB        | 183,323.1 ns |   183.99 ns |   172.11 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Neon) | 128KB        | 355,162.0 ns |    44.43 ns |    39.38 ns |         - |
-| TryComputeHash · BLAKE2s-128 · Managed            | 128KB        | 645,318.7 ns | 3,331.70 ns | 3,116.48 ns |         - |
+﻿| Description                                             | TestDataSize | Mean         | Error     | StdDev    | Allocated |
+|-------------------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
+| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Blake2Fast) | 128B         |     141.6 ns |   0.10 ns |   0.10 ns |         - |
+| TryComputeHash · BLAKE2s-128 · Managed                  | 128B         |     163.0 ns |   0.18 ns |   0.16 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle             | 128B         |     197.2 ns |   0.17 ns |   0.15 ns |         - |
+|                                                         |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Blake2Fast) | 137B         |     211.0 ns |   0.15 ns |   0.14 ns |         - |
+| TryComputeHash · BLAKE2s-128 · Managed                  | 137B         |     240.8 ns |   0.19 ns |   0.18 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle             | 137B         |     286.9 ns |   0.35 ns |   0.33 ns |         - |
+|                                                         |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Blake2Fast) | 1KB          |   1,099.1 ns |   0.93 ns |   0.87 ns |         - |
+| TryComputeHash · BLAKE2s-128 · Managed                  | 1KB          |   1,260.3 ns |   1.36 ns |   1.27 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle             | 1KB          |   1,466.1 ns |   7.51 ns |   6.65 ns |         - |
+|                                                         |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Blake2Fast) | 1025B        |   1,167.9 ns |   2.52 ns |   2.10 ns |         - |
+| TryComputeHash · BLAKE2s-128 · Managed                  | 1025B        |   1,337.3 ns |   3.42 ns |   3.20 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle             | 1025B        |   1,555.2 ns |   9.55 ns |   7.98 ns |         - |
+|                                                         |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Blake2Fast) | 8KB          |   8,752.9 ns |  32.72 ns |  25.55 ns |         - |
+| TryComputeHash · BLAKE2s-128 · Managed                  | 8KB          |  10,038.7 ns |  13.31 ns |  12.45 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle             | 8KB          |  11,606.8 ns |  57.33 ns |  50.82 ns |         - |
+|                                                         |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · BLAKE2s-128 (Blake2Fast) | 128KB        | 139,323.4 ns | 137.47 ns | 114.80 ns |         - |
+| TryComputeHash · BLAKE2s-128 · Managed                  | 128KB        | 160,579.6 ns | 388.04 ns | 324.03 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle             | 128KB        | 184,633.6 ns | 747.44 ns | 624.15 ns |         - |

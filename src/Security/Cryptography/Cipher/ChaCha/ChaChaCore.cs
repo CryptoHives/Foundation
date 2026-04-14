@@ -121,17 +121,14 @@ internal readonly partial struct ChaChaCore
         if ((_simdSupport & SimdSupport.Avx2) != 0)
         {
             TransformAvx2(key, nonce, counter, input, output);
-            return;
         }
         else if ((_simdSupport & SimdSupport.Ssse3) != 0)
         {
             TransformSsse3(key, nonce, counter, input, output);
-            return;
         }
         else if ((_simdSupport & SimdSupport.Neon) != 0)
         {
             TransformNeon(key, nonce, counter, input, output);
-            return;
         }
         else
 #endif

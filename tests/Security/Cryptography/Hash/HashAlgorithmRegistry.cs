@@ -53,7 +53,9 @@ public static class HashAlgorithmRegistry
         /// <summary>Native implementation.</summary>
         Native,
         /// <summary>Konscious.Security.Cryptography implementation.</summary>
-        Konscious
+        Konscious,
+        /// <summary>SauceControl.Blake2Fast implementation.</summary>
+        Blake2Fast
     }
 
     /// <summary>
@@ -472,6 +474,8 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-512", "Konscious", 512,
             () => new KonsciousBlake2Adapter(512), Source.Konscious));
 #endif
+        list.Add(new("BLAKE2b-512", "Blake2Fast", 512,
+            () => Blake2FastAdapter.CreateBlake2b(512), Source.Blake2Fast));
 
         // BLAKE2b-256
         if ((blake2bSimd & CHRoot.SimdSupport.Avx2) != 0)
@@ -495,6 +499,8 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2b-256", "Konscious", 256,
             () => new KonsciousBlake2Adapter(256), Source.Konscious));
 #endif
+        list.Add(new("BLAKE2b-256", "Blake2Fast", 256,
+            () => Blake2FastAdapter.CreateBlake2b(256), Source.Blake2Fast));
 
         // BLAKE2s-256
         var blake2sSimd = CH.Blake2s.SimdSupport;
@@ -522,6 +528,8 @@ public static class HashAlgorithmRegistry
             () => CH.Blake2s.Create(CHRoot.SimdSupport.None, 32), Source.Managed));
         list.Add(new("BLAKE2s-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(256)), Source.BouncyCastle));
+        list.Add(new("BLAKE2s-256", "Blake2Fast", 256,
+            () => Blake2FastAdapter.CreateBlake2s(256), Source.Blake2Fast));
 
         // BLAKE2s-128
         if ((blake2sSimd & CHRoot.SimdSupport.Avx2) != 0)
@@ -548,6 +556,8 @@ public static class HashAlgorithmRegistry
             () => CH.Blake2s.Create(CHRoot.SimdSupport.None, 16), Source.Managed));
         list.Add(new("BLAKE2s-128", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(128)), Source.BouncyCastle));
+        list.Add(new("BLAKE2s-128", "Blake2Fast", 128,
+            () => Blake2FastAdapter.CreateBlake2s(128), Source.Blake2Fast));
     }
 
     #endregion

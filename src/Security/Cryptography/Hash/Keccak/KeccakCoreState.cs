@@ -402,7 +402,7 @@ internal unsafe struct KeccakCoreState
     /// <summary>
     /// Performs 64-bit rotation using AVX2 shift and OR operations.
     /// </summary>
-    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "Caller uses always constants.")]
+    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "False negative due to bug in .NET 8 runtime metadata.")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, byte offset)
     {
