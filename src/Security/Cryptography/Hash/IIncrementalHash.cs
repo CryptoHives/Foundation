@@ -79,18 +79,7 @@ public interface IIncrementalHash : IDisposable
     /// </remarks>
     /// <inheritdoc cref="Append{T}(ReadOnlySpan{T})" path="/exception"/>
     void Append<T>(ReadOnlySequence<T> input) where T : struct;
-#if mist
-    /// <summary>
-    /// Appends the bytes of a single <paramref name="input"/> value to the hash state.
-    /// </summary>
-    /// <typeparam name="T">
-    /// The value type. Must not contain any reference-type fields.
-    /// </typeparam>
-    /// <param name="input">The value whose memory representation is to be appended.</param>
-    /// <inheritdoc cref="Append{T}(ReadOnlySpan{T})" path="/remarks"/>
-    /// <inheritdoc cref="Append{T}(ReadOnlySpan{T})" path="/exception"/>
-    // void Append<T>(T input) where T : struct;
-#endif
+
     /// <summary>
     /// Copies the current hash digest into <paramref name="destination"/> without
     /// resetting the accumulated state.

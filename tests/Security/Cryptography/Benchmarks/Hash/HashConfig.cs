@@ -101,7 +101,7 @@ public class HashConfig : ManualConfig
                 return "Ssse3";
             if (name.EndsWith("(Managed)", StringComparison.InvariantCultureIgnoreCase) ||
                 name.EndsWith("(CryptoHives)", StringComparison.InvariantCultureIgnoreCase))
-                return "Managed";
+                return "CryptoHives-Scalar";
             if (name.EndsWith("(HashifyNET)", StringComparison.InvariantCultureIgnoreCase))
                 return "Hashify .NET";
             if (name.EndsWith("(BouncyCastle)", StringComparison.InvariantCultureIgnoreCase))
@@ -134,9 +134,9 @@ public class HashConfig : ManualConfig
 
         public string GetHighlightGroupKey(BenchmarkCase benchmarkCase)
         {
-            // Highlight CryptoHives "Managed" implementations
+            // Highlight CryptoHives "CryptoHives-Scalar" implementations
             var hashAlgorithm = benchmarkCase.Parameters["TestHashAlgorithm"] as HashAlgorithmType;
-            return hashAlgorithm?.Name.EndsWith("_Managed", StringComparison.Ordinal) == true ? "Managed" : null!;
+            return hashAlgorithm?.Name.EndsWith("_Managed", StringComparison.Ordinal) == true ? "CryptoHives-Scalar" : null!;
         }
 
         public string GetLogicalGroupKey(ImmutableArray<BenchmarkCase> allBenchmarksCases, BenchmarkCase benchmarkCase)

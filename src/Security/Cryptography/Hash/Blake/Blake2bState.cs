@@ -101,21 +101,6 @@ internal unsafe partial struct Blake2bState : IIncrementalHash
         }
     }
 
-#if TODO
-    /// <inheritdoc/>
-    public void Append<T>(T input) where T : struct
-    {
-        if (_bufferLength > BlockSizeBytes - (uint)sizeof(T))
-        {
-            Append(new ReadOnlySpan<byte>(&input, sizeof(T)));
-            return;
-        }
-
-        Unsafe.WriteUnaligned(ref _buffer[_bufferLength], input);
-        _bufferLength += (uint)sizeof(T);
-    }
-#endif
-
     /// <inheritdoc/>
     public bool TryGetCurrentHash(Span<byte> destination, out int bytesWritten)
     {
