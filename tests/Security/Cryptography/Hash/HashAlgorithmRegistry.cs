@@ -26,13 +26,6 @@ using CHRoot = CryptoHives.Foundation.Security.Cryptography;
 /// </remarks>
 public static class HashAlgorithmRegistry
 {
-    private static readonly (CHRoot.SimdSupport Flag, string VariantName)[] KeccakSimdVariants =
-    [
-        (CHRoot.SimdSupport.Avx512F, "AVX512F"),
-        (CHRoot.SimdSupport.Avx2, "AVX2"),
-        (CHRoot.SimdSupport.Ssse3, "SSSE3")
-    ];
-
     /// <summary>
     /// Implementation source type.
     /// </summary>
@@ -377,8 +370,9 @@ public static class HashAlgorithmRegistry
         }
 #endif
 
-        foreach (var (flag, variantName) in KeccakSimdVariants)
+        foreach (var flag in GetSimdVariantFlags(simdSupport))
         {
+            string variantName = GetSimdVariantName(flag);
             if ((simdSupport & flag) != 0)
             {
                 list.Add(new(family, variantName, hashSizeBits,
@@ -395,6 +389,53 @@ public static class HashAlgorithmRegistry
             list.Add(new(family, "BouncyCastle", hashSizeBits,
                 () => new BouncyCastleHashAdapter(bcFactory()), Source.BouncyCastle));
         }
+    }
+
+    private static void AddSimdVariants(
+        List<HashImplementation> list,
+        string family,
+        int hashSizeBits,
+        CHRoot.SimdSupport simdSupport,
+        Func<CHRoot.SimdSupport, HashAlgorithm> factory)
+    {
+        foreach (var flag in GetSimdVariantFlags(simdSupport))
+        {
+            if ((simdSupport & flag) != 0)
+            {
+                string variantName = GetSimdVariantName(flag);
+                list.Add(new(family, variantName, hashSizeBits,
+                    () => factory(flag), Source.Simd,
+                    () => (simdSupport & flag) != 0));
+            }
+        }
+
+        list.Add(new(family, "Managed", hashSizeBits,
+            () => factory(CHRoot.SimdSupport.None), Source.Managed));
+    }
+
+    private static IEnumerable<CHRoot.SimdSupport> GetSimdVariantFlags(CHRoot.SimdSupport simdSupport)
+    {
+        return Enum.GetValues<CHRoot.SimdSupport>()
+            .Where(IsSingleBitSimdFlag)
+            .Where(flag => (simdSupport & flag) != 0)
+            .OrderByDescending(flag => (int)flag);
+    }
+
+    private static bool IsSingleBitSimdFlag(CHRoot.SimdSupport flag)
+    {
+        int value = (int)flag;
+        return value != 0 && (value & (value - 1)) == 0;
+    }
+
+    private static string GetSimdVariantName(CHRoot.SimdSupport flag)
+    {
+        return flag switch {
+            CHRoot.SimdSupport.Sse2 => "SSE2",
+            CHRoot.SimdSupport.Ssse3 => "SSSE3",
+            CHRoot.SimdSupport.Avx2 => "AVX2",
+            CHRoot.SimdSupport.Avx512F => "AVX512F",
+            _ => flag.ToString()
+        };
     }
 
     #endregion
@@ -453,18 +494,8 @@ public static class HashAlgorithmRegistry
     {
         // BLAKE2b-512
         var blake2bSimd = CH.Blake2b.SimdSupport;
-        if ((blake2bSimd & CHRoot.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new("BLAKE2b-512", "AVX2", 512,
-                () => CH.Blake2b.Create(CHRoot.SimdSupport.Avx2, 64), Source.Simd));
-        }
-        if ((blake2bSimd & CHRoot.SimdSupport.Neon) != 0)
-        {
-            list.Add(new("BLAKE2b-512", "Neon", 512,
-                () => CH.Blake2b.Create(CHRoot.SimdSupport.Neon, 64), Source.Simd));
-        }
-        list.Add(new("BLAKE2b-512", "Managed", 512,
-            () => CH.Blake2b.Create(CHRoot.SimdSupport.None, 64), Source.Managed));
+        AddSimdVariants(list, "BLAKE2b-512", 512, blake2bSimd,
+            s => CH.Blake2b.Create(s, 64));
         list.Add(new("BLAKE2b-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(512)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
@@ -478,18 +509,8 @@ public static class HashAlgorithmRegistry
             () => Blake2FastAdapter.CreateBlake2b(512), Source.Blake2Fast));
 
         // BLAKE2b-256
-        if ((blake2bSimd & CHRoot.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new("BLAKE2b-256", "AVX2", 256,
-                () => CH.Blake2b.Create(CHRoot.SimdSupport.Avx2, 32), Source.Simd));
-        }
-        if ((blake2bSimd & CHRoot.SimdSupport.Neon) != 0)
-        {
-            list.Add(new("BLAKE2b-256", "Neon", 256,
-                () => CH.Blake2b.Create(CHRoot.SimdSupport.Neon, 32), Source.Simd));
-        }
-        list.Add(new("BLAKE2b-256", "Managed", 256,
-            () => CH.Blake2b.Create(CHRoot.SimdSupport.None, 32), Source.Managed));
+        AddSimdVariants(list, "BLAKE2b-256", 256, blake2bSimd,
+            s => CH.Blake2b.Create(s, 32));
         list.Add(new("BLAKE2b-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
@@ -504,56 +525,16 @@ public static class HashAlgorithmRegistry
 
         // BLAKE2s-256
         var blake2sSimd = CH.Blake2s.SimdSupport;
-        if ((blake2sSimd & CHRoot.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new("BLAKE2s-256", "AVX2", 256,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Avx2, 32), Source.Simd));
-        }
-        if ((blake2sSimd & CHRoot.SimdSupport.Ssse3) != 0)
-        {
-            list.Add(new("BLAKE2s-256", "SSSE3", 256,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Ssse3, 32), Source.Simd));
-        }
-        if ((blake2sSimd & CHRoot.SimdSupport.Sse2) != 0)
-        {
-            list.Add(new("BLAKE2s-256", "SSE2", 256,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Sse2, 32), Source.Simd));
-        }
-        if ((blake2sSimd & CHRoot.SimdSupport.Neon) != 0)
-        {
-            list.Add(new("BLAKE2s-256", "Neon", 256,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Neon, 32), Source.Simd));
-        }
-        list.Add(new("BLAKE2s-256", "Managed", 256,
-            () => CH.Blake2s.Create(CHRoot.SimdSupport.None, 32), Source.Managed));
+        AddSimdVariants(list, "BLAKE2s-256", 256, blake2sSimd,
+            s => CH.Blake2s.Create(s, 32));
         list.Add(new("BLAKE2s-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2s-256", "Blake2Fast", 256,
             () => Blake2FastAdapter.CreateBlake2s(256), Source.Blake2Fast));
 
         // BLAKE2s-128
-        if ((blake2sSimd & CHRoot.SimdSupport.Avx2) != 0)
-        {
-            list.Add(new("BLAKE2s-128", "AVX2", 128,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Avx2, 16), Source.Simd));
-        }
-        if ((blake2sSimd & CHRoot.SimdSupport.Ssse3) != 0)
-        {
-            list.Add(new("BLAKE2s-128", "SSSE3", 128,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Ssse3, 16), Source.Simd));
-        }
-        if ((blake2sSimd & CHRoot.SimdSupport.Sse2) != 0)
-        {
-            list.Add(new("BLAKE2s-128", "SSE2", 128,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Sse2, 16), Source.Simd));
-        }
-        if ((blake2sSimd & CHRoot.SimdSupport.Neon) != 0)
-        {
-            list.Add(new("BLAKE2s-128", "Neon", 128,
-                () => CH.Blake2s.Create(CHRoot.SimdSupport.Neon, 16), Source.Simd));
-        }
-        list.Add(new("BLAKE2s-128", "Managed", 128,
-            () => CH.Blake2s.Create(CHRoot.SimdSupport.None, 16), Source.Managed));
+        AddSimdVariants(list, "BLAKE2s-128", 128, blake2sSimd,
+            s => CH.Blake2s.Create(s, 16));
         list.Add(new("BLAKE2s-128", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(128)), Source.BouncyCastle));
         list.Add(new("BLAKE2s-128", "Blake2Fast", 128,
@@ -567,17 +548,8 @@ public static class HashAlgorithmRegistry
     private static void AddBlake3(List<HashImplementation> list)
     {
         var blake3Simd = CH.Blake3.SimdSupport;
-        if ((blake3Simd & CHRoot.SimdSupport.Ssse3) != 0)
-        {
-            list.Add(new HashImplementation("BLAKE3", "SSSE3", 256,
-                () => CH.Blake3.Create(CHRoot.SimdSupport.Ssse3, 32), Source.Simd));
-        }
-        if ((blake3Simd & CHRoot.SimdSupport.Neon) != 0)
-        {
-            list.Add(new HashImplementation("BLAKE3", "Neon", 256,
-                () => CH.Blake3.Create(CHRoot.SimdSupport.Neon, 32), Source.Simd));
-        }
-        list.Add(new HashImplementation("BLAKE3", "Managed", 256, () => CH.Blake3.Create(CHRoot.SimdSupport.None, 32), Source.Managed));
+        AddSimdVariants(list, "BLAKE3", 256, blake3Simd,
+            s => CH.Blake3.Create(s, 32));
         list.Add(new("BLAKE3", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake3Digest(256)), Source.BouncyCastle));
 

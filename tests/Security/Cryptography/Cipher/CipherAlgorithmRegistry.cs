@@ -268,6 +268,97 @@ public static class CipherAlgorithmRegistry
         return implementations;
     }
 
+    private static IEnumerable<CH.SimdSupport> GetSimdVariantFlags(CH.SimdSupport simdSupport)
+    {
+        return Enum.GetValues<CH.SimdSupport>()
+            .Where(IsSingleBitSimdFlag)
+            .Where(flag => (simdSupport & flag) != 0)
+            .OrderByDescending(flag => (int)flag);
+    }
+
+    private static bool IsSingleBitSimdFlag(CH.SimdSupport flag)
+    {
+        int value = (int)flag;
+        return value != 0 && (value & (value - 1)) == 0;
+    }
+
+    private static string GetSimdVariantName(CH.SimdSupport flag)
+    {
+        return flag switch {
+            CH.SimdSupport.Sse2 => "SSE2",
+            CH.SimdSupport.Ssse3 => "SSSE3",
+            CH.SimdSupport.Avx2 => "AVX2",
+            CH.SimdSupport.Avx512F => "AVX512F",
+            CH.SimdSupport.AesNi => "AES-NI",
+            CH.SimdSupport.PClMul => "PClMul",
+            CH.SimdSupport.PClMulV256 => "PClMulV256",
+            CH.SimdSupport.ArmAes => "ArmAes",
+            CH.SimdSupport.ArmPmull => "ArmPmull",
+            CH.SimdSupport.ArmSha256 => "ArmSha256",
+            _ => flag.ToString()
+        };
+    }
+
+    private static void AddSimdAndManagedVariants(
+        List<CipherImplementation> implementations,
+        string family,
+        int keySizeBits,
+        Mode mode,
+        CH.SimdSupport simdSupport,
+        Func<CH.SimdSupport, object> factory,
+        Func<CH.SimdSupport, CH.SimdSupport>? simdMaskSelector = null)
+    {
+        foreach (var flag in GetSimdVariantFlags(simdSupport))
+        {
+            var selectedMask = simdMaskSelector?.Invoke(flag) ?? flag;
+            implementations.Add(new CipherImplementation(
+                family,
+                GetSimdVariantName(flag),
+                keySizeBits,
+                mode,
+                () => factory(selectedMask),
+                Source.Simd));
+        }
+
+        implementations.Add(new CipherImplementation(
+            family,
+            "Managed",
+            keySizeBits,
+            mode,
+            () => factory(CH.SimdSupport.None),
+            Source.Managed));
+    }
+
+    private static void AddSimdAndManagedVariants(
+        List<CipherImplementation> implementations,
+        string family,
+        int keySizeBits,
+        Mode mode,
+        CH.SimdSupport simdSupport,
+        Func<byte[], CH.SimdSupport, object> factory,
+        Func<CH.SimdSupport, CH.SimdSupport>? simdMaskSelector = null)
+    {
+        foreach (var flag in GetSimdVariantFlags(simdSupport))
+        {
+            var selectedMask = simdMaskSelector?.Invoke(flag) ?? flag;
+            implementations.Add(new CipherImplementation(
+                family,
+                GetSimdVariantName(flag),
+                keySizeBits,
+                mode,
+                (byte[] key) => factory(key, selectedMask),
+                Source.Simd));
+        }
+
+        implementations.Add(new CipherImplementation(
+            family,
+            "Managed",
+            keySizeBits,
+            mode,
+            (byte[] key) => factory(key, CH.SimdSupport.None),
+            Source.Managed));
+    }
+
     private static void AddAesImplementations(List<CipherImplementation> implementations)
     {
         var aesSimd = CH.Cipher.AesGcm128.SimdSupport;
@@ -580,40 +671,16 @@ public static class CipherAlgorithmRegistry
                 tagSizeBits: 128,
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
-
+
+
         var ccmSimd = CH.Cipher.AesCcm128.SimdSupport;
-        // AES-128-CCM - AES-NI
-        if ((ccmSimd & CH.SimdSupport.AesNi) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-128-CCM",
-                "AES-NI",
-                128,
-                Mode.CCM,
-                (byte[] key) => CH.Cipher.AesCcm128.Create(CH.SimdSupport.AesNi, key),
-                Source.Simd));
-        }
-
-        // AES-128-CCM - ArmAes
-        if ((ccmSimd & CH.SimdSupport.ArmAes) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-128-CCM",
-                "ArmAes",
-                128,
-                Mode.CCM,
-                (byte[] key) => CH.Cipher.AesCcm128.Create(CH.SimdSupport.ArmAes, key),
-                Source.Simd));
-        }
-
-        // AES-128-CCM - Managed
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "AES-128-CCM",
-            "Managed",
             128,
             Mode.CCM,
-            (byte[] key) => CH.Cipher.AesCcm128.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            ccmSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.ArmAes),
+            (key, support) => CH.Cipher.AesCcm128.Create(support, key));
 
         // AES-128-CCM - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -628,38 +695,13 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // AES-192-CCM - AES-NI
-        if ((ccmSimd & CH.SimdSupport.AesNi) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-192-CCM",
-                "AES-NI",
-                192,
-                Mode.CCM,
-                (byte[] key) => CH.Cipher.AesCcm192.Create(CH.SimdSupport.AesNi, key),
-                Source.Simd));
-        }
-
-        // AES-192-CCM - ArmAes
-        if ((ccmSimd & CH.SimdSupport.ArmAes) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-192-CCM",
-                "ArmAes",
-                192,
-                Mode.CCM,
-                (byte[] key) => CH.Cipher.AesCcm192.Create(CH.SimdSupport.ArmAes, key),
-                Source.Simd));
-        }
-
-        // AES-192-CCM - Managed
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "AES-192-CCM",
-            "Managed",
             192,
             Mode.CCM,
-            (byte[] key) => CH.Cipher.AesCcm192.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            ccmSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.ArmAes),
+            (key, support) => CH.Cipher.AesCcm192.Create(support, key));
 
         // AES-192-CCM - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -674,38 +716,13 @@ public static class CipherAlgorithmRegistry
                 nonceSizeBytes: 12),
             Source.BouncyCastle));
 
-        // AES-256-CCM - AES-NI
-        if ((ccmSimd & CH.SimdSupport.AesNi) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-256-CCM",
-                "AES-NI",
-                256,
-                Mode.CCM,
-                (byte[] key) => CH.Cipher.AesCcm256.Create(CH.SimdSupport.AesNi, key),
-                Source.Simd));
-        }
-
-        // AES-256-CCM - ArmAes
-        if ((ccmSimd & CH.SimdSupport.ArmAes) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-256-CCM",
-                "ArmAes",
-                256,
-                Mode.CCM,
-                (byte[] key) => CH.Cipher.AesCcm256.Create(CH.SimdSupport.ArmAes, key),
-                Source.Simd));
-        }
-
-        // AES-256-CCM - Managed
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "AES-256-CCM",
-            "Managed",
             256,
             Mode.CCM,
-            (byte[] key) => CH.Cipher.AesCcm256.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            ccmSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.ArmAes),
+            (key, support) => CH.Cipher.AesCcm256.Create(support, key));
 
         // AES-256-CCM - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -725,53 +742,18 @@ public static class CipherAlgorithmRegistry
     {
         var aesSimd = CH.Cipher.Aes128.SimdSupport;
 
-        // AES-128-CBC - AES-NI
-        if ((aesSimd & CH.SimdSupport.AesNi) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-128-CBC",
-                "AES-NI",
-                128,
-                Mode.CBC,
-                () => {
-                    var aes = CH.Cipher.Aes128.Create(CH.SimdSupport.AesNi);
-                    aes.Mode = CH.Cipher.CipherMode.CBC;
-                    aes.Padding = CH.Cipher.PaddingMode.PKCS7;
-                    return aes;
-                },
-                Source.Simd));
-        }
-
-        // AES-128-CBC - ArmAes
-        if ((aesSimd & CH.SimdSupport.ArmAes) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-128-CBC",
-                "ArmAes",
-                128,
-                Mode.CBC,
-                () => {
-                    var aes = CH.Cipher.Aes128.Create(CH.SimdSupport.ArmAes);
-                    aes.Mode = CH.Cipher.CipherMode.CBC;
-                    aes.Padding = CH.Cipher.PaddingMode.PKCS7;
-                    return aes;
-                },
-                Source.Simd));
-        }
-
-        // AES-128-CBC - Managed (scalar)
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "AES-128-CBC",
-            "Managed",
             128,
             Mode.CBC,
-            () => {
-                var aes = CH.Cipher.Aes128.Create(CH.SimdSupport.None);
+            aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.ArmAes),
+            support => {
+                var aes = CH.Cipher.Aes128.Create(support);
                 aes.Mode = CH.Cipher.CipherMode.CBC;
                 aes.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aes;
-            },
-            Source.Managed));
+            });
 
         // AES-128-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -782,53 +764,18 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateAesCbc(16),
             Source.BouncyCastle));
 
-        // AES-256-CBC - AES-NI
-        if ((aesSimd & CH.SimdSupport.AesNi) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-256-CBC",
-                "AES-NI",
-                256,
-                Mode.CBC,
-                () => {
-                    var aes = CH.Cipher.Aes256.Create(CH.SimdSupport.AesNi);
-                    aes.Mode = CH.Cipher.CipherMode.CBC;
-                    aes.Padding = CH.Cipher.PaddingMode.PKCS7;
-                    return aes;
-                },
-                Source.Simd));
-        }
-
-        // AES-256-CBC - ArmAes
-        if ((aesSimd & CH.SimdSupport.ArmAes) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "AES-256-CBC",
-                "ArmAes",
-                256,
-                Mode.CBC,
-                () => {
-                    var aes = CH.Cipher.Aes256.Create(CH.SimdSupport.ArmAes);
-                    aes.Mode = CH.Cipher.CipherMode.CBC;
-                    aes.Padding = CH.Cipher.PaddingMode.PKCS7;
-                    return aes;
-                },
-                Source.Simd));
-        }
-
-        // AES-256-CBC - Managed (scalar)
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "AES-256-CBC",
-            "Managed",
             256,
             Mode.CBC,
-            () => {
-                var aes = CH.Cipher.Aes256.Create(CH.SimdSupport.None);
+            aesSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.ArmAes),
+            support => {
+                var aes = CH.Cipher.Aes256.Create(support);
                 aes.Mode = CH.Cipher.CipherMode.CBC;
                 aes.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aes;
-            },
-            Source.Managed));
+            });
 
         // AES-256-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -844,50 +791,17 @@ public static class CipherAlgorithmRegistry
     {
         var chachaSimd = CH.Cipher.ChaCha20.SimdSupport;
 
-        // ChaCha20 (stream) - AVX2
-        if ((chachaSimd & CH.SimdSupport.Avx2) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "ChaCha20",
-                "AVX2",
-                256,
-                Mode.Stream,
-                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3),
-                Source.Simd));
-        }
+        static CH.SimdSupport SelectChaChaMask(CH.SimdSupport flag)
+            => flag == CH.SimdSupport.Avx2 ? CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3 : flag;
 
-        // ChaCha20 (stream) - SSSE3
-        if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "ChaCha20",
-                "SSSE3",
-                256,
-                Mode.Stream,
-                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Ssse3),
-                Source.Simd));
-        }
-
-        // ChaCha20 (stream) - Neon
-        if ((chachaSimd & CH.SimdSupport.Neon) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "ChaCha20",
-                "Neon",
-                256,
-                Mode.Stream,
-                () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.Neon),
-                Source.Simd));
-        }
-
-        // ChaCha20 (stream) - Managed (scalar)
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "ChaCha20",
-            "Managed",
             256,
             Mode.Stream,
-            () => CH.Cipher.ChaCha20.Create(CH.SimdSupport.None),
-            Source.Managed));
+            chachaSimd,
+            support => CH.Cipher.ChaCha20.Create(support),
+            SelectChaChaMask);
 
         // ChaCha20 (stream) - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -907,50 +821,14 @@ public static class CipherAlgorithmRegistry
             () => new NaClCoreStreamCipherAdapter(),
             Source.NaClCore));
 
-        // ChaCha20-Poly1305 - AVX2
-        if ((chachaSimd & CH.SimdSupport.Avx2) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "ChaCha20-Poly1305",
-                "AVX2",
-                256,
-                Mode.ChaCha20Poly1305,
-                (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3, key),
-                Source.Simd));
-        }
-
-        // ChaCha20-Poly1305 - SSSE3
-        if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "ChaCha20-Poly1305",
-                "SSSE3",
-                256,
-                Mode.ChaCha20Poly1305,
-                (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, key),
-                Source.Simd));
-        }
-
-        // ChaCha20-Poly1305 - Neon
-        if ((chachaSimd & CH.SimdSupport.Neon) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "ChaCha20-Poly1305",
-                "Neon",
-                256,
-                Mode.ChaCha20Poly1305,
-                (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.Neon, key),
-                Source.Simd));
-        }
-
-        // ChaCha20-Poly1305 - Managed (scalar)
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "ChaCha20-Poly1305",
-            "Managed",
             256,
             Mode.ChaCha20Poly1305,
-            (byte[] key) => CH.Cipher.ChaCha20Poly1305.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            chachaSimd,
+            (key, support) => CH.Cipher.ChaCha20Poly1305.Create(support, key),
+            SelectChaChaMask);
 
         // ChaCha20-Poly1305 - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -974,50 +852,14 @@ public static class CipherAlgorithmRegistry
             (byte[] key) => new NaClCoreAeadAdapter(key, useXChaCha: false),
             Source.NaClCore));
 
-        // XChaCha20-Poly1305 - AVX2
-        if ((chachaSimd & CH.SimdSupport.Avx2) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "XChaCha20-Poly1305",
-                "AVX2",
-                256,
-                Mode.XChaCha20Poly1305,
-                (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3, key),
-                Source.Simd));
-        }
-
-        // XChaCha20-Poly1305 - SSSE3
-        if ((chachaSimd & CH.SimdSupport.Ssse3) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "XChaCha20-Poly1305",
-                "SSSE3",
-                256,
-                Mode.XChaCha20Poly1305,
-                (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Ssse3, key),
-                Source.Simd));
-        }
-
-        // XChaCha20-Poly1305 - Neon
-        if ((chachaSimd & CH.SimdSupport.Neon) != 0)
-        {
-            implementations.Add(new CipherImplementation(
-                "XChaCha20-Poly1305",
-                "Neon",
-                256,
-                Mode.XChaCha20Poly1305,
-                (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.Neon, key),
-                Source.Simd));
-        }
-
-        // XChaCha20-Poly1305 - Managed (scalar)
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "XChaCha20-Poly1305",
-            "Managed",
             256,
             Mode.XChaCha20Poly1305,
-            (byte[] key) => CH.Cipher.XChaCha20Poly1305.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            chachaSimd,
+            (key, support) => CH.Cipher.XChaCha20Poly1305.Create(support, key),
+            SelectChaChaMask);
 
         // XChaCha20-Poly1305 - NaCl.Core
         implementations.Add(new CipherImplementation(

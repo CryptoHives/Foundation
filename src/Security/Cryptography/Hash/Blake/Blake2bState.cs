@@ -230,7 +230,7 @@ internal unsafe partial struct Blake2bState : IIncrementalHash
 #if EXPERIMENTAL
                 else if ((_simdSupport & SimdSupport.Neon) != 0)
                 {
-                    CompressNeon(msgPtr, state, _bytesCompressed, isFinal);
+                    CompressNeon(block, state, _bytesCompressed, isFinal);
                 }
 #endif
                 else

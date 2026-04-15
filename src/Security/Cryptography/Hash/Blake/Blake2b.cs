@@ -30,22 +30,22 @@ public sealed class Blake2b : HashAlgorithm
     /// <summary>
     /// The maximum hash size in bits.
     /// </summary>
-    public const int MaxHashSizeBits = 512;
+    public const int MaxHashSizeBits = Blake2bState.MaxHashSizeBits;
 
     /// <summary>
     /// The maximum hash size in bytes.
     /// </summary>
-    public const int MaxHashSizeBytes = MaxHashSizeBits / 8;
+    public const int MaxHashSizeBytes = Blake2bState.MaxHashSizeBytes;
 
     /// <summary>
     /// The maximum key size in bytes.
     /// </summary>
-    public const int MaxKeySizeBytes = 64;
+    public const int MaxKeySizeBytes = Blake2bState.MaxKeySizeBytes;
 
     /// <summary>
     /// The block size in bytes.
     /// </summary>
-    public const int BlockSizeBytes = 128;
+    public const int BlockSizeBytes = Blake2bState.BlockSizeBytes;
 
     // Blake2b core state
     private Blake2bState _core;
@@ -70,8 +70,8 @@ public sealed class Blake2b : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2b"/> class with specified output size and key.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-64 bytes.</param>
-    public Blake2b(int outputBytes, byte[]? key) : this(SimdSupport.All, outputBytes, key)
+    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
+    public Blake2b(int outputBytes, ReadOnlySpan<byte> key) : this(SimdSupport.All, outputBytes, key)
     {
     }
 
@@ -79,9 +79,9 @@ public sealed class Blake2b : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2b"/> class with specified output size, key, and SIMD support.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-64 bytes.</param>
+    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal Blake2b(SimdSupport simdSupport, int outputBytes, byte[]? key)
+    internal Blake2b(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key)
     {
         if (outputBytes < 1 || outputBytes > MaxHashSizeBytes)
         {
@@ -89,7 +89,7 @@ public sealed class Blake2b : HashAlgorithm
                 $"Output size must be between 1 and {MaxHashSizeBytes} bytes.");
         }
 
-        if (key != null && key.Length > MaxKeySizeBytes)
+        if (!key.IsEmpty && key.Length > MaxKeySizeBytes)
         {
             throw new ArgumentOutOfRangeException(nameof(key),
                 $"Key size must be between 0 and {MaxKeySizeBytes} bytes.");
@@ -97,10 +97,10 @@ public sealed class Blake2b : HashAlgorithm
 
         HashSizeValue = outputBytes * 8;
         _core = new Blake2bState(simdSupport, outputBytes);
-        if (key != null && key.Length > 0)
+        if (!key.IsEmpty)
         {
             _key = new byte[key.Length];
-            Array.Copy(key, _key, key.Length);
+            key.CopyTo(_key);
         }
 
         Initialize();
@@ -142,16 +142,16 @@ public sealed class Blake2b : HashAlgorithm
     /// Creates a new keyed instance of the <see cref="Blake2b"/> class.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    /// <param name="key">The key for keyed hashing (up to 64 bytes).</param>
+    /// <param name="key">The key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
     /// <returns>A new BLAKE2b instance configured for keyed hashing.</returns>
-    public static Blake2b CreateKeyed(int outputBytes, byte[] key) => new(outputBytes, key);
+    public static Blake2b CreateKeyed(int outputBytes, ReadOnlySpan<byte> key) => new(outputBytes, key);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake2b"/> class with default output size.
     /// </summary>
-    /// <param name="key">The key for keyed hashing (up to 64 bytes).</param>
+    /// <param name="key">The key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
     /// <returns>A new BLAKE2b instance configured for keyed hashing.</returns>
-    public static Blake2b CreateKeyed(byte[] key) => new(MaxHashSizeBytes, key);
+    public static Blake2b CreateKeyed(ReadOnlySpan<byte> key) => new(MaxHashSizeBytes, key);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake2b"/> class with specified SIMD support.
@@ -160,7 +160,7 @@ public sealed class Blake2b : HashAlgorithm
     /// <param name="key">The key for keyed hashing (up to 64 bytes).</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <returns>A new BLAKE2b instance configured for keyed hashing.</returns>
-    internal static Blake2b CreateKeyed(SimdSupport simdSupport, int outputBytes, byte[] key) => new(simdSupport, outputBytes, key);
+    internal static Blake2b CreateKeyed(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key) => new(simdSupport, outputBytes, key);
 
 #if NET8_0_OR_GREATER
     /// <summary>

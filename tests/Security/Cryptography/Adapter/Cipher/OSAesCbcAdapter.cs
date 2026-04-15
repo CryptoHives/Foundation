@@ -8,8 +8,8 @@ namespace Cryptography.Tests.Adapter.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Security.Cryptography;
-using OS = System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Wraps .NET's OS-provided AES-CBC as a CryptoHives <see cref="SymmetricCipher"/>.

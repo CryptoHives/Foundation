@@ -36,9 +36,9 @@ public sealed partial class Blake2s
         var orig1 = row1;
 
         uint* mr = (uint*)msgPtr;
-        uint w0  = mr[0],  w1  = mr[1],  w2  = mr[2],  w3  = mr[3],
-             w4  = mr[4],  w5  = mr[5],  w6  = mr[6],  w7  = mr[7],
-             w8  = mr[8],  w9  = mr[9],  w10 = mr[10], w11 = mr[11],
+        uint w0 = mr[0], w1 = mr[1], w2 = mr[2], w3 = mr[3],
+             w4 = mr[4], w5 = mr[5], w6 = mr[6], w7 = mr[7],
+             w8 = mr[8], w9 = mr[9], w10 = mr[10], w11 = mr[11],
              w12 = mr[12], w13 = mr[13], w14 = mr[14], w15 = mr[15];
 
         // Round 0 — sigma: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
