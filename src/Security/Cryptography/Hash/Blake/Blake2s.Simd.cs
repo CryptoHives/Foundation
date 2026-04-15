@@ -17,7 +17,7 @@ using System.Runtime.Intrinsics.X86;
 /// <summary>
 /// BLAKE2s x86 SIMD-accelerated compression.
 /// </summary>
-public sealed partial class Blake2s
+internal unsafe partial struct Blake2sState
 {
     // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words
     // Rotate right by 16 bits (swap high/low 16-bit halves within each 32-bit word)
@@ -39,7 +39,7 @@ public sealed partial class Blake2s
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
-    internal static new SimdSupport SimdSupport
+    internal static SimdSupport SimdSupport
     {
         get
         {
@@ -56,36 +56,44 @@ public sealed partial class Blake2s
 
 #if EXPERIMENTAL
     // Pre-computed Vector128<int> indices for gather operations (scaled by 4 for uint stride)
-    private static readonly Vector128<int>[] GatherIndicesX = new Vector128<int>[Rounds * 2];
-    private static readonly Vector128<int>[] GatherIndicesY = new Vector128<int>[Rounds * 2];
+    private static readonly Vector128<int>[] GatherIndicesX = InitGatherIndicesX();
+    private static readonly Vector128<int>[] GatherIndicesY = InitGatherIndicesY();
 
-    static Blake2s()
+    private static Vector128<int>[] InitGatherIndicesX()
     {
+        var indices = new Vector128<int>[Rounds * 2];
         for (int round = 0; round < Rounds; round++)
         {
             int offset = round * ScratchSize;
-
-            // Column step indices (multiply by 4 for byte offset of uint)
-            GatherIndicesX[round * 2] = Vector128.Create(
+            indices[round * 2] = Vector128.Create(
                 Sigma[offset + 0] * 4, Sigma[offset + 2] * 4,
                 Sigma[offset + 4] * 4, Sigma[offset + 6] * 4);
-            GatherIndicesY[round * 2] = Vector128.Create(
-                Sigma[offset + 1] * 4, Sigma[offset + 3] * 4,
-                Sigma[offset + 5] * 4, Sigma[offset + 7] * 4);
-
-            // Diagonal step indices
-            GatherIndicesX[round * 2 + 1] = Vector128.Create(
+            indices[round * 2 + 1] = Vector128.Create(
                 Sigma[offset + 8] * 4, Sigma[offset + 10] * 4,
                 Sigma[offset + 12] * 4, Sigma[offset + 14] * 4);
-            GatherIndicesY[round * 2 + 1] = Vector128.Create(
+        }
+        return indices;
+    }
+
+    private static Vector128<int>[] InitGatherIndicesY()
+    {
+        var indices = new Vector128<int>[Rounds * 2];
+        for (int round = 0; round < Rounds; round++)
+        {
+            int offset = round * ScratchSize;
+            indices[round * 2] = Vector128.Create(
+                Sigma[offset + 1] * 4, Sigma[offset + 3] * 4,
+                Sigma[offset + 5] * 4, Sigma[offset + 7] * 4);
+            indices[round * 2 + 1] = Vector128.Create(
                 Sigma[offset + 9] * 4, Sigma[offset + 11] * 4,
                 Sigma[offset + 13] * 4, Sigma[offset + 15] * 4);
         }
+        return indices;
     }
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static unsafe void CompressSse2(byte* msgPtr, uint* state, ulong bytesCompressed, bool isFinal)
+    private static void CompressSse2(byte* msgPtr, uint* state, ulong bytesCompressed, bool isFinal)
     {
         // Initialize rows from vector state
         // row0 = v[0..3] = state[0..3]
@@ -141,7 +149,7 @@ public sealed partial class Blake2s
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static unsafe void CompressSsse3(byte* msgPtr, uint* state, ulong bytesCompressed, bool isFinal)
+    private static void CompressSsse3(byte* msgPtr, uint* state, ulong bytesCompressed, bool isFinal)
     {
         var row0 = Sse2.LoadVector128(state);
         var row1 = Sse2.LoadVector128(state + 4);
@@ -192,7 +200,7 @@ public sealed partial class Blake2s
 #if EXPERIMENTAL
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static unsafe void CompressAvx2(byte* mPtr, uint* state, ulong bytesCompressed, bool isFinal)
+    private static void CompressAvx2(byte* mPtr, uint* state, ulong bytesCompressed, bool isFinal)
     {
         // Get base references for gather indices (avoids bounds checking in loop)
         ref Vector128<int> gatherXBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesX);

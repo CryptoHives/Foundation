@@ -58,6 +58,14 @@ public interface IIncrementalHash : IDisposable
     void Append<T>(ReadOnlySpan<T> input) where T : struct;
 
     /// <summary>
+    /// Appends the bytes of all values in <paramref name="input"/> to the hash state.
+    /// </summary>
+    /// <param name="input">The span of byte values which are appended.</param>
+    /// <exception cref="NotSupportedException">
+    /// </exception>
+    void Append(ReadOnlySpan<byte> input);
+
+    /// <summary>
     /// Appends the bytes of all values in <paramref name="input"/> to the hash state,
     /// iterating over each segment of the sequence in order.
     /// </summary>

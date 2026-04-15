@@ -15,11 +15,11 @@ using System.Runtime.Intrinsics.Arm;
 /// BLAKE2s ARM NEON-accelerated compression with fully unrolled rounds.
 /// </summary>
 /// <remarks>
-/// State is loaded from and stored back to the shared <c>_state[]</c> array via pointers.
+/// State is loaded from and stored back to the shared <c>_state</c> fixed buffer via pointers.
 /// Uses <c>VectorTableLookup</c> for byte-aligned rotations (16, 8) and shift+or for
 /// non-byte-aligned rotations (12, 7).
 /// </remarks>
-public sealed partial class Blake2s
+internal unsafe partial struct Blake2sState
 {
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
