@@ -1,13 +1,13 @@
-﻿| Description                                 | TestDataSize | Mean       | Error     | StdDev    | Allocated |
-|-------------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · Ascon-XOF128 · Managed      | 128B         |   7.597 μs | 0.0300 μs | 0.0266 μs |         - |
-| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle | 128B         |  10.169 μs | 0.0677 μs | 0.0565 μs |         - |
-|                                             |              |            |           |           |           |
-| AbsorbSqueeze · Ascon-XOF128 · Managed      | 1KB          |  10.758 μs | 0.0828 μs | 0.0775 μs |         - |
-| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle | 1KB          |  14.298 μs | 0.0327 μs | 0.0273 μs |         - |
-|                                             |              |            |           |           |           |
-| AbsorbSqueeze · Ascon-XOF128 · Managed      | 8KB          |  35.806 μs | 0.2817 μs | 0.2635 μs |         - |
-| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle | 8KB          |  47.741 μs | 0.3077 μs | 0.2878 μs |         - |
-|                                             |              |            |           |           |           |
-| AbsorbSqueeze · Ascon-XOF128 · Managed      | 128KB        | 464.475 μs | 2.6663 μs | 2.3636 μs |         - |
-| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle | 128KB        | 621.205 μs | 3.7338 μs | 3.1179 μs |         - |
+﻿| Description                                       | TestDataSize | Mean       | Error     | StdDev    | Allocated |
+|-------------------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
+| AbsorbSqueeze · Ascon-XOF128 · CryptoHives-Scalar | 128B         |   7.617 μs | 0.0555 μs | 0.0463 μs |         - |
+| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle       | 128B         |  10.120 μs | 0.0544 μs | 0.0482 μs |         - |
+|                                                   |              |            |           |           |           |
+| AbsorbSqueeze · Ascon-XOF128 · CryptoHives-Scalar | 1KB          |  10.752 μs | 0.1171 μs | 0.1096 μs |         - |
+| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle       | 1KB          |  14.313 μs | 0.0877 μs | 0.0821 μs |         - |
+|                                                   |              |            |           |           |           |
+| AbsorbSqueeze · Ascon-XOF128 · CryptoHives-Scalar | 8KB          |  35.594 μs | 0.1476 μs | 0.1309 μs |         - |
+| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle       | 8KB          |  47.583 μs | 0.1639 μs | 0.1453 μs |         - |
+|                                                   |              |            |           |           |           |
+| AbsorbSqueeze · Ascon-XOF128 · CryptoHives-Scalar | 128KB        | 461.053 μs | 1.3541 μs | 1.2667 μs |         - |
+| AbsorbSqueeze · Ascon-XOF128 · BouncyCastle       | 128KB        | 620.832 μs | 3.1524 μs | 2.9488 μs |         - |

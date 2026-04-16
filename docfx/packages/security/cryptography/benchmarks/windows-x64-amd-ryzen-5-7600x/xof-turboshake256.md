@@ -1,9 +1,9 @@
-﻿| Description                             | TestDataSize | Mean       | Error     | StdDev    | Allocated |
-|---------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · TurboSHAKE256 · Managed | 128B         |   1.851 μs | 0.0104 μs | 0.0097 μs |         - |
-|                                         |              |            |           |           |           |
-| AbsorbSqueeze · TurboSHAKE256 · Managed | 1KB          |   3.131 μs | 0.0285 μs | 0.0266 μs |         - |
-|                                         |              |            |           |           |           |
-| AbsorbSqueeze · TurboSHAKE256 · Managed | 8KB          |  12.983 μs | 0.0654 μs | 0.0580 μs |         - |
-|                                         |              |            |           |           |           |
-| AbsorbSqueeze · TurboSHAKE256 · Managed | 128KB        | 181.924 μs | 1.5776 μs | 1.3985 μs |         - |
+﻿| Description                                        | TestDataSize | Mean       | Error     | StdDev    | Allocated |
+|--------------------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
+| AbsorbSqueeze · TurboSHAKE256 · CryptoHives-Scalar | 128B         |   1.835 μs | 0.0107 μs | 0.0095 μs |         - |
+|                                                    |              |            |           |           |           |
+| AbsorbSqueeze · TurboSHAKE256 · CryptoHives-Scalar | 1KB          |   3.122 μs | 0.0373 μs | 0.0349 μs |         - |
+|                                                    |              |            |           |           |           |
+| AbsorbSqueeze · TurboSHAKE256 · CryptoHives-Scalar | 8KB          |  12.941 μs | 0.0959 μs | 0.0850 μs |         - |
+|                                                    |              |            |           |           |           |
+| AbsorbSqueeze · TurboSHAKE256 · CryptoHives-Scalar | 128KB        | 180.906 μs | 1.8520 μs | 1.7324 μs |         - |

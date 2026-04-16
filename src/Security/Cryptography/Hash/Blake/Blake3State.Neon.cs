@@ -14,46 +14,48 @@ using System.Runtime.Intrinsics.Arm;
 /// <summary>
 /// BLAKE3 ARM NEON-accelerated compression using AdvSimd intrinsics.
 /// </summary>
-public sealed partial class Blake3 : HashAlgorithm
+internal unsafe partial struct Blake3State
 {
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressBlockNeon(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
+    private void CompressBlockNeon(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
-        // ARM64 is always little-endian; cast directly — no copy needed
-        ReadOnlySpan<uint> m = MemoryMarshal.Cast<byte, uint>(block);
-
-        var row0 = Vector128.Create<uint>(_cv.AsSpan(0, 4));
-        var row1 = Vector128.Create<uint>(_cv.AsSpan(4, 4));
+        var row0 = AdvSimd.LoadVector128(cv);
+        var row1 = AdvSimd.LoadVector128(cv + 4);
         var row2 = IVLow;
         var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
 
+        uint* m = (uint*)block;
         GRoundsNeon(m, ref row0, ref row1, ref row2, ref row3);
 
-        (row0 ^ row2).CopyTo(_cv.AsSpan(0, 4));
-        (row1 ^ row3).CopyTo(_cv.AsSpan(4, 4));
+        AdvSimd.Store(cv, row0 ^ row2);
+        AdvSimd.Store(cv + 4, row1 ^ row3);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void SqueezeRootBlockNeon(ulong counter, Span<byte> destination)
     {
-        ReadOnlySpan<uint> m = _rootBlock;
-        var row0 = Vector128.Create<uint>(_rootCv.AsSpan(0, 4));
-        var row1 = Vector128.Create<uint>(_rootCv.AsSpan(4, 4));
-        var row2 = IVLow;
-        var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), _rootBlockLen, _rootFlags);
+        fixed (Blake3State* core = &this)
+        {
+            uint* rootCv = core->_rootCv;
+            uint* m = core->_rootBlock;
+            var row0 = AdvSimd.LoadVector128(rootCv);
+            var row1 = AdvSimd.LoadVector128(rootCv + 4);
+            var row2 = IVLow;
+            var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), _rootBlockLen, _rootFlags);
 
-        GRoundsNeon(m, ref row0, ref row1, ref row2, ref row3);
+            GRoundsNeon(m, ref row0, ref row1, ref row2, ref row3);
 
-        // Full 16-word output (ARM64 is always little-endian)
-        (row0 ^ row2).AsByte().CopyTo(destination);
-        (row1 ^ row3).AsByte().CopyTo(destination.Slice(16));
-        (row2 ^ Vector128.Create<uint>(_rootCv.AsSpan(0, 4))).AsByte().CopyTo(destination.Slice(32));
-        (row3 ^ Vector128.Create<uint>(_rootCv.AsSpan(4, 4))).AsByte().CopyTo(destination.Slice(48));
+            // Full 16-word output (ARM64 is always little-endian)
+            (row0 ^ row2).AsByte().CopyTo(destination);
+            (row1 ^ row3).AsByte().CopyTo(destination.Slice(16));
+            (row2 ^ AdvSimd.LoadVector128(rootCv)).AsByte().CopyTo(destination.Slice(32));
+            (row3 ^ AdvSimd.LoadVector128(rootCv + 4)).AsByte().CopyTo(destination.Slice(48));
+        }
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void GRoundsNeon(
-        ReadOnlySpan<uint> m,
+    private static void GRoundsNeon(
+        uint* m,
         ref Vector128<uint> row0,
         ref Vector128<uint> row1,
         ref Vector128<uint> row2,

@@ -1,33 +1,33 @@
-﻿| Description                          | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| Decrypt · AES-128-CCM (AES-NI)       | 128B         |     401.0 ns |     1.65 ns |     1.29 ns |         - |
-| Decrypt · AES-128-CCM (Managed)      | 128B         |   1,007.8 ns |     9.08 ns |     8.49 ns |         - |
-| Decrypt · AES-128-CCM (BouncyCastle) | 128B         |   1,626.7 ns |    11.95 ns |    11.17 ns |    2424 B |
-|                                      |              |              |             |             |           |
-| Encrypt · AES-128-CCM (AES-NI)       | 128B         |     352.9 ns |     1.11 ns |     0.98 ns |         - |
-| Encrypt · AES-128-CCM (Managed)      | 128B         |     968.4 ns |    11.16 ns |     9.90 ns |         - |
-| Encrypt · AES-128-CCM (BouncyCastle) | 128B         |   1,588.9 ns |    14.63 ns |    13.69 ns |    2464 B |
-|                                      |              |              |             |             |           |
-| Decrypt · AES-128-CCM (AES-NI)       | 1KB          |   2,291.3 ns |     5.82 ns |     5.16 ns |         - |
-| Decrypt · AES-128-CCM (Managed)      | 1KB          |   6,318.0 ns |    46.31 ns |    43.32 ns |         - |
-| Decrypt · AES-128-CCM (BouncyCastle) | 1KB          |   8,122.3 ns |    47.06 ns |    44.02 ns |    2424 B |
-|                                      |              |              |             |             |           |
-| Encrypt · AES-128-CCM (AES-NI)       | 1KB          |   2,248.5 ns |     5.60 ns |     4.97 ns |         - |
-| Encrypt · AES-128-CCM (Managed)      | 1KB          |   6,303.8 ns |    38.42 ns |    35.94 ns |         - |
-| Encrypt · AES-128-CCM (BouncyCastle) | 1KB          |   8,082.1 ns |    57.54 ns |    48.05 ns |    2464 B |
-|                                      |              |              |             |             |           |
-| Decrypt · AES-128-CCM (AES-NI)       | 8KB          |  17,694.7 ns |   154.02 ns |   120.25 ns |         - |
-| Decrypt · AES-128-CCM (Managed)      | 8KB          |  49,884.2 ns |   563.24 ns |   499.30 ns |         - |
-| Decrypt · AES-128-CCM (BouncyCastle) | 8KB          |  60,955.1 ns |   613.93 ns |   574.27 ns |    2424 B |
-|                                      |              |              |             |             |           |
-| Encrypt · AES-128-CCM (AES-NI)       | 8KB          |  17,483.4 ns |    83.27 ns |    73.82 ns |         - |
-| Encrypt · AES-128-CCM (Managed)      | 8KB          |  48,906.6 ns |   260.37 ns |   243.55 ns |         - |
-| Encrypt · AES-128-CCM (BouncyCastle) | 8KB          |  60,040.4 ns |   359.25 ns |   336.04 ns |    2464 B |
-|                                      |              |              |             |             |           |
-| Decrypt · AES-128-CCM (AES-NI)       | 128KB        | 281,169.4 ns | 2,618.66 ns | 2,449.49 ns |         - |
-| Decrypt · AES-128-CCM (Managed)      | 128KB        | 797,137.3 ns | 9,556.13 ns | 7,979.80 ns |         - |
-| Decrypt · AES-128-CCM (BouncyCastle) | 128KB        | 966,882.5 ns | 9,239.59 ns | 7,715.48 ns |    2424 B |
-|                                      |              |              |             |             |           |
-| Encrypt · AES-128-CCM (AES-NI)       | 128KB        | 277,799.9 ns |   573.65 ns |   479.03 ns |         - |
-| Encrypt · AES-128-CCM (Managed)      | 128KB        | 777,035.0 ns | 4,378.12 ns | 4,095.30 ns |         - |
-| Encrypt · AES-128-CCM (BouncyCastle) | 128KB        | 950,361.4 ns | 4,562.74 ns | 4,267.99 ns |    2464 B |
+﻿| Description                                | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| Decrypt · AES-128-CCM (CryptoHives-AES-NI) | 128B         |     399.1 ns |     0.54 ns |     0.51 ns |         - |
+| Decrypt · AES-128-CCM (CryptoHives-Scalar) | 128B         |     988.4 ns |     4.42 ns |     4.13 ns |         - |
+| Decrypt · AES-128-CCM (BouncyCastle)       | 128B         |   1,599.4 ns |    11.14 ns |     9.88 ns |    2424 B |
+|                                            |              |              |             |             |           |
+| Encrypt · AES-128-CCM (CryptoHives-AES-NI) | 128B         |     350.7 ns |     0.49 ns |     0.43 ns |         - |
+| Encrypt · AES-128-CCM (CryptoHives-Scalar) | 128B         |     956.3 ns |     4.17 ns |     3.90 ns |         - |
+| Encrypt · AES-128-CCM (BouncyCastle)       | 128B         |   1,561.5 ns |    13.94 ns |    12.36 ns |    2464 B |
+|                                            |              |              |             |             |           |
+| Decrypt · AES-128-CCM (CryptoHives-AES-NI) | 1KB          |   2,281.6 ns |     3.96 ns |     3.70 ns |         - |
+| Decrypt · AES-128-CCM (CryptoHives-Scalar) | 1KB          |   6,251.7 ns |    12.71 ns |    11.27 ns |         - |
+| Decrypt · AES-128-CCM (BouncyCastle)       | 1KB          |   7,998.5 ns |    42.92 ns |    40.14 ns |    2424 B |
+|                                            |              |              |             |             |           |
+| Encrypt · AES-128-CCM (CryptoHives-AES-NI) | 1KB          |   2,239.2 ns |     3.13 ns |     2.93 ns |         - |
+| Encrypt · AES-128-CCM (CryptoHives-Scalar) | 1KB          |   6,207.7 ns |    11.41 ns |     9.53 ns |         - |
+| Encrypt · AES-128-CCM (BouncyCastle)       | 1KB          |   7,994.5 ns |    30.19 ns |    28.24 ns |    2464 B |
+|                                            |              |              |             |             |           |
+| Decrypt · AES-128-CCM (CryptoHives-AES-NI) | 8KB          |  17,480.9 ns |    33.36 ns |    31.20 ns |         - |
+| Decrypt · AES-128-CCM (CryptoHives-Scalar) | 8KB          |  48,275.4 ns |   154.19 ns |   144.23 ns |         - |
+| Decrypt · AES-128-CCM (BouncyCastle)       | 8KB          |  58,976.9 ns |   253.61 ns |   237.23 ns |    2424 B |
+|                                            |              |              |             |             |           |
+| Encrypt · AES-128-CCM (CryptoHives-AES-NI) | 8KB          |  17,385.0 ns |    21.97 ns |    20.55 ns |         - |
+| Encrypt · AES-128-CCM (CryptoHives-Scalar) | 8KB          |  48,211.8 ns |   233.97 ns |   218.86 ns |         - |
+| Encrypt · AES-128-CCM (BouncyCastle)       | 8KB          |  58,909.2 ns |   125.34 ns |   111.11 ns |    2464 B |
+|                                            |              |              |             |             |           |
+| Decrypt · AES-128-CCM (CryptoHives-AES-NI) | 128KB        | 277,037.5 ns |   518.83 ns |   485.32 ns |         - |
+| Decrypt · AES-128-CCM (CryptoHives-Scalar) | 128KB        | 768,752.6 ns | 2,447.15 ns | 2,289.07 ns |         - |
+| Decrypt · AES-128-CCM (BouncyCastle)       | 128KB        | 933,584.1 ns | 3,067.61 ns | 2,869.44 ns |    2424 B |
+|                                            |              |              |             |             |           |
+| Encrypt · AES-128-CCM (CryptoHives-AES-NI) | 128KB        | 276,953.8 ns |   341.10 ns |   319.07 ns |         - |
+| Encrypt · AES-128-CCM (CryptoHives-Scalar) | 128KB        | 770,092.3 ns | 1,219.94 ns | 1,081.44 ns |         - |
+| Encrypt · AES-128-CCM (BouncyCastle)       | 128KB        | 934,335.8 ns | 2,759.48 ns | 2,446.21 ns |    2464 B |

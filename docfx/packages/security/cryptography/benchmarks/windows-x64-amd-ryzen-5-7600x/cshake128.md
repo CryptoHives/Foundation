@@ -1,31 +1,31 @@
-﻿| Description                               | TestDataSize | Mean         | Error       | StdDev    | Allocated |
-|------------------------------------------ |------------- |-------------:|------------:|----------:|----------:|
-| TryComputeHash · cSHAKE128 · Managed      | 128B         |     248.8 ns |     2.00 ns |   1.77 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX2         | 128B         |     317.3 ns |     1.75 ns |   1.56 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX512F      | 128B         |     323.7 ns |     1.25 ns |   1.17 ns |         - |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 128B         |     337.4 ns |     2.05 ns |   1.82 ns |         - |
-|                                           |              |              |             |           |           |
-| TryComputeHash · cSHAKE128 · Managed      | 137B         |     244.0 ns |     1.92 ns |   1.80 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX2         | 137B         |     313.6 ns |     1.61 ns |   1.50 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX512F      | 137B         |     320.5 ns |     1.11 ns |   0.98 ns |         - |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 137B         |     337.8 ns |     1.45 ns |   1.36 ns |         - |
-|                                           |              |              |             |           |           |
-| TryComputeHash · cSHAKE128 · Managed      | 1KB          |   1,508.6 ns |    11.07 ns |  10.36 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX2         | 1KB          |   2,002.8 ns |     5.00 ns |   4.68 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX512F      | 1KB          |   2,060.6 ns |     9.39 ns |   8.32 ns |         - |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 1KB          |   2,186.2 ns |    16.09 ns |  14.26 ns |         - |
-|                                           |              |              |             |           |           |
-| TryComputeHash · cSHAKE128 · Managed      | 1025B        |   1,505.7 ns |     7.84 ns |   7.33 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX2         | 1025B        |   1,999.1 ns |     5.40 ns |   5.05 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX512F      | 1025B        |   2,048.7 ns |     5.53 ns |   5.17 ns |         - |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 1025B        |   2,193.2 ns |    16.51 ns |  15.45 ns |         - |
-|                                           |              |              |             |           |           |
-| TryComputeHash · cSHAKE128 · Managed      | 8KB          |   9,926.9 ns |    63.53 ns |  59.42 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX2         | 8KB          |  13,335.1 ns |    34.82 ns |  29.08 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX512F      | 8KB          |  13,641.7 ns |    16.39 ns |  15.33 ns |         - |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 8KB          |  15,212.3 ns |    79.40 ns |  74.27 ns |         - |
-|                                           |              |              |             |           |           |
-| TryComputeHash · cSHAKE128 · Managed      | 128KB        | 157,339.9 ns |   683.71 ns | 606.09 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX2         | 128KB        | 211,181.4 ns |   374.94 ns | 292.73 ns |         - |
-| TryComputeHash · cSHAKE128 · AVX512F      | 128KB        | 216,104.8 ns |   645.90 ns | 572.58 ns |         - |
-| TryComputeHash · cSHAKE128 · BouncyCastle | 128KB        | 241,888.8 ns | 1,044.95 ns | 977.44 ns |         - |
+﻿| Description                                      | TestDataSize | Mean         | Error     | StdDev    | Allocated |
+|------------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
+| TryComputeHash · cSHAKE128 · CryptoHives-Scalar  | 128B         |     245.9 ns |   0.84 ns |   0.79 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX2    | 128B         |     314.8 ns |   1.45 ns |   1.28 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX512F | 128B         |     321.1 ns |   1.25 ns |   0.98 ns |         - |
+| TryComputeHash · cSHAKE128 · BouncyCastle        | 128B         |     334.1 ns |   1.19 ns |   1.12 ns |         - |
+|                                                  |              |              |           |           |           |
+| TryComputeHash · cSHAKE128 · CryptoHives-Scalar  | 137B         |     240.9 ns |   0.85 ns |   0.76 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX2    | 137B         |     309.7 ns |   0.66 ns |   0.62 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX512F | 137B         |     318.5 ns |   0.86 ns |   0.81 ns |         - |
+| TryComputeHash · cSHAKE128 · BouncyCastle        | 137B         |     333.7 ns |   1.39 ns |   1.30 ns |         - |
+|                                                  |              |              |           |           |           |
+| TryComputeHash · cSHAKE128 · CryptoHives-Scalar  | 1KB          |   1,485.5 ns |   3.32 ns |   3.11 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX2    | 1KB          |   1,980.8 ns |   9.00 ns |   8.41 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX512F | 1KB          |   2,027.2 ns |   5.51 ns |   5.15 ns |         - |
+| TryComputeHash · cSHAKE128 · BouncyCastle        | 1KB          |   2,170.8 ns |   9.75 ns |   9.12 ns |         - |
+|                                                  |              |              |           |           |           |
+| TryComputeHash · cSHAKE128 · CryptoHives-Scalar  | 1025B        |   1,485.6 ns |   5.72 ns |   5.35 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX2    | 1025B        |   1,979.7 ns |   6.91 ns |   6.12 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX512F | 1025B        |   2,024.5 ns |   5.26 ns |   4.66 ns |         - |
+| TryComputeHash · cSHAKE128 · BouncyCastle        | 1025B        |   2,172.7 ns |   9.65 ns |   9.02 ns |         - |
+|                                                  |              |              |           |           |           |
+| TryComputeHash · cSHAKE128 · CryptoHives-Scalar  | 8KB          |   9,787.9 ns |  29.97 ns |  28.04 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX2    | 8KB          |  13,200.1 ns |  19.47 ns |  17.26 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX512F | 8KB          |  13,510.5 ns |  39.72 ns |  33.16 ns |         - |
+| TryComputeHash · cSHAKE128 · BouncyCastle        | 8KB          |  15,063.7 ns |  63.39 ns |  59.29 ns |         - |
+|                                                  |              |              |           |           |           |
+| TryComputeHash · cSHAKE128 · CryptoHives-Scalar  | 128KB        | 155,292.5 ns | 658.05 ns | 615.54 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX2    | 128KB        | 209,713.7 ns | 354.10 ns | 313.90 ns |         - |
+| TryComputeHash · cSHAKE128 · CryptoHives-AVX512F | 128KB        | 214,699.5 ns | 341.21 ns | 319.17 ns |         - |
+| TryComputeHash · cSHAKE128 · BouncyCastle        | 128KB        | 239,585.2 ns | 530.12 ns | 495.87 ns |         - |
