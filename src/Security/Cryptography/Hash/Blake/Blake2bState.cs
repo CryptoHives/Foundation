@@ -60,6 +60,7 @@ internal unsafe partial struct Blake2bState : IIncrementalHash
         0x5be0cd19137e2179UL
     ];
 
+    /// <inheritdoc/>
     public int HashLengthBytes => _outputBytes;
 
     // Scalar state for non-AVX2 path and output extraction
@@ -145,12 +146,7 @@ internal unsafe partial struct Blake2bState : IIncrementalHash
     }
 
     /// <inheritdoc/>
-    public void Dispose()
-    {
-        Initialize();
-    }
-
-    private void Append(ReadOnlySpan<byte> input)
+    public void Append(ReadOnlySpan<byte> input)
     {
         uint remaining = (uint)input.Length;
         ref byte rinput = ref MemoryMarshal.GetReference(input);
@@ -190,6 +186,12 @@ internal unsafe partial struct Blake2bState : IIncrementalHash
             Unsafe.CopyBlockUnaligned(ref _buffer[_bufferLength], ref rinput, remaining);
             _bufferLength += remaining;
         }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        Initialize();
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
