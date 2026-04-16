@@ -507,7 +507,7 @@ public static class HashAlgorithmRegistry
             () => new BouncyCastleHashAdapter(new BC.Blake3Digest(256)), Source.BouncyCastle));
 
 #if BLAKE3_NATIVE
-        list.Add(new("BLAKE3", "Native", 256,
+        list.Add(new("BLAKE3", "Blake3Native", 256,
             () => new Blake3NativeAdapter(32), Source.Native));
 #endif
     }

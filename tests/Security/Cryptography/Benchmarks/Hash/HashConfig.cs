@@ -89,18 +89,18 @@ public class HashConfig : ManualConfig
             if (name.EndsWith("(OS)", StringComparison.InvariantCultureIgnoreCase) ||
                 name.EndsWith("(DotNet)", StringComparison.InvariantCultureIgnoreCase))
                 return "OS Native";
-            if (name.EndsWith("(Native)", StringComparison.InvariantCultureIgnoreCase))
-                return "Native";
-            if (name.EndsWith("(AVX2)", StringComparison.InvariantCultureIgnoreCase))
-                return "AVX2";
-            if (name.EndsWith("(AVX512F)", StringComparison.InvariantCultureIgnoreCase))
-                return "AVX512F";
-            if (name.EndsWith("(Sse2)", StringComparison.InvariantCultureIgnoreCase))
-                return "Sse2";
-            if (name.EndsWith("(Ssse3)", StringComparison.InvariantCultureIgnoreCase))
-                return "Ssse3";
+            if (name.EndsWith("(Blake3Native)", StringComparison.InvariantCultureIgnoreCase))
+                return "Blake3Native";
+            if (name.EndsWith("(CryptoHives-AVX2)", StringComparison.InvariantCultureIgnoreCase))
+                return "CryptoHives-AVX2";
+            if (name.EndsWith("(CryptoHives-AVX512F)", StringComparison.InvariantCultureIgnoreCase))
+                return "CryptoHives-AVX512F";
+            if (name.EndsWith("(CryptoHives-Sse2)", StringComparison.InvariantCultureIgnoreCase))
+                return "CryptoHives-Sse2";
+            if (name.EndsWith("(CryptoHives-Ssse3)", StringComparison.InvariantCultureIgnoreCase))
+                return "CryptoHives-Ssse3";
             if (name.EndsWith("(Managed)", StringComparison.InvariantCultureIgnoreCase) ||
-                name.EndsWith("(CryptoHives)", StringComparison.InvariantCultureIgnoreCase))
+                name.EndsWith("(CryptoHives-Scalar)", StringComparison.InvariantCultureIgnoreCase))
                 return "CryptoHives-Scalar";
             if (name.EndsWith("(HashifyNET)", StringComparison.InvariantCultureIgnoreCase))
                 return "Hashify .NET";
@@ -108,6 +108,10 @@ public class HashConfig : ManualConfig
                 return "BouncyCastle";
             if (name.EndsWith("(OpenGost)", StringComparison.InvariantCultureIgnoreCase))
                 return "OpenGost";
+            if (name.EndsWith("(Blake2Fast)", StringComparison.InvariantCultureIgnoreCase))
+                return "Blake2Fast";
+            if (name.EndsWith("(Konscious)", StringComparison.InvariantCultureIgnoreCase))
+                return "Konscious";
             return name;
         }
     }
