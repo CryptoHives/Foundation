@@ -61,13 +61,10 @@ internal static class AlgorithmRegistry
     {
         foreach (var flag in GetSimdVariantFlags(simdSupport))
         {
-            if ((simdSupport & flag) != 0)
-            {
-                string variantName = GetSimdVariantName(flag);
-                list.Add(new(family, variantName, hashSizeBits,
-                    () => factory(flag), Source.Simd,
-                    () => (simdSupport & flag) != 0));
-            }
+            string variantName = GetSimdVariantName(flag);
+            list.Add(new(family, variantName, hashSizeBits,
+                () => factory(flag), Source.Simd,
+                () => (simdSupport & flag) != 0));
         }
 
         list.Add(new(family, "CryptoHives-Scalar", hashSizeBits,
