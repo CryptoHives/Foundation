@@ -65,13 +65,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash
     private const int BlockSizeWords = BlockSizeBytes / sizeof(uint);
 
     // BLAKE3 flags
-    private const uint FlagChunkStart = 1 << 0;
-    private const uint FlagChunkEnd = 1 << 1;
-    private const uint FlagParent = 1 << 2;
-    private const uint FlagRoot = 1 << 3;
-    private const uint FlagKeyedHash = 1 << 4;
-    private const uint FlagDeriveKeyContext = 1 << 5;
-    private const uint FlagDeriveKeyMaterial = 1 << 6;
+    internal const uint FlagChunkStart = 1 << 0;
+    internal const uint FlagChunkEnd = 1 << 1;
+    internal const uint FlagParent = 1 << 2;
+    internal const uint FlagRoot = 1 << 3;
+    internal const uint FlagKeyedHash = 1 << 4;
+    internal const uint FlagDeriveKeyContext = 1 << 5;
+    internal const uint FlagDeriveKeyMaterial = 1 << 6;
 
     // BLAKE3 IV (same as BLAKE2s)
     internal static ReadOnlySpan<uint> IV =>
