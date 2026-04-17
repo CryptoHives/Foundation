@@ -91,6 +91,8 @@ public class HashConfig : ManualConfig
                 return "OS Native";
             if (name.EndsWith("(Blake3Native)", StringComparison.InvariantCultureIgnoreCase))
                 return "Blake3Native";
+            if (name.EndsWith("(CryptoHives-Neon)", StringComparison.InvariantCultureIgnoreCase))
+                return "CryptoHives-Neon";
             if (name.EndsWith("(CryptoHives-AVX2)", StringComparison.InvariantCultureIgnoreCase))
                 return "CryptoHives-AVX2";
             if (name.EndsWith("(CryptoHives-AVX512F)", StringComparison.InvariantCultureIgnoreCase))

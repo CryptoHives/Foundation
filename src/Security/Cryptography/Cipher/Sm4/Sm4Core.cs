@@ -5,7 +5,11 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
+using System.Numerics;
 using System.Runtime.CompilerServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics.Arm;
+#endif
 
 /// <summary>
 /// Core SM4 block cipher operations as specified in GB/T 32907-2016.
@@ -26,7 +30,7 @@ using System.Runtime.CompilerServices;
 /// </list>
 /// </para>
 /// </remarks>
-internal static class Sm4Core
+internal unsafe partial struct Sm4Core
 {
     /// <summary>
     /// SM4 block size in bytes.
@@ -42,6 +46,38 @@ internal static class Sm4Core
     /// Number of rounds in SM4.
     /// </summary>
     public const int Rounds = 32;
+
+    private fixed uint _roundKeys[Rounds];
+    private readonly SimdSupport _simdSupport;
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by SM4 on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Sm4Core"/> struct.
+    /// </summary>
+    /// <param name="key">The 16-byte SM4 key.</param>
+    /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
+    internal Sm4Core(ReadOnlySpan<byte> key, SimdSupport simdSupport = SimdSupport.None)
+    {
+        _simdSupport = SimdSupport.None;
+#if NET8_0_OR_GREATER
+        _simdSupport = simdSupport & SimdSupport;
+#endif
+        InitializeRoundKeys(key);
+    }
 
     /// <summary>
     /// SM4 S-box (τ transform lookup table).
@@ -94,28 +130,33 @@ internal static class Sm4Core
     ];
 
     /// <summary>
-    /// Expands a 128-bit key into 32 round keys.
+    /// Expands and stores the 128-bit key into 32 internal round keys.
     /// </summary>
     /// <param name="key">The 16-byte cipher key.</param>
-    /// <param name="roundKeys">The output buffer for 32 round keys.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ExpandKey(ReadOnlySpan<byte> key, Span<uint> roundKeys)
+    private void InitializeRoundKeys(ReadOnlySpan<byte> key)
     {
+        if (key.Length != BlockSizeBytes)
+            throw new ArgumentException("Key must be 16 bytes.", nameof(key));
+
         uint k0 = BinaryPrimitives.ReadUInt32BigEndian(key) ^ FK[0];
         uint k1 = BinaryPrimitives.ReadUInt32BigEndian(key[4..]) ^ FK[1];
         uint k2 = BinaryPrimitives.ReadUInt32BigEndian(key[8..]) ^ FK[2];
         uint k3 = BinaryPrimitives.ReadUInt32BigEndian(key[12..]) ^ FK[3];
 
-        for (int i = 0; i < Rounds; i++)
+        fixed (uint* rk = _roundKeys)
         {
-            uint tmp = k1 ^ k2 ^ k3 ^ CK[i];
-            uint rk = k0 ^ TPrime(tmp);
-            roundKeys[i] = rk;
+            for (int i = 0; i < Rounds; i++)
+            {
+                uint tmp = k1 ^ k2 ^ k3 ^ CK[i];
+                uint next = k0 ^ TPrime(tmp);
+                rk[i] = next;
 
-            k0 = k1;
-            k1 = k2;
-            k2 = k3;
-            k3 = rk;
+                k0 = k1;
+                k1 = k2;
+                k2 = k3;
+                k3 = next;
+            }
         }
     }
 
@@ -124,9 +165,109 @@ internal static class Sm4Core
     /// </summary>
     /// <param name="input">The 16-byte plaintext block.</param>
     /// <param name="output">The 16-byte ciphertext output.</param>
-    /// <param name="roundKeys">The 32 round keys (in encryption order).</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys)
+    public void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        fixed (uint* rk = _roundKeys)
+        {
+#if NET8_0_OR_GREATER
+            if ((_simdSupport & SimdSupport.Neon) != 0)
+            {
+
+                EncryptBlockNeon(input, output, rk);
+                return;
+            }
+#endif
+            EncryptBlockScalar(input, output, rk);
+        }
+    }
+
+    /// <summary>
+    /// Decrypts a single 16-byte block using the SM4 algorithm.
+    /// </summary>
+    /// <param name="input">The 16-byte ciphertext block.</param>
+    /// <param name="output">The 16-byte plaintext output.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        fixed (uint* rk = _roundKeys)
+        {
+#if NET8_0_OR_GREATER
+            if ((_simdSupport & SimdSupport.Neon) != 0)
+            {
+
+                DecryptBlockNeon(input, output, rk);
+                return;
+            }
+#endif
+
+            DecryptBlockScalar(input, output, rk);
+        }
+    }
+
+    /// <summary>
+    /// Encrypts four consecutive 16-byte blocks from <paramref name="input"/> into
+    /// <paramref name="output"/> using the most accelerated path available.
+    /// </summary>
+    /// <param name="input">64-byte plaintext buffer (4 × 16 bytes).</param>
+    /// <param name="output">64-byte ciphertext buffer.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public void EncryptBlocks4(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        fixed (uint* rk = _roundKeys)
+        {
+#if NET8_0_OR_GREATER
+            if ((_simdSupport & SimdSupport.Neon) != 0)
+            {
+                EncryptBlocks4Neon(input, output, rk);
+                return;
+            }
+#endif
+            EncryptBlockScalar(input,        output,        rk);
+            EncryptBlockScalar(input[16..],  output[16..],  rk);
+            EncryptBlockScalar(input[32..],  output[32..],  rk);
+            EncryptBlockScalar(input[48..],  output[48..],  rk);
+        }
+    }
+
+    /// <summary>
+    /// Decrypts four consecutive 16-byte blocks from <paramref name="input"/> into
+    /// <paramref name="output"/> using the most accelerated path available.
+    /// </summary>
+    /// <param name="input">64-byte ciphertext buffer (4 × 16 bytes).</param>
+    /// <param name="output">64-byte plaintext buffer.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public void DecryptBlocks4(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        fixed (uint* rk = _roundKeys)
+        {
+#if NET8_0_OR_GREATER
+            if ((_simdSupport & SimdSupport.Neon) != 0)
+            {
+                DecryptBlocks4Neon(input, output, rk);
+                return;
+            }
+#endif
+            DecryptBlockScalar(input,        output,        rk);
+            DecryptBlockScalar(input[16..],  output[16..],  rk);
+            DecryptBlockScalar(input[32..],  output[32..],  rk);
+            DecryptBlockScalar(input[48..],  output[48..],  rk);
+        }
+    }
+
+    /// <summary>
+    /// Clears the expanded round keys.
+    /// </summary>
+    public void Clear()
+    {
+        fixed (uint* rk = _roundKeys)
+        {
+            Unsafe.InitBlockUnaligned(rk, 0, Rounds * sizeof(uint));
+        }
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void EncryptBlockScalar(ReadOnlySpan<byte> input, Span<byte> output, uint* roundKeys)
     {
         uint x0 = BinaryPrimitives.ReadUInt32BigEndian(input);
         uint x1 = BinaryPrimitives.ReadUInt32BigEndian(input[4..]);
@@ -144,21 +285,15 @@ internal static class Sm4Core
             x3 = nx;
         }
 
-        // Output in reverse order: X[35], X[34], X[33], X[32]
+        // Output in reverse order
         BinaryPrimitives.WriteUInt32BigEndian(output, x3);
         BinaryPrimitives.WriteUInt32BigEndian(output[4..], x2);
         BinaryPrimitives.WriteUInt32BigEndian(output[8..], x1);
         BinaryPrimitives.WriteUInt32BigEndian(output[12..], x0);
     }
 
-    /// <summary>
-    /// Decrypts a single 16-byte block using the SM4 algorithm.
-    /// </summary>
-    /// <param name="input">The 16-byte ciphertext block.</param>
-    /// <param name="output">The 16-byte plaintext output.</param>
-    /// <param name="roundKeys">The 32 round keys (in encryption order; reversed internally).</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys)
+    private static void DecryptBlockScalar(ReadOnlySpan<byte> input, Span<byte> output, uint* roundKeys)
     {
         uint x0 = BinaryPrimitives.ReadUInt32BigEndian(input);
         uint x1 = BinaryPrimitives.ReadUInt32BigEndian(input[4..]);
@@ -176,7 +311,6 @@ internal static class Sm4Core
             x3 = nx;
         }
 
-        // Output in reverse order
         BinaryPrimitives.WriteUInt32BigEndian(output, x3);
         BinaryPrimitives.WriteUInt32BigEndian(output[4..], x2);
         BinaryPrimitives.WriteUInt32BigEndian(output[8..], x1);
@@ -206,7 +340,7 @@ internal static class Sm4Core
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint L(uint b)
     {
-        return b ^ RotateLeft(b, 2) ^ RotateLeft(b, 10) ^ RotateLeft(b, 18) ^ RotateLeft(b, 24);
+        return b ^ BitOperations.RotateLeft(b, 2) ^ BitOperations.RotateLeft(b, 10) ^ BitOperations.RotateLeft(b, 18) ^ BitOperations.RotateLeft(b, 24);
     }
 
     /// <summary>
@@ -229,7 +363,7 @@ internal static class Sm4Core
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint LPrime(uint b)
     {
-        return b ^ RotateLeft(b, 13) ^ RotateLeft(b, 23);
+        return b ^ BitOperations.RotateLeft(b, 13) ^ BitOperations.RotateLeft(b, 23);
     }
 
     /// <summary>
@@ -241,21 +375,5 @@ internal static class Sm4Core
     private static uint TPrime(uint a)
     {
         return LPrime(Tau(a));
-    }
-
-    /// <summary>
-    /// Performs a circular left rotation on a 32-bit value.
-    /// </summary>
-    /// <param name="value">The value to rotate.</param>
-    /// <param name="shift">The number of bits to rotate.</param>
-    /// <returns>The rotated value.</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static uint RotateLeft(uint value, int shift)
-    {
-#if NET8_0_OR_GREATER
-        return System.Numerics.BitOperations.RotateLeft(value, shift);
-#else
-        return (value << shift) | (value >> (32 - shift));
-#endif
     }
 }

@@ -85,7 +85,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
     protected abstract void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output);
 
     /// <inheritdoc/>
-    public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
+    public virtual int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (input.Length < BlockSizeConst)
             throw new ArgumentException("Input must be at least one block.", nameof(input));

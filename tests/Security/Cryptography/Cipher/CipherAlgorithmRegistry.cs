@@ -933,19 +933,18 @@ public static class CipherAlgorithmRegistry
 
     private static void AddRegionalImplementations(List<CipherImplementation> implementations)
     {
-        // SM4-CBC - Managed
-        implementations.Add(new CipherImplementation(
+        AddSimdAndManagedVariants(
+            implementations,
             "SM4-CBC",
-            "CryptoHives-Scalar",
             128,
             Mode.CBC,
-            () => {
-                var sm4 = CH.Cipher.Sm4.Create();
+            CH.Cipher.Sm4.SimdSupport,
+            support => {
+                var sm4 = CH.Cipher.Sm4.Create(support);
                 sm4.Mode = CH.Cipher.CipherMode.CBC;
                 sm4.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return sm4;
-            },
-            Source.Managed));
+            });
 
         // SM4-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(

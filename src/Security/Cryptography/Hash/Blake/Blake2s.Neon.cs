@@ -14,11 +14,6 @@ using System.Runtime.Intrinsics.Arm;
 /// <summary>
 /// BLAKE2s ARM NEON-accelerated compression with fully unrolled rounds.
 /// </summary>
-/// <remarks>
-/// State is loaded from and stored back to the shared <c>_state</c> fixed buffer via pointers.
-/// Uses <c>VectorTableLookup</c> for byte-aligned rotations (16, 8) and shift+or for
-/// non-byte-aligned rotations (12, 7).
-/// </remarks>
 internal unsafe partial struct Blake2sState
 {
     [SkipLocalsInit]
@@ -138,7 +133,7 @@ internal unsafe partial struct Blake2sState
         Vector128<uint> x)
     {
         a = AdvSimd.Add(a, AdvSimd.Add(b, x));
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask16).AsUInt32();
+        d = AdvSimd.ReverseElement16((d ^ a).AsUInt32()).AsUInt32();
         c = AdvSimd.Add(c, d);
         var t = b ^ c;
         b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t, 12), AdvSimd.ShiftLeftLogical(t, 20));
