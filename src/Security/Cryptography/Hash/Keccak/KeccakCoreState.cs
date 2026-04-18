@@ -136,6 +136,7 @@ internal unsafe struct KeccakCoreState
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void Permute()
     {
+#if EXPERIMENTAL
 #if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.Avx512F) != 0)
         {
@@ -148,8 +149,12 @@ internal unsafe struct KeccakCoreState
             return;
         }
 #endif
+#endif
         PermuteScalar();
     }
+
+    //  Experimental implementations which turned out to be slower than scalar keccak
+#if EXPERIMENTAL
 
     #region AVX512F Implementation
 #if NET8_0_OR_GREATER
@@ -873,6 +878,8 @@ internal unsafe struct KeccakCoreState
     }
 #endif
     #endregion
+
+#endif
 
     #region Scalar Implementation
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

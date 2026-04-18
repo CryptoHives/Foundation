@@ -1,13 +1,13 @@
-﻿| Description                              | TestDataSize | Mean        | Error    | StdDev   | Allocated |
-|----------------------------------------- |------------- |------------:|---------:|---------:|----------:|
-| TryComputeHash · TurboSHAKE256 · Managed | 128B         |    171.4 ns |  3.37 ns |  5.05 ns |         - |
-|                                          |              |             |          |          |           |
-| TryComputeHash · TurboSHAKE256 · Managed | 137B         |    454.2 ns |  5.24 ns |  4.90 ns |         - |
-|                                          |              |             |          |          |           |
-| TryComputeHash · TurboSHAKE256 · Managed | 1KB          |    866.6 ns |  4.08 ns |  3.81 ns |         - |
-|                                          |              |             |          |          |           |
-| TryComputeHash · TurboSHAKE256 · Managed | 1025B        |    862.5 ns |  5.67 ns |  5.31 ns |         - |
-|                                          |              |             |          |          |           |
-| TryComputeHash · TurboSHAKE256 · Managed | 8KB          |  5,445.0 ns |  9.93 ns |  9.29 ns |         - |
-|                                          |              |             |          |          |           |
-| TryComputeHash · TurboSHAKE256 · Managed | 128KB        | 81,895.0 ns | 64.92 ns | 57.55 ns |         - |
+﻿| Description                                         | TestDataSize | Mean        | Error    | StdDev   | Allocated |
+|---------------------------------------------------- |------------- |------------:|---------:|---------:|----------:|
+| TryComputeHash · TurboSHAKE256 · CryptoHives-Scalar | 128B         |    175.0 ns |  3.47 ns |  5.69 ns |         - |
+|                                                     |              |             |          |          |           |
+| TryComputeHash · TurboSHAKE256 · CryptoHives-Scalar | 137B         |    464.3 ns |  9.11 ns |  8.52 ns |         - |
+|                                                     |              |             |          |          |           |
+| TryComputeHash · TurboSHAKE256 · CryptoHives-Scalar | 1KB          |    887.2 ns |  5.15 ns |  4.82 ns |         - |
+|                                                     |              |             |          |          |           |
+| TryComputeHash · TurboSHAKE256 · CryptoHives-Scalar | 1025B        |    847.0 ns |  9.08 ns |  7.09 ns |         - |
+|                                                     |              |             |          |          |           |
+| TryComputeHash · TurboSHAKE256 · CryptoHives-Scalar | 8KB          |  5,379.8 ns | 27.45 ns | 25.68 ns |         - |
+|                                                     |              |             |          |          |           |
+| TryComputeHash · TurboSHAKE256 · CryptoHives-Scalar | 128KB        | 81,742.6 ns | 60.43 ns | 53.57 ns |         - |

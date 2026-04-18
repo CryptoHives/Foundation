@@ -1,19 +1,19 @@
-﻿| Description                         | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|------------------------------------ |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · SM3 · BouncyCastle | 128B         |     618.0 ns |     0.95 ns |     0.80 ns |         - |
-| TryComputeHash · SM3 · Managed      | 128B         |     630.1 ns |     1.26 ns |     1.05 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · BouncyCastle | 137B         |     619.1 ns |     0.83 ns |     0.69 ns |         - |
-| TryComputeHash · SM3 · Managed      | 137B         |     631.4 ns |     1.53 ns |     1.35 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · BouncyCastle | 1KB          |   3,373.4 ns |     1.74 ns |     1.45 ns |         - |
-| TryComputeHash · SM3 · Managed      | 1KB          |   3,563.1 ns |    19.58 ns |    17.36 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · BouncyCastle | 1025B        |   3,372.5 ns |     1.39 ns |     1.16 ns |         - |
-| TryComputeHash · SM3 · Managed      | 1025B        |   3,561.1 ns |    17.37 ns |    14.50 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · BouncyCastle | 8KB          |  25,331.0 ns |     8.76 ns |     7.77 ns |         - |
-| TryComputeHash · SM3 · Managed      | 8KB          |  27,026.8 ns |   206.38 ns |   172.33 ns |         - |
-|                                     |              |              |             |             |           |
-| TryComputeHash · SM3 · BouncyCastle | 128KB        | 402,993.6 ns |   121.53 ns |    94.89 ns |         - |
-| TryComputeHash · SM3 · Managed      | 128KB        | 435,723.4 ns | 5,778.13 ns | 5,404.87 ns |         - |
+﻿| Description                               | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|------------------------------------------ |------------- |-------------:|------------:|------------:|----------:|
+| TryComputeHash · SM3 · BouncyCastle       | 128B         |     623.4 ns |     2.59 ns |     2.16 ns |         - |
+| TryComputeHash · SM3 · CryptoHives-Scalar | 128B         |     632.7 ns |     2.70 ns |     2.11 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · SM3 · BouncyCastle       | 137B         |     621.9 ns |     2.89 ns |     2.41 ns |         - |
+| TryComputeHash · SM3 · CryptoHives-Scalar | 137B         |     633.3 ns |     0.61 ns |     0.51 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · SM3 · BouncyCastle       | 1KB          |   3,386.9 ns |     6.40 ns |     4.99 ns |         - |
+| TryComputeHash · SM3 · CryptoHives-Scalar | 1KB          |   3,601.3 ns |    33.47 ns |    31.31 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · SM3 · BouncyCastle       | 1025B        |   3,386.3 ns |     2.66 ns |     2.08 ns |         - |
+| TryComputeHash · SM3 · CryptoHives-Scalar | 1025B        |   3,603.7 ns |    34.73 ns |    32.49 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · SM3 · BouncyCastle       | 8KB          |  25,408.9 ns |     8.73 ns |     6.81 ns |         - |
+| TryComputeHash · SM3 · CryptoHives-Scalar | 8KB          |  27,330.3 ns |   217.07 ns |   192.43 ns |         - |
+|                                           |              |              |             |             |           |
+| TryComputeHash · SM3 · BouncyCastle       | 128KB        | 406,164.3 ns | 2,889.33 ns | 2,702.68 ns |         - |
+| TryComputeHash · SM3 · CryptoHives-Scalar | 128KB        | 437,306.0 ns | 5,152.02 ns | 4,819.21 ns |         - |

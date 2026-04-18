@@ -14,12 +14,7 @@ using System.Runtime.Intrinsics.Arm;
 /// <summary>
 /// BLAKE2s ARM NEON-accelerated compression with fully unrolled rounds.
 /// </summary>
-/// <remarks>
-/// State is loaded from and stored back to the shared <c>_state[]</c> array via pointers.
-/// Uses <c>VectorTableLookup</c> for byte-aligned rotations (16, 8) and shift+or for
-/// non-byte-aligned rotations (12, 7).
-/// </remarks>
-public sealed partial class Blake2s
+internal unsafe partial struct Blake2sState
 {
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -36,9 +31,9 @@ public sealed partial class Blake2s
         var orig1 = row1;
 
         uint* mr = (uint*)msgPtr;
-        uint w0  = mr[0],  w1  = mr[1],  w2  = mr[2],  w3  = mr[3],
-             w4  = mr[4],  w5  = mr[5],  w6  = mr[6],  w7  = mr[7],
-             w8  = mr[8],  w9  = mr[9],  w10 = mr[10], w11 = mr[11],
+        uint w0 = mr[0], w1 = mr[1], w2 = mr[2], w3 = mr[3],
+             w4 = mr[4], w5 = mr[5], w6 = mr[6], w7 = mr[7],
+             w8 = mr[8], w9 = mr[9], w10 = mr[10], w11 = mr[11],
              w12 = mr[12], w13 = mr[13], w14 = mr[14], w15 = mr[15];
 
         // Round 0 — sigma: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
@@ -138,7 +133,7 @@ public sealed partial class Blake2s
         Vector128<uint> x)
     {
         a = AdvSimd.Add(a, AdvSimd.Add(b, x));
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask16).AsUInt32();
+        d = AdvSimd.ReverseElement16((d ^ a).AsUInt32()).AsUInt32();
         c = AdvSimd.Add(c, d);
         var t = b ^ c;
         b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t, 12), AdvSimd.ShiftLeftLogical(t, 20));

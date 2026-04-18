@@ -73,7 +73,7 @@ internal static class BinarySpans
     /// </summary>
     /// <param name="source">Pointer to the source bytes (at least <paramref name="count"/> × 4 bytes).</param>
     /// <param name="destination">Pointer to the destination words.</param>
-    /// <param name="count">The number of 64-bit words to read.</param>
+    /// <param name="count">The number of words to read.</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static unsafe void ReadUInt32LittleEndian(byte* source, uint* destination, int count)
     {
@@ -83,10 +83,10 @@ internal static class BinarySpans
         }
         else
         {
+            var src = new ReadOnlySpan<byte>(source, sizeof(uint) * count);
             for (int i = 0; i < count; i++)
             {
-                destination[i] = BinaryPrimitives.ReadUInt32LittleEndian(
-                    new ReadOnlySpan<byte>(source + i * sizeof(uint), sizeof(uint)));
+                destination[i] = BinaryPrimitives.ReadUInt32LittleEndian(src.Slice(i * sizeof(uint)));
             }
         }
     }
@@ -96,7 +96,7 @@ internal static class BinarySpans
     /// </summary>
     /// <param name="source">Pointer to the source bytes (at least <paramref name="count"/> × 8 bytes).</param>
     /// <param name="destination">Pointer to the destination words.</param>
-    /// <param name="count">The number of 64-bit words to read.</param>
+    /// <param name="count">The number of words to read.</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static unsafe void ReadUInt64LittleEndian(byte* source, ulong* destination, int count)
     {
@@ -106,10 +106,10 @@ internal static class BinarySpans
         }
         else
         {
+            var src = new ReadOnlySpan<byte>(source, sizeof(ulong) * count);
             for (int i = 0; i < count; i++)
             {
-                destination[i] = BinaryPrimitives.ReadUInt64LittleEndian(
-                    new ReadOnlySpan<byte>(source + i * sizeof(ulong), sizeof(ulong)));
+                destination[i] = BinaryPrimitives.ReadUInt64LittleEndian(src.Slice(i * sizeof(ulong)));
             }
         }
     }
@@ -152,6 +152,52 @@ internal static class BinarySpans
             for (int i = 0; i < source.Length; i++)
             {
                 BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * sizeof(UInt64)), source[i]);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writes <see cref="UInt32"/> words to a byte span in little-endian order.
+    /// </summary>
+    /// <param name="source">The source word span.</param>
+    /// <param name="destination">The destination bytes (must be at least <paramref name="source"/>.Length × 4 bytes).</param>
+    /// <param name="count">The number of words to write.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void WriteUInt32LittleEndian(uint* source, byte* destination, int count)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            Unsafe.CopyBlockUnaligned(destination, source, (uint)(count * sizeof(uint)));
+        }
+        else
+        {
+            var dst = new Span<byte>(destination, sizeof(uint) * count);
+            for (int i = 0; i < count; i++)
+            {
+                BinaryPrimitives.WriteUInt32LittleEndian(dst.Slice(i * sizeof(uint)), source[i]);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writes <see cref="UInt64"/> words to a byte span in little-endian order.
+    /// </summary>
+    /// <param name="source">The source word span.</param>
+    /// <param name="destination">The destination bytes (must be at least <paramref name="source"/>.Length × 8 bytes).</param>
+    /// <param name="count">The number of words to write.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void WriteUInt64LittleEndian(ulong* source, byte* destination, int count)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            Unsafe.CopyBlockUnaligned(destination, source, (uint)(count * sizeof(ulong)));
+        }
+        else
+        {
+            var dst = new Span<byte>(destination, sizeof(ulong) * count);
+            for (int i = 0; i < count; i++)
+            {
+                BinaryPrimitives.WriteUInt64LittleEndian(dst.Slice(i * sizeof(ulong)), source[i]);
             }
         }
     }

@@ -4,9 +4,6 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
-using System.Buffers.Binary;
-using System.Numerics;
-using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -46,81 +43,36 @@ public enum Blake3Mode
 /// BLAKE3 supports three modes: standard hashing, keyed hashing (MAC), and key derivation.
 /// </para>
 /// </remarks>
-public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
+public sealed class Blake3 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
     /// The default hash size in bits.
     /// </summary>
-    public const int DefaultHashSizeBits = 256;
+    public const int DefaultHashSizeBits = Blake3State.DefaultHashSizeBits;
 
     /// <summary>
     /// The default hash size in bytes.
     /// </summary>
-    public const int DefaultHashSizeBytes = DefaultHashSizeBits / 8;
+    public const int DefaultHashSizeBytes = Blake3State.DefaultHashSizeBytes;
 
     /// <summary>
     /// The required key size in bytes for keyed hash mode.
     /// </summary>
-    public const int KeySizeBytes = 32;
+    public const int KeySizeBytes = Blake3State.KeySizeBytes;
 
     /// <summary>
     /// The block size in bytes.
     /// </summary>
-    public const int BlockSizeBytes = 64;
+    public const int BlockSizeBytes = Blake3State.BlockSizeBytes;
 
     /// <summary>
     /// The chunk size in bytes (1024 bytes).
     /// </summary>
-    public const int ChunkSizeBytes = 1024;
+    public const int ChunkSizeBytes = Blake3State.ChunkSizeBytes;
 
-    // Number of compression rounds
-    // private const int Rounds = 7;
-
-    // Max tree depth (2^54 chunks × 1024 bytes = 16 exabytes)
-    private const int MaxStackDepth = 54;
-
-    /// <summary>
-    /// The required key size in uint words for internal usage.
-    /// </summary>
-    private const int KeySizeWords = KeySizeBytes / sizeof(UInt32);
-
-    /// <summary>
-    /// The block size in uint words for internal usage.
-    /// </summary>
-    private const int BlockSizeWords = BlockSizeBytes / sizeof(UInt32);
-
-    // BLAKE3 flags
-    private const uint FlagChunkStart = 1 << 0;
-    private const uint FlagChunkEnd = 1 << 1;
-    private const uint FlagParent = 1 << 2;
-    private const uint FlagRoot = 1 << 3;
-    private const uint FlagKeyedHash = 1 << 4;
-
-    // BLAKE3 IV (same as BLAKE2s)
-    private static readonly uint[] IV =
-    [
-        0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU,
-        0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U
-    ];
-
+    // Blake3 core state
+    private Blake3State _core;
     private readonly Blake3Mode _mode;
-    private readonly uint[] _keyWords;
-    private readonly uint[] _cv;
-    private readonly byte[] _chunkBuffer;
-    private readonly uint[] _cvStackBuf;
-    private readonly int _outputBytes;
-    private readonly uint _baseFlags;
-    private int _cvStackDepth;
-    private int _chunkBufferLength;
-    private ulong _chunkCounter;
-    private int _blocksCompressed;
-
-    // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
-    private delegate void CompressBlockAction(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags);
-    private delegate void SqueezeRootBlockAction(ulong counter, Span<byte> destination);
-
-    private readonly CompressBlockAction _compressBlock;
-    private readonly SqueezeRootBlockAction _squeezeRootBlock;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class with default output size (32 bytes).
@@ -148,32 +100,8 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
             throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
 
         HashSizeValue = outputBytes * 8;
-        _outputBytes = outputBytes;
         _mode = Blake3Mode.Hash;
-        _baseFlags = 0;
-        _keyWords = new uint[KeySizeWords];
-        _cv = new uint[KeySizeWords];
-        _chunkBuffer = new byte[ChunkSizeBytes];
-        _cvStackBuf = new uint[MaxStackDepth * 8];
-
-#if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport & SimdSupport.Ssse3) != 0)
-        {
-            _compressBlock = CompressBlockSsse3;
-            _squeezeRootBlock = SqueezeRootBlockSsse3;
-        }
-        else if ((simdSupport & SimdSupport & SimdSupport.Neon) != 0)
-        {
-            _compressBlock = CompressBlockNeon;
-            _squeezeRootBlock = SqueezeRootBlockNeon;
-        }
-        else
-#endif
-        {
-            _compressBlock = CompressBlockScalar;
-            _squeezeRootBlock = SqueezeRootBlockScalar;
-        }
-
+        _core = new Blake3State(simdSupport, outputBytes);
         Initialize();
     }
 
@@ -182,7 +110,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    private Blake3(byte[] key, int outputBytes) : this(SimdSupport.All, key, outputBytes)
+    private Blake3(ReadOnlySpan<byte> key, int outputBytes) : this(SimdSupport.All, key, outputBytes)
     {
     }
 
@@ -192,46 +120,14 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    private Blake3(SimdSupport simdSupport, byte[] key, int outputBytes)
+    private Blake3(SimdSupport simdSupport, ReadOnlySpan<byte> key, int outputBytes)
     {
-        if (key == null) throw new ArgumentNullException(nameof(key));
-
         if (key.Length != KeySizeBytes) throw new ArgumentException($"Key must be exactly {KeySizeBytes} bytes.", nameof(key));
-
         if (outputBytes < 1) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
 
-        _outputBytes = outputBytes;
-        _mode = Blake3Mode.KeyedHash;
-        _baseFlags = FlagKeyedHash;
         HashSizeValue = outputBytes * 8;
-        _keyWords = new uint[KeySizeWords];
-        _cv = new uint[KeySizeWords];
-        _chunkBuffer = new byte[ChunkSizeBytes];
-        _cvStackBuf = new uint[MaxStackDepth * 8];
-
-#if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport & SimdSupport.Ssse3) != 0)
-        {
-            _compressBlock = CompressBlockSsse3;
-            _squeezeRootBlock = SqueezeRootBlockSsse3;
-        }
-        else if ((simdSupport & SimdSupport & SimdSupport.Neon) != 0)
-        {
-            _compressBlock = CompressBlockNeon;
-            _squeezeRootBlock = SqueezeRootBlockNeon;
-        }
-        else
-#endif
-        {
-            _compressBlock = CompressBlockScalar;
-            _squeezeRootBlock = SqueezeRootBlockScalar;
-        }
-
-        // Parse key as little-endian uint32 words
-        for (int i = 0; i < KeySizeWords; i++)
-        {
-            _keyWords[i] = BinaryPrimitives.ReadUInt32LittleEndian(key.AsSpan(i * sizeof(UInt32)));
-        }
+        _mode = Blake3Mode.KeyedHash;
+        _core = new Blake3State(simdSupport, outputBytes, key);
 
         Initialize();
     }
@@ -277,7 +173,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <returns>A new BLAKE3 instance configured for keyed hashing.</returns>
-    public static Blake3 CreateKeyed(byte[] key) => new(key, DefaultHashSizeBytes);
+    public static Blake3 CreateKeyed(ReadOnlySpan<byte> key) => new(key, DefaultHashSizeBytes);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake3"/> class with specified output size.
@@ -285,7 +181,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <returns>A new BLAKE3 instance configured for keyed hashing.</returns>
-    public static Blake3 CreateKeyed(byte[] key, int outputBytes) => new(key, outputBytes);
+    public static Blake3 CreateKeyed(ReadOnlySpan<byte> key, int outputBytes) => new(key, outputBytes);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake3"/> class with specified SIMD support.
@@ -294,79 +190,53 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <returns>A new BLAKE3 instance configured for keyed hashing.</returns>
-    internal static Blake3 CreateKeyed(SimdSupport simdSupport, byte[] key, int outputBytes) => new(simdSupport, key, outputBytes);
+    internal static Blake3 CreateKeyed(SimdSupport simdSupport, ReadOnlySpan<byte> key, int outputBytes) => new(simdSupport, key, outputBytes);
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    internal static new SimdSupport SimdSupport => Blake3State.SimdSupport;
+#endif
 
     /// <inheritdoc/>
     public override void Initialize()
     {
-        if (_mode == Blake3Mode.KeyedHash)
-        {
-            Array.Copy(_keyWords, _cv, KeySizeWords);
-        }
-        else
-        {
-            Array.Copy(IV, _keyWords, KeySizeWords);
-            Array.Copy(IV, _cv, KeySizeWords);
-        }
+        _core.Reset(_mode == Blake3Mode.KeyedHash);
+    }
 
-        _chunkBufferLength = 0;
-        _chunkCounter = 0;
-        _blocksCompressed = 0;
-        _cvStackDepth = 0;
-        _squeezed = false;
-        _outputCounter = 0;
-        _squeezeOffset = 0;
+    /// <inheritdoc/>
+    public void Absorb(ReadOnlySpan<byte> input)
+    {
+        if (_core.Squeezed) throw new InvalidOperationException("Cannot add data after finalization.");
+        HashCore(input);
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        Initialize();
+    }
+
+    /// <summary>
+    /// Finalizes the hash and squeezes output of the specified length.
+    /// </summary>
+    /// <param name="output">The buffer to receive the output.</param>
+    public void Squeeze(Span<byte> output)
+    {
+        _core.Squeeze(output);
     }
 
     /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
-        int offset = 0;
-
-        while (offset < source.Length)
-        {
-            // If chunk buffer is full, finalize the chunk
-            if (_chunkBufferLength == ChunkSizeBytes)
-            {
-                FinalizeChunk(_cvStackBuf.AsSpan(_cvStackDepth * 8, 8));
-                AddChunkToTree();
-                _chunkCounter++;
-                _chunkBufferLength = 0;
-                _blocksCompressed = 0;
-                Array.Copy(_keyWords, _cv, KeySizeWords);
-            }
-
-            int toCopy = Math.Min(ChunkSizeBytes - _chunkBufferLength, source.Length - offset);
-            source.Slice(offset, toCopy).CopyTo(_chunkBuffer.AsSpan(_chunkBufferLength));
-            _chunkBufferLength += toCopy;
-            offset += toCopy;
-        }
+        _core.Append(source);
     }
 
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
-        if (destination.Length < _outputBytes)
-        {
-            bytesWritten = 0;
-            return false;
-        }
-
-        bytesWritten = _outputBytes;
-
-        if (!_squeezed && _outputBytes <= BlockSizeBytes)
-        {
-            // Fast path: output fits in a single squeeze block — write directly to destination
-            FinalizeRoot();
-            _squeezed = true;
-            Span<byte> buf = stackalloc byte[BlockSizeBytes];
-            _squeezeRootBlock(0, buf);
-            buf.Slice(0, _outputBytes).CopyTo(destination);
-            return true;
-        }
-
-        Squeeze(destination);
-        return true;
+        return _core.TryGetCurrentHash(destination, out bytesWritten);
     }
 
     /// <inheritdoc/>
@@ -374,232 +244,9 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
     {
         if (disposing)
         {
-            Array.Clear(_keyWords, 0, _keyWords.Length);
-            Array.Clear(_cv, 0, _cv.Length);
-            ClearBuffer(_chunkBuffer);
-            Array.Clear(_cvStackBuf, 0, _cvStackBuf.Length);
-            Array.Clear(_rootBlock, 0, _rootBlock.Length);
-            Array.Clear(_rootCv, 0, _rootCv.Length);
-            ClearBuffer(_squeezeBuf);
-            _cvStackDepth = 0;
+            _core.Dispose();
         }
         base.Dispose(disposing);
-    }
-
-    private void FinalizeChunk(Span<uint> destination)
-    {
-        Span<byte> block = stackalloc byte[BlockSizeBytes];
-        int offset = 0;
-
-        while (offset < _chunkBufferLength)
-        {
-            int blockLen = Math.Min(BlockSizeBytes, _chunkBufferLength - offset);
-            bool isStart = _blocksCompressed == 0;
-            bool isEnd = offset + blockLen >= _chunkBufferLength;
-
-            uint flags = _baseFlags;
-            if (isStart) flags |= FlagChunkStart;
-            if (isEnd) flags |= FlagChunkEnd;
-
-            if (blockLen == BlockSizeBytes)
-            {
-                // Full block: compress directly from chunk buffer — no copy needed
-                _compressBlock(_chunkBuffer.AsSpan(offset, BlockSizeBytes), BlockSizeBytes, _chunkCounter, flags);
-            }
-            else
-            {
-                // Partial last block: stackalloc is zero-initialized for padding
-                _chunkBuffer.AsSpan(offset, blockLen).CopyTo(block);
-                _compressBlock(block, (uint)blockLen, _chunkCounter, flags);
-            }
-
-            _blocksCompressed++;
-            offset += BlockSizeBytes;
-        }
-
-        _cv.AsSpan(0, 8).CopyTo(destination);
-    }
-
-    private void AddChunkToTree()
-    {
-        _cvStackDepth++;
-
-        ulong totalChunks = _chunkCounter + 1;
-        while ((totalChunks & 1) == 0 && _cvStackDepth >= 2)
-        {
-            ReadOnlySpan<uint> left = _cvStackBuf.AsSpan((_cvStackDepth - 2) * 8, 8);
-            ReadOnlySpan<uint> right = _cvStackBuf.AsSpan((_cvStackDepth - 1) * 8, 8);
-
-            // Merge into left's slot (left is read into block before destination is written)
-            ComputeParentCv(left, right, _cvStackBuf.AsSpan((_cvStackDepth - 2) * 8, 8));
-            _cvStackDepth--;
-            totalChunks >>= 1;
-        }
-    }
-
-    private void ComputeParentCv(ReadOnlySpan<uint> left, ReadOnlySpan<uint> right, Span<uint> destination)
-    {
-        Span<uint> m = stackalloc uint[BlockSizeWords];
-
-        // Copy left[8] and right[8] into m[16] — on LE, skip byte intermediary
-        left.Slice(0, 8).CopyTo(m);
-        right.Slice(0, 8).CopyTo(m.Slice(8));
-
-        uint flags = _baseFlags | FlagParent;
-
-        Span<uint> v = stackalloc uint[BlockSizeWords];
-        v[0] = _keyWords[0]; v[1] = _keyWords[1]; v[2] = _keyWords[2]; v[3] = _keyWords[3];
-        v[4] = _keyWords[4]; v[5] = _keyWords[5]; v[6] = _keyWords[6]; v[7] = _keyWords[7];
-        v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
-        v[12] = 0;
-        v[13] = 0;
-        v[14] = BlockSizeBytes;
-        v[15] = flags;
-
-        Compress(v, m);
-
-        for (int i = 0; i < 8; i++)
-        {
-            destination[i] = v[i] ^ v[i + 8];
-        }
-    }
-
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressBlockScalar(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
-    {
-        Span<uint> m = stackalloc uint[BlockSizeWords];
-        BinarySpans.ReadUInt32LittleEndian(block, m);
-
-        Span<uint> v = stackalloc uint[BlockSizeWords];
-        v[0] = _cv[0]; v[1] = _cv[1]; v[2] = _cv[2]; v[3] = _cv[3];
-        v[4] = _cv[4]; v[5] = _cv[5]; v[6] = _cv[6]; v[7] = _cv[7];
-        v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
-        v[12] = (uint)counter;
-        v[13] = (uint)(counter >> 32);
-        v[14] = blockLen;
-        v[15] = flags;
-
-        Compress(v, m);
-
-        for (int i = 0; i < 8; i++)
-        {
-            _cv[i] = v[i] ^ v[i + 8];
-        }
-    }
-
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressBlockFull(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags, Span<uint> result)
-    {
-        Span<uint> m = stackalloc uint[BlockSizeWords];
-        BinarySpans.ReadUInt32LittleEndian(block, m);
-
-        Span<uint> v = stackalloc uint[BlockSizeWords];
-        _cv.AsSpan().Slice(0, 8).CopyTo(v);
-        IV.AsSpan().Slice(0, 4).CopyTo(v.Slice(8));
-        v[12] = (uint)counter;
-        v[13] = (uint)(counter >> 32);
-        v[14] = blockLen;
-        v[15] = flags;
-
-        Compress(v, m);
-
-        for (int i = 0; i < 8; i++)
-        {
-            result[i] = v[i] ^ v[i + 8];
-            result[i + 8] = v[i + 8] ^ _cv[i];
-        }
-    }
-
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void Compress(Span<uint> v, Span<uint> m)
-    {
-        // Round 1
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[0], m[1]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[2], m[3]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[4], m[5]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[6], m[7]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[8], m[9]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[10], m[11]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[12], m[13]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[14], m[15]);
-
-        // Round 2
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[2], m[6]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[3], m[10]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[7], m[0]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[4], m[13]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[1], m[11]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[12], m[5]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[9], m[14]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[15], m[8]);
-
-        // Round 3
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[3], m[4]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[10], m[12]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[13], m[2]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[7], m[14]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[6], m[5]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[9], m[0]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[11], m[15]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[8], m[1]);
-
-        // Round 4
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[10], m[7]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[12], m[9]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[14], m[3]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[13], m[15]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[4], m[0]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[11], m[2]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[5], m[8]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[1], m[6]);
-
-        // Round 5
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[12], m[13]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[9], m[11]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[15], m[10]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[14], m[8]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[7], m[2]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[5], m[3]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[0], m[1]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[6], m[4]);
-
-        // Round 6
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[9], m[14]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[11], m[5]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[8], m[12]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[15], m[1]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[13], m[3]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[0], m[10]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[2], m[6]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[4], m[7]);
-
-        // Round 7
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[11], m[15]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[5], m[0]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[1], m[9]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[8], m[6]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[14], m[10]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[2], m[12]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[3], m[4]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[7], m[13]);
-    }
-
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void G(ref uint a, ref uint b, ref uint c, ref uint d, uint mx, uint my)
-    {
-        unchecked
-        {
-            a = a + b + mx;
-            d = BitOperations.RotateRight(d ^ a, 16);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 12);
-            a = a + b + my;
-            d = BitOperations.RotateRight(d ^ a, 8);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 7);
-        }
     }
 }
 

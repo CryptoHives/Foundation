@@ -1,17 +1,17 @@
-﻿| Description                             | TestDataSize | Mean       | Error     | StdDev    | Allocated |
-|---------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · KMAC-256 · Managed      | 128B         |   3.770 μs | 0.0390 μs | 0.0346 μs |         - |
-| AbsorbSqueeze · KMAC-256 · OS Native    | 128B         |   4.599 μs | 0.0202 μs | 0.0179 μs |      32 B |
-| AbsorbSqueeze · KMAC-256 · BouncyCastle | 128B         |   5.905 μs | 0.0400 μs | 0.0354 μs |     128 B |
-|                                         |              |            |           |           |           |
-| AbsorbSqueeze · KMAC-256 · Managed      | 1KB          |   5.654 μs | 0.0333 μs | 0.0311 μs |         - |
-| AbsorbSqueeze · KMAC-256 · OS Native    | 1KB          |   6.244 μs | 0.0431 μs | 0.0382 μs |      32 B |
-| AbsorbSqueeze · KMAC-256 · BouncyCastle | 1KB          |   8.137 μs | 0.0653 μs | 0.0579 μs |    1248 B |
-|                                         |              |            |           |           |           |
-| AbsorbSqueeze · KMAC-256 · OS Native    | 8KB          |  18.883 μs | 0.1348 μs | 0.1261 μs |      32 B |
-| AbsorbSqueeze · KMAC-256 · Managed      | 8KB          |  20.476 μs | 0.1815 μs | 0.1609 μs |         - |
-| AbsorbSqueeze · KMAC-256 · BouncyCastle | 8KB          |  25.408 μs | 0.1718 μs | 0.1523 μs |    9728 B |
-|                                         |              |            |           |           |           |
-| AbsorbSqueeze · KMAC-256 · OS Native    | 128KB        | 233.734 μs | 1.3195 μs | 1.1697 μs |      32 B |
-| AbsorbSqueeze · KMAC-256 · Managed      | 128KB        | 271.973 μs | 2.4335 μs | 2.1573 μs |         - |
-| AbsorbSqueeze · KMAC-256 · BouncyCastle | 128KB        | 318.840 μs | 2.2413 μs | 2.0965 μs |  154208 B |
+﻿| Description                                   | TestDataSize | Mean       | Error     | StdDev    | Allocated |
+|---------------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
+| AbsorbSqueeze · KMAC-256 · CryptoHives-Scalar | 128B         |   3.730 μs | 0.0133 μs | 0.0118 μs |         - |
+| AbsorbSqueeze · KMAC-256 · OS Native          | 128B         |   4.564 μs | 0.0347 μs | 0.0308 μs |      32 B |
+| AbsorbSqueeze · KMAC-256 · BouncyCastle       | 128B         |   5.897 μs | 0.0309 μs | 0.0289 μs |     128 B |
+|                                               |              |            |           |           |           |
+| AbsorbSqueeze · KMAC-256 · CryptoHives-Scalar | 1KB          |   5.645 μs | 0.0391 μs | 0.0366 μs |         - |
+| AbsorbSqueeze · KMAC-256 · OS Native          | 1KB          |   6.226 μs | 0.0247 μs | 0.0231 μs |      32 B |
+| AbsorbSqueeze · KMAC-256 · BouncyCastle       | 1KB          |   8.128 μs | 0.0365 μs | 0.0342 μs |    1248 B |
+|                                               |              |            |           |           |           |
+| AbsorbSqueeze · KMAC-256 · OS Native          | 8KB          |  18.814 μs | 0.1609 μs | 0.1343 μs |      32 B |
+| AbsorbSqueeze · KMAC-256 · CryptoHives-Scalar | 8KB          |  20.334 μs | 0.0754 μs | 0.0668 μs |         - |
+| AbsorbSqueeze · KMAC-256 · BouncyCastle       | 8KB          |  25.184 μs | 0.1988 μs | 0.1762 μs |    9728 B |
+|                                               |              |            |           |           |           |
+| AbsorbSqueeze · KMAC-256 · OS Native          | 128KB        | 232.120 μs | 1.1318 μs | 0.8836 μs |      32 B |
+| AbsorbSqueeze · KMAC-256 · CryptoHives-Scalar | 128KB        | 271.349 μs | 2.8158 μs | 2.6339 μs |         - |
+| AbsorbSqueeze · KMAC-256 · BouncyCastle       | 128KB        | 317.745 μs | 1.6789 μs | 1.5705 μs |  154208 B |

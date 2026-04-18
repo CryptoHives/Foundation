@@ -292,18 +292,6 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     internal static SimdSupport SimdSupport => SimdSupport.None;
 
     /// <summary>
-    /// Clears sensitive data from a byte array.
-    /// </summary>
-    /// <param name="data">The data to clear.</param>
-    protected static void ClearBuffer(byte[] data)
-    {
-        if (data != null)
-        {
-            Array.Clear(data, 0, data.Length);
-        }
-    }
-
-    /// <summary>
     /// Clears sensitive data from a span.
     /// </summary>
     /// <param name="data">The data to clear.</param>

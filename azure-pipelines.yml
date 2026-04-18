@@ -140,4 +140,12 @@ stages:
       poolImage: 'ubuntu-latest'
       framework: net10.0
       jobnamesuffix: net100cc
-
+- stage: validatepackaging
+  dependsOn: [build]
+  displayName: 'Validate NuGet-Safe Build (no EXPERIMENTAL)'
+  condition: succeeded()
+  jobs:
+  - template: .azurepipelines/ci.yml
+    parameters:
+      buildoption: '/p:EnableExperimentalAlgorithms=false'
+      jobnamesuffix: packaging
