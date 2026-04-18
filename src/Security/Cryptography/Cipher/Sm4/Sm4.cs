@@ -32,8 +32,6 @@ using System.Security.Cryptography;
 /// </remarks>
 public sealed class Sm4 : SymmetricCipher
 {
-    private readonly SimdSupport _simdSupport;
-
     /// <summary>
     /// Key size in bits for SM4.
     /// </summary>
@@ -47,17 +45,8 @@ public sealed class Sm4 : SymmetricCipher
     /// <summary>
     /// Initializes a new instance of the <see cref="Sm4"/> class.
     /// </summary>
-    public Sm4() : this(SimdSupport.All)
+    internal Sm4()
     {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Sm4"/> class with specified SIMD support.
-    /// </summary>
-    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    internal Sm4(SimdSupport simdSupport)
-    {
-        _simdSupport = simdSupport & SimdSupport;
         BlockSizeValue = Sm4Core.BlockSizeBits;
         KeySizeValue = KeySizeBits;
         LegalKeySizesValue = [new KeySizes(128, 128, 0)];
@@ -73,7 +62,7 @@ public sealed class Sm4 : SymmetricCipher
     /// <summary>
     /// Gets the SIMD instruction sets supported by SM4 on the current platform.
     /// </summary>
-    internal static SimdSupport SimdSupport => Sm4Core.SimdSupport;
+    internal static SimdSupport SimdSupport => SimdSupport.None;
 
     /// <summary>
     /// Creates a new instance of the <see cref="Sm4"/> cipher.
@@ -81,24 +70,17 @@ public sealed class Sm4 : SymmetricCipher
     /// <returns>A new SM4 cipher instance.</returns>
     public static new Sm4 Create() => new();
 
-    /// <summary>
-    /// Creates a new instance of the <see cref="Sm4"/> cipher with specified SIMD support.
-    /// </summary>
-    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    /// <returns>A new SM4 cipher instance.</returns>
-    internal static Sm4 Create(SimdSupport simdSupport) => new(simdSupport);
-
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new Sm4CipherTransform(_simdSupport, key, iv, encrypting: true, Mode, Padding);
+        return new Sm4CipherTransform(key, iv, encrypting: true, Mode, Padding);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new Sm4CipherTransform(_simdSupport, key, iv, encrypting: false, Mode, Padding);
+        return new Sm4CipherTransform(key, iv, encrypting: false, Mode, Padding);
     }
 }

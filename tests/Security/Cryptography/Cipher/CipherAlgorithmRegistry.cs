@@ -940,7 +940,7 @@ public static class CipherAlgorithmRegistry
             Mode.CBC,
             CH.Cipher.Sm4.SimdSupport,
             support => {
-                var sm4 = CH.Cipher.Sm4.Create(support);
+                var sm4 = CH.Cipher.Sm4.Create();
                 sm4.Mode = CH.Cipher.CipherMode.CBC;
                 sm4.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return sm4;
