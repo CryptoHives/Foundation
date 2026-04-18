@@ -333,10 +333,10 @@ internal unsafe partial struct Sm4Core
     {
         fixed (uint* rk = _roundKeys)
         {
-            EncryptBlockScalar(input,        output,        rk);
-            EncryptBlockScalar(input[16..],  output[16..],  rk);
-            EncryptBlockScalar(input[32..],  output[32..],  rk);
-            EncryptBlockScalar(input[48..],  output[48..],  rk);
+            EncryptBlockScalar(input, output, rk);
+            EncryptBlockScalar(input[16..], output[16..], rk);
+            EncryptBlockScalar(input[32..], output[32..], rk);
+            EncryptBlockScalar(input[48..], output[48..], rk);
         }
     }
 
@@ -351,10 +351,10 @@ internal unsafe partial struct Sm4Core
     {
         fixed (uint* rk = _roundKeys)
         {
-            DecryptBlockScalar(input,        output,        rk);
-            DecryptBlockScalar(input[16..],  output[16..],  rk);
-            DecryptBlockScalar(input[32..],  output[32..],  rk);
-            DecryptBlockScalar(input[48..],  output[48..],  rk);
+            DecryptBlockScalar(input, output, rk);
+            DecryptBlockScalar(input[16..], output[16..], rk);
+            DecryptBlockScalar(input[32..], output[32..], rk);
+            DecryptBlockScalar(input[48..], output[48..], rk);
         }
     }
 
