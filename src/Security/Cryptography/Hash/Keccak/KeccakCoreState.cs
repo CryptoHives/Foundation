@@ -14,6 +14,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 #endif
 
@@ -36,7 +37,7 @@ using System.Runtime.Intrinsics.X86;
 /// which is used for benchmarking, so SIMD is disabled by default in release packages.
 /// </para>
 /// </remarks>
-internal unsafe struct KeccakCoreState
+internal unsafe partial struct KeccakCoreState
 {
     /// <summary>
     /// The state size in 64-bit words (25 lanes × 64 bits = 1600 bits).
@@ -80,6 +81,7 @@ internal unsafe struct KeccakCoreState
 #if NET8_0_OR_GREATER
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Avx512F.IsSupported) support |= SimdSupport.Avx512F;
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
 #endif
             return support;
         }
@@ -136,6 +138,13 @@ internal unsafe struct KeccakCoreState
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void Permute()
     {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.Neon) != 0 && AdvSimd.Arm64.IsSupported)
+        {
+            PermuteArm64();
+            return;
+        }
+#endif
 #if EXPERIMENTAL
 #if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.Avx512F) != 0)

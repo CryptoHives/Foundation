@@ -83,7 +83,8 @@ internal enum SimdSupport
 
     /// <summary>
     /// The default optimization to use for Keccak based algorithms.
-    /// Set to None since Keccak is faster with scalar instructions.
+    /// Enables the ARM64 scalar path (<see cref="Neon"/>) which is automatically
+    /// masked to <see cref="None"/> on non-ARM64 platforms.
     /// </summary>
-    KeccakDefault = None
+    KeccakDefault = Neon
 }
