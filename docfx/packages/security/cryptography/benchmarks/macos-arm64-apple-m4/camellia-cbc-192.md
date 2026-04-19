@@ -1,25 +1,25 @@
 ﻿| Description                                     | TestDataSize | Mean         | Error       | StdDev      | Allocated |
 |------------------------------------------------ |------------- |-------------:|------------:|------------:|----------:|
-| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128B         |     833.0 ns |     3.68 ns |     2.87 ns |         - |
-| Decrypt · Camellia-192-CBC (BouncyCastle)       | 128B         |   1,199.2 ns |     2.48 ns |     1.93 ns |     584 B |
+| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128B         |     820.7 ns |     2.38 ns |     2.23 ns |         - |
+| Decrypt · Camellia-192-CBC (BouncyCastle)       | 128B         |   1,188.6 ns |     3.76 ns |     3.52 ns |     584 B |
 |                                                 |              |              |             |             |           |
-| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128B         |     914.9 ns |     9.90 ns |     8.77 ns |         - |
-| Encrypt · Camellia-192-CBC (BouncyCastle)       | 128B         |   1,169.8 ns |     7.65 ns |     6.38 ns |     584 B |
+| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128B         |     885.3 ns |     2.39 ns |     2.23 ns |         - |
+| Encrypt · Camellia-192-CBC (BouncyCastle)       | 128B         |   1,156.7 ns |     4.04 ns |     3.77 ns |     584 B |
 |                                                 |              |              |             |             |           |
-| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 1KB          |   5,899.5 ns |    41.86 ns |    37.11 ns |         - |
-| Decrypt · Camellia-192-CBC (BouncyCastle)       | 1KB          |   7,900.9 ns |    92.02 ns |    81.58 ns |    2824 B |
+| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 1KB          |   5,834.2 ns |    25.49 ns |    23.85 ns |         - |
+| Decrypt · Camellia-192-CBC (BouncyCastle)       | 1KB          |   7,798.0 ns |    47.11 ns |    44.06 ns |    2824 B |
 |                                                 |              |              |             |             |           |
-| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 1KB          |   6,563.5 ns |    47.01 ns |    41.68 ns |         - |
-| Encrypt · Camellia-192-CBC (BouncyCastle)       | 1KB          |   7,682.9 ns |    29.80 ns |    24.89 ns |    2824 B |
+| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 1KB          |   6,427.0 ns |    20.27 ns |    18.96 ns |         - |
+| Encrypt · Camellia-192-CBC (BouncyCastle)       | 1KB          |   7,745.4 ns |    43.40 ns |    40.59 ns |    2824 B |
 |                                                 |              |              |             |             |           |
-| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 8KB          |  46,299.1 ns |   305.23 ns |   285.51 ns |         - |
-| Decrypt · Camellia-192-CBC (BouncyCastle)       | 8KB          |  59,341.8 ns |   335.93 ns |   297.79 ns |   20744 B |
+| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 8KB          |  45,869.3 ns |   195.60 ns |   182.96 ns |         - |
+| Decrypt · Camellia-192-CBC (BouncyCastle)       | 8KB          |  58,656.9 ns |   152.55 ns |   135.23 ns |   20744 B |
 |                                                 |              |              |             |             |           |
-| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 8KB          |  51,714.5 ns |   410.36 ns |   363.77 ns |         - |
-| Encrypt · Camellia-192-CBC (BouncyCastle)       | 8KB          |  59,750.9 ns |   863.56 ns |   765.52 ns |   20744 B |
+| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 8KB          |  51,318.2 ns |   116.53 ns |   109.00 ns |         - |
+| Encrypt · Camellia-192-CBC (BouncyCastle)       | 8KB          |  59,060.5 ns |   207.52 ns |   194.12 ns |   20744 B |
 |                                                 |              |              |             |             |           |
-| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128KB        | 744,326.9 ns | 3,660.35 ns | 3,056.56 ns |         - |
-| Decrypt · Camellia-192-CBC (BouncyCastle)       | 128KB        | 944,916.0 ns | 6,715.11 ns | 5,952.77 ns |  327944 B |
+| Decrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128KB        | 736,722.4 ns | 3,650.15 ns | 3,414.35 ns |         - |
+| Decrypt · Camellia-192-CBC (BouncyCastle)       | 128KB        | 937,658.5 ns | 1,999.75 ns | 1,870.56 ns |  327944 B |
 |                                                 |              |              |             |             |           |
-| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128KB        | 825,813.1 ns | 3,981.76 ns | 3,724.54 ns |         - |
-| Encrypt · Camellia-192-CBC (BouncyCastle)       | 128KB        | 945,858.6 ns | 1,782.26 ns | 1,667.13 ns |  327944 B |
+| Encrypt · Camellia-192-CBC (CryptoHives-Scalar) | 128KB        | 812,382.3 ns | 2,779.24 ns | 2,599.71 ns |         - |
+| Encrypt · Camellia-192-CBC (BouncyCastle)       | 128KB        | 938,201.8 ns | 3,448.62 ns | 3,225.84 ns |  327944 B |
