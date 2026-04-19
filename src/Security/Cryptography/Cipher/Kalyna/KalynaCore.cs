@@ -5,7 +5,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Core Kalyna (DSTU 7624:2014) block cipher operations for 128-bit block size.
@@ -13,13 +15,18 @@ using System.Runtime.CompilerServices;
 /// <remarks>
 /// Kalyna is the Ukrainian national standard block cipher. This implementation
 /// supports 128-bit blocks with 128-bit or 256-bit keys (10 or 14 rounds).
+/// State is stored as a pair of 64-bit words in little-endian byte order,
+/// matching the DSTU 7624:2014 specification.
 /// </remarks>
-internal static class KalynaCore
+[SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "Forward and inverse T-tables share a single initialization loop for efficiency.")]
+internal unsafe struct KalynaCore
 {
     public const int BlockSizeBytes = 16;
 
-    // Number of 64-bit words in a 128-bit block
     private const int NumWords = 2;
+
+    private fixed ulong _roundKeys[30]; // MaxRoundKeyCount: 15 round keys × 2 ulongs (up to 14 rounds)
+    private int _rounds;
 
     // S-boxes from DSTU 7624:2014
     private static ReadOnlySpan<byte> S0 =>
@@ -102,65 +109,310 @@ internal static class KalynaCore
         0x64, 0x6D, 0xDC, 0xF0, 0x59, 0xA9, 0x4C, 0x17, 0x7F, 0x91, 0xB8, 0xC9, 0x57, 0x1B, 0xE0, 0x61
     ];
 
-    // Inverse S-boxes (computed from S0-S3)
+    // Inverse S-boxes (IS_i[y] = x such that S_i[x] = y)
     private static readonly byte[] IS0 = ComputeInverse(S0);
     private static readonly byte[] IS1 = ComputeInverse(S1);
     private static readonly byte[] IS2 = ComputeInverse(S2);
     private static readonly byte[] IS3 = ComputeInverse(S3);
 
-#if NOT_USED
-    // MDS matrix for MixColumns (8x8 matrix over GF(2^8))
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-    private static readonly byte[,] MdsMatrix =
-    {
-        { 0x01, 0x01, 0x05, 0x01, 0x08, 0x06, 0x07, 0x04 },
-        { 0x04, 0x01, 0x01, 0x05, 0x01, 0x08, 0x06, 0x07 },
-        { 0x07, 0x04, 0x01, 0x01, 0x05, 0x01, 0x08, 0x06 },
-        { 0x06, 0x07, 0x04, 0x01, 0x01, 0x05, 0x01, 0x08 },
-        { 0x08, 0x06, 0x07, 0x04, 0x01, 0x01, 0x05, 0x01 },
-        { 0x01, 0x08, 0x06, 0x07, 0x04, 0x01, 0x01, 0x05 },
-        { 0x05, 0x01, 0x08, 0x06, 0x07, 0x04, 0x01, 0x01 },
-        { 0x01, 0x05, 0x01, 0x08, 0x06, 0x07, 0x04, 0x01 },
-    };
+    // Forward T-tables: TF_c[x] encodes all 8 MDS output bytes when input byte at column
+    // position c equals x. Byte r of TF_c[x] = GfMul(base[(c-r+8)%8], S[c%4][x]).
+    // Combines SubBytes + ShiftRows + MixColumns in a single 8-byte lookup per input byte.
+    // base = [01, 01, 05, 01, 08, 06, 07, 04] (forward MDS circulant row)
+    private static readonly ulong[] TF0 = new ulong[256];
+    private static readonly ulong[] TF1 = new ulong[256];
+    private static readonly ulong[] TF2 = new ulong[256];
+    private static readonly ulong[] TF3 = new ulong[256];
+    private static readonly ulong[] TF4 = new ulong[256];
+    private static readonly ulong[] TF5 = new ulong[256];
+    private static readonly ulong[] TF6 = new ulong[256];
+    private static readonly ulong[] TF7 = new ulong[256];
 
-    private static readonly byte[,] InvMdsMatrix =
-    {
-        { 0xAD, 0x95, 0x76, 0xA8, 0x2F, 0x49, 0xD7, 0xCA },
-        { 0xCA, 0xAD, 0x95, 0x76, 0xA8, 0x2F, 0x49, 0xD7 },
-        { 0xD7, 0xCA, 0xAD, 0x95, 0x76, 0xA8, 0x2F, 0x49 },
-        { 0x49, 0xD7, 0xCA, 0xAD, 0x95, 0x76, 0xA8, 0x2F },
-        { 0x2F, 0x49, 0xD7, 0xCA, 0xAD, 0x95, 0x76, 0xA8 },
-        { 0xA8, 0x2F, 0x49, 0xD7, 0xCA, 0xAD, 0x95, 0x76 },
-        { 0x76, 0xA8, 0x2F, 0x49, 0xD7, 0xCA, 0xAD, 0x95 },
-        { 0x95, 0x76, 0xA8, 0x2F, 0x49, 0xD7, 0xCA, 0xAD },
-    };
-#pragma warning restore CA1814
-#endif
+    // Inverse T-tables (partial): TI_c[x] encodes all 8 inverse-MDS output bytes without
+    // folding in InvSubBytes (IS0[0] ≠ 0 breaks superposition after the linear layer).
+    // Byte r of TI_c[x] = GfMul(invBase[(c-r+8)%8], x). InvShiftRows and InvSubBytes
+    // are applied separately in DecryptBlock.
+    // invBase = [AD, 95, 76, A8, 2F, 49, D7, CA] (inverse MDS circulant row)
+    private static readonly ulong[] TI0 = new ulong[256];
+    private static readonly ulong[] TI1 = new ulong[256];
+    private static readonly ulong[] TI2 = new ulong[256];
+    private static readonly ulong[] TI3 = new ulong[256];
+    private static readonly ulong[] TI4 = new ulong[256];
+    private static readonly ulong[] TI5 = new ulong[256];
+    private static readonly ulong[] TI6 = new ulong[256];
+    private static readonly ulong[] TI7 = new ulong[256];
 
-    // Precomputed GF(2^8) multiplication tables for forward MDS constants
+    // Precomputed GF(2^8) multiplication tables for forward MDS constants (used in key expansion)
     private static readonly byte[] Gf04 = ComputeGfMulTable(0x04);
     private static readonly byte[] Gf05 = ComputeGfMulTable(0x05);
     private static readonly byte[] Gf06 = ComputeGfMulTable(0x06);
     private static readonly byte[] Gf07 = ComputeGfMulTable(0x07);
     private static readonly byte[] Gf08 = ComputeGfMulTable(0x08);
 
-    // Precomputed GF(2^8) multiplication tables for inverse MDS constants
-    private static readonly byte[] Gf2F = ComputeGfMulTable(0x2F);
-    private static readonly byte[] Gf49 = ComputeGfMulTable(0x49);
-    private static readonly byte[] Gf76 = ComputeGfMulTable(0x76);
-    private static readonly byte[] Gf95 = ComputeGfMulTable(0x95);
-    private static readonly byte[] GfA8 = ComputeGfMulTable(0xA8);
-    private static readonly byte[] GfAD = ComputeGfMulTable(0xAD);
-    private static readonly byte[] GfCA = ComputeGfMulTable(0xCA);
-    private static readonly byte[] GfD7 = ComputeGfMulTable(0xD7);
+    static KalynaCore()
+    {
+        // Forward MDS circulant base row: [01, 01, 05, 01, 08, 06, 07, 04]
+        // Column position c uses S-box S[c%4]: S0, S1, S2, S3, S0, S1, S2, S3.
+        ReadOnlySpan<byte> fwdBase = [0x01, 0x01, 0x05, 0x01, 0x08, 0x06, 0x07, 0x04];
+        ulong[][] tf = [TF0, TF1, TF2, TF3, TF4, TF5, TF6, TF7];
+        for (int c = 0; c < 8; c++)
+        {
+            ulong[] table = tf[c];
+            for (int x = 0; x < 256; x++)
+            {
+                byte sx = (c & 3) switch { 0 => S0[x], 1 => S1[x], 2 => S2[x], _ => S3[x] };
+                ulong entry = 0;
+                for (int r = 0; r < 8; r++)
+                    entry |= (ulong)GfMul(fwdBase[(c - r + 8) & 7], sx) << (r * 8);
+                table[x] = entry;
+            }
+        }
+
+        // Inverse MDS circulant base row: [AD, 95, 76, A8, 2F, 49, D7, CA]
+        // No S-box applied — InvSubBytes is handled separately in DecryptBlock.
+        ReadOnlySpan<byte> invBase = [0xAD, 0x95, 0x76, 0xA8, 0x2F, 0x49, 0xD7, 0xCA];
+        ulong[][] ti = [TI0, TI1, TI2, TI3, TI4, TI5, TI6, TI7];
+        for (int c = 0; c < 8; c++)
+        {
+            ulong[] table = ti[c];
+            for (int x = 0; x < 256; x++)
+            {
+                ulong entry = 0;
+                for (int r = 0; r < 8; r++)
+                    entry |= (ulong)GfMul(invBase[(c - r + 8) & 7], (byte)x) << (r * 8);
+                table[x] = entry;
+            }
+        }
+    }
 
     /// <summary>
-    /// Expands a Kalyna cipher key into round keys.
+    /// Creates and initializes a new <see cref="KalynaCore"/> with expanded round keys.
     /// </summary>
     /// <param name="key">The cipher key (16 or 32 bytes for 128-bit block).</param>
-    /// <param name="roundKeys">Output buffer for round keys.</param>
-    /// <returns>Number of rounds (10 for 128-bit key, 14 for 256-bit key).</returns>
-    public static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> roundKeys)
+    /// <returns>An initialized <see cref="KalynaCore"/> ready for use.</returns>
+    /// <exception cref="ArgumentException">Thrown when the key length is invalid.</exception>
+    internal static KalynaCore Create(ReadOnlySpan<byte> key)
+    {
+        Span<byte> rkBytes = stackalloc byte[15 * 16];
+        int nr = ExpandKey(key, rkBytes);
+
+        KalynaCore core = default;
+        core._rounds = nr;
+
+        KalynaCore* pCore = &core;
+        ulong* rk = pCore->_roundKeys;
+        for (int i = 0; i <= nr; i++)
+        {
+            rk[i * 2]     = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16));
+            rk[i * 2 + 1] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16 + 8));
+        }
+
+        return core;
+    }
+
+    /// <summary>
+    /// Encrypts a single 16-byte block using Kalyna.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        ulong w0 = BinaryPrimitives.ReadUInt64LittleEndian(input);
+        ulong w1 = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(8));
+        EncryptBlock(ref w0, ref w1);
+        BinaryPrimitives.WriteUInt64LittleEndian(output, w0);
+        BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(8), w1);
+    }
+
+    /// <summary>
+    /// Encrypts a block given as a ulong pair (little-endian), updating the values in-place.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    internal void EncryptBlock(ref ulong w0, ref ulong w1)
+    {
+        fixed (KalynaCore* pCore = &this)
+        {
+            ulong* rk = pCore->_roundKeys;
+            int nr = _rounds;
+
+            ref ulong rf0 = ref MemoryMarshal.GetArrayDataReference(TF0);
+            ref ulong rf1 = ref MemoryMarshal.GetArrayDataReference(TF1);
+            ref ulong rf2 = ref MemoryMarshal.GetArrayDataReference(TF2);
+            ref ulong rf3 = ref MemoryMarshal.GetArrayDataReference(TF3);
+            ref ulong rf4 = ref MemoryMarshal.GetArrayDataReference(TF4);
+            ref ulong rf5 = ref MemoryMarshal.GetArrayDataReference(TF5);
+            ref ulong rf6 = ref MemoryMarshal.GetArrayDataReference(TF6);
+            ref ulong rf7 = ref MemoryMarshal.GetArrayDataReference(TF7);
+
+            // Pre-whitening: modular addition with round key 0
+            ulong s0 = w0 + rk[0];
+            ulong s1 = w1 + rk[1];
+
+            for (int r = 1; r < nr; r++)
+            {
+                ulong n0 = Unsafe.Add(ref rf0, (byte)s0)
+                         ^ Unsafe.Add(ref rf1, (byte)(s0 >> 8))
+                         ^ Unsafe.Add(ref rf2, (byte)(s0 >> 16))
+                         ^ Unsafe.Add(ref rf3, (byte)(s0 >> 24))
+                         ^ Unsafe.Add(ref rf4, (byte)(s1 >> 32))
+                         ^ Unsafe.Add(ref rf5, (byte)(s1 >> 40))
+                         ^ Unsafe.Add(ref rf6, (byte)(s1 >> 48))
+                         ^ Unsafe.Add(ref rf7, (byte)(s1 >> 56));
+                ulong n1 = Unsafe.Add(ref rf0, (byte)s1)
+                         ^ Unsafe.Add(ref rf1, (byte)(s1 >> 8))
+                         ^ Unsafe.Add(ref rf2, (byte)(s1 >> 16))
+                         ^ Unsafe.Add(ref rf3, (byte)(s1 >> 24))
+                         ^ Unsafe.Add(ref rf4, (byte)(s0 >> 32))
+                         ^ Unsafe.Add(ref rf5, (byte)(s0 >> 40))
+                         ^ Unsafe.Add(ref rf6, (byte)(s0 >> 48))
+                         ^ Unsafe.Add(ref rf7, (byte)(s0 >> 56));
+                s0 = n0 ^ rk[r * 2];
+                s1 = n1 ^ rk[r * 2 + 1];
+            }
+
+            // Last round: T-table then post-whitening with modular addition
+            ulong m0 = Unsafe.Add(ref rf0, (byte)s0)
+                     ^ Unsafe.Add(ref rf1, (byte)(s0 >> 8))
+                     ^ Unsafe.Add(ref rf2, (byte)(s0 >> 16))
+                     ^ Unsafe.Add(ref rf3, (byte)(s0 >> 24))
+                     ^ Unsafe.Add(ref rf4, (byte)(s1 >> 32))
+                     ^ Unsafe.Add(ref rf5, (byte)(s1 >> 40))
+                     ^ Unsafe.Add(ref rf6, (byte)(s1 >> 48))
+                     ^ Unsafe.Add(ref rf7, (byte)(s1 >> 56));
+            ulong m1 = Unsafe.Add(ref rf0, (byte)s1)
+                     ^ Unsafe.Add(ref rf1, (byte)(s1 >> 8))
+                     ^ Unsafe.Add(ref rf2, (byte)(s1 >> 16))
+                     ^ Unsafe.Add(ref rf3, (byte)(s1 >> 24))
+                     ^ Unsafe.Add(ref rf4, (byte)(s0 >> 32))
+                     ^ Unsafe.Add(ref rf5, (byte)(s0 >> 40))
+                     ^ Unsafe.Add(ref rf6, (byte)(s0 >> 48))
+                     ^ Unsafe.Add(ref rf7, (byte)(s0 >> 56));
+            w0 = m0 + rk[nr * 2];
+            w1 = m1 + rk[nr * 2 + 1];
+        }
+    }
+
+    /// <summary>
+    /// Decrypts a single 16-byte block using Kalyna.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        ulong w0 = BinaryPrimitives.ReadUInt64LittleEndian(input);
+        ulong w1 = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(8));
+        DecryptBlock(ref w0, ref w1);
+        BinaryPrimitives.WriteUInt64LittleEndian(output, w0);
+        BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(8), w1);
+    }
+
+    /// <summary>
+    /// Decrypts a block given as a ulong pair (little-endian), updating the values in-place.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The full inverse round is: XorKey → InvMixColumns → InvShiftRows → InvSubBytes.
+    /// InvSubBytes cannot be folded into the InvMixColumns T-tables because IS0(0) ≠ 0,
+    /// so contributions do not superpose linearly after InvMixColumns. The partial TI tables
+    /// handle only InvMixColumns; InvShiftRows and InvSubBytes are applied separately.
+    /// </para>
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    internal void DecryptBlock(ref ulong w0, ref ulong w1)
+    {
+        fixed (KalynaCore* pCore = &this)
+        {
+            ulong* rk = pCore->_roundKeys;
+            int nr = _rounds;
+
+            ref ulong ri0 = ref MemoryMarshal.GetArrayDataReference(TI0);
+            ref ulong ri1 = ref MemoryMarshal.GetArrayDataReference(TI1);
+            ref ulong ri2 = ref MemoryMarshal.GetArrayDataReference(TI2);
+            ref ulong ri3 = ref MemoryMarshal.GetArrayDataReference(TI3);
+            ref ulong ri4 = ref MemoryMarshal.GetArrayDataReference(TI4);
+            ref ulong ri5 = ref MemoryMarshal.GetArrayDataReference(TI5);
+            ref ulong ri6 = ref MemoryMarshal.GetArrayDataReference(TI6);
+            ref ulong ri7 = ref MemoryMarshal.GetArrayDataReference(TI7);
+
+            ref byte pIs0 = ref MemoryMarshal.GetArrayDataReference(IS0);
+            ref byte pIs1 = ref MemoryMarshal.GetArrayDataReference(IS1);
+            ref byte pIs2 = ref MemoryMarshal.GetArrayDataReference(IS2);
+            ref byte pIs3 = ref MemoryMarshal.GetArrayDataReference(IS3);
+
+            // Pre-whitening: modular subtraction with round key nr
+            ulong s0 = w0 - rk[nr * 2];
+            ulong s1 = w1 - rk[nr * 2 + 1];
+
+            // First round: InvMixColumns + InvShiftRows + InvSubBytes (no XOR key)
+            {
+                ulong imc0 = Unsafe.Add(ref ri0, (byte)s0) ^ Unsafe.Add(ref ri1, (byte)(s0 >> 8))
+                           ^ Unsafe.Add(ref ri2, (byte)(s0 >> 16)) ^ Unsafe.Add(ref ri3, (byte)(s0 >> 24))
+                           ^ Unsafe.Add(ref ri4, (byte)(s0 >> 32)) ^ Unsafe.Add(ref ri5, (byte)(s0 >> 40))
+                           ^ Unsafe.Add(ref ri6, (byte)(s0 >> 48)) ^ Unsafe.Add(ref ri7, (byte)(s0 >> 56));
+                ulong imc1 = Unsafe.Add(ref ri0, (byte)s1) ^ Unsafe.Add(ref ri1, (byte)(s1 >> 8))
+                           ^ Unsafe.Add(ref ri2, (byte)(s1 >> 16)) ^ Unsafe.Add(ref ri3, (byte)(s1 >> 24))
+                           ^ Unsafe.Add(ref ri4, (byte)(s1 >> 32)) ^ Unsafe.Add(ref ri5, (byte)(s1 >> 40))
+                           ^ Unsafe.Add(ref ri6, (byte)(s1 >> 48)) ^ Unsafe.Add(ref ri7, (byte)(s1 >> 56));
+                // InvShiftRows: swap bits 32-63 (rows 4-7) between columns
+                ulong isr0 = (imc0 & 0x00000000_FFFFFFFFul) | (imc1 & 0xFFFFFFFF_00000000ul);
+                ulong isr1 = (imc1 & 0x00000000_FFFFFFFFul) | (imc0 & 0xFFFFFFFF_00000000ul);
+                // InvSubBytes: IS0/IS1/IS2/IS3 cycle per byte (rows 0,4 → IS0; 1,5 → IS1; 2,6 → IS2; 3,7 → IS3)
+                s0 = (ulong)Unsafe.Add(ref pIs0, (byte)isr0)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr0 >> 8)) << 8)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr0 >> 16)) << 16)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr0 >> 24)) << 24)
+                   | ((ulong)Unsafe.Add(ref pIs0, (byte)(isr0 >> 32)) << 32)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr0 >> 40)) << 40)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr0 >> 48)) << 48)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr0 >> 56)) << 56);
+                s1 = (ulong)Unsafe.Add(ref pIs0, (byte)isr1)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr1 >> 8)) << 8)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr1 >> 16)) << 16)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr1 >> 24)) << 24)
+                   | ((ulong)Unsafe.Add(ref pIs0, (byte)(isr1 >> 32)) << 32)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr1 >> 40)) << 40)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr1 >> 48)) << 48)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr1 >> 56)) << 56);
+            }
+
+            // Remaining rounds: XOR key, then InvMixColumns + InvShiftRows + InvSubBytes
+            for (int r = nr - 1; r > 0; r--)
+            {
+                s0 ^= rk[r * 2];
+                s1 ^= rk[r * 2 + 1];
+                ulong imc0 = Unsafe.Add(ref ri0, (byte)s0) ^ Unsafe.Add(ref ri1, (byte)(s0 >> 8))
+                           ^ Unsafe.Add(ref ri2, (byte)(s0 >> 16)) ^ Unsafe.Add(ref ri3, (byte)(s0 >> 24))
+                           ^ Unsafe.Add(ref ri4, (byte)(s0 >> 32)) ^ Unsafe.Add(ref ri5, (byte)(s0 >> 40))
+                           ^ Unsafe.Add(ref ri6, (byte)(s0 >> 48)) ^ Unsafe.Add(ref ri7, (byte)(s0 >> 56));
+                ulong imc1 = Unsafe.Add(ref ri0, (byte)s1) ^ Unsafe.Add(ref ri1, (byte)(s1 >> 8))
+                           ^ Unsafe.Add(ref ri2, (byte)(s1 >> 16)) ^ Unsafe.Add(ref ri3, (byte)(s1 >> 24))
+                           ^ Unsafe.Add(ref ri4, (byte)(s1 >> 32)) ^ Unsafe.Add(ref ri5, (byte)(s1 >> 40))
+                           ^ Unsafe.Add(ref ri6, (byte)(s1 >> 48)) ^ Unsafe.Add(ref ri7, (byte)(s1 >> 56));
+                ulong isr0 = (imc0 & 0x00000000_FFFFFFFFul) | (imc1 & 0xFFFFFFFF_00000000ul);
+                ulong isr1 = (imc1 & 0x00000000_FFFFFFFFul) | (imc0 & 0xFFFFFFFF_00000000ul);
+                s0 = (ulong)Unsafe.Add(ref pIs0, (byte)isr0)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr0 >> 8)) << 8)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr0 >> 16)) << 16)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr0 >> 24)) << 24)
+                   | ((ulong)Unsafe.Add(ref pIs0, (byte)(isr0 >> 32)) << 32)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr0 >> 40)) << 40)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr0 >> 48)) << 48)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr0 >> 56)) << 56);
+                s1 = (ulong)Unsafe.Add(ref pIs0, (byte)isr1)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr1 >> 8)) << 8)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr1 >> 16)) << 16)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr1 >> 24)) << 24)
+                   | ((ulong)Unsafe.Add(ref pIs0, (byte)(isr1 >> 32)) << 32)
+                   | ((ulong)Unsafe.Add(ref pIs1, (byte)(isr1 >> 40)) << 40)
+                   | ((ulong)Unsafe.Add(ref pIs2, (byte)(isr1 >> 48)) << 48)
+                   | ((ulong)Unsafe.Add(ref pIs3, (byte)(isr1 >> 56)) << 56);
+            }
+
+            // Post-whitening: modular subtraction with round key 0
+            w0 = s0 - rk[0];
+            w1 = s1 - rk[1];
+        }
+    }
+
+    private static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> roundKeys)
     {
         int nr = key.Length switch {
             16 => 10,
@@ -179,67 +431,6 @@ internal static class KalynaCore
             KeyExpandEvenOdd256(key, kt, roundKeys, nr);
 
         return nr;
-    }
-
-    /// <summary>
-    /// Encrypts a single 16-byte block using Kalyna.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<byte> roundKeys, int nr)
-    {
-        Span<byte> state = stackalloc byte[16];
-        input.Slice(0, 16).CopyTo(state);
-
-        // Pre-whitening: AddRoundKey (modular addition)
-        AddRoundKeyMod(state, roundKeys.Slice(0, 16));
-
-        for (int r = 1; r < nr; r++)
-        {
-            SubBytes(state);
-            ShiftRows(state);
-            MixColumns(state);
-            XorRoundKey(state, roundKeys.Slice(r * 16, 16));
-        }
-
-        // Last round
-        SubBytes(state);
-        ShiftRows(state);
-        MixColumns(state);
-
-        // Post-whitening: AddRoundKey (modular addition)
-        AddRoundKeyMod(state, roundKeys.Slice(nr * 16, 16));
-
-        state.CopyTo(output);
-    }
-
-    /// <summary>
-    /// Decrypts a single 16-byte block using Kalyna.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<byte> roundKeys, int nr)
-    {
-        Span<byte> state = stackalloc byte[16];
-        input.Slice(0, 16).CopyTo(state);
-
-        // Pre-whitening: SubRoundKey (modular subtraction)
-        SubRoundKeyMod(state, roundKeys.Slice(nr * 16, 16));
-
-        InvMixColumns(state);
-        InvShiftRows(state);
-        InvSubBytes(state);
-
-        for (int r = nr - 1; r > 0; r--)
-        {
-            XorRoundKey(state, roundKeys.Slice(r * 16, 16));
-            InvMixColumns(state);
-            InvShiftRows(state);
-            InvSubBytes(state);
-        }
-
-        // Post-whitening: SubRoundKey (modular subtraction)
-        SubRoundKeyMod(state, roundKeys.Slice(0, 16));
-
-        state.CopyTo(output);
     }
 
     private static void SubBytes(Span<byte> state)
@@ -261,38 +452,11 @@ internal static class KalynaCore
         }
     }
 
-    private static void InvSubBytes(Span<byte> state)
-    {
-        for (int col = 0; col < NumWords; col++)
-        {
-            int off = col * 8;
-            state[off + 0] = IS0[state[off + 0]];
-            state[off + 1] = IS1[state[off + 1]];
-            state[off + 2] = IS2[state[off + 2]];
-            state[off + 3] = IS3[state[off + 3]];
-            state[off + 4] = IS0[state[off + 4]];
-            state[off + 5] = IS1[state[off + 5]];
-            state[off + 6] = IS2[state[off + 6]];
-            state[off + 7] = IS3[state[off + 7]];
-        }
-    }
-
     private static void ShiftRows(Span<byte> state)
     {
         // For 128-bit block (2 columns): swap rows 4-7 between columns
         for (int row = 4; row < 8; row++)
-        {
             (state[row], state[8 + row]) = (state[8 + row], state[row]);
-        }
-    }
-
-    private static void InvShiftRows(Span<byte> state)
-    {
-        // For 128-bit block: inverse is the same swap
-        for (int row = 4; row < 8; row++)
-        {
-            (state[row], state[8 + row]) = (state[8 + row], state[row]);
-        }
     }
 
     private static void MixColumns(Span<byte> state)
@@ -316,28 +480,6 @@ internal static class KalynaCore
         }
     }
 
-    private static void InvMixColumns(Span<byte> state)
-    {
-        // Unrolled inverse MDS matrix multiply using precomputed GF(2^8) lookup tables.
-        // Inverse MDS row pattern (circulant): AD, 95, 76, A8, 2F, 49, D7, CA
-        for (int col = 0; col < NumWords; col++)
-        {
-            int off = col * 8;
-            byte b0 = state[off], b1 = state[off + 1], b2 = state[off + 2], b3 = state[off + 3];
-            byte b4 = state[off + 4], b5 = state[off + 5], b6 = state[off + 6], b7 = state[off + 7];
-
-            state[off + 0] = (byte)(GfAD[b0] ^ Gf95[b1] ^ Gf76[b2] ^ GfA8[b3] ^ Gf2F[b4] ^ Gf49[b5] ^ GfD7[b6] ^ GfCA[b7]);
-            state[off + 1] = (byte)(GfCA[b0] ^ GfAD[b1] ^ Gf95[b2] ^ Gf76[b3] ^ GfA8[b4] ^ Gf2F[b5] ^ Gf49[b6] ^ GfD7[b7]);
-            state[off + 2] = (byte)(GfD7[b0] ^ GfCA[b1] ^ GfAD[b2] ^ Gf95[b3] ^ Gf76[b4] ^ GfA8[b5] ^ Gf2F[b6] ^ Gf49[b7]);
-            state[off + 3] = (byte)(Gf49[b0] ^ GfD7[b1] ^ GfCA[b2] ^ GfAD[b3] ^ Gf95[b4] ^ Gf76[b5] ^ GfA8[b6] ^ Gf2F[b7]);
-            state[off + 4] = (byte)(Gf2F[b0] ^ Gf49[b1] ^ GfD7[b2] ^ GfCA[b3] ^ GfAD[b4] ^ Gf95[b5] ^ Gf76[b6] ^ GfA8[b7]);
-            state[off + 5] = (byte)(GfA8[b0] ^ Gf2F[b1] ^ Gf49[b2] ^ GfD7[b3] ^ GfCA[b4] ^ GfAD[b5] ^ Gf95[b6] ^ Gf76[b7]);
-            state[off + 6] = (byte)(Gf76[b0] ^ GfA8[b1] ^ Gf2F[b2] ^ Gf49[b3] ^ GfD7[b4] ^ GfCA[b5] ^ GfAD[b6] ^ Gf95[b7]);
-            state[off + 7] = (byte)(Gf95[b0] ^ Gf76[b1] ^ GfA8[b2] ^ Gf2F[b3] ^ Gf49[b4] ^ GfD7[b5] ^ GfCA[b6] ^ GfAD[b7]);
-        }
-    }
-
-    // GF(2^8) multiplication with polynomial x^8 + x^4 + x^3 + x^2 + 1 (0x11D)
     private static byte GfMul(byte a, byte b)
     {
         byte result = 0;
@@ -362,16 +504,6 @@ internal static class KalynaCore
             ulong s = BinaryPrimitives.ReadUInt64LittleEndian(state.Slice(i * 8));
             ulong k = BinaryPrimitives.ReadUInt64LittleEndian(roundKey.Slice(i * 8));
             BinaryPrimitives.WriteUInt64LittleEndian(state.Slice(i * 8), s + k);
-        }
-    }
-
-    private static void SubRoundKeyMod(Span<byte> state, ReadOnlySpan<byte> roundKey)
-    {
-        for (int i = 0; i < NumWords; i++)
-        {
-            ulong s = BinaryPrimitives.ReadUInt64LittleEndian(state.Slice(i * 8));
-            ulong k = BinaryPrimitives.ReadUInt64LittleEndian(roundKey.Slice(i * 8));
-            BinaryPrimitives.WriteUInt64LittleEndian(state.Slice(i * 8), s - k);
         }
     }
 

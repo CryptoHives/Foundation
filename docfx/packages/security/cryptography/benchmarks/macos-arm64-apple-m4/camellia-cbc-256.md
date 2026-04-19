@@ -1,25 +1,25 @@
-﻿| Description                                     | TestDataSize | Mean         | Error      | StdDev     | Allocated |
-|------------------------------------------------ |------------- |-------------:|-----------:|-----------:|----------:|
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |     5.629 μs |  0.0080 μs |  0.0063 μs |     592 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |     8.950 μs |  0.0193 μs |  0.0171 μs |         - |
-|                                                 |              |              |            |            |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |     5.469 μs |  0.0059 μs |  0.0055 μs |     592 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |     9.612 μs |  0.0099 μs |  0.0092 μs |         - |
-|                                                 |              |              |            |            |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |    36.101 μs |  0.0404 μs |  0.0378 μs |    2832 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |    64.019 μs |  0.1037 μs |  0.0970 μs |         - |
-|                                                 |              |              |            |            |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |    36.965 μs |  0.0583 μs |  0.0517 μs |    2832 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |    69.154 μs |  0.1470 μs |  0.1375 μs |         - |
-|                                                 |              |              |            |            |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |   280.042 μs |  0.8990 μs |  0.7970 μs |   20752 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |   515.152 μs |  0.2538 μs |  0.2250 μs |         - |
-|                                                 |              |              |            |            |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |   280.038 μs |  0.8096 μs |  0.7177 μs |   20752 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |   546.403 μs |  1.0973 μs |  0.9728 μs |         - |
-|                                                 |              |              |            |            |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 4,436.875 μs | 16.6690 μs | 14.7766 μs |  327952 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        | 8,068.557 μs | 22.9966 μs | 17.9542 μs |         - |
-|                                                 |              |              |            |            |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 4,437.208 μs | 21.3359 μs | 19.9576 μs |  327952 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        | 8,779.871 μs | 40.6294 μs | 38.0047 μs |         - |
+﻿| Description                                     | TestDataSize | Mean         | Error        | StdDev      | Allocated |
+|------------------------------------------------ |------------- |-------------:|-------------:|------------:|----------:|
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |     833.7 ns |      3.17 ns |     2.64 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |   1,197.1 ns |      3.20 ns |     2.50 ns |     592 B |
+|                                                 |              |              |              |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |     919.9 ns |     10.67 ns |     9.45 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |   1,186.3 ns |     23.06 ns |    20.44 ns |     592 B |
+|                                                 |              |              |              |             |           |
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |   5,980.4 ns |     72.86 ns |    68.15 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |   7,673.4 ns |     45.26 ns |    37.80 ns |    2832 B |
+|                                                 |              |              |              |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |   6,615.0 ns |     34.80 ns |    27.17 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |   7,722.3 ns |     10.67 ns |     8.33 ns |    2832 B |
+|                                                 |              |              |              |             |           |
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |  46,472.1 ns |    134.30 ns |   112.15 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |  58,895.8 ns |    107.64 ns |    95.42 ns |   20752 B |
+|                                                 |              |              |              |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |  51,871.9 ns |    225.46 ns |   188.27 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |  59,646.4 ns |    193.08 ns |   171.16 ns |   20752 B |
+|                                                 |              |              |              |             |           |
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        | 743,947.6 ns |  2,307.12 ns | 2,158.08 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 947,592.7 ns | 11,232.16 ns | 9,957.02 ns |  327952 B |
+|                                                 |              |              |              |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        | 827,772.7 ns |  2,624.53 ns | 2,326.58 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 945,784.0 ns |  1,517.25 ns | 1,345.00 ns |  327952 B |
