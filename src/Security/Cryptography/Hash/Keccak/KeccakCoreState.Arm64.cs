@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -62,8 +62,8 @@ internal unsafe partial struct KeccakCoreState
 
         fixed (ulong* s = _state)
         {
-            aba = s[ 0]; abe = s[ 1]; abi = s[ 2]; abo = s[ 3]; abu = s[ 4];
-            aga = s[ 5]; age = s[ 6]; agi = s[ 7]; ago = s[ 8]; agu = s[ 9];
+            aba = s[0]; abe = s[1]; abi = s[2]; abo = s[3]; abu = s[4];
+            aga = s[5]; age = s[6]; agi = s[7]; ago = s[8]; agu = s[9];
             aka = s[10]; ake = s[11]; aki = s[12]; ako = s[13]; aku = s[14];
             ama = s[15]; ame = s[16]; ami = s[17]; amo = s[18]; amu = s[19];
             asa = s[20]; ase = s[21]; asi = s[22]; aso = s[23]; asu = s[24];
@@ -71,7 +71,7 @@ internal unsafe partial struct KeccakCoreState
             for (int round = _startRound; round < Rounds; round++)
             {
                 // ── Theta: column parities → D values ────────────────────────────────
-                ce = abe ^ age ^ ake ^ ame ^ ase;            
+                ce = abe ^ age ^ ake ^ ame ^ ase;
                 cu = abu ^ agu ^ aku ^ amu ^ asu;
                 da = cu ^ BitOperations.RotateLeft(ce, 1);
                 co = abo ^ ago ^ ako ^ amo ^ aso;
@@ -84,9 +84,9 @@ internal unsafe partial struct KeccakCoreState
 
                 // ── Pre-save B[0] for rows 1-4 (abo,abe,abu,abi are overwritten by chi row 0)
                 r1b0 = BitOperations.RotateLeft(abo ^ @do, 28);
-                r2b0 = BitOperations.RotateLeft(abe ^ de,   1);
-                r3b0 = BitOperations.RotateLeft(abu ^ du,  27);
-                r4b0 = BitOperations.RotateLeft(abi ^ di,  62);
+                r2b0 = BitOperations.RotateLeft(abe ^ de, 1);
+                r3b0 = BitOperations.RotateLeft(abu ^ du, 27);
+                r4b0 = BitOperations.RotateLeft(abi ^ di, 62);
 
                 // ── Chi row 0 ─────────────────────────────────────────────────────────
                 ca = aba ^ da;
@@ -99,8 +99,8 @@ internal unsafe partial struct KeccakCoreState
                 abu = cu ^ (~ca & ce);
 
                 // ── Pre-save B[1] for rows 2-4 (agi,aga,ago are overwritten by chi row 1)
-                r2b1 = BitOperations.RotateLeft(agi ^ di,   6);
-                r3b1 = BitOperations.RotateLeft(aga ^ da,  36);
+                r2b1 = BitOperations.RotateLeft(agi ^ di, 6);
+                r3b1 = BitOperations.RotateLeft(aga ^ da, 36);
                 r4b1 = BitOperations.RotateLeft(ago ^ @do, 55);
 
                 abo = co ^ (~cu & ca);
@@ -109,7 +109,7 @@ internal unsafe partial struct KeccakCoreState
 
                 // ── Chi row 1 ─────────────────────────────────────────────────────────
                 ca = r1b0;
-                ci = BitOperations.RotateLeft(aka ^ da,  3);
+                ci = BitOperations.RotateLeft(aka ^ da, 3);
                 aga = ca ^ (~ce & ci);
                 co = BitOperations.RotateLeft(ame ^ de, 45);
                 age = ce ^ (~ci & co);
@@ -128,9 +128,9 @@ internal unsafe partial struct KeccakCoreState
                 // ── Chi row 2 ─────────────────────────────────────────────────────────
                 ci = BitOperations.RotateLeft(ako ^ @do, 25);
                 aka = ca ^ (~ce & ci);
-                co = BitOperations.RotateLeft(amu ^ du,   8);
+                co = BitOperations.RotateLeft(amu ^ du, 8);
                 ake = ce ^ (~ci & co);
-                cu = BitOperations.RotateLeft(asa ^ da,  18);
+                cu = BitOperations.RotateLeft(asa ^ da, 18);
                 aku = cu ^ (~ca & ce);
 
                 // ── Pre-save B[3] for row 4 (ama is overwritten by chi row 3) ──────────
@@ -164,8 +164,8 @@ internal unsafe partial struct KeccakCoreState
                 asi = ci ^ (~co & cu);
             }
 
-            s[ 0] = aba; s[ 1] = abe; s[ 2] = abi; s[ 3] = abo; s[ 4] = abu;
-            s[ 5] = aga; s[ 6] = age; s[ 7] = agi; s[ 8] = ago; s[ 9] = agu;
+            s[0] = aba; s[1] = abe; s[2] = abi; s[3] = abo; s[4] = abu;
+            s[5] = aga; s[6] = age; s[7] = agi; s[8] = ago; s[9] = agu;
             s[10] = aka; s[11] = ake; s[12] = aki; s[13] = ako; s[14] = aku;
             s[15] = ama; s[16] = ame; s[17] = ami; s[18] = amo; s[19] = amu;
             s[20] = asa; s[21] = ase; s[22] = asi; s[23] = aso; s[24] = asu;

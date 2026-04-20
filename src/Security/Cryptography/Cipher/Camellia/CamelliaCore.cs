@@ -136,7 +136,7 @@ internal static class CamelliaCore
             _sp1[i] = (s1 << 56) | (s1 << 48) | (s1 << 40) | (s1 << 24) | s1;
             _sp2[i] = (s2 << 48) | (s2 << 40) | (s2 << 32) | (s2 << 24) | (s2 << 16);
             _sp3[i] = (s3 << 56) | (s3 << 40) | (s3 << 32) | (s3 << 16) | (s3 << 8);
-            _sp4[i] = (s4 << 56) | (s4 << 48) | (s4 << 32) | (s4 << 8)  | s4;
+            _sp4[i] = (s4 << 56) | (s4 << 48) | (s4 << 32) | (s4 << 8) | s4;
             _sp5[i] = (s2 << 48) | (s2 << 40) | (s2 << 32) | (s2 << 16) | (s2 << 8) | s2;
             _sp6[i] = (s3 << 56) | (s3 << 40) | (s3 << 32) | (s3 << 24) | (s3 << 8) | s3;
             _sp7[i] = (s4 << 56) | (s4 << 48) | (s4 << 32) | (s4 << 24) | (s4 << 16) | s4;
@@ -436,7 +436,7 @@ internal static class CamelliaCore
              ^ Unsafe.Add(ref r4, (byte)(x >> 32))
              ^ Unsafe.Add(ref r5, (byte)(x >> 24))
              ^ Unsafe.Add(ref r6, (byte)(x >> 16))
-             ^ Unsafe.Add(ref r7, (byte)(x >>  8))
+             ^ Unsafe.Add(ref r7, (byte)(x >> 8))
              ^ Unsafe.Add(ref r8, (byte)x);
     }
 

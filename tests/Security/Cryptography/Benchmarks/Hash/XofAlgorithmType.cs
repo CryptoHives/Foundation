@@ -82,7 +82,7 @@ public sealed class XofAlgorithmType : IFormattable
         if ((simdSupport & SimdSupport.Arm64) != 0)
         {
             yield return new("SHAKE256", "SHAKE256 (CryptoHives-Arm64)", () => CH.Hash.Shake256.Create(SimdSupport.Arm64, 64));
-        }   
+        }
         yield return new("SHAKE256", "SHAKE256 (CryptoHives-Scalar)", () => CH.Hash.Shake256.Create(SimdSupport.None, 64));
         yield return new("SHAKE256", "SHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.ShakeDigest(256)));
 #if NET8_0_OR_GREATER

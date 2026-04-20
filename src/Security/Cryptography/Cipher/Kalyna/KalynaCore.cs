@@ -203,7 +203,7 @@ internal unsafe struct KalynaCore
         ulong* rk = pCore->_roundKeys;
         for (int i = 0; i <= nr; i++)
         {
-            rk[i * 2]     = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16));
+            rk[i * 2] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16));
             rk[i * 2 + 1] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16 + 8));
         }
 
