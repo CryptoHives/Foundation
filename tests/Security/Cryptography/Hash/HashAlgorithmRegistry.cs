@@ -33,7 +33,7 @@ public static class HashAlgorithmRegistry
     {
         /// <summary>Operating system provided implementation.</summary>
         OS,
-        /// <summary>CryptoHives managed implementation.</summary>
+        /// <summary>CryptoHives managed scalar implementation.</summary>
         Managed,
         /// <summary>CryptoHives SIMD-optimized implementation.</summary>
         Simd,
@@ -376,7 +376,7 @@ public static class HashAlgorithmRegistry
             if ((simdSupport & flag) != 0)
             {
                 list.Add(new(family, variantName, hashSizeBits,
-                    () => factory(flag), Source.Simd,
+                    () => factory(flag), flag == CHRoot.SimdSupport.Arm64 ? Source.Managed : Source.Simd,
                     () => (simdSupport & flag) != 0));
             }
         }

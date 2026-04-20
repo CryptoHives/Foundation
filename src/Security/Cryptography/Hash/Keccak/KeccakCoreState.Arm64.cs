@@ -46,7 +46,7 @@ internal unsafe partial struct KeccakCoreState
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void PermuteArm64()
+    private void PermuteScalarArm64()
     {
         ulong aba, abe, abi, abo, abu;
         ulong aga, age, agi, ago, agu;
@@ -71,7 +71,8 @@ internal unsafe partial struct KeccakCoreState
             for (int round = _startRound; round < Rounds; round++)
             {
                 // ── Theta: column parities → D values ────────────────────────────────
-                ce = abe ^ age ^ ake ^ ame ^ ase;            cu = abu ^ agu ^ aku ^ amu ^ asu;
+                ce = abe ^ age ^ ake ^ ame ^ ase;            
+                cu = abu ^ agu ^ aku ^ amu ^ asu;
                 da = cu ^ BitOperations.RotateLeft(ce, 1);
                 co = abo ^ ago ^ ako ^ amo ^ aso;
                 di = ce ^ BitOperations.RotateLeft(co, 1);

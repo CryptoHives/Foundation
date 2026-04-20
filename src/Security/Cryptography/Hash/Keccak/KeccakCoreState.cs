@@ -81,7 +81,7 @@ internal unsafe partial struct KeccakCoreState
 #if NET8_0_OR_GREATER
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Avx512F.IsSupported) support |= SimdSupport.Avx512F;
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Arm64;
 #endif
             return support;
         }
@@ -93,7 +93,7 @@ internal unsafe partial struct KeccakCoreState
     private fixed ulong _state[StateSize];
 
     /// <summary>
-    /// The SimD instruction sets to use for this instance.
+    /// The SIMD instruction sets to use for this instance.
     /// </summary>
     private readonly SimdSupport _simdSupport;
 
@@ -139,14 +139,12 @@ internal unsafe partial struct KeccakCoreState
     public void Permute()
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Neon) != 0 && AdvSimd.Arm64.IsSupported)
+        if ((_simdSupport & SimdSupport.Arm64) != 0)
         {
-            PermuteArm64();
+            PermuteScalarArm64();
             return;
         }
-#endif
 #if EXPERIMENTAL
-#if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.Avx512F) != 0)
         {
             PermuteAvx512F();
@@ -1201,24 +1199,42 @@ internal unsafe partial struct KeccakCoreState
                     squeezeOffset = 0;
                 }
 
-                int stateIndex = squeezeOffset / 8;
-                int byteIndex = squeezeOffset % 8;
+                int available = rateBytes - squeezeOffset;
+                int needed = output.Length - outputOffset;
+                int toCopy = needed < available ? needed : available;
 
-                unchecked
+                if (BitConverter.IsLittleEndian)
                 {
-                    while (outputOffset < output.Length && squeezeOffset < rateBytes)
-                    {
-                        output[outputOffset++] = (byte)(statePtr[stateIndex] >> (byteIndex * 8));
-                        byteIndex++;
-                        squeezeOffset++;
+                    // Fast path: state bytes map directly to output on little-endian systems.
+                    Unsafe.CopyBlockUnaligned(
+                        ref Unsafe.Add(ref MemoryMarshal.GetReference(output), outputOffset),
+                        ref *((byte*)statePtr + squeezeOffset),
+                        (uint)toCopy);
+                }
+                else
+                {
+                    // Big-endian: convert each byte individually.
+                    int stateIndex = squeezeOffset / 8;
+                    int byteIndex = squeezeOffset % 8;
 
-                        if (byteIndex >= 8)
+                    unchecked
+                    {
+                        for (int i = 0; i < toCopy; i++)
                         {
-                            byteIndex = 0;
-                            stateIndex++;
+                            output[outputOffset + i] = (byte)(statePtr[stateIndex] >> (byteIndex * 8));
+                            byteIndex++;
+
+                            if (byteIndex >= 8)
+                            {
+                                byteIndex = 0;
+                                stateIndex++;
+                            }
                         }
                     }
                 }
+
+                outputOffset += toCopy;
+                squeezeOffset += toCopy;
             }
         }
     }

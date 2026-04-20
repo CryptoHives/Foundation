@@ -49,6 +49,7 @@ internal static class AlgorithmRegistry
             CH.SimdSupport.ArmPmull => "ArmPmull",
             CH.SimdSupport.ArmSha256 => "ArmSha256",
             CH.SimdSupport.Neon => "Neon",
+            CH.SimdSupport.Arm64 => "ARM64",
             _ => flag.ToString()
         };
 
