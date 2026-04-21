@@ -146,4 +146,4 @@ jobs:
     inputs:
       command: test
       projects: 'tests/**/*.Tests.csproj'
-      arguments: '--no-restore --configuration ${{parameters.config}} /p:CustomTestTarget=net10.0 /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:EnableExperimentalAlgorithms=false'
+      arguments: '--no-restore --configuration ${{parameters.config}} ${{variables.msbuildsign}} /p:CustomTestTarget=net10.0 /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:EnableExperimentalAlgorithms=false'
