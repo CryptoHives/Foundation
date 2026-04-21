@@ -128,3 +128,22 @@ jobs:
     inputs:
       path: $(Build.ArtifactStagingDirectory)
       artifact: 'cryptohives_${{parameters.config}}_$(NBGV_Version)_$(NBGV_NugetPackageVersion)'
+  - task: DotNetCoreCLI@2
+    displayName: 'Add local NuGet source for package test'
+    inputs:
+      command: 'custom'
+      custom: 'nuget'
+      arguments: 'add source "$(Build.ArtifactStagingDirectory)" --name LocalPackages'
+  - task: DotNetCoreCLI@2
+    displayName: 'Restore Tests (NuGet package validation ${{parameters.config}})'
+    inputs:
+      command: restore
+      projects: 'tests/**/*.Tests.csproj'
+      arguments: '--configuration ${{parameters.config}} /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:CustomTestTarget=net10.0 /p:EnableExperimentalAlgorithms=false'
+      restoreArguments: '--disable-parallel'
+  - task: DotNetCoreCLI@2
+    displayName: 'Test against NuGet packages (${{parameters.config}})'
+    inputs:
+      command: test
+      projects: 'tests/**/*.Tests.csproj'
+      arguments: '--no-restore --configuration ${{parameters.config}} /p:CustomTestTarget=net10.0 /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:EnableExperimentalAlgorithms=false'
