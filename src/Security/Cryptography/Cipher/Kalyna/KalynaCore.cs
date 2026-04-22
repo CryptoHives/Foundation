@@ -163,7 +163,10 @@ internal unsafe struct KalynaCore
                 byte sx = (c & 3) switch { 0 => S0[x], 1 => S1[x], 2 => S2[x], _ => S3[x] };
                 ulong entry = 0;
                 for (int r = 0; r < 8; r++)
+                {
                     entry |= (ulong)GfMul(fwdBase[(c - r + 8) & 7], sx) << (r * 8);
+                }
+
                 table[x] = entry;
             }
         }
@@ -179,7 +182,10 @@ internal unsafe struct KalynaCore
             {
                 ulong entry = 0;
                 for (int r = 0; r < 8; r++)
+                {
                     entry |= (ulong)GfMul(invBase[(c - r + 8) & 7], (byte)x) << (r * 8);
+                }
+
                 table[x] = entry;
             }
         }
@@ -234,6 +240,7 @@ internal unsafe struct KalynaCore
             ulong* rk = pCore->_roundKeys;
             int nr = _rounds;
 
+#if NET5_0_OR_GREATER
             ref ulong rf0 = ref MemoryMarshal.GetArrayDataReference(TF0);
             ref ulong rf1 = ref MemoryMarshal.GetArrayDataReference(TF1);
             ref ulong rf2 = ref MemoryMarshal.GetArrayDataReference(TF2);
@@ -242,6 +249,16 @@ internal unsafe struct KalynaCore
             ref ulong rf5 = ref MemoryMarshal.GetArrayDataReference(TF5);
             ref ulong rf6 = ref MemoryMarshal.GetArrayDataReference(TF6);
             ref ulong rf7 = ref MemoryMarshal.GetArrayDataReference(TF7);
+#else
+            ref ulong rf0 = ref MemoryMarshal.GetReference(TF0);
+            ref ulong rf1 = ref MemoryMarshal.GetReference(TF1);
+            ref ulong rf2 = ref MemoryMarshal.GetReference(TF2);
+            ref ulong rf3 = ref MemoryMarshal.GetReference(TF3);
+            ref ulong rf4 = ref MemoryMarshal.GetReference(TF4);
+            ref ulong rf5 = ref MemoryMarshal.GetReference(TF5);
+            ref ulong rf6 = ref MemoryMarshal.GetReference(TF6);
+            ref ulong rf7 = ref MemoryMarshal.GetReference(TF7);
+#endif
 
             // Pre-whitening: modular addition with round key 0
             ulong s0 = w0 + rk[0];
@@ -323,6 +340,7 @@ internal unsafe struct KalynaCore
             ulong* rk = pCore->_roundKeys;
             int nr = _rounds;
 
+#if NET5_0_OR_GREATER
             ref ulong ri0 = ref MemoryMarshal.GetArrayDataReference(TI0);
             ref ulong ri1 = ref MemoryMarshal.GetArrayDataReference(TI1);
             ref ulong ri2 = ref MemoryMarshal.GetArrayDataReference(TI2);
@@ -336,7 +354,21 @@ internal unsafe struct KalynaCore
             ref byte pIs1 = ref MemoryMarshal.GetArrayDataReference(IS1);
             ref byte pIs2 = ref MemoryMarshal.GetArrayDataReference(IS2);
             ref byte pIs3 = ref MemoryMarshal.GetArrayDataReference(IS3);
+#else
+            ref ulong ri0 = ref MemoryMarshal.GetReference(TI0);
+            ref ulong ri1 = ref MemoryMarshal.GetReference(TI1);
+            ref ulong ri2 = ref MemoryMarshal.GetReference(TI2);
+            ref ulong ri3 = ref MemoryMarshal.GetReference(TI3);
+            ref ulong ri4 = ref MemoryMarshal.GetReference(TI4);
+            ref ulong ri5 = ref MemoryMarshal.GetReference(TI5);
+            ref ulong ri6 = ref MemoryMarshal.GetReference(TI6);
+            ref ulong ri7 = ref MemoryMarshal.GetReference(TI7);
 
+            ref byte pIs0 = ref MemoryMarshal.GetReference(IS0);
+            ref byte pIs1 = ref MemoryMarshal.GetReference(IS1);
+            ref byte pIs2 = ref MemoryMarshal.GetReference(IS2);
+            ref byte pIs3 = ref MemoryMarshal.GetReference(IS3);
+#endif
             // Pre-whitening: modular subtraction with round key nr
             ulong s0 = w0 - rk[nr * 2];
             ulong s1 = w1 - rk[nr * 2 + 1];
@@ -426,9 +458,13 @@ internal unsafe struct KalynaCore
 
         // Generate round keys
         if (key.Length == 16)
+        {
             KeyExpandEvenOdd128(key, kt, roundKeys, nr);
+        }
         else
+        {
             KeyExpandEvenOdd256(key, kt, roundKeys, nr);
+        }
 
         return nr;
     }
@@ -456,7 +492,9 @@ internal unsafe struct KalynaCore
     {
         // For 128-bit block (2 columns): swap rows 4-7 between columns
         for (int row = 4; row < 8; row++)
+        {
             (state[row], state[8 + row]) = (state[8 + row], state[row]);
+        }
     }
 
     private static void MixColumns(Span<byte> state)
@@ -487,11 +525,16 @@ internal unsafe struct KalynaCore
         for (int i = 0; i < 8; i++)
         {
             if ((a & (1 << i)) != 0)
+            {
                 result ^= temp;
+            }
+
             bool carry = (temp & 0x80) != 0;
             temp <<= 1;
             if (carry)
+            {
                 temp ^= 0x1D; // Low 8 bits of 0x11D
+            }
         }
         return result;
     }
@@ -510,14 +553,19 @@ internal unsafe struct KalynaCore
     private static void XorRoundKey(Span<byte> state, ReadOnlySpan<byte> roundKey)
     {
         for (int i = 0; i < 16; i++)
+        {
             state[i] ^= roundKey[i];
+        }
     }
 
     private static byte[] ComputeInverse(ReadOnlySpan<byte> sbox)
     {
         byte[] inv = new byte[256];
         for (int i = 0; i < 256; i++)
+        {
             inv[sbox[i]] = (byte)i;
+        }
+
         return inv;
     }
 
@@ -525,7 +573,10 @@ internal unsafe struct KalynaCore
     {
         byte[] table = new byte[256];
         for (int b = 0; b < 256; b++)
+        {
             table[b] = GfMul(a, (byte)b);
+        }
+
         return table;
     }
 
@@ -546,9 +597,13 @@ internal unsafe struct KalynaCore
 
         // Round 2: XOR with key part
         if (keyLen == 32)
+        {
             XorRoundKey(state, key.Slice(16, 16));
+        }
         else
+        {
             XorRoundKey(state, key.Slice(0, 16));
+        }
 
         SubBytes(state);
         ShiftRows(state);
@@ -604,7 +659,10 @@ internal unsafe struct KalynaCore
 
             state.CopyTo(roundKeys.Slice(round * 16, 16));
 
-            if (round == nr) break;
+            if (round == nr)
+            {
+                break;
+            }
 
             round += 2;
             tmv <<= 1;
@@ -663,7 +721,10 @@ internal unsafe struct KalynaCore
 
             state.CopyTo(roundKeys.Slice(round * 16, 16));
 
-            if (round == nr) break;
+            if (round == nr)
+            {
+                break;
+            }
 
             // Second even key: uses initialData[16:32]
             round += 2;
@@ -693,7 +754,10 @@ internal unsafe struct KalynaCore
 
             state.CopyTo(roundKeys.Slice(round * 16, 16));
 
-            if (round == nr) break;
+            if (round == nr)
+            {
+                break;
+            }
 
             round += 2;
             tmv <<= 1;

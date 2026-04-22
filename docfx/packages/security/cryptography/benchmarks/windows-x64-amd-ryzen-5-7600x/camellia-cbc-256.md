@@ -1,25 +1,25 @@
-﻿| Description                                     | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|------------------------------------------------ |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |     1.228 μs | 0.0020 μs | 0.0018 μs |     592 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |     1.770 μs | 0.0012 μs | 0.0011 μs |         - |
-|                                                 |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |     1.228 μs | 0.0028 μs | 0.0027 μs |     592 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |     1.782 μs | 0.0112 μs | 0.0094 μs |         - |
-|                                                 |              |              |           |           |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |     8.171 μs | 0.0246 μs | 0.0230 μs |    2832 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |    12.707 μs | 0.0343 μs | 0.0321 μs |         - |
-|                                                 |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |     8.054 μs | 0.0251 μs | 0.0235 μs |    2832 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |    12.680 μs | 0.0184 μs | 0.0163 μs |         - |
-|                                                 |              |              |           |           |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |    63.813 μs | 0.3432 μs | 0.3211 μs |   20752 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |   100.675 μs | 0.2096 μs | 0.1961 μs |         - |
-|                                                 |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |    63.168 μs | 0.1463 μs | 0.1369 μs |   20752 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |    99.739 μs | 0.1687 μs | 0.1578 μs |         - |
-|                                                 |              |              |           |           |           |
-| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 1,022.040 μs | 4.8671 μs | 4.0642 μs |  327952 B |
-| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        | 1,594.247 μs | 3.9350 μs | 3.6808 μs |         - |
-|                                                 |              |              |           |           |           |
-| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 1,005.791 μs | 3.9560 μs | 3.5069 μs |  327952 B |
-| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        | 1,593.249 μs | 2.9679 μs | 2.7762 μs |         - |
+﻿| Description                                     | TestDataSize | Mean           | Error       | StdDev      | Allocated |
+|------------------------------------------------ |------------- |---------------:|------------:|------------:|----------:|
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |       750.5 ns |     2.23 ns |     2.08 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |     1,233.7 ns |     7.38 ns |     6.90 ns |     592 B |
+|                                                 |              |                |             |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128B         |       804.1 ns |     2.59 ns |     2.29 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128B         |     1,222.7 ns |     4.23 ns |     3.53 ns |     592 B |
+|                                                 |              |                |             |             |           |
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |     5,308.2 ns |    21.39 ns |    17.86 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |     8,187.9 ns |    49.43 ns |    43.82 ns |    2832 B |
+|                                                 |              |                |             |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 1KB          |     5,605.6 ns |    22.87 ns |    20.27 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 1KB          |     8,087.9 ns |    34.91 ns |    27.25 ns |    2832 B |
+|                                                 |              |                |             |             |           |
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |    42,935.1 ns |   128.89 ns |   114.26 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |    64,006.4 ns |   404.48 ns |   358.56 ns |   20752 B |
+|                                                 |              |                |             |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 8KB          |    44,244.8 ns |   176.47 ns |   156.43 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 8KB          |    63,254.9 ns |   255.71 ns |   226.68 ns |   20752 B |
+|                                                 |              |                |             |             |           |
+| Decrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        |   708,096.8 ns | 1,033.36 ns |   862.91 ns |         - |
+| Decrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 1,023,024.3 ns | 5,659.55 ns | 5,293.95 ns |  327952 B |
+|                                                 |              |                |             |             |           |
+| Encrypt · Camellia-256-CBC (CryptoHives-Scalar) | 128KB        |   718,076.9 ns | 1,384.94 ns | 1,227.71 ns |         - |
+| Encrypt · Camellia-256-CBC (BouncyCastle)       | 128KB        | 1,016,476.3 ns | 6,341.07 ns | 5,931.44 ns |  327952 B |
