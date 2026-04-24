@@ -152,6 +152,8 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
 
     internal static KT256 Create(SimdSupport simdSupport, int outputBytes) => new(simdSupport, outputBytes, ReadOnlySpan<byte>.Empty);
 
+    internal static new SimdSupport SimdSupport => KeccakCoreState.SimdSupport;
+
     /// <inheritdoc/>
     public override void Initialize()
     {

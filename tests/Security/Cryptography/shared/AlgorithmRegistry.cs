@@ -23,6 +23,8 @@ internal static class AlgorithmRegistry
         return Enum.GetValues<CH.SimdSupport>()
 #endif
             .Where<CH.SimdSupport>(IsSingleBitSimdFlag)
+            .GroupBy(flag => (int)flag)
+            .Select(g => g.First())
             .Where(flag => (simdSupport & flag) != 0)
             .OrderByDescending(flag => (int)flag);
     }
@@ -46,6 +48,8 @@ internal static class AlgorithmRegistry
             CH.SimdSupport.ArmAes => "ARM-AES",
             CH.SimdSupport.ArmPmull => "ArmPmull",
             CH.SimdSupport.ArmSha256 => "ArmSha256",
+            CH.SimdSupport.Neon => "Neon",
+            CH.SimdSupport.Arm64 => "ARM64",
             _ => flag.ToString()
         };
 

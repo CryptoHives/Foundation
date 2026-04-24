@@ -193,33 +193,57 @@ internal static class AriaCore
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<byte> roundKeys, int nr)
     {
-        Span<byte> state = stackalloc byte[16];
-        Span<byte> temp = stackalloc byte[16];
-        input.Slice(0, 16).CopyTo(state);
+        byte x0 = input[0]; byte x1 = input[1]; byte x2 = input[2]; byte x3 = input[3];
+        byte x4 = input[4]; byte x5 = input[5]; byte x6 = input[6]; byte x7 = input[7];
+        byte x8 = input[8]; byte x9 = input[9]; byte x10 = input[10]; byte x11 = input[11];
+        byte x12 = input[12]; byte x13 = input[13]; byte x14 = input[14]; byte x15 = input[15];
 
-        for (int r = 1; r <= nr; r++)
+        int rkOffset = 0;
+        for (int r = 1; r <= nr; r++, rkOffset += 16)
         {
-            // XOR round key
-            for (int i = 0; i < 16; i++)
-                state[i] ^= roundKeys[(r - 1) * 16 + i];
+            x0 ^= roundKeys[rkOffset]; x1 ^= roundKeys[rkOffset + 1];
+            x2 ^= roundKeys[rkOffset + 2]; x3 ^= roundKeys[rkOffset + 3];
+            x4 ^= roundKeys[rkOffset + 4]; x5 ^= roundKeys[rkOffset + 5];
+            x6 ^= roundKeys[rkOffset + 6]; x7 ^= roundKeys[rkOffset + 7];
+            x8 ^= roundKeys[rkOffset + 8]; x9 ^= roundKeys[rkOffset + 9];
+            x10 ^= roundKeys[rkOffset + 10]; x11 ^= roundKeys[rkOffset + 11];
+            x12 ^= roundKeys[rkOffset + 12]; x13 ^= roundKeys[rkOffset + 13];
+            x14 ^= roundKeys[rkOffset + 14]; x15 ^= roundKeys[rkOffset + 15];
 
-            // Substitution layer
-            if (r % 2 == 1)
-                SubstLayerOdd(state);
+            if ((r & 1) != 0)
+            {
+                SubstLayerOdd(ref x0, ref x1, ref x2, ref x3, ref x4, ref x5, ref x6, ref x7,
+                    ref x8, ref x9, ref x10, ref x11, ref x12, ref x13, ref x14, ref x15);
+            }
             else
-                SubstLayerEven(state);
+            {
+                SubstLayerEven(ref x0, ref x1, ref x2, ref x3, ref x4, ref x5, ref x6, ref x7,
+                    ref x8, ref x9, ref x10, ref x11, ref x12, ref x13, ref x14, ref x15);
+            }
 
-            // Diffusion layer (not on final round)
             if (r < nr)
             {
-                DiffuseA(state, temp);
-                temp.CopyTo(state);
+                DiffuseA(ref x0, ref x1, ref x2, ref x3, ref x4, ref x5, ref x6, ref x7,
+                    ref x8, ref x9, ref x10, ref x11, ref x12, ref x13, ref x14, ref x15);
             }
         }
 
-        // XOR final round key
-        for (int i = 0; i < 16; i++)
-            output[i] = (byte)(state[i] ^ roundKeys[nr * 16 + i]);
+        output[0] = (byte)(x0 ^ roundKeys[rkOffset]);
+        output[1] = (byte)(x1 ^ roundKeys[rkOffset + 1]);
+        output[2] = (byte)(x2 ^ roundKeys[rkOffset + 2]);
+        output[3] = (byte)(x3 ^ roundKeys[rkOffset + 3]);
+        output[4] = (byte)(x4 ^ roundKeys[rkOffset + 4]);
+        output[5] = (byte)(x5 ^ roundKeys[rkOffset + 5]);
+        output[6] = (byte)(x6 ^ roundKeys[rkOffset + 6]);
+        output[7] = (byte)(x7 ^ roundKeys[rkOffset + 7]);
+        output[8] = (byte)(x8 ^ roundKeys[rkOffset + 8]);
+        output[9] = (byte)(x9 ^ roundKeys[rkOffset + 9]);
+        output[10] = (byte)(x10 ^ roundKeys[rkOffset + 10]);
+        output[11] = (byte)(x11 ^ roundKeys[rkOffset + 11]);
+        output[12] = (byte)(x12 ^ roundKeys[rkOffset + 12]);
+        output[13] = (byte)(x13 ^ roundKeys[rkOffset + 13]);
+        output[14] = (byte)(x14 ^ roundKeys[rkOffset + 14]);
+        output[15] = (byte)(x15 ^ roundKeys[rkOffset + 15]);
     }
 
     /// <summary>
@@ -242,6 +266,19 @@ internal static class AriaCore
         x[12] = SB1[x[12]]; x[13] = SB2[x[13]]; x[14] = SB3[x[14]]; x[15] = SB4[x[15]];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void SubstLayerOdd(
+        ref byte x0, ref byte x1, ref byte x2, ref byte x3,
+        ref byte x4, ref byte x5, ref byte x6, ref byte x7,
+        ref byte x8, ref byte x9, ref byte x10, ref byte x11,
+        ref byte x12, ref byte x13, ref byte x14, ref byte x15)
+    {
+        x0 = SB1[x0]; x1 = SB2[x1]; x2 = SB3[x2]; x3 = SB4[x3];
+        x4 = SB1[x4]; x5 = SB2[x5]; x6 = SB3[x6]; x7 = SB4[x7];
+        x8 = SB1[x8]; x9 = SB2[x9]; x10 = SB3[x10]; x11 = SB4[x11];
+        x12 = SB1[x12]; x13 = SB2[x13]; x14 = SB3[x14]; x15 = SB4[x15];
+    }
+
     // Even-round substitution: SB3, SB4, SB1, SB2 pattern
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SubstLayerEven(Span<byte> x)
@@ -252,25 +289,63 @@ internal static class AriaCore
         x[12] = SB3[x[12]]; x[13] = SB4[x[13]]; x[14] = SB1[x[14]]; x[15] = SB2[x[15]];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void SubstLayerEven(
+        ref byte x0, ref byte x1, ref byte x2, ref byte x3,
+        ref byte x4, ref byte x5, ref byte x6, ref byte x7,
+        ref byte x8, ref byte x9, ref byte x10, ref byte x11,
+        ref byte x12, ref byte x13, ref byte x14, ref byte x15)
+    {
+        x0 = SB3[x0]; x1 = SB4[x1]; x2 = SB1[x2]; x3 = SB2[x3];
+        x4 = SB3[x4]; x5 = SB4[x5]; x6 = SB1[x6]; x7 = SB2[x7];
+        x8 = SB3[x8]; x9 = SB4[x9]; x10 = SB1[x10]; x11 = SB2[x11];
+        x12 = SB3[x12]; x13 = SB4[x13]; x14 = SB1[x14]; x15 = SB2[x15];
+    }
+
     // Diffusion layer A (binary matrix from RFC 5794)
     private static void DiffuseA(ReadOnlySpan<byte> x, Span<byte> y)
     {
-        y[0] = (byte)(x[3] ^ x[4] ^ x[6] ^ x[8] ^ x[9] ^ x[13] ^ x[14]);
-        y[1] = (byte)(x[2] ^ x[5] ^ x[7] ^ x[8] ^ x[9] ^ x[12] ^ x[15]);
-        y[2] = (byte)(x[1] ^ x[4] ^ x[6] ^ x[10] ^ x[11] ^ x[12] ^ x[15]);
-        y[3] = (byte)(x[0] ^ x[5] ^ x[7] ^ x[10] ^ x[11] ^ x[13] ^ x[14]);
-        y[4] = (byte)(x[0] ^ x[2] ^ x[5] ^ x[8] ^ x[11] ^ x[14] ^ x[15]);
-        y[5] = (byte)(x[1] ^ x[3] ^ x[4] ^ x[9] ^ x[10] ^ x[14] ^ x[15]);
-        y[6] = (byte)(x[0] ^ x[2] ^ x[7] ^ x[9] ^ x[10] ^ x[12] ^ x[13]);
-        y[7] = (byte)(x[1] ^ x[3] ^ x[6] ^ x[8] ^ x[11] ^ x[12] ^ x[13]);
-        y[8] = (byte)(x[0] ^ x[1] ^ x[4] ^ x[7] ^ x[10] ^ x[13] ^ x[15]);
-        y[9] = (byte)(x[0] ^ x[1] ^ x[5] ^ x[6] ^ x[11] ^ x[12] ^ x[14]);
-        y[10] = (byte)(x[2] ^ x[3] ^ x[5] ^ x[6] ^ x[8] ^ x[13] ^ x[15]);
-        y[11] = (byte)(x[2] ^ x[3] ^ x[4] ^ x[7] ^ x[9] ^ x[12] ^ x[14]);
-        y[12] = (byte)(x[1] ^ x[2] ^ x[6] ^ x[7] ^ x[9] ^ x[11] ^ x[12]);
-        y[13] = (byte)(x[0] ^ x[3] ^ x[6] ^ x[7] ^ x[8] ^ x[10] ^ x[13]);
-        y[14] = (byte)(x[0] ^ x[3] ^ x[4] ^ x[5] ^ x[9] ^ x[11] ^ x[14]);
-        y[15] = (byte)(x[1] ^ x[2] ^ x[4] ^ x[5] ^ x[8] ^ x[10] ^ x[15]);
+        byte x0 = x[0]; byte x1 = x[1]; byte x2 = x[2]; byte x3 = x[3];
+        byte x4 = x[4]; byte x5 = x[5]; byte x6 = x[6]; byte x7 = x[7];
+        byte x8 = x[8]; byte x9 = x[9]; byte x10 = x[10]; byte x11 = x[11];
+        byte x12 = x[12]; byte x13 = x[13]; byte x14 = x[14]; byte x15 = x[15];
+
+        DiffuseA(ref x0, ref x1, ref x2, ref x3, ref x4, ref x5, ref x6, ref x7,
+            ref x8, ref x9, ref x10, ref x11, ref x12, ref x13, ref x14, ref x15);
+
+        y[0] = x0; y[1] = x1; y[2] = x2; y[3] = x3;
+        y[4] = x4; y[5] = x5; y[6] = x6; y[7] = x7;
+        y[8] = x8; y[9] = x9; y[10] = x10; y[11] = x11;
+        y[12] = x12; y[13] = x13; y[14] = x14; y[15] = x15;
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void DiffuseA(
+        ref byte x0, ref byte x1, ref byte x2, ref byte x3,
+        ref byte x4, ref byte x5, ref byte x6, ref byte x7,
+        ref byte x8, ref byte x9, ref byte x10, ref byte x11,
+        ref byte x12, ref byte x13, ref byte x14, ref byte x15)
+    {
+        byte y0 = (byte)(x3 ^ x4 ^ x6 ^ x8 ^ x9 ^ x13 ^ x14);
+        byte y1 = (byte)(x2 ^ x5 ^ x7 ^ x8 ^ x9 ^ x12 ^ x15);
+        byte y2 = (byte)(x1 ^ x4 ^ x6 ^ x10 ^ x11 ^ x12 ^ x15);
+        byte y3 = (byte)(x0 ^ x5 ^ x7 ^ x10 ^ x11 ^ x13 ^ x14);
+        byte y4 = (byte)(x0 ^ x2 ^ x5 ^ x8 ^ x11 ^ x14 ^ x15);
+        byte y5 = (byte)(x1 ^ x3 ^ x4 ^ x9 ^ x10 ^ x14 ^ x15);
+        byte y6 = (byte)(x0 ^ x2 ^ x7 ^ x9 ^ x10 ^ x12 ^ x13);
+        byte y7 = (byte)(x1 ^ x3 ^ x6 ^ x8 ^ x11 ^ x12 ^ x13);
+        byte y8 = (byte)(x0 ^ x1 ^ x4 ^ x7 ^ x10 ^ x13 ^ x15);
+        byte y9 = (byte)(x0 ^ x1 ^ x5 ^ x6 ^ x11 ^ x12 ^ x14);
+        byte y10 = (byte)(x2 ^ x3 ^ x5 ^ x6 ^ x8 ^ x13 ^ x15);
+        byte y11 = (byte)(x2 ^ x3 ^ x4 ^ x7 ^ x9 ^ x12 ^ x14);
+        x12 = (byte)(x1 ^ x2 ^ x6 ^ x7 ^ x9 ^ x11 ^ x12);
+        x13 = (byte)(x0 ^ x3 ^ x6 ^ x7 ^ x8 ^ x10 ^ x13);
+        x14 = (byte)(x0 ^ x3 ^ x4 ^ x5 ^ x9 ^ x11 ^ x14);
+        x15 = (byte)(x1 ^ x2 ^ x4 ^ x5 ^ x8 ^ x10 ^ x15);
+
+        x0 = y0; x1 = y1; x2 = y2; x3 = y3;
+        x4 = y4; x5 = y5; x6 = y6; x7 = y7;
+        x8 = y8; x9 = y9; x10 = y10; x11 = y11;
     }
 
     // FO: Odd round function (substitution layer 1 + diffusion)

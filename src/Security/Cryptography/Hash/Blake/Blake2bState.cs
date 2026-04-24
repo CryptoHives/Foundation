@@ -16,7 +16,7 @@ using System.Runtime.InteropServices;
 /// <summary>
 /// Computes the BLAKE2b hash for the input data.
 /// </summary>
-internal unsafe partial struct Blake2bState : IIncrementalHash
+internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
 {
     /// <summary>
     /// The maximum hash size in bits.
@@ -125,9 +125,8 @@ internal unsafe partial struct Blake2bState : IIncrementalHash
     }
 
     /// <inheritdoc/>
-    public void Reset(object? resetState)
+    public void Reset(byte[]? key)
     {
-        byte[]? key = resetState as byte[];
         int keyLength = key?.Length ?? 0;
 
         ulong paramBlock = 0x01010000UL | ((ulong)keyLength << 8) | (uint)_outputBytes;

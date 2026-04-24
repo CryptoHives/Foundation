@@ -19,11 +19,11 @@ Implementations are compared against:
 |--------|--------|-------------|
 | **SHA-2** | OS (SHA-NI) | Hardware SHA-NI gives OS ~4.5× advantage; managed outperforms BouncyCastle by ~13% |
 | **SHA-3/Keccak** | Managed | Scalar Keccak outperforms OS by ~30% and SIMD variants by 25–35% |
-| **BLAKE2b/2s** | Managed SIMD | BLAKE2s SIMD on parity with BouncyCastle; BLAKE2b AVX2 within ~20% |
-| **BLAKE3** | Native (Rust) | Rust interop ~1.4× faster at small inputs, ~12× at large due to multi-chunk parallelism; SSSE3 managed ~4× faster than BouncyCastle |
+| **BLAKE2b/2s** | Managed AVX2 | BLAKE2b AVX2 ~10% faster than BouncyCastle; BLAKE2s SIMD on parity with BouncyCastle |
+| **BLAKE3** | Native (Rust) | Rust interop ~1.4× faster at small inputs, ~12× at large due to multi-chunk parallelism; SSSE3 managed ~8–9× faster than BouncyCastle |
 | **Streebog** | Managed | 1.4–1.8× faster than OpenGost/BouncyCastle |
 | **Kupyna** | Managed | T-table optimization ~30–45% faster than BouncyCastle |
-| **KMAC** | Managed | ~30% faster than OS and ~48% faster than BouncyCastle at all sizes |
+| **KMAC** | Managed | ~36–67% faster than OS and ~35–67% faster than BouncyCastle depending on payload size |
 | **Ascon** | Managed | ~33% faster than BouncyCastle across all input sizes |
 
 ---
@@ -127,12 +127,13 @@ The managed Keccak core uses an optimized **scalar implementation** that outperf
 
 ## BLAKE2 Family
 
-BouncyCastle leads the BLAKE2 benchmarks due to highly optimized native code. The managed AVX2/SSSE3/SSE2 SIMD implementations are competitive (within ~15% of BouncyCastle or even), while the scalar fallback is significantly slower (~3.5× for BLAKE2b, ~4× for BLAKE2s).
+CryptoHives leads the BLAKE2b benchmarks on x86. The **AVX2** path is ~10–15% faster than BouncyCastle across all payload sizes — 84 ns vs 98 ns at 128 B and 79 μs vs 89 μs at 128 KiB. `Blake2Fast` (a dedicated fast BLAKE2 library) is competitive with CryptoHives-AVX2 and BouncyCastle. For BLAKE2s, the SIMD implementation is on parity with BouncyCastle. The scalar fallback is ~1.5–1.6× slower than the SIMD paths.
 
 **Key observations:**
-- **BouncyCastle**: Highly optimized reference
-- **Managed AVX2**: Competitive SIMD implementation
-- **Managed scalar**: Fallback for non-SIMD platforms
+- **CryptoHives AVX2**: Fastest overall — ~10–15% faster than BouncyCastle and `Blake2Fast` for BLAKE2b
+- **BouncyCastle**: Competitive but slower than AVX2 at all sizes; zero allocation for BLAKE2b at sizes ≤8 KiB
+- **Managed scalar**: Fallback for non-SIMD platforms; ~1.5× slower than AVX2; zero allocation
+- **Konscious**: Slowest option, allocates heavily (~130 KB per 128 KiB hash call)
 
 ### BLAKE2b-256
 [!INCLUDE[](blake2b256.md)]
@@ -152,7 +153,7 @@ BouncyCastle leads the BLAKE2 benchmarks due to highly optimized native code. Th
 
 BLAKE3 is a modern hash function designed for extreme parallelism and speed. It can leverage tree hashing to process multiple chunks simultaneously, making it ideal for hashing large files. The **Native (Rust)** variant uses `blake3-dotnet`, which wraps the official Rust implementation via P/Invoke—this is the fastest option and recommended when native dependencies are acceptable.
 
-The managed CryptoHives implementation uses SSSE3 SIMD instructions with optimized state management. At small inputs (128B-1kb), the SSSE3 path is ~1.4× slower than the native Rust implementation and ~9× faster than BouncyCastle. At large inputs (128KB), the gap widens to ~12× because the native implementation parallelizes chunk compression across SIMD lanes (AVX2/AVX-512 `hash_many`), while the managed version processes chunks sequentially.
+The managed CryptoHives implementation uses SSSE3 SIMD instructions with optimized state management. At small inputs (128 B–1 KB), the SSSE3 path is ~1.4× slower than the native Rust implementation and **~8–9× faster than BouncyCastle** (154 ns vs 1,281 ns at 128 B). At large inputs (128 KB), the gap widens to ~12× between native and BouncyCastle because the native implementation parallelizes chunk compression across SIMD lanes (AVX2/AVX-512 `hash_many`), while the managed version processes chunks sequentially. The SSSE3 path remains ~8× faster than BouncyCastle at 128 KB (166 μs vs 1,370 μs).
 
 [!INCLUDE[](blake3.md)]
 
@@ -176,7 +177,7 @@ The managed implementation is approximately **33% faster** than BouncyCastle acr
 
 KMAC (Keccak Message Authentication Code) is defined in NIST SP 800-185 and provides a **Keccak-based keyed hash function**. Like SHA-3, SHAKE, and cSHAKE, KMAC shares the same optimized Keccak permutation core, benefiting from the scalar optimizations described in the Keccak section above.
 
-The managed CryptoHives implementation is the **fastest at all input sizes**, outperforming the OS-provided KMAC by ~30% and BouncyCastle by ~48%. This advantage comes from the highly optimized scalar Keccak core that benefits both the hash computation and the KMAC-specific cSHAKE encoding overhead.
+The managed CryptoHives implementation is the **fastest at all input sizes**. At 128 B, CryptoHives (639 ns) is ~36% faster than OS (1,000 ns) and ~67% faster than BouncyCastle (1,971 ns). At 128 KiB, it is ~30% faster than OS and ~36% faster than BouncyCastle. The per-call advantage is largest at small payloads where the OS incurs marshalling overhead and BouncyCastle incurs per-call allocation (256 B); the gap narrows at bulk sizes as the Keccak permutation throughput dominates.
 
 ### KMAC128
 [!INCLUDE[](kmac128.md)]

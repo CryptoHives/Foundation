@@ -62,7 +62,12 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>SHAKE128 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> Shake128()
     {
-        yield return new("SHAKE128", "SHAKE128 (CryptoHives-Scalar)", () => CH.Hash.Shake128.Create(32));
+        var simdSupport = CH.Hash.Shake128.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("SHAKE128", "SHAKE128 (CryptoHives-Arm64)", () => CH.Hash.Shake128.Create(SimdSupport.Arm64, 32));
+        }
+        yield return new("SHAKE128", "SHAKE128 (CryptoHives-Scalar)", () => CH.Hash.Shake128.Create(SimdSupport.None, 32));
         yield return new("SHAKE128", "SHAKE128 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.ShakeDigest(128)));
 #if NET8_0_OR_GREATER
         if (OS.Shake128.IsSupported)
@@ -73,7 +78,12 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>SHAKE256 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> Shake256()
     {
-        yield return new("SHAKE256", "SHAKE256 (CryptoHives-Scalar)", () => CH.Hash.Shake256.Create(64));
+        var simdSupport = CH.Hash.Shake256.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("SHAKE256", "SHAKE256 (CryptoHives-Arm64)", () => CH.Hash.Shake256.Create(SimdSupport.Arm64, 64));
+        }
+        yield return new("SHAKE256", "SHAKE256 (CryptoHives-Scalar)", () => CH.Hash.Shake256.Create(SimdSupport.None, 64));
         yield return new("SHAKE256", "SHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.ShakeDigest(256)));
 #if NET8_0_OR_GREATER
         if (OS.Shake256.IsSupported)
@@ -88,14 +98,24 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>cSHAKE128 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> CShake128()
     {
-        yield return new("cSHAKE128", "cSHAKE128 (CryptoHives-Scalar)", () => CH.Hash.CShake128.Create(32));
+        var simdSupport = CH.Hash.CShake128.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("cSHAKE128", "cSHAKE128 (CryptoHives-Arm64)", () => CH.Hash.CShake128.Create(SimdSupport.Arm64, 32));
+        }
+        yield return new("cSHAKE128", "cSHAKE128 (CryptoHives-Scalar)", () => CH.Hash.CShake128.Create(SimdSupport.None, 32));
         yield return new("cSHAKE128", "cSHAKE128 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.CShakeDigest(128, null, null)));
     }
 
     /// <summary>cSHAKE256 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> CShake256()
     {
-        yield return new("cSHAKE256", "cSHAKE256 (CryptoHives-Scalar)", () => CH.Hash.CShake256.Create(64));
+        var simdSupport = CH.Hash.CShake256.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("cSHAKE256", "cSHAKE256 (CryptoHives-Arm64)", () => CH.Hash.CShake256.Create(SimdSupport.Arm64, 64));
+        }
+        yield return new("cSHAKE256", "cSHAKE256 (CryptoHives-Scalar)", () => CH.Hash.CShake256.Create(SimdSupport.None, 64));
         yield return new("cSHAKE256", "cSHAKE256 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.CShakeDigest(256, null, null)));
     }
 
@@ -106,13 +126,23 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>TurboSHAKE128 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> TurboShake128()
     {
-        yield return new("TurboSHAKE128", "TurboSHAKE128 (CryptoHives-Scalar)", () => CH.Hash.TurboShake128.Create(32));
+        var simdSupport = CH.Hash.TurboShake128.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("TurboSHAKE128", "TurboSHAKE128 (CryptoHives-Arm64)", () => CH.Hash.TurboShake128.Create(SimdSupport.Arm64, 32));
+        }
+        yield return new("TurboSHAKE128", "TurboSHAKE128 (CryptoHives-Scalar)", () => CH.Hash.TurboShake128.Create(SimdSupport.None, 32));
     }
 
     /// <summary>TurboSHAKE256 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> TurboShake256()
     {
-        yield return new("TurboSHAKE256", "TurboSHAKE256 (CryptoHives-Scalar)", () => CH.Hash.TurboShake256.Create(64));
+        var simdSupport = CH.Hash.TurboShake256.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("TurboSHAKE256", "TurboSHAKE256 (CryptoHives-Arm64)", () => CH.Hash.TurboShake256.Create(SimdSupport.Arm64, 64));
+        }
+        yield return new("TurboSHAKE256", "TurboSHAKE256 (CryptoHives-Scalar)", () => CH.Hash.TurboShake256.Create(SimdSupport.None, 64));
     }
 
     #endregion
@@ -122,13 +152,23 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>KT128 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> KT128()
     {
-        yield return new("KT128", "KT128 (CryptoHives-Scalar)", () => CH.Hash.KT128.Create(32));
+        var simdSupport = CH.Hash.KT128.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("KT128", "KT128 (CryptoHives-Arm64)", () => CH.Hash.KT128.Create(SimdSupport.Arm64, 32));
+        }
+        yield return new("KT128", "KT128 (CryptoHives-Scalar)", () => CH.Hash.KT128.Create(SimdSupport.None, 32));
     }
 
     /// <summary>KT256 XOF implementation.</summary>
     public static IEnumerable<XofAlgorithmType> KT256()
     {
-        yield return new("KT256", "KT256 (CryptoHives-Scalar)", () => CH.Hash.KT256.Create(64));
+        var simdSupport = CH.Hash.KT256.SimdSupport;
+        if ((simdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("KT256", "KT256 (CryptoHives-Arm64)", () => CH.Hash.KT256.Create(SimdSupport.Arm64, 64));
+        }
+        yield return new("KT256", "KT256 (CryptoHives-Scalar)", () => CH.Hash.KT256.Create(SimdSupport.None, 64));
     }
 
     #endregion
@@ -148,6 +188,10 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>KMAC128 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> KMac128()
     {
+        if ((CH.Mac.KMac128.SimdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("KMAC-128", "KMAC-128 (CryptoHives-Arm64)", () => CH.Mac.KMac128.Create(SimdSupport.Arm64, SharedKMacKey, 32, "Benchmark"));
+        }
         yield return new("KMAC-128", "KMAC-128 (CryptoHives-Scalar)", () => CH.Mac.KMac128.Create(SimdSupport.None, SharedKMacKey, 32, "Benchmark"));
         yield return new("KMAC-128", "KMAC-128 (BouncyCastle)", () => new BouncyCastleKMacXofAdapter(128, SharedKMacKey, SharedKMacCustomization));
 #if NET9_0_OR_GREATER
@@ -159,6 +203,10 @@ public sealed class XofAlgorithmType : IFormattable
     /// <summary>KMAC256 XOF implementations.</summary>
     public static IEnumerable<XofAlgorithmType> KMac256()
     {
+        if ((CH.Mac.KMac256.SimdSupport & SimdSupport.Arm64) != 0)
+        {
+            yield return new("KMAC-256", "KMAC-256 (CryptoHives-Arm64)", () => CH.Mac.KMac256.Create(SimdSupport.Arm64, SharedKMacKey, 64, "Benchmark"));
+        }
         yield return new("KMAC-256", "KMAC-256 (CryptoHives-Scalar)", () => CH.Mac.KMac256.Create(SimdSupport.None, SharedKMacKey, 64, "Benchmark"));
         yield return new("KMAC-256", "KMAC-256 (BouncyCastle)", () => new BouncyCastleKMacXofAdapter(256, SharedKMacKey, SharedKMacCustomization));
 #if NET9_0_OR_GREATER

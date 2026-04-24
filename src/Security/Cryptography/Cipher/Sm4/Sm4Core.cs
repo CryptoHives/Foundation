@@ -323,42 +323,6 @@ internal unsafe partial struct Sm4Core
     }
 
     /// <summary>
-    /// Encrypts four consecutive 16-byte blocks from <paramref name="input"/> into
-    /// <paramref name="output"/> using the most accelerated path available.
-    /// </summary>
-    /// <param name="input">64-byte plaintext buffer (4 × 16 bytes).</param>
-    /// <param name="output">64-byte ciphertext buffer.</param>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void EncryptBlocks4(ReadOnlySpan<byte> input, Span<byte> output)
-    {
-        fixed (uint* rk = _roundKeys)
-        {
-            EncryptBlockScalar(input, output, rk);
-            EncryptBlockScalar(input[16..], output[16..], rk);
-            EncryptBlockScalar(input[32..], output[32..], rk);
-            EncryptBlockScalar(input[48..], output[48..], rk);
-        }
-    }
-
-    /// <summary>
-    /// Decrypts four consecutive 16-byte blocks from <paramref name="input"/> into
-    /// <paramref name="output"/> using the most accelerated path available.
-    /// </summary>
-    /// <param name="input">64-byte ciphertext buffer (4 × 16 bytes).</param>
-    /// <param name="output">64-byte plaintext buffer.</param>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void DecryptBlocks4(ReadOnlySpan<byte> input, Span<byte> output)
-    {
-        fixed (uint* rk = _roundKeys)
-        {
-            DecryptBlockScalar(input, output, rk);
-            DecryptBlockScalar(input[16..], output[16..], rk);
-            DecryptBlockScalar(input[32..], output[32..], rk);
-            DecryptBlockScalar(input[48..], output[48..], rk);
-        }
-    }
-
-    /// <summary>
     /// Clears the expanded round keys.
     /// </summary>
     public void Clear()

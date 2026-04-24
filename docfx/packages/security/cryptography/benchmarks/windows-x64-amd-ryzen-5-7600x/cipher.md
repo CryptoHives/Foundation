@@ -31,7 +31,7 @@ Each cipher family exposes multiple acceleration tiers. The runtime automaticall
 
 - **Small messages (≤128 B)**: AES-GCM with AES-NI is ~2× faster than OS due to zero P/Invoke overhead and no kernel transition. ChaCha20-Poly1305 AVX2 is competitive with OS at these sizes.
 - **Medium messages (256 B–1 KB)**: AES-GCM V256 stitched pipeline engages at >=256 B (>=16 blocks), providing the best throughput. This range covers QUIC (~1.4 KB), WireGuard (~1.4 KB), and IPsec packets.
-- **Large messages (8 KB–128 KB)**: AES-GCM V256 decrypt stays within 1.24× of OS. ChaCha20-Poly1305 AVX2 is ~1.7× faster than OS. This range covers TLS records (1–16 KB) and OPC UA chunks (8 KB default).
+- **Large messages (8 KB–128 KB)**: AES-GCM V256 decrypt stays within 1.24× of OS. ChaCha20-Poly1305 AVX2 is ~1.53× faster than OS at 128 KiB. This range covers TLS records (1–16 KB) and OPC UA chunks (8 KB default).
 - **No hardware AES**: Use ChaCha20-Poly1305 — it is designed for software-only execution and outperforms managed AES-GCM by 10–20×.
 - **IoT / constrained devices**: AES-CCM with AES-NI provides ~3× speedup over managed. Supports variable nonce (7–13 bytes) and tag sizes.
 
@@ -40,9 +40,9 @@ Each cipher family exposes multiple acceleration tiers. The runtime automaticall
 | Family | Leader | Key Insight |
 |--------|--------|-------------|
 | **ChaCha20** | Managed AVX2 | AVX2 ~3× faster than BouncyCastle; SSSE3 ~1.7×; zero allocation |
-| **ChaCha20-Poly1305** | Managed AVX2 | ~1.7× faster than OS at 128 KiB; zero allocation |
+| **ChaCha20-Poly1305** | Managed AVX2 | ~1.53× faster than OS at 128 KiB; zero allocation |
 | **XChaCha20-Poly1305** | Managed AVX2 | Same core as ChaCha20-Poly1305; negligible overhead for extended nonce |
-| **AES-CBC** | AES-NI | Decrypt on par with OS at 128 KiB; **~8× faster than OS at 128 B**; zero allocation |
+| **AES-CBC** | AES-NI | Decrypt ~5.8× faster than OS at 128 B; OS leads at ≥2 KB (wider AES pipeline); zero allocation |
 | **AES-GCM** | AES-NI+PClMulV256 | **~2× faster than OS at 128 B encrypt**; V256 decrypt within 1.24× of OS at 128 KiB; 8-block stitched AES+GHASH pipeline |
 | **AES-CCM** | AES-NI | ~3× faster than Managed; zero allocation; no OS adapter available |
 
@@ -75,19 +75,19 @@ ChaCha20 is a stream cipher designed by Daniel J. Bernstein. Three acceleration 
 AES-CBC (Cipher Block Chaining) is the most widely deployed AES mode. Two acceleration tiers are available:
 
 - **AES-NI**: Uses hardware `AESENC`/`AESDEC` instructions. Decrypt uses **8-block interleaving** — 8 ciphertext blocks are loaded and decrypted simultaneously, exploiting the fact that CBC decrypt is embarrassingly parallel (each block decrypts independently using only its predecessor as the XOR mask). This saturates the AES execution unit pipeline (10 rounds × 8 blocks = 80 `AESDEC` instructions in flight). Encrypt remains serial because each plaintext block must be XORed with the previous ciphertext before encryption.
-- **Managed**: T-table AES using four 256-entry lookup tables per round. Fully portable, zero-allocation. Outperforms BouncyCastle by ~22%.
+- **Managed**: T-table AES using four 256-entry lookup tables per round. Fully portable, zero-allocation. Outperforms BouncyCastle by ~22% at small sizes.
 
 **Key observations:**
-- **AES-NI**: Fastest overall — on par with OS at 128 KiB decrypt, ~8× faster at 128 B
-- **AES-NI Encrypt**: ~2× slower than OS at large sizes (CBC encrypt is inherently serial; OS may use kernel-level optimizations)
-- **Managed**: Zero-allocation T-table AES, outperforms BouncyCastle by ~22%
+- **AES-NI Decrypt**: ~5.8× faster than OS at 128 B (46 ns vs 268 ns); crossover at ~1 KB; **OS is ~3× faster at 128 KiB** — the OS uses a wider AES pipeline (potentially VAES/AVX-512 AES internally) for bulk operations
+- **AES-NI Encrypt**: ~1.65× faster than OS at 128 B; ~2.4× slower than OS at 128 KiB (CBC encrypt is inherently serial; OS benefits from kernel-level prefetch and NUMA scheduling)
+- **Managed**: Zero-allocation T-table AES; outperforms BouncyCastle by ~22% at small inputs; comparable at bulk sizes
 - **OS**: Allocates 128 B per call (P/Invoke marshalling overhead)
 
 [!INCLUDE[](aes-cbc-128.md)]
 
 ### AES-256-CBC
 
-AES-256-CBC uses 14 rounds (vs 10 for AES-128), adding ~25-30% overhead. The same 8-block interleaved decrypt and serial encrypt architecture applies. The AES-NI decrypt path achieves parity with OS at 128 KiB.
+AES-256-CBC uses 14 rounds (vs 10 for AES-128), adding ~25-30% overhead. The same 8-block interleaved decrypt and serial encrypt architecture applies. The AES-NI decrypt path is ~5× faster than OS at 128 B; OS leads from ~2 KiB due to its wider bulk AES pipeline.
 
 [!INCLUDE[](aes-cbc-256.md)]
 
@@ -152,12 +152,12 @@ AES-256-CCM uses 14 rounds (vs 10 for AES-128). The same AES-NI / Managed dispat
 
 ChaCha20-Poly1305 is a software-friendly AEAD cipher (RFC 8439) that combines ChaCha20 stream encryption with Poly1305 MAC authentication. It is the recommended AEAD cipher when hardware AES acceleration is unavailable. Three acceleration tiers are available:
 
-- **AVX2**: Dual-block ChaCha20 encryption via `Vector256<uint>`, combined with Poly1305 donna-64 MAC (3×44-bit limbs, 9 multiplications per 16-byte block using `Math.BigMul`). ~1.7× faster than OS at 128 KiB.
-- **SSSE3**: Single-block ChaCha20 via `Vector128<uint>` with the same Poly1305 donna-64 MAC. ~12% faster than OS at 128 KiB.
+- **AVX2**: Dual-block ChaCha20 encryption via `Vector256<uint>`, combined with Poly1305 donna-64 MAC (3×44-bit limbs, 9 multiplications per 16-byte block using `Math.BigMul`). ~1.53× faster than OS at 128 KiB.
+- **SSSE3**: Single-block ChaCha20 via `Vector128<uint>` with the same Poly1305 donna-64 MAC. ~6.5% faster than OS at 128 KiB.
 - **Managed**: Scalar ChaCha20 + Poly1305 donna-32 (5×26-bit limbs, 25 multiplications per block on .NET Framework / .NET Standard). Fully portable.
 
 **Key observations:**
-- **AVX2** ~40% faster than OS at 128 KiB; **SSSE3** ~12% faster than OS
+- **AVX2** ~35% faster than OS at 128 KiB; **SSSE3** ~6.5% faster than OS
 - At smaller sizes (128 B), OS is competitive due to lower per-call overhead
 - **Managed**, **SSSE3**, and **AVX2** paths are zero-allocation
 - **BouncyCastle** allocates 336–416 B per call; **NaCl.Core** allocates 48–72 B per call

@@ -1,31 +1,31 @@
-﻿| Description                                       | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|-------------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 128B         |     210.5 ns |   0.37 ns |   0.34 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 128B         |     279.9 ns |   0.45 ns |   0.38 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 128B         |     287.7 ns |   0.57 ns |   0.51 ns |         - |
-| TryComputeHash · Keccak-256 · BouncyCastle        | 128B         |     330.6 ns |   1.69 ns |   1.58 ns |         - |
-|                                                   |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 137B         |     461.8 ns |   0.64 ns |   0.57 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 137B         |     606.4 ns |   1.70 ns |   1.51 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 137B         |     624.8 ns |   1.36 ns |   1.20 ns |         - |
-| TryComputeHash · Keccak-256 · BouncyCastle        | 137B         |     628.6 ns |   1.84 ns |   1.72 ns |         - |
-|                                                   |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 1KB          |   1,615.1 ns |   3.87 ns |   3.62 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 1KB          |   2,178.5 ns |   3.96 ns |   3.09 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 1KB          |   2,241.6 ns |   5.12 ns |   4.54 ns |         - |
-| TryComputeHash · Keccak-256 · BouncyCastle        | 1KB          |   2,465.2 ns |   9.69 ns |   9.07 ns |         - |
-|                                                   |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 1025B        |   1,614.3 ns |   3.80 ns |   3.37 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 1025B        |   2,180.6 ns |   4.52 ns |   3.77 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 1025B        |   2,236.2 ns |   3.58 ns |   3.17 ns |         - |
-| TryComputeHash · Keccak-256 · BouncyCastle        | 1025B        |   2,458.1 ns |   6.99 ns |   6.54 ns |         - |
-|                                                   |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 8KB          |  12,076.8 ns |  41.72 ns |  36.98 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 8KB          |  16,650.7 ns |  34.09 ns |  30.22 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 8KB          |  16,793.1 ns |  27.16 ns |  24.08 ns |         - |
-| TryComputeHash · Keccak-256 · BouncyCastle        | 8KB          |  18,572.8 ns |  41.08 ns |  36.42 ns |         - |
-|                                                   |              |              |           |           |           |
-| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 128KB        | 193,050.3 ns | 684.65 ns | 640.42 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 128KB        | 257,863.1 ns | 412.70 ns | 365.84 ns |         - |
-| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 128KB        | 264,299.7 ns | 562.84 ns | 439.43 ns |         - |
-| TryComputeHash · Keccak-256 · BouncyCastle        | 128KB        | 294,293.3 ns | 564.70 ns | 528.22 ns |         - |
+﻿| Description                                       | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|-------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 128B         |     207.3 ns |     1.00 ns |     0.88 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 128B         |     278.6 ns |     0.95 ns |     0.89 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 128B         |     287.7 ns |     1.10 ns |     0.97 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle        | 128B         |     330.7 ns |     1.15 ns |     0.96 ns |         - |
+|                                                   |              |              |             |             |           |
+| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 137B         |     404.1 ns |     1.75 ns |     1.64 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 137B         |     547.3 ns |     1.67 ns |     1.39 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 137B         |     568.8 ns |     1.17 ns |     1.10 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle        | 137B         |     628.7 ns |     2.51 ns |     2.35 ns |         - |
+|                                                   |              |              |             |             |           |
+| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 1KB          |   1,588.9 ns |     8.10 ns |     7.58 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 1KB          |   2,158.9 ns |     3.37 ns |     2.82 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 1KB          |   2,220.1 ns |     5.94 ns |     5.27 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle        | 1KB          |   2,466.2 ns |    16.58 ns |    15.51 ns |         - |
+|                                                   |              |              |             |             |           |
+| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 1025B        |   1,590.1 ns |     7.34 ns |     6.50 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 1025B        |   2,159.4 ns |     6.35 ns |     5.94 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 1025B        |   2,217.5 ns |     7.56 ns |     6.31 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle        | 1025B        |   2,463.8 ns |    13.38 ns |    11.18 ns |         - |
+|                                                   |              |              |             |             |           |
+| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 8KB          |  12,088.7 ns |    80.06 ns |    74.89 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 8KB          |  16,392.5 ns |    42.23 ns |    39.50 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 8KB          |  16,825.6 ns |    41.71 ns |    39.02 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle        | 8KB          |  18,612.4 ns |    91.00 ns |    85.12 ns |         - |
+|                                                   |              |              |             |             |           |
+| TryComputeHash · Keccak-256 · CryptoHives-Scalar  | 128KB        | 190,579.1 ns | 1,239.67 ns | 1,035.18 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX2    | 128KB        | 259,048.9 ns |   601.92 ns |   563.03 ns |         - |
+| TryComputeHash · Keccak-256 · CryptoHives-AVX512F | 128KB        | 265,689.8 ns |   771.76 ns |   721.90 ns |         - |
+| TryComputeHash · Keccak-256 · BouncyCastle        | 128KB        | 293,571.9 ns | 1,607.29 ns | 1,424.82 ns |         - |

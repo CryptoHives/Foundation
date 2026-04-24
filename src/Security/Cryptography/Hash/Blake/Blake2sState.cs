@@ -25,7 +25,7 @@ using System.Runtime.InteropServices;
 /// BLAKE2s is optimized for 32-bit platforms and uses 32-bit words with a 64-byte block size.
 /// </para>
 /// </remarks>
-internal unsafe partial struct Blake2sState : IIncrementalHash
+internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
 {
     /// <summary>
     /// The maximum hash size in bits.
@@ -148,9 +148,8 @@ internal unsafe partial struct Blake2sState : IIncrementalHash
     }
 
     /// <inheritdoc/>
-    public void Reset(object? resetState)
+    public void Reset(byte[]? key)
     {
-        byte[]? key = resetState as byte[];
         int keyLength = key?.Length ?? 0;
 
         uint paramBlock = 0x01010000U | ((uint)keyLength << 8) | (uint)_outputBytes;
