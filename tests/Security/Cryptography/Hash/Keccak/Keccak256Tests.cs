@@ -46,28 +46,51 @@ public class Keccak256Tests
     }
 
     /// <summary>
-    /// Test Keccak-256 with official Ethereum test vectors.
+    /// Test Keccak-256 with official Ethereum test vectors across all implementations.
     /// </summary>
     /// <remarks>
     /// Keccak-256 uses original Keccak padding (0x01) different from SHA-3 (0x06).
     /// These are the values used in Ethereum for address generation and signatures.
     /// </remarks>
+    /// <param name="factory">The hash algorithm factory.</param>
     /// <param name="input">The input string.</param>
     /// <param name="expectedHex">The expected hash in hexadecimal.</param>
-    [TestCase("", "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")]
-    [TestCase("abc", "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45")]
-    [TestCase("The quick brown fox jumps over the lazy dog", "4d741b6f1eb29cb2a9b9911c82f56fa8d73b04959d3d9d222895df6c0b28aa15")]
-    [TestCase("testing", "5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02")]
-    public void KnownTestVectors(string input, string expectedHex)
+    [TestCaseSource(nameof(KnownTestVectorData))]
+    public void KnownTestVectors(HashAlgorithmFactory factory, string input, string expectedHex)
     {
         byte[] data = Encoding.UTF8.GetBytes(input);
         byte[] expected = TestHelpers.FromHexString(expectedHex);
 
-        foreach (HashAlgorithmFactory hashFactory in Keccak256Implementations.All)
+        using var impl = factory.Create();
+        byte[] implHash = impl.ComputeHash(data);
+
+        Assert.That(implHash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Provides test data combining Keccak-256 implementations with official test vectors.
+    /// </summary>
+    public static System.Collections.IEnumerable KnownTestVectorData
+    {
+        get
         {
-            using var impl = hashFactory.Create();
-            byte[] implHash = impl.ComputeHash(data);
-            Assert.That(implHash, Is.EqualTo(expected), $"{hashFactory.Name} Keccak-256 mismatch for: \"{input}\"");
+            var testVectors = new (string input, string hash)[]
+            {
+                ("", "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+                ("abc", "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"),
+                ("The quick brown fox jumps over the lazy dog", "4d741b6f1eb29cb2a9b9911c82f56fa8d73b04959d3d9d222895df6c0b28aa15"),
+                ("testing", "5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02"),
+            };
+
+            foreach (HashAlgorithmFactory factory in Keccak256Implementations.All)
+            {
+                foreach (var (input, hash) in testVectors)
+                {
+                    string label = input.Length > 20 ? input[..20] + "..." : input;
+                    yield return new TestCaseData(factory, input, hash)
+                        .SetName($"KnownTestVectors({factory.Name}, \"{label}\")");
+                }
+            }
         }
     }
 
@@ -129,20 +152,7 @@ public class Keccak256Tests
         Assert.That(hash1, Is.Not.EqualTo(hash2));
     }
 
-    /// <summary>
-    /// Cross-implementation test with all implementations.
-    /// </summary>
-    /// <param name="factory">The hash algorithm factory.</param>
-    [TestCaseSource(typeof(Keccak256Implementations), nameof(Keccak256Implementations.All))]
-    public void AllImplementationsMatch(HashAlgorithmFactory factory)
-    {
-        byte[] input = Encoding.UTF8.GetBytes("cross-implementation test");
-
-        using var impl = factory.Create();
-        byte[] hash = impl.ComputeHash(input);
-
-        Assert.That(hash, Has.Length.EqualTo(32), $"{factory.Name} should produce 32-byte hash");
-    }
 }
+
 
 

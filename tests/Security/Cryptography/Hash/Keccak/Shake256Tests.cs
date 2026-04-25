@@ -56,6 +56,24 @@ public class Shake256Tests
     }
 
     /// <summary>
+    /// NIST test vector: "The quick brown fox jumps over the lazy dog" with 64-byte output.
+    /// </summary>
+    /// <param name="factory">The hash algorithm factory.</param>
+    [TestCaseSource(typeof(Shake256Implementations), nameof(Shake256Implementations.All))]
+    public void ComputeHashQuickBrownFox(HashAlgorithmFactory factory)
+    {
+        byte[] expected = TestHelpers.FromHexString(
+            "2f671343d9b2e1604dc9dcf0753e5fe15c7c64a0d283cbbf722d411a0e36f6ca" +
+            "1d01d1369a23539cd80f7c054b6e5daf9c962cad5b8ed5bd11998b40d5734442");
+        byte[] input = Encoding.ASCII.GetBytes("The quick brown fox jumps over the lazy dog");
+
+        using var algorithm = factory.Create();
+        byte[] hash = algorithm.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
     /// Test that hash size matches output bytes for our managed implementation.
     /// </summary>
     [Test]
