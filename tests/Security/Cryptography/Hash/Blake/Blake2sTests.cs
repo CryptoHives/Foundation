@@ -88,6 +88,22 @@ public class Blake2sTests
     }
 
     /// <summary>
+    /// Test vector: "The quick brown fox jumps over the lazy dog" with 16-byte output (BLAKE2s-128).
+    /// </summary>
+    /// <param name="factory">The hash algorithm factory.</param>
+    [TestCaseSource(typeof(Blake2s128Implementations), nameof(Blake2s128Implementations.All))]
+    public void ComputeHashQuickBrownFox128Bit(HashAlgorithmFactory factory)
+    {
+        byte[] expected = TestHelpers.FromHexString("96fd07258925748a0d2fb1c8a1167a73");
+        byte[] input = Encoding.ASCII.GetBytes("The quick brown fox jumps over the lazy dog");
+
+        using var algorithm = factory.Create();
+        byte[] hash = algorithm.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
     /// Test variable output size for our managed implementation.
     /// </summary>
     [Test]
