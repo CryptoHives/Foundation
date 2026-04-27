@@ -15,21 +15,21 @@ Each cipher family exposes multiple acceleration tiers. The runtime automaticall
 | Variant | Instructions | .NET Target | When Selected | Description |
 |---------|-------------|-------------|---------------|-------------|
 | **Managed** | Scalar | All | No ARM Crypto support | T-table AES using scalar `uint` arithmetic. Fully portable, zero-allocation. ~10–16× slower than ArmAes depending on mode and payload size. |
-| **ArmAes** | AES (ARM Crypto Ext.) | .NET 8+ | `ArmBase.IsSupported` | Hardware AES round instructions (`AESD`, `AESE`, `AESMC`, `AESIMC`). For CBC, uses 8-block interleaved decrypt for maximum instruction-level parallelism — all 8 plaintext blocks decoded simultaneously via parallel `AESD` dispatch. For GCM/CCM, accelerates counter-mode encryption and CBC-MAC. Decrypt is ~8.5× faster than OS at 128 B; at bulk sizes Apple CommonCrypto leads via Apple Silicon–specific AES pipelining. |
-| **ArmAes+ArmPmull** | AES + PMULL (ARM Crypto Ext.) | .NET 8+ | `AdvSimd.Arm64.IsSupported` | Adds carry-less polynomial multiplication (`PMULL`/`PMULL2`) for hardware-accelerated GHASH over GF(2¹²⁸). `PMULL` operates on 64-bit polynomial operands to produce 128-bit products; `PMULL2` reads from the upper halves of 128-bit NEON registers (a free lane-select requiring no additional instruction). Uses the same 8-block stitched AES+GHASH pipeline as the x86 PClMul path. Modular reduction uses a 2-PMULL SymCrypt-style `MODREDUCE`. Pre-computes Karatsuba cross-term halves for H¹–H⁸ powers. **~32× faster than OS at 17 B**; OS leads at ≥8 KiB due to Apple Silicon–specific bulk AES acceleration. |
+| **ArmAes** | AES (ARM Crypto Ext.) | .NET 8+ | `ArmBase.IsSupported` | Hardware AES round instructions (`AESD`, `AESE`, `AESMC`, `AESIMC`). For CBC, uses 8-block interleaved decrypt for maximum instruction-level parallelism — all 8 plaintext blocks decoded simultaneously via parallel `AESD` dispatch. For GCM/CCM, accelerates counter-mode encryption and CBC-MAC. Decrypt is ~5.8× faster than OS at 128 B; at bulk sizes Apple CommonCrypto leads via Apple Silicon–specific AES pipelining. |
+| **ArmAes+ArmPmull** | AES + PMULL (ARM Crypto Ext.) | .NET 8+ | `AdvSimd.Arm64.IsSupported` | Adds carry-less polynomial multiplication (`PMULL`/`PMULL2`) for hardware-accelerated GHASH over GF(2¹²⁸). `PMULL` operates on 64-bit polynomial operands to produce 128-bit products; `PMULL2` reads from the upper halves of 128-bit NEON registers (a free lane-select requiring no additional instruction). Uses the same 8-block stitched AES+GHASH pipeline as the x86 PClMul path. Modular reduction uses a 2-PMULL SymCrypt-style `MODREDUCE`. Pre-computes Karatsuba cross-term halves for H¹–H⁸ powers. **Encrypt: ~120× faster than OS at 17 B; ~14× at 128 B** (OS CommonCrypto incurs ~8 μs per-call overhead at these sizes). OS leads at ≥8 KiB due to Apple Silicon–specific bulk AES acceleration. |
 
 ### ChaCha20 Family
 
 | Variant | Instructions | .NET Target | When Selected | Description |
 |---------|-------------|-------------|---------------|-------------|
 | **Managed** | Scalar | All | No NEON support | Quarter-round operations using scalar `uint` arithmetic. Fully portable. ~4× slower than Neon at all payload sizes. |
-| **Neon** | AdvSIMD (NEON) | .NET 8+ | `AdvSimd.IsSupported` | Maps the 4×4 ChaCha state to four `Vector128<uint>` rows. Uses ARM NEON shift-left, shift-right, and byte-table permute instructions for the 16-bit, 12-bit, 8-bit, and 7-bit rotations. Diagonal rounds use `AdvSimd.ExtractVector128` to rotate rows by one element. Processes one 64-byte keystream block per iteration. ~4× faster than Managed; ~1.24× faster than BouncyCastle at 128 KiB. |
+| **Neon** | AdvSIMD (NEON) | .NET 8+ | `AdvSimd.IsSupported` | Maps the 4×4 ChaCha state to four `Vector128<uint>` rows. Uses ARM NEON shift-left, shift-right, and byte-table permute instructions for the 16-bit, 12-bit, 8-bit, and 7-bit rotations. Diagonal rounds use `AdvSimd.ExtractVector128` to rotate rows by one element. Processes one 64-byte keystream block per iteration. ~4× faster than Managed; faster than BouncyCastle at all sizes up to 1 KiB; OS leads from ~8 KiB. |
 
 ### When to Use Each Variant
 
-- **Small messages (≤256 B)**: AES-GCM with ArmAes+ArmPmull is **~32× faster than OS at 17 B** and ~14× at 128 B — zero P/Invoke overhead eliminates the ~1.7–1.9 μs kernel transition cost entirely. ChaCha20-Poly1305 NEON is ~3× faster than OS at 128 B.
-- **Medium messages (256 B–4 KB)**: ArmAes+ArmPmull leads through ~1 KiB. ChaCha20-Poly1305 NEON remains competitive at 1 KiB (~1.25× faster than OS). This range covers QUIC (~1.4 KB), WireGuard (~1.4 KB), and IPsec packets.
-- **Large messages (8 KB–128 KB)**: Apple CommonCrypto dominates — OS is ~2× faster for AES-GCM and ~1.7× faster for ChaCha20-Poly1305. This is likely due to Apple Silicon–specific AES/PMULL micro-architectural pipelining that .NET's current ARMv8 paths do not yet fully exploit. This range covers TLS records (1–16 KB) and OPC UA chunks (8 KB default).
+- **Small messages (≤256 B)**: AES-GCM with ArmAes+ArmPmull eliminates the ~8 μs CommonCrypto per-call overhead entirely — **~120× faster than OS at 17 B encrypt** and **~14× at 128 B**. ChaCha20-Poly1305 NEON is ~5× faster than OS at 128 B.
+- **Medium messages (256 B–4 KB)**: ArmAes+ArmPmull leads through ~1 KiB. ChaCha20-Poly1305 NEON remains competitive at 1 KiB (~1.4× faster than OS). This range covers QUIC (~1.4 KB), WireGuard (~1.4 KB), and IPsec packets.
+- **Large messages (8 KB–128 KB)**: Apple CommonCrypto dominates — OS is ~2× faster for AES-GCM and ~1.54× faster for ChaCha20-Poly1305. This is due to Apple Silicon–specific AES/PMULL micro-architectural pipelining that .NET's current ARMv8 paths do not yet fully exploit. This range covers TLS records (1–16 KB) and OPC UA chunks (8 KB default).
 - **No hardware AES**: Use ChaCha20-Poly1305 NEON — it outperforms Managed AES-GCM by 3–10× depending on payload size and is always zero-allocation.
 - **IoT / constrained devices**: AES-CCM with ArmAes provides ~4× speedup over BouncyCastle at 128 KiB. Supports variable nonce (7–13 bytes) and tag sizes.
 
@@ -37,11 +37,11 @@ Each cipher family exposes multiple acceleration tiers. The runtime automaticall
 
 | Family | Leader | Key Insight |
 |--------|--------|-------------|
-| **ChaCha20** | Neon | NEON ~4× faster than Managed; ~1.24× faster than BouncyCastle at 128 KiB; zero allocation |
-| **ChaCha20-Poly1305** | Neon | **~3× faster than OS at 128 B**; OS leads at ≥8 KiB; zero allocation |
+| **ChaCha20** | Neon | NEON ~4× faster than Managed; faster than BouncyCastle at all sizes up to 1 KiB; zero allocation |
+| **ChaCha20-Poly1305** | Neon | **~5× faster than OS at 128 B**; OS leads at ≥8 KiB; Neon on par with BouncyCastle at 128 KiB; zero allocation |
 | **XChaCha20-Poly1305** | Neon | ~3.3× faster than Managed at 128 KiB; zero allocation |
-| **AES-CBC** | ArmAes | **Decrypt ~8.5× faster than OS at 128 B**; OS leads at ≥8 KiB (Apple Silicon bulk path); zero allocation |
-| **AES-GCM** | ArmAes+ArmPmull | **~32× faster than OS at 17 B**; ~14× at 128 B; OS leads at ≥8 KiB; 8-block stitched AES+GHASH pipeline |
+| **AES-CBC** | ArmAes | **Decrypt ~5.8× faster than OS at 128 B**; OS leads at ≥8 KiB (Apple Silicon bulk path); zero allocation |
+| **AES-GCM** | ArmAes+ArmPmull | **~120× faster than OS encrypt at 17 B**; ~14× at 128 B; OS leads at ≥8 KiB; 8-block stitched AES+GHASH pipeline |
 | **AES-CCM** | ArmAes | ~4× faster than BouncyCastle at 128 KiB; zero allocation; no OS adapter available |
 
 ---
@@ -74,7 +74,7 @@ AES-CBC (Cipher Block Chaining) is the most widely deployed AES mode. Two accele
 - **Managed**: T-table AES using four 256-entry lookup tables per round. Fully portable, zero-allocation. Comparable to BouncyCastle at large sizes.
 
 **Key observations:**
-- **ArmAes Decrypt**: ~8.5× faster than OS at 128 B; near OS at 4 KiB; OS leads from ~8 KiB (Apple Silicon uses a wider AES pipeline at bulk sizes)
+- **ArmAes Decrypt**: ~5.8× faster than OS at 128 B; near OS at 4 KiB; OS leads from ~8 KiB (Apple Silicon uses a wider AES pipeline at bulk sizes)
 - **ArmAes Encrypt**: ~1.5× faster than OS at 128 B; OS leads from 1 KiB (CBC encrypt is inherently serial; CommonCrypto uses NEON-assisted interleaving for partial parallelism)
 - **Managed**: Zero-allocation T-table AES; comparable to BouncyCastle at large sizes
 - **OS**: Allocates 72 B per call (P/Invoke marshalling overhead)
@@ -97,11 +97,11 @@ Authenticated Encryption with Associated Data (AEAD) ciphers provide both confid
 
 AES-GCM combines counter-mode AES encryption (GCTR) with GHASH polynomial authentication over GF(2¹²⁸). Two acceleration tiers are available on Apple M4:
 
-- **ArmAes+ArmPmull** (.NET 8+): Uses ARM Cryptography Extension `AESD`/`AESE` for counter-mode encryption and `PMULL`/`PMULL2` for GHASH polynomial multiplication. `PMULL` operates on 64-bit polynomial operands to produce 128-bit products; `PMULL2` reads from the upper halves of 128-bit NEON registers (a free lane-select requiring no additional instruction). Uses an 8-block stitched loop that interleaves AES rounds with lagged GHASH of the previous 8 blocks. Modular reduction uses a 2-PMULL SymCrypt-style `MODREDUCE`. Pre-computes Karatsuba cross-term halves for H¹–H⁸ powers. Small payloads use the non-stitched path (≤8 blocks). **~32× faster than OS at 17 B; ~14× at 128 B.** At bulk sizes (≥8 KiB), Apple CommonCrypto leads — likely due to Apple Silicon–specific AES pipelining not yet accessible to the .NET ARM intrinsics layer.
+- **ArmAes+ArmPmull** (.NET 8+): Uses ARM Cryptography Extension `AESD`/`AESE` for counter-mode encryption and `PMULL`/`PMULL2` for GHASH polynomial multiplication. `PMULL` operates on 64-bit polynomial operands to produce 128-bit products; `PMULL2` reads from the upper halves of 128-bit NEON registers (a free lane-select requiring no additional instruction). Uses an 8-block stitched loop that interleaves AES rounds with lagged GHASH of the previous 8 blocks. Modular reduction uses a 2-PMULL SymCrypt-style `MODREDUCE`. Pre-computes Karatsuba cross-term halves for H¹–H⁸ powers. Small payloads use the non-stitched path (≤8 blocks). **~120× faster than OS encrypt at 17 B; ~14× at 128 B** (OS CommonCrypto incurs ~8 μs per-call overhead for small payloads). At bulk sizes (≥8 KiB), Apple CommonCrypto leads — due to Apple Silicon–specific AES pipelining not accessible via the .NET ARM intrinsics layer.
 - **Managed**: Scalar T-table AES with 4-bit Shoup table GHASH (16-entry reduction table, byte-by-byte multiplication). Fully portable, zero-allocation.
 
 **Key observations:**
-- **ArmAes+ArmPmull**: ~32× faster than OS at 17 B encrypt; ~14× at 128 B; ~2.5× at 1 KiB; OS leads from ~4–8 KiB
+- **ArmAes+ArmPmull**: ~120× faster than OS encrypt at 17 B; ~14× at 128 B; ~2.5× at 1 KiB; OS leads from ~4–8 KiB
 - **ArmAes+ArmPmull at 128 KiB**: OS is ~4.8× faster for both encrypt and decrypt
 - **Managed**: Uses 4-bit Shoup table GHASH, T-table AES; zero allocation
 - **BouncyCastle**: Uses ARM AES + PMULL internally on ARM64; allocates ~1.5 KB per call
@@ -116,7 +116,7 @@ AES-192-GCM uses 12 rounds (vs 10 for AES-128), adding ~10-15% overhead. The sam
 
 ### AES-256-GCM
 
-AES-256-GCM uses 14 rounds (vs 10 for AES-128), adding ~20-30% overhead per block. The same 2-tier architecture (ArmAes+ArmPmull → Managed) applies. Encrypt is ~14-16× faster than OS at 128 B; OS leads from ~4–8 KiB. The large-payload gap mirrors AES-128-GCM — Apple CommonCrypto likely exploits Apple Silicon–specific AES/PMULL execution units that are not yet accessible through the .NET ARMv8 intrinsics layer.
+AES-256-GCM uses 14 rounds (vs 10 for AES-128), adding ~20-30% overhead per block. The same 2-tier architecture (ArmAes+ArmPmull → Managed) applies. Encrypt is ~14–16× faster than OS at 128 B; OS leads from ~4–8 KiB. The large-payload gap mirrors AES-128-GCM — Apple CommonCrypto likely exploits Apple Silicon–specific AES/PMULL execution units that are not yet accessible through the .NET ARMv8 intrinsics layer.
 
 [!INCLUDE[](aes-gcm-256.md)]
 
@@ -145,12 +145,12 @@ AES-256-CCM uses 14 rounds (vs 10 for AES-128). The same ArmAes / Managed dispat
 
 ChaCha20-Poly1305 is a software-friendly AEAD cipher (RFC 8439) that combines ChaCha20 stream encryption with Poly1305 MAC authentication. It is the recommended AEAD cipher when hardware AES acceleration is unavailable. Two acceleration tiers are available on ARM:
 
-- **Neon**: Single-block ChaCha20 via `Vector128<uint>` combined with Poly1305 donna-64 MAC (3×44-bit limbs, 9 multiplications per 16-byte block using `Math.BigMul`). **~3× faster than OS at 128 B**; competitive with OS at 1 KiB; OS leads at ≥8 KiB.
+- **Neon**: Single-block ChaCha20 via `Vector128<uint>` combined with Poly1305 donna-64 MAC (3×44-bit limbs, 9 multiplications per 16-byte block using `Math.BigMul`). **~5× faster than OS at 128 B** (1.84 μs vs 9.58 μs); competitive with OS at 1 KiB; OS leads from 8 KiB. At 128 KiB, Neon (~1.19 ms) is ~1.54× slower than OS (~0.77 ms) and on par with BouncyCastle (~1.18 ms). A dual-block NEON path (comparable to the x86 AVX2 path) would be required to close this gap.
 - **Managed**: Scalar ChaCha20 + Poly1305 donna-32 (5×26-bit limbs, 25 multiplications per block on .NET Framework / .NET Standard). Fully portable.
 
 **Key observations:**
-- **Neon** ~3× faster than OS at 128 B encrypt; ~1.25× at 1 KiB; OS ~1.45× faster from 8 KiB; OS ~1.67× faster at 128 KiB
-- BouncyCastle is slightly faster than NEON at very small payloads (128 B) due to lower NEON setup overhead at that granularity
+- **Neon** ~5× faster than OS at 128 B; ~1.4× faster than OS at 1 KiB; OS leads from ~8 KiB (~1.54× faster at 128 KiB)
+- **Neon** beats BouncyCastle at all sizes up to ~4 KiB; on par with BouncyCastle at 128 KiB (potential improvement area: a dual-block NEON path)
 - **Managed** and **Neon** paths are zero-allocation
 - **BouncyCastle** allocates 336–416 B per call; **NaCl.Core** allocates 48–72 B per call
 

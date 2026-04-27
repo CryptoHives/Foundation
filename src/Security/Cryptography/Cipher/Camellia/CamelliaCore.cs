@@ -5,7 +5,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Core Camellia block cipher operations shared by all key sizes.
@@ -17,6 +19,17 @@ using System.Runtime.CompilerServices;
 /// It uses an 18-round Feistel network for 128-bit keys and a 24-round Feistel
 /// network for 192- and 256-bit keys, with FL/FL⁻¹ key-dependent functions
 /// inserted every 6 rounds.
+/// </para>
+/// <para>
+/// <b>Implementation notes:</b>
+/// <list type="bullet">
+///   <item><description>
+///     The F-function is accelerated with 8 precomputed 256-entry SP-box tables
+///     (16 KB total). Each entry folds an S-box lookup together with that byte
+///     position's column of the P-function into a single 64-bit value, reducing
+///     per-round work to 8 table lookups and 7 XOR operations.
+///   </description></item>
+/// </list>
 /// </para>
 /// </remarks>
 internal static class CamelliaCore
@@ -48,28 +61,88 @@ internal static class CamelliaCore
     private const ulong Sigma5 = 0x10E527FADE682D1D;
     private const ulong Sigma6 = 0xB05688C2B3E6C1FD;
 
-    /// <summary>
-    /// SBOX1 lookup table from RFC 3713 Appendix A.
-    /// </summary>
-    private static ReadOnlySpan<byte> Sbox1 =>
-    [
-        112, 130,  44, 236, 179,  39, 192, 229, 228, 133,  87,  53, 234,  12, 174,  65,
-         35, 239, 107, 147,  69,  25, 165,  33, 237,  14,  79,  78,  29, 101, 146, 189,
-        134, 184, 175, 143, 124, 235,  31, 206,  62,  48, 220,  95,  94, 197,  11,  26,
-        166, 225,  57, 202, 213,  71,  93,  61, 217,   1,  90, 214,  81,  86, 108,  77,
-        139,  13, 154, 102, 251, 204, 176,  45, 116,  18,  43,  32, 240, 177, 132, 153,
-        223,  76, 203, 194,  52, 126, 118,   5, 109, 183, 169,  49, 209,  23,   4, 215,
-         20,  88,  58,  97, 222,  27,  17,  28,  50,  15, 156,  22,  83,  24, 242,  34,
-        254,  68, 207, 178, 195, 181, 122, 145,  36,   8, 232, 168,  96, 252, 105,  80,
-        170, 208, 160, 125, 161, 137,  98, 151,  84,  91,  30, 149, 224, 255, 100, 210,
-         16, 196,   0,  72, 163, 247, 117, 219, 138,   3, 230, 218,   9,  63, 221, 148,
-        135,  92, 131,   2, 205,  74, 144,  51, 115, 103, 246, 243, 157, 127, 191, 226,
-         82, 155, 216,  38, 200,  55, 198,  59, 129, 150, 111,  75,  19, 190,  99,  46,
-        233, 121, 167, 140, 159, 110, 188, 142,  41, 245, 249, 182,  47, 253, 180,  89,
-        120, 152,   6, 106, 231,  70, 113, 186, 212,  37, 171,  66, 136, 162, 141, 250,
-        114,   7, 185,  85, 248, 238, 172,  10,  54,  73,  42, 104,  60,  56, 241, 164,
-         64,  40, 211, 123, 187, 201,  67, 193,  21, 227, 173, 244, 119, 199, 128, 158,
-    ];
+    // ========================================================================
+    // SP-box tables for the F-function
+    // ========================================================================
+    //
+    // Each of the 8 tables has 256 ulong entries. Entry SP_n[b] combines:
+    //   - the S-box applied to the raw input byte b for position n, and
+    //   - the P-function column contribution for that position.
+    //
+    // The P-function from RFC 3713 defines which of y1..y8 each t_n feeds:
+    //   t1 (SBOX1): y1,y2,y3,y5,y8     → shifts 56,48,40,24, 0
+    //   t2 (SBOX2): y2,y3,y4,y5,y6     → shifts 48,40,32,24,16
+    //   t3 (SBOX3): y1,y3,y4,y6,y7     → shifts 56,40,32,16, 8
+    //   t4 (SBOX4): y1,y2,y4,y7,y8     → shifts 56,48,32, 8, 0
+    //   t5 (SBOX2): y2,y3,y4,y6,y7,y8  → shifts 48,40,32,16, 8, 0
+    //   t6 (SBOX3): y1,y3,y4,y5,y7,y8  → shifts 56,40,32,24, 8, 0
+    //   t7 (SBOX4): y1,y2,y4,y5,y6,y8  → shifts 56,48,32,24,16, 0
+    //   t8 (SBOX1): y1,y2,y3,y5,y6,y7  → shifts 56,48,40,24,16, 8
+    //
+    // S-box variants (RFC 3713, Section 2.4.1):
+    //   SBOX1[b] = sbox1[b]
+    //   SBOX2[b] = RotL8(sbox1[b], 1)
+    //   SBOX3[b] = RotL8(sbox1[b], 7)
+    //   SBOX4[b] = sbox1[RotL8(b, 1)]
+
+    private static readonly ulong[] _sp1;
+    private static readonly ulong[] _sp2;
+    private static readonly ulong[] _sp3;
+    private static readonly ulong[] _sp4;
+    private static readonly ulong[] _sp5;
+    private static readonly ulong[] _sp6;
+    private static readonly ulong[] _sp7;
+    private static readonly ulong[] _sp8;
+
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "All 8 SP tables share a single 256-iteration initialization loop for efficiency.")]
+    static CamelliaCore()
+    {
+        _sp1 = new ulong[256];
+        _sp2 = new ulong[256];
+        _sp3 = new ulong[256];
+        _sp4 = new ulong[256];
+        _sp5 = new ulong[256];
+        _sp6 = new ulong[256];
+        _sp7 = new ulong[256];
+        _sp8 = new ulong[256];
+
+        ReadOnlySpan<byte> sbox1 =
+        [
+            112, 130,  44, 236, 179,  39, 192, 229, 228, 133,  87,  53, 234,  12, 174,  65,
+             35, 239, 107, 147,  69,  25, 165,  33, 237,  14,  79,  78,  29, 101, 146, 189,
+            134, 184, 175, 143, 124, 235,  31, 206,  62,  48, 220,  95,  94, 197,  11,  26,
+            166, 225,  57, 202, 213,  71,  93,  61, 217,   1,  90, 214,  81,  86, 108,  77,
+            139,  13, 154, 102, 251, 204, 176,  45, 116,  18,  43,  32, 240, 177, 132, 153,
+            223,  76, 203, 194,  52, 126, 118,   5, 109, 183, 169,  49, 209,  23,   4, 215,
+             20,  88,  58,  97, 222,  27,  17,  28,  50,  15, 156,  22,  83,  24, 242,  34,
+            254,  68, 207, 178, 195, 181, 122, 145,  36,   8, 232, 168,  96, 252, 105,  80,
+            170, 208, 160, 125, 161, 137,  98, 151,  84,  91,  30, 149, 224, 255, 100, 210,
+             16, 196,   0,  72, 163, 247, 117, 219, 138,   3, 230, 218,   9,  63, 221, 148,
+            135,  92, 131,   2, 205,  74, 144,  51, 115, 103, 246, 243, 157, 127, 191, 226,
+             82, 155, 216,  38, 200,  55, 198,  59, 129, 150, 111,  75,  19, 190,  99,  46,
+            233, 121, 167, 140, 159, 110, 188, 142,  41, 245, 249, 182,  47, 253, 180,  89,
+            120, 152,   6, 106, 231,  70, 113, 186, 212,  37, 171,  66, 136, 162, 141, 250,
+            114,   7, 185,  85, 248, 238, 172,  10,  54,  73,  42, 104,  60,  56, 241, 164,
+             64,  40, 211, 123, 187, 201,  67, 193,  21, 227, 173, 244, 119, 199, 128, 158,
+        ];
+
+        for (int i = 0; i < 256; i++)
+        {
+            ulong s1 = sbox1[i];
+            ulong s2 = (ulong)((s1 << 1) | (s1 >> 7)) & 0xFF;   // RotL8(s1, 1)
+            ulong s3 = (ulong)((s1 << 7) | (s1 >> 1)) & 0xFF;   // RotL8(s1, 7)
+            ulong s4 = sbox1[(byte)((i << 1) | (i >> 7))];       // SBOX4: sbox1[RotL8(i,1)]
+
+            _sp1[i] = (s1 << 56) | (s1 << 48) | (s1 << 40) | (s1 << 24) | s1;
+            _sp2[i] = (s2 << 48) | (s2 << 40) | (s2 << 32) | (s2 << 24) | (s2 << 16);
+            _sp3[i] = (s3 << 56) | (s3 << 40) | (s3 << 32) | (s3 << 16) | (s3 << 8);
+            _sp4[i] = (s4 << 56) | (s4 << 48) | (s4 << 32) | (s4 << 8) | s4;
+            _sp5[i] = (s2 << 48) | (s2 << 40) | (s2 << 32) | (s2 << 16) | (s2 << 8) | s2;
+            _sp6[i] = (s3 << 56) | (s3 << 40) | (s3 << 32) | (s3 << 24) | (s3 << 8) | s3;
+            _sp7[i] = (s4 << 56) | (s4 << 48) | (s4 << 32) | (s4 << 24) | (s4 << 16) | s4;
+            _sp8[i] = (s1 << 56) | (s1 << 48) | (s1 << 40) | (s1 << 24) | (s1 << 16) | (s1 << 8);
+        }
+    }
 
     /// <summary>
     /// Expands a cipher key into the subkey array used by encrypt/decrypt.
@@ -145,7 +218,23 @@ internal static class CamelliaCore
     {
         ulong d1 = BinaryPrimitives.ReadUInt64BigEndian(input);
         ulong d2 = BinaryPrimitives.ReadUInt64BigEndian(input.Slice(8));
+        EncryptBlock(d1, d2, out ulong r1, out ulong r2, subkeys, rounds);
+        BinaryPrimitives.WriteUInt64BigEndian(output, r1);
+        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), r2);
+    }
 
+    /// <summary>
+    /// Encrypts a block supplied as two 64-bit halves, producing two 64-bit halves.
+    /// </summary>
+    /// <param name="d1">High 64 bits of plaintext (big-endian byte order).</param>
+    /// <param name="d2">Low 64 bits of plaintext (big-endian byte order).</param>
+    /// <param name="r1">High 64 bits of ciphertext (big-endian byte order).</param>
+    /// <param name="r2">Low 64 bits of ciphertext (big-endian byte order).</param>
+    /// <param name="subkeys">The expanded encryption subkeys.</param>
+    /// <param name="rounds">The number of rounds (18 or 24).</param>
+    internal static void EncryptBlock(ulong d1, ulong d2, out ulong r1, out ulong r2,
+        ReadOnlySpan<ulong> subkeys, int rounds)
+    {
         // Pre-whitening
         d1 ^= subkeys[0];
         d2 ^= subkeys[1];
@@ -188,8 +277,8 @@ internal static class CamelliaCore
         }
 
         // Output D2 || D1
-        BinaryPrimitives.WriteUInt64BigEndian(output, d2);
-        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), d1);
+        r1 = d2;
+        r2 = d1;
     }
 
     /// <summary>
@@ -204,7 +293,23 @@ internal static class CamelliaCore
     {
         ulong d1 = BinaryPrimitives.ReadUInt64BigEndian(input);
         ulong d2 = BinaryPrimitives.ReadUInt64BigEndian(input.Slice(8));
+        DecryptBlock(d1, d2, out ulong r1, out ulong r2, subkeys, rounds);
+        BinaryPrimitives.WriteUInt64BigEndian(output, r1);
+        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), r2);
+    }
 
+    /// <summary>
+    /// Decrypts a block supplied as two 64-bit halves, producing two 64-bit halves.
+    /// </summary>
+    /// <param name="d1">High 64 bits of ciphertext (big-endian byte order).</param>
+    /// <param name="d2">Low 64 bits of ciphertext (big-endian byte order).</param>
+    /// <param name="r1">High 64 bits of plaintext (big-endian byte order).</param>
+    /// <param name="r2">Low 64 bits of plaintext (big-endian byte order).</param>
+    /// <param name="subkeys">The expanded encryption subkeys (same array as for encryption).</param>
+    /// <param name="rounds">The number of rounds (18 or 24).</param>
+    internal static void DecryptBlock(ulong d1, ulong d2, out ulong r1, out ulong r2,
+        ReadOnlySpan<ulong> subkeys, int rounds)
+    {
         if (rounds == 24)
         {
             // Pre-whitening with kw3, kw4
@@ -268,8 +373,8 @@ internal static class CamelliaCore
         }
 
         // Output D2 || D1
-        BinaryPrimitives.WriteUInt64BigEndian(output, d2);
-        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), d1);
+        r1 = d2;
+        r2 = d1;
     }
 
     /// <summary>
@@ -305,32 +410,53 @@ internal static class CamelliaCore
     /// <summary>
     /// Camellia F-function: applies S-boxes and the P-function mixing layer.
     /// </summary>
+    /// <remarks>
+    /// Each byte of <c>input ^ key</c> is looked up in a precomputed SP-box table
+    /// that combines the S-box and the P-function column for that byte position.
+    /// The eight 64-bit table values are XOR-folded to produce the F-function output.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong F(ulong input, ulong key)
     {
         ulong x = input ^ key;
+#if NET6_0_OR_GREATER
+        ref ulong r1 = ref MemoryMarshal.GetArrayDataReference(_sp1);
+        ref ulong r2 = ref MemoryMarshal.GetArrayDataReference(_sp2);
+        ref ulong r3 = ref MemoryMarshal.GetArrayDataReference(_sp3);
+        ref ulong r4 = ref MemoryMarshal.GetArrayDataReference(_sp4);
+        ref ulong r5 = ref MemoryMarshal.GetArrayDataReference(_sp5);
+        ref ulong r6 = ref MemoryMarshal.GetArrayDataReference(_sp6);
+        ref ulong r7 = ref MemoryMarshal.GetArrayDataReference(_sp7);
+        ref ulong r8 = ref MemoryMarshal.GetArrayDataReference(_sp8);
+        return Unsafe.Add(ref r1, (byte)(x >> 56))
+             ^ Unsafe.Add(ref r2, (byte)(x >> 48))
+             ^ Unsafe.Add(ref r3, (byte)(x >> 40))
+             ^ Unsafe.Add(ref r4, (byte)(x >> 32))
+             ^ Unsafe.Add(ref r5, (byte)(x >> 24))
+             ^ Unsafe.Add(ref r6, (byte)(x >> 16))
+             ^ Unsafe.Add(ref r7, (byte)(x >> 8))
+             ^ Unsafe.Add(ref r8, (byte)x);
+#else
+        // Fallback implementation for .NET Framework: use safe array indexing.
+        // This avoids MemoryMarshal / Unsafe APIs not available on older TFMs.
+        int b1 = (int)((x >> 56) & 0xFF);
+        int b2 = (int)((x >> 48) & 0xFF);
+        int b3 = (int)((x >> 40) & 0xFF);
+        int b4 = (int)((x >> 32) & 0xFF);
+        int b5 = (int)((x >> 24) & 0xFF);
+        int b6 = (int)((x >> 16) & 0xFF);
+        int b7 = (int)((x >> 8) & 0xFF);
+        int b8 = (int)(x & 0xFF);
 
-        byte t1 = Sbox1[(byte)(x >> 56)];
-        byte t2 = RotateLeft8(Sbox1[(byte)(x >> 48)], 1);  // SBOX2
-        byte t3 = RotateLeft8(Sbox1[(byte)(x >> 40)], 7);  // SBOX3
-        byte t4 = Sbox1[RotateLeft8((byte)(x >> 32), 1)];  // SBOX4
-        byte t5 = RotateLeft8(Sbox1[(byte)(x >> 24)], 1);  // SBOX2
-        byte t6 = RotateLeft8(Sbox1[(byte)(x >> 16)], 7);  // SBOX3
-        byte t7 = Sbox1[RotateLeft8((byte)(x >> 8), 1)];   // SBOX4
-        byte t8 = Sbox1[(byte)x];
-
-        // P-function
-        byte y1 = (byte)(t1 ^ t3 ^ t4 ^ t6 ^ t7 ^ t8);
-        byte y2 = (byte)(t1 ^ t2 ^ t4 ^ t5 ^ t7 ^ t8);
-        byte y3 = (byte)(t1 ^ t2 ^ t3 ^ t5 ^ t6 ^ t8);
-        byte y4 = (byte)(t2 ^ t3 ^ t4 ^ t5 ^ t6 ^ t7);
-        byte y5 = (byte)(t1 ^ t2 ^ t6 ^ t7 ^ t8);
-        byte y6 = (byte)(t2 ^ t3 ^ t5 ^ t7 ^ t8);
-        byte y7 = (byte)(t3 ^ t4 ^ t5 ^ t6 ^ t8);
-        byte y8 = (byte)(t1 ^ t4 ^ t5 ^ t6 ^ t7);
-
-        return ((ulong)y1 << 56) | ((ulong)y2 << 48) | ((ulong)y3 << 40) | ((ulong)y4 << 32)
-             | ((ulong)y5 << 24) | ((ulong)y6 << 16) | ((ulong)y7 << 8) | y8;
+        return _sp1[b1]
+             ^ _sp2[b2]
+             ^ _sp3[b3]
+             ^ _sp4[b4]
+             ^ _sp5[b5]
+             ^ _sp6[b6]
+             ^ _sp7[b7]
+             ^ _sp8[b8];
+#endif
     }
 
     /// <summary>
@@ -365,12 +491,6 @@ internal static class CamelliaCore
         y2 ^= RotateLeft32(y1 & k1, 1);
 
         return ((ulong)y1 << 32) | y2;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static byte RotateLeft8(byte value, int shift)
-    {
-        return (byte)((value << shift) | (value >> (8 - shift)));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -368,8 +368,7 @@ public sealed class AsyncBarrier
     }
 
 #if NET6_0_OR_GREATER
-    private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) =>
-    {
+    private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
         var waiter = (ManualResetValueTaskSource<bool>)state!;
         var context = (AsyncBarrier)waiter.Owner!;
         context.CancellationCallback(waiter);

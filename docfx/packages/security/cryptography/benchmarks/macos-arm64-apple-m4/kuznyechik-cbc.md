@@ -1,17 +1,17 @@
-﻿| Description                        | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|----------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · Kuznyechik-CBC (Managed) | 128B         |     339.1 μs |   6.63 μs |   9.30 μs |         - |
-|                                    |              |              |           |           |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 128B         |     376.1 μs |   6.18 μs |   5.16 μs |         - |
-|                                    |              |              |           |           |           |
-| Decrypt · Kuznyechik-CBC (Managed) | 1KB          |   2,989.0 μs |  16.86 μs |  15.77 μs |         - |
-|                                    |              |              |           |           |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 1KB          |   3,108.0 μs |   9.59 μs |   8.50 μs |         - |
-|                                    |              |              |           |           |           |
-| Decrypt · Kuznyechik-CBC (Managed) | 8KB          |  24,698.7 μs |  14.00 μs |  12.41 μs |         - |
-|                                    |              |              |           |           |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 8KB          |  25,438.8 μs |  23.27 μs |  20.63 μs |         - |
-|                                    |              |              |           |           |           |
-| Decrypt · Kuznyechik-CBC (Managed) | 128KB        | 405,446.0 μs | 337.53 μs | 299.21 μs |         - |
-|                                    |              |              |           |           |           |
-| Encrypt · Kuznyechik-CBC (Managed) | 128KB        | 395,802.8 μs | 322.10 μs | 301.29 μs |         - |
+﻿| Description                                   | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|---------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| Decrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 128B         |     391.7 μs |     7.41 μs |     6.57 μs |         - |
+|                                               |              |              |             |             |           |
+| Encrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 128B         |     408.6 μs |     8.11 μs |    15.23 μs |         - |
+|                                               |              |              |             |             |           |
+| Decrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 1KB          |   3,107.0 μs |    17.59 μs |    14.68 μs |         - |
+|                                               |              |              |             |             |           |
+| Encrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 1KB          |   3,284.4 μs |    28.57 μs |    22.31 μs |         - |
+|                                               |              |              |             |             |           |
+| Decrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 8KB          |  26,156.3 μs |   186.13 μs |   155.42 μs |         - |
+|                                               |              |              |             |             |           |
+| Encrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 8KB          |  27,158.4 μs |   532.26 μs |   612.95 μs |         - |
+|                                               |              |              |             |             |           |
+| Decrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 128KB        | 418,542.0 μs | 5,012.39 μs | 4,185.57 μs |         - |
+|                                               |              |              |             |             |           |
+| Encrypt · Kuznyechik-CBC (CryptoHives-Scalar) | 128KB        | 420,882.6 μs | 2,505.93 μs | 2,221.44 μs |         - |

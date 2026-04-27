@@ -99,13 +99,15 @@ public abstract class KeccakXofCore : KeccakCore, IExtendableOutput
             _buffer[_bufferLength++] = _domainSeparator;
 
             // Zero-pad
-            while (_bufferLength < _rateBytes - 1)
+            int clearLen = _rateBytes - 1 - _bufferLength;
+            if (clearLen > 0)
             {
-                _buffer[_bufferLength++] = 0x00;
+                _buffer.AsSpan(_bufferLength, clearLen).Clear();
             }
+            _bufferLength = _rateBytes - 1;
 
             // Set last bit (OR preserves domain separator if it landed at this position)
-            _buffer[_rateBytes - 1] |= 0x80;
+            _buffer[_bufferLength] |= 0x80;
 
             // Absorb final block
             _keccakCore.Absorb(_buffer, _rateBytes);

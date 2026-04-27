@@ -1,25 +1,25 @@
-﻿| Description                           | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|-------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · SHA-1 · OS Native    | 128B         |     260.7 ns |   1.80 ns |   1.60 ns |         - |
-| TryComputeHash · SHA-1 · BouncyCastle | 128B         |     481.0 ns |   5.05 ns |   4.73 ns |         - |
-| TryComputeHash · SHA-1 · Managed      | 128B         |     528.1 ns |   0.79 ns |   0.74 ns |         - |
-|                                       |              |              |           |           |           |
-| TryComputeHash · SHA-1 · OS Native    | 137B         |     250.3 ns |   2.18 ns |   2.04 ns |         - |
-| TryComputeHash · SHA-1 · BouncyCastle | 137B         |     486.7 ns |   0.91 ns |   0.85 ns |         - |
-| TryComputeHash · SHA-1 · Managed      | 137B         |     524.1 ns |   0.82 ns |   0.77 ns |         - |
-|                                       |              |              |           |           |           |
-| TryComputeHash · SHA-1 · OS Native    | 1KB          |     522.2 ns |   0.33 ns |   0.26 ns |         - |
-| TryComputeHash · SHA-1 · BouncyCastle | 1KB          |   2,691.7 ns |   1.64 ns |   1.45 ns |         - |
-| TryComputeHash · SHA-1 · Managed      | 1KB          |   2,849.8 ns |   7.80 ns |   6.92 ns |         - |
-|                                       |              |              |           |           |           |
-| TryComputeHash · SHA-1 · OS Native    | 1025B        |     522.2 ns |   0.37 ns |   0.31 ns |         - |
-| TryComputeHash · SHA-1 · BouncyCastle | 1025B        |   2,687.9 ns |   3.84 ns |   3.41 ns |         - |
-| TryComputeHash · SHA-1 · Managed      | 1025B        |   2,845.2 ns |   7.65 ns |   7.16 ns |         - |
-|                                       |              |              |           |           |           |
-| TryComputeHash · SHA-1 · OS Native    | 8KB          |   2,629.9 ns |   0.37 ns |   0.35 ns |         - |
-| TryComputeHash · SHA-1 · BouncyCastle | 8KB          |  20,276.1 ns | 172.11 ns | 160.99 ns |         - |
-| TryComputeHash · SHA-1 · Managed      | 8KB          |  21,347.4 ns |  57.49 ns |  53.78 ns |         - |
-|                                       |              |              |           |           |           |
-| TryComputeHash · SHA-1 · OS Native    | 128KB        |  38,761.1 ns |   7.45 ns |   6.22 ns |         - |
-| TryComputeHash · SHA-1 · BouncyCastle | 128KB        | 322,922.5 ns | 915.59 ns | 856.44 ns |         - |
-| TryComputeHash · SHA-1 · Managed      | 128KB        | 337,926.0 ns | 907.62 ns | 848.99 ns |         - |
+﻿| Description                                 | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|-------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| TryComputeHash · SHA-1 · OS Native          | 128B         |     269.9 ns |     1.92 ns |     1.80 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle       | 128B         |     482.1 ns |     0.57 ns |     0.54 ns |         - |
+| TryComputeHash · SHA-1 · CryptoHives-Scalar | 128B         |     534.0 ns |     7.51 ns |     6.27 ns |         - |
+|                                             |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native          | 137B         |     258.5 ns |     2.29 ns |     2.14 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle       | 137B         |     485.4 ns |     0.57 ns |     0.48 ns |         - |
+| TryComputeHash · SHA-1 · CryptoHives-Scalar | 137B         |     527.3 ns |     3.69 ns |     3.08 ns |         - |
+|                                             |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native          | 1KB          |     525.8 ns |     1.29 ns |     1.20 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle       | 1KB          |   2,704.2 ns |     2.13 ns |     1.78 ns |         - |
+| TryComputeHash · SHA-1 · CryptoHives-Scalar | 1KB          |   2,862.7 ns |     5.31 ns |     4.44 ns |         - |
+|                                             |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native          | 1025B        |     525.1 ns |     2.12 ns |     1.77 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle       | 1025B        |   2,726.1 ns |    30.70 ns |    27.21 ns |         - |
+| TryComputeHash · SHA-1 · CryptoHives-Scalar | 1025B        |   2,884.0 ns |    22.51 ns |    19.96 ns |         - |
+|                                             |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native          | 8KB          |   2,657.3 ns |    28.73 ns |    25.47 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle       | 8KB          |  19,284.4 ns |    65.89 ns |    51.44 ns |         - |
+| TryComputeHash · SHA-1 · CryptoHives-Scalar | 8KB          |  21,628.5 ns |   134.34 ns |   112.18 ns |         - |
+|                                             |              |              |             |             |           |
+| TryComputeHash · SHA-1 · OS Native          | 128KB        |  38,818.5 ns |    52.16 ns |    43.56 ns |         - |
+| TryComputeHash · SHA-1 · BouncyCastle       | 128KB        | 325,737.9 ns |   558.92 ns |   466.72 ns |         - |
+| TryComputeHash · SHA-1 · CryptoHives-Scalar | 128KB        | 341,828.4 ns | 1,323.97 ns | 1,105.58 ns |         - |

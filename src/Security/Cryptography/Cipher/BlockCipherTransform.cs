@@ -71,6 +71,27 @@ internal abstract class BlockCipherTransform : ICipherTransform
     public bool CanReuseTransform => true;
 
     /// <summary>
+    /// Gets a value indicating whether this transform is encrypting (<see langword="true"/>)
+    /// or decrypting (<see langword="false"/>).
+    /// </summary>
+    protected bool IsEncrypting => _encrypting;
+
+    /// <summary>
+    /// Gets the current cipher mode of operation.
+    /// </summary>
+    protected CipherMode CurrentMode => _mode;
+
+    /// <summary>
+    /// Gets a <see cref="Span{T}"/> over the current CBC feedback register.
+    /// </summary>
+    /// <remarks>
+    /// Subclasses may read and update this span directly when implementing a
+    /// bulk CBC override of <see cref="TransformBlock(ReadOnlySpan{byte},Span{byte})"/> to avoid per-block
+    /// virtual dispatch and intermediate buffer overhead.
+    /// </remarks>
+    protected Span<byte> FeedbackSpan => _feedback;
+
+    /// <summary>
     /// Encrypts a single 16-byte block.
     /// </summary>
     /// <param name="input">The 16-byte plaintext block.</param>
@@ -85,7 +106,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
     protected abstract void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output);
 
     /// <inheritdoc/>
-    public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
+    public virtual int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (input.Length < BlockSizeConst)
             throw new ArgumentException("Input must be at least one block.", nameof(input));

@@ -34,8 +34,7 @@ internal static class AesCoreAesNi
     /// <returns>The number of rounds (10, 12, or 14).</returns>
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<Vector128<byte>> roundKeys)
     {
-        int nr = key.Length switch
-        {
+        int nr = key.Length switch {
             16 => 10,
             24 => 12,
             32 => 14,

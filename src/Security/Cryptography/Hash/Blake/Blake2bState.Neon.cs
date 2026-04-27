@@ -7,7 +7,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 #if NET8_0_OR_GREATER && EXPERIMENTAL
 
-using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
@@ -24,7 +23,7 @@ using System.Runtime.Intrinsics.Arm;
 /// <c>ExtractVector128</c>, and <c>InsertSelectedScalar</c> operations.
 /// </para>
 /// </remarks>
-public sealed partial class Blake2b : HashAlgorithm
+internal unsafe partial struct Blake2bState
 {
     // Byte-shuffle masks for 64-bit word rotations within a 128-bit register (2 × ulong).
     // ror64(v, 24): for each 8-byte group: [b3,b4,b5,b6,b7,b0,b1,b2]
@@ -37,7 +36,7 @@ public sealed partial class Blake2b : HashAlgorithm
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static unsafe void CompressNeon(byte* bp, ulong* state, ulong bytesCompressed, bool isFinal)
+    private static void CompressNeon(byte* bp, ulong* state, ulong bytesCompressed, bool isFinal)
     {
         // Load state from the shared _state[] array (same layout as AVX2 path)
         var r0L = AdvSimd.LoadVector128(state);

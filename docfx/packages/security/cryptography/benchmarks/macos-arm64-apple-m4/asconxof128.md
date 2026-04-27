@@ -1,19 +1,19 @@
-﻿| Description                                  | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|--------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · Ascon-XOF128 · Managed      | 128B         |     624.3 ns |     2.41 ns |     2.26 ns |         - |
-| TryComputeHash · Ascon-XOF128 · BouncyCastle | 128B         |     896.4 ns |     1.19 ns |     1.11 ns |         - |
-|                                              |              |              |             |             |           |
-| TryComputeHash · Ascon-XOF128 · Managed      | 137B         |     657.0 ns |     3.56 ns |     3.33 ns |         - |
-| TryComputeHash · Ascon-XOF128 · BouncyCastle | 137B         |     942.2 ns |     1.14 ns |     1.06 ns |         - |
-|                                              |              |              |             |             |           |
-| TryComputeHash · Ascon-XOF128 · Managed      | 1KB          |   4,153.9 ns |    15.34 ns |    14.34 ns |         - |
-| TryComputeHash · Ascon-XOF128 · BouncyCastle | 1KB          |   5,928.3 ns |     9.82 ns |     8.70 ns |         - |
-|                                              |              |              |             |             |           |
-| TryComputeHash · Ascon-XOF128 · Managed      | 1025B        |   4,153.8 ns |    16.40 ns |    15.34 ns |         - |
-| TryComputeHash · Ascon-XOF128 · BouncyCastle | 1025B        |   5,908.0 ns |     9.12 ns |     8.53 ns |         - |
-|                                              |              |              |             |             |           |
-| TryComputeHash · Ascon-XOF128 · Managed      | 8KB          |  32,452.2 ns |   124.27 ns |   110.16 ns |         - |
-| TryComputeHash · Ascon-XOF128 · BouncyCastle | 8KB          |  46,151.5 ns |    73.70 ns |    68.94 ns |         - |
-|                                              |              |              |             |             |           |
-| TryComputeHash · Ascon-XOF128 · Managed      | 128KB        | 518,424.0 ns | 1,850.17 ns | 1,640.13 ns |         - |
-| TryComputeHash · Ascon-XOF128 · BouncyCastle | 128KB        | 732,585.0 ns | 1,716.56 ns | 1,605.67 ns |         - |
+﻿| Description                                        | TestDataSize | Mean         | Error       | StdDev      | Allocated |
+|--------------------------------------------------- |------------- |-------------:|------------:|------------:|----------:|
+| TryComputeHash · Ascon-XOF128 · CryptoHives-Scalar | 128B         |     620.5 ns |     1.66 ns |     1.55 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle       | 128B         |     895.1 ns |     6.11 ns |     5.10 ns |         - |
+|                                                    |              |              |             |             |           |
+| TryComputeHash · Ascon-XOF128 · CryptoHives-Scalar | 137B         |     654.0 ns |     1.93 ns |     1.80 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle       | 137B         |     945.2 ns |     1.87 ns |     1.66 ns |         - |
+|                                                    |              |              |             |             |           |
+| TryComputeHash · Ascon-XOF128 · CryptoHives-Scalar | 1KB          |   4,133.3 ns |    17.42 ns |    15.44 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle       | 1KB          |   5,892.3 ns |    29.19 ns |    24.37 ns |         - |
+|                                                    |              |              |             |             |           |
+| TryComputeHash · Ascon-XOF128 · CryptoHives-Scalar | 1025B        |   4,140.8 ns |    17.14 ns |    15.20 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle       | 1025B        |   5,963.5 ns |    47.18 ns |    46.34 ns |         - |
+|                                                    |              |              |             |             |           |
+| TryComputeHash · Ascon-XOF128 · CryptoHives-Scalar | 8KB          |  32,461.6 ns |   160.42 ns |   142.20 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle       | 8KB          |  46,017.5 ns |   128.03 ns |   119.76 ns |         - |
+|                                                    |              |              |             |             |           |
+| TryComputeHash · Ascon-XOF128 · CryptoHives-Scalar | 128KB        | 514,819.5 ns | 2,785.03 ns | 2,605.12 ns |         - |
+| TryComputeHash · Ascon-XOF128 · BouncyCastle       | 128KB        | 731,904.6 ns | 3,069.82 ns | 2,871.51 ns |         - |

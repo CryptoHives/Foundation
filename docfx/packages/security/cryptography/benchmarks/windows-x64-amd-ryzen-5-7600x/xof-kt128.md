@@ -1,9 +1,9 @@
-﻿| Description                     | TestDataSize | Mean       | Error     | StdDev    | Allocated |
-|-------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · KT128 · Managed | 128B         |   1.579 μs | 0.0073 μs | 0.0057 μs |         - |
-|                                 |              |            |           |           |           |
-| AbsorbSqueeze · KT128 · Managed | 1KB          |   2.751 μs | 0.0238 μs | 0.0223 μs |         - |
-|                                 |              |            |           |           |           |
-| AbsorbSqueeze · KT128 · Managed | 8KB          |  11.523 μs | 0.0778 μs | 0.0690 μs |         - |
-|                                 |              |            |           |           |           |
-| AbsorbSqueeze · KT128 · Managed | 128KB        | 163.508 μs | 1.0580 μs | 0.9379 μs |         - |
+﻿| Description                                | TestDataSize | Mean      | Error     | StdDev    | Allocated |
+|------------------------------------------- |------------- |----------:|----------:|----------:|----------:|
+| AbsorbSqueeze · KT128 · CryptoHives-Scalar | 128B         |  1.446 μs | 0.0102 μs | 0.0091 μs |         - |
+|                                            |              |           |           |           |           |
+| AbsorbSqueeze · KT128 · CryptoHives-Scalar | 1KB          |  2.052 μs | 0.0197 μs | 0.0165 μs |         - |
+|                                            |              |           |           |           |           |
+| AbsorbSqueeze · KT128 · CryptoHives-Scalar | 8KB          |  6.303 μs | 0.0305 μs | 0.0270 μs |         - |
+|                                            |              |           |           |           |           |
+| AbsorbSqueeze · KT128 · CryptoHives-Scalar | 128KB        | 80.207 μs | 0.4070 μs | 0.3608 μs |         - |

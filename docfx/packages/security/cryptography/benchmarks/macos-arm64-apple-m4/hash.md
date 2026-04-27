@@ -11,16 +11,16 @@ Implementations are compared against:
 - **BouncyCastle** — BouncyCastle C# library
 - **Native** — Platform-specific native libraries (e.g., blake3-dotnet)
 - **Managed** — CryptoHives managed implementation (scalar)
-- **SIMD** — CryptoHives SIMD variants (ArmSha256, Neon)
+- **SIMD** — CryptoHives SIMD variants (ArmSha256, Neon, Arm64)
 
 ## Highlights
 
 | Family | Leader | Key Insight |
 |--------|--------|-------------|
-| **SHA-2** | OS (ArmSha256) | Apple CommonCrypto leads: ~2× faster at 128 B, ~13% at 128 KiB; ArmSha256 managed path matches scalar Managed speed |
-| **SHA-3/Keccak** | BouncyCastle | BouncyCastle slightly faster than Managed (~6% at bulk sizes); **opposite pattern to x86** where scalar Managed leads |
+| **SHA-2** | OS (CommonCrypto) | Apple Silicon SHA hardware ~2.2× faster than ArmSha256 at 128 B; ArmSha256 is ~2.6× faster than Scalar at 128 B and ~7.3× faster at 128 KiB |
+| **SHA-3/Keccak** | CryptoHives Arm64 | Arm64 variant beats BouncyCastle at all sizes; Scalar on parity with BouncyCastle at bulk |
 | **BLAKE2b/2s** | BouncyCastle | BouncyCastle ~2× faster than Neon at 128 KiB; Neon ~1.75× faster than Managed |
-| **BLAKE3** | Native (Rust) | Rust ~5.4× faster than BouncyCastle at 128 KiB; Neon ~2.5× faster than BouncyCastle |
+| **BLAKE3** | Native (Rust) | Rust ~5.4× faster than BouncyCastle at 128 KiB; Neon ~2.6× faster than BouncyCastle |
 | **Streebog** | Managed | ~1.7× faster than OpenGost; ~2.1× faster than BouncyCastle |
 | **Kupyna** | Managed | ~1.5× faster than BouncyCastle at all sizes |
 | **KMAC** | Managed | ~1.9× faster than BouncyCastle at 128 B; competitive at bulk sizes |
@@ -31,12 +31,15 @@ Implementations are compared against:
 
 ## SHA-2 Family
 
-On Apple M4, `System.Security.Cryptography` is backed by Apple CommonCrypto which uses the Apple Silicon hardware SHA acceleration. The `ArmSha256` managed variant maps to the ARM Cryptography Extension `SHA256H`/`SHA256H2`/`SHA256SU0`/`SHA256SU1` instructions — but at these sizes the overhead difference mainly stems from the OS call path being highly optimized. The managed `ArmSha256` path provides essentially the same throughput as the scalar `Managed` path (within 1%), suggesting the JIT already eliminates most overhead once SHA-round dispatch is optimized.
+On Apple M4, `System.Security.Cryptography` is backed by Apple CommonCrypto which uses Apple Silicon hardware SHA acceleration. At 128 B, OS (83 ns) is ~2.2× faster than `ArmSha256` (182 ns). The `ArmSha256` managed variant maps directly to the ARM Cryptography Extension `SHA256H`/`SHA256H2`/`SHA256SU0`/`SHA256SU1` instructions and is **2.6× faster than the scalar `Managed` path** (182 ns vs 473 ns at 128 B) and **7.3× faster at 128 KiB** (44 μs vs 321 μs). The remaining gap to OS is due to Apple's proprietary SHA pipelining inside CommonCrypto, which is not accessible via the standard ARM intrinsics.
+
+CryptoHives-Scalar outperforms BouncyCastle by ~20–24% across all sizes — consistent with the x86 result.
 
 **Key observations:**
-- **OS**: Apple Silicon hardware SHA — ~2× faster at 128 B; ~13% faster at 128 KiB
-- **ArmSha256 / Managed**: Identical throughput; ArmSha256 does not currently provide additional speedup over the scalar path in this .NET version
-- **BouncyCastle**: ~3.3× slower than OS at 128 B; slower than Managed by ~9.4× at 128 KiB
+- **OS**: Apple Silicon hardware SHA — ~2.2× faster than ArmSha256 at 128 B; ~12% faster at 128 KiB
+- **ArmSha256**: Uses `SHA256H`/`SHA256H2` ARM Crypto Extension instructions; ~2.6× faster than Scalar at 128 B; ~7.3× faster at 128 KiB
+- **CryptoHives-Scalar**: ~20–24% faster than BouncyCastle across all sizes
+- **BouncyCastle**: ~7× slower than OS at 128 B (590 ns vs 83 ns); ~31% slower than Scalar at 128 KiB
 
 ### SHA-224
 [!INCLUDE[](sha224.md)]
@@ -60,12 +63,13 @@ On Apple M4, `System.Security.Cryptography` is backed by Apple CommonCrypto whic
 
 ## Keccak-derived Families
 
-On Apple M4, BouncyCastle is slightly faster than the CryptoHives managed Keccak core across all payload sizes — the reverse of the x86 Windows result. On x86, the scalar CryptoHives path is ~30% faster than OS SHA-3 due to loop-unrolling and constant elimination that matches well with x86 out-of-order execution. On Apple M4, BouncyCastle's JIT-optimized Keccak permutation is ~6% faster at bulk sizes. Both implementations use scalar arithmetic; neither has an ARM SIMD path yet.
+On Apple M4, the CryptoHives **Arm64** Keccak variant is the fastest managed implementation, beating BouncyCastle at all payload sizes (e.g., 147 μs vs 151 μs at 128 KiB for SHA3-256). The scalar `Managed` path is on parity with BouncyCastle at bulk sizes (~2% difference), while the Arm64 path stays ~2–3% ahead. This is the reverse of the x86 pattern — on x86, the scalar path is ~30% faster than OS SHA-3; here there is no OS SHA-3 reference and both managed paths operate at similar throughput.
 
 **Key observations:**
-- **BouncyCastle**: ~3% faster than Managed at 128 B for SHA3-256; ~6% faster at bulk (1 KiB–128 KiB)
+- **CryptoHives Arm64**: Fastest managed option — beats BouncyCastle at all sizes (~6% at 128 B, ~2.4% at 128 KiB for SHA3-256)
+- **CryptoHives Scalar**: On parity with BouncyCastle at bulk sizes; ~6% behind at 128 B
 - No OS SHA-3 comparison available (macOS CommonCrypto does not expose SHA-3 via .NET in current releases)
-- All Keccak variants (SHA-3, SHA-3/SHAKE, cSHAKE, TurboSHAKE, KT) share the same optimized core
+- All Keccak variants (SHA-3, SHAKE, cSHAKE, TurboSHAKE, KT) share the same optimized core
 
 ### SHA-3 Family
 
@@ -152,9 +156,11 @@ BouncyCastle leads the BLAKE2 benchmarks on Apple M4 — its JIT-compiled implem
 
 ## BLAKE3
 
-BLAKE3 is a modern hash function designed for extreme parallelism. At 128 KiB, the **Native (Rust)** variant via `blake3-dotnet` is **~5.4× faster than BouncyCastle** and **~2.6× faster than the NEON path**. The gap is smaller than on x86 (where the Rust build uses AVX-512 `hash_many` for ~12× advantage) because the ARM Rust build uses a single-threaded NEON path that is comparable in architecture to the CryptoHives Neon path — the key difference is that the Rust build also enables tree-hash parallelism via NEON-based chunk merging at 128 KiB, while the CryptoHives implementation processes chunks sequentially.
+BLAKE3 is a modern hash function designed for extreme parallelism. At 128 KiB, the **Native (Rust)** variant via `blake3-dotnet` is **~5.4× faster than BouncyCastle** and **~2.6× faster than the NEON path** (52.6 μs vs 283 μs). The gap is smaller than on x86 (where the Rust build uses AVX-512 `hash_many` for ~12× advantage) because the ARM Rust build uses a single-threaded NEON path comparable in architecture to the CryptoHives Neon path — the key difference is that the Rust build also enables tree-hash parallelism via NEON-based chunk merging at 128 KiB, while the CryptoHives implementation processes chunks sequentially.
 
-The CryptoHives `Neon` path uses `Vector128<uint>` for the BLAKE3 compression function (same G-function as ChaCha20), yielding ~2.5× speedup over BouncyCastle at 128 KiB. The scalar `Managed` path is ~1.4× faster than BouncyCastle at 128 B and ~1.3× at 128 KiB.
+The CryptoHives `Neon` path uses `Vector128<uint>` for the BLAKE3 compression function, yielding **~2.6× speedup over BouncyCastle at 128 KiB** (283 μs vs 729 μs). The scalar `Managed` path is ~1.4× faster than BouncyCastle at 128 B and ~1.3× at 128 KiB.
+
+> ⚠️ **Note**: The macOS benchmarks in this run were produced before the `Reset(bool)` allocation fix landed. The `Neon` and `Scalar` rows currently report 24 B allocated per call. This is a known stale artifact — the fix is confirmed zero-allocation on Windows. These benchmarks will be updated after the next macOS run.
 
 [!INCLUDE[](blake3.md)]
 
@@ -198,184 +204,3 @@ On Apple M4, BouncyCastle leads MD5 at small sizes (~20% faster than OS at 128 B
 
 ### SHA-1
 [!INCLUDE[](sha1.md)]
-
----
-
-## Regional Standards
-
-These algorithms serve **regulatory compliance requirements** in specific jurisdictions:
-
-| Algorithm | Region | Use Case |
-|-----------|--------|----------|
-| **SM3** | China | Required for Chinese government and financial systems (GB/T 32905-2016) |
-| **Streebog** | Russia | Russian federal standard GOST R 34.11-2012, required for government communications |
-| **Kupyna** | Ukraine | Ukrainian national standard DSTU 7564:2014, required for government systems |
-| **LSH** | South Korea | Korean national standard KS X 3262, approved by KCMVP |
-| **Whirlpool** | ISO/NESSIE | European cryptographic standard (ISO/IEC 10118-3) |
-| **RIPEMD-160** | Europe/Crypto | Used in Bitcoin address generation and some European standards |
-
-On Apple M4, the managed Streebog implementation is **~1.7× faster than OpenGost** and **~2.1× faster than BouncyCastle** — consistent with the x86 advantage. Kupyna is **~1.5× faster than BouncyCastle** (vs ~1.3–1.45× on x86). The Whirlpool implementation is outstanding at **~4.9× faster than BouncyCastle** — the most dominant advantage of any regional algorithm on this platform.
-
-### SM3
-[!INCLUDE[](sm3.md)]
-
-### Streebog-256
-[!INCLUDE[](streebog256.md)]
-
-### Streebog-512
-[!INCLUDE[](streebog512.md)]
-
-### Whirlpool
-[!INCLUDE[](whirlpool.md)]
-
-### RIPEMD-160
-[!INCLUDE[](ripemd160.md)]
-
-### Kupyna-256 (DSTU 7564)
-[!INCLUDE[](kupyna256.md)]
-
-### Kupyna-384 (DSTU 7564)
-[!INCLUDE[](kupyna384.md)]
-
-### Kupyna-512 (DSTU 7564)
-[!INCLUDE[](kupyna512.md)]
-
-### LSH-256-256 (KS X 3262)
-[!INCLUDE[](lsh256-256.md)]
-
-### LSH-512-256 (KS X 3262)
-[!INCLUDE[](lsh512-256.md)]
-
-### LSH-512-512 (KS X 3262)
-[!INCLUDE[](lsh512-512.md)]
-
----
-
-## XOF Mode
-
-XOF (Extendable Output Function) benchmarks measure the full absorb-then-squeeze cycle: the input is absorbed and an output of equal size is squeezed. The benchmark method is `AbsorbSqueeze`. All CryptoHives XOF implementations are **zero-allocation** regardless of output size. BouncyCastle's XOF implementations allocate an internal output buffer proportional to the squeezed length (e.g., ~150 KB for a 128 KiB squeeze), making them unsuitable for high-frequency streaming use.
-
-### SHAKE Family
-
-SHAKE128 and SHAKE256 (FIPS 202) are variable-output-length extensions of the SHA-3 permutation with security strengths of 128 and 256 bits respectively. SHAKE128 uses a 1344-bit rate (21 blocks × 64 bytes) while SHAKE256 uses a 1088-bit rate — making SHAKE128 ~14% faster for the same output size due to fewer Keccak permutation calls per byte output.
-
-On Apple M4, BouncyCastle leads both variants at all tested sizes. For SHAKE128: BC ~12% faster at 128 B; ~1.64× faster at 128 KiB. For SHAKE256: BC ~11% faster at 128 B; ~1.53× faster at 128 KiB. This follows the same pattern as the fixed-output SHAKE hash benchmarks (BouncyCastle's Keccak permutation marginally outperforms the CryptoHives scalar implementation on Apple Silicon).
-
-**Key observations:**
-- **BouncyCastle**: Fastest on Apple M4 but allocates output-proportional buffers (~150 KB at 128 KiB squeeze)
-- **Managed**: Zero-allocation; ~1.6× slower than BC at 128 KiB
-- SHAKE128 is ~12% faster than SHAKE256 at the same size due to wider rate
-
-#### SHAKE128
-[!INCLUDE[](xof-shake128.md)]
-
-#### SHAKE256
-[!INCLUDE[](xof-shake256.md)]
-
----
-
-### cSHAKE Family
-
-cSHAKE128 and cSHAKE256 (NIST SP 800-185) extend SHAKE with domain separation via a function-name string `N` and a customization string `S`, enabling distinct hash functions for different applications from the same permutation. When both strings are empty, cSHAKE degenerates exactly to SHAKE.
-
-Performance is essentially identical to the corresponding SHAKE variants — the customization strings add a one-time padding overhead during initialization, negligible in the benchmarked range. BouncyCastle leads by ~12% at 128 B and ~1.63× at 128 KiB; both implementations are zero-allocation at all sizes for the CryptoHives path.
-
-**Key observations:**
-- Performance matches SHAKE128/256 within measurement noise
-- **BouncyCastle**: Allocates ~150 KB per 128 KiB squeeze
-- **Managed**: Zero-allocation; preserves streaming use-case fitness
-
-#### cSHAKE128
-[!INCLUDE[](xof-cshake128.md)]
-
-#### cSHAKE256
-[!INCLUDE[](xof-cshake256.md)]
-
----
-
-### KMAC Family (XOF)
-
-KMAC128 XOF and KMAC256 XOF (NIST SP 800-185) are keyed variants of cSHAKE usable as variable-length PRFs. In XOF mode the output length is not encoded into the padding, enabling stream output of arbitrary length. KMAC128 XOF uses the cSHAKE128 rate (1344 bits); KMAC256 XOF uses the cSHAKE256 rate (1088 bits).
-
-At 128 B absorb + 128 B squeeze, Managed and BouncyCastle are nearly equal (BC ~2% faster) — this is a notable difference from the fixed-output KMAC benchmark where Managed was ~1.9× faster. The larger per-call overhead of the XOF API (absorb + pad + squeeze) dominates at small sizes, favouring neither implementation. At 128 KiB, BC leads by ~1.64×, consistent with the Keccak throughput pattern.
-
-**Key observations:**
-- Near parity at 128 B between Managed and BC (within ~2%)
-- **BouncyCastle**: Allocates ~130 B at small sizes, ~150 KB at 128 KiB squeeze
-- **Managed**: Zero-allocation at all sizes
-
-#### KMAC128
-[!INCLUDE[](xof-kmac128.md)]
-
-#### KMAC256
-[!INCLUDE[](xof-kmac256.md)]
-
----
-
-### KangarooTwelve Family (XOF)
-
-KangarooTwelve (KT128 / KT256) are tree-hashing XOFs based on the Keccak permutation with 12 rounds (vs 24 for full SHA-3). The reduced-round design yields ~2× throughput over SHAKE128 while maintaining 128-bit security. No external competitor implementations are available for comparison.
-
-On Apple M4, KT128 XOF delivers approximately the same throughput as SHAKE128 XOF at bulk sizes despite the halved round count, suggesting the M4 execution units are not bottlenecked by round count alone. KT256 follows the same architecture with the narrower cSHAKE256 rate and is marginally slower.
-
-**Key observations:**
-- **KT128** ~1.3× faster than SHAKE128 at 128 B; near parity at 128 KiB (permutation throughput parity)
-- **KT256** slightly slower than KT128 due to narrower rate (1088-bit vs 1344-bit)
-- No BouncyCastle or OS comparison available; zero-allocation
-
-#### KT128
-[!INCLUDE[](xof-kt128.md)]
-
-#### KT256
-[!INCLUDE[](xof-kt256.md)]
-
----
-
-### TurboSHAKE Family (XOF)
-
-TurboSHAKE128 and TurboSHAKE256 (IETF RFC 9562) use 12 Keccak rounds with a simplified padding scheme and expose a plain XOF interface with no tree-hashing overhead. They are the simplest and fastest Keccak-family XOFs available in this library.
-
-On Apple M4, TurboSHAKE128 XOF is the **fastest Keccak-based XOF** at all sizes: ~1.37× faster than SHAKE128 at bulk sizes and leads KT128 across all payload sizes. No external competitor implementations are available.
-
-**Key observations:**
-- Fastest Keccak XOF in this library on Apple M4
-- TurboSHAKE128: 1344-bit rate with 12 rounds
-- TurboSHAKE256: 1088-bit rate with 12 rounds; slightly slower
-- Zero-allocation; no OS or BouncyCastle comparison available
-
-#### TurboSHAKE128
-[!INCLUDE[](xof-turboshake128.md)]
-
-#### TurboSHAKE256
-[!INCLUDE[](xof-turboshake256.md)]
-
----
-
-### BLAKE3 (XOF)
-
-BLAKE3 XOF uses the same ChaCha-based compression function but extends the tree hashing mode to produce output of arbitrary length. The output is derived by repeatedly doubling the output chaining value from the root node. This differs from the fixed-output benchmark, which stops at the root hash.
-
-The **Native (Rust)** implementation via `blake3-dotnet` is dramatically faster — ~7× at 128 B and ~5.8× at 128 KiB — because the Rust output-reader uses parallel chunk generation for the extended output, exploiting multiple NEON lanes simultaneously. The CryptoHives `Neon` path squeezed output sequentially. **Managed** is 1.3× faster than BouncyCastle at 128 B and ~1.3× at 128 KiB.
-
-**Key observations:**
-- **Native**: ~7× faster than Managed at 128 B XOF; ~5.8× at 128 KiB
-- **Managed**: ~1.3× faster than BouncyCastle across all sizes; zero allocation
-- **BouncyCastle**: Slowest XOF option; allocates 56 B per call regardless of output size
-- BLAKE3 XOF output is deterministic given key and context — suitable for KDF and stream encryption
-
-[!INCLUDE[](xof-blake3.md)]
-
----
-
-### Ascon-XOF128
-
-Ascon-XOF128 (NIST Lightweight Cryptography standard 2023) is the XOF variant of the Ascon family using the same 320-bit permutation as Ascon-Hash256. It uses a 128-bit rate, requiring a full 12-round permutation call per 16 bytes of input or output — making it inherently slower than SHAKE/BLAKE XOFs for large outputs.
-
-On Apple M4, the CryptoHives Managed implementation is **~43% faster than BouncyCastle** across all sizes — consistent with the fixed-output Ascon-Hash256 advantage. Zero allocation on both paths.
-
-**Key observations:**
-- **Managed**: ~43% faster than BouncyCastle at all sizes; zero-allocation
-- Throughput ~3× slower than SHAKE128 at 128 KiB due to the narrow rate (128-bit vs 1344-bit)
-- Optimized for memory-constrained environments, not bulk throughput
-
-[!INCLUDE[](xof-asconxof128.md)]

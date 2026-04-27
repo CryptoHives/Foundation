@@ -1,9 +1,13 @@
-﻿| Description                     | TestDataSize | Mean       | Error     | StdDev    | Allocated |
-|-------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · KT256 · Managed | 128B         |   1.599 μs | 0.0021 μs | 0.0020 μs |         - |
-|                                 |              |            |           |           |           |
-| AbsorbSqueeze · KT256 · Managed | 1KB          |   2.773 μs | 0.0040 μs | 0.0035 μs |         - |
-|                                 |              |            |           |           |           |
-| AbsorbSqueeze · KT256 · Managed | 8KB          |  12.052 μs | 0.0056 μs | 0.0053 μs |         - |
-|                                 |              |            |           |           |           |
-| AbsorbSqueeze · KT256 · Managed | 128KB        | 170.964 μs | 0.1270 μs | 0.1188 μs |         - |
+﻿| Description                                | TestDataSize | Mean      | Error     | StdDev    | Allocated |
+|------------------------------------------- |------------- |----------:|----------:|----------:|----------:|
+| AbsorbSqueeze · KT256 · CryptoHives-Arm64  | 128B         |  1.365 μs | 0.0066 μs | 0.0052 μs |         - |
+| AbsorbSqueeze · KT256 · CryptoHives-Scalar | 128B         |  1.403 μs | 0.0010 μs | 0.0009 μs |         - |
+|                                            |              |           |           |           |           |
+| AbsorbSqueeze · KT256 · CryptoHives-Arm64  | 1KB          |  1.883 μs | 0.0031 μs | 0.0024 μs |         - |
+| AbsorbSqueeze · KT256 · CryptoHives-Scalar | 1KB          |  1.964 μs | 0.0014 μs | 0.0011 μs |         - |
+|                                            |              |           |           |           |           |
+| AbsorbSqueeze · KT256 · CryptoHives-Arm64  | 8KB          |  5.881 μs | 0.0940 μs | 0.0880 μs |         - |
+| AbsorbSqueeze · KT256 · CryptoHives-Scalar | 8KB          |  6.123 μs | 0.0099 μs | 0.0088 μs |         - |
+|                                            |              |           |           |           |           |
+| AbsorbSqueeze · KT256 · CryptoHives-Arm64  | 128KB        | 72.510 μs | 0.1350 μs | 0.1054 μs |         - |
+| AbsorbSqueeze · KT256 · CryptoHives-Scalar | 128KB        | 77.320 μs | 0.5075 μs | 0.4238 μs |         - |

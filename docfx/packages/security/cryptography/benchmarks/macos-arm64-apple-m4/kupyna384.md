@@ -1,19 +1,19 @@
-﻿| Description                                | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · Kupyna-384 · Managed      | 128B         |     3.290 μs | 0.0038 μs | 0.0036 μs |         - |
-| TryComputeHash · Kupyna-384 · BouncyCastle | 128B         |     4.514 μs | 0.0011 μs | 0.0010 μs |         - |
-|                                            |              |              |           |           |           |
-| TryComputeHash · Kupyna-384 · Managed      | 137B         |     3.283 μs | 0.0041 μs | 0.0038 μs |         - |
-| TryComputeHash · Kupyna-384 · BouncyCastle | 137B         |     4.512 μs | 0.0015 μs | 0.0014 μs |         - |
-|                                            |              |              |           |           |           |
-| TryComputeHash · Kupyna-384 · Managed      | 1KB          |    12.363 μs | 0.0185 μs | 0.0173 μs |         - |
-| TryComputeHash · Kupyna-384 · BouncyCastle | 1KB          |    17.182 μs | 0.0048 μs | 0.0042 μs |         - |
-|                                            |              |              |           |           |           |
-| TryComputeHash · Kupyna-384 · Managed      | 1025B        |    12.371 μs | 0.0184 μs | 0.0172 μs |         - |
-| TryComputeHash · Kupyna-384 · BouncyCastle | 1025B        |    17.100 μs | 0.0066 μs | 0.0055 μs |         - |
-|                                            |              |              |           |           |           |
-| TryComputeHash · Kupyna-384 · Managed      | 8KB          |    84.919 μs | 0.0896 μs | 0.0838 μs |         - |
-| TryComputeHash · Kupyna-384 · BouncyCastle | 8KB          |   117.475 μs | 0.0232 μs | 0.0206 μs |         - |
-|                                            |              |              |           |           |           |
-| TryComputeHash · Kupyna-384 · Managed      | 128KB        | 1,328.481 μs | 1.2410 μs | 1.1001 μs |         - |
-| TryComputeHash · Kupyna-384 · BouncyCastle | 128KB        | 1,831.709 μs | 0.4127 μs | 0.3658 μs |         - |
+﻿| Description                                      | TestDataSize | Mean         | Error      | StdDev     | Allocated |
+|------------------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|
+| TryComputeHash · Kupyna-384 · CryptoHives-Scalar | 128B         |     3.296 μs |  0.0070 μs |  0.0055 μs |         - |
+| TryComputeHash · Kupyna-384 · BouncyCastle       | 128B         |     4.530 μs |  0.0104 μs |  0.0092 μs |         - |
+|                                                  |              |              |            |            |           |
+| TryComputeHash · Kupyna-384 · CryptoHives-Scalar | 137B         |     3.296 μs |  0.0165 μs |  0.0146 μs |         - |
+| TryComputeHash · Kupyna-384 · BouncyCastle       | 137B         |     4.620 μs |  0.0503 μs |  0.0446 μs |         - |
+|                                                  |              |              |            |            |           |
+| TryComputeHash · Kupyna-384 · CryptoHives-Scalar | 1KB          |    12.469 μs |  0.1084 μs |  0.1290 μs |         - |
+| TryComputeHash · Kupyna-384 · BouncyCastle       | 1KB          |    17.449 μs |  0.2788 μs |  0.2328 μs |         - |
+|                                                  |              |              |            |            |           |
+| TryComputeHash · Kupyna-384 · CryptoHives-Scalar | 1025B        |    12.545 μs |  0.0707 μs |  0.0627 μs |         - |
+| TryComputeHash · Kupyna-384 · BouncyCastle       | 1025B        |    17.468 μs |  0.2619 μs |  0.2450 μs |         - |
+|                                                  |              |              |            |            |           |
+| TryComputeHash · Kupyna-384 · CryptoHives-Scalar | 8KB          |    85.722 μs |  0.2713 μs |  0.2118 μs |         - |
+| TryComputeHash · Kupyna-384 · BouncyCastle       | 8KB          |   118.708 μs |  0.6128 μs |  0.5117 μs |         - |
+|                                                  |              |              |            |            |           |
+| TryComputeHash · Kupyna-384 · CryptoHives-Scalar | 128KB        | 1,347.582 μs |  8.8954 μs |  7.8855 μs |         - |
+| TryComputeHash · Kupyna-384 · BouncyCastle       | 128KB        | 1,889.706 μs | 15.1636 μs | 13.4422 μs |         - |

@@ -46,30 +46,56 @@ public class Ripemd160Tests
     }
 
     /// <summary>
-    /// Test RIPEMD-160 with official test vectors.
+    /// Test RIPEMD-160 with official test vectors across all implementations.
     /// </summary>
     /// <remarks>
     /// Test vectors from: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
     /// </remarks>
+    /// <param name="factory">The hash algorithm factory.</param>
     /// <param name="input">The input string.</param>
     /// <param name="expectedHex">The expected hash in hexadecimal.</param>
-    [TestCase("", "9c1185a5c5e9fc54612808977ee8f548b2258d31")]
-    [TestCase("a", "0bdc9d2d256b3ee9daae347be6f4dc835a467ffe")]
-    [TestCase("abc", "8eb208f7e05d987a9b044a8e98c6b087f15a0bfc")]
-    [TestCase("message digest", "5d0689ef49d2fae572b881b123a85ffa21595f36")]
-    [TestCase("abcdefghijklmnopqrstuvwxyz", "f71c27109c692c1b56bbdceb5b9d2865b3708dbc")]
-    [TestCase("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", "12a053384a9c0c88e405a06c27dcf49ada62eb2b")]
-    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", "b0e20b6e3116640286ed3a87a5713079b21f5189")]
-    [TestCase("12345678901234567890123456789012345678901234567890123456789012345678901234567890", "9b752e45573d4b39f4dbd3323cab82bf63326bfb")]
-    public void OfficialTestVectors(string input, string expectedHex)
+    [TestCaseSource(nameof(OfficialTestVectorData))]
+    public void OfficialTestVectors(HashAlgorithmFactory factory, string input, string expectedHex)
     {
         byte[] data = Encoding.UTF8.GetBytes(input);
         byte[] expected = TestHelpers.FromHexString(expectedHex);
 
-        using var ripemd = Ripemd160.Create();
-        byte[] actual = ripemd.ComputeHash(data);
+        using var impl = factory.Create();
+        byte[] actual = impl.ComputeHash(data);
 
-        Assert.That(actual, Is.EqualTo(expected), $"RIPEMD-160 mismatch for: \"{input}\"");
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Provides test data combining RIPEMD-160 implementations with official test vectors.
+    /// </summary>
+    public static System.Collections.IEnumerable OfficialTestVectorData
+    {
+        get
+        {
+            var testVectors = new (string input, string hash)[]
+            {
+                ("", "9c1185a5c5e9fc54612808977ee8f548b2258d31"),
+                ("a", "0bdc9d2d256b3ee9daae347be6f4dc835a467ffe"),
+                ("abc", "8eb208f7e05d987a9b044a8e98c6b087f15a0bfc"),
+                ("message digest", "5d0689ef49d2fae572b881b123a85ffa21595f36"),
+                ("abcdefghijklmnopqrstuvwxyz", "f71c27109c692c1b56bbdceb5b9d2865b3708dbc"),
+                ("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", "12a053384a9c0c88e405a06c27dcf49ada62eb2b"),
+                ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", "b0e20b6e3116640286ed3a87a5713079b21f5189"),
+                ("12345678901234567890123456789012345678901234567890123456789012345678901234567890", "9b752e45573d4b39f4dbd3323cab82bf63326bfb"),
+                ("The quick brown fox jumps over the lazy dog", "37f332f68db77bd9d7edd4969571ad671cf9dd3b"),
+            };
+
+            foreach (HashAlgorithmFactory factory in Ripemd160Implementations.All)
+            {
+                foreach (var (input, hash) in testVectors)
+                {
+                    string label = input.Length > 20 ? input[..20] + "..." : input;
+                    yield return new TestCaseData(factory, input, hash)
+                        .SetName($"OfficialTestVectors({factory.Name}, \"{label}\")");
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -89,21 +115,6 @@ public class Ripemd160Tests
         byte[] hash2 = ripemd2.Hash!;
 
         Assert.That(hash2, Is.EqualTo(hash1));
-    }
-
-    /// <summary>
-    /// Cross-implementation test with all implementations.
-    /// </summary>
-    /// <param name="factory">The hash algorithm factory.</param>
-    [TestCaseSource(typeof(Ripemd160Implementations), nameof(Ripemd160Implementations.All))]
-    public void AllImplementationsMatch(HashAlgorithmFactory factory)
-    {
-        byte[] input = Encoding.UTF8.GetBytes("cross-implementation test");
-
-        using var impl = factory.Create();
-        byte[] hash = impl.ComputeHash(input);
-
-        Assert.That(hash, Has.Length.EqualTo(20), $"{factory.Name} should produce 20-byte hash");
     }
 
     /// <summary>

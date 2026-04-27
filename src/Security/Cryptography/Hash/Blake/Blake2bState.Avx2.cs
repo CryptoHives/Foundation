@@ -23,7 +23,7 @@ using System.Runtime.Intrinsics.X86;
 /// its four input vectors using 1-cycle <c>UnpackLow/High</c>, <c>Blend</c>,
 /// <c>AlignRight</c>, and <c>Shuffle</c> operations.
 /// </remarks>
-public sealed partial class Blake2b : HashAlgorithm
+internal unsafe partial struct Blake2bState
 {
     // Pre-computed IV vectors for AVX2 path
     private static readonly Vector256<ulong> IVLow = Vector256.Create(
@@ -53,7 +53,7 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
-    internal static new SimdSupport SimdSupport
+    internal static SimdSupport SimdSupport
     {
         get
         {
@@ -68,7 +68,7 @@ public sealed partial class Blake2b : HashAlgorithm
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static unsafe void CompressAvx2(byte* msgPtr, ulong* state, ulong bytesCompressed, bool isFinal)
+    private static void CompressAvx2(byte* msgPtr, ulong* state, ulong bytesCompressed, bool isFinal)
     {
         // Load state into vector registers
         Vector256<ulong> row1 = Avx.LoadVector256(state);

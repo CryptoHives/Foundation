@@ -76,7 +76,7 @@ jobs:
     inputs:
       command: build
       projects: 'src/**/*.csproj'
-      arguments: '--no-incremental --configuration ${{parameters.config}} ${{ variables.msbuildversion }} ${{ variables.msbuildsign }}'
+      arguments: '--no-incremental --configuration ${{parameters.config}} ${{ variables.msbuildversion }} ${{ variables.msbuildsign }} /p:EnableExperimentalAlgorithms=false'
   - task: CmdLine@2
     displayName: 'List of assemblies to sign'
     inputs:

@@ -6,9 +6,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 #if NET8_0_OR_GREATER
 
 using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -16,23 +13,9 @@ using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 
 /// <summary>
-/// Computes the BLAKE3 hash for the input data.
+/// BLAKE3 SSSE3-accelerated compression.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This is a fully managed implementation of BLAKE3 that does not rely on
-/// OS or hardware cryptographic APIs, ensuring deterministic behavior across
-/// all platforms and runtimes.
-/// </para>
-/// <para>
-/// BLAKE3 is a cryptographic hash function that is much faster than SHA-256 while
-/// maintaining high security. It supports variable output length (XOF mode).
-/// </para>
-/// <para>
-/// BLAKE3 supports three modes: standard hashing, keyed hashing (MAC), and key derivation.
-/// </para>
-/// </remarks>
-public sealed partial class Blake3 : HashAlgorithm
+internal unsafe partial struct Blake3State
 {
     // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words
     // Rotate right by 16 bits
@@ -50,8 +33,7 @@ public sealed partial class Blake3 : HashAlgorithm
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
-    /// <returns>Flags indicating which SIMD instruction sets are available.</returns>
-    internal static new SimdSupport SimdSupport
+    internal static SimdSupport SimdSupport
     {
         get
         {
@@ -63,47 +45,49 @@ public sealed partial class Blake3 : HashAlgorithm
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressBlockSsse3(ReadOnlySpan<byte> block, uint blockLen, ulong counter, uint flags)
+    private static void CompressBlockSsse3(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
         // On x86 (always little-endian), cast directly — no copy needed
-        ReadOnlySpan<uint> m = MemoryMarshal.Cast<byte, uint>(block);
+        uint* m = (uint*)block;
 
         // Initialize rows
-        var row0 = Vector128.Create<uint>(_cv.AsSpan(0, 4));
-        var row1 = Vector128.Create<uint>(_cv.AsSpan(4, 4));
+        var row0 = Sse2.LoadVector128(cv);
+        var row1 = Sse2.LoadVector128(cv + 4);
         var row2 = IVLow;
         var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
 
         GRounds(m, ref row0, ref row1, ref row2, ref row3);
 
         // Finalize: cv = row0 ^ row2, cv = row1 ^ row3
-        row0 = Sse2.Xor(row0, row2);
-        row0.CopyTo(_cv.AsSpan(0, 4));
-        row1 = Sse2.Xor(row1, row3);
-        row1.CopyTo(_cv.AsSpan(4, 4));
+        Sse2.Store(cv, Sse2.Xor(row0, row2));
+        Sse2.Store(cv + 4, Sse2.Xor(row1, row3));
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void SqueezeRootBlockSsse3(ulong counter, Span<byte> destination)
     {
-        ReadOnlySpan<uint> m = _rootBlock;
-        var row0 = Vector128.Create<uint>(_rootCv.AsSpan(0, 4));
-        var row1 = Vector128.Create<uint>(_rootCv.AsSpan(4, 4));
-        var row2 = IVLow;
-        var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), _rootBlockLen, _rootFlags);
+        fixed (Blake3State* core = &this)
+        {
+            uint* rootCv = core->_rootCv;
+            uint* m = core->_rootBlock;
+            var row0 = Sse2.LoadVector128(rootCv);
+            var row1 = Sse2.LoadVector128(rootCv + 4);
+            var row2 = IVLow;
+            var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), _rootBlockLen, _rootFlags);
 
-        GRounds(m, ref row0, ref row1, ref row2, ref row3);
+            GRounds(m, ref row0, ref row1, ref row2, ref row3);
 
-        // Full 16-word output (x86 is always little-endian)
-        Sse2.Xor(row0, row2).AsByte().CopyTo(destination);
-        Sse2.Xor(row1, row3).AsByte().CopyTo(destination.Slice(16));
-        Sse2.Xor(row2, Vector128.Create<uint>(_rootCv.AsSpan(0, 4))).AsByte().CopyTo(destination.Slice(32));
-        Sse2.Xor(row3, Vector128.Create<uint>(_rootCv.AsSpan(4, 4))).AsByte().CopyTo(destination.Slice(48));
+            // Full 16-word output (x86 is always little-endian)
+            Sse2.Xor(row0, row2).AsByte().CopyTo(destination);
+            Sse2.Xor(row1, row3).AsByte().CopyTo(destination.Slice(16));
+            Sse2.Xor(row2, Sse2.LoadVector128(rootCv)).AsByte().CopyTo(destination.Slice(32));
+            Sse2.Xor(row3, Sse2.LoadVector128(rootCv + 4)).AsByte().CopyTo(destination.Slice(48));
+        }
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void GRounds(
-        ReadOnlySpan<uint> m,
+    private static void GRounds(
+        uint* m,
         ref Vector128<uint> row0,
         ref Vector128<uint> row1,
         ref Vector128<uint> row2,

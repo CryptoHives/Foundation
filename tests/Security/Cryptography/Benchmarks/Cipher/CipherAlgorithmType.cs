@@ -404,7 +404,7 @@ public sealed class CipherAlgorithmType : IFormattable
     private static string SourceToString(CipherAlgorithmRegistry.Source source)
     {
         return source switch {
-            CipherAlgorithmRegistry.Source.Managed => "Managed",
+            CipherAlgorithmRegistry.Source.Managed => "CryptoHives-Scalar",
             CipherAlgorithmRegistry.Source.OS => "OS",
             CipherAlgorithmRegistry.Source.BouncyCastle => "BouncyCastle",
             CipherAlgorithmRegistry.Source.NaClCore => "NaCl.Core",

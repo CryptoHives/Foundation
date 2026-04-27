@@ -184,6 +184,32 @@ public class KalynaTests
     }
 
     /// <summary>
+    /// Cross-validates Kalyna-128/128 ECB decryption with BouncyCastle Dstu7624Engine.
+    /// </summary>
+    [Test]
+    public void CrossValidateDecryptWithBouncyCastle128()
+    {
+        byte[] key = FromHex("000102030405060708090a0b0c0d0e0f");
+        byte[] plaintext = FromHex("101112131415161718191a1b1c1d1e1f");
+
+        // Use BC to encrypt
+        var bcEnc = new Org.BouncyCastle.Crypto.Engines.Dstu7624Engine(128);
+        bcEnc.Init(true, new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key));
+        byte[] ciphertext = new byte[16];
+        bcEnc.ProcessBlock(plaintext, 0, ciphertext, 0);
+
+        // Our implementation decrypts
+        using var dec = Kalyna128.Create();
+        dec.Mode = CipherMode.ECB;
+        dec.Padding = PaddingMode.None;
+        dec.Key = key;
+        dec.IV = new byte[16];
+        byte[] decrypted = dec.Decrypt(ciphertext);
+
+        Assert.That(decrypted, Is.EqualTo(plaintext), "Kalyna-128 decrypt mismatch with BouncyCastle");
+    }
+
+    /// <summary>
     /// Cross-validates Kalyna-128/256 ECB with BouncyCastle Dstu7624Engine.
     /// </summary>
     [Test]
@@ -205,6 +231,118 @@ public class KalynaTests
         bcEngine.ProcessBlock(plaintext, 0, bcOutput, 0);
 
         Assert.That(managed, Is.EqualTo(bcOutput), "Kalyna-256 output mismatch with BouncyCastle");
+    }
+
+    /// <summary>
+    /// Cross-validates Kalyna-128/256 ECB decryption with BouncyCastle Dstu7624Engine.
+    /// </summary>
+    [Test]
+    public void CrossValidateDecryptWithBouncyCastle256()
+    {
+        byte[] key = FromHex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        byte[] plaintext = FromHex("202122232425262728292a2b2c2d2e2f");
+
+        var bcEnc = new Org.BouncyCastle.Crypto.Engines.Dstu7624Engine(128);
+        bcEnc.Init(true, new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key));
+        byte[] ciphertext = new byte[16];
+        bcEnc.ProcessBlock(plaintext, 0, ciphertext, 0);
+
+        using var dec = Kalyna256.Create();
+        dec.Mode = CipherMode.ECB;
+        dec.Padding = PaddingMode.None;
+        dec.Key = key;
+        dec.IV = new byte[16];
+        byte[] decrypted = dec.Decrypt(ciphertext);
+
+        Assert.That(decrypted, Is.EqualTo(plaintext), "Kalyna-256 decrypt mismatch with BouncyCastle");
+    }
+
+    /// <summary>
+    /// Cross-validates Kalyna-128/128 CBC encryption with BouncyCastle.
+    /// </summary>
+    [Test]
+    public void CrossValidateCbcEncryptWithBouncyCastle128()
+    {
+        byte[] key = FromHex("000102030405060708090a0b0c0d0e0f");
+        byte[] iv = FromHex("00112233445566778899aabbccddeeff");
+        byte[] plaintext = FromHex("0123456789abcdeffedcba98765432100011223344556677fedcba9876543210");
+
+        using var enc = Kalyna128.Create();
+        enc.Mode = CipherMode.CBC;
+        enc.Padding = PaddingMode.None;
+        enc.Key = key;
+        enc.IV = iv;
+        byte[] managed = enc.Encrypt(plaintext);
+
+        var bcCbc = new Org.BouncyCastle.Crypto.Modes.CbcBlockCipher(new Org.BouncyCastle.Crypto.Engines.Dstu7624Engine(128));
+        bcCbc.Init(true, new Org.BouncyCastle.Crypto.Parameters.ParametersWithIV(
+            new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key), iv));
+        byte[] bcOutput = new byte[plaintext.Length];
+        for (int i = 0; i < plaintext.Length / 16; i++)
+            bcCbc.ProcessBlock(plaintext, i * 16, bcOutput, i * 16);
+
+        Assert.That(managed, Is.EqualTo(bcOutput), "Kalyna-128 CBC encrypt mismatch with BouncyCastle");
+    }
+
+    /// <summary>
+    /// Cross-validates Kalyna-128/128 CBC decryption with BouncyCastle.
+    /// </summary>
+    [Test]
+    public void CrossValidateCbcDecryptWithBouncyCastle128()
+    {
+        byte[] key = FromHex("000102030405060708090a0b0c0d0e0f");
+        byte[] iv = FromHex("00112233445566778899aabbccddeeff");
+        byte[] plaintext = FromHex("0123456789abcdeffedcba98765432100011223344556677fedcba9876543210");
+
+        // Encrypt with BC to generate ciphertext
+        var bcEnc = new Org.BouncyCastle.Crypto.Modes.CbcBlockCipher(new Org.BouncyCastle.Crypto.Engines.Dstu7624Engine(128));
+        bcEnc.Init(true, new Org.BouncyCastle.Crypto.Parameters.ParametersWithIV(
+            new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key), iv));
+        byte[] ciphertext = new byte[plaintext.Length];
+        for (int i = 0; i < plaintext.Length / 16; i++)
+            bcEnc.ProcessBlock(plaintext, i * 16, ciphertext, i * 16);
+
+        // Our implementation decrypts
+        using var dec = Kalyna128.Create();
+        dec.Mode = CipherMode.CBC;
+        dec.Padding = PaddingMode.None;
+        dec.Key = key;
+        dec.IV = iv;
+        byte[] decrypted = dec.Decrypt(ciphertext);
+
+        Assert.That(decrypted, Is.EqualTo(plaintext), "Kalyna-128 CBC decrypt mismatch with BouncyCastle");
+    }
+
+    /// <summary>
+    /// Randomized round-trip: verifies encrypt(decrypt(x)) == x for many random keys and plaintexts.
+    /// </summary>
+    [Test]
+    public void RandomizedRoundTrip128()
+    {
+        var rng = new System.Random(42);
+        byte[] key = new byte[16];
+        byte[] plaintext = new byte[64];
+        for (int i = 0; i < 200; i++)
+        {
+            rng.NextBytes(key);
+            rng.NextBytes(plaintext);
+
+            using var enc = Kalyna128.Create();
+            enc.Mode = CipherMode.ECB;
+            enc.Padding = PaddingMode.None;
+            enc.Key = key;
+            enc.IV = new byte[16];
+            byte[] ciphertext = enc.Encrypt(plaintext);
+
+            using var dec = Kalyna128.Create();
+            dec.Mode = CipherMode.ECB;
+            dec.Padding = PaddingMode.None;
+            dec.Key = key;
+            dec.IV = new byte[16];
+            byte[] decrypted = dec.Decrypt(ciphertext);
+
+            Assert.That(decrypted, Is.EqualTo(plaintext), $"Round-trip failed at iteration {i}");
+        }
     }
 
     // ========================================================================
