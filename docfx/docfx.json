@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
   "metadata": [
     {
@@ -31,7 +31,8 @@
     "resource": [
       {
         "files": [
-          "images/**"
+          "images/**",
+          "googled2fe7d86cf779a1b.html"
         ]
       }
     ],

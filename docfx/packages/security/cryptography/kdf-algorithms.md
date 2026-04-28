@@ -491,7 +491,7 @@ See [Hash Algorithms — BLAKE3](hash-algorithms.md#blake3) for full documentati
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 
-string context = "MyApp 2025-01-01 session key";
+string context = "MyApp 2026-01-01 session key";
 byte[] ikm = ...; // input key material
 
 using var blake3 = Blake3.CreateDeriveKey(context);
