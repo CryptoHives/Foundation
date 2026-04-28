@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
   "metadata": [
     {
@@ -31,7 +31,8 @@
     "resource": [
       {
         "files": [
-          "images/**"
+          "images/**",
+          "googled2fe7d86cf779a1b.html"
         ]
       }
     ],
@@ -44,6 +45,7 @@
       "_appName": "CryptoHives .NET Foundation",
       "_appTitle": "CryptoHives .NET Foundation",
       "_appFooter": "© 2026 The Keepers of the CryptoHives",
+      "_head": "<meta name=\"google-site-verification\" content=\"i6WpobrpxVL0YrFS8wDL7KNfCqQJ3ypny-6kVX8TnsQ\" />",
       "_enableSearch": true,
       "_enableNewTab": true,
       "pdf": false
