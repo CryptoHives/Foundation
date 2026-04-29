@@ -2,6 +2,17 @@
 
 This page collects BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` and organizes them by platform run. Each run is stored in its own platform folder so values from different hosts are never mixed.
 
+## Live Benchmark Dashboard
+
+Historical benchmark trends tracked by CI are published to GitHub Pages:
+
+- **[Cryptography benchmark trends](https://cryptohives.github.io/Foundation/dev/bench/cryptography/)** — hash and cipher algorithm history across weekly CI runs
+- **[Threading benchmark trends](https://cryptohives.github.io/Foundation/dev/bench/threading/)** — async primitive performance history across weekly CI runs
+
+The dashboard shows mean execution time per commit with interactive Chart.js graphs. Data points link back to the originating commit. A new data point is appended automatically every Monday by the [Benchmarks workflow](https://github.com/CryptoHives/Foundation/actions/workflows/benchmarks.yml) running a curated set of representative algorithms.
+
+> **Note:** GitHub Pages must be configured to serve from the `gh-pages` branch (repo **Settings → Pages → Source: Deploy from a branch → gh-pages / root**) for the dashboard URLs above to work.
+
 ## Benchmark Categories
 
 ### [Hash Algorithm Benchmarks](benchmarks-hash.md)

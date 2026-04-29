@@ -7,6 +7,7 @@ using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Exporters.Json;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
@@ -36,7 +37,9 @@ public class ThreadingConfig : ManualConfig
         HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "Alloc Ratio", "Gen0", "Gen1", "Gen2", "Method");
 
         AddColumn(new DescriptionColumn());
+        // Export formats: markdown for local docfx runs; JSON for CI benchmark tracking
         AddExporter(ShortExporter);
+        AddExporter(JsonExporter.Default);
     }
 
     /// <summary>
