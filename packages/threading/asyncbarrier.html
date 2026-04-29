@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>AsyncBarrier | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="AsyncBarrier | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncbarrier.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="asyncbarrier">AsyncBarrier</h1>
+
+<p>A pooled, allocation-free async barrier that synchronizes multiple participants using ValueTask-based waiters.</p>
+<h2 id="overview">Overview</h2>
+<p><code>AsyncBarrier</code> is an async-compatible barrier synchronization primitive. It allows a fixed number of participants to synchronize at a barrier point, releasing all of them when the last participant arrives. The barrier automatically resets for the next phase.</p>
+<p>This implementation follows the same semantics as the .NET <code>System.Threading.Barrier</code> class but provides async support with <code>ValueTask</code>-based waiters.</p>
+<h2 id="usage">Usage</h2>
+<h3 id="basic-usage">Basic Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Async.Pooled;
+
+private readonly AsyncBarrier _barrier = new AsyncBarrier(3);
+
+public async Task ParticipantWorkAsync(int participantId, CancellationToken ct)
+{
+    // Phase 1
+    await DoPhase1WorkAsync(participantId);
+    Console.WriteLine($&quot;Participant {participantId} completed phase 1&quot;);
+
+    // Wait for all participants
+    await _barrier.SignalAndWaitAsync(ct);
+
+    // Phase 2 - all participants continue together
+    await DoPhase2WorkAsync(participantId);
+    Console.WriteLine($&quot;Participant {participantId} completed phase 2&quot;);
+}
+</code></pre>
+<h3 id="with-post-phase-action">With Post-Phase Action</h3>
+<pre><code class="lang-csharp">// Create barrier with post-phase action
+private readonly AsyncBarrier _barrier = new AsyncBarrier(3, b =&gt;
+{
+    Console.WriteLine($&quot;Phase {b.CurrentPhase} completed by all participants&quot;);
+});
+
+public async Task ParticipantWorkAsync(int participantId, CancellationToken ct)
+{
+    await DoPhase1WorkAsync(participantId);
+    await _barrier.SignalAndWaitAsync(ct);
+    // Post-phase action runs before participants are released
+    await DoPhase2WorkAsync(participantId);
+}
+</code></pre>
+<h3 id="handling-post-phase-exceptions">Handling Post-Phase Exceptions</h3>
+<pre><code class="lang-csharp">var barrier = new AsyncBarrier(3, b =&gt;
+{
+    if (b.CurrentPhase == 2)
+    {
+        throw new InvalidOperationException(&quot;Phase 2 failed&quot;);
+    }
+});
+
+try
+{
+    await barrier.SignalAndWaitAsync(ct);
+}
+catch (BarrierPostPhaseException ex)
+{
+    // All participants receive the same exception
+    Console.WriteLine($&quot;Post-phase action failed: {ex.InnerException?.Message}&quot;);
+}
+</code></pre>
+<h3 id="dynamic-participant-management">Dynamic Participant Management</h3>
+<pre><code class="lang-csharp">// Start with 3 participants
+var barrier = new AsyncBarrier(3);
+
+// Add 2 more participants
+barrier.AddParticipants(2);
+Console.WriteLine($&quot;Participants: {barrier.ParticipantCount}&quot;); // 5
+
+// Remove 1 participant
+barrier.RemoveParticipant();
+Console.WriteLine($&quot;Participants: {barrier.ParticipantCount}&quot;); // 4
+</code></pre>
+<h2 id="constructors">Constructors</h2>
+<h3 id="asyncbarrierint-bool-igetpooledmanualresetvaluetasksource">AsyncBarrier(int, bool, IGetPooledManualResetValueTaskSource<bool>?)</bool></h3>
+<pre><code class="lang-csharp">public AsyncBarrier(
+    int participantCount,
+    bool runContinuationAsynchronously = true,
+    IGetPooledManualResetValueTaskSource&lt;bool&gt;? pool = null)
+</code></pre>
+<p>Creates a barrier without a post-phase action.</p>
+<h3 id="asyncbarrierint-action-bool-igetpooledmanualresetvaluetasksource">AsyncBarrier(int, Action<asyncbarrier>?, bool, IGetPooledManualResetValueTaskSource<bool>?)</bool></asyncbarrier></h3>
+<pre><code class="lang-csharp">public AsyncBarrier(
+    int participantCount,
+    Action&lt;AsyncBarrier&gt;? postPhaseAction,
+    bool runContinuationAsynchronously = true,
+    IGetPooledManualResetValueTaskSource&lt;bool&gt;? pool = null)
+</code></pre>
+<p>Creates a barrier with an optional post-phase action. The post-phase action is invoked inside the barrier lock after all participants have signaled but before they are released. Hence the post phase action shall be brief and non-blocking to avoid delaying other participants and dead locks.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>participantCount</code></td>
+<td>The number of participants. Must be greater than zero.</td>
+</tr>
+<tr>
+<td><code>postPhaseAction</code></td>
+<td>An action to execute after each phase when all participants have arrived. If this action throws, all participants receive a <code>BarrierPostPhaseException</code>.</td>
+</tr>
+<tr>
+<td><code>runContinuationAsynchronously</code></td>
+<td>If true (default), continuations run on the thread pool.</td>
+</tr>
+<tr>
+<td><code>pool</code></td>
+<td>Optional custom pool for ValueTaskSource instances.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ParticipantCount</code></td>
+<td><code>int</code></td>
+<td>Gets the total number of participants in the barrier. Changes when participants are added or removed.</td>
+</tr>
+<tr>
+<td><code>ParticipantsRemaining</code></td>
+<td><code>int</code></td>
+<td>Gets the number of participants that haven't yet signaled in the current phase.</td>
+</tr>
+<tr>
+<td><code>CurrentPhase</code></td>
+<td><code>long</code></td>
+<td>Gets the current phase number. Increments each time the barrier is released.</td>
+</tr>
+<tr>
+<td><code>RunContinuationAsynchronously</code></td>
+<td><code>bool</code></td>
+<td>Gets or sets whether continuations run asynchronously.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="signalandwaitasync">SignalAndWaitAsync</h3>
+<pre><code class="lang-csharp">public ValueTask SignalAndWaitAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Signals the barrier and waits for all participants to arrive.</p>
+<p><strong>Throws:</strong></p>
+<ul>
+<li><code>InvalidOperationException</code> - If more participants signal than the total number of registered participants.</li>
+<li><code>BarrierPostPhaseException</code> - If the post-phase action throws an exception.</li>
+</ul>
+<h3 id="addparticipant--addparticipants">AddParticipant / AddParticipants</h3>
+<pre><code class="lang-csharp">public long AddParticipant()
+public long AddParticipants(int participantCount)
+</code></pre>
+<p>Dynamically adds participants to the barrier. Returns the phase number when the participant(s) are added.</p>
+<p><strong>Throws:</strong></p>
+<ul>
+<li><code>ArgumentOutOfRangeException</code> - If <code>participantCount</code> is less than 1.</li>
+<li><code>InvalidOperationException</code> - If adding participants would cause an overflow.</li>
+</ul>
+<h3 id="removeparticipant--removeparticipants">RemoveParticipant / RemoveParticipants</h3>
+<pre><code class="lang-csharp">public void RemoveParticipant()
+public void RemoveParticipants(int participantCount)
+</code></pre>
+<p>Dynamically removes participants from the barrier. If the remaining participants reaches zero (and there are still registered participants), all waiters are released and the barrier advances to the next phase.</p>
+<p><strong>Throws:</strong></p>
+<ul>
+<li><code>ArgumentOutOfRangeException</code> - If <code>participantCount</code> is less than 1.</li>
+<li><code>InvalidOperationException</code> - If there are not enough participants to remove.</li>
+<li><code>BarrierPostPhaseException</code> - If the post-phase action throws an exception during phase advancement.</li>
+</ul>
+<h2 id="post-phase-action">Post-Phase Action</h2>
+<p>The post-phase action is an optional callback that is executed after all participants have signaled but before they are released. This is useful for:</p>
+<ul>
+<li>Logging phase completion</li>
+<li>Validating intermediate results</li>
+<li>Preparing for the next phase</li>
+</ul>
+<p><strong>Important:</strong> The <code>CurrentPhase</code> property still reflects the phase number <em>before</em> increment when the post-phase action is called.</p>
+<p>If the post-phase action throws an exception:</p>
+<ol>
+<li>The exception is wrapped in a <code>BarrierPostPhaseException</code></li>
+<li>All waiting participants receive this exception</li>
+<li>The phase still advances</li>
+<li>The barrier continues to function normally for subsequent phases</li>
+</ol>
+<h2 id="performance">Performance</h2>
+<ul>
+<li><strong>O(1)</strong> signal operation for non-final participant</li>
+<li><strong>O(n)</strong> broadcast when last participant signals</li>
+<li><strong>Zero allocations</strong> when last participant signals with no waiters</li>
+<li>Automatic phase reset after each release</li>
+</ul>
+<h2 id="benchmark-results">Benchmark Results</h2>
+<p>The following benchmarks compares the pooled <code>AsyncBarrier</code> against the .NET <code>System.Threading.Barrier</code> and a reference implementations from Stephen Toub's blog.</p>
+<h3 id="signal-and-wait-benchmark">Signal and Wait Benchmark</h3>
+<p>Measures the performance of the <code>SignalAndWaitAsync</code> operation across multiple participants. The .NET implementation uses blocking waits and is out of contest because multiple threads are needed to contest the barrier. Similarly the RefImpl is out of contest because it does not support cancellation tokens. So the run is mainly a proof that there are no memory allocations for the pooled version in contested waits.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>ParticipantCount</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SignalAndWait · AsyncBarrier · Pooled</td>
+<td>1</td>
+<td style="text-align: right;">10.85 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · Barrier · System</td>
+<td>1</td>
+<td style="text-align: right;">452.84 ns</td>
+<td style="text-align: right;">41.73</td>
+<td style="text-align: right;">238 B</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncBarrier · RefImpl</td>
+<td>1</td>
+<td style="text-align: right;">936.26 ns</td>
+<td style="text-align: right;">86.29</td>
+<td style="text-align: right;">8347 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncBarrier · Pooled</td>
+<td>10</td>
+<td style="text-align: right;">254.53 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncBarrier · RefImpl</td>
+<td>10</td>
+<td style="text-align: right;">1,667.41 ns</td>
+<td style="text-align: right;">6.55</td>
+<td style="text-align: right;">10252 B</td>
+</tr>
+<tr>
+<td>SignalAndWait · Barrier · System</td>
+<td>10</td>
+<td style="text-align: right;">40,505.19 ns</td>
+<td style="text-align: right;">159.16</td>
+<td style="text-align: right;">1446 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmark-analysis">Benchmark Analysis</h3>
+<p><strong>Key Findings:</strong></p>
+<ol>
+<li><p><strong>Per-Phase Efficiency</strong>: The barrier automatically resets after each phase, allowing efficient multi-phase synchronization without manual reset or reallocation of the barrier.</p>
+</li>
+<li><p><strong>Participant Scaling</strong>: Performance scales linearly with participant count due to the O(n) broadcast when the last participant signals.</p>
+</li>
+<li><p><strong>Memory Efficiency</strong>: Pooled <code>IValueTaskSource</code> instances reduce allocation pressure for waiters, especially beneficial in scenarios with many barrier phases.</p>
+</li>
+<li><p><strong>Cancellation Handling</strong>: Proper participant count restoration on cancellation ensures the barrier remains consistent, though cancellation in barrier scenarios should be used carefully.</p>
+</li>
+</ol>
+<p><strong>When to Choose AsyncBarrier:</strong></p>
+<ul>
+<li>Multi-phase parallel algorithms</li>
+<li>Iterative computations where workers must synchronize between phases</li>
+<li>Pipeline processing with synchronized stages</li>
+</ul>
+<p><strong>Design Considerations:</strong></p>
+<ul>
+<li>Unlike <code>System.Threading.Barrier</code>, this implementation is async-native</li>
+<li>The pooled approach benefits scenarios with many phases</li>
+<li>Dynamic participant changes (<code>AddParticipant</code>/<code>RemoveParticipant</code>) allow flexible coordination patterns</li>
+</ul>
+<h2 id="cancellation-behavior">Cancellation Behavior</h2>
+<p>When a waiting participant is cancelled:</p>
+<ul>
+<li>The participant's <code>ParticipantsRemaining</code> count is restored</li>
+<li>Other participants continue waiting</li>
+<li>The barrier remains in a consistent state</li>
+</ul>
+<h2 id="comparison-with-systemthreadingbarrier">Comparison with System.Threading.Barrier</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>AsyncBarrier</th>
+<th>System.Threading.Barrier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Async support</td>
+<td>Native <code>ValueTask</code></td>
+<td>None (blocking only)</td>
+</tr>
+<tr>
+<td>Post-phase action</td>
+<td><code>Action&lt;AsyncBarrier&gt;</code></td>
+<td><code>Action&lt;Barrier&gt;</code></td>
+</tr>
+<tr>
+<td>BarrierPostPhaseException</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Allocation overhead</td>
+<td>Minimal (pooled)</td>
+<td>None (sync)</td>
+</tr>
+<tr>
+<td>Cancellation</td>
+<td>Full support</td>
+<td>Full support</td>
+</tr>
+<tr>
+<td>Dynamic participants</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="index.html">Threading Package Overview</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a> - Manual-reset event variant</li>
+<li><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a> - Async reader-writer lock</li>
+<li><a href="asynclock.html">AsyncLock</a> - Async mutual exclusion lock</li>
+<li><a href="asynccountdownevent.html">AsyncCountdownEvent</a> - Async countdown event</li>
+<li><a href="asyncsemaphore.html">AsyncSemaphore</a> - Async semaphore primitive</li>
+<li><a href="benchmarks.html">Benchmarks</a> - Benchmark description</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncbarrier.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

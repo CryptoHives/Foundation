@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Benchmark Results | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Benchmark Results | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/README.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="benchmark-results">Benchmark Results</h1>
+
+<p>This directory stores published BenchmarkDotNet results for the cryptography hash and cipher suites.</p>
+<h2 id="layout">Layout</h2>
+<p>Each checked-in benchmark run lives in its own platform directory:</p>
+<ul>
+<li><code>windows-x64-amd-ryzen-5-7600x/</code> — Windows 11, AMD Ryzen 5 7600X, X64</li>
+<li><code>macos-arm64-apple-m4/</code> — macOS Tahoe, Apple M4, Arm64</li>
+<li>future folders such as <code>linux-arm64-aws-graviton-4/</code> for additional hosts</li>
+</ul>
+<p>The platform identifier format is:</p>
+<ul>
+<li><code>&lt;os&gt;-&lt;architecture&gt;-&lt;cpu-slug&gt;</code></li>
+</ul>
+<p>That keeps operating system, ISA, and CPU model visible in the path and avoids mixing results from incompatible hosts.</p>
+<h2 id="suggested-docfx-ui-structure">Suggested Docfx UI Structure</h2>
+<p>Use a three-level navigation model:</p>
+<ol>
+<li>Overview page: <code>../benchmarks.md</code></li>
+<li>Family selector pages: <code>../benchmarks-hash.md</code> and <code>../benchmarks-cipher.md</code></li>
+<li>Platform pages: <code>./&lt;platform-id&gt;/hash.md</code> and <code>./&lt;platform-id&gt;/cipher.md</code></li>
+</ol>
+<p>This keeps the top-level pages short and comparable, while full benchmark tables remain in platform-specific pages.</p>
+<h2 id="file-structure">File Structure</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>machine-spec.md</code></td>
+<td>Captured hardware/software profile for the latest run</td>
+</tr>
+<tr>
+<td><code>sha256.md</code>, <code>blake3.md</code>, etc.</td>
+<td>Individual hash algorithm benchmark results</td>
+</tr>
+<tr>
+<td><code>aes-gcm-128.md</code>, <code>chacha20.md</code>, etc.</td>
+<td>Individual cipher algorithm benchmark results</td>
+</tr>
+</tbody>
+</table>
+<h2 id="available-benchmark-files">Available Benchmark Files</h2>
+<h3 id="sha-2-family">SHA-2 Family</h3>
+<ul>
+<li><code>sha224.md</code>, <code>sha256.md</code>, <code>sha384.md</code>, <code>sha512.md</code>, <code>sha512-224.md</code>, <code>sha512-256.md</code></li>
+</ul>
+<h3 id="sha-3-family">SHA-3 Family</h3>
+<ul>
+<li><code>sha3-224.md</code>, <code>sha3-256.md</code>, <code>sha3-384.md</code>, <code>sha3-512.md</code></li>
+</ul>
+<h3 id="keccak-family">Keccak Family</h3>
+<ul>
+<li><code>keccak256.md</code>, <code>keccak384.md</code>, <code>keccak512.md</code></li>
+</ul>
+<h3 id="shakecshake-family">SHAKE/cSHAKE Family</h3>
+<ul>
+<li><code>shake128.md</code>, <code>shake256.md</code>, <code>cshake128.md</code>, <code>cshake256.md</code></li>
+</ul>
+<h3 id="ktturboshake-family">KT/TurboSHAKE Family</h3>
+<ul>
+<li><code>kt128.md</code>, <code>kt256.md</code>, <code>turboshake128.md</code>, <code>turboshake256.md</code></li>
+</ul>
+<h3 id="blake-family">BLAKE Family</h3>
+<ul>
+<li><code>blake2b256.md</code>, <code>blake2b512.md</code>, <code>blake2s128.md</code>, <code>blake2s256.md</code>, <code>blake3.md</code></li>
+</ul>
+<h3 id="legacyregional-hash">Legacy/Regional Hash</h3>
+<ul>
+<li><code>md5.md</code>, <code>sha1.md</code>, <code>sm3.md</code>, <code>streebog256.md</code>, <code>streebog512.md</code>, <code>whirlpool.md</code>, <code>ripemd160.md</code></li>
+<li><code>kupyna256.md</code>, <code>kupyna384.md</code>, <code>kupyna512.md</code></li>
+<li><code>lsh256-256.md</code>, <code>lsh512-256.md</code>, <code>lsh512-512.md</code></li>
+</ul>
+<h3 id="asconkmac">Ascon/KMAC</h3>
+<ul>
+<li><code>asconhash256.md</code>, <code>asconxof128.md</code></li>
+<li><code>kmac128.md</code>, <code>kmac256.md</code></li>
+</ul>
+<h3 id="xof-extendable-output">XOF (Extendable Output)</h3>
+<ul>
+<li><code>xof-shake128.md</code>, <code>xof-shake256.md</code></li>
+<li><code>xof-cshake128.md</code>, <code>xof-cshake256.md</code></li>
+<li><code>xof-kmac128.md</code>, <code>xof-kmac256.md</code></li>
+<li><code>xof-kt128.md</code>, <code>xof-kt256.md</code></li>
+<li><code>xof-turboshake128.md</code>, <code>xof-turboshake256.md</code></li>
+<li><code>xof-blake3.md</code>, <code>xof-asconxof128.md</code></li>
+</ul>
+<h3 id="regional-block-ciphers-cbc">Regional Block Ciphers (CBC)</h3>
+<ul>
+<li><code>sm4-cbc.md</code></li>
+<li><code>aria-cbc-128.md</code>, <code>aria-cbc-256.md</code></li>
+<li><code>camellia-cbc-128.md</code>, <code>camellia-cbc-192.md</code>, <code>camellia-cbc-256.md</code></li>
+<li><code>kuznyechik-cbc.md</code></li>
+<li><code>kalyna-cbc-128.md</code>, <code>kalyna-cbc-256.md</code></li>
+<li><code>seed-cbc.md</code></li>
+</ul>
+<h3 id="aes-cbc-block-cipher">AES-CBC (Block Cipher)</h3>
+<ul>
+<li><code>aes-cbc-128.md</code>, <code>aes-cbc-256.md</code></li>
+</ul>
+<h3 id="aes-gcm-aead">AES-GCM (AEAD)</h3>
+<ul>
+<li><code>aes-gcm-128.md</code>, <code>aes-gcm-192.md</code>, <code>aes-gcm-256.md</code></li>
+</ul>
+<h3 id="aes-ccm-aead">AES-CCM (AEAD)</h3>
+<ul>
+<li><code>aes-ccm-128.md</code>, <code>aes-ccm-256.md</code></li>
+</ul>
+<h3 id="chacha20-family-stream-cipher--aead">ChaCha20 Family (Stream Cipher / AEAD)</h3>
+<ul>
+<li><code>chacha20.md</code>, <code>chacha20-poly1305.md</code>, <code>xchacha20-poly1305.md</code></li>
+</ul>
+<h2 id="updating-benchmark-results">Updating Benchmark Results</h2>
+<ol>
+<li><p>Run the cryptography benchmarks from the repository root:</p>
+<pre><code class="lang-powershell"># Run all algorithm families
+.\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE
+
+# Run a single algorithm
+.\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
+</code></pre>
+</li>
+<li><p>Copy the latest BenchmarkDotNet artifacts into the documentation tree:</p>
+<pre><code class="lang-powershell">.\scripts\update-benchmark-docs.ps1 -Project Cryptography
+</code></pre>
+</li>
+<li><p>If you want to force the folder name instead of deriving it from the machine spec:</p>
+<pre><code class="lang-powershell">.\scripts\update-benchmark-docs.ps1 -Project Cryptography -PlatformId macos-arm64-apple-m4
+</code></pre>
+</li>
+</ol>
+<p>The helper script:</p>
+<ul>
+<li>reads the generated markdown under <code>tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results/</code></li>
+<li>derives a platform identifier from the captured machine spec unless <code>-PlatformId</code> is supplied</li>
+<li>extracts the machine specification into a platform-local <code>machine-spec.md</code></li>
+<li>removes the duplicated machine header from each benchmark table</li>
+</ul>
+<p>If you publish a new platform, add matching docfx entry pages for that folder so it appears from <a href="../benchmarks-hash.html">benchmarks-hash.md</a> and <a href="../benchmarks-cipher.html">benchmarks-cipher.md</a>.</p>
+<p>For a feasible long-term workflow, keep a compact comparison section in selector pages (only a handful of representative algorithms) and keep detailed full tables in platform pages only.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/README.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

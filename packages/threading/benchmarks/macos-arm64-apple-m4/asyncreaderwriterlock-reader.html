@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-reader.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">6.172 ns</td>
+<td style="text-align: right;">0.71</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">8.639 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">11.373 ns</td>
+<td style="text-align: right;">1.32</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">13.955 ns</td>
+<td style="text-align: right;">1.62</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">42.188 ns</td>
+<td style="text-align: right;">4.89</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">169.288 ns</td>
+<td style="text-align: right;">19.60</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">8.813 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">11.912 ns</td>
+<td style="text-align: right;">1.35</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">41.956 ns</td>
+<td style="text-align: right;">4.77</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">173.597 ns</td>
+<td style="text-align: right;">19.72</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">10.560 ns</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">16.098 ns</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">23.725 ns</td>
+<td style="text-align: right;">0.52</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">45.892 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">84.073 ns</td>
+<td style="text-align: right;">1.83</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">403.626 ns</td>
+<td style="text-align: right;">8.80</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">16.784 ns</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">45.025 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">93.791 ns</td>
+<td style="text-align: right;">2.08</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">405.231 ns</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">53.209 ns</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">54.324 ns</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">114.815 ns</td>
+<td style="text-align: right;">0.34</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">341.559 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">480.115 ns</td>
+<td style="text-align: right;">1.41</td>
+<td style="text-align: right;">3520 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">2,924.869 ns</td>
+<td style="text-align: right;">8.56</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">54.705 ns</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">348.494 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">466.506 ns</td>
+<td style="text-align: right;">1.34</td>
+<td style="text-align: right;">3520 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,913.725 ns</td>
+<td style="text-align: right;">8.36</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">452.161 ns</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">489.782 ns</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">991.034 ns</td>
+<td style="text-align: right;">0.29</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">3,419.210 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,250.900 ns</td>
+<td style="text-align: right;">1.24</td>
+<td style="text-align: right;">32320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">73,780.822 ns</td>
+<td style="text-align: right;">21.58</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">473.818 ns</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,412.131 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,264.565 ns</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">32320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">73,570.658 ns</td>
+<td style="text-align: right;">21.56</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-reader.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

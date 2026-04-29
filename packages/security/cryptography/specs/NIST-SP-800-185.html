@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>NIST SP 800-185 - SHA-3 Derived Functions | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="NIST SP 800-185 - SHA-3 Derived Functions | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-SP-800-185.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="nist-sp-800-185---sha-3-derived-functions">NIST SP 800-185 - SHA-3 Derived Functions</h1>
+
+<h2 id="overview">Overview</h2>
+<p>NIST Special Publication 800-185 specifies SHA-3-derived functions:</p>
+<ul>
+<li><strong>cSHAKE</strong> - Customizable SHAKE (extendable-output function)</li>
+<li><strong>KMAC</strong> - Keccak Message Authentication Code</li>
+<li><strong>TupleHash</strong> - Hashing tuples of strings</li>
+<li><strong>ParallelHash</strong> - Parallel tree hashing</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li><strong>Document:</strong> NIST SP 800-185</li>
+<li><strong>Title:</strong> SHA-3 Derived Functions: cSHAKE, KMAC, TupleHash, and ParallelHash</li>
+<li><strong>URL:</strong> <a href="https://csrc.nist.gov/publications/detail/sp/800-185/final">https://csrc.nist.gov/publications/detail/sp/800-185/final</a></li>
+<li><strong>PDF:</strong> <a href="https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf">https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf</a></li>
+</ul>
+<h2 id="implementation-status">Implementation Status</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cSHAKE128</td>
+<td>✅ Implemented</td>
+<td><code>CShake128</code></td>
+</tr>
+<tr>
+<td>cSHAKE256</td>
+<td>✅ Implemented</td>
+<td><code>CShake256</code></td>
+</tr>
+<tr>
+<td>KMAC128</td>
+<td>✅ Implemented</td>
+<td><code>KMac128</code></td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td>✅ Implemented</td>
+<td><code>KMac256</code></td>
+</tr>
+<tr>
+<td>TupleHash128</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+<tr>
+<td>TupleHash256</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+<tr>
+<td>ParallelHash128</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+<tr>
+<td>ParallelHash256</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="cshake-customizable-shake">cSHAKE (Customizable SHAKE)</h2>
+<h3 id="definition">Definition</h3>
+<p>cSHAKE is a customizable version of SHAKE that allows domain separation via:</p>
+<ul>
+<li><strong>N</strong> - Function name string (for NIST-defined functions)</li>
+<li><strong>S</strong> - Customization string (user-defined)</li>
+</ul>
+<p>When both N and S are empty, cSHAKE is equivalent to SHAKE.</p>
+<h3 id="parameters">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Capacity</th>
+<th>Rate</th>
+<th>Security</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cSHAKE128</td>
+<td>256 bits</td>
+<td>1344 bits (168 bytes)</td>
+<td>128 bits</td>
+</tr>
+<tr>
+<td>cSHAKE256</td>
+<td>512 bits</td>
+<td>1088 bits (136 bytes)</td>
+<td>256 bits</td>
+</tr>
+</tbody>
+</table>
+<h3 id="padding">Padding</h3>
+<p>cSHAKE uses domain separator <code>0x04</code> (vs SHAKE's <code>0x1F</code>) when N or S is non-empty.</p>
+<h3 id="algorithm">Algorithm</h3>
+<pre><code>cSHAKE(X, L, N, S):
+  if N = &quot;&quot; and S = &quot;&quot;:
+    return SHAKE(X, L)
+  else:
+    return KECCAK[c](bytepad(encode_string(N) || encode_string(S), rate) || X || 00, L)
+</code></pre>
+<hr>
+<h2 id="kmac-keccak-message-authentication-code">KMAC (Keccak Message Authentication Code)</h2>
+<h3 id="definition-1">Definition</h3>
+<p>KMAC is a MAC function based on Keccak (cSHAKE). It provides:</p>
+<ul>
+<li>Variable-length output (or fixed-length via KMACXOF)</li>
+<li>Optional customization string</li>
+</ul>
+<h3 id="parameters-1">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Underlying</th>
+<th>Security</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KMAC128</td>
+<td>cSHAKE128</td>
+<td>128 bits</td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td>cSHAKE256</td>
+<td>256 bits</td>
+</tr>
+</tbody>
+</table>
+<h3 id="algorithm-1">Algorithm</h3>
+<pre><code>KMAC(K, X, L, S):
+  newX = bytepad(encode_string(K), rate) || X || right_encode(L)
+  return cSHAKE(newX, L, &quot;KMAC&quot;, S)
+</code></pre>
+<hr>
+<h2 id="encoding-functions">Encoding Functions</h2>
+<h3 id="left_encodex">left_encode(x)</h3>
+<p>Encodes integer x as a byte string with length prefix on the left.</p>
+<pre><code>n = smallest positive integer such that 2^(8n) &gt; x
+O = n as single byte || x as big-endian bytes
+</code></pre>
+<h3 id="right_encodex">right_encode(x)</h3>
+<p>Encodes integer x as a byte string with length suffix on the right.</p>
+<pre><code>n = smallest positive integer such that 2^(8n) &gt; x
+O = x as big-endian bytes || n as single byte
+</code></pre>
+<h3 id="encode_strings">encode_string(S)</h3>
+<p>Encodes a bit string with its length.</p>
+<pre><code>O = left_encode(len(S)) || S
+</code></pre>
+<h3 id="bytepadx-w">bytepad(X, w)</h3>
+<p>Pads a byte string to a multiple of w bytes.</p>
+<pre><code>z = left_encode(w) || X
+return z || 0^((-len(z)) mod w)
+</code></pre>
+<hr>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="cshake128-n---s--email-signature">cSHAKE128 (N = &quot;&quot;, S = &quot;Email Signature&quot;)</h3>
+<p><strong>Sample #1 – 4-byte input</strong></p>
+<pre><code>Message: 00010203
+Function Name (N): &quot;&quot; (empty)
+Customization (S): &quot;Email Signature&quot;
+Output Length: 32 bytes
+Digest: C1C36925B6409A04F1B504FCBCA9D82B4017277CB5ED2B2065FC1D3814D5AAF5
+</code></pre>
+<p><strong>Sample #2 – 200-byte ramp input</strong></p>
+<pre><code>Message: 200 bytes where byte[i] = i (00, 01, ..., C7)
+Function Name (N): &quot;&quot; (empty)
+Customization (S): &quot;Email Signature&quot;
+Output Length: 32 bytes
+Digest: C5221D50E4F822D96A2E8881A961420F294B7B24FE3D2094BAED2C6524CC166B
+</code></pre>
+<p><strong>Compatibility Note</strong></p>
+<p>When both N and S are empty, cSHAKE128 reduces to SHAKE128 with domain separator <code>0x1F</code>. The vectors in <code>SHAKE-vectors.md</code> therefore apply when calling <code>CShake128.Create(outputBytes)</code> without customization.</p>
+<h3 id="cshake256-n---s--email-signature">cSHAKE256 (N = &quot;&quot;, S = &quot;Email Signature&quot;)</h3>
+<p><strong>Sample #1 – 4-byte input</strong></p>
+<pre><code>Message: 00010203
+Function Name (N): &quot;&quot; (empty)
+Customization (S): &quot;Email Signature&quot;
+Output Length: 64 bytes
+Digest: D008828E2B80AC9D2218FFEE1D070C48B8E4C87BFF32C9699D5B6896EEE0EDD1
+        64020E2BE0560858D9C00C037E34A96937C561A74C412BB4C746469527281C8C
+</code></pre>
+<p><strong>Sample #2 – 200-byte ramp input</strong></p>
+<pre><code>Message: 200 bytes where byte[i] = i (00, 01, ..., C7)
+Function Name (N): &quot;&quot; (empty)
+Customization (S): &quot;Email Signature&quot;
+Output Length: 64 bytes
+Digest: 07DC1EC55B0F7A0CE9A5A629E702A6B82E6F86BF5F40019A27A66D426FD79A5D
+        9BA1DE0A99FBAF8FCB753C0A8CEC6556F2F90E64616B78B4F3B719779AB0F9E3
+</code></pre>
+<p>The NUnit suite in <code>tests/Security/Cryptography/Hash/Keccak/CShakeTests.cs</code> consumes both cSHAKE128 samples and both cSHAKE256 samples to guarantee parity with the NIST vectors across scalar and SIMD modes. Benchmark fixtures (<code>tests/Security/Cryptography/Benchmarks/AllHashersAllSizesBenchmark.cs</code>) further exercise each SIMD variant (AVX-512/AVX2/SSSE3/scalar) to detect regressions in optimized paths.</p>
+<h3 id="kmac128">KMAC128</h3>
+<p><strong>Sample #1</strong></p>
+<ul>
+<li>Key: 32 bytes (<code>40 41 42 ... 5F</code>)</li>
+<li>Input: <code>00 01 02 03</code> (4 bytes)</li>
+<li>S: &quot;&quot; (empty)</li>
+<li>Output length: 32 bytes</li>
+<li>Output: <code>E5 78 0B 0D 3E A6 F7 D3 A4 29 C5 70 6A A4 3A 00 FA DB D7 D4 96 28 83 9E 31 87 24 3F 45 6E E1 4E</code></li>
+</ul>
+<p><strong>Sample #2</strong></p>
+<ul>
+<li>Key: 32 bytes (<code>40 41 42 ... 5F</code>)</li>
+<li>Input: <code>00 01 02 03</code> (4 bytes)</li>
+<li>S: &quot;My Tagged Application&quot;</li>
+<li>Output length: 32 bytes</li>
+<li>Output: <code>3B 1F BA 96 3C D8 B0 B5 9E 8C 1A 6D 71 88 8B 71 43 65 1A F8 BA 0A 70 70 C0 97 9E 28 11 32 4A A5</code></li>
+</ul>
+<h3 id="kmac256">KMAC256</h3>
+<p><strong>Sample #4</strong> (NIST SP 800-185)</p>
+<ul>
+<li>Key: 32 bytes (<code>40 41 42 ... 5F</code>)</li>
+<li>Input: <code>00 01 02 03</code> (4 bytes)</li>
+<li>S: &quot;My Tagged Application&quot;</li>
+<li>Output length: 64 bytes</li>
+<li>Output: <code>20 C5 70 C3 13 46 F7 03 C9 AC 36 C6 1C 03 CB 64 C3 97 0D 0C FC 78 7E 9B 79 59 9D 27 3A 68 D2 F7 F6 9D 4C C3 DE 9D 10 4A 35 16 89 F2 7C F6 F5 95 1F 01 03 F3 3F 4F 24 87 10 24 D9 C2 77 73 A8 DD</code></li>
+</ul>
+<p><strong>Sample #5</strong> (NIST SP 800-185)</p>
+<ul>
+<li>Key: 32 bytes (<code>40 41 42 ... 5F</code>)</li>
+<li>Input: 200 bytes (<code>00 01 02 ... C7</code>)</li>
+<li>S: &quot;My Tagged Application&quot;</li>
+<li>Output length: 64 bytes</li>
+<li>Output: Verified against BouncyCastle and .NET 9+ reference implementations</li>
+</ul>
+<hr>
+<h2 id="references">References</h2>
+<ol>
+<li>NIST SP 800-185: <a href="https://doi.org/10.6028/NIST.SP.800-185">https://doi.org/10.6028/NIST.SP.800-185</a></li>
+<li>Keccak Team: <a href="https://keccak.team/">https://keccak.team/</a></li>
+<li>SHA-3 Standard (FIPS 202): <a href="https://doi.org/10.6028/NIST.FIPS.202">https://doi.org/10.6028/NIST.FIPS.202</a></li>
+</ol>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-SP-800-185.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

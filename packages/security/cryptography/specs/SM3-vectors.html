@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>SM3 Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="SM3 Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/SM3-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="sm3-test-vectors">SM3 Test Vectors</h1>
+
+<h2 id="overview">Overview</h2>
+<p>SM3 is the Chinese national cryptographic hash function standard, defined in
+GB/T 32905-2016. It produces a 256-bit hash value and is structurally similar
+to SHA-256 but with different constants and operations.</p>
+<h2 id="specification">Specification</h2>
+<ul>
+<li><strong>Standard:</strong> GB/T 32905-2016 (China), ISO/IEC 10118-3:2018</li>
+<li><strong>Output Size:</strong> 256 bits (32 bytes)</li>
+<li><strong>Block Size:</strong> 512 bits (64 bytes)</li>
+<li><strong>Rounds:</strong> 64</li>
+<li><strong>Word Size:</strong> 32 bits</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li>GB/T 32905-2016: &quot;Information security techniques — SM3 cryptographic hash algorithm&quot;</li>
+<li>ISO/IEC 10118-3:2018 (includes SM3)</li>
+<li><a href="https://www.oscca.gov.cn/">https://www.oscca.gov.cn/</a> (State Cryptography Administration of China)</li>
+</ul>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="vector-1-standard-test-message">Vector 1: Standard test message</h3>
+<pre><code>Input:  &quot;abc&quot;
+Length: 3 bytes (24 bits)
+Hex:    616263
+
+Output: 66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0
+</code></pre>
+<h3 id="vector-2-extended-test-message">Vector 2: Extended test message</h3>
+<pre><code>Input:  &quot;abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd&quot;
+Length: 64 bytes (512 bits, exactly one block)
+
+Output: debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732
+</code></pre>
+<h3 id="vector-3-empty-string">Vector 3: Empty string</h3>
+<pre><code>Input:  &quot;&quot; (empty)
+Length: 0 bytes
+
+Output: 1ab21d8355cfa17f8e61194831e81a8f22bec8c728fefb747ed035eb5082aa2b
+</code></pre>
+<h3 id="vector-4-single-byte">Vector 4: Single byte</h3>
+<pre><code>Input:  &quot;a&quot;
+Length: 1 byte
+Hex:    61
+
+Output: 623476ac18f65a2909e43c7fec61b49c7e764a91a18ccb82f1917a29c86c5e88
+</code></pre>
+<h3 id="vector-5-55-bytes-padding-boundary">Vector 5: 55 bytes (padding boundary)</h3>
+<pre><code>Input:  &quot;abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde&quot;
+Length: 55 bytes
+
+Output: (implementation dependent - verify with reference)
+</code></pre>
+<h3 id="vector-6-56-bytes-requires-extra-block">Vector 6: 56 bytes (requires extra block)</h3>
+<pre><code>Input:  &quot;abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdef&quot;
+Length: 56 bytes
+
+Output: (implementation dependent - verify with reference)
+</code></pre>
+<h3 id="vector-7-binary-test-data">Vector 7: Binary test data</h3>
+<pre><code>Input (hex): 0090414C494345313233405941484F4F2E434F4D787968B4FA32C3FD2417842E73BBFEFF2F3C848B6831D7E0EC65228B3937E49863E4C6D3B23B0C849CF84241484BFE48F61D59A5B16BA06E6E12D1DA27C5249A421DEBD61B62EAB6746434EBC3CC315E32220B3BADD50BDC4C4E6C147FEDD43D0680512BCBB42C07D47349D2153B70C4E5D7FDFCBFA36EA1A85841B9E46E09A20AE4C7798AA0F119471BEE11825BE46202BB79E81A8B36F9C2F50F2A8B2E00A0
+Length: 152 bytes
+
+Output: F4A38489E32B45B6F876E3AC2168CA392362DC8F23459C1D1146FC3DBFB7BC9A
+</code></pre>
+<h2 id="algorithm-details">Algorithm Details</h2>
+<h3 id="initial-vector-iv">Initial Vector (IV)</h3>
+<pre><code>IV0 = 0x7380166F
+IV1 = 0x4914B2B9
+IV2 = 0x172442D7
+IV3 = 0xDA8A0600
+IV4 = 0xA96F30BC
+IV5 = 0x163138AA
+IV6 = 0xE38DEE4D
+IV7 = 0xB0FB0E4E
+</code></pre>
+<h3 id="constants-t_j">Constants T_j</h3>
+<pre><code>T_j = 0x79CC4519 for j = 0..15
+T_j = 0x7A879D8A for j = 16..63
+</code></pre>
+<h3 id="boolean-functions">Boolean Functions</h3>
+<pre><code>FF_j(X, Y, Z) = X XOR Y XOR Z                    (j = 0..15)
+FF_j(X, Y, Z) = (X AND Y) OR (X AND Z) OR (Y AND Z)  (j = 16..63)
+
+GG_j(X, Y, Z) = X XOR Y XOR Z                    (j = 0..15)
+GG_j(X, Y, Z) = (X AND Y) OR (NOT X AND Z)       (j = 16..63)
+</code></pre>
+<h3 id="permutation-functions">Permutation Functions</h3>
+<pre><code>P0(X) = X XOR (X &lt;&lt;&lt; 9) XOR (X &lt;&lt;&lt; 17)
+P1(X) = X XOR (X &lt;&lt;&lt; 15) XOR (X &lt;&lt;&lt; 23)
+</code></pre>
+<h2 id="compliance-requirements">Compliance Requirements</h2>
+<p>SM3 is required for:</p>
+<ul>
+<li>Chinese government cryptographic applications</li>
+<li>Chinese banking and financial systems</li>
+<li>Products certified under Chinese commercial cryptography regulations</li>
+</ul>
+<h2 id="implementation-notes">Implementation Notes</h2>
+<ul>
+<li>Uses big-endian byte order</li>
+<li>Similar structure to SHA-256 (Merkle-Damgård)</li>
+<li>Message expansion uses P1 permutation</li>
+<li>Compression function has unique structure with SS1/SS2 computation</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/SM3-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

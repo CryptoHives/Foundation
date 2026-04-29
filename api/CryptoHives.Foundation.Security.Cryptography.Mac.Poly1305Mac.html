@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Poly1305Mac | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Poly1305Mac | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="Computes the Poly1305 message authentication code as defined in RFC 8439.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac">
+
+
+
+  <h1 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac" class="text-break">
+Class Poly1305Mac  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Security.html">Security</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.html">Cryptography</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.html">Mac</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Security.Cryptography.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Computes the Poly1305 message authentication code as defined in RFC 8439.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class Poly1305Mac : IMac, IDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">Poly1305Mac</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.IMac.html">IMac</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_examples">Examples</h2>
+  <pre><code class="lang-csharp">byte[] key = new byte[32]; // 32-byte one-time key
+byte[] data = Encoding.UTF8.GetBytes("Hello, World!");
+
+using var mac = Poly1305Mac.Create(key);
+mac.Update(data);
+byte[] tag = new byte[16];
+mac.Finalize(tag);</code></pre>
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Poly1305 is a high-speed, one-time authenticator designed by Daniel J. Bernstein.
+It takes a 32-byte one-time key and a message to produce a 16-byte tag.
+</p>
+<p>
+<b>Important:</b> The key must be unique for every message. Reusing a key across
+multiple messages completely compromises authenticity. In practice, the key is
+typically derived from a session key and nonce (e.g., by ChaCha20-Poly1305).
+</p>
+<p>
+This class provides a streaming <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.IMac.html">IMac</a> interface for incremental
+hashing. For stack-only, zero-allocation usage, see <span class="xref">CryptoHives.Foundation.Security.Cryptography.Cipher.Poly1305Core</span>.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac__ctor_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac__ctor_System_Byte___" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.#ctor(System.Byte[])">
+  Poly1305Mac(byte[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.html">Poly1305Mac</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Poly1305Mac(byte[] key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 32-byte one-time key.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>The key is not 32 bytes.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac__ctor_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac__ctor_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.#ctor(System.ReadOnlySpan{System.Byte})">
+  Poly1305Mac(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L90"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.html">Poly1305Mac</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Poly1305Mac(ReadOnlySpan&lt;byte&gt; key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The 32-byte one-time key.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>The key is not 32 bytes.</p>
+</dd>
+  </dl>
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_KeySizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.KeySizeBytes">
+  KeySizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The required key size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int KeySizeBytes = 32</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_TagSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.TagSizeBytes">
+  TagSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The MAC output size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int TagSizeBytes = 16</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_AlgorithmName_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.AlgorithmName*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_AlgorithmName" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.AlgorithmName">
+  AlgorithmName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the name of the MAC algorithm.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string AlgorithmName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_MacSize_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.MacSize*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_MacSize" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.MacSize">
+  MacSize
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the MAC output size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int MacSize { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_ComputeHash_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.ComputeHash*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_ComputeHash_System_Byte___" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.ComputeHash(System.Byte[])">
+  ComputeHash(byte[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L226"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Computes the Poly1305 tag for the given data in a single operation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] ComputeHash(byte[] data)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>data</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The data to authenticate.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 16-byte MAC tag.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_ComputeHash_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.ComputeHash*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_ComputeHash_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.ComputeHash(System.ReadOnlySpan{System.Byte})">
+  ComputeHash(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L212"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Computes the Poly1305 tag for the given data in a single operation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] ComputeHash(ReadOnlySpan&lt;byte&gt; data)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>data</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The data to authenticate.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 16-byte MAC tag.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Create_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Create*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Create_System_Byte___" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Create(System.Byte[])">
+  Create(byte[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L115"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.html">Poly1305Mac</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Poly1305Mac Create(byte[] key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 32-byte one-time key.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.html">Poly1305Mac</a></dt>
+    <dd><p>A new Poly1305 MAC instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Create_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Create*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Create_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Create(System.ReadOnlySpan{System.Byte})">
+  Create(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L122"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.html">Poly1305Mac</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Poly1305Mac Create(ReadOnlySpan&lt;byte&gt; key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The 32-byte one-time key.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.html">Poly1305Mac</a></dt>
+    <dd><p>A new Poly1305 MAC instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Dispose_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Dispose*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Dispose" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L244"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Finalize_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Finalize*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Finalize_System_Span_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Finalize(System.Span{System.Byte})">
+  Finalize(Span&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L165"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Computes the final MAC tag and writes it to <code class="paramref">destination</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Finalize(Span&lt;byte&gt; destination)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>destination</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The buffer to receive the MAC tag. Must be at least <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Mac.IMac.html#CryptoHives_Foundation_Security_Cryptography_Mac_IMac_MacSize">MacSize</a> bytes.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p><code class="paramref">destination</code> is too small.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Hash_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Hash*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Hash_System_Byte___System_Byte___" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Hash(System.Byte[],System.Byte[])">
+  Hash(byte[], byte[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L237"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Computes the Poly1305 tag for the specified key and data in a single operation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static byte[] Hash(byte[] key, byte[] data)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 32-byte one-time key.</p>
+</dd>
+    <dt><code>data</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The data to authenticate.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 16-byte MAC tag.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Reset_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Reset*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Reset" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Reset">
+  Reset()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L195"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resets the MAC to its initial state so it can be reused with the same key.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Reset()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Update_" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Update*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Mac_Poly1305Mac_Update_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.Update(System.ReadOnlySpan{System.Byte})">
+  Update(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L125"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Feeds input data into the MAC computation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Update(ReadOnlySpan&lt;byte&gt; input)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>input</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The data to process.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Mac/Poly1305/Poly1305Mac.cs/#L38" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

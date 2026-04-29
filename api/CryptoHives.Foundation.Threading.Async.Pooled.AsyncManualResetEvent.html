@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class AsyncManualResetEvent | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class AsyncManualResetEvent | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="An async version of  which uses a pooled approach to implement waiters for  to reduce memory allocations.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent">
+
+
+
+  <h1 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent" class="text-break">
+Class AsyncManualResetEvent  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Threading.html">Threading</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.html">Async</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.html">Pooled</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Threading.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>An async version of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.manualresetevent">ManualResetEvent</a> which uses a pooled approach
+to implement waiters for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> to reduce memory allocations.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class AsyncManualResetEvent : IResettable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">AsyncManualResetEvent</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.iresettable">IResettable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This implementation uses <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> for waiters and provides allocation-free 
+async signaling by reusing pooled <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource&lt;TResult&gt;</a> instances to avoid allocations
+of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.taskcompletionsource-1">TaskCompletionSource&lt;TResult&gt;</a> and <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>. However, since every
+waiter needs its own <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource&lt;TResult&gt;</a>, there is more overhead when many waiters
+are signalled than with a native <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.taskcompletionsource-1">TaskCompletionSource&lt;TResult&gt;</a> implementation.
+</p>
+<p>
+<b>Important Usage Note:</b> Awaiting on <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> has its own caveats, as it 
+is a struct that can only be awaited or converted with AsTask() ONE single time.
+Additional attempts to await after the first await or additional conversions to AsTask() will throw 
+an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>.
+</p>
+<p>
+<b>Continuation Scheduling:</b> The <a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.html#CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_RunContinuationAsynchronously">RunContinuationAsynchronously</a> property
+controls how continuations are executed when the event is signaled. When set to <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>
+(default), continuations are forced to queue to the thread pool, preventing the signaling thread from
+being blocked by continuation execution. When set to <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>, continuations
+may execute synchronously on the signaling thread, reducing context switching overhead but
+potentially increasing Set() call duration and could lead to deadlocks because the waiting code
+may be executed directly by the signaling thread.
+</p>
+<p>
+<b>Performance Warning - AsTask() Usage:</b> When <a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.html#CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_RunContinuationAsynchronously">RunContinuationAsynchronously</a>
+is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>, converting the returned <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> to <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>
+via AsTask() and storing the result before the event is signaled can cause severe performance
+degradation (often 10x-100x slower) and additional memory allocations. This is an implementation
+detail of the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.manualresetvaluetasksourcecore-1">ManualResetValueTaskSourceCore&lt;TResult&gt;</a> which
+cannot complete synchronously when a Task wrapper exists before signaling, forcing asynchronous
+scheduling even when the event is already signaled.
+</p>
+<p>
+<b>Recommendation:</b> Always await <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> directly. Avoid conversion 
+to <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> using AsTask(). Avoid storing AsTask() results across signaling boundaries.
+When usage of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> is mandatory, a native implementation using 
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.taskcompletionsource-1">TaskCompletionSource&lt;TResult&gt;</a> should be considered.
+</p>
+<pre><code class="lang-csharp">// GOOD: Direct ValueTask await (optimal performance)
+await eventInstance.WaitAsync().ConfigureAwait(false);
+<p>// SIGH: Immediate AsTask() conversion and await (adds memory allocation, but avoids performance hit)
+await eventInstance.WaitAsync().AsTask().ConfigureAwait(false);</p>
+<p>// BAD: Storing AsTask before signaling (possible severe performance degradation)
+Task t = eventInstance.WaitAsync().AsTask();  // Stored before Set()
+eventInstance.Set();
+...
+await t.ConfigureAwait(false);  // 10x-100x slower due to forced async scheduling AFTER Set()</p></code></pre>
+<p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.iresettable">IResettable</a> interface is implemented to allow resetting the state of the instance for reuse
+by an implementation of an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.objectpool">ObjectPool</a> that uses the <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.defaultobjectpool-1">DefaultObjectPool&lt;T&gt;</a> implementation.</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent__ctor_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent__ctor_System_Boolean_System_Boolean_CryptoHives_Foundation_Threading_Pools_IGetPooledManualResetValueTaskSource_System_Boolean__" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.#ctor(System.Boolean,System.Boolean,CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource{System.Boolean})">
+  AsyncManualResetEvent(bool, bool, IGetPooledManualResetValueTaskSource&lt;bool&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L89"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an async ValueTask compatible ManualResetEvent.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AsyncManualResetEvent(bool set = false, bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource&lt;bool&gt;? pool = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>set</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>The initial state of the event.</p>
+</dd>
+    <dt><code>runContinuationAsynchronously</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>Indicates if continuations are forced to run asynchronously.</p>
+</dd>
+    <dt><code>pool</code> <a class="xref" href="CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource-1.html">IGetPooledManualResetValueTaskSource</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p>Custom pool for this instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_IsSet_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.IsSet*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_IsSet" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.IsSet">
+  IsSet
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L131"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Whether this event is currently set.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsSet { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_RunContinuationAsynchronously_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.RunContinuationAsynchronously*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_RunContinuationAsynchronously" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.RunContinuationAsynchronously">
+  RunContinuationAsynchronously
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L151"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets whether to force continuations to run asynchronously.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool RunContinuationAsynchronously { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_RunContinuationAsynchronously_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+When <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> (default), continuations are queued to the thread pool when the event
+is signaled, preventing the signaling thread from being blocked by continuation execution.
+When <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>, continuations may execute synchronously on the signaling thread.
+</p>
+<p>
+<b>Performance Warning:</b> When this property is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>, converting <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>
+to <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> via AsTask() and storing the result before signaling causes severe performance
+degradation. Always await <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> directly to avoid this issue.
+</p>
+</div>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_Reset_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.Reset*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_Reset" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.Reset">
+  Reset()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L276"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resets the event.
+If the event is already reset, this method does nothing.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Reset()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_Set_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.Set*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_Set" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.Set">
+  Set()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L249"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals the event, releasing all waiting threads if any are queued.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Set()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_Set_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If no threads are waiting, the event is set to a signaled state, allowing any subsequent
+threads to proceed without blocking. This method is thread-safe.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_TryReset_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.TryReset*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_TryReset" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.TryReset">
+  TryReset()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L100"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reset the object to a neutral state, semantically similar to when the object was first constructed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool TryReset()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the object was able to reset itself, otherwise <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_TryReset_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>In general, this method is not expected to be thread-safe.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_WaitAsync_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.WaitAsync*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_WaitAsync_System_Threading_CancellationToken_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.WaitAsync(System.Threading.CancellationToken)">
+  WaitAsync(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L194"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously waits for this event to be set.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask WaitAsync(CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>The cancellation token used to cancel the wait.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> that is used for the asynchronous wait operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncManualResetEvent_WaitAsync_System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the event is already signalled, the method returns a completed <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>.
+Otherwise, it enqueues a waiter and returns a task that completes when the signal is received.
+The ValueTask is a struct that can only be awaited or transformed with AsTask() ONE time, then
+it is returned to the pool and every subsequent access throws an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>.</p>
+<pre><code class="lang-csharp">var ct = new CancellationTokenSource(1000).Token;
+var event = new AsyncManualResetEvent();
+
+// GOOD: single await with cancellation token
+await _event.WaitAsync(ct).ConfigureAwait(false);
+
+// GOOD: single await after calling WaitAsync()
+ValueTask vt = _event.WaitAsync(ct);
+_event.Set();
+await vt.ConfigureAwait(false);
+
+// FAIL: multiple awaits on ValueTask - throws InvalidOperationException on second await
+await vt.ConfigureAwait(false);
+
+// GOOD: single AsTask() usage, multiple await on Task
+Task t = _event.WaitAsync(ct).AsTask();
+_event.Set();
+await t.ConfigureAwait(false);
+await t.ConfigureAwait(false);
+
+// FAIL: single await with GetAwaiter().GetResult() - may throw InvalidOperationException
+await _event.WaitAsync(ct).GetAwaiter().GetResult();</code></pre>
+<p>Be aware that the underlying pooled implementation of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource">IValueTaskSource</a>
+may leak if the returned ValueTask is never awaited or transformed to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncManualResetEvent.cs/#L74" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

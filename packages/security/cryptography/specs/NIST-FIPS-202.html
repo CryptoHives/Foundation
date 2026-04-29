@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>NIST FIPS 202 - SHA-3 Standard | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="NIST FIPS 202 - SHA-3 Standard | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-FIPS-202.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="nist-fips-202---sha-3-standard">NIST FIPS 202 - SHA-3 Standard</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Federal Information Processing Standards Publication 202 specifies the SHA-3 family of hash functions based on the Keccak algorithm:</p>
+<ul>
+<li><strong>SHA3-224</strong> - 224-bit hash</li>
+<li><strong>SHA3-256</strong> - 256-bit hash</li>
+<li><strong>SHA3-384</strong> - 384-bit hash</li>
+<li><strong>SHA3-512</strong> - 512-bit hash</li>
+<li><strong>SHAKE128</strong> - Extendable-output function (XOF), 128-bit security</li>
+<li><strong>SHAKE256</strong> - Extendable-output function (XOF), 256-bit security</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li><strong>Document:</strong> NIST FIPS 202</li>
+<li><strong>Title:</strong> SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions</li>
+<li><strong>URL:</strong> <a href="https://csrc.nist.gov/pubs/fips/202/final">https://csrc.nist.gov/pubs/fips/202/final</a></li>
+<li><strong>PDF:</strong> <a href="https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf">https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf</a></li>
+</ul>
+<h2 id="implementation-status">Implementation Status</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Output Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA3-224</td>
+<td>224 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_224</code></td>
+</tr>
+<tr>
+<td>SHA3-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_256</code></td>
+</tr>
+<tr>
+<td>SHA3-384</td>
+<td>384 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_384</code></td>
+</tr>
+<tr>
+<td>SHA3-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_512</code></td>
+</tr>
+<tr>
+<td>SHAKE128</td>
+<td>Variable</td>
+<td>✅ Implemented</td>
+<td><code>Shake128</code></td>
+</tr>
+<tr>
+<td>SHAKE256</td>
+<td>Variable</td>
+<td>✅ Implemented</td>
+<td><code>Shake256</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="keccak-sponge-construction">Keccak Sponge Construction</h2>
+<p>SHA-3 is based on the <strong>sponge construction</strong> with the Keccak-f[1600] permutation.</p>
+<h3 id="state-structure">State Structure</h3>
+<ul>
+<li><strong>State size:</strong> 1600 bits (5 × 5 × 64)</li>
+<li><strong>Organized as:</strong> 25 lanes of 64 bits each</li>
+<li><strong>Permutation:</strong> Keccak-f[1600] with 24 rounds</li>
+</ul>
+<h3 id="sponge-parameters">Sponge Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Capacity (c)</th>
+<th>Rate (r)</th>
+<th>Security</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA3-224</td>
+<td>448 bits</td>
+<td>1152 bits (144 bytes)</td>
+<td>112 bits</td>
+<td>224 bits</td>
+</tr>
+<tr>
+<td>SHA3-256</td>
+<td>512 bits</td>
+<td>1088 bits (136 bytes)</td>
+<td>128 bits</td>
+<td>256 bits</td>
+</tr>
+<tr>
+<td>SHA3-384</td>
+<td>768 bits</td>
+<td>832 bits (104 bytes)</td>
+<td>192 bits</td>
+<td>384 bits</td>
+</tr>
+<tr>
+<td>SHA3-512</td>
+<td>1024 bits</td>
+<td>576 bits (72 bytes)</td>
+<td>256 bits</td>
+<td>512 bits</td>
+</tr>
+<tr>
+<td>SHAKE128</td>
+<td>256 bits</td>
+<td>1344 bits (168 bytes)</td>
+<td>128 bits</td>
+<td>Variable</td>
+</tr>
+<tr>
+<td>SHAKE256</td>
+<td>512 bits</td>
+<td>1088 bits (136 bytes)</td>
+<td>256 bits</td>
+<td>Variable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sponge-operation">Sponge Operation</h3>
+<pre><code>SPONGE(M, d):
+  1. Pad message M to multiple of rate r
+  2. ABSORB: XOR padded blocks into state, apply permutation after each
+  3. SQUEEZE: Extract d bits from rate portion, apply permutation between extractions
+</code></pre>
+<hr>
+<h2 id="keccak-f1600-permutation">Keccak-f[1600] Permutation</h2>
+<p>The permutation consists of 24 rounds, each with 5 steps:</p>
+<h3 id="θ-theta---column-parity-mixing">θ (Theta) - Column Parity Mixing</h3>
+<pre><code>C[x] = A[x,0] ⊕ A[x,1] ⊕ A[x,2] ⊕ A[x,3] ⊕ A[x,4]
+D[x] = C[x-1] ⊕ ROT(C[x+1], 1)
+A[x,y] = A[x,y] ⊕ D[x]
+</code></pre>
+<h3 id="ρ-rho---bit-rotation">ρ (Rho) - Bit Rotation</h3>
+<p>Each lane is rotated by a fixed offset (0 to 63 bits).</p>
+<h3 id="π-pi---lane-permutation">π (Pi) - Lane Permutation</h3>
+<pre><code>B[y, 2x+3y] = A[x,y]
+</code></pre>
+<h3 id="χ-chi---non-linear-mixing">χ (Chi) - Non-linear Mixing</h3>
+<pre><code>A[x,y] = B[x,y] ⊕ ((NOT B[x+1,y]) AND B[x+2,y])
+</code></pre>
+<h3 id="ι-iota---round-constant-addition">ι (Iota) - Round Constant Addition</h3>
+<pre><code>A[0,0] = A[0,0] ⊕ RC[round]
+</code></pre>
+<h3 id="round-constants">Round Constants</h3>
+<pre><code>RC[ 0] = 0x0000000000000001    RC[12] = 0x000000008000808b
+RC[ 1] = 0x0000000000008082    RC[13] = 0x800000000000008b
+RC[ 2] = 0x800000000000808a    RC[14] = 0x8000000000008089
+RC[ 3] = 0x8000000080008000    RC[15] = 0x8000000000008003
+RC[ 4] = 0x000000000000808b    RC[16] = 0x8000000000008002
+RC[ 5] = 0x0000000080000001    RC[17] = 0x8000000000000080
+RC[ 6] = 0x8000000080008081    RC[18] = 0x000000000000800a
+RC[ 7] = 0x8000000000008009    RC[19] = 0x800000008000000a
+RC[ 8] = 0x000000000000008a    RC[20] = 0x8000000080008081
+RC[ 9] = 0x0000000000000088    RC[21] = 0x8000000000008080
+RC[10] = 0x0000000080008009    RC[22] = 0x0000000080000001
+RC[11] = 0x000000008000000a    RC[23] = 0x8000000080008008
+</code></pre>
+<hr>
+<h2 id="padding">Padding</h2>
+<h3 id="sha-3-padding-pad101">SHA-3 Padding (pad10*1)</h3>
+<p>SHA-3 hash functions use domain separator <code>0x06</code>:</p>
+<pre><code>M || 0x06 || 0x00...0x00 || 0x80
+</code></pre>
+<p>The padding ensures the message ends with <code>...0110...0001</code> in bit notation.</p>
+<h3 id="shake-padding">SHAKE Padding</h3>
+<p>SHAKE XOFs use domain separator <code>0x1F</code>:</p>
+<pre><code>M || 0x1F || 0x00...0x00 || 0x80
+</code></pre>
+<hr>
+<h2 id="sha-3-vs-keccak">SHA-3 vs Keccak</h2>
+<blockquote>
+<p><strong>Important:</strong> SHA-3 (FIPS 202) uses different padding than the original Keccak submission.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Keccak (Original)</th>
+<th>SHA-3 (FIPS 202)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Domain separator</td>
+<td><code>0x01</code></td>
+<td><code>0x06</code></td>
+</tr>
+<tr>
+<td>Usage</td>
+<td>Ethereum, pre-NIST</td>
+<td>NIST standard</td>
+</tr>
+<tr>
+<td>Implementation</td>
+<td><code>Keccak256</code></td>
+<td><code>SHA3_256</code></td>
+</tr>
+</tbody>
+</table>
+<p>For Ethereum compatibility, use <code>Keccak256</code>. For NIST compliance, use <code>SHA3_256</code>.</p>
+<hr>
+<h2 id="extendable-output-functions-xofs">Extendable-Output Functions (XOFs)</h2>
+<p>SHAKE128 and SHAKE256 can produce arbitrary-length output:</p>
+<pre><code class="lang-csharp">// Request 64 bytes of output
+using var shake = Shake256.Create(outputBytes: 64);
+Span&lt;byte&gt; hash = stackalloc byte[64];
+shake.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="use-cases">Use Cases</h3>
+<ul>
+<li><strong>Key derivation:</strong> Generate keys of any length</li>
+<li><strong>Stream cipher:</strong> Use as keystream generator</li>
+<li><strong>Variable-length hashing:</strong> When output size isn't fixed</li>
+</ul>
+<hr>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="sha3-256">SHA3-256</h3>
+<p><strong>Empty String:</strong></p>
+<ul>
+<li>Input: &quot;&quot; (0 bytes)</li>
+<li>Output: <code>a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a</code></li>
+</ul>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532</code></li>
+</ul>
+<h3 id="sha3-512">SHA3-512</h3>
+<p><strong>Empty String:</strong></p>
+<ul>
+<li>Input: &quot;&quot; (0 bytes)</li>
+<li>Output: <code>a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a6 15b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26</code></li>
+</ul>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>b751850b1a57168a5693cd924b6b096e08f621827444f70d884f5d0240d2712e 10e116e9192af3c91a7ec57647e3934057340b4cf408d5a56592f8274eec53f0</code></li>
+</ul>
+<h3 id="sha3-224">SHA3-224</h3>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>e642824c3f8cf24ad09234ee7d3c766fc9a3a5168d0c94ad73b46fdf</code></li>
+</ul>
+<h3 id="sha3-384">SHA3-384</h3>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>ec01498288516fc926459f58e2c6ad8df9b473cb0fc08c2596da7cf0e49be4b2 98d88cea927ac7f539f1edf228376d25</code></li>
+</ul>
+<h3 id="shake128">SHAKE128</h3>
+<p><strong>Empty String (256-bit output):</strong></p>
+<ul>
+<li>Input: &quot;&quot; (0 bytes)</li>
+<li>Output: <code>7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26</code></li>
+</ul>
+<h3 id="shake256">SHAKE256</h3>
+<p><strong>Empty String (512-bit output):</strong></p>
+<ul>
+<li>Input: &quot;&quot; (0 bytes)</li>
+<li>Output: <code>46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762f d75dc4ddd8c0f200cb05019d67b592f6fc821c49479ab48640292eacb3b7c4be</code></li>
+</ul>
+<hr>
+<h2 id="security-properties">Security Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Collision</th>
+<th>Preimage</th>
+<th>2nd Preimage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA3-224</td>
+<td>112 bits</td>
+<td>224 bits</td>
+<td>224 bits</td>
+</tr>
+<tr>
+<td>SHA3-256</td>
+<td>128 bits</td>
+<td>256 bits</td>
+<td>256 bits</td>
+</tr>
+<tr>
+<td>SHA3-384</td>
+<td>192 bits</td>
+<td>384 bits</td>
+<td>384 bits</td>
+</tr>
+<tr>
+<td>SHA3-512</td>
+<td>256 bits</td>
+<td>512 bits</td>
+<td>512 bits</td>
+</tr>
+<tr>
+<td>SHAKE128</td>
+<td>min(d/2, 128)</td>
+<td>min(d, 128)</td>
+<td>min(d, 128)</td>
+</tr>
+<tr>
+<td>SHAKE256</td>
+<td>min(d/2, 256)</td>
+<td>min(d, 256)</td>
+<td>min(d, 256)</td>
+</tr>
+</tbody>
+</table>
+<p>Where <code>d</code> is the output length in bits for XOFs.</p>
+<hr>
+<h2 id="comparison-sha-2-vs-sha-3">Comparison: SHA-2 vs SHA-3</h2>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>SHA-2</th>
+<th>SHA-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Construction</td>
+<td>Merkle–Damgård</td>
+<td>Sponge</td>
+</tr>
+<tr>
+<td>Internal state</td>
+<td>Compression function</td>
+<td>Permutation</td>
+</tr>
+<tr>
+<td>Parallelism</td>
+<td>Limited</td>
+<td>Better</td>
+</tr>
+<tr>
+<td>Length extension</td>
+<td>Vulnerable</td>
+<td>Resistant</td>
+</tr>
+<tr>
+<td>Hardware efficiency</td>
+<td>Good</td>
+<td>Excellent</td>
+</tr>
+<tr>
+<td>Side-channel resistance</td>
+<td>Moderate</td>
+<td>Better</td>
+</tr>
+</tbody>
+</table>
+<p>SHA-3 provides defense-in-depth as an alternative to SHA-2, using a completely different design.</p>
+<hr>
+<h2 id="related-standards">Related Standards</h2>
+<ul>
+<li><strong>NIST SP 800-185</strong> - cSHAKE, KMAC, TupleHash, ParallelHash (SHA-3 derived functions)</li>
+<li><strong>NIST FIPS 180-4</strong> - SHA-1 and SHA-2 family</li>
+</ul>
+<hr>
+<h2 id="references">References</h2>
+<ol>
+<li>NIST FIPS 202: <a href="https://doi.org/10.6028/NIST.FIPS.202">https://doi.org/10.6028/NIST.FIPS.202</a></li>
+<li>Keccak Team: <a href="https://keccak.team/">https://keccak.team/</a></li>
+<li>SHA-3 Examples: <a href="https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values">https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values</a></li>
+<li>Keccak Reference: <a href="https://keccak.team/keccak_specs_summary.html">https://keccak.team/keccak_specs_summary.html</a></li>
+</ol>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-FIPS-202.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

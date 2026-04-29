@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>AsyncReaderWriterLock | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="AsyncReaderWriterLock | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncreaderwriterlock.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="asyncreaderwriterlock">AsyncReaderWriterLock</h1>
+
+<p>A pooled, allocation-free async reader-writer lock that supports multiple concurrent readers or a single exclusive writer using ValueTask-based waiters with cancellation tokens.</p>
+<h2 id="overview">Overview</h2>
+<p><code>AsyncReaderWriterLock</code> is an async-compatible reader-writer lock. It allows multiple readers to enter the lock concurrently, but only one writer can hold the lock exclusively. Writers are prioritized over readers to prevent writer starvation. One upgradeable reader at a time can share access with multiple other readers. Once the
+upgradeable reader is upgraded to writer, it may have to wait until all readers release the lock. An upgradeable reader may release the lock while still upgraded writers are queued for write access.</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────────────┐
+│    ------------                                                             │
+│    |          | &lt;-----&gt; READERS                                             │
+│    |          | &lt;-----&gt; UPGRADEABLE READER + READERS                        │
+│    |   IDLE   | &lt;-----&gt; UPGRADEABLE READER -----&gt; UPGRADED WRITER --\       │
+│    | NO LOCKS |         ^                                           |       │
+│    |          |         |------- DEMOTE TO UPGRADEABLE READER    &lt;--/       │
+│    |          | &lt;--------------- DEMOTE TO IDLE WITHOUT READER   &lt;--/       │
+│    |          | &lt;-----&gt; WRITER                                              │
+│    ------------                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h2 id="usage">Usage</h2>
+<h3 id="basic-usage">Basic Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Async.Pooled;
+
+private readonly AsyncReaderWriterLock _rwLock = new AsyncReaderWriterLock();
+
+// Reader
+public async Task&lt;Data&gt; ReadDataAsync(CancellationToken ct)
+{
+    using (await _rwLock.ReaderLockAsync(ct))
+    {
+        // Multiple readers can hold the lock concurrently
+        return await FetchDataAsync();
+    }
+}
+
+// Writer
+public async Task WriteDataAsync(Data data, CancellationToken ct)
+{
+    using (await _rwLock.WriterLockAsync(ct))
+    {
+        // Exclusive access - no other readers or writers
+        await SaveDataAsync(data);
+    }
+}
+
+// Upgradeable reader
+public async Task UpdateIfNeededAsync(CancellationToken ct)
+{
+    using (var upgradeable = await _rwLock.UpgradeableReaderLockAsync(ct))
+    {
+        if (NeedsUpdate())
+        {
+            using (await upgradeable.UpgradeToWriterLockAsync(ct))
+            {
+                await SaveDataAsync();
+            }
+        }
+    }
+}
+</code></pre>
+<h3 id="cache-pattern">Cache Pattern</h3>
+<pre><code class="lang-csharp">private readonly AsyncReaderWriterLock _cacheLock = new AsyncReaderWriterLock();
+private Dictionary&lt;string, object&gt; _cache = new();
+
+public async Task&lt;T&gt; GetOrAddAsync&lt;T&gt;(string key, Func&lt;Task&lt;T&gt;&gt; factory, CancellationToken ct)
+{
+    // Try to read first
+    using (await _cacheLock.ReaderLockAsync(ct))
+    {
+        if (_cache.TryGetValue(key, out var cached))
+        {
+            return (T)cached;
+        }
+    }
+
+    // Need to write
+    using (await _cacheLock.WriterLockAsync(ct))
+    {
+        // Double-check after acquiring write lock
+        if (_cache.TryGetValue(key, out var cached))
+        {
+            return (T)cached;
+        }
+
+        var value = await factory();
+        _cache[key] = value;
+        return value;
+    }
+}
+</code></pre>
+<h2 id="constructor">Constructor</h2>
+<pre><code class="lang-csharp">public AsyncReaderWriterLock(
+    bool runContinuationAsynchronously = true,
+    IGetPooledManualResetValueTaskSource&lt;Releaser&gt;? pool = null)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runContinuationAsynchronously</code></td>
+<td>If true (default), continuations run on the thread pool.</td>
+</tr>
+<tr>
+<td><code>pool</code></td>
+<td>Optional custom pool for ValueTaskSource instances used by both readers and writers.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IsReadLockHeld</code></td>
+<td><code>bool</code></td>
+<td>Gets whether one or more readers currently hold the lock.</td>
+</tr>
+<tr>
+<td><code>IsWriteLockHeld</code></td>
+<td><code>bool</code></td>
+<td>Gets whether the lock is currently held by a writer.</td>
+</tr>
+<tr>
+<td><code>IsUpgradeableReadLockHeld</code></td>
+<td><code>bool</code></td>
+<td>Gets whether the lock is currently held by an upgradeable reader.</td>
+</tr>
+<tr>
+<td><code>IsUpgradedWriterLockHeld</code></td>
+<td><code>bool</code></td>
+<td>Gets whether an upgradeable reader is currently upgraded to writer mode.</td>
+</tr>
+<tr>
+<td><code>CurrentReaderCount</code></td>
+<td><code>int</code></td>
+<td>Gets the number of readers holding the lock.</td>
+</tr>
+<tr>
+<td><code>WaitingWriterCount</code></td>
+<td><code>int</code></td>
+<td>Gets the number of writers waiting.</td>
+</tr>
+<tr>
+<td><code>WaitingReaderCount</code></td>
+<td><code>int</code></td>
+<td>Gets the number of readers waiting.</td>
+</tr>
+<tr>
+<td><code>WaitingUpgradeableReaderCount</code></td>
+<td><code>int</code></td>
+<td>Gets the number of upgradeable readers waiting.</td>
+</tr>
+<tr>
+<td><code>WaitingUpgradedWritersCount</code></td>
+<td><code>int</code></td>
+<td>Gets the number of upgrade requests waiting for exclusive access.</td>
+</tr>
+<tr>
+<td><code>RunContinuationAsynchronously</code></td>
+<td><code>bool</code></td>
+<td>Gets or sets whether continuations run asynchronously.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="readerlockasync">ReaderLockAsync</h3>
+<pre><code class="lang-csharp">public ValueTask&lt;Releaser&gt; ReaderLockAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Asynchronously acquires a reader lock. Multiple readers can hold the lock concurrently.</p>
+<h3 id="upgradeablereaderlockasync">UpgradeableReaderLockAsync</h3>
+<pre><code class="lang-csharp">public ValueTask&lt;Releaser&gt; UpgradeableReaderLockAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Asynchronously acquires an upgradeable reader lock. One upgradeable reader can coexist with other readers and may later be promoted to a writer lock.</p>
+<h3 id="writerlockasync">WriterLockAsync</h3>
+<pre><code class="lang-csharp">public ValueTask&lt;Releaser&gt; WriterLockAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Asynchronously acquires a writer lock. Only one writer can hold the lock.</p>
+<h2 id="releaser">Releaser</h2>
+<p>All lock-acquisition methods return a <code>Releaser</code> struct that implements <code>IDisposable</code> and <code>IAsyncDisposable</code>:</p>
+<pre><code class="lang-csharp">using (await _rwLock.ReaderLockAsync())
+{
+    // Lock is held here
+}
+// Lock is automatically released
+</code></pre>
+<p>When the <code>Releaser</code> originated from <code>UpgradeableReaderLockAsync</code>, it also exposes:</p>
+<pre><code class="lang-csharp">public ValueTask&lt;Releaser&gt; UpgradeToWriterLockAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>This upgrades the currently held upgradeable reader to an exclusive writer lock.</p>
+<h2 id="fairness-and-priority">Fairness and Priority</h2>
+<ul>
+<li><strong>Writer Priority</strong>: New readers are queued behind waiting writers to prevent writer starvation</li>
+<li><strong>Reader Batching</strong>: When a writer releases, all waiting readers are released together</li>
+<li><strong>FIFO Readers and Writers</strong>: Waiting writers and readers are released in order</li>
+</ul>
+<h2 id="performance">Performance</h2>
+<ul>
+<li><strong>O(1)</strong> reader acquisition with fast path when no writers are waiting/holding</li>
+<li><strong>O(1)</strong> writer acquisition with fast path when lock is free</li>
+<li><strong>O(n)</strong> reader batch release when writer releases</li>
+<li><strong>Zero allocations</strong> on the fast path (uncontended) and contended path, unless the ObjectPool is exhausted. A custom pool can be provided to satisfy specific needs.</li>
+</ul>
+<h2 id="benchmark-results">Benchmark Results</h2>
+<p>The following benchmarks compare <code>AsyncReaderWriterLock</code> against <code>ReaderWriterLockSlim</code>, <code>Nito.AsyncEx.AsyncReaderWriterLock</code>, <code>Proto.Promises.Threading.AsyncReaderWriterLock</code>, <code>Microsoft.VisualStudio.Threading.AsyncReaderWriterLock</code>, and a reference implementation. Not all implementations support every lock mode; the set of compared implementations varies per benchmark.</p>
+<h3 id="reader-lock-benchmark">Reader Lock Benchmark</h3>
+<p>Measures the performance of acquiring and releasing reader locks with varying numbers of nested acquisitions. At the lowest iteration count (Iterations = 0), the pooled implementation achieves lower latency than Proto.Promises; from Iterations = 1 onward, Proto.Promises achieves lower per-operation latency, reflecting a lower per-lock-call overhead at the cost of a slightly higher fixed invocation overhead. Both operate with zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency at all iteration counts.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">6.774 ns</td>
+<td style="text-align: right;">0.40</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">17.075 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">18.400 ns</td>
+<td style="text-align: right;">1.08</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">18.917 ns</td>
+<td style="text-align: right;">1.11</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">40.428 ns</td>
+<td style="text-align: right;">2.37</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">224.937 ns</td>
+<td style="text-align: right;">13.17</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">16.943 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">18.193 ns</td>
+<td style="text-align: right;">1.07</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">39.961 ns</td>
+<td style="text-align: right;">2.36</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">224.973 ns</td>
+<td style="text-align: right;">13.28</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">12.461 ns</td>
+<td style="text-align: right;">0.36</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">28.467 ns</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">34.709 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">34.977 ns</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">84.985 ns</td>
+<td style="text-align: right;">2.45</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">518.755 ns</td>
+<td style="text-align: right;">14.95</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">28.772 ns</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">34.054 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">81.086 ns</td>
+<td style="text-align: right;">2.38</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">518.476 ns</td>
+<td style="text-align: right;">15.23</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">61.761 ns</td>
+<td style="text-align: right;">0.31</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">142.806 ns</td>
+<td style="text-align: right;">0.72</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">144.870 ns</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">197.022 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">481.419 ns</td>
+<td style="text-align: right;">2.44</td>
+<td style="text-align: right;">3520 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">3,703.521 ns</td>
+<td style="text-align: right;">18.80</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">147.119 ns</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">197.696 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">473.137 ns</td>
+<td style="text-align: right;">2.39</td>
+<td style="text-align: right;">3520 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,614.872 ns</td>
+<td style="text-align: right;">18.29</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">559.414 ns</td>
+<td style="text-align: right;">0.33</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">1,220.891 ns</td>
+<td style="text-align: right;">0.72</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">1,236.741 ns</td>
+<td style="text-align: right;">0.73</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">1,700.744 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,495.417 ns</td>
+<td style="text-align: right;">2.64</td>
+<td style="text-align: right;">32320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">87,591.125 ns</td>
+<td style="text-align: right;">51.50</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,256.133 ns</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,698.319 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,403.054 ns</td>
+<td style="text-align: right;">2.59</td>
+<td style="text-align: right;">32320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">86,857.592 ns</td>
+<td style="text-align: right;">51.14</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="writer-lock-benchmark">Writer Lock Benchmark</h3>
+<p>Measures the performance of acquiring and releasing a single writer lock. Proto.Promises achieves lower uncontended latency than the pooled implementation, with both operating at zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WriterLock · RWLockSlim · System</td>
+<td style="text-align: right;">6.905 ns</td>
+<td style="text-align: right;">0.66</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · Proto.Promises</td>
+<td style="text-align: right;">8.379 ns</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · Pooled</td>
+<td style="text-align: right;">10.460 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · RefImpl</td>
+<td style="text-align: right;">18.797 ns</td>
+<td style="text-align: right;">1.80</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · Nito.AsyncEx</td>
+<td style="text-align: right;">54.581 ns</td>
+<td style="text-align: right;">5.22</td>
+<td style="text-align: right;">496 B</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · VS.Threading</td>
+<td style="text-align: right;">1,027.868 ns</td>
+<td style="text-align: right;">98.27</td>
+<td style="text-align: right;">584 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="upgradeable-reader-lock-benchmark">Upgradeable Reader Lock Benchmark</h3>
+<p>Measures the performance of acquiring an upgradeable reader lock in combination with varying numbers of additional reader locks. At the lowest iteration count (Iterations = 0), the pooled implementation is marginally faster; Proto.Promises achieves lower per-operation latency as the number of additional reader locks increases. Both operate with zero allocations. VS.Threading allocates per acquisition and shows substantially higher latency across all iteration counts.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">6.855 ns</td>
+<td style="text-align: right;">0.43</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">15.959 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">20.142 ns</td>
+<td style="text-align: right;">1.26</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">1,096.171 ns</td>
+<td style="text-align: right;">68.69</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">16.321 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">18.987 ns</td>
+<td style="text-align: right;">1.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,127.899 ns</td>
+<td style="text-align: right;">69.11</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">6.745 ns</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">18.139 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">19.333 ns</td>
+<td style="text-align: right;">1.07</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,089.110 ns</td>
+<td style="text-align: right;">60.04</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">17.789 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">19.749 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,138.793 ns</td>
+<td style="text-align: right;">57.77</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">6.822 ns</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">17.518 ns</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">18.268 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">1,082.163 ns</td>
+<td style="text-align: right;">59.24</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">17.317 ns</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">18.599 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,124.084 ns</td>
+<td style="text-align: right;">60.44</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">24.061 ns</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">54.872 ns</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">68.248 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">2,631.592 ns</td>
+<td style="text-align: right;">38.56</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">53.997 ns</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">67.902 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,693.549 ns</td>
+<td style="text-align: right;">39.67</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="upgraded-writer-lock-benchmark">Upgraded Writer Lock Benchmark</h3>
+<p>Measures the performance of acquiring an upgradeable reader lock, holding additional reader locks concurrently, then upgrading to an exclusive writer lock. The pooled implementation is marginally faster at the lowest iteration count (Iterations = 0); Proto.Promises achieves lower per-operation latency as the number of held reader locks increases. Both operate with zero allocations. VS.Threading allocates proportionally to the number of held reader locks and shows substantially higher latency across all configurations.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">13.46 ns</td>
+<td style="text-align: right;">0.60</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">21.66 ns</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">22.44 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">1,823.37 ns</td>
+<td style="text-align: right;">81.24</td>
+<td style="text-align: right;">824 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">22.76 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">24.61 ns</td>
+<td style="text-align: right;">1.08</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,910.35 ns</td>
+<td style="text-align: right;">83.95</td>
+<td style="text-align: right;">824 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">20.15 ns</td>
+<td style="text-align: right;">0.41</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">43.06 ns</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">49.25 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">2,325.23 ns</td>
+<td style="text-align: right;">47.21</td>
+<td style="text-align: right;">1032 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">60.90 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">70.48 ns</td>
+<td style="text-align: right;">1.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,406.80 ns</td>
+<td style="text-align: right;">39.52</td>
+<td style="text-align: right;">1032 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">25.36 ns</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">54.15 ns</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">68.01 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">2,823.31 ns</td>
+<td style="text-align: right;">41.56</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">76.14 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">86.37 ns</td>
+<td style="text-align: right;">1.13</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,948.51 ns</td>
+<td style="text-align: right;">38.73</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">41.38 ns</td>
+<td style="text-align: right;">0.33</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">92.94 ns</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">123.96 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">4,468.96 ns</td>
+<td style="text-align: right;">36.05</td>
+<td style="text-align: right;">1864 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">116.85 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">130.50 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,578.74 ns</td>
+<td style="text-align: right;">35.09</td>
+<td style="text-align: right;">1864 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmark-analysis">Benchmark Analysis</h3>
+<p><strong>Key Findings:</strong></p>
+<ol>
+<li><p><strong>Reader and upgradeable reader performance</strong>: At a single acquisition per call, the pooled implementation has a slight latency advantage. As the number of lock operations per call increases, Proto.Promises achieves lower per-operation latency in both the reader and upgradeable reader benchmarks, with zero allocations in both cases.</p>
+</li>
+<li><p><strong>Writer and upgraded writer performance</strong>: For single-operation writer lock acquisition, Proto.Promises achieves lower uncontended latency than the pooled implementation. The same pattern holds for the upgraded writer benchmark: the pooled implementation is marginally faster at minimal load, while Proto.Promises achieves lower per-operation latency as the number of additionally held reader locks increases. Both implementations operate with zero allocations.</p>
+</li>
+<li><p><strong>Writer priority</strong>: The writer-priority design prevents writer starvation but may reduce reader throughput when writers are frequently queued.</p>
+</li>
+<li><p><strong>Memory efficiency</strong>: A shared pool for readers, upgradeable readers, and writers allows fine-tuned pool sizing. The pooled implementation maintains zero allocations across all published benchmarks, matching Proto.Promises. Nito.AsyncEx allocates per acquisition in the reader and writer benchmarks. VS.Threading allocates per acquisition in all benchmarks, with memory usage growing proportionally to the number of concurrently held locks.</p>
+</li>
+<li><p><strong>Releaser struct</strong>: The value-type <code>Releaser</code> produces no allocation for the lock handle itself. Allocations occur only for the pooled <code>IValueTaskSource</code> when the pool is exhausted under sustained contention.</p>
+</li>
+</ol>
+<p><strong>When to Choose AsyncReaderWriterLock:</strong></p>
+<ul>
+<li>Read-heavy workloads with occasional writes</li>
+<li>Cache implementations with read/write patterns</li>
+<li>Document or configuration stores</li>
+</ul>
+<p><strong>Design Trade-offs:</strong></p>
+<ul>
+<li>Writer priority may reduce reader throughput under write-heavy loads</li>
+<li>Consider <code>AsyncLock</code> for simpler mutex-style locking</li>
+<li>For read-only scenarios, no lock is needed</li>
+</ul>
+<h2 id="comparison-with-readerwriterlockslim">Comparison with ReaderWriterLockSlim</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>AsyncReaderWriterLock</th>
+<th>ReaderWriterLockSlim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Async support</td>
+<td>Native</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Allocation overhead</td>
+<td>Minimal (pooled)</td>
+<td>None (sync)</td>
+</tr>
+<tr>
+<td>Writer priority</td>
+<td>Yes</td>
+<td>Configurable</td>
+</tr>
+<tr>
+<td>Cancellation</td>
+<td>Full support</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="index.html">Threading Package Overview</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a> - Manual-reset event variant</li>
+<li><a href="asynclock.html">AsyncLock</a> - Async mutual exclusion lock</li>
+<li><a href="asynccountdownevent.html">AsyncCountdownEvent</a> - Async countdown event</li>
+<li><a href="asyncbarrier.html">AsyncBarrier</a> - Async barrier synchronization primitive</li>
+<li><a href="asyncsemaphore.html">AsyncSemaphore</a> - Async semaphore primitive</li>
+<li><a href="benchmarks.html">Benchmarks</a> - Benchmark description</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncreaderwriterlock.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

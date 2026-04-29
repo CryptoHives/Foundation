@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Hash Algorithms Reference | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Hash Algorithms Reference | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/hash-algorithms.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="hash-algorithms-reference">Hash Algorithms Reference</h1>
+
+<p>This page provides detailed documentation for all hash algorithms implemented in the CryptoHives.Foundation.Security.Cryptography package.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+</code></pre>
+<h2 id="best-practices-zero-allocation-hashing">Best Practices: Zero-Allocation Hashing</h2>
+<p>All hash algorithms in this package inherit from <code>System.Security.Cryptography.HashAlgorithm</code>, which provides two APIs for computing hashes:</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Allocations</th>
+<th>Availability</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ComputeHash(byte[])</code></td>
+<td>Allocates a new <code>byte[]</code> for the result on every call</td>
+<td>All frameworks</td>
+</tr>
+<tr>
+<td><code>TryComputeHash(ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, out int)</code></td>
+<td><strong>Zero allocations</strong> — writes directly into a caller-provided buffer</td>
+<td>All frameworks (polyfilled)</td>
+</tr>
+</tbody>
+</table>
+<p>For <strong>performance-critical code</strong>, prefer <code>TryComputeHash</code> with a stack-allocated or reusable buffer:</p>
+<pre><code class="lang-csharp">using var sha256 = SHA256.Create();
+
+ReadOnlySpan&lt;byte&gt; input = data;
+Span&lt;byte&gt; hash = stackalloc byte[sha256.HashSize / 8]; // 32 bytes for SHA-256
+
+if (sha256.TryComputeHash(input, hash, out int bytesWritten))
+{
+    // 'hash' contains the result — no heap allocation occurred
+}
+</code></pre>
+<p>The <code>ComputeHash(byte[])</code> method internally allocates a new <code>byte[]</code> of <code>HashSize / 8</code> bytes for each call. In tight loops or high-throughput pipelines (network packet processing, file integrity checking, blockchain validation), these allocations add GC pressure and reduce performance. The <code>TryComputeHash</code> span-based API avoids this entirely by letting the caller control the output buffer.</p>
+<blockquote>
+<p><strong>Note:</strong> The CryptoHives <code>HashAlgorithm</code> base class provides a <code>TryComputeHash</code> polyfill for .NET Framework 4.x and .NET Standard 2.0 targets, where the BCL does not include this method. All CryptoHives hash algorithms support the zero-allocation code path on every target framework.</p>
+</blockquote>
+<p>All usage examples below use the zero-allocation <code>TryComputeHash</code> API.</p>
+<hr>
+<h2 id="sha-2-family">SHA-2 Family</h2>
+<p>The SHA-2 family of hash functions defined in NIST FIPS 180-4.</p>
+<h3 id="sha-224">SHA-224</h3>
+<pre><code class="lang-csharp">public sealed class SHA224 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 224 bits (28 bytes)</li>
+<li>Block Size: 64 bytes</li>
+<li>Based on: SHA-256 with different IV and truncated output</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha224 = SHA224.Create();
+Span&lt;byte&gt; hash = stackalloc byte[28];
+sha224.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha-256">SHA-256</h3>
+<pre><code class="lang-csharp">public sealed class SHA256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 256 bits (32 bytes)</li>
+<li>Block Size: 64 bytes</li>
+<li>Most widely used hash algorithm</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha256 = SHA256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+sha256.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha-384">SHA-384</h3>
+<pre><code class="lang-csharp">public sealed class SHA384 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 384 bits (48 bytes)</li>
+<li>Block Size: 128 bytes</li>
+<li>Based on: SHA-512 with different IV and truncated output</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha384 = SHA384.Create();
+Span&lt;byte&gt; hash = stackalloc byte[48];
+sha384.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha-512">SHA-512</h3>
+<pre><code class="lang-csharp">public sealed class SHA512 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 512 bits (64 bytes)</li>
+<li>Block Size: 128 bytes</li>
+<li>Faster than SHA-256 on 64-bit systems</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha512 = SHA512.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+sha512.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha-512224">SHA-512/224</h3>
+<pre><code class="lang-csharp">public sealed class SHA512_224 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 224 bits (28 bytes)</li>
+<li>Block Size: 128 bytes</li>
+<li>SHA-512 with truncated output, faster on 64-bit systems</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha512_224 = SHA512_224.Create();
+Span&lt;byte&gt; hash = stackalloc byte[28];
+sha512_224.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha-512256">SHA-512/256</h3>
+<pre><code class="lang-csharp">public sealed class SHA512_256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 256 bits (32 bytes)</li>
+<li>Block Size: 128 bytes</li>
+<li>SHA-512 with truncated output, faster on 64-bit systems</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha512_256 = SHA512_256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+sha512_256.TryComputeHash(data, hash, out _);
+</code></pre>
+<hr>
+<h2 id="sha-3-family">SHA-3 Family</h2>
+<p>The SHA-3 family of hash functions defined in NIST FIPS 202.</p>
+<h3 id="sha3-224">SHA3-224</h3>
+<pre><code class="lang-csharp">public sealed class SHA3_224 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 224 bits (28 bytes)</li>
+<li>Block Size: 144 bytes (rate)</li>
+<li>Capacity: 448 bits</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha3 = SHA3_224.Create();
+Span&lt;byte&gt; hash = stackalloc byte[28];
+sha3.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha3-256">SHA3-256</h3>
+<pre><code class="lang-csharp">public sealed class SHA3_256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 256 bits (32 bytes)</li>
+<li>Block Size: 136 bytes (rate)</li>
+<li>Capacity: 512 bits</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha3 = SHA3_256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+sha3.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha3-384">SHA3-384</h3>
+<pre><code class="lang-csharp">public sealed class SHA3_384 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 384 bits (48 bytes)</li>
+<li>Block Size: 104 bytes (rate)</li>
+<li>Capacity: 768 bits</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha3 = SHA3_384.Create();
+Span&lt;byte&gt; hash = stackalloc byte[48];
+sha3.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="sha3-512">SHA3-512</h3>
+<pre><code class="lang-csharp">public sealed class SHA3_512 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 512 bits (64 bytes)</li>
+<li>Block Size: 72 bytes (rate)</li>
+<li>Capacity: 1024 bits</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sha3 = SHA3_512.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+sha3.TryComputeHash(data, hash, out _);
+</code></pre>
+<hr>
+<h2 id="shake-xof">SHAKE XOF</h2>
+<p>Extendable-Output Functions (XOF) from NIST FIPS 202.</p>
+<h3 id="shake128">Shake128</h3>
+<pre><code class="lang-csharp">public sealed class Shake128 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (specify at creation)</li>
+<li>Security: 128 bits</li>
+<li>Block Size: 168 bytes (rate)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Default 32-byte output
+using var shake = Shake128.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+shake.TryComputeHash(data, hash, out _);
+
+// Custom output size
+using var shake64 = Shake128.Create(outputBytes: 64);
+Span&lt;byte&gt; longHash = stackalloc byte[64];
+shake64.TryComputeHash(data, longHash, out _);
+</code></pre>
+<blockquote>
+<p><strong>XOF Mode:</strong> SHAKE128 implements <a href="xof-mode.html"><code>IExtendableOutput</code></a> for streaming variable-length output via <code>Absorb</code> / <code>Squeeze</code>.</p>
+</blockquote>
+<h3 id="shake256">Shake256</h3>
+<pre><code class="lang-csharp">public sealed class Shake256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (specify at creation)</li>
+<li>Security: 256 bits</li>
+<li>Block Size: 136 bytes (rate)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Default 64-byte output
+using var shake = Shake256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+shake.TryComputeHash(data, hash, out _);
+
+// Custom output size
+using var shake128 = Shake256.Create(outputBytes: 128);
+Span&lt;byte&gt; longHash = stackalloc byte[128];
+shake128.TryComputeHash(data, longHash, out _);
+</code></pre>
+<blockquote>
+<p><strong>XOF Mode:</strong> SHAKE256 implements <a href="xof-mode.html"><code>IExtendableOutput</code></a> for streaming variable-length output via <code>Absorb</code> / <code>Squeeze</code>.</p>
+</blockquote>
+<hr>
+<h2 id="cshake">cSHAKE</h2>
+<p>Customizable SHAKE functions from NIST SP 800-185.</p>
+<h3 id="cshake128">CShake128</h3>
+<pre><code class="lang-csharp">public sealed class CShake128 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable</li>
+<li>Security: 128 bits</li>
+<li>Supports: Function name (N) and customization string (S)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// With customization
+using var cshake = new CShake128(
+    outputBytes: 32,
+    functionName: &quot;&quot;,
+    customization: &quot;My Application&quot;);
+Span&lt;byte&gt; hash = stackalloc byte[32];
+cshake.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="cshake256">CShake256</h3>
+<pre><code class="lang-csharp">public sealed class CShake256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable</li>
+<li>Security: 256 bits</li>
+<li>Supports: Function name (N) and customization string (S)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// With customization
+using var cshake = new CShake256(
+    outputBytes: 64,
+    functionName: &quot;&quot;,
+    customization: &quot;My Application&quot;);
+Span&lt;byte&gt; hash = stackalloc byte[64];
+cshake.TryComputeHash(data, hash, out _);
+</code></pre>
+<p><strong>Note:</strong> When both N and S are empty, cSHAKE is equivalent to SHAKE.</p>
+<blockquote>
+<p><strong>XOF Mode:</strong> cSHAKE128 and cSHAKE256 implement <a href="xof-mode.html"><code>IExtendableOutput</code></a> for streaming variable-length output via <code>Absorb</code> / <code>Squeeze</code>.</p>
+</blockquote>
+<hr>
+<h2 id="turboshake">TurboSHAKE</h2>
+<p>High-performance XOFs from RFC 9861 (Reduced-round Keccak).</p>
+<h3 id="turboshake128">TurboShake128</h3>
+<pre><code class="lang-csharp">public sealed class TurboShake128 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (default 32 bytes)</li>
+<li>Security: 128 bits</li>
+<li>Permutation: Keccak-p[1600,12] (12 rounds)</li>
+<li>Rate: 168 bytes</li>
+<li>Supports: Customization string (D)</li>
+<li>~2x faster than SHAKE128</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Standard (32 bytes)
+using var ts = TurboShake128.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+ts.TryComputeHash(data, hash, out _);
+
+// Custom output and customization
+using var tsCustom = new TurboShake128(
+    outputBytes: 64,
+    customization: &quot;My App&quot;);
+Span&lt;byte&gt; longHash = stackalloc byte[64];
+tsCustom.TryComputeHash(data, longHash, out _);
+</code></pre>
+<h3 id="turboshake256">TurboShake256</h3>
+<pre><code class="lang-csharp">public sealed class TurboShake256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (default 64 bytes)</li>
+<li>Security: 256 bits</li>
+<li>Permutation: Keccak-p[1600,12] (12 rounds)</li>
+<li>Rate: 136 bytes</li>
+<li>Supports: Customization string (D)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var ts = TurboShake256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+ts.TryComputeHash(data, hash, out _);
+</code></pre>
+<blockquote>
+<p><strong>XOF Mode:</strong> TurboSHAKE128 and TurboSHAKE256 implement <a href="xof-mode.html"><code>IExtendableOutput</code></a> for streaming variable-length output via <code>Absorb</code> / <code>Squeeze</code>.</p>
+</blockquote>
+<hr>
+<h2 id="kangarootwelve-kt">KangarooTwelve (KT)</h2>
+<p>Parallelizable high-performance XOFs from RFC 9861.</p>
+<h3 id="kt128">KT128</h3>
+<pre><code class="lang-csharp">public sealed class KT128 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (default 32 bytes)</li>
+<li>Security: 128 bits</li>
+<li>Based on: TurboSHAKE128</li>
+<li>Rate: 168 bytes</li>
+<li>Supports: Customization string, tree hashing for large inputs</li>
+<li><strong>Formerly known as:</strong> KangarooTwelve</li>
+</ul>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Tree hashing for parallel processing of messages &gt; 8KB</li>
+<li>Same performance as TurboSHAKE128 for short messages</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var kt = KT128.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+kt.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="kt256">KT256</h3>
+<pre><code class="lang-csharp">public sealed class KT256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (default 64 bytes)</li>
+<li>Security: 256 bits</li>
+<li>Based on: TurboSHAKE256</li>
+<li>Rate: 136 bytes</li>
+<li>Supports: Customization string, tree hashing for large inputs</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var kt = KT256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+kt.TryComputeHash(data, hash, out _);
+</code></pre>
+<blockquote>
+<p><strong>XOF Mode:</strong> KT128 and KT256 implement <a href="xof-mode.html"><code>IExtendableOutput</code></a> for streaming variable-length output via <code>Absorb</code> / <code>Squeeze</code>.</p>
+</blockquote>
+<hr>
+<h2 id="keccak">Keccak</h2>
+<p>Original Keccak algorithm family (pre-SHA-3 standardization).</p>
+<h3 id="keccak256">Keccak256</h3>
+<pre><code class="lang-csharp">public sealed class Keccak256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 256 bits (32 bytes)</li>
+<li>Block Size: 136 bytes</li>
+<li>Uses original Keccak padding (0x01)</li>
+</ul>
+<p><strong>Important:</strong> This is NOT the same as SHA3-256. Keccak-256 uses different padding and produces different output. Use this for Ethereum compatibility.</p>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var keccak = Keccak256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+keccak.TryComputeHash(data, hash, out _);
+</code></pre>
+<p><strong>Ethereum Example:</strong></p>
+<pre><code class="lang-csharp">// Compute Ethereum address from public key
+byte[] publicKey = ...; // 64-byte uncompressed public key (without 0x04 prefix)
+using var keccak = Keccak256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+keccak.TryComputeHash(publicKey, hash, out _);
+ReadOnlySpan&lt;byte&gt; address = hash[^20..]; // Last 20 bytes
+</code></pre>
+<h3 id="keccak384">Keccak384</h3>
+<pre><code class="lang-csharp">public sealed class Keccak384 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 384 bits (48 bytes)</li>
+<li>Block Size: 104 bytes</li>
+<li>Uses original Keccak padding (0x01)</li>
+</ul>
+<p><strong>Important:</strong> This is NOT the same as SHA3-384. Keccak-384 uses different padding and produces different output.</p>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var keccak = Keccak384.Create();
+Span&lt;byte&gt; hash = stackalloc byte[48];
+keccak.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="keccak512">Keccak512</h3>
+<pre><code class="lang-csharp">public sealed class Keccak512 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 512 bits (64 bytes)</li>
+<li>Block Size: 72 bytes</li>
+<li>Uses original Keccak padding (0x01)</li>
+</ul>
+<p><strong>Important:</strong> This is NOT the same as SHA3-512. Keccak-512 uses different padding and produces different output.</p>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var keccak = Keccak512.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+keccak.TryComputeHash(data, hash, out _);
+</code></pre>
+<hr>
+<h2 id="blake2">BLAKE2</h2>
+<p>High-performance hash functions from RFC 7693.</p>
+<h3 id="blake2b">Blake2b</h3>
+<pre><code class="lang-csharp">public sealed class Blake2b : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: 1-64 bytes (default 64)</li>
+<li>Block Size: 128 bytes</li>
+<li>Supports: Keyed hashing (MAC mode)</li>
+<li>Faster than SHA-256 on 64-bit systems</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Standard hash (64 bytes)
+using var blake2b = Blake2b.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+blake2b.TryComputeHash(data, hash, out _);
+
+// Custom output size (32 bytes)
+using var blake2b32 = Blake2b.Create(hashSize: 32);
+Span&lt;byte&gt; hash32 = stackalloc byte[32];
+blake2b32.TryComputeHash(data, hash32, out _);
+
+// Keyed hash (MAC)
+byte[] key = new byte[32]; // Up to 64 bytes
+using var blake2bMac = Blake2b.Create(key: key, hashSize: 32);
+Span&lt;byte&gt; mac = stackalloc byte[32];
+blake2bMac.TryComputeHash(data, mac, out _);
+</code></pre>
+<h3 id="blake2s">Blake2s</h3>
+<pre><code class="lang-csharp">public sealed class Blake2s : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: 1-32 bytes (default 32)</li>
+<li>Block Size: 64 bytes</li>
+<li>Supports: Keyed hashing (MAC mode)</li>
+<li>Optimized for 32-bit and embedded systems</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Standard hash (32 bytes)
+using var blake2s = Blake2s.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+blake2s.TryComputeHash(data, hash, out _);
+
+// Custom output size (16 bytes)
+using var blake2s16 = Blake2s.Create(hashSize: 16);
+Span&lt;byte&gt; hash16 = stackalloc byte[16];
+blake2s16.TryComputeHash(data, hash16, out _);
+
+// Keyed hash (MAC)
+byte[] key = new byte[16]; // Up to 32 bytes
+using var blake2sMac = Blake2s.Create(key: key, hashSize: 16);
+Span&lt;byte&gt; mac = stackalloc byte[16];
+blake2sMac.TryComputeHash(data, mac, out _);
+</code></pre>
+<hr>
+<h2 id="blake3">BLAKE3</h2>
+<p>Modern, high-performance hash function.</p>
+<h3 id="blake3-1">Blake3</h3>
+<pre><code class="lang-csharp">public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (default 32 bytes)</li>
+<li>Designed for parallelism</li>
+<li>Supports: Hash, Keyed Hash, Derive Key modes</li>
+<li>Implements <a href="xof-mode.html"><code>IExtendableOutput</code></a> for streaming XOF output</li>
+</ul>
+<p><strong>Modes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Factory Method</th>
+<th>Key Size</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash</td>
+<td><code>Create()</code></td>
+<td>-</td>
+<td>Standard cryptographic hash</td>
+</tr>
+<tr>
+<td>Keyed</td>
+<td><code>CreateKeyed(key)</code></td>
+<td>32 bytes</td>
+<td>MAC mode</td>
+</tr>
+<tr>
+<td>Derive Key</td>
+<td><code>CreateDeriveKey(context)</code></td>
+<td>-</td>
+<td>Key derivation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Standard hash
+using var blake3 = Blake3.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+blake3.TryComputeHash(data, hash, out _);
+
+// Variable output (64 bytes)
+using var blake3Long = Blake3.Create(outputBytes: 64);
+Span&lt;byte&gt; longHash = stackalloc byte[64];
+blake3Long.TryComputeHash(data, longHash, out _);
+
+// Keyed hash (MAC)
+byte[] key = new byte[32]; // Must be exactly 32 bytes
+using var blake3Mac = Blake3.CreateKeyed(key);
+Span&lt;byte&gt; mac = stackalloc byte[32];
+blake3Mac.TryComputeHash(data, mac, out _);
+
+// Key derivation
+string context = &quot;MyApp 2026 session key&quot;;
+using var blake3Kdf = Blake3.CreateDeriveKey(context);
+Span&lt;byte&gt; derivedKey = stackalloc byte[32];
+blake3Kdf.TryComputeHash(inputKeyMaterial, derivedKey, out _);
+</code></pre>
+<blockquote>
+<p><strong>XOF Mode:</strong> BLAKE3 implements <a href="xof-mode.html"><code>IExtendableOutput</code></a> using counter-mode output expansion for streaming variable-length output via <code>Absorb</code> / <code>Squeeze</code>.</p>
+</blockquote>
+<hr>
+<h2 id="ripemd">RIPEMD</h2>
+<p>RIPEMD family hash functions.</p>
+<h3 id="ripemd160">Ripemd160</h3>
+<pre><code class="lang-csharp">public sealed class Ripemd160 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 160 bits (20 bytes)</li>
+<li>Block Size: 64 bytes</li>
+<li>Widely used in cryptocurrency (Bitcoin addresses)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var ripemd = Ripemd160.Create();
+Span&lt;byte&gt; hash = stackalloc byte[20];
+ripemd.TryComputeHash(data, hash, out _);
+</code></pre>
+<p><strong>Bitcoin Address Example:</strong></p>
+<pre><code class="lang-csharp">// Simplified Bitcoin P2PKH address generation
+byte[] publicKey = ...; // Compressed public key
+using var sha256 = SHA256.Create();
+using var ripemd = Ripemd160.Create();
+
+Span&lt;byte&gt; sha256Hash = stackalloc byte[32];
+sha256.TryComputeHash(publicKey, sha256Hash, out _);
+
+Span&lt;byte&gt; pubKeyHash = stackalloc byte[20];
+ripemd.TryComputeHash(sha256Hash, pubKeyHash, out _); // 20-byte hash
+</code></pre>
+<hr>
+<h2 id="sm3">SM3</h2>
+<p>Chinese national standard hash function (GB/T 32905-2016).</p>
+<h3 id="sm3-1">SM3</h3>
+<pre><code class="lang-csharp">public sealed class SM3 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 256 bits (32 bytes)</li>
+<li>Block Size: 64 bytes</li>
+<li>Standard: GB/T 32905-2016, ISO/IEC 10118-3:2018</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sm3 = SM3.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+sm3.TryComputeHash(data, hash, out _);
+</code></pre>
+<hr>
+<h2 id="whirlpool">Whirlpool</h2>
+<p>ISO/IEC 10118-3 hash function.</p>
+<h3 id="whirlpool-1">Whirlpool</h3>
+<pre><code class="lang-csharp">public sealed class Whirlpool : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 512 bits (64 bytes)</li>
+<li>Block Size: 64 bytes</li>
+<li>Standard: ISO/IEC 10118-3:2004, NESSIE recommended</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var whirlpool = Whirlpool.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+whirlpool.TryComputeHash(data, hash, out _);
+</code></pre>
+<hr>
+<h2 id="streebog">Streebog</h2>
+<p>Russian national standard hash function (GOST R 34.11-2012).</p>
+<h3 id="streebog-1">Streebog</h3>
+<pre><code class="lang-csharp">public sealed class Streebog : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: 256 or 512 bits</li>
+<li>Block Size: 64 bytes</li>
+<li>Standard: GOST R 34.11-2012, RFC 6986</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Streebog-512 (default)
+using var streebog = Streebog.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+streebog.TryComputeHash(data, hash, out _);
+
+// Streebog-256
+using var streebog256 = Streebog.Create(hashSize: 32);
+Span&lt;byte&gt; hash256 = stackalloc byte[32];
+streebog256.TryComputeHash(data, hash256, out _);
+</code></pre>
+<hr>
+<h2 id="kupyna">Kupyna</h2>
+<p>Ukrainian national standard hash function (DSTU 7564:2014).</p>
+<h3 id="kupyna-1">Kupyna</h3>
+<pre><code class="lang-csharp">public sealed class Kupyna : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: 256, 384, or 512 bits</li>
+<li>Block Size: 64 bytes (256-bit) or 128 bytes (384/512-bit)</li>
+<li>Standard: DSTU 7564:2014</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Kupyna-512 (default)
+using var kupyna = Kupyna.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+kupyna.TryComputeHash(data, hash, out _);
+
+// Kupyna-256
+using var kupyna256 = Kupyna.Create(hashSizeBytes: 32);
+Span&lt;byte&gt; hash256 = stackalloc byte[32];
+kupyna256.TryComputeHash(data, hash256, out _);
+
+// Kupyna-384
+using var kupyna384 = Kupyna.Create(hashSizeBytes: 48);
+Span&lt;byte&gt; hash384 = stackalloc byte[48];
+kupyna384.TryComputeHash(data, hash384, out _);
+</code></pre>
+<hr>
+<h2 id="lsh-ks-x-3262">LSH (KS X 3262)</h2>
+<p>Korean national standard hash function designed by KISA (Korea Internet &amp; Security Agency).</p>
+<h3 id="lsh512">Lsh512</h3>
+<pre><code class="lang-csharp">public sealed class Lsh512 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: 224, 256, 384, or 512 bits</li>
+<li>Block Size: 256 bytes</li>
+<li>Word Size: 64 bits</li>
+<li>Steps: 28</li>
+<li>Standard: KS X 3262</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// LSH-512-512 (default)
+using var lsh = Lsh512.Create();
+Span&lt;byte&gt; hash = stackalloc byte[64];
+lsh.TryComputeHash(data, hash, out _);
+
+// LSH-512-256
+using var lsh256 = Lsh512.Create(hashSizeBytes: 32);
+Span&lt;byte&gt; hash256 = stackalloc byte[32];
+lsh256.TryComputeHash(data, hash256, out _);
+
+// LSH-512-384
+using var lsh384 = Lsh512.Create(hashSizeBytes: 48);
+Span&lt;byte&gt; hash384 = stackalloc byte[48];
+lsh384.TryComputeHash(data, hash384, out _);
+</code></pre>
+<h3 id="lsh256">Lsh256</h3>
+<pre><code class="lang-csharp">public sealed class Lsh256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: 224 or 256 bits</li>
+<li>Block Size: 128 bytes</li>
+<li>Word Size: 32 bits</li>
+<li>Steps: 26</li>
+<li>Standard: KS X 3262</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// LSH-256-256 (default)
+using var lsh = Lsh256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+lsh.TryComputeHash(data, hash, out _);
+
+// LSH-256-224
+using var lsh224 = Lsh256.Create(hashSizeBytes: 28);
+Span&lt;byte&gt; hash224 = stackalloc byte[28];
+lsh224.TryComputeHash(data, hash224, out _);
+</code></pre>
+<hr>
+<h2 id="ascon">Ascon</h2>
+<p>Lightweight cryptographic hash and XOF from NIST Lightweight Cryptography Standardization (FIPS 207).</p>
+<h3 id="asconhash256">AsconHash256</h3>
+<pre><code class="lang-csharp">public sealed class AsconHash256 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 256 bits (32 bytes)</li>
+<li>Security: 128 bits</li>
+<li>Rate: 8 bytes</li>
+<li>Standard: NIST FIPS 207</li>
+</ul>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Designed for constrained environments (IoT, embedded systems)</li>
+<li>Low memory footprint</li>
+<li>Efficient in software and hardware implementations</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var ascon = AsconHash256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+ascon.TryComputeHash(data, hash, out _);
+</code></pre>
+<h3 id="asconxof128">AsconXof128</h3>
+<pre><code class="lang-csharp">public sealed class AsconXof128 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Output Size: Variable (specify at creation)</li>
+<li>Security: 128 bits</li>
+<li>Rate: 8 bytes</li>
+<li>Standard: NIST FIPS 207</li>
+</ul>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Extendable-output function (XOF)</li>
+<li>Lightweight and suitable for constrained environments</li>
+<li>Arbitrary-length output</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Default 32-byte output
+using var ascon = AsconXof128.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+ascon.TryComputeHash(data, hash, out _);
+
+// Custom output size
+using var ascon64 = AsconXof128.Create(outputBytes: 64);
+Span&lt;byte&gt; longHash = stackalloc byte[64];
+ascon64.TryComputeHash(data, longHash, out _);
+</code></pre>
+<blockquote>
+<p><strong>XOF Mode:</strong> Ascon-XOF128 implements <a href="xof-mode.html"><code>IExtendableOutput</code></a> for streaming variable-length output via <code>Absorb</code> / <code>Squeeze</code>.</p>
+</blockquote>
+<hr>
+<h2 id="legacy">Legacy</h2>
+<p>?? <strong>Warning:</strong> These algorithms are cryptographically broken and should NOT be used for security purposes.</p>
+<h3 id="sha1">SHA1</h3>
+<pre><code class="lang-csharp">[Obsolete(&quot;SHA-1 is cryptographically broken.&quot;)]
+public sealed class SHA1 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 160 bits (20 bytes)</li>
+<li>Block Size: 64 bytes</li>
+<li><strong>Status:</strong> Deprecated - collision attacks exist</li>
+</ul>
+<p><strong>Usage (legacy only):</strong></p>
+<pre><code class="lang-csharp">#pragma warning disable CS0618
+using var sha1 = SHA1.Create();
+Span&lt;byte&gt; hash = stackalloc byte[20];
+sha1.TryComputeHash(data, hash, out _);
+#pragma warning restore CS0618
+</code></pre>
+<h3 id="md5">MD5</h3>
+<pre><code class="lang-csharp">[Obsolete(&quot;MD5 is cryptographically broken.&quot;)]
+public sealed class MD5 : HashAlgorithm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Hash Size: 128 bits (16 bytes)</li>
+<li>Block Size: 64 bytes</li>
+<li><strong>Status:</strong> Deprecated - collision attacks exist</li>
+</ul>
+<p><strong>Usage (legacy only):</strong></p>
+<pre><code class="lang-csharp">#pragma warning disable CS0618
+using var md5 = MD5.Create();
+Span&lt;byte&gt; hash = stackalloc byte[16];
+md5.TryComputeHash(data, hash, out _);
+#pragma warning restore CS0618
+</code></pre>
+<hr>
+<h2 id="algorithm-factory">Algorithm Factory</h2>
+<p>You can also create hash algorithms by name:</p>
+<pre><code class="lang-csharp">using var algorithm = HashAlgorithm.Create(&quot;SHA3-256&quot;);
+Span&lt;byte&gt; hash = stackalloc byte[algorithm.HashSize / 8];
+algorithm.TryComputeHash(data, hash, out _);
+</code></pre>
+<p>Supported names:</p>
+<ul>
+<li>SHA-1/2: <code>SHA1</code>, <code>SHA224</code>, <code>SHA256</code>, <code>SHA384</code>, <code>SHA512</code>, <code>SHA512/224</code>, <code>SHA512/256</code></li>
+<li>SHA-3: <code>SHA3-224</code>, <code>SHA3-256</code>, <code>SHA3-384</code>, <code>SHA3-512</code></li>
+<li>SHAKE: <code>SHAKE128</code>, <code>SHAKE256</code></li>
+<li>cSHAKE: <code>CSHAKE128</code>, <code>CSHAKE256</code></li>
+<li>TurboSHAKE: <code>TURBOSHAKE128</code>, <code>TURBOSHAKE256</code></li>
+<li>KT (RFC 9861): <code>KT128</code> (formerly <code>KANGAROOTWELVE</code>), <code>KT256</code></li>
+<li>Keccak: <code>KECCAK-256</code>, <code>KECCAK-384</code>, <code>KECCAK-512</code></li>
+<li>Ascon: <code>ASCON-HASH256</code>, <code>ASCON-XOF128</code></li>
+<li>BLAKE: <code>BLAKE2B</code>, <code>BLAKE2S</code>, <code>BLAKE3</code></li>
+<li>Others: <code>RIPEMD-160</code>, <code>SM3</code>, <code>WHIRLPOOL</code>, <code>STREEBOG-256</code>, <code>STREEBOG-512</code>, <code>KUPYNA-256</code>, <code>KUPYNA-384</code>, <code>KUPYNA-512</code>, <code>LSH-256-224</code>, <code>LSH-256-256</code>, <code>LSH-512-256</code>, <code>LSH-512-384</code>, <code>LSH-512-512</code>, <code>MD5</code></li>
+</ul>
+<hr>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="mac-algorithms.html">MAC Algorithms</a></li>
+<li><a href="index.html">Cryptography Package Overview</a></li>
+<li><a href="specs/README.html">Specifications</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/hash-algorithms.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

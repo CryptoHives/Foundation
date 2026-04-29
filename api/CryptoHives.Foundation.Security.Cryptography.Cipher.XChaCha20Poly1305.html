@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class XChaCha20Poly1305 | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class XChaCha20Poly1305 | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="XChaCha20-Poly1305 authenticated encryption with extended nonce.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305">
+
+
+
+  <h1 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305" class="text-break">
+Class XChaCha20Poly1305  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Security.html">Security</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.html">Cryptography</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.html">Cipher</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Security.Cryptography.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>XChaCha20-Poly1305 authenticated encryption with extended nonce.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class XChaCha20Poly1305 : IAeadCipher, IDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">XChaCha20Poly1305</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.html">IAeadCipher</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+XChaCha20-Poly1305 extends ChaCha20-Poly1305 with a 192-bit (24-byte) nonce,
+providing better resistance to nonce misuse. It uses HChaCha20 to derive a subkey
+from the key and first 16 bytes of the nonce, then uses standard ChaCha20-Poly1305
+with the subkey and remaining 8 bytes of the nonce.
+</p>
+<p>
+<b>Specification:</b> draft-irtf-cfrg-xchacha-03
+</p>
+<p>
+<b>Security properties:</b>
+<ul><li>256-bit security level</li><li>192-bit nonce (safe for random nonces)</li><li>128-bit authentication tag</li><li>Resistant to timing attacks</li></ul>
+
+<p>
+<b>Nonce generation:</b> The 24-byte nonce can be randomly generated for each
+message. The probability of collision is negligible (2^-32 after 2^80 messages).
+</p>
+<p>
+<b>Example usage:</b>
+<pre><code class="lang-csharp">using var aead = XChaCha20Poly1305.Create(key);
+<p>// Generate random 24-byte nonce
+byte[] nonce = new byte[24];
+RandomNumberGenerator.Fill(nonce);</p>
+<p>// Encrypt with associated data
+byte[] ciphertext = aead.Encrypt(nonce, plaintext, associatedData);</p>
+<p>// Decrypt and verify
+byte[] plaintext = aead.Decrypt(nonce, ciphertext, associatedData);</p></code></pre>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305__ctor_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305__ctor_System_Byte___" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.#ctor(System.Byte[])">
+  XChaCha20Poly1305(byte[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.html">XChaCha20Poly1305</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public XChaCha20Poly1305(byte[] key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 32-byte key.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_KeySizeBytesConst" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.KeySizeBytesConst">
+  KeySizeBytesConst
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L58"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Key size in bytes (256 bits).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int KeySizeBytesConst = 32</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_NonceSizeBytesConst" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.NonceSizeBytesConst">
+  NonceSizeBytesConst
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Nonce size in bytes (192 bits = 24 bytes).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int NonceSizeBytesConst = 24</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_TagSizeBytesConst" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.TagSizeBytesConst">
+  TagSizeBytesConst
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Tag size in bytes (128 bits).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int TagSizeBytesConst = 16</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_AlgorithmName_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.AlgorithmName*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_AlgorithmName" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.AlgorithmName">
+  AlgorithmName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L98"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the algorithm name.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string AlgorithmName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_KeySizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.KeySizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_KeySizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.KeySizeBytes">
+  KeySizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the key size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int KeySizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_NonceSizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.NonceSizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_NonceSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.NonceSizeBytes">
+  NonceSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L104"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the nonce size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int NonceSizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_TagSizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.TagSizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_TagSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.TagSizeBytes">
+  TagSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L107"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the authentication tag size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int TagSizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Create_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Create*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Create_System_Byte___" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Create(System.Byte[])">
+  Create(byte[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new XChaCha20-Poly1305 instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static XChaCha20Poly1305 Create(byte[] key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The 32-byte key.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.html">XChaCha20Poly1305</a></dt>
+    <dd><p>A new XChaCha20-Poly1305 instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Decrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Decrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Decrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Decrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Decrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L224"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Decrypts the ciphertext (with appended tag) and verifies authenticity.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] Decrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; ciphertextWithTag, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The nonce used during encryption.</p>
+</dd>
+    <dt><code>ciphertextWithTag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The ciphertext with appended authentication tag.</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional authenticated data (must match encryption).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The decrypted plaintext.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.cryptographicexception">CryptographicException</a></dt>
+    <dd><p>Authentication failed - the data has been tampered with or the wrong key/nonce was used.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Decrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Decrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Decrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_Span_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Decrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Decrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Decrypts the ciphertext and verifies the authentication tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Decrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; ciphertext, ReadOnlySpan&lt;byte&gt; tag, Span&lt;byte&gt; plaintext, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The nonce used during encryption.</p>
+</dd>
+    <dt><code>ciphertext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The encrypted data.</p>
+</dd>
+    <dt><code>tag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The authentication tag to verify.</p>
+</dd>
+    <dt><code>plaintext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The output buffer for decrypted data (same size as ciphertext).</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional authenticated data (must match encryption).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if decryption and authentication succeeded; false if authentication failed.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p><code class="paramref">nonce</code> or <code class="paramref">tag</code> is not the correct size, or
+<code class="paramref">plaintext</code> buffer is too small.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Dispose_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Dispose*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Dispose" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L246"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Encrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Encrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Encrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Encrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Encrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L212"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Encrypts the plaintext and returns ciphertext with appended tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] Encrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; plaintext, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The unique nonce for this encryption.</p>
+</dd>
+    <dt><code>plaintext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The data to encrypt.</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional data to authenticate (optional).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The ciphertext with authentication tag appended.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Encrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Encrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_XChaCha20Poly1305_Encrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_Span_System_Byte__System_Span_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.Encrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Span{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Encrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L130"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Encrypts the plaintext and computes the authentication tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Encrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; plaintext, Span&lt;byte&gt; ciphertext, Span&lt;byte&gt; tag, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The unique nonce for this encryption.</p>
+</dd>
+    <dt><code>plaintext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The data to encrypt.</p>
+</dd>
+    <dt><code>ciphertext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The output buffer for ciphertext (same size as plaintext).</p>
+</dd>
+    <dt><code>tag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The output buffer for the authentication tag.</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional data to authenticate (optional).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p><code class="paramref">nonce</code> is not the correct size, or
+<code class="paramref">ciphertext</code> or <code class="paramref">tag</code> buffers are too small.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/ChaCha/XChaCha20Poly1305.cs/#L53" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

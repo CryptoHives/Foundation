@@ -1,0 +1,4557 @@
+{
+  "source_base_path": "/home/runner/work/Foundation/Foundation/docfx",
+  "xrefmap": "xrefmap.yml",
+  "files": [
+    {
+      "type": "Resource",
+      "output": {
+        "resource": {
+          "relative_path": "index.json"
+        }
+      }
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Memory.Buffers.ArrayPoolBufferWriter-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Memory.Buffers.ArrayPoolBufferWriter-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Memory.Buffers.ArrayPoolBufferWriter<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Memory.Buffers.ArrayPoolBufferWriter-1.yml\" sourcestartlinenumber=\"1\">Helper to build a <xref href=\"System.Buffers.ReadOnlySequence%601\" data-throw-if-not-resolved=\"false\"></xref> from a set of buffers.\nImplements <xref href=\"System.Buffers.IBufferWriter%601\" data-throw-if-not-resolved=\"false\"></xref> interface.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Memory.Buffers.ArrayPoolMemoryStream.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Memory.Buffers.ArrayPoolMemoryStream.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Memory.Buffers.ArrayPoolMemoryStream",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Memory.Buffers.ArrayPoolMemoryStream.yml\" sourcestartlinenumber=\"1\">Class to create a MemoryStream which uses ArrayPool buffers.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Memory.Buffers.ReadOnlySequenceMemoryStream.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Memory.Buffers.ReadOnlySequenceMemoryStream.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Memory.Buffers.ReadOnlySequenceMemoryStream",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Memory.Buffers.ReadOnlySequenceMemoryStream.yml\" sourcestartlinenumber=\"1\">Class to create a read only MemoryStream which uses\na <xref href=\"System.Buffers.ReadOnlySequence%601\" data-throw-if-not-resolved=\"false\"></xref> as the buffer source.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Memory.Buffers.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Memory.Buffers.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Memory.Buffers",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Memory.Pools.ObjectOwner-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Memory.Pools.ObjectOwner-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Memory.Pools.ObjectOwner<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Memory.Pools.ObjectOwner-1.yml\" sourcestartlinenumber=\"1\">Owner of object shared from <xref href=\"Microsoft.Extensions.ObjectPool.ObjectPool%601\" data-throw-if-not-resolved=\"false\"></xref> who\nis responsible for disposing the underlying object appropriately.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Memory.Pools.ObjectPools.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Memory.Pools.ObjectPools.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Memory.Pools.ObjectPools",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Memory.Pools.ObjectPools.yml\" sourcestartlinenumber=\"1\">Provides ObjectPools for efficient memory usage.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Memory.Pools.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Memory.Pools.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Memory.Pools",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Aes128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes128.yml\" sourcestartlinenumber=\"1\">AES-128 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes192.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes192.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Aes192",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes192.yml\" sourcestartlinenumber=\"1\">AES-192 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Aes256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aes256.yml\" sourcestartlinenumber=\"1\">AES-256 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm.yml\" sourcestartlinenumber=\"1\">AES-CCM (Counter with CBC-MAC) authenticated encryption implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm128.yml\" sourcestartlinenumber=\"1\">AES-128-CCM authenticated encryption.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm192.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm192.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm192",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm192.yml\" sourcestartlinenumber=\"1\">AES-192-CCM authenticated encryption.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesCcm256.yml\" sourcestartlinenumber=\"1\">AES-256-CCM authenticated encryption.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm.yml\" sourcestartlinenumber=\"1\">AES-GCM (Galois/Counter Mode) authenticated encryption implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm128.yml\" sourcestartlinenumber=\"1\">AES-128-GCM authenticated encryption.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm192.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm192.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm192",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm192.yml\" sourcestartlinenumber=\"1\">AES-192-GCM authenticated encryption.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm256.yml\" sourcestartlinenumber=\"1\">AES-256-GCM authenticated encryption.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.yml\" sourcestartlinenumber=\"1\">AES Key Wrap with Padding as specified in RFC 5649 (and AES Key Wrap per RFC 3394).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Aria128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria128.yml\" sourcestartlinenumber=\"1\">ARIA-128 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria192.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria192.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Aria192",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria192.yml\" sourcestartlinenumber=\"1\">ARIA-192 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Aria256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Aria256.yml\" sourcestartlinenumber=\"1\">ARIA-256 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AsconAead128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.AsconAead128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.AsconAead128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.AsconAead128.yml\" sourcestartlinenumber=\"1\">Ascon-AEAD128 authenticated encryption as specified in NIST SP 800-232.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia128.yml\" sourcestartlinenumber=\"1\">Camellia-128 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia192.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia192.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia192",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia192.yml\" sourcestartlinenumber=\"1\">Camellia-192 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Camellia256.yml\" sourcestartlinenumber=\"1\">Camellia-256 symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20.yml\" sourcestartlinenumber=\"1\">ChaCha20 stream cipher implementation as specified in RFC 8439.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20Poly1305.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20Poly1305.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20Poly1305",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.ChaCha20Poly1305.yml\" sourcestartlinenumber=\"1\">ChaCha20-Poly1305 authenticated encryption as specified in RFC 8439.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode.yml\" sourcestartlinenumber=\"1\">Specifies the block cipher mode of operation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.yml\" sourcestartlinenumber=\"1\">Defines an Authenticated Encryption with Associated Data (AEAD) cipher.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.ICipherTransform.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.ICipherTransform.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.ICipherTransform",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.ICipherTransform.yml\" sourcestartlinenumber=\"1\">Defines a cryptographic transform for symmetric cipher operations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna128.yml\" sourcestartlinenumber=\"1\">Kalyna-128 symmetric cipher implementation (DSTU 7624:2014).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kalyna256.yml\" sourcestartlinenumber=\"1\">Kalyna-256 symmetric cipher implementation (DSTU 7624:2014) with 128-bit block.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kuznyechik.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kuznyechik.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Kuznyechik",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Kuznyechik.yml\" sourcestartlinenumber=\"1\">Kuznyechik (GOST R 34.12-2015) symmetric cipher implementation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode.yml\" sourcestartlinenumber=\"1\">Specifies the padding mode for block cipher operations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Seed.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Seed.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Seed",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Seed.yml\" sourcestartlinenumber=\"1\">SEED symmetric cipher implementation (KISA, RFC 4269).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Sm4.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.Sm4.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.Sm4",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.Sm4.yml\" sourcestartlinenumber=\"1\">SM4 symmetric cipher implementation (GB/T 32907-2016).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.SymmetricCipher.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.SymmetricCipher.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.SymmetricCipher",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.SymmetricCipher.yml\" sourcestartlinenumber=\"1\">Base class for CryptoHives symmetric cipher implementations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Cipher.XChaCha20Poly1305.yml\" sourcestartlinenumber=\"1\">XChaCha20-Poly1305 authenticated encryption with extended nonce.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Cipher.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Cipher",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconHash256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconHash256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.AsconHash256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconHash256.yml\" sourcestartlinenumber=\"1\">Computes the Ascon-Hash256 for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.yml\" sourcestartlinenumber=\"1\">Base class for Ascon family hash algorithms, providing common sponge construction logic.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.yml\" sourcestartlinenumber=\"1\">Computes the Ascon-XOF128 (Extendable Output Function) for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake2b.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake2b.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Blake2b",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake2b.yml\" sourcestartlinenumber=\"1\">Computes the BLAKE2b hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake2s.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake2s.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Blake2s",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake2s.yml\" sourcestartlinenumber=\"1\">Computes the BLAKE2s hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake3.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake3.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Blake3",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake3.yml\" sourcestartlinenumber=\"1\">Computes the BLAKE3 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake3Mode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake3Mode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Blake3Mode",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Blake3Mode.yml\" sourcestartlinenumber=\"1\">Specifies the mode of operation for BLAKE3.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.CShake128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.CShake128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.CShake128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.CShake128.yml\" sourcestartlinenumber=\"1\">Computes a customizable SHAKE128 (cSHAKE128) output.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.CShake256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.CShake256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.CShake256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.CShake256.yml\" sourcestartlinenumber=\"1\">Computes a customizable SHAKE256 (cSHAKE256) output.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.yml\" sourcestartlinenumber=\"1\">Base class for the CryptoHives hash algorithm implementations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.IExtendableOutput.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.IExtendableOutput.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.IExtendableOutput",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.IExtendableOutput.yml\" sourcestartlinenumber=\"1\">Defines support for extendable-output function (XOF) mode,\nallowing variable-length output from a hash algorithm.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KT128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KT128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.KT128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.KT128.yml\" sourcestartlinenumber=\"1\">Computes a variable-length hash using KT128 (KangarooTwelve) per RFC 9861.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KT256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KT256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.KT256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.KT256.yml\" sourcestartlinenumber=\"1\">Computes a variable-length hash using KT256 per RFC 9861.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Keccak256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak256.yml\" sourcestartlinenumber=\"1\">Computes the Keccak-256 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak384.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak384.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Keccak384",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak384.yml\" sourcestartlinenumber=\"1\">Computes the Keccak-384 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak512.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak512.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Keccak512",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Keccak512.yml\" sourcestartlinenumber=\"1\">Computes the Keccak-512 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakCore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakCore.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.KeccakCore",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakCore.yml\" sourcestartlinenumber=\"1\">All algorithms based on the Keccak permutation should derive from this class.\nProvides the derived implementations with the core Keccak-f[1600] permutation,\nstate variables and a buffer for the rate bytes.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakHashCore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakHashCore.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.KeccakHashCore",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakHashCore.yml\" sourcestartlinenumber=\"1\">Base class for fixed-length Keccak-based hash algorithms (SHA3, Keccak).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakXofCore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakXofCore.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.KeccakXofCore",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.KeccakXofCore.yml\" sourcestartlinenumber=\"1\">Base class for Keccak-based extendable-output functions (XOF) with variable-length output.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Kupyna.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Kupyna.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Kupyna",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Kupyna.yml\" sourcestartlinenumber=\"1\">Computes the Kupyna (DSTU 7564:2014) hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Lsh256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Lsh256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Lsh256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Lsh256.yml\" sourcestartlinenumber=\"1\">Computes the LSH-256 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Lsh512.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Lsh512.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Lsh512",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Lsh512.yml\" sourcestartlinenumber=\"1\">Computes the LSH-512 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.MD5.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.MD5.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.MD5",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.MD5.yml\" sourcestartlinenumber=\"1\">Computes the MD5 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Ripemd160.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Ripemd160.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Ripemd160",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Ripemd160.yml\" sourcestartlinenumber=\"1\">Computes the RIPEMD-160 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA1",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA1.yml\" sourcestartlinenumber=\"1\">Computes the SHA-1 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA224.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA224.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA224",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA224.yml\" sourcestartlinenumber=\"1\">Computes the SHA-224 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA256.yml\" sourcestartlinenumber=\"1\">Computes the SHA-256 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA384.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA384.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA384",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA384.yml\" sourcestartlinenumber=\"1\">Computes the SHA-384 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_224.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_224.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_224",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_224.yml\" sourcestartlinenumber=\"1\">Computes the SHA3-224 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_256.yml\" sourcestartlinenumber=\"1\">Computes the SHA3-256 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_384.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_384.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_384",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_384.yml\" sourcestartlinenumber=\"1\">Computes the SHA3-384 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_512.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_512.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_512",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA3_512.yml\" sourcestartlinenumber=\"1\">Computes the SHA3-512 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA512",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.yml\" sourcestartlinenumber=\"1\">Computes the SHA-512 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_224.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_224.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_224",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_224.yml\" sourcestartlinenumber=\"1\">Computes the SHA-512/224 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SHA512_256.yml\" sourcestartlinenumber=\"1\">Computes the SHA-512/256 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SM3.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.SM3.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.SM3",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.SM3.yml\" sourcestartlinenumber=\"1\">Computes the SM3 hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Sha2HashAlgorithm-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Sha2HashAlgorithm-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Sha2HashAlgorithm<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Sha2HashAlgorithm-1.yml\" sourcestartlinenumber=\"1\">Base class for SHA-2 family hash algorithms, providing common buffering and padding logic.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Shake128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Shake128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Shake128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Shake128.yml\" sourcestartlinenumber=\"1\">Computes a variable-length output using SHAKE128 (XOF).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Shake256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Shake256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Shake256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Shake256.yml\" sourcestartlinenumber=\"1\">Computes a variable-length output using SHAKE256 (XOF).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Streebog.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Streebog.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Streebog",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Streebog.yml\" sourcestartlinenumber=\"1\">Computes the Streebog (GOST R 34.11-2012) hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake128.yml\" sourcestartlinenumber=\"1\">Computes a variable-length output using TurboSHAKE128 (XOF) per RFC 9861.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.TurboShake256.yml\" sourcestartlinenumber=\"1\">Computes a variable-length output using TurboSHAKE256 (XOF) per RFC 9861.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Hash.Whirlpool.yml\" sourcestartlinenumber=\"1\">Computes the Whirlpool hash for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Hash.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Hash",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.ConcatKdf.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.ConcatKdf.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Kdf.ConcatKdf",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Kdf.ConcatKdf.yml\" sourcestartlinenumber=\"1\">Implements the Concatenation Key Derivation Function (Concat KDF) as defined in\nNIST SP 800-56A §5.8.1 and NIST SP 800-56C rev2 Option 1.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.Hkdf.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.Hkdf.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Kdf.Hkdf",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Kdf.Hkdf.yml\" sourcestartlinenumber=\"1\">Implements HKDF (HMAC-based Extract-and-Expand Key Derivation Function) as defined\nin <a href=\"https://tools.ietf.org/html/rfc5869\">RFC 5869</a>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.HmacFactory.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.HmacFactory.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Kdf.HmacFactory",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Kdf.HmacFactory.yml\" sourcestartlinenumber=\"1\">A factory that creates an <xref href=\"CryptoHives.Foundation.Security.Cryptography.Mac.IMac\" data-throw-if-not-resolved=\"false\"></xref> instance keyed with the specified key.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.Kbkdf.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.Kbkdf.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Kdf.Kbkdf",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Kdf.Kbkdf.yml\" sourcestartlinenumber=\"1\">Implements the Key-Based Key Derivation Function (KBKDF) in Counter Mode as defined\nin <a href=\"https://csrc.nist.gov/pubs/sp/800/108/r1/upd1/final\">NIST SP 800-108r1 §4.1</a>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.Pbkdf2.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.Pbkdf2.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Kdf.Pbkdf2",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Kdf.Pbkdf2.yml\" sourcestartlinenumber=\"1\">Implements PBKDF2 (Password-Based Key Derivation Function 2) as defined in\n<a href=\"https://tools.ietf.org/html/rfc8018#section-5.2\">RFC 8018 §5.2</a>\n(formerly RFC 2898).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Kdf.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Kdf",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.AesCmac.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.AesCmac.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.AesCmac",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.AesCmac.yml\" sourcestartlinenumber=\"1\">Computes AES-CMAC (Cipher-based Message Authentication Code) as defined in\nNIST SP 800-38B and RFC 4493.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.AesGmac.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.AesGmac.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.AesGmac",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.AesGmac.yml\" sourcestartlinenumber=\"1\">Computes AES-GMAC (Galois Message Authentication Code) as defined in\nNIST SP 800-38D, Section 4.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacCore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacCore.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.HmacCore",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacCore.yml\" sourcestartlinenumber=\"1\">Implements HMAC (Hash-based Message Authentication Code) as defined in RFC 2104.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacMd5.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacMd5.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.HmacMd5",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacMd5.yml\" sourcestartlinenumber=\"1\">Computes the HMAC-MD5 message authentication code.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha1",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha1.yml\" sourcestartlinenumber=\"1\">Computes the HMAC-SHA-1 message authentication code.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha256.yml\" sourcestartlinenumber=\"1\">Computes the HMAC-SHA-256 message authentication code.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha384.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha384.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha384",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha384.yml\" sourcestartlinenumber=\"1\">Computes the HMAC-SHA-384 message authentication code.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha3_256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha3_256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha3_256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha3_256.yml\" sourcestartlinenumber=\"1\">Computes the HMAC-SHA3-256 message authentication code.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha512.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha512.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha512",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.HmacSha512.yml\" sourcestartlinenumber=\"1\">Computes the HMAC-SHA-512 message authentication code.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.IMac.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.IMac.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.IMac",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.IMac.yml\" sourcestartlinenumber=\"1\">Defines the interface for a Message Authentication Code (MAC) algorithm.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.KMac128.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.KMac128.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.KMac128",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.KMac128.yml\" sourcestartlinenumber=\"1\">Computes the KMAC128 (Keccak Message Authentication Code) for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.KMac256.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.KMac256.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.KMac256",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.KMac256.yml\" sourcestartlinenumber=\"1\">Computes the KMAC256 (Keccak Message Authentication Code) for the input data.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.KeccakKMacCore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.KeccakKMacCore.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.KeccakKMacCore",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.KeccakKMacCore.yml\" sourcestartlinenumber=\"1\">Base class for KMAC (Keccak Message Authentication Code) variants.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Mac.Poly1305Mac.yml\" sourcestartlinenumber=\"1\">Computes the Poly1305 message authentication code as defined in RFC 8439.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Mac.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Mac",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Rng.RandomNumberGenerator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Rng.RandomNumberGenerator.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Rng.RandomNumberGenerator",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Security.Cryptography.Rng.RandomNumberGenerator.yml\" sourcestartlinenumber=\"1\">Polyfill for <xref href=\"System.Security.Cryptography.RandomNumberGenerator\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Rng.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Security.Cryptography.Rng.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Security.Cryptography.Rng",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.DiagnosticDescriptors.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.DiagnosticDescriptors.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Analyzers.DiagnosticDescriptors",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Analyzers.DiagnosticDescriptors.yml\" sourcestartlinenumber=\"1\">Contains all diagnostic descriptors for the ValueTask analyzers.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.DiagnosticIds.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.DiagnosticIds.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Analyzers.DiagnosticIds",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Analyzers.DiagnosticIds.yml\" sourcestartlinenumber=\"1\">Contains all diagnostic IDs for the ValueTask analyzers.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseAnalyzer.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseAnalyzer.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseAnalyzer",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseAnalyzer.yml\" sourcestartlinenumber=\"1\">Analyzer that detects common ValueTask misuse patterns.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseCodeFixProvider.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseCodeFixProvider.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseCodeFixProvider",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseCodeFixProvider.yml\" sourcestartlinenumber=\"1\">Provides code fixes for ValueTask misuse patterns detected by <xref href=\"CryptoHives.Foundation.Threading.Analyzers.ValueTaskMisuseAnalyzer\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Analyzers.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Analyzers",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncAutoResetEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncAutoResetEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncAutoResetEvent",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncAutoResetEvent.yml\" sourcestartlinenumber=\"1\">An async version of <xref href=\"System.Threading.AutoResetEvent\" data-throw-if-not-resolved=\"false\"></xref> which uses a pooled approach\nto implement waiters for <xref href=\"System.Threading.Tasks.ValueTask\" data-throw-if-not-resolved=\"false\"></xref> to reduce memory allocations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncBarrier.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncBarrier.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncBarrier",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncBarrier.yml\" sourcestartlinenumber=\"1\">An async barrier synchronization primitive which uses a pooled approach\nto implement waiters for <xref href=\"System.Threading.Tasks.ValueTask\" data-throw-if-not-resolved=\"false\"></xref> to reduce memory allocations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncCountdownEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncCountdownEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncCountdownEvent",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncCountdownEvent.yml\" sourcestartlinenumber=\"1\">An async version of <xref href=\"System.Threading.CountdownEvent\" data-throw-if-not-resolved=\"false\"></xref> which uses a pooled approach\nto implement waiters for <xref href=\"System.Threading.Tasks.ValueTask\" data-throw-if-not-resolved=\"false\"></xref> to reduce memory allocations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock.Releaser.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock.Releaser.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock.Releaser",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock.Releaser.yml\" sourcestartlinenumber=\"1\">A small value type returned by awaiting a lock acquisition. Disposing the releaser releases the lock.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock.yml\" sourcestartlinenumber=\"1\">An allocation-free async-compatible exclusive lock implemented with pooled ValueTask sources.\nNote that this lock is <b>not</b> recursive!</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent.yml\" sourcestartlinenumber=\"1\">An async version of <xref href=\"System.Threading.ManualResetEvent\" data-throw-if-not-resolved=\"false\"></xref> which uses a pooled approach\nto implement waiters for <xref href=\"System.Threading.Tasks.ValueTask\" data-throw-if-not-resolved=\"false\"></xref> to reduce memory allocations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.ReleaserType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.ReleaserType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.ReleaserType",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.ReleaserType.yml\" sourcestartlinenumber=\"1\">Specifies the releaser type.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.yml\" sourcestartlinenumber=\"1\">A small value type returned by awaiting a lock acquisition.\nDisposing the releaser releases the lock.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.yml\" sourcestartlinenumber=\"1\">An async reader-writer lock which uses a pooled approach to implement waiters\nfor <xref href=\"System.Threading.Tasks.ValueTask\" data-throw-if-not-resolved=\"false\"></xref> to reduce memory allocations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncSemaphore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncSemaphore.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled.AsyncSemaphore",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Async.Pooled.AsyncSemaphore.yml\" sourcestartlinenumber=\"1\">An async version of <xref href=\"System.Threading.SemaphoreSlim\" data-throw-if-not-resolved=\"false\"></xref> which uses a pooled approach\nto implement waiters for <xref href=\"System.Threading.Tasks.ValueTask\" data-throw-if-not-resolved=\"false\"></xref> to reduce memory allocations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Async.Pooled.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Async.Pooled",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource-1.yml\" sourcestartlinenumber=\"1\">Defines a contract for providing pooled, reusable manual-reset value task\nsources for asynchronous operations of type <code class=\"typeparamref\">T</code>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource-1.yml\" sourcestartlinenumber=\"1\">An implementation of <xref href=\"System.Threading.Tasks.Sources.IValueTaskSource%601\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource-1.yml\" sourcestartlinenumber=\"1\">An abstract implementation of <xref href=\"System.Threading.Tasks.Sources.IValueTaskSource%601\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.PooledManualResetValueTaskSource-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.PooledManualResetValueTaskSource-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools.PooledManualResetValueTaskSource<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Pools.PooledManualResetValueTaskSource-1.yml\" sourcestartlinenumber=\"1\">An implementation of <xref href=\"System.Threading.Tasks.Sources.IValueTaskSource%601\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.PooledValueTaskSourceObjectPolicy-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.PooledValueTaskSourceObjectPolicy-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools.PooledValueTaskSourceObjectPolicy<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Pools.PooledValueTaskSourceObjectPolicy-1.yml\" sourcestartlinenumber=\"1\">A policy for pooling <xref href=\"CryptoHives.Foundation.Threading.Pools.PooledManualResetValueTaskSource%601\" data-throw-if-not-resolved=\"false\"></xref> instances.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPool-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPool-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPool<T>",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPool-1.yml\" sourcestartlinenumber=\"1\">A <xref href=\"Microsoft.Extensions.ObjectPool.DefaultObjectPool%601\" data-throw-if-not-resolved=\"false\"></xref> for pooling <xref href=\"CryptoHives.Foundation.Threading.Pools.PooledManualResetValueTaskSource%601\" data-throw-if-not-resolved=\"false\"></xref> instances.\nIt sets the owner pool when an instance is retrieved from the pool, so it gets automatically returned.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPools.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPools.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPools",
+      "Summary": "<p sourcefile=\"api/CryptoHives.Foundation.Threading.Pools.ValueTaskSourceObjectPools.yml\" sourcestartlinenumber=\"1\">Provides common constants and shared pools used in async events.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/CryptoHives.Foundation.Threading.Pools.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/CryptoHives.Foundation.Threading.Pools.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "CryptoHives.Foundation.Threading.Pools",
+      "Summary": null
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "api/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/toc.html"
+        },
+        ".json": {
+          "relative_path": "api/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "getting-started.md",
+      "output": {
+        ".html": {
+          "relative_path": "getting-started.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "googled2fe7d86cf779a1b.html",
+      "output": {
+        "resource": {
+          "relative_path": "googled2fe7d86cf779a1b.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/logo.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/logo.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "impressum.md",
+      "output": {
+        ".html": {
+          "relative_path": "impressum.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "index.md",
+      "output": {
+        ".html": {
+          "relative_path": "index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/memory/arraypoolbufferwriter.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/memory/arraypoolbufferwriter.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/memory/arraypoolmemorystream.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/memory/arraypoolmemorystream.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/memory/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/memory/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/memory/objectowner.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/memory/objectowner.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/memory/objectpools.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/memory/objectpools.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/memory/readonlysequencememorystream.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/memory/readonlysequencememorystream.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "packages/memory/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "packages/memory/toc.html"
+        },
+        ".json": {
+          "relative_path": "packages/memory/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks-cipher.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks-cipher.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks-hash.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks-hash.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/README.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/README.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-ccm-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-ccm-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-ccm-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-ccm-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-gcm-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-gcm-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-gcm-192.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-gcm-192.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-gcm-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-gcm-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aria-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aria-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aria-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aria-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/asconhash256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/asconhash256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/asconxof128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/asconxof128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2b256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2b256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2b512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2b512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2s128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2s128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2s256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake2s256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake3.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/blake3.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/camellia-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/camellia-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/camellia-cbc-192.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/camellia-cbc-192.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/camellia-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/camellia-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/chacha20-poly1305.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/chacha20-poly1305.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/chacha20.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/chacha20.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/cipher.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/cipher.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/cshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/cshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/cshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/cshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/hash.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/hash.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kalyna-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kalyna-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kalyna-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kalyna-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/keccak256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/keccak256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/keccak384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/keccak384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/keccak512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/keccak512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kmac128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kmac128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kmac256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kmac256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kt128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kt128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kt256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kt256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kupyna256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kupyna256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kupyna384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kupyna384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kupyna512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kupyna512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kuznyechik-cbc.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/kuznyechik-cbc.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/lsh256-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/lsh256-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/lsh512-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/lsh512-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/lsh512-512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/lsh512-512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/machine-spec.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/machine-spec.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/md5.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/md5.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/ripemd160.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/ripemd160.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/seed-cbc.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/seed-cbc.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha1.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha1.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha224.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha224.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-224.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-224.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha3-512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha512-224.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha512-224.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha512-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha512-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sha512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/shake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/shake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/shake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/shake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sm3.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sm3.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sm4-cbc.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/sm4-cbc.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/streebog256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/streebog256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/streebog512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/streebog512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/turboshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/turboshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/turboshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/turboshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/whirlpool.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/whirlpool.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xchacha20-poly1305.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xchacha20-poly1305.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-asconxof128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-asconxof128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-blake3.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-blake3.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-cshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-cshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-cshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-cshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kmac128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kmac128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kmac256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kmac256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kt128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kt128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kt256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-kt256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-shake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-shake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-shake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-shake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-turboshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-turboshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-turboshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/macos-arm64-apple-m4/xof-turboshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-ccm-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-ccm-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-ccm-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-ccm-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-192.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-192.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aria-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aria-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aria-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aria-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/asconhash256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/asconhash256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/asconxof128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/asconxof128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2b256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2b256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2b512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2b512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2s128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2s128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2s256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake2s256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake3.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/blake3.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/camellia-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/camellia-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/camellia-cbc-192.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/camellia-cbc-192.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/camellia-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/camellia-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/chacha20-poly1305.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/chacha20-poly1305.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/chacha20.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/chacha20.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/cshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/cshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/cshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/cshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/hash.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/hash.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kalyna-cbc-128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kalyna-cbc-128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kalyna-cbc-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kalyna-cbc-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/keccak256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/keccak256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/keccak384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/keccak384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/keccak512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/keccak512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kmac128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kmac128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kmac256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kmac256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kt128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kt128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kt256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kt256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kupyna256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kupyna256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kupyna384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kupyna384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kupyna512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kupyna512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kuznyechik-cbc.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/kuznyechik-cbc.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/lsh256-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/lsh256-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/lsh512-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/lsh512-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/lsh512-512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/lsh512-512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/machine-spec.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/machine-spec.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/md5.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/md5.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/ripemd160.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/ripemd160.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/seed-cbc.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/seed-cbc.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha1.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha1.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha224.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha224.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-224.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-224.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha384.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha384.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha512-224.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha512-224.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha512-256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha512-256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/shake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/shake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/shake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/shake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sm3.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sm3.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sm4-cbc.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sm4-cbc.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/streebog256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/streebog256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/streebog512.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/streebog512.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/turboshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/turboshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/turboshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/turboshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/whirlpool.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/whirlpool.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xchacha20-poly1305.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xchacha20-poly1305.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-asconxof128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-asconxof128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-blake3.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-blake3.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-cshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-cshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-cshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-cshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kmac128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kmac128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kmac256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kmac256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kt128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kt128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kt256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-kt256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-shake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-shake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-shake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-shake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-turboshake128.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-turboshake128.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-turboshake256.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/xof-turboshake256.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/cipher-algorithms.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/cipher-algorithms.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/hash-algorithms.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/hash-algorithms.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/kdf-algorithms.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/kdf-algorithms.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/mac-algorithms.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/mac-algorithms.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/AES-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/AES-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/BLAKE2-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/BLAKE2-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/BLAKE3-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/BLAKE3-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/CMAC-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/CMAC-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/ChaCha20-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/ChaCha20-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/HMAC-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/HMAC-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/KT-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/KT-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/Keccak-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/Keccak-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/Kupyna-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/Kupyna-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/LSH-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/LSH-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/MD5-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/MD5-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/NIST-FIPS-180-4.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/NIST-FIPS-180-4.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/NIST-FIPS-197.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/NIST-FIPS-197.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/NIST-FIPS-202.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/NIST-FIPS-202.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/NIST-SP-800-185.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/NIST-SP-800-185.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/NIST-SP-800-232.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/NIST-SP-800-232.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/NIST-SP-800-38B.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/NIST-SP-800-38B.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/README.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/README.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/RFC-2104.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/RFC-2104.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/RIPEMD-160-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/RIPEMD-160-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/SHA1-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/SHA1-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/SHA2-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/SHA2-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/SHA3-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/SHA3-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/SHAKE-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/SHAKE-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/SM3-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/SM3-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/Streebog-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/Streebog-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/TurboSHAKE-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/TurboSHAKE-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/Whirlpool-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/Whirlpool-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/specs/XChaCha20-vectors.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/XChaCha20-vectors.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "packages/security/cryptography/specs/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/specs/toc.html"
+        },
+        ".json": {
+          "relative_path": "packages/security/cryptography/specs/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "packages/security/cryptography/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/toc.html"
+        },
+        ".json": {
+          "relative_path": "packages/security/cryptography/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/cryptography/xof-mode.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/cryptography/xof-mode.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/security/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "packages/security/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "packages/security/toc.html"
+        },
+        ".json": {
+          "relative_path": "packages/security/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT001.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT001.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT002.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT002.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT003.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT003.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT004.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT004.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT005.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT005.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT006.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT006.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT007.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT007.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/CHT008.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/CHT008.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading.analyzers/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "packages/threading.analyzers/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading.analyzers/toc.html"
+        },
+        ".json": {
+          "relative_path": "packages/threading.analyzers/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/asyncautoresetevent.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/asyncautoresetevent.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/asyncbarrier.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/asyncbarrier.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/asynccountdownevent.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/asynccountdownevent.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/asynclock.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/asynclock.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/asyncmanualresetevent.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/asyncmanualresetevent.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/asyncreaderwriterlock.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/asyncreaderwriterlock.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/asyncsemaphore.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/asyncsemaphore.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/README.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/README.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncautoresetevent-set.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncautoresetevent-set.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncautoresetevent-setthenw.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncautoresetevent-setthenw.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncautoresetevent-waitthenset.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncautoresetevent-waitthenset.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncbarrier-signalandwait.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncbarrier-signalandwait.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asynccountdownevent-signal.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asynccountdownevent-signal.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asynclock-multiple.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asynclock-multiple.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asynclock-single.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asynclock-single.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncmanualresetevent-setreset.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncmanualresetevent-setreset.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncmanualresetevent-setthenw.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncmanualresetevent-setthenw.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncmanualresetevent-waitthenset.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncmanualresetevent-waitthenset.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-reader.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-reader.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-upgradeablereader.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-upgradeablereader.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-upgradedwriter.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-upgradedwriter.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-writer.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncreaderwriterlock-writer.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncsemaphore-single.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/asyncsemaphore-single.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/machine-spec.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/machine-spec.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/threading.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/macos-arm64-apple-m4/threading.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-set.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-set.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-setthenw.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-setthenw.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-waitthenset.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-waitthenset.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncbarrier-signalandwait.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncbarrier-signalandwait.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asynccountdownevent-signal.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asynccountdownevent-signal.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asynclock-multiple.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asynclock-multiple.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asynclock-single.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asynclock-single.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setreset.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setreset.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setthenw.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setthenw.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-waitthenset.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-waitthenset.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-reader.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-reader.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-upgradeablereader.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-upgradeablereader.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-upgradedwriter.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-upgradedwriter.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-writer.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-writer.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncsemaphore-single.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/asyncsemaphore-single.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/machine-spec.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/machine-spec.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/threading.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/benchmarks/windows-x64-amd-ryzen-5-7600x/threading.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "packages/threading/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "packages/threading/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "packages/threading/toc.html"
+        },
+        ".json": {
+          "relative_path": "packages/threading/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "toc.html"
+        },
+        ".json": {
+          "relative_path": "toc.json"
+        }
+      },
+      "version": ""
+    }
+  ],
+  "groups": [
+    {
+      "xrefmap": "xrefmap.yml"
+    }
+  ]
+}

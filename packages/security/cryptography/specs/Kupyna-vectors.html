@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Kupyna (DSTU 7564:2014) Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Kupyna (DSTU 7564:2014) Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Kupyna-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="kupyna-dstu-75642014-test-vectors">Kupyna (DSTU 7564:2014) Test Vectors</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Kupyna is the Ukrainian national cryptographic hash standard defined in DSTU 7564:2014.
+It supports output sizes of 256, 384, and 512 bits.</p>
+<h2 id="specification">Specification</h2>
+<ul>
+<li><strong>Standard:</strong> DSTU 7564:2014 (Ukraine)</li>
+<li><strong>Output Sizes:</strong> 256, 384, or 512 bits</li>
+<li><strong>Block Size:</strong> 512 bits (64 bytes) for 256-bit output; 1024 bits (128 bytes) for 384/512-bit output</li>
+<li><strong>Rounds:</strong> 10 (512-bit state) or 14 (1024-bit state)</li>
+<li><strong>State Size:</strong> 512 bits (8 columns) for ≤256-bit output; 1024 bits (16 columns) for &gt;256-bit output</li>
+<li><strong>Structure:</strong> Davies-Meyer compression with two permutations T⊕ (P) and T⁺ (Q)</li>
+<li><strong>Based on:</strong> Kalyna block cipher (DSTU 7624:2014) round function</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li>DSTU 7564:2014 — Ukrainian national standard for hash functions</li>
+<li>IACR ePrint 2015/885: &quot;The Kupyna Hash Function&quot; by Oliynykov et al.
+<a href="https://eprint.iacr.org/2015/885.pdf">https://eprint.iacr.org/2015/885.pdf</a></li>
+<li>Reference implementation by Kiianchuk, Mordvinov, Oliynykov:
+<a href="https://github.com/Roman-Oliynykov/Kupyna-reference">https://github.com/Roman-Oliynykov/Kupyna-reference</a></li>
+</ul>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="kupyna-256">Kupyna-256</h3>
+<h4 id="vector-1-empty-string">Vector 1: Empty string</h4>
+<pre><code>Input:  &quot;&quot; (empty)
+Length: 0 bytes
+
+Output (Kupyna-256):
+cd5101d1ccdf0d1d1f4ada56e888cd724ca1a0838a3521e7131d4fb78d0f5eb6
+</code></pre>
+<h4 id="vector-2-the-quick-brown-fox-jumps-over-the-lazy-dog">Vector 2: &quot;The quick brown fox jumps over the lazy dog&quot;</h4>
+<pre><code>Input:  &quot;The quick brown fox jumps over the lazy dog&quot; (ASCII)
+Length: 43 bytes
+
+Output (Kupyna-256):
+996899f2d7422ceaf552475036b2dc120607eff538abf2b8dff471a98a4740c6
+</code></pre>
+<h4 id="vector-3-official-dstu-7564--512-bits-64-bytes-of-sequential-input">Vector 3: Official DSTU 7564 — 512 bits (64 bytes) of sequential input</h4>
+<pre><code>Input (hex): 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+             202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+Length: 64 bytes
+
+Output (Kupyna-256):
+08F4EE6F1BE6903B324C4E27990CB24EF69DD58DBE84813EE0A52F6631239875
+</code></pre>
+<h4 id="vector-4-official-dstu-7564--1024-bits-128-bytes-of-sequential-input">Vector 4: Official DSTU 7564 — 1024 bits (128 bytes) of sequential input</h4>
+<pre><code>Input (hex): 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+             202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+             404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+             606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f
+Length: 128 bytes
+
+Output (Kupyna-256):
+0A9474E645A7D25E255E9E89FFF42EC7EB31349007059284F0B182E452BDA882
+</code></pre>
+<h4 id="vector-5-official-dstu-7564--2048-bits-256-bytes-of-sequential-input">Vector 5: Official DSTU 7564 — 2048 bits (256 bytes) of sequential input</h4>
+<pre><code>Input (hex): 000102030405060708090a0b0c0d0e0f...f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+             (sequential bytes 0x00 through 0xFF)
+Length: 256 bytes
+
+Output (Kupyna-256):
+D305A32B963D149DC765F68594505D4077024F836C1BF03806E1624CE176C08F
+</code></pre>
+<h3 id="kupyna-384">Kupyna-384</h3>
+<h4 id="vector-1-official-dstu-7564--760-bits-95-bytes-of-sequential-input">Vector 1: Official DSTU 7564 — 760 bits (95 bytes) of sequential input</h4>
+<pre><code>Input (hex): 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+             202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+             404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e
+Length: 95 bytes
+
+Output (Kupyna-384):
+D9021692D84E5175735654846BA751E6D0ED0FAC36DFBC0841287DCB0B5584C7
+5016C3DECC2A6E47C50B2F3811E351B8
+</code></pre>
+<h3 id="kupyna-512">Kupyna-512</h3>
+<h4 id="vector-1-empty-string-1">Vector 1: Empty string</h4>
+<pre><code>Input:  &quot;&quot; (empty)
+Length: 0 bytes
+
+Output (Kupyna-512):
+656b2f4cd71462388b64a37043ea55dbe445d452aecd46c3298343314ef04019
+bcfa3f04265a9857f91be91fce197096187ceda78c9c1c021c294a0689198538
+</code></pre>
+<h4 id="vector-2-official-dstu-7564--512-bits-64-bytes-of-sequential-input">Vector 2: Official DSTU 7564 — 512 bits (64 bytes) of sequential input</h4>
+<pre><code>Input (hex): 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+             202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+Length: 64 bytes
+
+Output (Kupyna-512):
+3813E2109118CDFB5A6D5E72F7208DCCC80A2DFB3AFDFB02F46992B5EDBE536B
+3560DD1D7E29C6F53978AF58B444E37BA685C0DD910533BA5D78EFFFC13DE62A
+</code></pre>
+<h4 id="vector-3-official-dstu-7564--1024-bits-128-bytes-of-sequential-input">Vector 3: Official DSTU 7564 — 1024 bits (128 bytes) of sequential input</h4>
+<pre><code>Input (hex): 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+             202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+             404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+             606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f
+Length: 128 bytes
+
+Output (Kupyna-512):
+76ED1AC28B1D0143013FFA87213B4090B356441263C13E03FA060A8CADA32B97
+9635657F256B15D5FCA4A174DE029F0B1B4387C878FCC1C00E8705D783FD7FFE
+</code></pre>
+<h4 id="vector-4-official-dstu-7564--2048-bits-256-bytes-of-sequential-input">Vector 4: Official DSTU 7564 — 2048 bits (256 bytes) of sequential input</h4>
+<pre><code>Input (hex): 000102030405060708090a0b0c0d0e0f...f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+             (sequential bytes 0x00 through 0xFF)
+Length: 256 bytes
+
+Output (Kupyna-512):
+0DD03D7350C409CB3C29C25893A0724F6B133FA8B9EB90A64D1A8FA93B565566
+11EB187D715A956B107E3BFC76482298133A9CE8CBC0BD5E1436A5B197284F7E
+</code></pre>
+<h2 id="algorithm-details">Algorithm Details</h2>
+<h3 id="initial-vector-iv">Initial Vector (IV)</h3>
+<pre><code>Kupyna-256: state[0] = 0x40 (64), all other columns zero  (block size = 64 bytes)
+Kupyna-384: state[0] = 0x80 (128), all other columns zero (block size = 128 bytes)
+Kupyna-512: state[0] = 0x80 (128), all other columns zero (block size = 128 bytes)
+</code></pre>
+<h3 id="compression-function">Compression Function</h3>
+<p>The compression function uses Davies-Meyer mode:</p>
+<pre><code>h = P(h ⊕ m) ⊕ Q(m) ⊕ h
+</code></pre>
+<p>Where P (T⊕) and Q (T⁺) are fixed permutations using the same round structure
+but different round constant addition methods (XOR for P, modular addition for Q).</p>
+<h3 id="round-structure">Round Structure</h3>
+<p>Each round applies four operations in sequence:</p>
+<ol>
+<li><strong>AddRoundConstant</strong> — XOR-based (P) or addition-based (Q)</li>
+<li><strong>SubBytes</strong> — Four cyclic S-boxes: row <code>i</code> uses <code>S[i mod 4]</code></li>
+<li><strong>ShiftBytes</strong> — Cyclic left shift per row (shift amounts depend on state size)</li>
+<li><strong>MixColumns</strong> — Circulant MDS matrix [1, 1, 5, 1, 8, 6, 7, 4] over GF(2^8) with polynomial 0x11D</li>
+</ol>
+<h3 id="shiftbytes-offsets">ShiftBytes Offsets</h3>
+<table>
+<thead>
+<tr>
+<th>State Size</th>
+<th>Row 0</th>
+<th>Row 1</th>
+<th>Row 2</th>
+<th>Row 3</th>
+<th>Row 4</th>
+<th>Row 5</th>
+<th>Row 6</th>
+<th>Row 7</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>512-bit</td>
+<td>0</td>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+<td>6</td>
+<td>7</td>
+</tr>
+<tr>
+<td>1024-bit</td>
+<td>0</td>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+<td>6</td>
+<td>11</td>
+</tr>
+</tbody>
+</table>
+<h3 id="padding">Padding</h3>
+<p>DSTU 7564 padding appends:</p>
+<ol>
+<li>A single <code>0x80</code> byte</li>
+<li>Zero bytes as needed</li>
+<li>A 96-bit little-endian message length in bits (in the last 12 bytes of the block)</li>
+</ol>
+<h3 id="output-transformation">Output Transformation</h3>
+<p>After processing all blocks:</p>
+<pre><code>state = state ⊕ P(state)
+</code></pre>
+<p>The hash is taken from the last <code>hashSize</code> bytes of the state.</p>
+<h2 id="compliance-requirements">Compliance Requirements</h2>
+<p>Kupyna is required for:</p>
+<ul>
+<li>Ukrainian government cryptographic applications</li>
+<li>Ukrainian electronic signatures (together with DSTU 4145 elliptic curves)</li>
+<li>Products certified under Ukrainian cryptography regulations</li>
+</ul>
+<h2 id="implementation-notes">Implementation Notes</h2>
+<ul>
+<li>State is organized as an array of 64-bit columns in little-endian byte order</li>
+<li>The algorithm uses four distinct S-boxes (S0, S1, S2, S3) applied cyclically by row</li>
+<li>The MDS matrix is circulant, enabling efficient implementation via T-table precomputation</li>
+<li>Reduction polynomial for GF(2^8): x⁸ + x⁴ + x³ + x² + 1 (0x11D)</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Kupyna-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

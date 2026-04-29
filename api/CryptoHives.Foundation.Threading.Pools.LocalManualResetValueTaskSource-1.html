@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class LocalManualResetValueTaskSource&lt;T&gt; | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class LocalManualResetValueTaskSource&lt;T&gt; | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="An implementation of .">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1">
+
+
+
+  <h1 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1" class="text-break">
+Class LocalManualResetValueTaskSource&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Threading.html">Threading</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Pools.html">Pools</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Threading.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>An implementation of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource&lt;TResult&gt;</a>.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class LocalManualResetValueTaskSource&lt;T&gt; : ManualResetValueTaskSource&lt;T&gt;, IValueTaskSource&lt;T&gt;, IValueTaskSource, IResettable</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource-1.html">ManualResetValueTaskSource</a>&lt;T&gt;</div>
+      <div><span class="xref">LocalManualResetValueTaskSource&lt;T&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource</a>&lt;T&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource">IValueTaskSource</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.iresettable">IResettable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This class is a sealed implementation of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource&lt;TResult&gt;</a> and provides methods to
+manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
+and supports querying the status and retrieving the result. It is used as a local reusable value task source to
+minimize allocations.
+This class can be directly used with <span class="xref">CryptoHives.Foundation.Threading.Pools.WaiterQueue&lt;T&gt;</span> to store the waiters allocation free.</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1__ctor_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1__ctor_System_Object_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.#ctor(System.Object)">
+  LocalManualResetValueTaskSource(object)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the LocalManualResetValueTaskSource class and
+associates it with the specified owner class.
+The owner is typically the class which contains the reference to this ValueTaskSource.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public LocalManualResetValueTaskSource(object owner)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>owner</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to associate with this instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_CancellationToken_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.CancellationToken*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_CancellationToken" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.CancellationToken">
+  CancellationToken
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource-1.html#CryptoHives_Foundation_Threading_Pools_ManualResetValueTaskSource_1_CancellationToken">CancellationToken</a> associated with the current operation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override CancellationToken CancellationToken { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_CancellationToken_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This token may be cancelled during long-running operations.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_CancellationTokenRegistration_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.CancellationTokenRegistration*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_CancellationTokenRegistration" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.CancellationTokenRegistration">
+  CancellationTokenRegistration
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource-1.html#CryptoHives_Foundation_Threading_Pools_ManualResetValueTaskSource_1_CancellationTokenRegistration">CancellationTokenRegistration</a> associated with the current operation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override CancellationTokenRegistration CancellationTokenRegistration { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtokenregistration">CancellationTokenRegistration</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_CancellationTokenRegistration_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Use this token to unregister from cancellation requests.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_InUse_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.InUse*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_InUse" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.InUse">
+  InUse
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L124"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether the value task source is currently in use.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool InUse { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_Owner_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.Owner*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_Owner" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.Owner">
+  Owner
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L54"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the owner associated with this instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override object Owner { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_RunContinuationsAsynchronously_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.RunContinuationsAsynchronously*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_RunContinuationsAsynchronously" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.RunContinuationsAsynchronously">
+  RunContinuationsAsynchronously
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets whether to force continuations to run asynchronously.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool RunContinuationsAsynchronously { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_RunContinuationsAsynchronously_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Continuations may run asynchronously if this is false, but they'll
+never run synchronously if this is true.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_Version_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.Version*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_Version" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.Version">
+  Version
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the version number of the current instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override short Version { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_GetResult_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.GetResult*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_GetResult_System_Int16_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.GetResult(System.Int16)">
+  GetResult(short)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L100"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the result of the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource&lt;TResult&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override T GetResult(short token)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>token</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></dt>
+    <dd><p>Opaque value that was provided to the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>'s constructor.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_GetStatus_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.GetStatus*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_GetStatus_System_Int16_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.GetStatus(System.Int16)">
+  GetStatus(short)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L114"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the status of the current operation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override ValueTaskSourceStatus GetStatus(short token)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>token</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></dt>
+    <dd><p>Opaque value that was provided to the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>'s constructor.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.valuetasksourcestatus">ValueTaskSourceStatus</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_OnCompleted_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.OnCompleted*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_OnCompleted_System_Action_System_Object__System_Object_System_Int16_System_Threading_Tasks_Sources_ValueTaskSourceOnCompletedFlags_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.OnCompleted(System.Action{System.Object},System.Object,System.Int16,System.Threading.Tasks.Sources.ValueTaskSourceOnCompletedFlags)">
+  OnCompleted(Action&lt;object?&gt;, object?, short, ValueTaskSourceOnCompletedFlags)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L118"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Schedules the continuation action for this <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource&lt;TResult&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void OnCompleted(Action&lt;object?&gt; continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>continuation</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>&gt;</dt>
+    <dd><p>The continuation to invoke when the operation has completed.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The state object to pass to <code class="paramref">continuation</code> when it's invoked.</p>
+</dd>
+    <dt><code>token</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></dt>
+    <dd><p>Opaque value that was provided to the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>'s constructor.</p>
+</dd>
+    <dt><code>flags</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.valuetasksourceoncompletedflags">ValueTaskSourceOnCompletedFlags</a></dt>
+    <dd><p>The flags describing the behavior of the continuation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetChainResult_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.SetChainResult*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetChainResult__0_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.SetChainResult(`0)">
+  SetChainResult(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals the completion of an operation, setting the result to T for a chain of operations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void SetChainResult(T result)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetChainResult__0__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This method is typically used to indicate that a chain of asynchronous operations has completed successfully.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetException_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.SetException*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetException_System_Exception_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.SetException(System.Exception)">
+  SetException(Exception)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L86"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the specified exception to be associated with the current operation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void SetException(Exception ex)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetResult_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.SetResult*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetResult__0_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.SetResult(`0)">
+  SetResult(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals the completion of an operation, setting the result to T.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void SetResult(T result)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_SetResult__0__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This method is typically used to indicate that an asynchronous operation has completed successfully.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_TryGetValueTaskSource_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.TryGetValueTaskSource*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_TryGetValueTaskSource_CryptoHives_Foundation_Threading_Pools_ManualResetValueTaskSource__0___" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.TryGetValueTaskSource(CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource{`0}@)">
+  TryGetValueTaskSource(out ManualResetValueTaskSource&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Tries to get ownership of the local value task source.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool TryGetValueTaskSource(out ManualResetValueTaskSource&lt;T&gt; waiter)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>waiter</code> <a class="xref" href="CryptoHives.Foundation.Threading.Pools.ManualResetValueTaskSource-1.html">ManualResetValueTaskSource</a>&lt;T&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>Returns <code>true</code> if ownership was acquired; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_TryReset_" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.TryReset*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_TryReset" data-uid="CryptoHives.Foundation.Threading.Pools.LocalManualResetValueTaskSource`1.TryReset">
+  TryReset()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L90"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reset the object to a neutral state, semantically similar to when the object was first constructed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool TryReset()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the object was able to reset itself, otherwise <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Pools_LocalManualResetValueTaskSource_1_TryReset_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>In general, this method is not expected to be thread-safe.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Pools/LocalManualResetValueTaskSource{T}.cs/#L21" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

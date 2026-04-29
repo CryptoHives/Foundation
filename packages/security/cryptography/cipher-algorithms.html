@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Cipher Algorithms Reference | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Cipher Algorithms Reference | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/cipher-algorithms.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cipher-algorithms-reference">Cipher Algorithms Reference</h1>
+
+<p>This page provides detailed documentation for all cipher algorithms implemented in the CryptoHives.Foundation.Security.Cryptography package.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Cipher;
+</code></pre>
+<hr>
+<h2 id="aead-ciphers-authenticated-encryption">AEAD Ciphers (Authenticated Encryption)</h2>
+<p>AEAD (Authenticated Encryption with Associated Data) ciphers provide both confidentiality and authenticity in a single operation.</p>
+<h3 id="aes-gcm-galoiscounter-mode">AES-GCM (Galois/Counter Mode)</h3>
+<pre><code class="lang-csharp">public sealed class AesGcm128 : AesGcm
+public sealed class AesGcm192 : AesGcm
+public sealed class AesGcm256 : AesGcm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Sizes: 128, 192, or 256 bits</li>
+<li>Nonce Size: 12 bytes (recommended), variable supported</li>
+<li>Tag Size: 16 bytes (default), configurable</li>
+<li>Performance: Very fast with AES-NI + PCLMULQDQ/VPCLMULQDQ hardware support; 8-block stitched pipeline; ~2× faster than OS at small sizes</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Widely used in TLS 1.3, IPsec, QUIC</li>
+<li>✅ NIST approved (SP 800-38D)</li>
+<li>⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Create instance with key
+byte[] key = new byte[32]; // 256-bit key
+using var aesGcm = AesGcm256.Create(key);
+
+// Encrypt with authentication
+byte[] nonce = new byte[12];
+byte[] plaintext = Encoding.UTF8.GetBytes(&quot;Hello, World!&quot;);
+byte[] aad = Encoding.UTF8.GetBytes(&quot;header&quot;);
+
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[16];
+aesGcm.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+
+// Decrypt and verify
+byte[] decrypted = new byte[plaintext.Length];
+bool success = aesGcm.Decrypt(nonce, ciphertext, tag, decrypted, aad);
+</code></pre>
+<p><strong>See Also:</strong></p>
+<ul>
+<li><a href="benchmarks-cipher.html">AES-GCM Benchmarks</a></li>
+</ul>
+<h3 id="aes-ccm-counter-with-cbc-mac">AES-CCM (Counter with CBC-MAC)</h3>
+<pre><code class="lang-csharp">public sealed class AesCcm128 : AesCcm
+public sealed class AesCcm192 : AesCcm
+public sealed class AesCcm256 : AesCcm
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Sizes: 128, 192, or 256 bits</li>
+<li>Nonce Size: 7-13 bytes (12 bytes recommended)</li>
+<li>Tag Size: 4-16 bytes (must be even)</li>
+<li>Performance: Slower than GCM, 2.8–3× faster with AES-NI, more compact for small messages</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ NIST approved (SP 800-38C)</li>
+<li>✅ Widely used in IoT, Bluetooth LE, ZigBee, Thread</li>
+<li>✅ RFC 3610 compliant</li>
+<li>⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Create instance with key
+byte[] key = new byte[16]; // 128-bit key
+using var aesCcm = AesCcm128.Create(key);
+
+// Encrypt with authentication
+byte[] nonce = new byte[12]; // 96-bit nonce
+byte[] plaintext = Encoding.UTF8.GetBytes(&quot;Sensor data&quot;);
+byte[] aad = Encoding.UTF8.GetBytes(&quot;device-id&quot;);
+
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[8]; // 64-bit tag
+aesCcm.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+
+// Decrypt and verify
+byte[] decrypted = new byte[plaintext.Length];
+bool success = aesCcm.Decrypt(nonce, ciphertext, tag, decrypted, aad);
+</code></pre>
+<p><strong>See Also:</strong></p>
+<ul>
+<li>AES-CCM Test Vectors (Coming soon)</li>
+</ul>
+<h3 id="chacha20-poly1305">ChaCha20-Poly1305</h3>
+<pre><code class="lang-csharp">public sealed class ChaCha20Poly1305 : IAeadCipher
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Size: 256 bits (32 bytes)</li>
+<li>Nonce Size: 12 bytes (96 bits)</li>
+<li>Tag Size: 16 bytes (128 bits)</li>
+<li>Performance: Fast on all platforms; SSSE3/AVX2 accelerated, no AES-NI dependency</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ IETF standard (RFC 8439)</li>
+<li>✅ Used in TLS 1.3, WireGuard, SSH</li>
+<li>✅ Software-friendly alternative to AES-GCM</li>
+<li>⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Create instance with key
+byte[] key = new byte[32]; // 256-bit key
+using var chacha = ChaCha20Poly1305.Create(key);
+
+// Encrypt
+byte[] nonce = new byte[12];
+byte[] plaintext = Encoding.UTF8.GetBytes(&quot;Message&quot;);
+byte[] ciphertext = chacha.Encrypt(nonce, plaintext);
+
+// Decrypt
+byte[] decrypted = chacha.Decrypt(nonce, ciphertext);
+</code></pre>
+<p><strong>See Also:</strong></p>
+<ul>
+<li><a href="benchmarks-cipher.html">ChaCha20-Poly1305 Benchmarks</a></li>
+</ul>
+<h3 id="xchacha20-poly1305">XChaCha20-Poly1305</h3>
+<pre><code class="lang-csharp">public sealed class XChaCha20Poly1305 : IAeadCipher
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Size: 256 bits (32 bytes)</li>
+<li>Nonce Size: 24 bytes (192 bits) - larger than ChaCha20</li>
+<li>Tag Size: 16 bytes (128 bits)</li>
+<li>Performance: Same as ChaCha20-Poly1305; SSSE3/AVX2 accelerated</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Extended nonce version of ChaCha20-Poly1305</li>
+<li>✅ Safer for random nonces (negligible collision probability)</li>
+<li>✅ Used in libsodium, age encryption</li>
+<li>✅ More forgiving of nonce generation mistakes</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">// Create instance with key
+byte[] key = new byte[32];
+using var xchacha = XChaCha20Poly1305.Create(key);
+
+// Generate random nonce (safe with 192-bit nonce)
+byte[] nonce = new byte[24];
+RandomNumberGenerator.Fill(nonce);
+
+// Encrypt
+byte[] plaintext = Encoding.UTF8.GetBytes(&quot;Secret&quot;);
+byte[] ciphertext = xchacha.Encrypt(nonce, plaintext);
+
+// Decrypt
+byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
+</code></pre>
+<p><strong>See Also:</strong></p>
+<ul>
+<li><a href="benchmarks-cipher.html">XChaCha20-Poly1305 Benchmarks</a></li>
+<li><a href="benchmarks-cipher.html">ChaCha20-Poly1305 Benchmarks</a></li>
+</ul>
+<h3 id="ascon-aead128">Ascon-AEAD128</h3>
+<pre><code class="lang-csharp">public sealed class AsconAead128 : IAeadCipher
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Size: 128 bits (16 bytes)</li>
+<li>Nonce Size: 128 bits (16 bytes)</li>
+<li>Tag Size: 128 bits (16 bytes)</li>
+<li>Performance: Lightweight permutation-based AEAD, optimized for constrained environments</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ NIST Lightweight Cryptography standard (SP 800-232)</li>
+<li>✅ Winner of NIST LWC competition</li>
+<li>✅ No lookup-table S-boxes (timing-attack resilient design)</li>
+<li>⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">byte[] key = new byte[16];
+byte[] nonce = new byte[16];
+
+using var ascon = AsconAead128.Create(key);
+
+// Encrypt (ciphertext and tag split)
+byte[] plaintext = Encoding.UTF8.GetBytes(&quot;payload&quot;);
+byte[] aad = Encoding.UTF8.GetBytes(&quot;header&quot;);
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[16];
+
+ascon.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+
+// Decrypt + verify
+byte[] decrypted = new byte[plaintext.Length];
+bool valid = ascon.Decrypt(nonce, ciphertext, tag, decrypted, aad);
+</code></pre>
+<p><strong>See Also:</strong></p>
+<ul>
+<li><a href="hash-algorithms.html#ascon">Ascon Hash/XOF</a></li>
+</ul>
+<hr>
+<h2 id="key-wrap-utilities">Key Wrap Utilities</h2>
+<p>Key wrap algorithms are specialized ciphers for protecting cryptographic keys (KEK-based wrapping), not general-purpose message encryption.</p>
+<h3 id="aes-key-wrap--key-wrap-with-padding">AES Key Wrap / Key Wrap with Padding</h3>
+<pre><code class="lang-csharp">public sealed class AesKeyWrapPad : IDisposable
+</code></pre>
+<p><strong>Standards:</strong></p>
+<ul>
+<li>RFC 3394 (AES Key Wrap, no padding)</li>
+<li>RFC 5649 (AES Key Wrap with Padding)</li>
+<li>NIST SP 800-38F</li>
+</ul>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>KEK Sizes: 128, 192, or 256 bits</li>
+<li>RFC 3394 input requirements: at least 16 bytes and multiple of 8 bytes</li>
+<li>RFC 5649 input requirements: 1 byte or more (arbitrary length)</li>
+<li>Deterministic wrapping (same KEK + input → same wrapped output)</li>
+</ul>
+<p><strong>Usage (RFC 5649, padded):</strong></p>
+<pre><code class="lang-csharp">byte[] kek = new byte[32]; // 256-bit key-encryption key
+byte[] keyMaterial = new byte[37]; // arbitrary length
+
+using var kwp = new AesKeyWrapPad(kek);
+
+byte[] wrapped = kwp.WrapKey(keyMaterial);
+byte[] unwrapped = kwp.UnwrapKey(wrapped);
+</code></pre>
+<p><strong>Usage (RFC 3394, no padding):</strong></p>
+<pre><code class="lang-csharp">byte[] kek = new byte[16];
+byte[] keyMaterial = new byte[32]; // must be multiple of 8
+
+using var kw = new AesKeyWrapPad(kek);
+
+byte[] wrapped = kw.WrapKeyNoPad(keyMaterial);
+byte[] unwrapped = kw.UnwrapKeyNoPad(wrapped);
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>AES-KW/AES-KWP provide integrity checks for wrapped key blobs. They are intended for key management workflows and should not be used as a replacement for AEAD data encryption.</p>
+</div>
+<hr>
+<h2 id="block-ciphers">Block Ciphers</h2>
+<p>Block ciphers encrypt fixed-size blocks of data. They require a mode of operation (ECB, CBC, CTR) to encrypt data larger than a single block.</p>
+<p>All block ciphers extend <code>SymmetricCipher</code> (which inherits from <code>System.Security.Cryptography.SymmetricAlgorithm</code>) and implement <code>ICipherTransform</code> for span-based streaming transformations.</p>
+<h3 id="aes-advanced-encryption-standard">AES (Advanced Encryption Standard)</h3>
+<pre><code class="lang-csharp">public sealed class Aes128 : SymmetricCipher
+public sealed class Aes192 : SymmetricCipher
+public sealed class Aes256 : SymmetricCipher
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Sizes: 128, 192, or 256 bits</li>
+<li>Block Size: 128 bits (16 bytes)</li>
+<li>IV Size: 16 bytes (CBC, CTR) or none (ECB)</li>
+<li>Modes: ECB, CBC, CTR</li>
+<li>Padding: PKCS#7, None, Zeros, ANSIX923, ISO10126</li>
+<li>Performance: Hardware accelerated with AES-NI; vectorized CBC decrypt (4/8-block interleaved)</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ NIST approved (FIPS 197)</li>
+<li>✅ The most widely used symmetric cipher in the world</li>
+<li>⚠️ ECB mode is insecure for multi-block data — use CBC or CTR</li>
+<li>⚠️ CBC mode requires unpredictable IVs and is vulnerable to padding oracle attacks without authentication</li>
+</ul>
+<p><strong>Usage — CTR Mode (Recommended):</strong></p>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+// Create AES-256 in CTR mode
+using var aes = Aes256.Create();
+aes.Mode = CipherMode.CTR;
+aes.Padding = PaddingMode.None; // CTR does not require padding
+
+// Set key and IV
+aes.Key = new byte[32]; // 256-bit key
+aes.IV = new byte[16]; // 128-bit nonce/counter
+
+// Single-operation
+byte[] ciphertext = aes.Encrypt(plaintext);
+byte[] decrypted = aes.Decrypt(ciphertext);
+</code></pre>
+<p><strong>Usage — CBC Mode:</strong></p>
+<pre><code class="lang-csharp">using var aes = Aes128.Create();
+aes.Mode = CipherMode.CBC;
+aes.Padding = PaddingMode.PKCS7;
+aes.Key = new byte[16]; // 128-bit key
+aes.GenerateIV(); // Random IV
+
+byte[] ciphertext = aes.Encrypt(plaintext);
+byte[] decrypted = aes.Decrypt(ciphertext);
+</code></pre>
+<p><strong>Usage — Streaming (ICipherTransform):</strong></p>
+<pre><code class="lang-csharp">using var aes = Aes256.Create();
+aes.Mode = CipherMode.CTR;
+aes.Padding = PaddingMode.None;
+aes.Key = new byte[32];
+aes.IV = new byte[16];
+
+// Create transform for incremental encryption
+using var encryptor = aes.CreateEncryptor();
+
+// Process multiple blocks
+Span&lt;byte&gt; output = new byte[inputChunk.Length];
+int written = encryptor.TransformBlock(inputChunk, output);
+
+// Final block (handles padding for CBC)
+written = encryptor.TransformFinalBlock(lastChunk, output);
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>ECB mode</strong> encrypts each block independently. Identical plaintext blocks produce
+identical ciphertext, leaking patterns. Use <strong>CTR</strong> or <strong>CBC</strong> mode instead.
+For authenticated encryption, prefer <a href="#aes-gcm-galoiscounter-mode">AES-GCM</a> or
+<a href="#aes-ccm-counter-with-cbc-mac">AES-CCM</a>.</p>
+</div>
+<hr>
+<h2 id="stream-ciphers">Stream Ciphers</h2>
+<p>Stream ciphers generate a keystream that is XORed with the plaintext. They do not require padding and can process data of any length.</p>
+<h3 id="chacha20">ChaCha20</h3>
+<pre><code class="lang-csharp">public sealed class ChaCha20 : SymmetricCipher
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Size: 256 bits (32 bytes)</li>
+<li>Nonce Size: 12 bytes (96 bits) — IETF variant (RFC 8439)</li>
+<li>Block Size: 1 byte (stream cipher, processes any length)</li>
+<li>Counter: 32-bit initial block counter (configurable via <code>InitialCounter</code>)</li>
+<li>Performance: SSSE3/AVX2 hardware accelerated</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ IETF standard (RFC 8439)</li>
+<li>✅ Constant-time — no timing side channels</li>
+<li>✅ Fast in software without dedicated hardware (unlike AES without AES-NI)</li>
+<li>⚠️ No authentication — use <a href="#chacha20-poly1305">ChaCha20-Poly1305</a> for authenticated encryption</li>
+<li>⚠️ Nonce reuse is catastrophic — never reuse a (key, nonce) pair</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+// Create ChaCha20 stream cipher
+using var chacha = ChaCha20.Create();
+chacha.Key = new byte[32]; // 256-bit key
+chacha.IV = new byte[12]; // 96-bit nonce
+
+// Single-operation encryption (XOR with keystream)
+byte[] ciphertext = chacha.Encrypt(plaintext);
+
+// Decryption is the same operation (XOR is symmetric)
+byte[] decrypted = chacha.Decrypt(ciphertext);
+</code></pre>
+<p><strong>Usage — Streaming:</strong></p>
+<pre><code class="lang-csharp">using var chacha = ChaCha20.Create();
+chacha.Key = key;
+chacha.IV = nonce;
+
+using var encryptor = chacha.CreateEncryptor();
+
+// Stream cipher: process any amount of data
+Span&lt;byte&gt; output = new byte[chunk.Length];
+encryptor.TransformBlock(chunk, output);
+
+// No padding needed for final block
+encryptor.TransformFinalBlock(lastChunk, output);
+</code></pre>
+<p><strong>Usage — Custom Initial Counter:</strong></p>
+<pre><code class="lang-csharp">// RFC 8439 §2.4: AEAD construction uses counter = 1 (block 0 for Poly1305 key)
+using var chacha = ChaCha20.Create();
+chacha.InitialCounter = 1;
+chacha.Key = key;
+chacha.IV = nonce;
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>ChaCha20 is the preferred stream cipher when AES-NI hardware is not available.
+It is faster than AES in software and has no timing side channels from table lookups.
+For authenticated encryption, use <a href="#chacha20-poly1305">ChaCha20-Poly1305</a>.</p>
+</div>
+<hr>
+<h2 id="blockstream-cipher-comparison">Block/Stream Cipher Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Type</th>
+<th>Key Size</th>
+<th>Block/IV</th>
+<th>Modes</th>
+<th>Hardware Accel</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AES-128</strong></td>
+<td>Block</td>
+<td>128 bits</td>
+<td>16B / 16B</td>
+<td>ECB, CBC, CTR</td>
+<td>AES-NI</td>
+<td>General purpose, compliance</td>
+</tr>
+<tr>
+<td><strong>AES-192</strong></td>
+<td>Block</td>
+<td>192 bits</td>
+<td>16B / 16B</td>
+<td>ECB, CBC, CTR</td>
+<td>AES-NI</td>
+<td>Higher security margin</td>
+</tr>
+<tr>
+<td><strong>AES-256</strong></td>
+<td>Block</td>
+<td>256 bits</td>
+<td>16B / 16B</td>
+<td>ECB, CBC, CTR</td>
+<td>AES-NI</td>
+<td>Maximum AES security</td>
+</tr>
+<tr>
+<td><strong>ChaCha20</strong></td>
+<td>Stream</td>
+<td>256 bits</td>
+<td>— / 12B</td>
+<td>Stream</td>
+<td>SSSE3/AVX2</td>
+<td>Software-only, mobile</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="cipher-modes-of-operation">Cipher Modes of Operation</h2>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Type</th>
+<th>Padding</th>
+<th>Parallel Encrypt</th>
+<th>Parallel Decrypt</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ECB</strong></td>
+<td>Block</td>
+<td>Required</td>
+<td>✅</td>
+<td>✅</td>
+<td>⚠️ Insecure for multi-block</td>
+</tr>
+<tr>
+<td><strong>CBC</strong></td>
+<td>Block</td>
+<td>Required</td>
+<td>❌</td>
+<td>✅</td>
+<td>Needs unpredictable IV</td>
+</tr>
+<tr>
+<td><strong>CTR</strong></td>
+<td>Stream</td>
+<td>None</td>
+<td>✅</td>
+<td>✅</td>
+<td>Recommended for most uses</td>
+</tr>
+<tr>
+<td><strong>Stream</strong></td>
+<td>Stream</td>
+<td>None</td>
+<td>✅</td>
+<td>✅</td>
+<td>ChaCha20 native mode</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>Nonce Size</th>
+<th>Tag Size</th>
+<th>Performance</th>
+<th>Hardware Accel</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AES-GCM</strong></td>
+<td>128/192/256</td>
+<td>12 bytes</td>
+<td>16 bytes</td>
+<td>Very fast*</td>
+<td>AES-NI + PCLMULQDQ/VPCLMULQDQ</td>
+<td>General purpose, high throughput</td>
+</tr>
+<tr>
+<td><strong>AES-CCM</strong></td>
+<td>128/192/256</td>
+<td>7-13 bytes</td>
+<td>4-16 bytes</td>
+<td>Moderate*</td>
+<td>AES-NI</td>
+<td>IoT, small messages</td>
+</tr>
+<tr>
+<td><strong>ChaCha20-Poly1305</strong></td>
+<td>256</td>
+<td>12 bytes</td>
+<td>16 bytes</td>
+<td>Fast</td>
+<td>SSSE3/AVX2</td>
+<td>Software-only, mobile</td>
+</tr>
+<tr>
+<td><strong>XChaCha20-Poly1305</strong></td>
+<td>256</td>
+<td>24 bytes</td>
+<td>16 bytes</td>
+<td>Fast</td>
+<td>SSSE3/AVX2</td>
+<td>Random nonces safe</td>
+</tr>
+<tr>
+<td><strong>Ascon-AEAD128</strong></td>
+<td>128</td>
+<td>16 bytes</td>
+<td>16 bytes</td>
+<td>Fast</td>
+<td>-</td>
+<td>Lightweight, embedded</td>
+</tr>
+</tbody>
+</table>
+<p>*With AES-NI hardware acceleration. Without hardware: ChaCha20 is typically faster.</p>
+<hr>
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="critical-nonce-uniqueness">Critical: Nonce Uniqueness</h3>
+<p><strong>All AEAD ciphers require unique (key, nonce) pairs:</strong></p>
+<pre><code class="lang-csharp">// ❌ WRONG - Nonce reuse destroys security
+var aesGcm = AesGcm256.Create(key);
+byte[] nonce = new byte[12]; // Same nonce!
+aesGcm.Encrypt(nonce, message1, ...); // First use: OK
+aesGcm.Encrypt(nonce, message2, ...); // Reuse: CATASTROPHIC FAILURE
+
+// ✅ CORRECT - Unique nonce for each message
+var aesGcm = AesGcm256.Create(key);
+byte[] nonce1 = GenerateUniqueNonce(); // Method 1: Counter
+aesGcm.Encrypt(nonce1, message1, ...);
+
+byte[] nonce2 = GenerateUniqueNonce(); // Method 2: Random (XChaCha20 preferred)
+aesGcm.Encrypt(nonce2, message2, ...);
+</code></pre>
+<h3 id="nonce-generation-strategies">Nonce Generation Strategies</h3>
+<p><strong>Method 1: Counter (Recommended for most cases)</strong></p>
+<pre><code class="lang-csharp">private ulong _counter = 0;
+
+byte[] GenerateNonce()
+{
+    byte[] nonce = new byte[12];
+    BinaryPrimitives.WriteUInt64LittleEndian(nonce, _counter++);
+    return nonce;
+}
+</code></pre>
+<p><strong>Method 2: Random (XChaCha20-Poly1305 only)</strong></p>
+<pre><code class="lang-csharp">// Safe only with 192-bit nonces (XChaCha20)
+byte[] nonce = new byte[24];
+RandomNumberGenerator.Fill(nonce);
+// Collision probability negligible with 192 bits
+</code></pre>
+<p><strong>Method 3: Random + Counter (Hybrid)</strong></p>
+<pre><code class="lang-csharp">// 64-bit random + 32-bit counter
+byte[] nonce = new byte[12];
+RandomNumberGenerator.Fill(nonce.AsSpan(0, 8)); // Random prefix
+BinaryPrimitives.WriteUInt32LittleEndian(nonce.AsSpan(8), counter++);
+</code></pre>
+<h3 id="additional-authenticated-data-aad">Additional Authenticated Data (AAD)</h3>
+<p>AAD is authenticated but not encrypted (useful for headers, metadata):</p>
+<pre><code class="lang-csharp">// Encrypt message with authenticated header
+byte[] header = Encoding.UTF8.GetBytes(&quot;User-ID: 12345&quot;);
+byte[] message = Encoding.UTF8.GetBytes(&quot;Secret message&quot;);
+
+aesGcm.Encrypt(nonce, message, ciphertext, tag, header);
+// Result: message is encrypted, header is authenticated but plaintext
+</code></pre>
+<hr>
+<h2 id="regional-block-ciphers">Regional Block Ciphers</h2>
+<p>Regional block ciphers complement the hash family coverage and provide national standard encryption algorithms. All implementations support ECB, CBC, and CTR modes via the shared <code>BlockCipherTransform</code> infrastructure.</p>
+<h3 id="sm4-china">SM4 (China)</h3>
+<pre><code class="lang-csharp">public sealed class Sm4 : BlockCipherTransform
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Size: 128 bits</li>
+<li>Block Size: 128 bits</li>
+<li>Rounds: 32</li>
+<li>Standard: GB/T 32907-2016</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Chinese national standard, mandatory for commercial use in China</li>
+<li>✅ Used in Chinese TLS implementations and WAPI (WLAN security)</li>
+<li>✅ ISO/IEC 18033-3:2010 listed</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var sm4 = Sm4.Create();
+sm4.Mode = CipherMode.CBC;
+sm4.Padding = PaddingMode.PKCS7;
+sm4.Key = key; // 16 bytes
+sm4.IV = iv;   // 16 bytes
+byte[] ciphertext = sm4.Encrypt(plaintext);
+byte[] decrypted = sm4.Decrypt(ciphertext);
+</code></pre>
+<h3 id="aria-korea">ARIA (Korea)</h3>
+<pre><code class="lang-csharp">public sealed class Aria128 : BlockCipherTransform
+public sealed class Aria192 : BlockCipherTransform
+public sealed class Aria256 : BlockCipherTransform
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Sizes: 128, 192, or 256 bits</li>
+<li>Block Size: 128 bits</li>
+<li>Rounds: 12 (128-bit key), 14 (192-bit key), 16 (256-bit key)</li>
+<li>Standard: KS X 1213, RFC 5794</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Korean national standard</li>
+<li>✅ Used in Korean government and financial systems</li>
+<li>✅ RFC 5794 specification</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var aria = Aria256.Create();
+aria.Mode = CipherMode.CBC;
+aria.Padding = PaddingMode.PKCS7;
+aria.Key = key; // 32 bytes
+aria.IV = iv;   // 16 bytes
+byte[] ciphertext = aria.Encrypt(plaintext);
+</code></pre>
+<h3 id="camellia-japan">Camellia (Japan)</h3>
+<pre><code class="lang-csharp">public sealed class Camellia128 : BlockCipherTransform
+public sealed class Camellia192 : BlockCipherTransform
+public sealed class Camellia256 : BlockCipherTransform
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Sizes: 128, 192, or 256 bits</li>
+<li>Block Size: 128 bits</li>
+<li>Rounds: 18 (128-bit key), 24 (192/256-bit key)</li>
+<li>Standard: RFC 3713, ISO/IEC 18033-3</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Japanese CRYPTREC recommended cipher</li>
+<li>✅ NESSIE selected algorithm (EU)</li>
+<li>✅ Comparable security level to AES</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var camellia = Camellia128.Create();
+camellia.Mode = CipherMode.CBC;
+camellia.Padding = PaddingMode.PKCS7;
+camellia.Key = key; // 16 bytes
+camellia.IV = iv;   // 16 bytes
+byte[] ciphertext = camellia.Encrypt(plaintext);
+</code></pre>
+<h3 id="kuznyechik-russia">Kuznyechik (Russia)</h3>
+<pre><code class="lang-csharp">public sealed class Kuznyechik : BlockCipherTransform
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Size: 256 bits</li>
+<li>Block Size: 128 bits</li>
+<li>Rounds: 10</li>
+<li>Standard: GOST R 34.12-2015</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Russian national standard (successor to GOST 28147-89)</li>
+<li>✅ Used in Russian government and banking systems</li>
+<li>✅ Paired with Streebog hash family</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var kuz = Kuznyechik.Create();
+kuz.Mode = CipherMode.CBC;
+kuz.Padding = PaddingMode.PKCS7;
+kuz.Key = key; // 32 bytes
+kuz.IV = iv;   // 16 bytes
+byte[] ciphertext = kuz.Encrypt(plaintext);
+</code></pre>
+<h3 id="kalyna-ukraine">Kalyna (Ukraine)</h3>
+<pre><code class="lang-csharp">public sealed class Kalyna128 : BlockCipherTransform
+public sealed class Kalyna256 : BlockCipherTransform
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Sizes: 128 or 256 bits</li>
+<li>Block Size: 128 bits</li>
+<li>Rounds: 10 (128-bit key), 14 (256-bit key)</li>
+<li>Standard: DSTU 7624:2014</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Ukrainian national standard</li>
+<li>✅ Paired with Kupyna hash family</li>
+<li>✅ Uses MDS matrix-based diffusion layer</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var kalyna = Kalyna256.Create();
+kalyna.Mode = CipherMode.CBC;
+kalyna.Padding = PaddingMode.PKCS7;
+kalyna.Key = key; // 32 bytes
+kalyna.IV = iv;   // 16 bytes
+byte[] ciphertext = kalyna.Encrypt(plaintext);
+</code></pre>
+<h3 id="seed-korea">SEED (Korea)</h3>
+<pre><code class="lang-csharp">public sealed class Seed : BlockCipherTransform
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Key Size: 128 bits</li>
+<li>Block Size: 128 bits</li>
+<li>Rounds: 16</li>
+<li>Standard: RFC 4269, KISA</li>
+</ul>
+<p><strong>Security:</strong></p>
+<ul>
+<li>✅ Korean national standard (KISA)</li>
+<li>✅ Used in Korean financial and government systems</li>
+<li>✅ 16-round Feistel structure with S-boxes derived from the golden ratio</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">using var seed = Seed.Create();
+seed.Mode = CipherMode.CBC;
+seed.Padding = PaddingMode.PKCS7;
+seed.Key = key; // 16 bytes
+seed.IV = iv;   // 16 bytes
+byte[] ciphertext = seed.Encrypt(plaintext);
+byte[] decrypted = seed.Decrypt(ciphertext);
+</code></pre>
+<h3 id="regional-cipher-comparison">Regional Cipher Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Origin</th>
+<th>Key Sizes</th>
+<th>Block Size</th>
+<th>Rounds</th>
+<th>Standard</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SM4</strong></td>
+<td>China</td>
+<td>128</td>
+<td>128 bits</td>
+<td>32</td>
+<td>GB/T 32907-2016</td>
+</tr>
+<tr>
+<td><strong>ARIA</strong></td>
+<td>Korea</td>
+<td>128/192/256</td>
+<td>128 bits</td>
+<td>12/14/16</td>
+<td>KS X 1213, RFC 5794</td>
+</tr>
+<tr>
+<td><strong>Camellia</strong></td>
+<td>Japan</td>
+<td>128/192/256</td>
+<td>128 bits</td>
+<td>18/24</td>
+<td>RFC 3713, ISO 18033-3</td>
+</tr>
+<tr>
+<td><strong>Kuznyechik</strong></td>
+<td>Russia</td>
+<td>256</td>
+<td>128 bits</td>
+<td>10</td>
+<td>GOST R 34.12-2015</td>
+</tr>
+<tr>
+<td><strong>Kalyna</strong></td>
+<td>Ukraine</td>
+<td>128/256</td>
+<td>128 bits</td>
+<td>10/14</td>
+<td>DSTU 7624:2014</td>
+</tr>
+<tr>
+<td><strong>SEED</strong></td>
+<td>Korea</td>
+<td>128</td>
+<td>128 bits</td>
+<td>16</td>
+<td>RFC 4269</td>
+</tr>
+</tbody>
+</table>
+<p><strong>See Also:</strong></p>
+<ul>
+<li><a href="benchmarks-cipher.html">Regional Cipher Benchmarks</a></li>
+</ul>
+<hr>
+<h2 id="references">References</h2>
+<h3 id="standards">Standards</h3>
+<ul>
+<li><strong>NIST FIPS 197</strong> - Advanced Encryption Standard (AES)</li>
+<li><strong>NIST SP 800-38A</strong> - Recommendation for Block Cipher Modes: ECB, CBC, CFB, OFB, CTR</li>
+<li><strong>NIST SP 800-38C</strong> - Recommendation for Block Cipher Modes: CCM</li>
+<li><strong>NIST SP 800-38D</strong> - Recommendation for Block Cipher Modes: GCM</li>
+<li><strong>RFC 3610</strong> - Counter with CBC-MAC (CCM)</li>
+<li><strong>RFC 8439</strong> - ChaCha20 and Poly1305 for IETF Protocols</li>
+<li><strong>draft-irtf-cfrg-xchacha</strong> - XChaCha20-Poly1305</li>
+</ul>
+<h3 id="regional-standards">Regional Standards</h3>
+<ul>
+<li><strong>GB/T 32907-2016</strong> - SM4 Block Cipher (China)</li>
+<li><strong>KS X 1213</strong> - ARIA Block Cipher (Korea)</li>
+<li><strong>RFC 3713</strong> - Camellia Encryption Algorithm (Japan, CRYPTREC)</li>
+<li><strong>GOST R 34.12-2015</strong> - Kuznyechik Block Cipher (Russia)</li>
+<li><strong>DSTU 7624:2014</strong> - Kalyna Block Cipher (Ukraine)</li>
+<li><strong>RFC 4269</strong> - SEED Encryption Algorithm (Korea, KISA)</li>
+</ul>
+<h3 id="test-vectors">Test Vectors</h3>
+<p>Test vector documentation is coming soon.</p>
+<h3 id="benchmarks">Benchmarks</h3>
+<ul>
+<li><a href="benchmarks-cipher.html">All Cipher Benchmarks</a></li>
+<li><a href="benchmarks-cipher.html">AES-GCM Performance</a></li>
+<li><a href="benchmarks-cipher.html">ChaCha20-Poly1305 Performance</a></li>
+<li><a href="benchmarks-cipher.html">XChaCha20-Poly1305 Performance</a></li>
+<li><a href="benchmarks-cipher.html">Regional Cipher Benchmarks</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/cipher-algorithms.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

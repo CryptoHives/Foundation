@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>RIPEMD-160 Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="RIPEMD-160 Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/RIPEMD-160-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="ripemd-160-test-vectors">RIPEMD-160 Test Vectors</h1>
+
+<h2 id="overview">Overview</h2>
+<p>RIPEMD-160 is a 160-bit cryptographic hash function designed by Hans Dobbertin,
+Antoon Bosselaers, and Bart Preneel. It is widely used in cryptocurrency systems,
+particularly Bitcoin for address generation.</p>
+<h2 id="specification">Specification</h2>
+<ul>
+<li><strong>Output Size:</strong> 160 bits (20 bytes)</li>
+<li><strong>Block Size:</strong> 512 bits (64 bytes)</li>
+<li><strong>Rounds:</strong> 80 (5 groups of 16)</li>
+<li><strong>Word Size:</strong> 32 bits</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li>Original paper: &quot;RIPEMD-160: A Strengthened Version of RIPEMD&quot;</li>
+<li><a href="https://homes.esat.kuleuven.be/%7Ebosselae/ripemd160.html">https://homes.esat.kuleuven.be/~bosselae/ripemd160.html</a></li>
+</ul>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="vector-1-empty-string">Vector 1: Empty string</h3>
+<pre><code>Input:  &quot;&quot; (empty)
+Length: 0 bytes
+Output: 9c1185a5c5e9fc54612808977ee8f548b2258d31
+</code></pre>
+<h3 id="vector-2-single-character-a">Vector 2: Single character &quot;a&quot;</h3>
+<pre><code>Input:  &quot;a&quot;
+Length: 1 byte
+Hex:    61
+Output: 0bdc9d2d256b3ee9daae347be6f4dc835a467ffe
+</code></pre>
+<h3 id="vector-3-abc">Vector 3: &quot;abc&quot;</h3>
+<pre><code>Input:  &quot;abc&quot;
+Length: 3 bytes
+Hex:    616263
+Output: 8eb208f7e05d987a9b044a8e98c6b087f15a0bfc
+</code></pre>
+<h3 id="vector-4-message-digest">Vector 4: &quot;message digest&quot;</h3>
+<pre><code>Input:  &quot;message digest&quot;
+Length: 14 bytes
+Hex:    6d65737361676520646967657374
+Output: 5d0689ef49d2fae572b881b123a85ffa21595f36
+</code></pre>
+<h3 id="vector-5-lowercase-alphabet">Vector 5: Lowercase alphabet</h3>
+<pre><code>Input:  &quot;abcdefghijklmnopqrstuvwxyz&quot;
+Length: 26 bytes
+Output: f71c27109c692c1b56bbdceb5b9d2865b3708dbc
+</code></pre>
+<h3 id="vector-6-alphanumeric">Vector 6: Alphanumeric</h3>
+<pre><code>Input:  &quot;abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq&quot;
+Length: 56 bytes
+Output: 12a053384a9c0c88e405a06c27dcf49ada62eb2b
+</code></pre>
+<h3 id="vector-7-full-alphanumeric">Vector 7: Full alphanumeric</h3>
+<pre><code>Input:  &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789&quot;
+Length: 62 bytes
+Output: b0e20b6e3116640286ed3a87a5713079b21f5189
+</code></pre>
+<h3 id="vector-8-repeated-digits">Vector 8: Repeated digits</h3>
+<pre><code>Input:  &quot;12345678901234567890123456789012345678901234567890123456789012345678901234567890&quot;
+Length: 80 bytes
+Output: 9b752e45573d4b39f4dbd3323cab82bf63326bfb
+</code></pre>
+<h3 id="vector-9-million-a-characters">Vector 9: Million &quot;a&quot; characters</h3>
+<pre><code>Input:  &quot;a&quot; repeated 1,000,000 times
+Length: 1,000,000 bytes
+Output: 52783243c1697bdbe16d37f97f68f08325dc1528
+</code></pre>
+<h2 id="bitcoin-usage">Bitcoin Usage</h2>
+<p>In Bitcoin, addresses are generated using:</p>
+<pre><code>address = Base58Check(version || RIPEMD-160(SHA-256(public_key)))
+</code></pre>
+<p>This is often called &quot;Hash160&quot; in cryptocurrency contexts.</p>
+<h2 id="implementation-notes">Implementation Notes</h2>
+<ul>
+<li>Uses Merkle-Damgård construction</li>
+<li>Two parallel lines of computation (left and right)</li>
+<li>Five boolean functions, one per round group</li>
+<li>Little-endian byte order</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/RIPEMD-160-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

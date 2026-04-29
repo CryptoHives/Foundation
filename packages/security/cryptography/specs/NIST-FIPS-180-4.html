@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>NIST FIPS 180-4 - Secure Hash Standard (SHS) | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="NIST FIPS 180-4 - Secure Hash Standard (SHS) | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-FIPS-180-4.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="nist-fips-180-4---secure-hash-standard-shs">NIST FIPS 180-4 - Secure Hash Standard (SHS)</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Federal Information Processing Standards Publication 180-4 specifies the Secure Hash Algorithms:</p>
+<ul>
+<li><strong>SHA-1</strong> - 160-bit hash (legacy, deprecated for security use)</li>
+<li><strong>SHA-224</strong> - 224-bit hash (truncated SHA-256)</li>
+<li><strong>SHA-256</strong> - 256-bit hash</li>
+<li><strong>SHA-384</strong> - 384-bit hash (truncated SHA-512)</li>
+<li><strong>SHA-512</strong> - 512-bit hash</li>
+<li><strong>SHA-512/224</strong> - 224-bit hash (truncated SHA-512)</li>
+<li><strong>SHA-512/256</strong> - 256-bit hash (truncated SHA-512)</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li><strong>Document:</strong> NIST FIPS 180-4</li>
+<li><strong>Title:</strong> Secure Hash Standard (SHS)</li>
+<li><strong>URL:</strong> <a href="https://csrc.nist.gov/pubs/fips/180-4/upd1/final">https://csrc.nist.gov/pubs/fips/180-4/upd1/final</a></li>
+<li><strong>PDF:</strong> <a href="https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf">https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf</a></li>
+</ul>
+<h2 id="implementation-status">Implementation Status</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-1</td>
+<td>160 bits</td>
+<td>✅ Implemented (deprecated)</td>
+<td><code>SHA1Managed</code></td>
+</tr>
+<tr>
+<td>SHA-224</td>
+<td>224 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA224Managed</code></td>
+</tr>
+<tr>
+<td>SHA-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA256Managed</code></td>
+</tr>
+<tr>
+<td>SHA-384</td>
+<td>384 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA384Managed</code></td>
+</tr>
+<tr>
+<td>SHA-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA512Managed</code></td>
+</tr>
+<tr>
+<td>SHA-512/224</td>
+<td>224 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA512_224Managed</code></td>
+</tr>
+<tr>
+<td>SHA-512/256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA512_256Managed</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Warning:</strong> SHA-1 is cryptographically weakened and should NOT be used for digital signatures
+or other security-critical applications. It is provided only for legacy compatibility.</p>
+</blockquote>
+<hr>
+<h2 id="sha-256-family-32-bit-operations">SHA-256 Family (32-bit operations)</h2>
+<h3 id="parameters">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Message Block</th>
+<th>Word Size</th>
+<th>Hash Value</th>
+<th>Security</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-224</td>
+<td>512 bits</td>
+<td>32 bits</td>
+<td>224 bits</td>
+<td>112 bits</td>
+</tr>
+<tr>
+<td>SHA-256</td>
+<td>512 bits</td>
+<td>32 bits</td>
+<td>256 bits</td>
+<td>128 bits</td>
+</tr>
+</tbody>
+</table>
+<h3 id="initial-hash-values">Initial Hash Values</h3>
+<p><strong>SHA-256:</strong></p>
+<pre><code>H0 = 6a09e667  H1 = bb67ae85  H2 = 3c6ef372  H3 = a54ff53a
+H4 = 510e527f  H5 = 9b05688c  H6 = 1f83d9ab  H7 = 5be0cd19
+</code></pre>
+<p><strong>SHA-224:</strong> (first 32 bits of fractional parts of square roots of 9th through 16th primes)</p>
+<pre><code>H0 = c1059ed8  H1 = 367cd507  H2 = 3070dd17  H3 = f70e5939
+H4 = ffc00b31  H5 = 68581511  H6 = 64f98fa7  H7 = befa4fa4
+</code></pre>
+<h3 id="round-constants-k">Round Constants (K)</h3>
+<p>64 constants derived from the first 64 primes:</p>
+<pre><code>428a2f98 71374491 b5c0fbcf e9b5dba5 3956c25b 59f111f1 923f82a4 ab1c5ed5
+d807aa98 12835b01 243185be 550c7dc3 72be5d74 80deb1fe 9bdc06a7 c19bf174
+e49b69c1 efbe4786 0fc19dc6 240ca1cc 2de92c6f 4a7484aa 5cb0a9dc 76f988da
+983e5152 a831c66d b00327c8 bf597fc7 c6e00bf3 d5a79147 06ca6351 14292967
+27b70a85 2e1b2138 4d2c6dfc 53380d13 650a7354 766a0abb 81c2c92e 92722c85
+a2bfe8a1 a81a664b c24b8b70 c76c51a3 d192e819 d6990624 f40e3585 106aa070
+19a4c116 1e376c08 2748774c 34b0bcb5 391c0cb3 4ed8aa4a 5b9cca4f 682e6ff3
+748f82ee 78a5636f 84c87814 8cc70208 90befffa a4506ceb bef9a3f7 c67178f2
+</code></pre>
+<h3 id="algorithm">Algorithm</h3>
+<pre><code>For each 512-bit message block:
+  1. Prepare message schedule W[0..63]
+  2. Initialize working variables a,b,c,d,e,f,g,h from current hash
+  3. For t = 0 to 63:
+       T1 = h + Σ1(e) + Ch(e,f,g) + K[t] + W[t]
+       T2 = Σ0(a) + Maj(a,b,c)
+       h=g, g=f, f=e, e=d+T1, d=c, c=b, b=a, a=T1+T2
+  4. Add working variables to hash value
+</code></pre>
+<hr>
+<h2 id="sha-512-family-64-bit-operations">SHA-512 Family (64-bit operations)</h2>
+<h3 id="parameters-1">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Message Block</th>
+<th>Word Size</th>
+<th>Hash Value</th>
+<th>Security</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-384</td>
+<td>1024 bits</td>
+<td>64 bits</td>
+<td>384 bits</td>
+<td>192 bits</td>
+</tr>
+<tr>
+<td>SHA-512</td>
+<td>1024 bits</td>
+<td>64 bits</td>
+<td>512 bits</td>
+<td>256 bits</td>
+</tr>
+<tr>
+<td>SHA-512/224</td>
+<td>1024 bits</td>
+<td>64 bits</td>
+<td>224 bits</td>
+<td>112 bits</td>
+</tr>
+<tr>
+<td>SHA-512/256</td>
+<td>1024 bits</td>
+<td>64 bits</td>
+<td>256 bits</td>
+<td>128 bits</td>
+</tr>
+</tbody>
+</table>
+<h3 id="initial-hash-values-1">Initial Hash Values</h3>
+<p><strong>SHA-512:</strong></p>
+<pre><code>H0 = 6a09e667f3bcc908  H1 = bb67ae8584caa73b
+H2 = 3c6ef372fe94f82b  H3 = a54ff53a5f1d36f1
+H4 = 510e527fade682d1  H5 = 9b05688c2b3e6c1f
+H6 = 1f83d9abfb41bd6b  H7 = 5be0cd19137e2179
+</code></pre>
+<p><strong>SHA-384:</strong></p>
+<pre><code>H0 = cbbb9d5dc1059ed8  H1 = 629a292a367cd507
+H2 = 9159015a3070dd17  H3 = 152fecd8f70e5939
+H4 = 67332667ffc00b31  H5 = 8eb44a8768581511
+H6 = db0c2e0d64f98fa7  H7 = 47b5481dbefa4fa4
+</code></pre>
+<p><strong>SHA-512/224:</strong> (SHA-512 IVs XORed with 0xa5a5a5a5a5a5a5a5)</p>
+<pre><code>H0 = 8c3d37c819544da2  H1 = 73e1996689dcd4d6
+H2 = 1dfab7ae32ff9c82  H3 = 679dd514582f9fcf
+H4 = 0f6d2b697bd44da8  H5 = 77e36f7304c48942
+H6 = 3f9d85a86a1d36c8  H7 = 1112e6ad91d692a1
+</code></pre>
+<p><strong>SHA-512/256:</strong> (SHA-512 IVs XORed with 0xa5a5a5a5a5a5a5a5)</p>
+<pre><code>H0 = 22312194fc2bf72c  H1 = 9f555fa3c84c64c2
+H2 = 2393b86b6f53b151  H3 = 963877195940eabd
+H4 = 96283ee2a88effe3  H5 = be5e1e2553863992
+H6 = 2b0199fc2c85b8aa  H7 = 0eb72ddc81c52ca2
+</code></pre>
+<h3 id="round-constants-k-1">Round Constants (K)</h3>
+<p>80 constants derived from the first 80 primes (64-bit values).</p>
+<hr>
+<h2 id="sha-1-legacy">SHA-1 (Legacy)</h2>
+<h3 id="parameters-2">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Message Block</th>
+<th>Word Size</th>
+<th>Hash Value</th>
+<th>Security</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-1</td>
+<td>512 bits</td>
+<td>32 bits</td>
+<td>160 bits</td>
+<td>&lt; 80 bits*</td>
+</tr>
+</tbody>
+</table>
+<p>*SHA-1 collision resistance is broken (practical attacks exist).</p>
+<h3 id="initial-hash-values-2">Initial Hash Values</h3>
+<pre><code>H0 = 67452301  H1 = efcdab89  H2 = 98badcfe  H3 = 10325476  H4 = c3d2e1f0
+</code></pre>
+<hr>
+<h2 id="padding">Padding</h2>
+<p>All SHA algorithms use the same padding scheme:</p>
+<ol>
+<li>Append bit '1' to message</li>
+<li>Append '0' bits until message length ≡ (block_size - 64 or 128) mod block_size</li>
+<li>Append original message length as 64-bit (SHA-1/256) or 128-bit (SHA-512) big-endian integer</li>
+</ol>
+<hr>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="sha-256">SHA-256</h3>
+<p><strong>Empty String:</strong></p>
+<ul>
+<li>Input: &quot;&quot; (0 bytes)</li>
+<li>Output: <code>e3b0c442 98fc1c14 9afbf4c8 996fb924 27ae41e4 649b934c a495991b 7852b855</code></li>
+</ul>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>ba7816bf 8f01cfea 414140de 5dae2223 b00361a3 96177a9c b410ff61 f20015ad</code></li>
+</ul>
+<p><strong>Two-Block Message:</strong></p>
+<ul>
+<li>Input: &quot;abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq&quot; (56 bytes)</li>
+<li>Output: <code>248d6a61 d20638b8 e5c02693 0c3e6039 a33ce459 64ff2167 f6ecedd4 19db06c1</code></li>
+</ul>
+<h3 id="sha-512">SHA-512</h3>
+<p><strong>Empty String:</strong></p>
+<ul>
+<li>Input: &quot;&quot; (0 bytes)</li>
+<li>Output: <code>cf83e135 7eefb8bd f1542850 d66d8007 d620e405 0b5715dc 83f4a921 d36ce9ce 47d0d13c 5d85f2b0 ff8318d2 877eec2f 63b931bd 47417a81 a538327a f927da3e</code></li>
+</ul>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>ddaf35a1 93617aba cc417349 ae204131 12e6fa4e 89a97ea2 0a9eeee6 4b55d39a 2192992a 274fc1a8 36ba3c23 a3feebbd 454d4423 643ce80e 2a9ac94f a54ca49f</code></li>
+</ul>
+<h3 id="sha-224">SHA-224</h3>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>23097d22 3405d822 8642a477 bda255b3 2aadbce4 bda0b3f7 e36c9da7</code></li>
+</ul>
+<h3 id="sha-384">SHA-384</h3>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>cb00753f 45a35e8b b5a03d69 9ac65007 272c32ab 0eded163 1a8b605a 43ff5bed 8086072b a1e7cc23 58baeca1 34c825a7</code></li>
+</ul>
+<h3 id="sha-512256">SHA-512/256</h3>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>53048e26 81941ef9 9b2e29b7 6b4c7dab e4c2d0c6 34fc6d46 e0e2f131 07e7af23</code></li>
+</ul>
+<h3 id="sha-512224">SHA-512/224</h3>
+<p><strong>&quot;abc&quot;:</strong></p>
+<ul>
+<li>Input: &quot;abc&quot; (3 bytes)</li>
+<li>Output: <code>4634270f 707b6a54 daae7530 460842e2 0e37ed26 5ceee9a4 3e8924aa</code></li>
+</ul>
+<hr>
+<h2 id="security-considerations">Security Considerations</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Collision Resistance</th>
+<th>Preimage Resistance</th>
+<th>Recommended Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-1</td>
+<td>❌ Broken</td>
+<td>⚠️ Weakened</td>
+<td>Legacy only</td>
+</tr>
+<tr>
+<td>SHA-224</td>
+<td>✅ 112 bits</td>
+<td>✅ 224 bits</td>
+<td>General use</td>
+</tr>
+<tr>
+<td>SHA-256</td>
+<td>✅ 128 bits</td>
+<td>✅ 256 bits</td>
+<td><strong>Recommended</strong></td>
+</tr>
+<tr>
+<td>SHA-384</td>
+<td>✅ 192 bits</td>
+<td>✅ 384 bits</td>
+<td>High security</td>
+</tr>
+<tr>
+<td>SHA-512</td>
+<td>✅ 256 bits</td>
+<td>✅ 512 bits</td>
+<td>High security</td>
+</tr>
+<tr>
+<td>SHA-512/224</td>
+<td>✅ 112 bits</td>
+<td>✅ 224 bits</td>
+<td>64-bit optimized</td>
+</tr>
+<tr>
+<td>SHA-512/256</td>
+<td>✅ 128 bits</td>
+<td>✅ 256 bits</td>
+<td>64-bit optimized</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="references">References</h2>
+<ol>
+<li>NIST FIPS 180-4: <a href="https://doi.org/10.6028/NIST.FIPS.180-4">https://doi.org/10.6028/NIST.FIPS.180-4</a></li>
+<li>SHA-1 Examples: <a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf">https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf</a></li>
+<li>SHA-256 Examples: <a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf">https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf</a></li>
+<li>SHA-512 Examples: <a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf">https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf</a></li>
+</ol>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-FIPS-180-4.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

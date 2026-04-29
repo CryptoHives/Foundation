@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>AES-CMAC Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="AES-CMAC Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/CMAC-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="aes-cmac-test-vectors">AES-CMAC Test Vectors</h1>
+
+<p>Test vectors for AES-CMAC from NIST SP 800-38B and RFC 4493.</p>
+<h2 id="source">Source</h2>
+<ul>
+<li><strong>NIST SP 800-38B:</strong> Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication</li>
+<li><strong>URL:</strong> <a href="https://csrc.nist.gov/pubs/sp/800-38b/upd1/final">https://csrc.nist.gov/pubs/sp/800-38b/upd1/final</a></li>
+<li><strong>RFC 4493:</strong> The AES-CMAC Algorithm</li>
+<li><strong>URL:</strong> <a href="https://www.rfc-editor.org/rfc/rfc4493">https://www.rfc-editor.org/rfc/rfc4493</a></li>
+</ul>
+<hr>
+<h2 id="aes-128-cmac">AES-128-CMAC</h2>
+<p><strong>Key:</strong> <code>2b7e1516 28aed2a6 abf71588 09cf4f3c</code></p>
+<h3 id="subkeys">Subkeys</h3>
+<pre><code>L  = 7df76b0c 1ab899b3 3e42f047 b91b546f
+K1 = fbeed618 357133667c85e08f 7236a8de
+K2 = f7ddac30 6ae266cc f90bc11e e46d513b
+</code></pre>
+<h3 id="example-1--empty-message">Example 1 — Empty Message</h3>
+<pre><code>Data:    (empty)
+CMAC:    bb1d6929 e9593728 7fa37d12 9b756746
+</code></pre>
+<h3 id="example-2--16-byte-message-complete-block">Example 2 — 16-byte Message (Complete Block)</h3>
+<pre><code>Data:    6bc1bee2 2e409f96 e93d7e11 7393172a
+CMAC:    070a16b4 6b4d4144 f79bdd9d d04a287c
+</code></pre>
+<h3 id="example-3--40-byte-message-incomplete-final-block">Example 3 — 40-byte Message (Incomplete Final Block)</h3>
+<pre><code>Data:    6bc1bee2 2e409f96 e93d7e11 7393172a
+         ae2d8a57 1e03ac9c 9eb76fac 45af8e51
+         30c81c46 a35ce411
+CMAC:    dfa66747 de9ae630 30ca3261 1497c827
+</code></pre>
+<h3 id="example-4--64-byte-message-4-complete-blocks">Example 4 — 64-byte Message (4 Complete Blocks)</h3>
+<pre><code>Data:    6bc1bee2 2e409f96 e93d7e11 7393172a
+         ae2d8a57 1e03ac9c 9eb76fac 45af8e51
+         30c81c46 a35ce411 e5fbc119 1a0a52ef
+         f69f2445 df4f9b17 ad2b417b e66c3710
+CMAC:    51f0bebf 7e3b9d92 fc497417 79363cfe
+</code></pre>
+<hr>
+<h2 id="aes-256-cmac">AES-256-CMAC</h2>
+<p><strong>Key:</strong> <code>603deb10 15ca71be 2b73aef0 857d7781 1f352c07 3b6108d7 2d9810a3 0914dff4</code></p>
+<h3 id="example-1--empty-message-1">Example 1 — Empty Message</h3>
+<pre><code>Data:    (empty)
+CMAC:    028962f6 1b7bf89e fc6b551f 4667d983
+</code></pre>
+<h3 id="example-2--16-byte-message">Example 2 — 16-byte Message</h3>
+<pre><code>Data:    6bc1bee2 2e409f96 e93d7e11 7393172a
+CMAC:    28a7023f 452e8f82 bd4bf28d 8c37c35c
+</code></pre>
+<h3 id="example-3--64-byte-message">Example 3 — 64-byte Message</h3>
+<pre><code>Data:    6bc1bee2 2e409f96 e93d7e11 7393172a
+         ae2d8a57 1e03ac9c 9eb76fac 45af8e51
+         30c81c46 a35ce411 e5fbc119 1a0a52ef
+         f69f2445 df4f9b17 ad2b417b e66c3710
+CMAC:    e1992190 549f6ed5 696a2c05 6c315410
+</code></pre>
+<hr>
+<h2 id="aes-gmac">AES-GMAC</h2>
+<p>AES-GMAC does not have standalone test vectors in NIST SP 800-38B. Instead, GMAC is validated by comparing against AES-GCM with empty plaintext, using the test vectors from NIST SP 800-38D.</p>
+<p>The NUnit test suite cross-validates GMAC against <code>AesGcm128</code>, <code>AesGcm192</code>, and <code>AesGcm256</code> with empty plaintext to ensure consistent results.</p>
+<hr>
+<h2 id="validation">Validation</h2>
+<p>The NUnit test suite in <code>tests/Security/Cryptography/Mac/Cmac/CmacTests.cs</code> validates all NIST SP 800-38B test vectors and additionally cross-validates against BouncyCastle <code>CMac(AesEngine)</code> for:</p>
+<ul>
+<li>Empty messages</li>
+<li>Short messages</li>
+<li>Messages spanning multiple blocks</li>
+<li>AES-128 and AES-256 key sizes</li>
+</ul>
+<p>The GMAC tests in <code>tests/Security/Cryptography/Mac/Gmac/GmacTests.cs</code> validate against the CryptoHives AES-GCM implementation with empty plaintext and test tag verification behavior.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/CMAC-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

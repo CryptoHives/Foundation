@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-128.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../../index.html">
+            <img id="logo" class="svg" src="../../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>TestDataSize</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Error</th>
+<th style="text-align: right;">StdDev</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>17B</td>
+<td style="text-align: right;">120.90 ns</td>
+<td style="text-align: right;">1.311 ns</td>
+<td style="text-align: right;">1.227 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>17B</td>
+<td style="text-align: right;">125.18 ns</td>
+<td style="text-align: right;">2.521 ns</td>
+<td style="text-align: right;">2.698 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>17B</td>
+<td style="text-align: right;">127.55 ns</td>
+<td style="text-align: right;">1.090 ns</td>
+<td style="text-align: right;">1.019 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>17B</td>
+<td style="text-align: right;">355.45 ns</td>
+<td style="text-align: right;">2.956 ns</td>
+<td style="text-align: right;">2.468 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>17B</td>
+<td style="text-align: right;">621.57 ns</td>
+<td style="text-align: right;">7.004 ns</td>
+<td style="text-align: right;">6.552 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>17B</td>
+<td style="text-align: right;">65.77 ns</td>
+<td style="text-align: right;">0.272 ns</td>
+<td style="text-align: right;">0.255 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>17B</td>
+<td style="text-align: right;">66.36 ns</td>
+<td style="text-align: right;">0.159 ns</td>
+<td style="text-align: right;">0.133 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>17B</td>
+<td style="text-align: right;">128.19 ns</td>
+<td style="text-align: right;">1.205 ns</td>
+<td style="text-align: right;">1.127 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>17B</td>
+<td style="text-align: right;">331.85 ns</td>
+<td style="text-align: right;">3.129 ns</td>
+<td style="text-align: right;">2.927 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>17B</td>
+<td style="text-align: right;">558.93 ns</td>
+<td style="text-align: right;">9.317 ns</td>
+<td style="text-align: right;">8.715 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>65B</td>
+<td style="text-align: right;">102.41 ns</td>
+<td style="text-align: right;">1.589 ns</td>
+<td style="text-align: right;">1.486 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>65B</td>
+<td style="text-align: right;">105.78 ns</td>
+<td style="text-align: right;">1.125 ns</td>
+<td style="text-align: right;">0.998 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>65B</td>
+<td style="text-align: right;">125.79 ns</td>
+<td style="text-align: right;">2.545 ns</td>
+<td style="text-align: right;">3.219 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>65B</td>
+<td style="text-align: right;">628.58 ns</td>
+<td style="text-align: right;">11.961 ns</td>
+<td style="text-align: right;">10.604 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>65B</td>
+<td style="text-align: right;">849.11 ns</td>
+<td style="text-align: right;">16.198 ns</td>
+<td style="text-align: right;">21.624 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>65B</td>
+<td style="text-align: right;">70.57 ns</td>
+<td style="text-align: right;">0.438 ns</td>
+<td style="text-align: right;">0.366 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>65B</td>
+<td style="text-align: right;">70.74 ns</td>
+<td style="text-align: right;">0.323 ns</td>
+<td style="text-align: right;">0.270 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>65B</td>
+<td style="text-align: right;">131.19 ns</td>
+<td style="text-align: right;">0.615 ns</td>
+<td style="text-align: right;">0.575 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>65B</td>
+<td style="text-align: right;">579.04 ns</td>
+<td style="text-align: right;">4.327 ns</td>
+<td style="text-align: right;">3.378 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>65B</td>
+<td style="text-align: right;">715.78 ns</td>
+<td style="text-align: right;">11.904 ns</td>
+<td style="text-align: right;">10.553 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>128B</td>
+<td style="text-align: right;">97.95 ns</td>
+<td style="text-align: right;">1.917 ns</td>
+<td style="text-align: right;">1.793 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>128B</td>
+<td style="text-align: right;">100.12 ns</td>
+<td style="text-align: right;">0.658 ns</td>
+<td style="text-align: right;">0.550 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>128B</td>
+<td style="text-align: right;">122.31 ns</td>
+<td style="text-align: right;">0.702 ns</td>
+<td style="text-align: right;">0.586 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">859.02 ns</td>
+<td style="text-align: right;">10.048 ns</td>
+<td style="text-align: right;">9.399 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">957.60 ns</td>
+<td style="text-align: right;">11.804 ns</td>
+<td style="text-align: right;">11.042 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>128B</td>
+<td style="text-align: right;">59.45 ns</td>
+<td style="text-align: right;">0.404 ns</td>
+<td style="text-align: right;">0.378 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>128B</td>
+<td style="text-align: right;">61.89 ns</td>
+<td style="text-align: right;">0.637 ns</td>
+<td style="text-align: right;">0.564 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>128B</td>
+<td style="text-align: right;">125.36 ns</td>
+<td style="text-align: right;">1.561 ns</td>
+<td style="text-align: right;">1.460 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">824.55 ns</td>
+<td style="text-align: right;">14.780 ns</td>
+<td style="text-align: right;">13.825 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">864.72 ns</td>
+<td style="text-align: right;">13.318 ns</td>
+<td style="text-align: right;">12.458 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>152B</td>
+<td style="text-align: right;">127.24 ns</td>
+<td style="text-align: right;">1.637 ns</td>
+<td style="text-align: right;">1.531 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>152B</td>
+<td style="text-align: right;">129.91 ns</td>
+<td style="text-align: right;">1.466 ns</td>
+<td style="text-align: right;">1.371 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>152B</td>
+<td style="text-align: right;">142.53 ns</td>
+<td style="text-align: right;">1.945 ns</td>
+<td style="text-align: right;">1.724 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>152B</td>
+<td style="text-align: right;">1,043.02 ns</td>
+<td style="text-align: right;">18.180 ns</td>
+<td style="text-align: right;">17.006 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>152B</td>
+<td style="text-align: right;">1,100.54 ns</td>
+<td style="text-align: right;">14.216 ns</td>
+<td style="text-align: right;">13.297 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>152B</td>
+<td style="text-align: right;">86.29 ns</td>
+<td style="text-align: right;">1.724 ns</td>
+<td style="text-align: right;">1.693 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>152B</td>
+<td style="text-align: right;">89.17 ns</td>
+<td style="text-align: right;">1.556 ns</td>
+<td style="text-align: right;">1.528 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>152B</td>
+<td style="text-align: right;">139.99 ns</td>
+<td style="text-align: right;">1.302 ns</td>
+<td style="text-align: right;">1.218 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>152B</td>
+<td style="text-align: right;">1,010.19 ns</td>
+<td style="text-align: right;">20.000 ns</td>
+<td style="text-align: right;">18.708 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>152B</td>
+<td style="text-align: right;">1,023.17 ns</td>
+<td style="text-align: right;">20.331 ns</td>
+<td style="text-align: right;">22.598 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>256B</td>
+<td style="text-align: right;">115.11 ns</td>
+<td style="text-align: right;">1.273 ns</td>
+<td style="text-align: right;">1.191 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>256B</td>
+<td style="text-align: right;">133.64 ns</td>
+<td style="text-align: right;">2.699 ns</td>
+<td style="text-align: right;">3.510 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>256B</td>
+<td style="text-align: right;">139.17 ns</td>
+<td style="text-align: right;">2.787 ns</td>
+<td style="text-align: right;">2.862 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>256B</td>
+<td style="text-align: right;">1,434.62 ns</td>
+<td style="text-align: right;">28.322 ns</td>
+<td style="text-align: right;">36.827 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>256B</td>
+<td style="text-align: right;">1,544.24 ns</td>
+<td style="text-align: right;">19.158 ns</td>
+<td style="text-align: right;">17.920 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>256B</td>
+<td style="text-align: right;">76.63 ns</td>
+<td style="text-align: right;">1.201 ns</td>
+<td style="text-align: right;">1.124 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>256B</td>
+<td style="text-align: right;">81.24 ns</td>
+<td style="text-align: right;">0.799 ns</td>
+<td style="text-align: right;">0.747 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>256B</td>
+<td style="text-align: right;">133.52 ns</td>
+<td style="text-align: right;">2.645 ns</td>
+<td style="text-align: right;">3.959 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>256B</td>
+<td style="text-align: right;">1,297.97 ns</td>
+<td style="text-align: right;">23.544 ns</td>
+<td style="text-align: right;">22.023 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>256B</td>
+<td style="text-align: right;">1,515.08 ns</td>
+<td style="text-align: right;">17.327 ns</td>
+<td style="text-align: right;">16.208 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>1KB</td>
+<td style="text-align: right;">189.01 ns</td>
+<td style="text-align: right;">3.375 ns</td>
+<td style="text-align: right;">3.157 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>1KB</td>
+<td style="text-align: right;">207.78 ns</td>
+<td style="text-align: right;">4.134 ns</td>
+<td style="text-align: right;">4.922 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>1KB</td>
+<td style="text-align: right;">265.17 ns</td>
+<td style="text-align: right;">4.488 ns</td>
+<td style="text-align: right;">4.198 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">3,844.68 ns</td>
+<td style="text-align: right;">46.142 ns</td>
+<td style="text-align: right;">36.025 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">5,760.38 ns</td>
+<td style="text-align: right;">109.675 ns</td>
+<td style="text-align: right;">107.715 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>1KB</td>
+<td style="text-align: right;">179.05 ns</td>
+<td style="text-align: right;">3.480 ns</td>
+<td style="text-align: right;">3.418 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>1KB</td>
+<td style="text-align: right;">184.82 ns</td>
+<td style="text-align: right;">2.815 ns</td>
+<td style="text-align: right;">2.495 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>1KB</td>
+<td style="text-align: right;">207.94 ns</td>
+<td style="text-align: right;">4.151 ns</td>
+<td style="text-align: right;">4.076 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">3,712.32 ns</td>
+<td style="text-align: right;">34.814 ns</td>
+<td style="text-align: right;">30.862 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">5,997.45 ns</td>
+<td style="text-align: right;">65.878 ns</td>
+<td style="text-align: right;">61.622 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>8KB</td>
+<td style="text-align: right;">717.21 ns</td>
+<td style="text-align: right;">14.099 ns</td>
+<td style="text-align: right;">13.189 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>8KB</td>
+<td style="text-align: right;">1,073.78 ns</td>
+<td style="text-align: right;">15.036 ns</td>
+<td style="text-align: right;">13.329 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>8KB</td>
+<td style="text-align: right;">1,467.09 ns</td>
+<td style="text-align: right;">28.733 ns</td>
+<td style="text-align: right;">28.219 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">26,887.71 ns</td>
+<td style="text-align: right;">260.587 ns</td>
+<td style="text-align: right;">243.753 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">43,639.69 ns</td>
+<td style="text-align: right;">494.512 ns</td>
+<td style="text-align: right;">462.566 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>8KB</td>
+<td style="text-align: right;">691.59 ns</td>
+<td style="text-align: right;">10.838 ns</td>
+<td style="text-align: right;">10.138 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>8KB</td>
+<td style="text-align: right;">1,152.68 ns</td>
+<td style="text-align: right;">14.763 ns</td>
+<td style="text-align: right;">13.810 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>8KB</td>
+<td style="text-align: right;">1,361.15 ns</td>
+<td style="text-align: right;">13.827 ns</td>
+<td style="text-align: right;">12.934 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">26,510.39 ns</td>
+<td style="text-align: right;">220.545 ns</td>
+<td style="text-align: right;">206.298 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">43,119.14 ns</td>
+<td style="text-align: right;">207.101 ns</td>
+<td style="text-align: right;">183.590 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (OS)</td>
+<td>128KB</td>
+<td style="text-align: right;">11,360.11 ns</td>
+<td style="text-align: right;">138.436 ns</td>
+<td style="text-align: right;">115.600 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>128KB</td>
+<td style="text-align: right;">16,465.23 ns</td>
+<td style="text-align: right;">255.352 ns</td>
+<td style="text-align: right;">238.856 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>128KB</td>
+<td style="text-align: right;">21,794.01 ns</td>
+<td style="text-align: right;">369.365 ns</td>
+<td style="text-align: right;">345.505 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">419,142.68 ns</td>
+<td style="text-align: right;">6,298.970 ns</td>
+<td style="text-align: right;">5,259.925 ns</td>
+<td style="text-align: right;">1624 B</td>
+</tr>
+<tr>
+<td>Decrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">700,467.03 ns</td>
+<td style="text-align: right;">13,642.634 ns</td>
+<td style="text-align: right;">13,398.891 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (OS)</td>
+<td>128KB</td>
+<td style="text-align: right;">10,145.57 ns</td>
+<td style="text-align: right;">148.883 ns</td>
+<td style="text-align: right;">139.265 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMulV256)</td>
+<td>128KB</td>
+<td style="text-align: right;">17,575.66 ns</td>
+<td style="text-align: right;">182.644 ns</td>
+<td style="text-align: right;">161.909 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-AES-NI+PClMul)</td>
+<td>128KB</td>
+<td style="text-align: right;">21,014.08 ns</td>
+<td style="text-align: right;">232.972 ns</td>
+<td style="text-align: right;">217.922 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">418,362.57 ns</td>
+<td style="text-align: right;">2,760.521 ns</td>
+<td style="text-align: right;">2,582.193 ns</td>
+<td style="text-align: right;">1608 B</td>
+</tr>
+<tr>
+<td>Encrypt · AES-128-GCM (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">688,774.13 ns</td>
+<td style="text-align: right;">8,493.157 ns</td>
+<td style="text-align: right;">7,944.504 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/aes-gcm-128.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

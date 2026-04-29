@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ArrayPoolMemoryStream Class | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ArrayPoolMemoryStream Class | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/arraypoolmemorystream.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="arraypoolmemorystream-class">ArrayPoolMemoryStream Class</h1>
+
+<p>A memory-backed stream implementation that rents fixed-size buffers from <code>ArrayPool&lt;byte&gt;.Shared</code> and stores data in multiple segments.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">CryptoHives.Foundation.Memory.Buffers
+</code></pre>
+<h2 id="inheritance">Inheritance</h2>
+<p><code>Object</code> ? <code>MarshalByRefObject</code> ? <code>Stream</code> ? <code>MemoryStream</code> ? <strong><code>ArrayPoolMemoryStream</code></strong></p>
+<h2 id="syntax">Syntax</h2>
+<pre><code class="lang-csharp">public sealed class ArrayPoolMemoryStream : MemoryStream
+</code></pre>
+<h2 id="overview">Overview</h2>
+<p><code>ArrayPoolMemoryStream</code> is designed for high-throughput and temporary in-memory I/O scenarios where reducing allocations and Large Object Heap (LOH) churn matters. Instead of continuously resizing a single contiguous array like the standard <code>MemoryStream</code>, it rents fixed-size buffers from the shared array pool and chains them together.</p>
+<h2 id="benefits">Benefits</h2>
+<ul>
+<li><strong>Lower allocation churn</strong>: Rents buffers from <code>ArrayPool&lt;byte&gt;.Shared</code> instead of allocating new arrays</li>
+<li><strong>Fewer large allocations</strong>: Reuses rented buffers to avoid repeated large allocations and LOH churn</li>
+<li><strong>No resize-copy on growth</strong>: Appends new rented segments instead of reallocating and copying</li>
+<li><strong>Zero-copy multi-segment access</strong>: <code>GetReadOnlySequence()</code> exposes internal segments as <code>ReadOnlySequence&lt;byte&gt;</code></li>
+<li><strong>Span APIs</strong>: Span-based read/write paths reduce intermediate allocations</li>
+</ul>
+<h2 id="constructors">Constructors</h2>
+<table>
+<thead>
+<tr>
+<th>Constructor</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ArrayPoolMemoryStream()</code></td>
+<td>Creates a writable stream with default buffer size (4096 bytes)</td>
+</tr>
+<tr>
+<td><code>ArrayPoolMemoryStream(int bufferSize)</code></td>
+<td>Creates a writable stream with specified buffer size</td>
+</tr>
+<tr>
+<td><code>ArrayPoolMemoryStream(int bufferListSize, int bufferSize)</code></td>
+<td>Creates a writable stream with custom buffer list and buffer sizes</td>
+</tr>
+<tr>
+<td><code>ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count)</code></td>
+<td>Creates a writable stream with full customization</td>
+</tr>
+<tr>
+<td><code>ArrayPoolMemoryStream(IEnumerable&lt;ArraySegment&lt;byte&gt;&gt; buffers)</code></td>
+<td>Creates a read-only stream from existing buffer segments</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Length</code></td>
+<td><code>long</code></td>
+<td>Gets the total length of data in all segments</td>
+</tr>
+<tr>
+<td><code>Position</code></td>
+<td><code>long</code></td>
+<td>Gets or sets the current position</td>
+</tr>
+<tr>
+<td><code>CanRead</code></td>
+<td><code>bool</code></td>
+<td>Always returns <code>true</code></td>
+</tr>
+<tr>
+<td><code>CanWrite</code></td>
+<td><code>bool</code></td>
+<td>Returns <code>true</code> for writable streams, <code>false</code> for read-only</td>
+</tr>
+<tr>
+<td><code>CanSeek</code></td>
+<td><code>bool</code></td>
+<td>Always returns <code>true</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="read-methods">Read Methods</h3>
+<pre><code class="lang-csharp">public override int Read(byte[] buffer, int offset, int count)
+public int Read(Span&lt;byte&gt; buffer) // .NET Standard 2.1+
+public override int ReadByte()
+</code></pre>
+<h3 id="write-methods">Write Methods</h3>
+<pre><code class="lang-csharp">public override void Write(byte[] buffer, int offset, int count)
+public void Write(ReadOnlySpan&lt;byte&gt; buffer) // .NET Standard 2.1+
+public override void WriteByte(byte value)
+</code></pre>
+<h3 id="seeking">Seeking</h3>
+<pre><code class="lang-csharp">public override long Seek(long offset, SeekOrigin loc)
+</code></pre>
+<h3 id="zero-allocationzero-copy-access">Zero-Allocation/Zero-Copy Access</h3>
+<pre><code class="lang-csharp">public ReadOnlySequence&lt;byte&gt; GetReadOnlySequence()
+public bool TryCopyTo(Span&lt;byte&gt; destination, out int bytesWritten)
+</code></pre>
+<p>Returns a <code>ReadOnlySequence&lt;byte&gt;</code> representing all data in the stream. The sequence is valid until the next write operation or disposal. There is no allocation or copy involved in the service call. This is the recommended way to use the streamed data, but it requires extra lifetime management of the stream.</p>
+<p><code>TryCopyTo</code> provides a non-throwing copy path for callers that already own a destination buffer. The <code>bytesWritten</code> variable reports the copied length on success and <code>0</code> when the destination is too small.</p>
+<h3 id="other-methods">Other Methods</h3>
+<pre><code class="lang-csharp">public override void Flush() // No-op
+public override byte[] ToArray() // Copies all data to a new array
+protected override void Dispose(bool disposing) // Returns buffers to pool
+</code></pre>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="basic-write-and-read">Basic Write and Read</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Memory.Buffers;
+using System;
+using System.Text;
+
+// Create a writable stream
+using var stream = new ArrayPoolMemoryStream();
+
+// Write data
+byte[] data = Encoding.UTF8.GetBytes(&quot;Hello, World!&quot;);
+stream.Write(data, 0, data.Length);
+
+// Reset position
+stream.Position = 0;
+
+// Read data back
+byte[] buffer = new byte[data.Length];
+int bytesRead = stream.Read(buffer, 0, buffer.Length);
+
+Console.WriteLine(Encoding.UTF8.GetString(buffer, 0, bytesRead));
+// Output: Hello, World!
+</code></pre>
+<h3 id="using-span-apis-net-standard-21">Using Span APIs (.NET Standard 2.1+)</h3>
+<pre><code class="lang-csharp">using var stream = new ArrayPoolMemoryStream();
+
+// Write using Span
+ReadOnlySpan&lt;byte&gt; data = stackalloc byte[] { 1, 2, 3, 4, 5 };
+stream.Write(data);
+
+// Read using Span
+stream.Position = 0;
+Span&lt;byte&gt; buffer = stackalloc byte[5];
+int bytesRead = stream.Read(buffer);
+</code></pre>
+<h3 id="zero-copy-access-with-readonlysequence">Zero-Copy Access with ReadOnlySequence</h3>
+<pre><code class="lang-csharp">using var stream = new ArrayPoolMemoryStream();
+
+// Write data
+await WriteDataAsync(stream);
+
+// Get zero-copy sequence
+ReadOnlySequence&lt;byte&gt; sequence = stream.GetReadOnlySequence();
+
+// Process without copying
+foreach (ReadOnlyMemory&lt;byte&gt; segment in sequence)
+{
+    ProcessSegment(segment.Span);
+}
+</code></pre>
+<h3 id="async-write-and-read">Async Write and Read</h3>
+<pre><code class="lang-csharp">using var stream = new ArrayPoolMemoryStream();
+
+// Async write
+byte[] data = GetData();
+await stream.WriteAsync(data, 0, data.Length, cancellationToken);
+
+// Async read
+stream.Position = 0;
+byte[] buffer = new byte[1024];
+int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+</code></pre>
+<h3 id="custom-buffer-sizing">Custom Buffer Sizing</h3>
+<pre><code class="lang-csharp">// Create stream with 8KB buffers
+using var stream = new ArrayPoolMemoryStream(bufferSize: 8192);
+
+// Create stream with custom buffer list capacity
+using var stream2 = new ArrayPoolMemoryStream(
+    bufferListSize: 16,  // Initial capacity for buffer list
+    bufferSize: 4096     // Size of each buffer
+);
+</code></pre>
+<h3 id="read-only-stream-from-existing-buffers">Read-Only Stream from Existing Buffers</h3>
+<pre><code class="lang-csharp">var buffers = new List&lt;ArraySegment&lt;byte&gt;&gt;
+{
+    new ArraySegment&lt;byte&gt;(buffer1),
+    new ArraySegment&lt;byte&gt;(buffer2)
+};
+
+// Create read-only stream (buffers NOT returned to pool on dispose)
+using var stream = new ArrayPoolMemoryStream(buffers);
+
+// Read data
+byte[] data = stream.ToArray();
+</code></pre>
+<h3 id="integration-with-serialization">Integration with Serialization</h3>
+<pre><code class="lang-csharp">using var stream = new ArrayPoolMemoryStream();
+
+// Serialize object
+JsonSerializer.Serialize(stream, myObject);
+
+// Get the data as ReadOnlySequence
+ReadOnlySequence&lt;byte&gt; jsonBytes = stream.GetReadOnlySequence();
+
+// Send over network without copying
+await SendAsync(jsonBytes, cancellationToken);
+</code></pre>
+<h3 id="copying-to-another-stream">Copying to Another Stream</h3>
+<pre><code class="lang-csharp">using var source = new ArrayPoolMemoryStream();
+await WriteDataAsync(source);
+
+source.Position = 0;
+
+using var destination = new FileStream(&quot;output.dat&quot;, FileMode.Create);
+await source.CopyToAsync(destination);
+</code></pre>
+<h3 id="trycopyto-into-a-preallocated-buffer">TryCopyTo into a Preallocated Buffer</h3>
+<pre><code class="lang-csharp">using var stream = new ArrayPoolMemoryStream();
+await WriteDataAsync(stream);
+
+Span&lt;byte&gt; destination = stackalloc byte[256];
+if (stream.TryCopyTo(destination, out int bytesWritten))
+{
+    ProcessData(destination.Slice(0, bytesWritten));
+}
+else
+{
+    // destination is too small
+}
+</code></pre>
+<h2 id="performance-considerations">Performance Considerations</h2>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li>High-throughput transformation pipelines with many temporary streams and unknown, varying final sizes</li>
+<li>Large data sets that might trigger LOH allocations</li>
+<li>When you need zero-copy access to the data</li>
+<li>Building tranformation pipelines with lifetime managed <code>ReadOnlySequence&lt;byte&gt;</code></li>
+</ul>
+<h3 id="when-not-to-use">When NOT to Use</h3>
+<ul>
+<li>Very small buffers (&lt; 1KB) - overhead might outweigh benefits</li>
+<li>Long-lived streams - pooled buffers are meant for temporary use</li>
+<li>When you need the data as a contiguous array anyway</li>
+</ul>
+<h3 id="buffer-size-guidelines">Buffer Size Guidelines</h3>
+<ul>
+<li><strong>Small data (&lt; 4KB)</strong>: Use default 4096-byte buffers</li>
+<li><strong>Medium data (4KB - 64KB)</strong>: Use 8192 or 16384-byte buffers</li>
+<li><strong>Large data (&gt; 64KB)</strong>: Use 32768 or 65536-byte buffers</li>
+</ul>
+<h2 id="thread-safety">Thread Safety</h2>
+<p>⚠️ <strong>Not thread-safe</strong>. External synchronization required for concurrent access.</p>
+<h2 id="disposal">Disposal</h2>
+<p>Always dispose <code>ArrayPoolMemoryStream</code> to return rented buffers to the pool:</p>
+<pre><code class="lang-csharp">using var stream = new ArrayPoolMemoryStream();
+
+// Use stream...
+stream.Write(data);
+
+// Process final sequence
+var sequence = stream.GetReadOnlySequence();
+
+// Automatically disposed and buffers returned
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="arraypoolbufferwriter.html">ArrayPoolBufferWriter&lt;T&gt;</a></li>
+<li><a href="readonlysequencememorystream.html">ReadOnlySequenceMemoryStream</a></li>
+<li><a href="index.html">Memory Package Overview</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/arraypoolmemorystream.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

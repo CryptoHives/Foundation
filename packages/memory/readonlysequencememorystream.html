@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ReadOnlySequenceMemoryStream Class | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ReadOnlySequenceMemoryStream Class | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/readonlysequencememorystream.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="readonlysequencememorystream-class">ReadOnlySequenceMemoryStream Class</h1>
+
+<p>A read-only stream wrapper around <code>ReadOnlySequence&lt;byte&gt;</code> for zero-copy stream operations.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">CryptoHives.Foundation.Memory.Buffers
+</code></pre>
+<h2 id="inheritance">Inheritance</h2>
+<p><code>Object</code> ? <code>MarshalByRefObject</code> ? <code>Stream</code> ? <code>MemoryStream</code> ? <strong><code>ReadOnlySequenceMemoryStream</code></strong></p>
+<h2 id="syntax">Syntax</h2>
+<pre><code class="lang-csharp">public sealed class ReadOnlySequenceMemoryStream : MemoryStream
+</code></pre>
+<h2 id="overview">Overview</h2>
+<p><code>ReadOnlySequenceMemoryStream</code> provides a <code>MemoryStream</code> interface over a <code>ReadOnlySequence&lt;byte&gt;</code>, enabling zero-copy integration with APIs that require streams for reading. This is particularly useful when you have data in a <code>ReadOnlySequence&lt;byte&gt;</code> (from <code>ArrayPoolMemoryStream</code>, <code>ArrayPoolBufferWriter&lt;T&gt;</code>, or <code>PipeReader</code>) and need to pass it to deserializers, compression libraries, or other stream-based APIs that have not yet native ReadOnlySequence support.</p>
+<h2 id="benefits">Benefits</h2>
+<ul>
+<li><strong>Zero-Copy</strong>: No data copying when wrapping a <code>ReadOnlySequence&lt;byte&gt;</code></li>
+<li><strong>Stream Compatibility</strong>: Works with any API expecting a readable <code>Stream</code></li>
+<li><strong>Efficient Seeking</strong>: Supports seeking within the sequence</li>
+<li><strong>Multi-Segment Support</strong>: Handles sequences spanning multiple memory segments</li>
+<li><strong>Read-Only Safety</strong>: Prevents accidental modifications</li>
+</ul>
+<h2 id="constructors">Constructors</h2>
+<table>
+<thead>
+<tr>
+<th>Constructor</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReadOnlySequenceMemoryStream(ReadOnlySequence&lt;byte&gt; sequence)</code></td>
+<td>Creates a read-only stream from the given sequence</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Length</code></td>
+<td><code>long</code></td>
+<td>Gets the total length of the sequence</td>
+</tr>
+<tr>
+<td><code>Position</code></td>
+<td><code>long</code></td>
+<td>Gets or sets the current position</td>
+</tr>
+<tr>
+<td><code>CanRead</code></td>
+<td><code>bool</code></td>
+<td>Always returns <code>true</code></td>
+</tr>
+<tr>
+<td><code>CanWrite</code></td>
+<td><code>bool</code></td>
+<td>Always returns <code>false</code></td>
+</tr>
+<tr>
+<td><code>CanSeek</code></td>
+<td><code>bool</code></td>
+<td>Always returns <code>true</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="reading">Reading</h3>
+<pre><code class="lang-csharp">public override int Read(byte[] buffer, int offset, int count)
+</code></pre>
+<p>Reads bytes from the sequence into the buffer.</p>
+<pre><code class="lang-csharp">public int Read(Span&lt;byte&gt; buffer) // .NET Standard 2.1+
+</code></pre>
+<p>Reads bytes from the sequence into the span.</p>
+<pre><code class="lang-csharp">public override int ReadByte()
+</code></pre>
+<p>Reads a single byte from the sequence.</p>
+<h3 id="seeking">Seeking</h3>
+<pre><code class="lang-csharp">public override long Seek(long offset, SeekOrigin loc)
+</code></pre>
+<p>Sets the position within the sequence.</p>
+<h3 id="conversion">Conversion</h3>
+<pre><code class="lang-csharp">public override byte[] ToArray()
+</code></pre>
+<p>Copies the entire sequence to a new array. <strong>Note</strong>: This allocates a new array.</p>
+<h3 id="other-methods">Other Methods</h3>
+<pre><code class="lang-csharp">public override void Flush() // No-op for read-only stream
+</code></pre>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="basic-reading">Basic Reading</h3>
+<pre><code class="lang-csharp">ReadOnlySequence&lt;byte&gt; sequence = GetDataSequence();
+using var stream = new ReadOnlySequenceMemoryStream(sequence);
+
+byte[] buffer = new byte[1024];
+int bytesRead = stream.Read(buffer, 0, buffer.Length);
+</code></pre>
+<h3 id="json-deserialization">JSON Deserialization</h3>
+<pre><code class="lang-csharp">using System.Text.Json;
+
+ReadOnlySequence&lt;byte&gt; jsonBytes = GetJsonData();
+using var stream = new ReadOnlySequenceMemoryStream(jsonBytes);
+
+MyObject obj = await JsonSerializer.DeserializeAsync&lt;MyObject&gt;(stream);
+</code></pre>
+<h3 id="decompression">Decompression</h3>
+<pre><code class="lang-csharp">using System.IO.Compression;
+
+ReadOnlySequence&lt;byte&gt; compressedData = GetCompressedData();
+using var compressedStream = new ReadOnlySequenceMemoryStream(compressedData);
+using var gzipStream = new GZipStream(compressedStream, CompressionMode.Decompress);
+using var decompressedStream = new MemoryStream();
+
+await gzipStream.CopyToAsync(decompressedStream);
+byte[] decompressed = decompressedStream.ToArray();
+</code></pre>
+<h3 id="reading-with-span-net-standard-21">Reading with Span (.NET Standard 2.1+)</h3>
+<pre><code class="lang-csharp">using var stream = new ReadOnlySequenceMemoryStream(sequence);
+
+Span&lt;byte&gt; buffer = stackalloc byte[256];
+int bytesRead = stream.Read(buffer);
+
+ProcessData(buffer.Slice(0, bytesRead));
+</code></pre>
+<h3 id="seeking-1">Seeking</h3>
+<pre><code class="lang-csharp">using var stream = new ReadOnlySequenceMemoryStream(sequence);
+
+// Seek to offset 100
+stream.Seek(100, SeekOrigin.Begin);
+
+// Seek forward 50 bytes
+stream.Seek(50, SeekOrigin.Current);
+
+// Seek to 100 bytes before end
+stream.Seek(-100, SeekOrigin.End);
+</code></pre>
+<h2 id="integration-examples">Integration Examples</h2>
+<h3 id="with-systemiopipelines">With System.IO.Pipelines</h3>
+<pre><code class="lang-csharp">public async Task ProcessPipelineDataAsync(PipeReader reader)
+{
+    ReadResult result = await reader.ReadAsync();
+    ReadOnlySequence&lt;byte&gt; buffer = result.Buffer;
+
+    using (var stream = new ReadOnlySequenceMemoryStream(buffer))
+    {
+        var data = await JsonSerializer.DeserializeAsync&lt;MyData&gt;(stream);
+        ProcessData(data);
+ }
+    
+  reader.AdvanceTo(buffer.End);
+}
+</code></pre>
+<h3 id="with-protocol-buffers">With Protocol Buffers</h3>
+<pre><code class="lang-csharp">using Google.Protobuf;
+
+ReadOnlySequence&lt;byte&gt; protobufData = GetProtobufData();
+using var stream = new ReadOnlySequenceMemoryStream(protobufData);
+
+MyMessage message = MyMessage.Parser.ParseFrom(stream);
+</code></pre>
+<h3 id="with-image-processing">With Image Processing</h3>
+<pre><code class="lang-csharp">using System.Drawing;
+
+ReadOnlySequence&lt;byte&gt; imageData = GetImageData();
+using var stream = new ReadOnlySequenceMemoryStream(imageData);
+
+using var image = Image.FromStream(stream);
+// Process image...
+</code></pre>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Construction</strong>: O(1) - just stores reference to sequence</li>
+<li><strong>Reading</strong>: O(n) where n is bytes read, with segment boundary crossing overhead</li>
+<li><strong>Seeking</strong>: O(m) where m is number of segments to seek position</li>
+<li><strong>Memory</strong>: O(1) - no additional allocations (except for <code>ToArray()</code>)</li>
+</ul>
+<h2 id="lifetime-management">Lifetime management</h2>
+<p>ReadOnlySequence is a struct whose lifetime is determined by the provider of the sequence. Ensure that the sequence is not modified while the stream is in use.</p>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="do-use-for-zero-copy-deserialization">DO: Use for Zero-Copy Deserialization</h3>
+<pre><code class="lang-csharp">// Good: Zero-copy deserialization
+using var stream = new ReadOnlySequenceMemoryStream(sequence);
+var obj = Deserialize(stream);
+</code></pre>
+<h3 id="dont-use-toarray-unless-necessary">DON'T: Use ToArray() Unless Necessary</h3>
+<pre><code class="lang-csharp">// Bad: Defeats the zero-copy purpose
+using var stream = new ReadOnlySequenceMemoryStream(sequence);
+byte[] copy = stream.ToArray(); // Allocates!
+
+// Better: Read directly
+using var stream = new ReadOnlySequenceMemoryStream(sequence);
+ProcessStream(stream);
+</code></pre>
+<h3 id="do-keep-stream-lifetime-short">DO: Keep Stream Lifetime Short</h3>
+<pre><code class="lang-csharp">// Good: Stream disposed quickly
+ReadOnlySequence&lt;byte&gt; Process()
+{
+    using var stream = new ReadOnlySequenceMemoryStream(sequence);
+    return Deserialize(stream);
+}
+</code></pre>
+<h3 id="dont-hold-stream-reference-beyond-sequence-lifetime">DON'T: Hold Stream Reference Beyond Sequence Lifetime</h3>
+<pre><code class="lang-csharp">// Bad: Sequence may be invalidated
+ReadOnlySequence&lt;byte&gt; sequence = writer.GetReadOnlySequence();
+var stream = new ReadOnlySequenceMemoryStream(sequence);
+// ... more writes to writer invalidate sequence and stream!
+</code></pre>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>Read-Only</strong>: Write operations throw <code>NotSupportedException</code></li>
+<li><strong>Sequence Lifetime</strong>: Stream is only valid as long as the underlying <code>ReadOnlySequence&lt;byte&gt;</code> remains valid</li>
+<li><strong>No Resize</strong>: Cannot modify the sequence length or content</li>
+</ul>
+<h2 id="comparison-with-memorystream">Comparison with MemoryStream</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>ReadOnlySequenceMemoryStream</th>
+<th>MemoryStream</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data source</td>
+<td><code>ReadOnlySequence&lt;byte&gt;</code></td>
+<td><code>byte[]</code> or internal buffer</td>
+</tr>
+<tr>
+<td>Memory allocation</td>
+<td>None (zero-copy)</td>
+<td>Allocates array</td>
+</tr>
+<tr>
+<td>Multi-segment support</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Write support</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Resize support</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Use case</td>
+<td>Read-only deserialization</td>
+<td>General-purpose buffering</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="arraypoolmemorystream.html">ArrayPoolMemoryStream</a></li>
+<li><a href="arraypoolbufferwriter.html">ArrayPoolBufferWriter</a></li>
+<li><a href="https://docs.microsoft.com/en-us/dotnet/api/system.buffers.readonlysequence-1">ReadOnlySequence&lt;T&gt; Documentation</a></li>
+<li><a href="index.html">Memory Package Overview</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/readonlysequencememorystream.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

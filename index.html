@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>CryptoHives .NET Foundation | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="CryptoHives .NET Foundation | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="favicon.ico">
+      <link rel="stylesheet" href="public/docfx.min.css">
+      <link rel="stylesheet" href="public/main.css">
+      <meta name="docfx:navrel" content="toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="landing" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="index.html">
+            <img id="logo" class="svg" src="images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cryptohives-net-foundation">CryptoHives .NET Foundation</h1>
+
+<p>Welcome to the <strong>CryptoHives .NET Foundation</strong> documentation!</p>
+<h2 id="overview">Overview</h2>
+<p>The CryptoHives .NET Foundation provides libraries for .NET applications focusing on high performance memory management, threading primitives, and cryptographic algorithms.</p>
+<h2 id="ecosystem">Ecosystem</h2>
+<p>The initiative currently includes:</p>
+<ul>
+<li><a href="packages/threading/index.html">Threading</a> — high-performance async synchronization primitives optimized for no/low allocation and high throughput scenarios using ValueTask-based waiters and ObjectPool-backed resource management</li>
+<li><a href="packages/memory/index.html">Memory</a> — pooled buffer management utilities leveraging ArrayPool<t> and modern .NET memory APIs to minimize GC pressure for transformation pipelines and cryptographic workloads which use ReadOnlySpan or IBufferWriter</t></li>
+<li><a href="packages/security/cryptography/index.html">Cryptography</a> — OS independent implementation of all .NET cryptography as a plug in replacement</li>
+</ul>
+<h2 id="available-packages">Available Packages</h2>
+<h3 id="-memory-package">💾 <a href="packages/memory/index.html">Memory Package</a></h3>
+<p>The Memory package provides allocation-efficient buffer management utilities that leverage <code>ArrayPool&lt;T&gt;</code> and modern .NET memory APIs to minimize garbage collection pressure for transformation pipelines and cryptographic workloads.</p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li><code>ArrayPoolMemoryStream</code> and <code>ArrayPoolBufferWriter&lt;T&gt;</code> classes backed by <code>ArrayPool&lt;byte&gt;.Shared</code></li>
+<li>Lifetime managed <code>ReadOnlySequence&lt;byte&gt;</code> support with pooled storage</li>
+<li><code>ReadOnlySequenceMemoryStream</code> to stream from <code>ReadOnlySequence&lt;byte&gt;</code></li>
+<li><code>ObjectPool</code> backed resource management helpers, e.g. for <code>StringBuilder</code></li>
+</ul>
+<p><a href="packages/memory/index.html">Explore Memory Package</a></p>
+<h3 id="-threading-package">🔄 <a href="packages/threading/index.html">Threading Package</a></h3>
+<p>The Threading package provides high-performance async synchronization primitives optimized for low allocation and high throughput scenarios.</p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>All waiters implemented as <code>ValueTask</code>-based synchronization primitives with low memory allocation design</li>
+<li>Built-in Roslyn analyzers to detect common <code>ValueTask</code> misuse patterns at compile time</li>
+<li>Full <code>CancellationToken</code> support in all Wait/Lock primitives</li>
+<li>Implementations use <code>IValueTaskSource&lt;T&gt;</code> based classes backed by <code>ObjectPool&lt;T&gt;</code> to avoid allocations by recycling waiter objects</li>
+<li>Async mutual exclusion with <code>AsyncLock</code> and scoped locking via <code>IDisposable</code> pattern</li>
+<li><code>AsyncAutoResetEvent</code> and <code>AsyncManualResetEvent</code> complementing existing implementations which are <code>Task</code> based</li>
+<li>Replacement for .NET barriers with <code>AsyncBarrier</code> supporting async waits</li>
+<li>Pooled implementations of <code>AsyncReaderWriterLock</code>, <code>AsyncSemaphore</code> and <code>AsyncCountdownEvent</code> with async wait support</li>
+<li>Fast path optimizations for uncontended scenarios</li>
+<li>No allocation design for hot-path code and cancellation tokens (see <a href="packages/threading/benchmarks.html">Benchmarks</a>)</li>
+<li><a href="packages/threading/benchmarks.html">Benchmarks</a> comparing performance against existing .NET synchronization primitives and various other popular implementations</li>
+</ul>
+<p><a href="packages/threading/index.html">Explore Threading Package</a></p>
+<h3 id="-securitycryptography-package">🔐 <a href="packages/security/cryptography/index.html">Security.Cryptography Package</a></h3>
+<p>The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), cipher algorithms, and key derivation functions, all implemented as fully managed code without OS dependencies.</p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>SHA-1, SHA-2, SHA-3 family implementations with full test vector validation</li>
+<li>SHAKE and cSHAKE extendable-output functions (XOF) for variable-length output</li>
+<li>TurboSHAKE and KangarooTwelve (KT128/KT256) high-performance XOFs</li>
+<li>KMAC (Keccak Message Authentication Code) for authenticated hashing</li>
+<li>Ascon lightweight hashing and AEAD (NIST SP 800-232) for constrained environments</li>
+<li>BLAKE2b, BLAKE2s, and BLAKE3 high-performance hashing with keyed modes</li>
+<li>Keccak-256, Keccak-384, Keccak-512 for Ethereum compatibility</li>
+<li>International standards: SM3 (Chinese), Streebog/GOST (Russian), Kupyna/DSTU (Ukrainian), LSH/KS (Korean), Whirlpool (ISO)</li>
+<li>Legacy algorithms: MD5, SHA-1, RIPEMD-160 (for compatibility only)</li>
+<li>AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128 cipher implementations</li>
+<li>Regional block ciphers: SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED</li>
+<li>Key derivation: HKDF, KBKDF, Concat KDF, PBKDF2, BLAKE3 DeriveKey</li>
+<li>MACs: HMAC, AES-CMAC, AES-GMAC, Poly1305, KMAC, BLAKE2/3 keyed</li>
+<li>AES Key Wrap with Padding (RFC 3394/5649)</li>
+<li>Cross-platform consistency without OS crypto API dependencies</li>
+</ul>
+<p><a href="packages/security/cryptography/index.html">Explore Security.Cryptography Package</a></p>
+<h2 id="platform-support">Platform Support</h2>
+<ul>
+<li>.NET 10.0</li>
+<li>.NET 8.0</li>
+<li>.NET Framework 4.6.2</li>
+<li>.NET Standard 2.1</li>
+<li>.NET Standard 2.0</li>
+</ul>
+<h2 id="resources">Resources</h2>
+<ul>
+<li>🔐 <a href="packages/security/cryptography/specs/README.html">Cryptographic Specifications</a></li>
+<li>🐛 <a href="https://github.com/CryptoHives/Foundation/issues">Report Issues</a></li>
+<li>💬 <a href="https://github.com/CryptoHives/.github/blob/main/SECURITY.md">Security Policy</a></li>
+</ul>
+<h2 id="license">License</h2>
+<p>This project is licensed under the MIT License. See the <a href="https://github.com/CryptoHives/Foundation/blob/main/LICENSE">LICENSE</a> file for details.</p>
+<hr>
+<p><a href="impressum.html">Impressum (Legal Notice)</a></p>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Interface IAeadCipher | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Interface IAeadCipher | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="Defines an Authenticated Encryption with Associated Data (AEAD) cipher.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher">
+
+
+
+  <h1 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher" class="text-break">
+Interface IAeadCipher  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Security.html">Security</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.html">Cryptography</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.html">Cipher</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Security.Cryptography.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Defines an Authenticated Encryption with Associated Data (AEAD) cipher.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface IAeadCipher : IDisposable</code></pre>
+  </div>
+
+
+
+
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable.dispose">IDisposable.Dispose()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+AEAD ciphers provide both confidentiality (encryption) and authenticity
+(integrity verification) in a single operation. They also support
+authenticating additional data that is not encrypted.
+</p>
+<p>
+<b>Common AEAD algorithms:</b>
+<ul><li>AES-GCM (Galois/Counter Mode)</li><li>ChaCha20-Poly1305</li><li>AES-CCM (Counter with CBC-MAC)</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_AlgorithmName_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.AlgorithmName*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_AlgorithmName" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.AlgorithmName">
+  AlgorithmName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the algorithm name.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">string AlgorithmName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_KeySizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.KeySizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_KeySizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.KeySizeBytes">
+  KeySizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the key size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">int KeySizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_NonceSizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.NonceSizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_NonceSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.NonceSizeBytes">
+  NonceSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the nonce size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">int NonceSizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_TagSizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.TagSizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_TagSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.TagSizeBytes">
+  TagSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the authentication tag size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">int TagSizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Decrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Decrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Decrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Decrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Decrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Decrypts the ciphertext (with appended tag) and verifies authenticity.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">byte[] Decrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; ciphertextWithTag, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The nonce used during encryption.</p>
+</dd>
+    <dt><code>ciphertextWithTag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The ciphertext with appended authentication tag.</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional authenticated data (must match encryption).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The decrypted plaintext.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.cryptographicexception">CryptographicException</a></dt>
+    <dd><p>Authentication failed - the data has been tampered with or the wrong key/nonce was used.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Decrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Decrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Decrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_Span_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Decrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Decrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Decrypts the ciphertext and verifies the authentication tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool Decrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; ciphertext, ReadOnlySpan&lt;byte&gt; tag, Span&lt;byte&gt; plaintext, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The nonce used during encryption.</p>
+</dd>
+    <dt><code>ciphertext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The encrypted data.</p>
+</dd>
+    <dt><code>tag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The authentication tag to verify.</p>
+</dd>
+    <dt><code>plaintext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The output buffer for decrypted data (same size as ciphertext).</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional authenticated data (must match encryption).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if decryption and authentication succeeded; false if authentication failed.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p><code class="paramref">nonce</code> or <code class="paramref">tag</code> is not the correct size, or
+<code class="paramref">plaintext</code> buffer is too small.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Encrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Encrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Encrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Encrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Encrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Encrypts the plaintext and returns ciphertext with appended tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">byte[] Encrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; plaintext, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The unique nonce for this encryption.</p>
+</dd>
+    <dt><code>plaintext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The data to encrypt.</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional data to authenticate (optional).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The ciphertext with authentication tag appended.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Encrypt_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Encrypt*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_IAeadCipher_Encrypt_System_ReadOnlySpan_System_Byte__System_ReadOnlySpan_System_Byte__System_Span_System_Byte__System_Span_System_Byte__System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher.Encrypt(System.ReadOnlySpan{System.Byte},System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Span{System.Byte},System.ReadOnlySpan{System.Byte})">
+  Encrypt(ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Encrypts the plaintext and computes the authentication tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void Encrypt(ReadOnlySpan&lt;byte&gt; nonce, ReadOnlySpan&lt;byte&gt; plaintext, Span&lt;byte&gt; ciphertext, Span&lt;byte&gt; tag, ReadOnlySpan&lt;byte&gt; associatedData = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nonce</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The unique nonce for this encryption.</p>
+</dd>
+    <dt><code>plaintext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The data to encrypt.</p>
+</dd>
+    <dt><code>ciphertext</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The output buffer for ciphertext (same size as plaintext).</p>
+</dd>
+    <dt><code>tag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The output buffer for the authentication tag.</p>
+</dd>
+    <dt><code>associatedData</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>Additional data to authenticate (optional).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p><code class="paramref">nonce</code> is not the correct size, or
+<code class="paramref">ciphertext</code> or <code class="paramref">tag</code> buffers are too small.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/IAeadCipher.cs/#L26" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

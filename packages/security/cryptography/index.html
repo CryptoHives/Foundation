@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>CryptoHives.Foundation.Security.Cryptography Package | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="CryptoHives.Foundation.Security.Cryptography Package | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cryptohivesfoundationsecuritycryptography-package">CryptoHives.Foundation.Security.Cryptography Package</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), and cipher algorithms for .NET applications. Core implementations are fully managed code with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics, ensuring consistent behavior across all platforms with automatic SIMD dispatch on supported hardware.</p>
+<h2 id="key-features">Key Features</h2>
+<ul>
+<li><strong>Specification-Based Implementations</strong>: Written based on official specifications (NIST, RFC, ISO)</li>
+<li><strong>No OS Dependencies</strong>: Works identically on all platforms without calling OS crypto APIs</li>
+<li><strong>Hardware Acceleration</strong>: Optional AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics with automatic fallback</li>
+<li><strong>Comprehensive Coverage</strong>: SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and many more</li>
+<li><strong>AEAD Support</strong>: Authenticated encryption with AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128</li>
+<li><strong>Key Management Support</strong>: AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)</li>
+<li><strong>Variable Output</strong>: XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3</li>
+<li><strong>Keyed Hashing</strong>: Built-in MAC modes for BLAKE2, BLAKE3, and KMAC</li>
+<li><strong>Standards Compliant</strong>: Verified against NIST, RFC, and ISO test vectors</li>
+</ul>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package CryptoHives.Foundation.Security.Cryptography
+</code></pre>
+<blockquote>
+<p>Performance optimizations including AES-NI, PCLMULQDQ, VPCLMULQDQ, and SIMD intrinsics are implemented
+for AES-GCM, AES-CCM, AES-CBC, and ChaCha20 families on .NET 8+. VPCLMULQDQ requires .NET 10+.</p>
+</blockquote>
+<h2 id="namespaces">Namespaces</h2>
+<h3 id="hash-algorithms">Hash Algorithms</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+</code></pre>
+<h3 id="message-authentication-codes">Message Authentication Codes</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Mac;
+</code></pre>
+<h3 id="cipher-algorithms">Cipher Algorithms</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Cipher;
+</code></pre>
+<h3 id="key-derivation-functions">Key Derivation Functions</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Kdf;
+</code></pre>
+<h2 id="implemented-algorithms">Implemented Algorithms</h2>
+<h3 id="hash-algorithms-1">Hash Algorithms</h3>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Algorithms</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-2</td>
+<td>SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256</td>
+<td><a href="hash-algorithms.html#sha-2-family">Details</a></td>
+</tr>
+<tr>
+<td>SHA-3</td>
+<td>SHA3-224, SHA3-256, SHA3-384, SHA3-512</td>
+<td><a href="hash-algorithms.html#sha-3-family">Details</a></td>
+</tr>
+<tr>
+<td>SHAKE</td>
+<td>SHAKE128, SHAKE256 (XOF)</td>
+<td><a href="hash-algorithms.html#shake-xof">Details</a></td>
+</tr>
+<tr>
+<td>cSHAKE</td>
+<td>cSHAKE128, cSHAKE256 (Customizable XOF)</td>
+<td><a href="hash-algorithms.html#cshake">Details</a></td>
+</tr>
+<tr>
+<td>TurboSHAKE</td>
+<td>TurboSHAKE128, TurboSHAKE256 (High-performance XOF)</td>
+<td><a href="hash-algorithms.html#turboshake">Details</a></td>
+</tr>
+<tr>
+<td>KangarooTwelve</td>
+<td>KT128, KT256 (Parallelizable XOF)</td>
+<td><a href="hash-algorithms.html#kangarootwelve-kt">Details</a></td>
+</tr>
+<tr>
+<td>Keccak</td>
+<td>Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible)</td>
+<td><a href="hash-algorithms.html#keccak">Details</a></td>
+</tr>
+<tr>
+<td>Ascon</td>
+<td>Ascon-Hash256, Ascon-XOF128 (Lightweight)</td>
+<td><a href="hash-algorithms.html#ascon">Details</a></td>
+</tr>
+<tr>
+<td>BLAKE2</td>
+<td>BLAKE2b (1-64 bytes), BLAKE2s (1-32 bytes)</td>
+<td><a href="hash-algorithms.html#blake2">Details</a></td>
+</tr>
+<tr>
+<td>BLAKE3</td>
+<td>BLAKE3 (variable output, keyed, derive key)</td>
+<td><a href="hash-algorithms.html#blake3">Details</a></td>
+</tr>
+<tr>
+<td>RIPEMD</td>
+<td>RIPEMD-160</td>
+<td><a href="hash-algorithms.html#ripemd">Details</a></td>
+</tr>
+<tr>
+<td>SM3</td>
+<td>SM3 (Chinese standard)</td>
+<td><a href="hash-algorithms.html#sm3">Details</a></td>
+</tr>
+<tr>
+<td>Whirlpool</td>
+<td>Whirlpool (ISO standard)</td>
+<td><a href="hash-algorithms.html#whirlpool">Details</a></td>
+</tr>
+<tr>
+<td>Streebog</td>
+<td>Streebog-256, Streebog-512 (Russian standard)</td>
+<td><a href="hash-algorithms.html#streebog">Details</a></td>
+</tr>
+<tr>
+<td>Kupyna</td>
+<td>Kupyna-256, Kupyna-384, Kupyna-512 (Ukrainian standard)</td>
+<td><a href="hash-algorithms.html#kupyna">Details</a></td>
+</tr>
+<tr>
+<td>LSH</td>
+<td>LSH-256, LSH-512 (Korean standard)</td>
+<td><a href="hash-algorithms.html#lsh-ks-x-3262">Details</a></td>
+</tr>
+<tr>
+<td>Legacy</td>
+<td>SHA-1, MD5 (deprecated)</td>
+<td><a href="hash-algorithms.html#legacy">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="message-authentication-codes-mac">Message Authentication Codes (MAC)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Security</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HMAC-SHA-256</td>
+<td>256 bits</td>
+<td><a href="mac-algorithms.html#hmac-hash-based-message-authentication-code">Details</a></td>
+</tr>
+<tr>
+<td>HMAC-SHA-384</td>
+<td>384 bits</td>
+<td><a href="mac-algorithms.html#hmac-hash-based-message-authentication-code">Details</a></td>
+</tr>
+<tr>
+<td>HMAC-SHA-512</td>
+<td>512 bits</td>
+<td><a href="mac-algorithms.html#hmac-hash-based-message-authentication-code">Details</a></td>
+</tr>
+<tr>
+<td>HMAC-SHA3-256</td>
+<td>256 bits</td>
+<td><a href="mac-algorithms.html#hmac-sha3-256-cross-platform">Details</a></td>
+</tr>
+<tr>
+<td>AES-CMAC</td>
+<td>128 bits</td>
+<td><a href="mac-algorithms.html#aes-cmac-cipher-based-mac">Details</a></td>
+</tr>
+<tr>
+<td>AES-GMAC</td>
+<td>128 bits</td>
+<td><a href="mac-algorithms.html#aes-gmac-galois-mac">Details</a></td>
+</tr>
+<tr>
+<td>Poly1305</td>
+<td>128 bits</td>
+<td><a href="mac-algorithms.html#poly1305">Details</a></td>
+</tr>
+<tr>
+<td>KMAC128</td>
+<td>128 bits</td>
+<td><a href="mac-algorithms.html#kmac128">Details</a></td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td>256 bits</td>
+<td><a href="mac-algorithms.html#kmac256">Details</a></td>
+</tr>
+<tr>
+<td>BLAKE2b (keyed)</td>
+<td>Up to 256 bits</td>
+<td><a href="mac-algorithms.html#blake2-mac">Details</a></td>
+</tr>
+<tr>
+<td>BLAKE2s (keyed)</td>
+<td>Up to 128 bits</td>
+<td><a href="mac-algorithms.html#blake2-mac">Details</a></td>
+</tr>
+<tr>
+<td>BLAKE3 (keyed)</td>
+<td>128 bits</td>
+<td><a href="mac-algorithms.html#blake3-mac">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-derivation-functions-kdf">Key Derivation Functions (KDF)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Standard</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HKDF</td>
+<td>RFC 5869</td>
+<td><a href="kdf-algorithms.html#hkdf-hmac-based-extract-and-expand-kdf">Details</a></td>
+</tr>
+<tr>
+<td>KBKDF Counter Mode</td>
+<td>NIST SP 800-108r1</td>
+<td><a href="kdf-algorithms.html#kbkdf--counter-mode-sp-800-108r1">Details</a></td>
+</tr>
+<tr>
+<td>Concat KDF</td>
+<td>NIST SP 800-56A/56C</td>
+<td><a href="kdf-algorithms.html#concat-kdf--one-step-sp-800-56a--sp-800-56c">Details</a></td>
+</tr>
+<tr>
+<td>PBKDF2</td>
+<td>RFC 8018</td>
+<td><a href="kdf-algorithms.html#pbkdf2-password-based-kdf">Details</a></td>
+</tr>
+<tr>
+<td>BLAKE3 DeriveKey</td>
+<td>BLAKE3 Spec</td>
+<td><a href="hash-algorithms.html#blake3">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="cipher-algorithms-blockstream">Cipher Algorithms (Block/Stream)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Sizes</th>
+<th>Modes</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128</td>
+<td>128 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#aes-advanced-encryption-standard">Details</a></td>
+</tr>
+<tr>
+<td>AES-192</td>
+<td>192 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#aes-advanced-encryption-standard">Details</a></td>
+</tr>
+<tr>
+<td>AES-256</td>
+<td>256 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#aes-advanced-encryption-standard">Details</a></td>
+</tr>
+<tr>
+<td>ChaCha20</td>
+<td>256 bits</td>
+<td>Stream cipher</td>
+<td><a href="cipher-algorithms.html#chacha20">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="cipher-algorithms-regional">Cipher Algorithms (Regional)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Origin</th>
+<th>Key Sizes</th>
+<th>Modes</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SM4</td>
+<td>China</td>
+<td>128 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#sm4-china">Details</a></td>
+</tr>
+<tr>
+<td>ARIA</td>
+<td>Korea</td>
+<td>128/192/256 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#aria-korea">Details</a></td>
+</tr>
+<tr>
+<td>Camellia</td>
+<td>Japan</td>
+<td>128/192/256 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#camellia-japan">Details</a></td>
+</tr>
+<tr>
+<td>Kuznyechik</td>
+<td>Russia</td>
+<td>256 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#kuznyechik-russia">Details</a></td>
+</tr>
+<tr>
+<td>Kalyna</td>
+<td>Ukraine</td>
+<td>128/256 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#kalyna-ukraine">Details</a></td>
+</tr>
+<tr>
+<td>SEED</td>
+<td>Korea</td>
+<td>128 bits</td>
+<td>ECB, CBC, CTR</td>
+<td><a href="cipher-algorithms.html#seed-korea">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="cipher-algorithms-aead">Cipher Algorithms (AEAD)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Sizes</th>
+<th>Nonce Size</th>
+<th>Tag Size</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-GCM</td>
+<td>128/192/256 bits</td>
+<td>12 bytes</td>
+<td>16 bytes</td>
+<td><a href="cipher-algorithms.html#aes-gcm-galoiscounter-mode">Details</a></td>
+</tr>
+<tr>
+<td>AES-CCM</td>
+<td>128/192/256 bits</td>
+<td>7-13 bytes</td>
+<td>4-16 bytes</td>
+<td><a href="cipher-algorithms.html#aes-ccm-counter-with-cbc-mac">Details</a></td>
+</tr>
+<tr>
+<td>ChaCha20-Poly1305</td>
+<td>256 bits</td>
+<td>12 bytes</td>
+<td>16 bytes</td>
+<td><a href="cipher-algorithms.html#chacha20-poly1305">Details</a></td>
+</tr>
+<tr>
+<td>XChaCha20-Poly1305</td>
+<td>256 bits</td>
+<td>24 bytes</td>
+<td>16 bytes</td>
+<td><a href="cipher-algorithms.html#xchacha20-poly1305">Details</a></td>
+</tr>
+<tr>
+<td>Ascon-AEAD128</td>
+<td>128 bits</td>
+<td>16 bytes</td>
+<td>16 bytes</td>
+<td><a href="cipher-algorithms.html#ascon-aead128">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="cipher-utilities-key-management">Cipher Utilities (Key Management)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Standard</th>
+<th>Purpose</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES Key Wrap / KWP (<code>AesKeyWrapPad</code>)</td>
+<td>RFC 3394, RFC 5649, NIST SP 800-38F</td>
+<td>KEK-based key material wrapping and integrity validation</td>
+<td><a href="cipher-algorithms.html#aes-key-wrap--key-wrap-with-padding">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="getting-started">Getting Started</h2>
+<p>All CryptoHives algorithms inherit from <code>System.Security.Cryptography.HashAlgorithm</code> and support two ways of computing a hash.</p>
+<h3 id="zero-allocation-approach-recommended">Zero-allocation approach (recommended)</h3>
+<p>Use <code>TryComputeHash</code> with a stack-allocated or reusable buffer to avoid heap allocations entirely.
+This is the preferred approach for performance-critical code such as tight loops, network packet processing, or blockchain validation.
+CryptoHives provides a polyfill so this API works on every target framework, including .NET Framework 4.x.</p>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+// SHA-256 — zero allocations
+using var sha256 = SHA256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+sha256.TryComputeHash(data, hash, out _);
+
+// SHA3-256 — zero allocations
+using var sha3 = SHA3_256.Create();
+Span&lt;byte&gt; sha3Hash = stackalloc byte[32];
+sha3.TryComputeHash(data, sha3Hash, out _);
+
+// BLAKE3 with variable output — zero allocations
+using var blake3 = Blake3.Create(outputBytes: 64);
+Span&lt;byte&gt; longHash = stackalloc byte[64];
+blake3.TryComputeHash(data, longHash, out _);
+
+// KMAC256 authentication — zero allocations
+byte[] key = new byte[32];
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: &quot;MyApp&quot;);
+Span&lt;byte&gt; mac = stackalloc byte[64];
+kmac.TryComputeHash(message, mac, out _);
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> The <code>ComputeHash(byte[])</code> method is also available for convenience but allocates a new <code>byte[]</code> on every call, which adds GC pressure in hot paths. Prefer <code>TryComputeHash</code> whenever possible.</p>
+</blockquote>
+<h2 id="more-examples">More Examples</h2>
+<h3 id="variable-length-output-xof">Variable-Length Output (XOF)</h3>
+<pre><code class="lang-csharp">// SHAKE256 with 64-byte output
+using var shake = Shake256.Create(outputBytes: 64);
+Span&lt;byte&gt; output = stackalloc byte[64];
+shake.TryComputeHash(data, output, out _);
+
+// BLAKE3 with 128-byte output
+using var blake3 = Blake3.Create(outputBytes: 128);
+Span&lt;byte&gt; longHash = stackalloc byte[128];
+blake3.TryComputeHash(data, longHash, out _);
+</code></pre>
+<p>For allocation-free streaming XOF using <code>Absorb</code> / <code>Squeeze</code>, see <a href="xof-mode.html">XOF Mode</a>.</p>
+<h3 id="customizable-hash-cshake">Customizable Hash (cSHAKE)</h3>
+<pre><code class="lang-csharp">// cSHAKE256 with customization string
+using var cshake = new CShake256(
+    outputBytes: 64,
+    functionName: &quot;&quot;,
+    customization: &quot;My Application&quot;);
+Span&lt;byte&gt; customHash = stackalloc byte[64];
+cshake.TryComputeHash(data, customHash, out _);
+</code></pre>
+<h3 id="message-authentication-code-kmac">Message Authentication Code (KMAC)</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] key = new byte[32]; // Your secret key
+
+// KMAC256
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: &quot;MyApp&quot;);
+Span&lt;byte&gt; mac = stackalloc byte[64];
+kmac.TryComputeHash(message, mac, out _);
+</code></pre>
+<h3 id="authenticated-encryption-aead">Authenticated Encryption (AEAD)</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+// AES-256-GCM
+byte[] key = new byte[32];
+byte[] nonce = new byte[12];
+using var aesGcm = AesGcm256.Create(key);
+
+byte[] ciphertext = aesGcm.Encrypt(nonce, plaintext, associatedData);
+byte[] decrypted = aesGcm.Decrypt(nonce, ciphertext, associatedData);
+
+// ChaCha20-Poly1305
+using var chacha = ChaCha20Poly1305.Create(key);
+byte[] encrypted = chacha.Encrypt(nonce, plaintext);
+byte[] decrypted = chacha.Decrypt(nonce, encrypted);
+</code></pre>
+<h3 id="keyed-hashing-with-blake3">Keyed Hashing with BLAKE3</h3>
+<pre><code class="lang-csharp">byte[] key = new byte[32]; // Must be exactly 32 bytes
+
+// BLAKE3 keyed mode
+using var blake3 = Blake3.CreateKeyed(key);
+Span&lt;byte&gt; mac = stackalloc byte[32];
+blake3.TryComputeHash(message, mac, out _);
+</code></pre>
+<h3 id="key-derivation-with-blake3">Key Derivation with BLAKE3</h3>
+<pre><code class="lang-csharp">string context = &quot;MyApp 2026-01-01 session key&quot;;
+
+// BLAKE3 derive key mode
+using var blake3 = Blake3.CreateDeriveKey(context);
+Span&lt;byte&gt; derivedKey = stackalloc byte[32];
+blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
+</code></pre>
+<h3 id="key-derivation-with-hkdf">Key Derivation with HKDF</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] sharedSecret = ...; // e.g., from ECDH key agreement
+byte[] salt = new byte[32];
+RandomNumberGenerator.Fill(salt);
+byte[] info = Encoding.UTF8.GetBytes(&quot;MyApp session key&quot;);
+
+// Derive a 32-byte key using HMAC-SHA-256
+byte[] derivedKey = Hkdf.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    sharedSecret, outputLength: 32, salt, info);
+</code></pre>
+<p>See <a href="kdf-algorithms.html">KDF Algorithms</a> for full HKDF documentation and protocol examples.</p>
+<h3 id="incremental-hashing">Incremental Hashing</h3>
+<pre><code class="lang-csharp">using var sha256 = SHA256.Create();
+
+// Process data in chunks — zero allocations
+sha256.AppendData(chunk1);
+sha256.AppendData(chunk2);
+sha256.AppendData(chunk3);
+
+Span&lt;byte&gt; hash = stackalloc byte[32];
+sha256.TryGetHashAndReset(hash, out _);
+</code></pre>
+<h2 id="algorithm-selection-guide">Algorithm Selection Guide</h2>
+<h3 id="for-general-purpose-hashing">For General Purpose Hashing</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Recommended</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Modern applications</td>
+<td>SHA3-256 or BLAKE3</td>
+<td>SHA-256</td>
+</tr>
+<tr>
+<td>High performance needed</td>
+<td>BLAKE3</td>
+<td>BLAKE2b</td>
+</tr>
+<tr>
+<td>Memory constrained</td>
+<td>BLAKE2s</td>
+<td>SHA-256</td>
+</tr>
+<tr>
+<td>Variable output needed</td>
+<td>SHAKE256 or BLAKE3</td>
+<td>-</td>
+</tr>
+<tr>
+<td>NIST compliance required</td>
+<td>SHA-256 or SHA3-256</td>
+<td>SHA-384, SHA-512</td>
+</tr>
+</tbody>
+</table>
+<h3 id="for-message-authentication">For Message Authentication</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Recommended</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Modern applications</td>
+<td>KMAC256</td>
+<td>BLAKE3 keyed</td>
+</tr>
+<tr>
+<td>Protocol compatibility (TLS, SSH)</td>
+<td>HMAC-SHA-256</td>
+<td>HMAC-SHA-384</td>
+</tr>
+<tr>
+<td>High performance</td>
+<td>BLAKE3 keyed</td>
+<td>Poly1305 (one-time)</td>
+</tr>
+<tr>
+<td>NIST compliance</td>
+<td>KMAC128/256</td>
+<td>HMAC-SHA-256</td>
+</tr>
+<tr>
+<td>Cipher-based (EAP, 802.11i)</td>
+<td>AES-CMAC</td>
+<td>AES-GMAC</td>
+</tr>
+<tr>
+<td>Cross-platform SHA-3</td>
+<td>HMAC-SHA3-256</td>
+<td>KMAC256</td>
+</tr>
+<tr>
+<td>Short tags (≤16 bytes)</td>
+<td>BLAKE2s keyed</td>
+<td>AES-CMAC</td>
+</tr>
+</tbody>
+</table>
+<h3 id="for-key-derivation">For Key Derivation</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Recommended</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TLS 1.3 / HPKE / Signal</td>
+<td>HKDF (SHA-256)</td>
+<td>HKDF (SHA-384)</td>
+</tr>
+<tr>
+<td>ECDH key agreement</td>
+<td>Concat KDF (hash-based)</td>
+<td>HKDF</td>
+</tr>
+<tr>
+<td>JOSE/JWE (RFC 7518)</td>
+<td>Concat KDF (SHA-256)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Session key from master key</td>
+<td>KBKDF (SP 800-108r1)</td>
+<td>HKDF</td>
+</tr>
+<tr>
+<td>Multiple keys from one secret</td>
+<td>HKDF (Extract + Expand)</td>
+<td>KBKDF (vary label)</td>
+</tr>
+<tr>
+<td>CMAC-based PRF</td>
+<td>KBKDF with AES-CMAC</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Password-based key derivation</td>
+<td>PBKDF2</td>
+<td>—</td>
+</tr>
+<tr>
+<td>High performance</td>
+<td>BLAKE3 DeriveKey</td>
+<td>HKDF</td>
+</tr>
+<tr>
+<td>NIST compliance</td>
+<td>HKDF, KBKDF, or Concat KDF</td>
+<td>PBKDF2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="for-authenticated-encryption">For Authenticated Encryption</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Recommended</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Modern applications</td>
+<td>AES-256-GCM or ChaCha20-Poly1305</td>
+<td>XChaCha20-Poly1305</td>
+</tr>
+<tr>
+<td>Hardware acceleration</td>
+<td>AES-256-GCM</td>
+<td>AES-128-GCM</td>
+</tr>
+<tr>
+<td>Software-only</td>
+<td>ChaCha20-Poly1305</td>
+<td>XChaCha20-Poly1305</td>
+</tr>
+<tr>
+<td>IoT/constrained</td>
+<td>AES-128-CCM</td>
+<td>ChaCha20-Poly1305</td>
+</tr>
+<tr>
+<td>Random nonces</td>
+<td>XChaCha20-Poly1305</td>
+<td>AES-256-GCM</td>
+</tr>
+</tbody>
+</table>
+<h3 id="for-blockstream-ciphers">For Block/Stream Ciphers</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Recommended</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Disk/sector encryption</td>
+<td>AES-256-CTR or AES-256-CBC</td>
+<td>AES-128-CTR</td>
+</tr>
+<tr>
+<td>Stream encryption</td>
+<td>ChaCha20</td>
+<td>AES-256-CTR</td>
+</tr>
+<tr>
+<td>Legacy compatibility</td>
+<td>AES-128-CBC</td>
+<td>AES-256-CBC</td>
+</tr>
+<tr>
+<td>Hardware acceleration</td>
+<td>AES-256-CTR (AES-NI)</td>
+<td>AES-128-CTR</td>
+</tr>
+</tbody>
+</table>
+<h3 id="for-specific-domains">For Specific Domains</h3>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>Algorithm</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ethereum/Blockchain</td>
+<td>Keccak-256</td>
+<td>Uses original Keccak padding</td>
+</tr>
+<tr>
+<td>Bitcoin addresses</td>
+<td>RIPEMD-160</td>
+<td>Combined with SHA-256</td>
+</tr>
+<tr>
+<td>Chinese systems</td>
+<td>SM3</td>
+<td>GB/T 32905-2016</td>
+</tr>
+<tr>
+<td>Russian systems</td>
+<td>Streebog</td>
+<td>GOST R 34.11-2012</td>
+</tr>
+<tr>
+<td>Ukrainian systems</td>
+<td>Kupyna</td>
+<td>DSTU 7564:2014</td>
+</tr>
+<tr>
+<td>Korean systems</td>
+<td>LSH</td>
+<td>KS X 3262</td>
+</tr>
+</tbody>
+</table>
+<h2 id="standards-compliance">Standards Compliance</h2>
+<p>All implementations are verified against official test vectors:</p>
+<ul>
+<li><strong>NIST FIPS 180-4</strong>: SHA-1, SHA-2 family</li>
+<li><strong>NIST FIPS 197</strong>: AES (128/192/256)</li>
+<li><strong>NIST FIPS 202</strong>: SHA-3, SHAKE</li>
+<li><strong>NIST SP 800-38B</strong>: AES-CMAC</li>
+<li><strong>NIST SP 800-38D</strong>: AES-GCM</li>
+<li><strong>NIST SP 800-108r1</strong>: KBKDF Counter Mode</li>
+<li><strong>NIST SP 800-56A/56C</strong>: Concat KDF (One-Step)</li>
+<li><strong>NIST SP 800-185</strong>: cSHAKE, KMAC</li>
+<li><strong>NIST SP 800-232</strong>: Ascon-Hash256, Ascon-XOF128</li>
+<li><strong>RFC 2104</strong>: HMAC</li>
+<li><strong>RFC 3610</strong>: AES-CCM</li>
+<li><strong>RFC 4231</strong>: HMAC-SHA-2 test vectors</li>
+<li><strong>RFC 5869</strong>: HKDF (HMAC-based Key Derivation)</li>
+<li><strong>RFC 8018</strong>: PBKDF2 (Password-Based Key Derivation)</li>
+<li><strong>RFC 7693</strong>: BLAKE2</li>
+<li><strong>RFC 8439</strong>: ChaCha20, Poly1305, ChaCha20-Poly1305</li>
+<li><strong>draft-irtf-cfrg-xchacha</strong>: XChaCha20-Poly1305</li>
+<li><strong>BLAKE3 Specification</strong>: BLAKE3</li>
+<li><strong>GB/T 32905-2016</strong>: SM3</li>
+<li><strong>GOST R 34.11-2012 / RFC 6986</strong>: Streebog</li>
+<li><strong>DSTU 7564:2014</strong>: Kupyna</li>
+<li><strong>KS X 3262</strong>: LSH</li>
+<li><strong>ISO/IEC 10118-3</strong>: Whirlpool</li>
+</ul>
+<p>See the <a href="specs/README.html">Cryptographic Specifications</a> for detailed test vectors and implementation status.</p>
+<h2 id="performance-considerations">Performance Considerations</h2>
+<h3 id="allocation-free-operations">Allocation-Free Operations</h3>
+<p>All hash algorithms support <code>Span&lt;T&gt;</code>-based APIs for zero-allocation hashing:</p>
+<pre><code class="lang-csharp">Span&lt;byte&gt; destination = stackalloc byte[32];
+using var sha256 = SHA256.Create();
+sha256.TryComputeHash(data, destination, out int bytesWritten);
+</code></pre>
+<h3 id="recommended-for-high-throughput">Recommended for High Throughput</h3>
+<ul>
+<li><strong>BLAKE3</strong>: Designed for parallel processing, fastest on modern CPUs</li>
+<li><strong>BLAKE2b</strong>: Faster than SHA-256 on 64-bit systems</li>
+<li><strong>BLAKE2s</strong>: Faster than SHA-256 on 32-bit systems</li>
+</ul>
+<h3 id="memory-usage">Memory Usage</h3>
+<p>All implementations use fixed-size internal buffers based on their block size. No dynamic allocations occur during hashing operations.</p>
+<h2 id="comparison-with-systemsecuritycryptography">Comparison with System.Security.Cryptography</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CryptoHives</th>
+<th>System.Security.Cryptography</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS dependency</td>
+<td>None</td>
+<td>Uses CNG/OpenSSL</td>
+</tr>
+<tr>
+<td>Cross-platform consistency</td>
+<td>Guaranteed</td>
+<td>May vary</td>
+</tr>
+<tr>
+<td>Hardware acceleration</td>
+<td>Managed SIMD (AES-NI/PCLMULQDQ/VPCLMULQDQ/SSE2/SSSE3/AVX2)</td>
+<td>OS-level (CNG/OpenSSL/SymCrypt)</td>
+</tr>
+<tr>
+<td>SHA-3 support</td>
+<td>Full</td>
+<td>.NET 8+ only</td>
+</tr>
+<tr>
+<td>BLAKE2/3 support</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Keccak-256 (Ethereum)</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>KMAC support</td>
+<td>Yes</td>
+<td>.NET 9+ only</td>
+</tr>
+<tr>
+<td>HMAC (SHA-2/SHA-3)</td>
+<td>Yes (all TFMs, cross-platform)</td>
+<td>Yes (OS-dependent)</td>
+</tr>
+<tr>
+<td>AES-CMAC</td>
+<td>Yes (managed + AES-NI)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Poly1305 (standalone)</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>AES-GCM/CCM</td>
+<td>Yes (managed + AES-NI)</td>
+<td>Yes (OS-dependent)</td>
+</tr>
+<tr>
+<td>ChaCha20-Poly1305</td>
+<td>Yes (managed + SSSE3/AVX2)</td>
+<td>.NET 8+ only (OS-dependent)</td>
+</tr>
+<tr>
+<td>XChaCha20-Poly1305</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>AES block modes (ECB/CBC/CTR)</td>
+<td>Yes (managed + AES-NI)</td>
+<td>Yes (OS-dependent)</td>
+</tr>
+<tr>
+<td>ChaCha20 stream cipher</td>
+<td>Yes (managed + SSSE3/AVX2)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>HKDF</td>
+<td>Yes (all TFMs, pluggable HMAC)</td>
+<td>.NET Core 3.0+ only</td>
+</tr>
+<tr>
+<td>XOF (SHAKE/cSHAKE/TurboSHAKE/BLAKE3)</td>
+<td>Yes (Absorb/Squeeze API)</td>
+<td>SHAKE only (.NET 9+)</td>
+</tr>
+<tr>
+<td>SM3/Streebog/Kupyna/LSH/Whirlpool</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h2 id="thread-safety">Thread Safety</h2>
+<p>All hash algorithm instances are <strong>not thread-safe</strong>. Create separate instances for concurrent operations or use synchronization.</p>
+<pre><code class="lang-csharp">// Thread-safe pattern
+public bool ComputeHashThreadSafe(ReadOnlySpan&lt;byte&gt; data, Span&lt;byte&gt; destination)
+{
+    using var sha256 = SHA256.Create(); // New instance per call
+    return sha256.TryComputeHash(data, destination, out _);
+}
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="hash-algorithms.html">Hash Algorithms Reference</a></li>
+<li><a href="cipher-algorithms.html">Cipher Algorithms Reference</a></li>
+<li><a href="mac-algorithms.html">MAC Algorithms Reference</a></li>
+<li><a href="kdf-algorithms.html">KDF Algorithms Reference</a></li>
+<li><a href="xof-mode.html">XOF Mode (Extendable-Output)</a></li>
+<li><a href="benchmarks-hash.html">Hash Benchmarks</a></li>
+<li><a href="benchmarks-cipher.html">Cipher Benchmarks</a></li>
+<li><a href="specs/README.html">Cryptographic Specifications</a></li>
+<li><a href="../index.html">Security Package Overview</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

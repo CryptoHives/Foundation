@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Key Derivation Functions (KDF) Reference | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Key Derivation Functions (KDF) Reference | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/kdf-algorithms.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="key-derivation-functions-kdf-reference">Key Derivation Functions (KDF) Reference</h1>
+
+<p>This page provides detailed documentation for all Key Derivation Functions (KDFs) implemented in the CryptoHives.Foundation.Security.Cryptography package.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Kdf;
+</code></pre>
+<hr>
+<h2 id="overview">Overview</h2>
+<p>Key Derivation Functions extract cryptographic keys from input keying material (IKM) such as shared secrets from key agreement (e.g., ECDH), pre-shared keys, passwords, or other entropy sources.</p>
+<table>
+<thead>
+<tr>
+<th>KDF</th>
+<th>Source</th>
+<th>Primary Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#hkdf-hmac-based-extract-and-expand-kdf">HKDF</a></td>
+<td>RFC 5869</td>
+<td>Extract + expand from shared secrets</td>
+</tr>
+<tr>
+<td><a href="#kbkdf--counter-mode-sp-800-108r1">KBKDF Counter Mode</a></td>
+<td>SP 800-108r1</td>
+<td>Key diversification from master keys</td>
+</tr>
+<tr>
+<td><a href="#concat-kdf--one-step-sp-800-56a--sp-800-56c">Concat KDF</a></td>
+<td>SP 800-56A/56C</td>
+<td>ECDH key agreement, JOSE/JWE</td>
+</tr>
+<tr>
+<td><a href="#pbkdf2-password-based-kdf">PBKDF2</a></td>
+<td>RFC 8018</td>
+<td>Password-based key derivation</td>
+</tr>
+<tr>
+<td><a href="#blake3-key-derivation">BLAKE3 DeriveKey</a></td>
+<td>BLAKE3 Spec</td>
+<td>High-performance custom protocols</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-to-use-a-kdf">When to Use a KDF</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Recommended KDF</th>
+<th>Standard</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TLS 1.3 key schedule</td>
+<td>HKDF</td>
+<td>RFC 5869</td>
+</tr>
+<tr>
+<td>HPKE (Hybrid Public Key Encryption)</td>
+<td>HKDF</td>
+<td>RFC 9180</td>
+</tr>
+<tr>
+<td>IKEv2 / IPsec key derivation</td>
+<td>HKDF</td>
+<td>RFC 7296</td>
+</tr>
+<tr>
+<td>Signal / Double Ratchet protocol</td>
+<td>HKDF</td>
+<td>Signal Spec</td>
+</tr>
+<tr>
+<td>WireGuard VPN</td>
+<td>HKDF / BLAKE3</td>
+<td>WireGuard Spec</td>
+</tr>
+<tr>
+<td>General key expansion</td>
+<td>HKDF</td>
+<td>RFC 5869</td>
+</tr>
+<tr>
+<td>Application key diversification</td>
+<td>HKDF or BLAKE3</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="hkdf-hmac-based-extract-and-expand-kdf">HKDF (HMAC-Based Extract-and-Expand KDF)</h2>
+<p>HKDF is the HMAC-based Extract-and-Expand Key Derivation Function defined in <a href="https://tools.ietf.org/html/rfc5869">RFC 5869</a>. It is the most widely used KDF in modern cryptographic protocols.</p>
+<h3 id="design">Design</h3>
+<p>HKDF consists of two stages:</p>
+<ol>
+<li><strong>Extract</strong> — Concentrates the entropy from potentially non-uniform input keying material (IKM) into a fixed-length pseudorandom key (PRK) using HMAC with an optional salt.</li>
+<li><strong>Expand</strong> — Derives one or more output keys of arbitrary length from the PRK using HMAC with optional context information.</li>
+</ol>
+<pre><code>  IKM ──► [ Extract ] ──► PRK ──► [ Expand ] ──► OKM (output keys)
+             ▲                        ▲
+            salt                     info
+</code></pre>
+<h3 id="hmacfactory-delegate">HmacFactory Delegate</h3>
+<p>All HKDF methods accept an <code>HmacFactory</code> delegate that creates <code>IMac</code> instances keyed with a given key. This design allows plugging any HMAC variant without changing the KDF logic.</p>
+<pre><code class="lang-csharp">public delegate IMac HmacFactory(byte[] key);
+</code></pre>
+<p><strong>Built-in factories:</strong></p>
+<pre><code class="lang-csharp">// SHA-256 (TLS 1.3, Signal, HPKE default)
+HmacFactory sha256 = key =&gt; new HmacSha256(key);
+
+// SHA-384 (TLS 1.3 with P-384)
+HmacFactory sha384 = key =&gt; new HmacSha384(key);
+
+// SHA-512 (maximum security)
+HmacFactory sha512 = key =&gt; new HmacSha512(key);
+
+// SHA3-256 (NIST PQC, cross-platform)
+HmacFactory sha3_256 = key =&gt; new HmacSha3_256(key);
+</code></pre>
+<h3 id="class-declaration">Class Declaration</h3>
+<pre><code class="lang-csharp">public static class Hkdf
+</code></pre>
+<h3 id="methods">Methods</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Extract(HmacFactory, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;)</code></td>
+<td>Extract PRK from IKM and salt (span overload)</td>
+</tr>
+<tr>
+<td><code>Extract(HmacFactory, byte[], byte[]?)</code></td>
+<td>Extract PRK from IKM and salt (array overload)</td>
+</tr>
+<tr>
+<td><code>Expand(HmacFactory, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)</code></td>
+<td>Expand PRK into output keying material (span overload)</td>
+</tr>
+<tr>
+<td><code>Expand(HmacFactory, byte[], int, byte[]?)</code></td>
+<td>Expand PRK into output keying material (array overload)</td>
+</tr>
+<tr>
+<td><code>DeriveKey(HmacFactory, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)</code></td>
+<td>Combined Extract-then-Expand (span overload)</td>
+</tr>
+<tr>
+<td><code>DeriveKey(HmacFactory, byte[], int, byte[]?, byte[]?)</code></td>
+<td>Combined Extract-then-Expand (array overload)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage-examples">Usage Examples</h3>
+<h4 id="combined-extract-and-expand-most-common">Combined Extract-and-Expand (Most Common)</h4>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] inputKeyMaterial = ...; // e.g., ECDH shared secret
+byte[] salt = new byte[32];
+RandomNumberGenerator.Fill(salt);
+byte[] info = Encoding.UTF8.GetBytes(&quot;TLS 1.3 key&quot;);
+
+// Array API (simple)
+byte[] derivedKey = Hkdf.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    inputKeyMaterial, outputLength: 32, salt, info);
+
+// Span API (zero extra allocations)
+Span&lt;byte&gt; output = stackalloc byte[32];
+Hkdf.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    inputKeyMaterial, output, salt, info);
+</code></pre>
+<h4 id="separate-extract-and-expand">Separate Extract and Expand</h4>
+<p>When multiple keys are needed from the same IKM, extract once and expand multiple times:</p>
+<pre><code class="lang-csharp">HmacFactory factory = key =&gt; new HmacSha256(key);
+byte[] sharedSecret = ...; // from ECDH
+
+// Step 1: Extract
+byte[] prk = Hkdf.Extract(factory, sharedSecret, salt: null);
+
+// Step 2: Expand for different purposes
+byte[] encryptionKey = Hkdf.Expand(factory, prk, outputLength: 32,
+    info: Encoding.UTF8.GetBytes(&quot;encryption&quot;));
+
+byte[] authKey = Hkdf.Expand(factory, prk, outputLength: 32,
+    info: Encoding.UTF8.GetBytes(&quot;authentication&quot;));
+
+byte[] ivKey = Hkdf.Expand(factory, prk, outputLength: 12,
+    info: Encoding.UTF8.GetBytes(&quot;iv&quot;));
+</code></pre>
+<h4 id="tls-13-key-schedule-pattern">TLS 1.3 Key Schedule Pattern</h4>
+<pre><code class="lang-csharp">HmacFactory sha256 = key =&gt; new HmacSha256(key);
+
+// Early Secret: Extract(salt=0, IKM=PSK or 0)
+byte[] earlySecret = Hkdf.Extract(sha256, psk ?? new byte[32], salt: null);
+
+// Handshake Secret: Extract(salt=derived, IKM=ECDHE)
+byte[] derivedSalt = Hkdf.Expand(sha256, earlySecret, 32,
+    Encoding.UTF8.GetBytes(&quot;derived&quot;));
+byte[] handshakeSecret = Hkdf.Extract(sha256, ecdhSharedSecret, derivedSalt);
+
+// Traffic keys: Expand with labeled info
+byte[] clientKey = Hkdf.Expand(sha256, handshakeSecret, 32,
+    Encoding.UTF8.GetBytes(&quot;c hs traffic&quot;));
+</code></pre>
+<h4 id="with-sha-384-or-sha-512">With SHA-384 or SHA-512</h4>
+<pre><code class="lang-csharp">// SHA-384 (48-byte output, used with P-384 curves)
+byte[] key384 = Hkdf.DeriveKey(
+    key =&gt; new HmacSha384(key),
+    ikm, outputLength: 48, salt, info);
+
+// SHA-512 (64-byte output, maximum security)
+byte[] key512 = Hkdf.DeriveKey(
+    key =&gt; new HmacSha512(key),
+    ikm, outputLength: 64, salt, info);
+</code></pre>
+<h3 id="parameters">Parameters</h3>
+<h4 id="salt">Salt</h4>
+<p>Per RFC 5869 §2.2, salt is optional but strongly recommended. If not provided, it defaults to a zero-filled byte array of length <code>HashLen</code> (e.g., 32 bytes for HMAC-SHA-256).</p>
+<ul>
+<li><strong>Best practice:</strong> Use a random salt of at least <code>HashLen</code> bytes</li>
+<li><strong>Acceptable:</strong> Use a fixed application-specific salt</li>
+<li><strong>Minimum:</strong> Omit salt (uses all-zeros, reduces security margin)</li>
+</ul>
+<h4 id="info">Info</h4>
+<p>The <code>info</code> parameter binds the derived key to a specific context, preventing key reuse across different purposes. It should include:</p>
+<ul>
+<li>Protocol identifier (e.g., &quot;TLS 1.3&quot;)</li>
+<li>Purpose label (e.g., &quot;encryption&quot;, &quot;authentication&quot;)</li>
+<li>Session identifiers or nonces where appropriate</li>
+</ul>
+<h4 id="output-length">Output Length</h4>
+<p>The maximum output length is <code>255 × HashLen</code> bytes:</p>
+<table>
+<thead>
+<tr>
+<th>HMAC Variant</th>
+<th>HashLen</th>
+<th>Max Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HMAC-SHA-256</td>
+<td>32 bytes</td>
+<td>8,160 bytes</td>
+</tr>
+<tr>
+<td>HMAC-SHA-384</td>
+<td>48 bytes</td>
+<td>12,240 bytes</td>
+</tr>
+<tr>
+<td>HMAC-SHA-512</td>
+<td>64 bytes</td>
+<td>16,320 bytes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="comparison-with-net-built-in">Comparison with .NET Built-in</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CryptoHives HKDF</th>
+<th>System.Security.Cryptography.HKDF</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Availability</td>
+<td>All TFMs (.NET Framework 4.6.2+)</td>
+<td>.NET Core 3.0+ only</td>
+</tr>
+<tr>
+<td>HMAC variants</td>
+<td>Any <code>IMac</code> (SHA-256/384/512, SHA3-256, etc.)</td>
+<td>SHA-1, SHA-256, SHA-384, SHA-512 only</td>
+</tr>
+<tr>
+<td>SHA-3 support</td>
+<td>✅ via HmacSha3_256</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>API style</td>
+<td>Instance + static, span + array</td>
+<td>Static only, span-based</td>
+</tr>
+<tr>
+<td>OS dependency</td>
+<td>None (fully managed)</td>
+<td>Uses CNG/OpenSSL</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standards-compliance">Standards Compliance</h3>
+<ul>
+<li><strong>RFC 5869</strong>: HKDF specification — all 7 Appendix A test vectors verified</li>
+<li><strong>RFC 8446</strong>: TLS 1.3 key schedule uses HKDF-Extract and HKDF-Expand</li>
+<li><strong>RFC 9180</strong>: HPKE uses HKDF with labeled Extract/Expand</li>
+<li><strong>RFC 7296</strong>: IKEv2 uses HKDF for key derivation</li>
+</ul>
+<hr>
+<h2 id="kbkdf--counter-mode-sp-800-108r1">KBKDF — Counter Mode (SP 800-108r1)</h2>
+<p>KBKDF (Key-Based Key Derivation Function) in Counter Mode derives keying material from a key derivation key (KI) using a pseudorandom function iterated with an incrementing counter, as defined in <a href="https://csrc.nist.gov/pubs/sp/800/108/r1/upd1/final">NIST SP 800-108r1 §4.1</a>.</p>
+<h3 id="design-1">Design</h3>
+<p>Counter Mode iterates a PRF (HMAC or CMAC) with a 32-bit counter prepended to fixed input data:</p>
+<pre><code>K(i) = PRF(KI, [i]₄ ‖ Label ‖ 0x00 ‖ Context ‖ [L]₄)
+</code></pre>
+<p>Where:</p>
+<ul>
+<li><code>[i]₄</code> = 32-bit big-endian counter (1-based)</li>
+<li><code>Label</code> = purpose identifier</li>
+<li><code>0x00</code> = separator byte</li>
+<li><code>Context</code> = session/application context</li>
+<li><code>[L]₄</code> = output length in bits (32-bit big-endian)</li>
+</ul>
+<h3 id="class-declaration-1">Class Declaration</h3>
+<pre><code class="lang-csharp">public static class Kbkdf
+</code></pre>
+<h3 id="methods-1">Methods</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DeriveKey(HmacFactory, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)</code></td>
+<td>Derive key with label and context (span overload)</td>
+</tr>
+<tr>
+<td><code>DeriveKey(HmacFactory, byte[], int, byte[]?, byte[]?)</code></td>
+<td>Derive key with label and context (array overload)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage-examples-1">Usage Examples</h3>
+<h4 id="basic-key-derivation">Basic Key Derivation</h4>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] masterKey = ...; // key derivation key
+byte[] label = Encoding.UTF8.GetBytes(&quot;encryption&quot;);
+byte[] context = Encoding.UTF8.GetBytes(&quot;session-001&quot;);
+
+// Array API (simple)
+byte[] derivedKey = Kbkdf.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    masterKey, outputLength: 32, label, context);
+
+// Span API (zero extra allocations)
+Span&lt;byte&gt; output = stackalloc byte[32];
+Kbkdf.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    masterKey, output, label, context);
+</code></pre>
+<h4 id="multiple-keys-from-same-master-key">Multiple Keys from Same Master Key</h4>
+<pre><code class="lang-csharp">HmacFactory sha256 = key =&gt; new HmacSha256(key);
+byte[] context = Encoding.UTF8.GetBytes(&quot;session-001&quot;);
+
+// Derive different keys by varying the label
+byte[] encKey = Kbkdf.DeriveKey(sha256, masterKey, 32,
+    Encoding.UTF8.GetBytes(&quot;encryption&quot;), context);
+
+byte[] authKey = Kbkdf.DeriveKey(sha256, masterKey, 32,
+    Encoding.UTF8.GetBytes(&quot;authentication&quot;), context);
+
+byte[] ivKey = Kbkdf.DeriveKey(sha256, masterKey, 12,
+    Encoding.UTF8.GetBytes(&quot;iv&quot;), context);
+</code></pre>
+<h4 id="with-aes-cmac-as-prf">With AES-CMAC as PRF</h4>
+<pre><code class="lang-csharp">// AES-128 CMAC produces 16-byte MACs
+byte[] aesKey = ...; // 16, 24, or 32 bytes
+byte[] derived = Kbkdf.DeriveKey(
+    key =&gt; AesCmac.Create(key),
+    aesKey, outputLength: 32, label, context);
+</code></pre>
+<h3 id="kbkdf-vs-hkdf">KBKDF vs HKDF</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>KBKDF (SP 800-108r1)</th>
+<th>HKDF (RFC 5869)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Design</td>
+<td>Single-phase counter loop</td>
+<td>Two-phase Extract + Expand</td>
+</tr>
+<tr>
+<td>Input key</td>
+<td>Must be uniformly random</td>
+<td>Can be non-uniform (Extract handles it)</td>
+</tr>
+<tr>
+<td>Salt</td>
+<td>No salt parameter</td>
+<td>Optional salt for extraction</td>
+</tr>
+<tr>
+<td>PRF support</td>
+<td>HMAC and CMAC</td>
+<td>HMAC only</td>
+</tr>
+<tr>
+<td>Label/Context</td>
+<td>Built into the construction</td>
+<td>Via <code>info</code> parameter</td>
+</tr>
+<tr>
+<td>Best for</td>
+<td>Session key derivation from master key</td>
+<td>Key extraction from shared secrets</td>
+</tr>
+<tr>
+<td>Standards</td>
+<td>NIST SP 800-108r1, CNG, DPAPI</td>
+<td>RFC 5869, TLS 1.3, HPKE</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standards-compliance-1">Standards Compliance</h3>
+<ul>
+<li><strong>NIST SP 800-108r1</strong>: Counter Mode KDF — verified against independently computed test vectors</li>
+<li>Compatible with .NET <code>SP800108DeriveBytes</code> (same PRF input format)</li>
+</ul>
+<hr>
+<h2 id="concat-kdf--one-step-sp-800-56a--sp-800-56c">Concat KDF — One-Step (SP 800-56A / SP 800-56C)</h2>
+<p>The Concatenation Key Derivation Function derives keying material from a shared secret using a hash function or HMAC iterated with an incrementing counter. It is defined in NIST SP 800-56A §5.8.1 (hash-based) and NIST SP 800-56C rev2 Option 1 (HMAC-based).</p>
+<h3 id="design-2">Design</h3>
+<p>Each iteration computes:</p>
+<ul>
+<li><strong>Hash-based:</strong> <code>Hash(counter ‖ Z ‖ OtherInfo)</code></li>
+<li><strong>HMAC-based:</strong> <code>HMAC-Hash(salt, counter ‖ Z ‖ OtherInfo)</code></li>
+</ul>
+<p>Where <code>counter</code> is a 32-bit big-endian counter starting at 1, <code>Z</code> is the shared secret, and <code>OtherInfo</code> is supplementary public information.</p>
+<h3 id="class-declaration-2">Class Declaration</h3>
+<pre><code class="lang-csharp">public static class ConcatKdf
+</code></pre>
+<h3 id="methods-2">Methods</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DeriveKey(HashAlgorithm, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)</code></td>
+<td>Hash-based KDF (span overload)</td>
+</tr>
+<tr>
+<td><code>DeriveKey(HashAlgorithm, byte[], int, byte[]?)</code></td>
+<td>Hash-based KDF (array overload)</td>
+</tr>
+<tr>
+<td><code>DeriveKey(HmacFactory, ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;, ReadOnlySpan&lt;byte&gt;)</code></td>
+<td>HMAC-based KDF with salt (span overload)</td>
+</tr>
+<tr>
+<td><code>DeriveKey(HmacFactory, byte[], int, byte[]?, byte[]?)</code></td>
+<td>HMAC-based KDF with salt (array overload)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage-examples-2">Usage Examples</h3>
+<h4 id="hash-based-sp-800-56a-581">Hash-Based (SP 800-56A §5.8.1)</h4>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
+
+byte[] sharedSecret = ...; // e.g., from ECDH key agreement
+byte[] otherInfo = ...; // algorithm ID, party info, etc.
+
+using var sha256 = SHA256.Create();
+byte[] derivedKey = ConcatKdf.DeriveKey(sha256, sharedSecret, 32, otherInfo);
+</code></pre>
+<h4 id="hmac-based-sp-800-56c-rev2-option-1">HMAC-Based (SP 800-56C rev2 Option 1)</h4>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] salt = ...; // optional salt (used as HMAC key)
+byte[] derivedKey = ConcatKdf.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    sharedSecret, 32, otherInfo, salt);
+</code></pre>
+<h4 id="josejwe-key-agreement-rfc-7518">JOSE/JWE Key Agreement (RFC 7518)</h4>
+<pre><code class="lang-csharp">// Compose OtherInfo per RFC 7518 §4.6.2
+byte[] algId = Encoding.UTF8.GetBytes(&quot;A256GCM&quot;);
+byte[] otherInfo = ComposeJweOtherInfo(algId, apu, apv, keyLength: 256);
+
+using var sha256 = SHA256.Create();
+byte[] cek = ConcatKdf.DeriveKey(sha256, ecdhSharedSecret, 32, otherInfo);
+</code></pre>
+<h3 id="concat-kdf-vs-hkdf">Concat KDF vs HKDF</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Concat KDF</th>
+<th>HKDF</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input</td>
+<td>Shared secret + OtherInfo</td>
+<td>IKM + salt + info</td>
+</tr>
+<tr>
+<td>Phases</td>
+<td>Single step</td>
+<td>Extract + Expand</td>
+</tr>
+<tr>
+<td>Hash function</td>
+<td>Direct or HMAC</td>
+<td>HMAC only</td>
+</tr>
+<tr>
+<td>Salt</td>
+<td>Optional (HMAC variant only)</td>
+<td>Optional (Extract phase)</td>
+</tr>
+<tr>
+<td>Best for</td>
+<td>ECDH key agreement, JOSE/JWE</td>
+<td>TLS 1.3, HPKE, protocol key schedules</td>
+</tr>
+<tr>
+<td>Standards</td>
+<td>SP 800-56A, SP 800-56C, RFC 7518</td>
+<td>RFC 5869, RFC 8446</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standards-compliance-2">Standards Compliance</h3>
+<ul>
+<li><strong>NIST SP 800-56A §5.8.1</strong>: Hash-based one-step KDF — verified against BouncyCastle test vectors</li>
+<li><strong>NIST SP 800-56C rev2 Option 1</strong>: HMAC-based one-step KDF</li>
+<li>Compatible with BouncyCastle <code>ConcatenationKdfGenerator</code></li>
+</ul>
+<hr>
+<h2 id="pbkdf2-password-based-kdf">PBKDF2 (Password-Based KDF)</h2>
+<p><strong>Standard:</strong> <a href="https://tools.ietf.org/html/rfc8018#section-5.2">RFC 8018 §5.2</a> (formerly RFC 2898)</p>
+<p>PBKDF2 derives keying material from a password by applying a pseudorandom function (PRF) — typically HMAC — iteratively. The iteration count slows down brute-force attacks, making it suitable for password hashing and password-based encryption.</p>
+<h3 id="algorithm">Algorithm</h3>
+<pre><code>DK = T₁ ‖ T₂ ‖ ... ‖ T_⌈dkLen/hLen⌉
+Tᵢ = U₁ ⊕ U₂ ⊕ ... ⊕ Uₓ
+U₁ = PRF(Password, Salt ‖ INT(i))   — i is 32-bit big-endian, 1-based
+Uⱼ = PRF(Password, U_{j-1})         — for j ≥ 2
+</code></pre>
+<h3 id="usage">Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Kdf;
+using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+// Derive a 32-byte key from a password using HMAC-SHA-256
+byte[] password = Encoding.UTF8.GetBytes(&quot;my-password&quot;);
+byte[] salt = RandomNumberGenerator.GetBytes(16);
+
+byte[] derivedKey = Pbkdf2.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    password, salt, iterations: 600_000, outputLength: 32);
+</code></pre>
+<h3 id="span-based-api">Span-Based API</h3>
+<pre><code class="lang-csharp">// Zero-copy derivation into pre-allocated buffer
+Span&lt;byte&gt; output = stackalloc byte[32];
+Pbkdf2.DeriveKey(
+    key =&gt; new HmacSha256(key),
+    password, salt, iterations: 600_000, output);
+</code></pre>
+<h3 id="comparison-with-net-rfc2898derivebytes">Comparison with .NET Rfc2898DeriveBytes</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CryptoHives <code>Pbkdf2</code></th>
+<th>.NET <code>Rfc2898DeriveBytes</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Any HMAC variant</td>
+<td>✅ via <code>HmacFactory</code></td>
+<td>✅ via <code>HashAlgorithmName</code></td>
+</tr>
+<tr>
+<td>Span overloads</td>
+<td>✅</td>
+<td>✅ (static <code>Pbkdf2</code> method)</td>
+</tr>
+<tr>
+<td>.NET Framework 4.6.2</td>
+<td>✅</td>
+<td>⚠️ SHA-1 only (pre-.NET Core 3.0)</td>
+</tr>
+<tr>
+<td>.NET Standard 2.0</td>
+<td>✅</td>
+<td>⚠️ Limited hash support</td>
+</tr>
+<tr>
+<td>Fully managed</td>
+<td>✅</td>
+<td>❌ OS-dependent</td>
+</tr>
+<tr>
+<td>Custom PRF (CMAC, etc.)</td>
+<td>✅</td>
+<td>❌ HMAC only</td>
+</tr>
+</tbody>
+</table>
+<h3 id="owasp-iteration-count-recommendations-2024">OWASP Iteration Count Recommendations (2024)</h3>
+<table>
+<thead>
+<tr>
+<th>HMAC Variant</th>
+<th>Minimum Iterations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HMAC-SHA-256</td>
+<td>600,000</td>
+</tr>
+<tr>
+<td>HMAC-SHA-384</td>
+<td>600,000</td>
+</tr>
+<tr>
+<td>HMAC-SHA-512</td>
+<td>210,000</td>
+</tr>
+<tr>
+<td>HMAC-SHA-1</td>
+<td>1,300,000</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>PBKDF2 is <strong>not</strong> memory-hard and is vulnerable to GPU/ASIC attacks for password
+hashing. For new password storage, consider Argon2id or scrypt. PBKDF2 remains
+appropriate for key derivation in protocols like PKCS#12, WPA2, and S/MIME.</p>
+</div>
+<h3 id="use-cases">Use Cases</h3>
+<ul>
+<li><strong>WPA/WPA2</strong> — Wi-Fi key derivation (HMAC-SHA-1, 4096 iterations)</li>
+<li><strong>PKCS#12</strong> — Certificate container encryption</li>
+<li><strong>S/MIME</strong> — Email encryption key derivation</li>
+<li><strong>Password storage</strong> — When Argon2 is not available</li>
+<li><strong>PEM encryption</strong> — PKCS#5 encrypted private keys</li>
+</ul>
+<hr>
+<h2 id="blake3-key-derivation">BLAKE3 Key Derivation</h2>
+<p>BLAKE3 provides a built-in key derivation mode that uses a context string for domain separation. Unlike HKDF, it does not require a separate HMAC; the KDF is integrated into the hash function.</p>
+<p>See <a href="hash-algorithms.html#blake3">Hash Algorithms — BLAKE3</a> for full documentation.</p>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+string context = &quot;MyApp 2026-01-01 session key&quot;;
+byte[] ikm = ...; // input key material
+
+using var blake3 = Blake3.CreateDeriveKey(context);
+Span&lt;byte&gt; derivedKey = stackalloc byte[32];
+blake3.TryComputeHash(ikm, derivedKey, out _);
+</code></pre>
+<hr>
+<h2 id="kdf-selection-guide">KDF Selection Guide</h2>
+<h3 id="by-protocol">By Protocol</h3>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>KDF</th>
+<th>HMAC Variant</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TLS 1.3</td>
+<td>HKDF</td>
+<td>SHA-256 or SHA-384</td>
+<td>RFC 8446 key schedule</td>
+</tr>
+<tr>
+<td>HPKE</td>
+<td>HKDF</td>
+<td>SHA-256</td>
+<td>RFC 9180 labeled Extract/Expand</td>
+</tr>
+<tr>
+<td>IKEv2 / IPsec</td>
+<td>HKDF or KBKDF</td>
+<td>SHA-256 or SHA-512</td>
+<td>RFC 7296</td>
+</tr>
+<tr>
+<td>Signal Protocol</td>
+<td>HKDF</td>
+<td>SHA-256</td>
+<td>Double Ratchet algorithm</td>
+</tr>
+<tr>
+<td>WireGuard</td>
+<td>HKDF / BLAKE3</td>
+<td>SHA-256</td>
+<td>Noise framework</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>HKDF</td>
+<td>SHA-256 or SHA-512</td>
+<td>Key exchange</td>
+</tr>
+<tr>
+<td>OPC UA</td>
+<td>HKDF</td>
+<td>SHA-256</td>
+<td>Secure channel key derivation</td>
+</tr>
+<tr>
+<td>Microsoft CNG / DPAPI</td>
+<td>KBKDF</td>
+<td>SHA-256 or AES-CMAC</td>
+<td>SP 800-108 Counter Mode</td>
+</tr>
+<tr>
+<td>Kerberos</td>
+<td>KBKDF</td>
+<td>SHA-256</td>
+<td>Session key derivation</td>
+</tr>
+<tr>
+<td>802.11i / EAP</td>
+<td>KBKDF</td>
+<td>AES-CMAC</td>
+<td>Key hierarchy derivation</td>
+</tr>
+<tr>
+<td>WPA/WPA2</td>
+<td>PBKDF2</td>
+<td>SHA-1</td>
+<td>4096 iterations (Wi-Fi passphrase)</td>
+</tr>
+<tr>
+<td>PKCS#12 / S/MIME</td>
+<td>PBKDF2</td>
+<td>SHA-256</td>
+<td>Certificate/key encryption</td>
+</tr>
+</tbody>
+</table>
+<h3 id="by-use-case">By Use Case</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Recommended</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Extract + expand from shared secret</td>
+<td>HKDF</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Multiple keys from one secret</td>
+<td>HKDF (Extract once, Expand many)</td>
+<td>KBKDF (vary label)</td>
+</tr>
+<tr>
+<td>Session key from master key</td>
+<td>KBKDF</td>
+<td>HKDF</td>
+</tr>
+<tr>
+<td>Context-bound key derivation</td>
+<td>HKDF with <code>info</code> or KBKDF with label/context</td>
+<td>BLAKE3 DeriveKey</td>
+</tr>
+<tr>
+<td>High-performance key derivation</td>
+<td>BLAKE3 DeriveKey</td>
+<td>HKDF</td>
+</tr>
+<tr>
+<td>Password-based key derivation</td>
+<td>PBKDF2</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Password storage</td>
+<td>PBKDF2 (if Argon2 unavailable)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>NIST compliance required</td>
+<td>HKDF or KBKDF</td>
+<td>PBKDF2</td>
+</tr>
+<tr>
+<td>Cross-platform SHA-3 KDF</td>
+<td>HKDF with HMAC-SHA3-256</td>
+<td>—</td>
+</tr>
+<tr>
+<td>CMAC-based PRF needed</td>
+<td>KBKDF with AES-CMAC</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="kdf-roadmap">KDF Roadmap</h2>
+<p>The following KDFs are commonly used with ECC, asymmetric encryption, and post-quantum cryptography. They are candidates for future implementation:</p>
+<table>
+<thead>
+<tr>
+<th>KDF</th>
+<th>Standard</th>
+<th>Used With</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HKDF</td>
+<td>RFC 5869</td>
+<td>TLS 1.3, HPKE, Signal, WireGuard</td>
+<td>✅ Implemented</td>
+</tr>
+<tr>
+<td>KBKDF Counter Mode</td>
+<td>NIST SP 800-108r1</td>
+<td>CNG, DPAPI, IPsec, Kerberos</td>
+<td>✅ Implemented</td>
+</tr>
+<tr>
+<td>Concat KDF (One-Step)</td>
+<td>NIST SP 800-56A/56C</td>
+<td>ECDH key agreement, JOSE/JWE</td>
+<td>✅ Implemented</td>
+</tr>
+<tr>
+<td>BLAKE3 DeriveKey</td>
+<td>BLAKE3 Spec</td>
+<td>Custom protocols</td>
+<td>✅ Implemented</td>
+</tr>
+<tr>
+<td>X9.63 KDF</td>
+<td>ANSI X9.63 / SEC 1</td>
+<td>Legacy ECC (IEEE P1363)</td>
+<td>🔲 Under review</td>
+</tr>
+<tr>
+<td>PBKDF2</td>
+<td>RFC 8018</td>
+<td>Password-based key derivation</td>
+<td>✅ Implemented</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="security-best-practices">Security Best Practices</h2>
+<h3 id="key-material-handling">Key Material Handling</h3>
+<pre><code class="lang-csharp">// Clear sensitive key material after use
+byte[] prk = Hkdf.Extract(factory, ikm, salt);
+try
+{
+    byte[] derivedKey = Hkdf.Expand(factory, prk, 32, info);
+    // Use derivedKey...
+}
+finally
+{
+    Array.Clear(prk, 0, prk.Length);
+}
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> The span-based <code>DeriveKey</code> method automatically clears the intermediate PRK.</p>
+</blockquote>
+<h3 id="noncesalt-reuse">Nonce/Salt Reuse</h3>
+<ul>
+<li><strong>Salt reuse is acceptable</strong> — HKDF tolerates salt reuse without security degradation (it merely reduces the security margin).</li>
+<li><strong>Info reuse is dangerous</strong> — The same <code>(PRK, info)</code> pair always produces the same output. Use unique <code>info</code> values for each derived key.</li>
+</ul>
+<h3 id="domain-separation">Domain Separation</h3>
+<p>Always include distinct <code>info</code> values to prevent key reuse across different contexts:</p>
+<pre><code class="lang-csharp">// GOOD: Different info for different keys
+byte[] encKey = Hkdf.Expand(factory, prk, 32, &quot;enc&quot;u8.ToArray());
+byte[] macKey = Hkdf.Expand(factory, prk, 32, &quot;mac&quot;u8.ToArray());
+
+// BAD: Same info reused — produces identical keys!
+// byte[] key1 = Hkdf.Expand(factory, prk, 32, info);
+// byte[] key2 = Hkdf.Expand(factory, prk, 32, info); // same as key1!
+</code></pre>
+<hr>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="mac-algorithms.html">MAC Algorithms</a> — HMAC variants used as the underlying PRF</li>
+<li><a href="hash-algorithms.html">Hash Algorithms</a> — BLAKE3 key derivation mode</li>
+<li><a href="cipher-algorithms.html">Cipher Algorithms</a> — Algorithms that consume derived keys</li>
+<li><a href="index.html">Cryptography Package Overview</a></li>
+<li><a href="specs/HMAC-vectors.html">HMAC Test Vectors</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/kdf-algorithms.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

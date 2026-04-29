@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class SHA512 | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class SHA512 | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="Computes the SHA-512 hash for the input data.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Security_Cryptography_Hash_SHA512.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Security.Cryptography.Hash.SHA512%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512">
+
+
+
+  <h1 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512" class="text-break">
+Class SHA512  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L22"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Security.html">Security</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.html">Cryptography</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.html">Hash</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Security.Cryptography.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Computes the SHA-512 hash for the input data.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class SHA512 : Sha2HashAlgorithm&lt;ulong&gt;, ICryptoTransform, IDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm">HashAlgorithm</a></div>
+      <div><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html">HashAlgorithm</a></div>
+      <div><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.Sha2HashAlgorithm-1.html">Sha2HashAlgorithm</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a>&gt;</div>
+      <div><span class="xref">SHA512</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.icryptotransform">ICryptoTransform</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.Sha2HashAlgorithm-1.html#CryptoHives_Foundation_Security_Cryptography_Hash_Sha2HashAlgorithm_1_StateSizeWords">Sha2HashAlgorithm&lt;ulong&gt;.StateSizeWords</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.Sha2HashAlgorithm-1.html#CryptoHives_Foundation_Security_Cryptography_Hash_Sha2HashAlgorithm_1_Initialize">Sha2HashAlgorithm&lt;ulong&gt;.Initialize()</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_Create_System_String_System_Boolean_">HashAlgorithm.Create(string, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_Create_System_String_">HashAlgorithm.Create(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_TryComputeHash_System_ReadOnlySpan_System_Byte__System_Span_System_Byte__System_Int32__">HashAlgorithm.TryComputeHash(ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, out int)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_AppendData_System_ReadOnlySpan_System_Byte__">HashAlgorithm.AppendData(ReadOnlySpan&lt;byte&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_TryGetHashAndReset_System_Span_System_Byte__System_Int32__">HashAlgorithm.TryGetHashAndReset(Span&lt;byte&gt;, out int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.computehash#system-security-cryptography-hashalgorithm-computehash(system-io-stream)">HashAlgorithm.ComputeHash(Stream)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.computehash#system-security-cryptography-hashalgorithm-computehash(system-byte())">HashAlgorithm.ComputeHash(byte[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.computehash#system-security-cryptography-hashalgorithm-computehash(system-byte()-system-int32-system-int32)">HashAlgorithm.ComputeHash(byte[], int, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.transformblock">HashAlgorithm.TransformBlock(byte[], int, int, byte[], int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.transformfinalblock">HashAlgorithm.TransformFinalBlock(byte[], int, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.dispose#system-security-cryptography-hashalgorithm-dispose">HashAlgorithm.Dispose()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.clear">HashAlgorithm.Clear()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.hashsize">HashAlgorithm.HashSize</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.hash">HashAlgorithm.Hash</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.inputblocksize">HashAlgorithm.InputBlockSize</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.outputblocksize">HashAlgorithm.OutputBlockSize</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.cantransformmultipleblocks">HashAlgorithm.CanTransformMultipleBlocks</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.canreusetransform">HashAlgorithm.CanReuseTransform</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This is a fully managed implementation of SHA-512 that does not rely on
+OS or hardware cryptographic APIs, ensuring deterministic behavior across
+all platforms and runtimes.
+</p>
+<p>
+SHA-512 produces a 512-bit (64-byte) hash value.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512__ctor_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512__ctor" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.#ctor">
+  SHA512()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.html">SHA512</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SHA512()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_HashSizeBits" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.HashSizeBits">
+  HashSizeBits
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L27"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The hash size in bits.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int HashSizeBits = 512</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_HashSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.HashSizeBytes">
+  HashSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The hash size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int HashSizeBytes = 64</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_AlgorithmName_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.AlgorithmName*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_AlgorithmName" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.AlgorithmName">
+  AlgorithmName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the name of the hash algorithm.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string AlgorithmName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_BlockSize_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.BlockSize*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_BlockSize" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.BlockSize">
+  BlockSize
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the block size in bytes used by the hash algorithm.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int BlockSize { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_BlockSizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.BlockSizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_BlockSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.BlockSizeBytes">
+  BlockSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the block size in bytes for this algorithm.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override int BlockSizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_OutputSizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.OutputSizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_OutputSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.OutputSizeBytes">
+  OutputSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the hash output size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override int OutputSizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_Create_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.Create*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_Create" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.Create">
+  Create()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L58"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.html">SHA512</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static SHA512 Create()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.html">SHA512</a></dt>
+    <dd><p>A new SHA-512 hash algorithm instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_InitializeState_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.InitializeState*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_InitializeState" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.InitializeState">
+  InitializeState()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes the hash state with algorithm-specific initial values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void InitializeState()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_OutputHash_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.OutputHash*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_OutputHash_System_Span_System_Byte__System_UInt64___" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.OutputHash(System.Span{System.Byte},System.UInt64[])">
+  OutputHash(Span&lt;byte&gt;, ulong[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Writes the final hash output from the state to the destination.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void OutputHash(Span&lt;byte&gt; destination, ulong[] state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>destination</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The destination span for the hash output.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a>[]</dt>
+    <dd><p>The state array containing the hash values.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_PadAndFinalize_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.PadAndFinalize*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_PadAndFinalize_System_Span_System_Byte__System_Int32_System_Int64_System_Span_System_UInt64__" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.PadAndFinalize(System.Span{System.Byte},System.Int32,System.Int64,System.Span{System.UInt64})">
+  PadAndFinalize(Span&lt;byte&gt;, int, long, Span&lt;ulong&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Pads and finalizes the hash computation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void PadAndFinalize(Span&lt;byte&gt; buffer, int bufferLength, long bytesProcessed, Span&lt;ulong&gt; state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>buffer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The buffer containing remaining unprocessed bytes.</p>
+</dd>
+    <dt><code>bufferLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of valid bytes in the buffer.</p>
+</dd>
+    <dt><code>bytesProcessed</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>Total bytes processed before this finalization.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a>&gt;</dt>
+    <dd><p>The state array to update.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_ProcessBlock_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.ProcessBlock*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_SHA512_ProcessBlock_System_ReadOnlySpan_System_Byte__System_Span_System_UInt64__" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.SHA512.ProcessBlock(System.ReadOnlySpan{System.Byte},System.Span{System.UInt64})">
+  ProcessBlock(ReadOnlySpan&lt;byte&gt;, Span&lt;ulong&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L75"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Processes a single block, updating the state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void ProcessBlock(ReadOnlySpan&lt;byte&gt; block, Span&lt;ulong&gt; state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>block</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The block data to process.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a>&gt;</dt>
+    <dd><p>The state array to update.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Sha2/SHA512.cs/#L22" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

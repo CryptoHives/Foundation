@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<h2 id="threading-benchmarks">Threading Benchmarks</h2>
+<p>This page documents how the benchmarks are executed which are included in the Threading library.</p>
+<h3 id="overview">Overview</h3>
+<p>BenchmarkDotNet is used for microbenchmarks. Benchmarks live under <code>tests/Threading/Async/Pooled/</code> and can be executed with the BenchmarkSwitcher entry point at <code>tests/Common/Main.cs</code>.</p>
+<h3 id="updating-benchmark-results">Updating Benchmark Results</h3>
+<p>First run the benchmarks locally (see below).
+Benchmark results are stored in <code>docfx/packages/threading/benchmarks/&lt;platform-id&gt;/</code> and can be updated after a local benchmark run using:</p>
+<pre><code class="lang-cmd">scripts\update-benchmark-docs.cmd
+</code></pre>
+<p>Or on PowerShell:</p>
+<pre><code class="lang-powershell">.\scripts\update-benchmark-docs.ps1
+</code></pre>
+<p>See <a href="benchmarks/README.html">benchmarks/README.md</a> for details.</p>
+<h3 id="published-runs">Published Runs</h3>
+<table>
+<thead>
+<tr>
+<th>Platform ID</th>
+<th>Host</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>macos-arm64-apple-m4</code></td>
+<td>macOS Tahoe, Apple M4, Arm64</td>
+<td><a href="benchmarks/macos-arm64-apple-m4/threading.html">Open Threading Results</a></td>
+</tr>
+<tr>
+<td><code>windows-x64-amd-ryzen-5-7600x</code></td>
+<td>Windows 11, AMD Ryzen 5 7600X, X64</td>
+<td><a href="benchmarks/windows-x64-amd-ryzen-5-7600x/threading.html">Open Threading Results</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="included-benchmark-suites">Included benchmark suites</h3>
+<p>Benchmarking contention is tricky and not all possible scenarios can be covered.
+The included benchmarks try uncontested and contested scenarios:</p>
+<ul>
+<li>Run with no contention (single waiter) to measure baseline overhead.</li>
+<li>Run with multiple concurrent waiters to measure contention behavior. The number of waiters is increased to measure memory allocations and execution time.</li>
+<li>All pooled implementations are tested with cancellable and default CancellationTokens.</li>
+<li>For the pooled implementations, variations with AsTask() and await are separately benchmarked to capture the overhead.</li>
+<li>Newer comparison sets include ProtoPromise and Microsoft.VisualStudio.Threading where the corresponding primitive exists and can be exercised fairly on the target framework.</li>
+<li>Some implementations that are tested against for reference do not support cancellation tokens and hence their benchmark result is out of contest.</li>
+<li>Some .NET built-in primitives (e.g. SemaphoreSlim) do not have async wait APIs and hence may not qualify to be tested in a single benchmark function because they would require multiple threads to emulate the tested behavior.</li>
+</ul>
+<h3 id="run-benchmarks-locally">Run benchmarks locally</h3>
+<p>From repository root:</p>
+<ul>
+<li><p>Using the provided scripts:</p>
+<pre><code class="lang-powershell"># Run all benchmarks
+.\scripts\run-benchmarks.ps1
+
+# Filter to specific benchmarks
+.\scripts\run-benchmarks.ps1 -Filter &quot;*AsyncLock*&quot;
+
+# Run on specific framework and runtime
+.\scripts\run-benchmarks.ps1 -Framework net10.0 -Runtimes net10.0
+
+# List available benchmarks
+.\scripts\run-benchmarks.ps1 -List
+</code></pre>
+<p>Or using the cmd wrapper:</p>
+<pre><code class="lang-cmd">scripts\run-benchmarks.cmd -Filter &quot;*AsyncLock*&quot;
+</code></pre>
+</li>
+<li><p>Or run BenchmarkSwitcher directly:</p>
+<pre><code class="lang-cmd">cd tests\Threading
+dotnet run -c Release --framework net10.0 -- --runtimes net10.0 --filter &quot;*AsyncLock*&quot;
+</code></pre>
+</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>Use <code>Release</code> builds for meaningful results.</li>
+<li>All benchmarks are also run as tests in NUnit to validate correctness.</li>
+<li>The test runner disables some BenchmarkDotNet validators because the test assembly references NUnit; keep the provided <code>ManualConfig</code> in <code>tests/Common/Main.cs</code>.</li>
+<li>Switch computer to high-performance power mode and close other applications for more stable results.</li>
+<li>Benchmarks are non-parallelizable; run them on an otherwise idle machine for stable output.</li>
+</ul>
+<h3 id="where-results-appear">Where results appear</h3>
+<p>When run locally in <code>Release</code> mode, BenchmarkDotNet writes results and artifacts to:</p>
+<ul>
+<li><code>tests/Threading/BenchmarkDotNet.Artifacts/results/</code></li>
+</ul>
+<p>After running benchmarks, use the update scripts to copy results to the documentation folder.</p>
+<h3 id="adding-a-new-benchmark">Adding a new benchmark</h3>
+<ol>
+<li>Add a new <code>Benchmark</code> class under <code>tests/</code> following existing patterns in <code>tests/Threading/Async/Pooled/</code>.</li>
+<li>Include <code>[Benchmark]</code> methods and <code>[GlobalSetup]</code> where needed.</li>
+<li>Add a <code>[Params]</code> or <code>FixtureArgs</code> entry if parameterized runs are required.</li>
+<li>Run locally and inspect generated artifacts in <code>tests/Threading/BenchmarkDotNet.Artifacts/results/</code>.</li>
+<li>Update documentation using the provided scripts.</li>
+</ol>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="index.html">Threading Package Overview</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a> - Manual-reset event variant</li>
+<li><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a> - Async reader-writer lock</li>
+<li><a href="asynclock.html">AsyncLock</a> - Async mutual exclusion lock</li>
+<li><a href="asynccountdownevent.html">AsyncCountdownEvent</a> - Async countdown event</li>
+<li><a href="asyncbarrier.html">AsyncBarrier</a> - Async barrier synchronization primitive</li>
+<li><a href="asyncsemaphore.html">AsyncSemaphore</a> - Async semaphore primitive</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class AsyncReaderWriterLock | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class AsyncReaderWriterLock | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="An async reader-writer lock which uses a pooled approach to implement waiters for  to reduce memory allocations.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock">
+
+
+
+  <h1 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock" class="text-break">
+Class AsyncReaderWriterLock  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L107"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Threading.html">Threading</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.html">Async</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.html">Pooled</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Threading.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>An async reader-writer lock which uses a pooled approach to implement waiters
+for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> to reduce memory allocations.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class AsyncReaderWriterLock : IResettable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">AsyncReaderWriterLock</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.iresettable">IResettable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This implementation uses <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> for waiters and provides allocation-free
+async signaling by reusing pooled <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.sources.ivaluetasksource-1">IValueTaskSource&lt;TResult&gt;</a> instances to avoid allocations
+of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.taskcompletionsource-1">TaskCompletionSource&lt;TResult&gt;</a> and <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>.
+</p>
+<p>
+The lock supports multiple concurrent readers, concurrent readers with an upgradeable reader,
+a single exclusive writer or a single upgraded exclusive writer.
+Writer and upgraded writer requests are prioritized over new reader requests
+to prevent writer starvation. New readers are released in batches to avoid excessive Task wakeup.
+</p>
+<devnotes>
+Considering this class to be a state machine, the states are:
+<pre><code class="lang-csharp">------------
+|          | &lt;-----&gt; READERS
+|          | &lt;-----&gt; UPGRADEABLE READER + READERS
+|   IDLE   | &lt;-----&gt; UPGRADEABLE READER -----&gt; UPGRADED WRITER --\
+| NO LOCKS |         ^                                           |
+|          |         |------- DEMOTE TO UPGRADEABLE READER    &lt;--/
+|          | &lt;--------------- DEMOTE TO IDLE WITHOUT READER   &lt;--/
+|          | &lt;-----&gt; WRITER
+------------</code></pre>
+<p>Each state employs a queue for waiting tasks, and the transitions between states
+are managed through atomic operations and a lock to ensure thread safety.
+</p></devnotes>
+<p>
+<b>Important Usage Note:</b> Awaiting on <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> has its own caveats, as it
+is a struct that can only be awaited or converted with AsTask() ONE single time.
+Additional attempts to await after the first await or additional conversions to AsTask() will throw
+an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>.
+</p>
+<p>
+<b>Continuation Scheduling:</b> The <a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.html#CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_RunContinuationAsynchronously">RunContinuationAsynchronously</a> property
+controls how continuations are executed when the lock is released. When set to <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>
+(default), continuations are forced to queue to the thread pool.
+</p>
+<example>
+<pre><code class="lang-csharp">private readonly AsyncReaderWriterLock _rwLock = new AsyncReaderWriterLock();
+<p>public async Task ReadAsync(CancellationToken ct)
+{
+using (await _rwLock.ReaderLockAsync(ct))
+{
+// Multiple readers can hold the lock concurrently
+await ReadDataAsync();
+}
+}</p>
+<p>public async Task WriteAsync(CancellationToken ct)
+{
+using (await _rwLock.WriterLockAsync(ct))
+{
+// Exclusive access - no other readers or writers
+await WriteDataAsync();
+}
+}</p>
+<p>public async Task UpgradeableReadWriteAsync(CancellationToken ct)
+{
+using (var upgr = await _rwLock.UpgradeableReaderLockAsync(ct))
+{
+// Multiple readers and one upgradeable reader can hold the lock concurrently
+await ReadDataAsync();</p>
+<pre><code>    // upgrade the reader to perform a write operation
+    using (await upgr.UpgradeToWriterLockAsync(ct))
+    {
+        // Exclusive access - no other readers or writers
+        await WriteDataAsync();
+    }
+}
+</code></pre>
+<p>}</p></code></pre>
+</example>
+<p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.iresettable">IResettable</a> interface is implemented to allow resetting the state of the instance for reuse
+by an implementation of an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.objectpool">ObjectPool</a> that uses the <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.defaultobjectpool-1">DefaultObjectPool&lt;T&gt;</a> implementation.</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock__ctor_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock__ctor_System_Boolean_CryptoHives_Foundation_Threading_Pools_IGetPooledManualResetValueTaskSource_CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_Releaser__" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.#ctor(System.Boolean,CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource{CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser})">
+  AsyncReaderWriterLock(bool, IGetPooledManualResetValueTaskSource&lt;Releaser&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L313"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Constructs a new AsyncReaderWriterLock instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AsyncReaderWriterLock(bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource&lt;AsyncReaderWriterLock.Releaser&gt;? pool = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>runContinuationAsynchronously</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>Indicates if continuations are forced to run asynchronously.</p>
+</dd>
+    <dt><code>pool</code> <a class="xref" href="CryptoHives.Foundation.Threading.Pools.IGetPooledManualResetValueTaskSource-1.html">IGetPooledManualResetValueTaskSource</a>&lt;<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.html">AsyncReaderWriterLock</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.html">Releaser</a>&gt;</dt>
+    <dd><p>Custom pool for waiters.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_CurrentReaderCount_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.CurrentReaderCount*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_CurrentReaderCount" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.CurrentReaderCount">
+  CurrentReaderCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L409"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the current number of readers holding the lock.
+May also include an upgradeable reader if present.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CurrentReaderCount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsReadLockHeld_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsReadLockHeld*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsReadLockHeld" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsReadLockHeld">
+  IsReadLockHeld
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L376"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether the lock is currently held by any readers.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsReadLockHeld { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsUpgradeableReadLockHeld_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsUpgradeableReadLockHeld*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsUpgradeableReadLockHeld" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsUpgradeableReadLockHeld">
+  IsUpgradeableReadLockHeld
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L392"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether the lock is currently held by an upgradeable reader.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsUpgradeableReadLockHeld { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsUpgradedWriterLockHeld_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsUpgradedWriterLockHeld*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsUpgradedWriterLockHeld" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsUpgradedWriterLockHeld">
+  IsUpgradedWriterLockHeld
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L400"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether the lock is currently held by an upgraded writer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsUpgradedWriterLockHeld { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsWriteLockHeld_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsWriteLockHeld*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_IsWriteLockHeld" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.IsWriteLockHeld">
+  IsWriteLockHeld
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L384"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether the lock is currently held by a writer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsWriteLockHeld { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_RunContinuationAsynchronously_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.RunContinuationAsynchronously*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_RunContinuationAsynchronously" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.RunContinuationAsynchronously">
+  RunContinuationAsynchronously
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L501"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets whether to force continuations to run asynchronously.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool RunContinuationAsynchronously { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingReaderCount_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingReaderCount*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingReaderCount" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingReaderCount">
+  WaitingReaderCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L444"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the number of readers waiting for the lock.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int WaitingReaderCount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingUpgradeableReaderCount_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingUpgradeableReaderCount*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingUpgradeableReaderCount" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingUpgradeableReaderCount">
+  WaitingUpgradeableReaderCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L463"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the number of readers waiting for the lock.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int WaitingUpgradeableReaderCount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingUpgradedWriterCount_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingUpgradedWriterCount*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingUpgradedWriterCount" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingUpgradedWriterCount">
+  WaitingUpgradedWriterCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L482"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the number of upgraded writers waiting for the lock.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int WaitingUpgradedWriterCount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingWriterCount_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingWriterCount*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WaitingWriterCount" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WaitingWriterCount">
+  WaitingWriterCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L425"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the number of writers waiting for the lock.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int WaitingWriterCount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_ReaderLockAsync_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.ReaderLockAsync*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_ReaderLockAsync_System_Threading_CancellationToken_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.ReaderLockAsync(System.Threading.CancellationToken)">
+  ReaderLockAsync(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L516"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously acquires a reader lock.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask&lt;AsyncReaderWriterLock.Releaser&gt; ReaderLockAsync(CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>The cancellation token used to cancel the wait.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.html">AsyncReaderWriterLock</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.html">Releaser</a>&gt;</dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> that completes when the reader lock is acquired.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_ReaderLockAsync_System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Multiple readers can hold the lock concurrently. If a writer is waiting,
+new readers will be queued behind the writer to prevent writer starvation.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_TryReset_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.TryReset*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_TryReset" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.TryReset">
+  TryReset()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L338"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reset the object to a neutral state, semantically similar to when the object was first constructed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool TryReset()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the object was able to reset itself, otherwise <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_TryReset_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>In general, this method is not expected to be thread-safe.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_UpgradeableReaderLockAsync_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.UpgradeableReaderLockAsync*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_UpgradeableReaderLockAsync_System_Threading_CancellationToken_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.UpgradeableReaderLockAsync(System.Threading.CancellationToken)">
+  UpgradeableReaderLockAsync(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L596"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously acquires an upgradeable reader lock.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask&lt;AsyncReaderWriterLock.Releaser&gt; UpgradeableReaderLockAsync(CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>The cancellation token used to cancel the wait.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.html">AsyncReaderWriterLock</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.html">Releaser</a>&gt;</dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> that completes when the upgradeable reader lock is acquired.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_UpgradeableReaderLockAsync_System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>One upgradeable reader can hold the lock, allowing multiple readers to
+concurrently execute as well. If the upgradeable reader decides to upgrade
+to a writer lock, it will wait until all other readers have released the lock.
+If a writer is waiting, new readers will be queued behind the writer to prevent
+writer starvation.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WriterLockAsync_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WriterLockAsync*"></a>
+
+  <h3 id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WriterLockAsync_System_Threading_CancellationToken_" data-uid="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.WriterLockAsync(System.Threading.CancellationToken)">
+  WriterLockAsync(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L672"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously acquires a writer lock.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask&lt;AsyncReaderWriterLock.Releaser&gt; WriterLockAsync(CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>The cancellation token used to cancel the wait.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.html">AsyncReaderWriterLock</a>.<a class="xref" href="CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser.html">Releaser</a>&gt;</dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> that completes when the writer lock is acquired.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Threading_Async_Pooled_AsyncReaderWriterLock_WriterLockAsync_System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Only one writer can hold the lock at a time, and no readers can hold the lock
+while a writer has it. Writers are prioritized over new readers.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Threading/Async/Pooled/AsyncReaderWriterLock.cs/#L107" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

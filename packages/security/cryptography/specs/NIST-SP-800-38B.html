@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>NIST SP 800-38B - Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="NIST SP 800-38B - Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-SP-800-38B.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="nist-sp-800-38b---recommendation-for-block-cipher-modes-of-operation-the-cmac-mode-for-authentication">NIST SP 800-38B - Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication</h1>
+
+<h2 id="overview">Overview</h2>
+<p>NIST Special Publication 800-38B specifies the CMAC (Cipher-based Message Authentication Code) mode of operation for block ciphers. CMAC provides data origin authentication and data integrity assurance using a symmetric key block cipher.</p>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li><strong>Document:</strong> NIST SP 800-38B</li>
+<li><strong>Title:</strong> Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication</li>
+<li><strong>URL:</strong> <a href="https://csrc.nist.gov/pubs/sp/800-38b/upd1/final">https://csrc.nist.gov/pubs/sp/800-38b/upd1/final</a></li>
+<li><strong>PDF:</strong> <a href="https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38B.pdf">https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38B.pdf</a></li>
+</ul>
+<h3 id="related-standards">Related Standards</h3>
+<ul>
+<li><strong>RFC 4493:</strong> The AES-CMAC Algorithm
+<ul>
+<li>URL: <a href="https://www.rfc-editor.org/rfc/rfc4493">https://www.rfc-editor.org/rfc/rfc4493</a></li>
+</ul>
+</li>
+<li><strong>RFC 4494:</strong> The AES-CMAC-96 Algorithm and Its Use with IPsec
+<ul>
+<li>URL: <a href="https://www.rfc-editor.org/rfc/rfc4494">https://www.rfc-editor.org/rfc/rfc4494</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="implementation-status">Implementation Status</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>MAC Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128-CMAC</td>
+<td>128 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCmac</code></td>
+</tr>
+<tr>
+<td>AES-192-CMAC</td>
+<td>192 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCmac</code></td>
+</tr>
+<tr>
+<td>AES-256-CMAC</td>
+<td>256 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCmac</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="algorithm">Algorithm</h2>
+<h3 id="subkey-generation">Subkey Generation</h3>
+<p>CMAC derives two subkeys (K1, K2) from the cipher key:</p>
+<pre><code>Step 1:  L = AES-K(0^128)                    // Encrypt a zero block
+Step 2:  if MSB(L) = 0                        // Doubling in GF(2^128)
+           then K1 = L &lt;&lt; 1
+           else K1 = (L &lt;&lt; 1) ⊕ R_b
+Step 3:  if MSB(K1) = 0
+           then K2 = K1 &lt;&lt; 1
+           else K2 = (K1 &lt;&lt; 1) ⊕ R_b
+
+Where R_b = 0x00...0087 (the reduction polynomial for GF(2^128))
+</code></pre>
+<h3 id="mac-generation">MAC Generation</h3>
+<pre><code>Step 1:  n = ⌈len(M) / b⌉               // Number of blocks (b = 128 bits)
+Step 2:  if n = 0 then n = 1
+Step 3:  if len(M) is a multiple of b:
+           M_n* = M_n ⊕ K1               // XOR last complete block with K1
+         else:
+           M_n* = (M_n ‖ 10^j) ⊕ K2      // Pad and XOR with K2
+Step 4:  C_0 = 0^128                       // Initial state
+Step 5:  for i = 1 to n-1:
+           C_i = AES-K(C_{i-1} ⊕ M_i)    // CBC-MAC without K1/K2
+Step 6:  T = AES-K(C_{n-1} ⊕ M_n*)       // Final block with subkey
+Step 7:  return T
+</code></pre>
+<h3 id="parameters">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>b</td>
+<td>128 bits</td>
+<td>Block size (AES)</td>
+</tr>
+<tr>
+<td>R_b</td>
+<td>0x87</td>
+<td>GF(2^128) reduction constant</td>
+</tr>
+<tr>
+<td>K1, K2</td>
+<td>128 bits</td>
+<td>Derived subkeys</td>
+</tr>
+<tr>
+<td>T</td>
+<td>128 bits</td>
+<td>Authentication tag</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="protocol-usage">Protocol Usage</h2>
+<p>CMAC is widely used in:</p>
+<ul>
+<li><strong>IEEE 802.11i</strong> (WPA2) — Key confirmation and integrity</li>
+<li><strong>EAP-SIM / EAP-AKA</strong> — Authentication protocols</li>
+<li><strong>SIP Digest Authentication</strong> — RFC 4474</li>
+<li><strong>NFC/EMV</strong> — Payment card authentication</li>
+<li><strong>Bluetooth LE</strong> — Secure connections</li>
+</ul>
+<hr>
+<h2 id="aes-gmac">AES-GMAC</h2>
+<p>NIST SP 800-38D defines GCM, and GMAC is the special case of GCM where the plaintext is empty. GMAC is documented here for completeness as it is closely related to CMAC as a cipher-based MAC.</p>
+<h3 id="definition">Definition</h3>
+<pre><code>GMAC(K, IV, AAD) = AES-GCM(K, IV, plaintext = ∅, AAD).Tag
+</code></pre>
+<h3 id="important-properties">Important Properties</h3>
+<ul>
+<li><strong>Nonce-based:</strong> Unlike CMAC, GMAC requires a unique nonce (IV) per message</li>
+<li><strong>Hardware accelerated:</strong> Benefits from PCLMULQDQ for GHASH multiplication</li>
+<li><strong>Tag size:</strong> 128 bits (16 bytes)</li>
+</ul>
+<h3 id="reference">Reference</h3>
+<ul>
+<li><strong>Document:</strong> NIST SP 800-38D</li>
+<li><strong>Title:</strong> Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC</li>
+<li><strong>URL:</strong> <a href="https://csrc.nist.gov/pubs/sp/800-38d/final">https://csrc.nist.gov/pubs/sp/800-38d/final</a></li>
+</ul>
+<hr>
+<h2 id="references">References</h2>
+<ol>
+<li>NIST SP 800-38B: <a href="https://doi.org/10.6028/NIST.SP.800-38B">https://doi.org/10.6028/NIST.SP.800-38B</a></li>
+<li>RFC 4493: <a href="https://www.rfc-editor.org/rfc/rfc4493">https://www.rfc-editor.org/rfc/rfc4493</a></li>
+<li>NIST SP 800-38D: <a href="https://doi.org/10.6028/NIST.SP.800-38D">https://doi.org/10.6028/NIST.SP.800-38D</a></li>
+<li>RFC 4494: <a href="https://www.rfc-editor.org/rfc/rfc4494">https://www.rfc-editor.org/rfc/rfc4494</a></li>
+</ol>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-SP-800-38B.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>CHT008: ValueTask not awaited or consumed | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="CHT008: ValueTask not awaited or consumed | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading.analyzers/CHT008.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cht008-valuetask-not-awaited-or-consumed">CHT008: ValueTask not awaited or consumed</h1>
+
+<h2 id="cause">Cause</h2>
+<p>A <code>ValueTask</code> or <code>ValueTask&lt;T&gt;</code> is returned from a method call but is never awaited, stored, or otherwise consumed.</p>
+<h2 id="rule-description">Rule Description</h2>
+<p>When a <code>ValueTask</code> is returned but not consumed:</p>
+<ol>
+<li><strong>Resource leaks</strong>: When backed by pooled <code>IValueTaskSource</code>, the pooled object is never returned to the pool</li>
+<li><strong>Silent failures</strong>: Exceptions thrown by the async operation are lost</li>
+<li><strong>Unintended behavior</strong>: The operation may not complete as expected</li>
+<li><strong>Pool exhaustion</strong>: Repeated leaks can exhaust the object pool</li>
+</ol>
+<p>This is particularly important for CryptoHives.Foundation.Threading primitives which use pooled <code>IValueTaskSource</code> implementations.</p>
+<h2 id="how-to-fix">How to Fix</h2>
+<h3 id="option-1-await-the-valuetask">Option 1: Await the ValueTask</h3>
+<pre><code class="lang-csharp">// Before
+GetValueTask(); // Warning: not consumed
+
+// After
+await GetValueTask();
+</code></pre>
+<h3 id="option-2-store-for-later-consumption">Option 2: Store for later consumption</h3>
+<pre><code class="lang-csharp">// Before
+GetValueTask(); // Warning
+
+// After
+ValueTask vt = GetValueTask();
+// ... later ...
+await vt;
+</code></pre>
+<h3 id="option-3-explicitly-discard">Option 3: Explicitly discard</h3>
+<p>If you intentionally don't want to await:</p>
+<pre><code class="lang-csharp">// Before
+GetValueTask(); // Warning
+
+// After
+_ = GetValueTask(); // Explicit discard - warning suppressed
+</code></pre>
+<h3 id="option-4-use-discard-with-await-for-fire-and-forget">Option 4: Use discard with await for fire-and-forget</h3>
+<pre><code class="lang-csharp">// Fire and forget with exception handling
+_ = Task.Run(async () =&gt;
+{
+    try
+    {
+        await GetValueTask();
+    }
+    catch (Exception ex)
+    {
+        // Log the exception
+    }
+});
+</code></pre>
+<h2 id="when-to-suppress">When to Suppress</h2>
+<p>Only suppress if you understand the consequences:</p>
+<pre><code class="lang-csharp">#pragma warning disable CHT008
+GetValueTask(); // Intentionally not awaited
+#pragma warning restore CHT008
+</code></pre>
+<p>However, prefer explicit discard (<code>_ =</code>) over suppression as it makes intent clear.</p>
+<h2 id="example">Example</h2>
+<h3 id="violating-code">Violating Code</h3>
+<pre><code class="lang-csharp">public void ProcessData()
+{
+    // CHT008: ValueTask not consumed
+    _asyncEvent.WaitAsync();
+    
+    // CHT008: ValueTask not consumed
+    GetDataAsync();
+    
+    DoSomethingElse();
+}
+</code></pre>
+<h3 id="fixed-code">Fixed Code</h3>
+<pre><code class="lang-csharp">public async Task ProcessDataAsync()
+{
+    // Await the operations
+    await _asyncEvent.WaitAsync();
+    var data = await GetDataAsync();
+    
+    DoSomethingElse();
+}
+
+// Or if fire-and-forget is intentional
+public void ProcessData()
+{
+    // Explicit discard shows intent
+    _ = _asyncEvent.WaitAsync();
+    _ = GetDataAsync();
+    
+    DoSomethingElse();
+}
+</code></pre>
+<h2 id="impact-on-pooled-primitives">Impact on Pooled Primitives</h2>
+<p>When using CryptoHives.Foundation.Threading async primitives:</p>
+<pre><code class="lang-csharp">var asyncEvent = new AsyncAutoResetEvent();
+
+// BAD: Pooled IValueTaskSource is never returned to pool
+asyncEvent.WaitAsync(); // CHT008
+
+// GOOD: IValueTaskSource is returned after await
+await asyncEvent.WaitAsync();
+</code></pre>
+<p>Each unconsumed <code>ValueTask</code> from these primitives:</p>
+<ul>
+<li>Leaks a pooled <code>IValueTaskSource</code> instance</li>
+<li>May eventually exhaust the pool under high load</li>
+<li>Causes increased memory allocation as new instances are created</li>
+</ul>
+<h2 id="fire-and-forget-pattern">Fire-and-Forget Pattern</h2>
+<p>If you need fire-and-forget behavior, handle it explicitly:</p>
+<pre><code class="lang-csharp">public static class FireAndForget
+{
+    public static async void SafeFireAndForget(
+        this ValueTask valueTask,
+        Action&lt;Exception&gt;? onException = null)
+    {
+        try
+        {
+            await valueTask.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            onException?.Invoke(ex);
+        }
+    }
+}
+
+// Usage
+GetValueTask().SafeFireAndForget(ex =&gt; _logger.LogError(ex, &quot;Operation failed&quot;));
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="CHT001.html">CHT001: ValueTask awaited multiple times</a></li>
+<li><a href="../threading/asyncautoresetevent.html">AsyncAutoResetEvent Documentation</a></li>
+<li><a href="https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2012">CA2012: Use ValueTasks correctly</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading.analyzers/CHT008.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

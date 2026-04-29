@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ObjectOwner&lt;T&gt; Struct | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ObjectOwner&lt;T&gt; Struct | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/objectowner.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="objectownert-struct">ObjectOwner&lt;T&gt; Struct</h1>
+
+<p>A RAII (Resource Acquisition Is Initialization) wrapper for objects obtained from <code>ObjectPool&lt;T&gt;</code>.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">CryptoHives.Foundation.Memory.Pools
+</code></pre>
+<h2 id="inheritance">Inheritance</h2>
+<p><code>ValueType</code> ? <strong><code>ObjectOwner&lt;T&gt;</code></strong></p>
+<h2 id="implements">Implements</h2>
+<ul>
+<li><code>IDisposable</code></li>
+</ul>
+<h2 id="syntax">Syntax</h2>
+<pre><code class="lang-csharp">public readonly struct ObjectOwner&lt;T&gt; : IDisposable where T : class
+</code></pre>
+<h2 id="type-parameters">Type Parameters</h2>
+<p><strong><code>T</code></strong> - The type of object being pooled. Must be a reference type.</p>
+<h2 id="overview">Overview</h2>
+<p><code>ObjectOwner&lt;T&gt;</code> provides automatic return of pooled objects to their pool using the RAII pattern. When disposed, it automatically returns the object to the pool. This struct should be used with the <code>using</code> statement to ensure proper disposal.</p>
+<h2 id="-important-warnings">⚠️ Important Warnings</h2>
+<ul>
+<li><strong>This is a struct</strong> - Avoid boxing by not casting to <code>IDisposable</code></li>
+<li><strong>Use with <code>using</code></strong> - Always use in a <code>using</code> statement or block</li>
+<li><strong>Don't store in fields</strong> - Keep in local scope only</li>
+<li><strong>Don't copy</strong> - The struct will be copied, causing double-returns to pool</li>
+</ul>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Object</code></td>
+<td><code>T</code></td>
+<td>The pooled object obtained from the pool</td>
+</tr>
+</tbody>
+</table>
+<h2 id="constructors">Constructors</h2>
+<table>
+<thead>
+<tr>
+<th>Constructor</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ObjectOwner(ObjectPool&lt;T&gt; objectPool)</code></td>
+<td>Creates an owner by getting an object from the specified pool</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<pre><code class="lang-csharp">public void Dispose()
+</code></pre>
+<p>Returns the object to the pool. Called automatically when used with <code>using</code>.</p>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="basic-usage">Basic Usage</h3>
+<pre><code class="lang-csharp">using Microsoft.Extensions.ObjectPool;
+
+var pool = new DefaultObjectPool&lt;StringBuilder&gt;(
+    new DefaultPooledObjectPolicy&lt;StringBuilder&gt;()
+);
+
+using var owner = new ObjectOwner&lt;StringBuilder&gt;(pool);
+StringBuilder sb = owner.Object;
+
+sb.Append(&quot;Hello&quot;);
+sb.Append(&quot; World&quot;);
+
+Console.WriteLine(sb.ToString());
+// StringBuilder automatically returned to pool when owner disposes
+</code></pre>
+<h3 id="with-custom-pool-policy">With Custom Pool Policy</h3>
+<pre><code class="lang-csharp">public class StringBuilderPolicy : IPooledObjectPolicy&lt;StringBuilder&gt;
+{
+    public StringBuilder Create() =&gt; new StringBuilder();
+    
+    public bool Return(StringBuilder obj)
+    {
+        obj.Clear();
+        return true;
+    }
+}
+
+var pool = new DefaultObjectPool&lt;StringBuilder&gt;(new StringBuilderPolicy());
+
+using var owner = new ObjectOwner&lt;StringBuilder&gt;(pool);
+StringBuilder sb = owner.Object;
+// Use sb...
+</code></pre>
+<h3 id="processing-collections">Processing Collections</h3>
+<pre><code class="lang-csharp">public List&lt;int&gt; ProcessData(IEnumerable&lt;int&gt; items)
+{
+    var pool = new DefaultObjectPool&lt;List&lt;int&gt;&gt;(
+        new ListPolicy&lt;int&gt;()
+    );
+    
+    using var owner = new ObjectOwner&lt;List&lt;int&gt;&gt;(pool);
+    List&lt;int&gt; list = owner.Object;
+    
+    foreach (int item in items)
+    {
+        if (item &gt; 0)
+        {
+            list.Add(item);
+        }
+    }
+    
+    return new List&lt;int&gt;(list); // Return a copy, not the pooled list
+}
+</code></pre>
+<h2 id="thread-safety">Thread Safety</h2>
+<p><strong>Thread-safe</strong> when used correctly (one owner per instance). The pool itself handles thread-safety.</p>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="do-use-with-using-statement">DO: Use with <code>using</code> Statement</h3>
+<pre><code class="lang-csharp">using var owner = new ObjectOwner&lt;StringBuilder&gt;(pool);
+StringBuilder sb = owner.Object;
+// Use sb...
+// Automatically returned to pool
+</code></pre>
+<h3 id="do-keep-scope-minimal">DO: Keep Scope Minimal</h3>
+<pre><code class="lang-csharp">string result;
+
+using (var owner = new ObjectOwner&lt;StringBuilder&gt;(pool))
+{
+    StringBuilder sb = owner.Object;
+    sb.Append(&quot;Data&quot;);
+    result = sb.ToString();
+} // Pool object returned here
+
+return result;
+</code></pre>
+<h3 id="-dont-store-in-fields">⚠️ DON'T: Store in Fields</h3>
+<pre><code class="lang-csharp">// Wrong!
+public class BadExample
+{
+    private ObjectOwner&lt;StringBuilder&gt; _owner; // Don't do this!
+}
+</code></pre>
+<h3 id="-dont-return-the-pooled-object">⚠️ DON'T: Return the Pooled Object</h3>
+<pre><code class="lang-csharp">// Wrong!
+public StringBuilder GetStringBuilder()
+{
+    using var owner = new ObjectOwner&lt;StringBuilder&gt;(pool);
+    return owner.Object; // Object will be returned to pool!
+}
+
+// Correct: Return the result
+public string GetString()
+{
+    using var owner = new ObjectOwner&lt;StringBuilder&gt;(pool);
+    return owner.Object.ToString();
+}
+</code></pre>
+<h3 id="-dont-box-the-struct">⚠️ DON'T: Box the Struct</h3>
+<pre><code class="lang-csharp">// Wrong!
+IDisposable disposable = new ObjectOwner&lt;StringBuilder&gt;(pool); // Boxing!
+
+// Correct:
+using var owner = new ObjectOwner&lt;StringBuilder&gt;(pool);
+</code></pre>
+<h3 id="-dont-copy-the-struct">⚠️ DON'T: Copy the Struct</h3>
+<pre><code class="lang-csharp">// Wrong!
+var owner1 = new ObjectOwner&lt;StringBuilder&gt;(pool);
+var owner2 = owner1; // Copy! Both will try to return to pool
+owner1.Dispose();
+owner2.Dispose(); // Double return!
+
+// Correct: Use once
+using var owner = new ObjectOwner&lt;StringBuilder&gt;(pool);
+</code></pre>
+<h2 id="common-use-cases">Common Use Cases</h2>
+<h3 id="temporary-string-building">Temporary String Building</h3>
+<pre><code class="lang-csharp">public string FormatData(params object[] values)
+{
+    using var owner = new ObjectOwner&lt;StringBuilder&gt;(stringBuilderPool);
+    StringBuilder sb = owner.Object;
+    
+    foreach (var value in values)
+    {
+        sb.Append(value);
+        sb.Append(' ');
+    }
+    
+    return sb.ToString().TrimEnd();
+}
+</code></pre>
+<h3 id="temporary-collections">Temporary Collections</h3>
+<pre><code class="lang-csharp">public int[] FilterPositive(int[] values)
+{
+    using var owner = new ObjectOwner&lt;List&lt;int&gt;&gt;(listPool);
+    List&lt;int&gt; list = owner.Object;
+    
+    foreach (int value in values)
+    {
+        if (value &gt; 0)
+        {
+            list.Add(value);
+        }
+    }
+    
+    return list.ToArray();
+}
+</code></pre>
+<h3 id="temporary-buffers">Temporary Buffers</h3>
+<pre><code class="lang-csharp">public byte[] ProcessData(byte[] input)
+{
+    using var owner = new ObjectOwner&lt;MemoryStream&gt;(streamPool);
+    MemoryStream stream = owner.Object;
+    
+    stream.Write(input, 0, input.Length);
+
+    // Process stream...
+    return stream.ToArray();
+}
+</code></pre>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Construction</strong>: O(1) - gets object from pool</li>
+<li><strong>Disposal</strong>: O(1) - returns object to pool</li>
+<li><strong>Memory</strong>: No heap allocation (struct, no boxing)</li>
+</ul>
+<h2 id="remarks">Remarks</h2>
+<h3 id="why-a-struct">Why a Struct?</h3>
+<p><code>ObjectOwner&lt;T&gt;</code> is a struct to avoid heap allocation. When used correctly with <code>using</code>, it provides zero-allocation resource management.</p>
+<h3 id="comparison-with-direct-pool-usage">Comparison with Direct Pool Usage</h3>
+<pre><code class="lang-csharp">// Without ObjectOwner (error-prone)
+var obj = pool.Get();
+try
+{
+    // Use obj...
+}
+finally
+{
+    pool.Return(obj);
+}
+
+// With ObjectOwner (safer, cleaner)
+using var owner = new ObjectOwner&lt;T&gt;(pool);
+T obj = owner.Object;
+// Use obj...
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="objectpools.html">ObjectPools</a></li>
+<li><a href="https://docs.microsoft.com/en-us/dotnet/api/microsoft.extensions.objectpool.objectpool-1">ObjectPool&lt;T&gt; Documentation</a></li>
+<li><a href="index.html">Memory Package Overview</a></li>
+</ul>
+<hr>
+<p>© 2025 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/objectowner.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

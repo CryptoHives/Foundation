@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>NIST SP 800-232 - Ascon-Based Hash and XOF Functions | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="NIST SP 800-232 - Ascon-Based Hash and XOF Functions | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-SP-800-232.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="nist-sp-800-232---ascon-based-hash-and-xof-functions">NIST SP 800-232 - Ascon-Based Hash and XOF Functions</h1>
+
+<h2 id="overview">Overview</h2>
+<p>NIST Special Publication 800-232 specifies the Ascon-based hash and extendable-output functions that are standardized for use in lightweight cryptographic applications.</p>
+<ul>
+<li><strong>Ascon-Hash256</strong> - Fixed-output hash function producing 256-bit digests</li>
+<li><strong>Ascon-XOF128</strong> - Extendable-output function with 128-bit security</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li><strong>Document:</strong> NIST SP 800-232</li>
+<li><strong>Title:</strong> Ascon-Based Hash and Extendable-Output Functions</li>
+<li><strong>URL:</strong> <a href="https://csrc.nist.gov/pubs/sp/800/232/final">https://csrc.nist.gov/pubs/sp/800/232/final</a></li>
+<li><strong>Status:</strong> Final (December 2024)</li>
+</ul>
+<h2 id="background">Background</h2>
+<p>Ascon was the winner of the NIST Lightweight Cryptography competition (2023). It is designed for constrained environments including:</p>
+<ul>
+<li>IoT devices</li>
+<li>Embedded systems</li>
+<li>Smart cards</li>
+<li>RFID tags</li>
+</ul>
+<p>The Ascon family provides:</p>
+<ul>
+<li>Authenticated encryption (AEAD)</li>
+<li>Hash functions</li>
+<li>Extendable-output functions (XOF)</li>
+</ul>
+<h2 id="implementation-status">Implementation Status</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ascon-Hash256</td>
+<td>✅ Implemented</td>
+<td><code>AsconHash256</code></td>
+</tr>
+<tr>
+<td>Ascon-XOF128</td>
+<td>✅ Implemented</td>
+<td><code>AsconXof128</code></td>
+</tr>
+<tr>
+<td>Ascon-AEAD128</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="ascon-hash256">Ascon-Hash256</h2>
+<h3 id="description">Description</h3>
+<p>Ascon-Hash256 is a sponge-based hash function using the Ascon permutation. It provides 256-bit hash output with 128-bit security.</p>
+<h3 id="parameters">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash output</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Rate</td>
+<td>64 bits (8 bytes)</td>
+</tr>
+<tr>
+<td>Capacity</td>
+<td>256 bits</td>
+</tr>
+<tr>
+<td>Security level</td>
+<td>128 bits</td>
+</tr>
+<tr>
+<td>Rounds (absorption)</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Rounds (squeezing)</td>
+<td>12</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage">Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+// Zero-allocation one-shot hashing
+using var hash = AsconHash256.Create();
+Span&lt;byte&gt; digest = stackalloc byte[32];
+hash.TryComputeHash(data, digest, out _);
+
+// Incremental hashing
+using var hashInc = AsconHash256.Create();
+hashInc.TransformBlock(chunk1, 0, chunk1.Length, null, 0);
+hashInc.TransformBlock(chunk2, 0, chunk2.Length, null, 0);
+hashInc.TransformFinalBlock(chunk3, 0, chunk3.Length);
+byte[] digestInc = hashInc.Hash;
+</code></pre>
+<hr>
+<h2 id="ascon-xof128">Ascon-XOF128</h2>
+<h3 id="description-1">Description</h3>
+<p>Ascon-XOF128 is an extendable-output function (XOF) based on the Ascon permutation. It can produce arbitrary-length output.</p>
+<h3 id="parameters-1">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default output</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Variable output</td>
+<td>Any length ≥ 1 byte</td>
+</tr>
+<tr>
+<td>Rate</td>
+<td>64 bits (8 bytes)</td>
+</tr>
+<tr>
+<td>Capacity</td>
+<td>256 bits</td>
+</tr>
+<tr>
+<td>Security level</td>
+<td>128 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>12</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage-1">Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+// Default output size (32 bytes)
+using var xof = AsconXof128.Create();
+Span&lt;byte&gt; output = stackalloc byte[32];
+xof.TryComputeHash(data, output, out _);
+
+// Custom output size (64 bytes)
+using var xof64 = AsconXof128.Create(64);
+Span&lt;byte&gt; output64 = stackalloc byte[64];
+xof64.TryComputeHash(data, output64, out _);
+
+// Large output (256 bytes)
+using var xof256 = AsconXof128.Create(256);
+Span&lt;byte&gt; output256 = stackalloc byte[256];
+xof256.TryComputeHash(data, output256, out _);
+</code></pre>
+<hr>
+<h2 id="ascon-permutation">Ascon Permutation</h2>
+<p>Both Ascon-Hash256 and Ascon-XOF128 use the 320-bit Ascon permutation with 12 rounds.</p>
+<h3 id="state-structure">State Structure</h3>
+<p>The state consists of 5 × 64-bit words: S₀, S₁, S₂, S₃, S₄</p>
+<h3 id="round-function">Round Function</h3>
+<p>Each round consists of three layers:</p>
+<ol>
+<li><strong>Addition of round constant</strong> to S₂</li>
+<li><strong>Substitution layer</strong> (5-bit S-box applied bit-sliced)</li>
+<li><strong>Linear diffusion layer</strong> (rotations and XORs)</li>
+</ol>
+<h3 id="round-constants">Round Constants</h3>
+<table>
+<thead>
+<tr>
+<th>Round</th>
+<th>Constant</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>0xf0</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0xe1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0xd2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0xc3</td>
+</tr>
+<tr>
+<td>4</td>
+<td>0xb4</td>
+</tr>
+<tr>
+<td>5</td>
+<td>0xa5</td>
+</tr>
+<tr>
+<td>6</td>
+<td>0x96</td>
+</tr>
+<tr>
+<td>7</td>
+<td>0x87</td>
+</tr>
+<tr>
+<td>8</td>
+<td>0x78</td>
+</tr>
+<tr>
+<td>9</td>
+<td>0x69</td>
+</tr>
+<tr>
+<td>10</td>
+<td>0x5a</td>
+</tr>
+<tr>
+<td>11</td>
+<td>0x4b</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="test-vectors">Test Vectors</h2>
+<p>Test vectors are validated against the BouncyCastle reference implementation which follows NIST SP 800-232.</p>
+<h3 id="empty-input">Empty Input</h3>
+<p><strong>Ascon-Hash256(&quot;&quot;):</strong></p>
+<pre><code>eb47d194e494e9b99b1e5494e934d681
+4bc3a01e333751d2ae65396c6b34b81a
+...
+</code></pre>
+<h3 id="single-byte">Single Byte</h3>
+<p><strong>Ascon-Hash256([0x00]):</strong></p>
+<pre><code>...
+</code></pre>
+<hr>
+<h2 id="references">References</h2>
+<ol>
+<li><strong>NIST SP 800-232:</strong> <a href="https://csrc.nist.gov/pubs/sp/800/232/final">https://csrc.nist.gov/pubs/sp/800/232/final</a></li>
+<li><strong>Ascon Homepage:</strong> <a href="https://ascon.iaik.tugraz.at/">https://ascon.iaik.tugraz.at/</a></li>
+<li><strong>Reference Implementation:</strong> <a href="https://github.com/ascon/ascon-c">https://github.com/ascon/ascon-c</a></li>
+<li><strong>NIST LWC Competition:</strong> <a href="https://csrc.nist.gov/projects/lightweight-cryptography">https://csrc.nist.gov/projects/lightweight-cryptography</a></li>
+</ol>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/NIST-SP-800-232.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

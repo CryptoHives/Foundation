@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/macos-arm64-apple-m4/chacha20.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../../index.html">
+            <img id="logo" class="svg" src="../../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>TestDataSize</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Error</th>
+<th style="text-align: right;">StdDev</th>
+<th style="text-align: right;">Median</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>128B</td>
+<td style="text-align: right;">885.6 ns</td>
+<td style="text-align: right;">0.98 ns</td>
+<td style="text-align: right;">0.91 ns</td>
+<td style="text-align: right;">885.4 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">1,472.0 ns</td>
+<td style="text-align: right;">28.32 ns</td>
+<td style="text-align: right;">26.49 ns</td>
+<td style="text-align: right;">1,478.2 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (NaCl.Core)</td>
+<td>128B</td>
+<td style="text-align: right;">2,712.0 ns</td>
+<td style="text-align: right;">1.87 ns</td>
+<td style="text-align: right;">1.56 ns</td>
+<td style="text-align: right;">2,711.6 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">3,487.6 ns</td>
+<td style="text-align: right;">1.19 ns</td>
+<td style="text-align: right;">0.99 ns</td>
+<td style="text-align: right;">3,487.3 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>128B</td>
+<td style="text-align: right;">885.6 ns</td>
+<td style="text-align: right;">0.56 ns</td>
+<td style="text-align: right;">0.52 ns</td>
+<td style="text-align: right;">885.5 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">1,465.2 ns</td>
+<td style="text-align: right;">20.58 ns</td>
+<td style="text-align: right;">17.19 ns</td>
+<td style="text-align: right;">1,467.5 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (NaCl.Core)</td>
+<td>128B</td>
+<td style="text-align: right;">2,713.6 ns</td>
+<td style="text-align: right;">3.25 ns</td>
+<td style="text-align: right;">3.04 ns</td>
+<td style="text-align: right;">2,712.2 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">3,479.6 ns</td>
+<td style="text-align: right;">1.46 ns</td>
+<td style="text-align: right;">1.29 ns</td>
+<td style="text-align: right;">3,479.4 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>1KB</td>
+<td style="text-align: right;">6,969.0 ns</td>
+<td style="text-align: right;">6.62 ns</td>
+<td style="text-align: right;">5.87 ns</td>
+<td style="text-align: right;">6,967.8 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">8,688.3 ns</td>
+<td style="text-align: right;">173.89 ns</td>
+<td style="text-align: right;">374.31 ns</td>
+<td style="text-align: right;">8,979.5 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (NaCl.Core)</td>
+<td>1KB</td>
+<td style="text-align: right;">15,278.2 ns</td>
+<td style="text-align: right;">1.60 ns</td>
+<td style="text-align: right;">1.25 ns</td>
+<td style="text-align: right;">15,277.8 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">27,515.6 ns</td>
+<td style="text-align: right;">23.72 ns</td>
+<td style="text-align: right;">19.81 ns</td>
+<td style="text-align: right;">27,508.5 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>1KB</td>
+<td style="text-align: right;">6,971.7 ns</td>
+<td style="text-align: right;">5.91 ns</td>
+<td style="text-align: right;">5.24 ns</td>
+<td style="text-align: right;">6,972.1 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">8,747.7 ns</td>
+<td style="text-align: right;">174.74 ns</td>
+<td style="text-align: right;">352.98 ns</td>
+<td style="text-align: right;">8,948.1 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (NaCl.Core)</td>
+<td>1KB</td>
+<td style="text-align: right;">15,280.2 ns</td>
+<td style="text-align: right;">3.34 ns</td>
+<td style="text-align: right;">2.96 ns</td>
+<td style="text-align: right;">15,279.7 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">27,505.9 ns</td>
+<td style="text-align: right;">11.81 ns</td>
+<td style="text-align: right;">10.47 ns</td>
+<td style="text-align: right;">27,502.4 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>8KB</td>
+<td style="text-align: right;">55,596.4 ns</td>
+<td style="text-align: right;">57.71 ns</td>
+<td style="text-align: right;">48.19 ns</td>
+<td style="text-align: right;">55,597.1 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">63,145.6 ns</td>
+<td style="text-align: right;">25.00 ns</td>
+<td style="text-align: right;">22.17 ns</td>
+<td style="text-align: right;">63,150.0 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (NaCl.Core)</td>
+<td>8KB</td>
+<td style="text-align: right;">116,123.6 ns</td>
+<td style="text-align: right;">68.27 ns</td>
+<td style="text-align: right;">57.01 ns</td>
+<td style="text-align: right;">116,113.7 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">219,494.8 ns</td>
+<td style="text-align: right;">59.29 ns</td>
+<td style="text-align: right;">52.56 ns</td>
+<td style="text-align: right;">219,487.6 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>8KB</td>
+<td style="text-align: right;">55,590.6 ns</td>
+<td style="text-align: right;">33.51 ns</td>
+<td style="text-align: right;">27.99 ns</td>
+<td style="text-align: right;">55,579.6 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">64,638.2 ns</td>
+<td style="text-align: right;">1,286.61 ns</td>
+<td style="text-align: right;">1,885.90 ns</td>
+<td style="text-align: right;">63,799.6 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (NaCl.Core)</td>
+<td>8KB</td>
+<td style="text-align: right;">116,157.5 ns</td>
+<td style="text-align: right;">32.48 ns</td>
+<td style="text-align: right;">28.79 ns</td>
+<td style="text-align: right;">116,150.5 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">219,433.8 ns</td>
+<td style="text-align: right;">97.01 ns</td>
+<td style="text-align: right;">81.01 ns</td>
+<td style="text-align: right;">219,461.3 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>128KB</td>
+<td style="text-align: right;">888,142.6 ns</td>
+<td style="text-align: right;">290.36 ns</td>
+<td style="text-align: right;">226.69 ns</td>
+<td style="text-align: right;">888,114.3 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,007,533.6 ns</td>
+<td style="text-align: right;">2,335.69 ns</td>
+<td style="text-align: right;">2,184.80 ns</td>
+<td style="text-align: right;">1,008,171.6 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (NaCl.Core)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,836,344.0 ns</td>
+<td style="text-align: right;">880.80 ns</td>
+<td style="text-align: right;">735.51 ns</td>
+<td style="text-align: right;">1,836,603.8 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">3,512,558.6 ns</td>
+<td style="text-align: right;">2,277.03 ns</td>
+<td style="text-align: right;">2,129.93 ns</td>
+<td style="text-align: right;">3,511,660.2 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Neon)</td>
+<td>128KB</td>
+<td style="text-align: right;">888,519.1 ns</td>
+<td style="text-align: right;">795.00 ns</td>
+<td style="text-align: right;">743.64 ns</td>
+<td style="text-align: right;">888,202.7 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,007,309.4 ns</td>
+<td style="text-align: right;">1,247.26 ns</td>
+<td style="text-align: right;">1,166.69 ns</td>
+<td style="text-align: right;">1,007,598.7 ns</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (NaCl.Core)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,839,740.1 ns</td>
+<td style="text-align: right;">625.78 ns</td>
+<td style="text-align: right;">522.56 ns</td>
+<td style="text-align: right;">1,839,583.2 ns</td>
+<td style="text-align: right;">24 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20 (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">3,511,311.3 ns</td>
+<td style="text-align: right;">1,720.62 ns</td>
+<td style="text-align: right;">1,525.28 ns</td>
+<td style="text-align: right;">3,510,710.0 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/macos-arm64-apple-m4/chacha20.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

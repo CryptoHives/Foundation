@@ -1,0 +1,3709 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>macOS ARM64 Apple M4 Threading Benchmarks | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="macOS ARM64 Apple M4 Threading Benchmarks | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks/macos-arm64-apple-m4/threading.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="macos-arm64-apple-m4-threading-benchmarks">macOS ARM64 Apple M4 Threading Benchmarks</h1>
+
+<h2 id="machine-profile">Machine Profile</h2>
+<h2 id="machine-specification">Machine Specification</h2>
+<p>The benchmarks were run on the following machine:</p>
+<pre><code>BenchmarkDotNet v0.15.8, macOS Tahoe 26.3.1 (a) (25D771280a) [Darwin 25.3.0]
+Apple M4, 1 CPU, 10 logical and 10 physical cores
+.NET SDK 10.0.201
+[Host]    : .NET 10.0.5 (10.0.5, 10.0.526.15411), Arm64 RyuJIT armv8.0-a
+.NET 10.0 : .NET 10.0.5 (10.0.5, 10.0.526.15411), Arm64 RyuJIT armv8.0-a
+Job=.NET 10.0  Runtime=.NET 10.0  Toolchain=net10.0
+Alloc Ratio=NA
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> Results are machine-specific and may vary between systems. Run benchmarks locally for your specific hardware.</p>
+</blockquote>
+
+<p>BenchmarkDotNet microbenchmarks for all async synchronization primitives in <code>CryptoHives.Foundation.Threading</code>. Benchmarks cover uncontested fast paths (0 other waiters), single-waiter async round trips (1 waiter), and high-contention scenarios (10–100 waiters). All implementations are tested with both a default <code>CancellationToken.None</code> and a non-cancelled <code>CancellationToken</code> to isolate the registration overhead.</p>
+<p>Implementations are compared against:</p>
+<ul>
+<li><strong>Pooled</strong> — CryptoHives pooled <code>ValueTask</code>-returning implementation (the baseline, ratio = 1.00)</li>
+<li><strong>ProtoPromise</strong> — ProtoPromise zero-allocation async primitives</li>
+<li><strong>RefImpl</strong> — Simple reference implementation using <code>TaskCompletionSource&lt;bool&gt;</code> (demonstrates heap-allocating baselines)</li>
+<li><strong>Nito.AsyncEx</strong> — Nito.AsyncEx async synchronization primitives (Stephen Cleary)</li>
+<li><strong>NeoSmart</strong> — NeoSmart.AsyncLock</li>
+<li><strong>VS.Threading</strong> / <strong>NonKeyed</strong> — Microsoft.VisualStudio.Threading / non-keyed async lock variants</li>
+<li><strong>System</strong> — .NET built-in synchronization primitives (<code>SemaphoreSlim</code>, <code>ReaderWriterLockSlim</code>, <code>CountdownEvent</code>, <code>Barrier</code>, <code>ManualResetEventSlim</code>, <code>ManualResetEvent</code>, <code>AutoResetEvent</code>)</li>
+</ul>
+<h2 id="highlights">Highlights</h2>
+<table>
+<thead>
+<tr>
+<th>Primitive</th>
+<th style="text-align: center;">vs Windows</th>
+<th>Key Insight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AsyncAutoResetEvent</strong> (Set)</td>
+<td style="text-align: center;">~34% faster</td>
+<td>ARM64 fast path; System.AutoResetEvent ~4× cheaper than on Windows</td>
+</tr>
+<tr>
+<td><strong>AsyncBarrier</strong> (1 participant)</td>
+<td style="text-align: center;">~39% faster</td>
+<td>System.Barrier ~4× cheaper on macOS than Windows at P=1</td>
+</tr>
+<tr>
+<td><strong>AsyncCountdownEvent</strong> (1 participant)</td>
+<td style="text-align: center;">~28% faster</td>
+<td>Pooled near-parity with System.CountdownEvent</td>
+</tr>
+<tr>
+<td><strong>AsyncLock</strong> (single)</td>
+<td style="text-align: center;">~9% faster</td>
+<td>CryptoHives SpinLock ~20× faster than System.SpinLock</td>
+</tr>
+<tr>
+<td><strong>AsyncManualResetEvent</strong> (SetReset)</td>
+<td style="text-align: center;">~21% faster</td>
+<td>ManualResetEvent kernel ~4× cheaper on macOS than Windows</td>
+</tr>
+<tr>
+<td><strong>AsyncRWLock</strong> (reader, uncontested)</td>
+<td style="text-align: center;"><strong>~2× faster</strong></td>
+<td>Strongest uncontested advantage; inverts under high contention</td>
+</tr>
+<tr>
+<td><strong>AsyncRWLock</strong> (writer, uncontested)</td>
+<td style="text-align: center;">~34% faster</td>
+<td>Near-parity with ProtoPromise</td>
+</tr>
+<tr>
+<td><strong>AsyncSemaphore</strong></td>
+<td style="text-align: center;">~30% faster</td>
+<td>System.SemaphoreSlim ~½ the cost of Windows</td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p>On Apple M4, the Pooled <code>AsTask()</code> path is <strong>2–3× slower</strong> than on Windows x64 for low-contention scenarios (1–2 waiters). This reflects Windows ThreadPool's faster inline <code>Task</code> continuation scheduling. However, at 100 waiters the macOS <code>AsTask</code> path becomes faster — the Windows ThreadPool saturates first. For latency-sensitive code, prefer <code>AsValueTask()</code> or direct <code>ValueTask</code> consumption.</p>
+</div>
+<hr>
+<h2 id="asynclock">AsyncLock</h2>
+<p><code>AsyncLock</code> provides exclusive mutual exclusion with cancellation support. The <code>Single</code> benchmark measures the uncontested acquire+release cycle with no other waiters. The <code>Multiple</code> benchmark adds a configurable number of concurrent contending waiters.</p>
+<h3 id="single-uncontested">Single (uncontested)</h3>
+<p>The uncontested benchmark is a proxy for the underlying lock and <code>ValueTask</code> state machine cost when the fast path does not need to suspend. The CryptoHives <code>SpinLock</code> matches the speed of .NET's <code>Lock.EnterScope</code> — both roughly 20× faster than <code>System.SpinLock</code> due to the absence of OS kernel yield in the non-contended case. The async <code>Pooled</code> path is the fastest async lock on this platform.</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled</strong>: Fastest async lock; ~9% faster than Windows x64</li>
+<li><strong>ProtoPromise</strong>: ~12–15% faster than Pooled at this baseline (zero-allocation, no cancellation support)</li>
+<li><strong>System.Lock</strong> / <code>lock()</code>: both ~3–4× cheaper than async paths (no await overhead)</li>
+<li><strong>CryptoHives SpinLock</strong>: matches System.Lock; suitable only for very short critical sections</li>
+<li><strong>Nito</strong> and <strong>NeoSmart</strong>: each allocate per-lock (320 B / 208 B respectively); in the order-of-magnitude slower range</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lock · Interlocked.Exchange · System</td>
+<td style="text-align: right;">0.0000 ns</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Increment · System</td>
+<td style="text-align: right;">0.4435 ns</td>
+<td style="text-align: right;">0.059</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Interlocked.Add · System</td>
+<td style="text-align: right;">0.4573 ns</td>
+<td style="text-align: right;">0.060</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Interlocked.Inc · System</td>
+<td style="text-align: right;">0.4583 ns</td>
+<td style="text-align: right;">0.061</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Interlocked.CmpX · System</td>
+<td style="text-align: right;">2.4091 ns</td>
+<td style="text-align: right;">0.318</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Lock · System</td>
+<td style="text-align: right;">2.6142 ns</td>
+<td style="text-align: right;">0.345</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Lock.EnterScope · System</td>
+<td style="text-align: right;">2.6513 ns</td>
+<td style="text-align: right;">0.350</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SpinLock · SpinLock · CryptoHives</td>
+<td style="text-align: right;">2.7340 ns</td>
+<td style="text-align: right;">0.361</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · lock() · System</td>
+<td style="text-align: right;">3.2074 ns</td>
+<td style="text-align: right;">0.423</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · ProtoPromise</td>
+<td style="text-align: right;">6.6302 ns</td>
+<td style="text-align: right;">0.875</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · Pooled</td>
+<td style="text-align: right;">7.5745 ns</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncSemaphore · VS.Threading</td>
+<td style="text-align: right;">11.6188 ns</td>
+<td style="text-align: right;">1.534</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · RefImpl</td>
+<td style="text-align: right;">11.7976 ns</td>
+<td style="text-align: right;">1.558</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · SemaphoreSlim · System</td>
+<td style="text-align: right;">12.7817 ns</td>
+<td style="text-align: right;">1.688</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · NonKeyed</td>
+<td style="text-align: right;">16.6770 ns</td>
+<td style="text-align: right;">2.202</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · Nito.AsyncEx</td>
+<td style="text-align: right;">40.3838 ns</td>
+<td style="text-align: right;">5.332</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>SpinWait · SpinOnce · System</td>
+<td style="text-align: right;">47.4733 ns</td>
+<td style="text-align: right;">6.268</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · NeoSmart</td>
+<td style="text-align: right;">49.8415 ns</td>
+<td style="text-align: right;">6.580</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td>SpinLock · SpinLock · System</td>
+<td style="text-align: right;">53.7720 ns</td>
+<td style="text-align: right;">7.099</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="multiple-contended">Multiple (contended)</h3>
+<p>The <code>Multiple</code> benchmark drives <code>Iterations</code> concurrent waiters through a single lock. Iteration = 0 is the uncontested baseline; Iteration = 1 introduces one additional waiter triggering an actual async suspension and resume; 10 and 100 measure contention scaling.</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled (ValueTask)</strong>: Fastest async lock path at all contention levels</li>
+<li>At 1 contender: Pooled (VT) leads; ProtoPromise ~20% slower; SemaphoreSlim ~55% slower</li>
+<li><strong>Pooled (AsTask)</strong> at 1 contender: <strong>~2.9× slower than Windows</strong>. Task continuation scheduling via macOS ThreadPool is slower for a single resume. Prefer <code>AsValueTask()</code>.</li>
+<li>At 100 contenders: Pooled (VT) ~29% faster than Windows for the ValueTask path</li>
+<li><strong>Nito</strong> and <strong>VS.Threading</strong> scale poorly under <code>NotCancelled</code> cancellation due to <code>CancellationToken.Register</code> overhead</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">7.891 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">9.628 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">9.871 ns</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">12.949 ns</td>
+<td style="text-align: right;">1.64</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">13.427 ns</td>
+<td style="text-align: right;">1.70</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">14.463 ns</td>
+<td style="text-align: right;">1.83</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">18.020 ns</td>
+<td style="text-align: right;">2.28</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">41.402 ns</td>
+<td style="text-align: right;">5.25</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">52.997 ns</td>
+<td style="text-align: right;">6.72</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">8.057 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10.232 ns</td>
+<td style="text-align: right;">1.27</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10.256 ns</td>
+<td style="text-align: right;">1.27</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">12.621 ns</td>
+<td style="text-align: right;">1.57</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">14.560 ns</td>
+<td style="text-align: right;">1.81</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">18.759 ns</td>
+<td style="text-align: right;">2.33</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">41.284 ns</td>
+<td style="text-align: right;">5.12</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">52.493 ns</td>
+<td style="text-align: right;">6.52</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">23.490 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">28.130 ns</td>
+<td style="text-align: right;">1.20</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">37.045 ns</td>
+<td style="text-align: right;">1.58</td>
+<td style="text-align: right;">88 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">54.599 ns</td>
+<td style="text-align: right;">2.32</td>
+<td style="text-align: right;">168 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">68.697 ns</td>
+<td style="text-align: right;">2.92</td>
+<td style="text-align: right;">216 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">94.316 ns</td>
+<td style="text-align: right;">4.02</td>
+<td style="text-align: right;">728 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">109.366 ns</td>
+<td style="text-align: right;">4.66</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,216.363 ns</td>
+<td style="text-align: right;">51.79</td>
+<td style="text-align: right;">350 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,381.198 ns</td>
+<td style="text-align: right;">58.80</td>
+<td style="text-align: right;">271 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">36.277 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">44.412 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">63.203 ns</td>
+<td style="text-align: right;">1.74</td>
+<td style="text-align: right;">168 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">107.268 ns</td>
+<td style="text-align: right;">2.96</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">646.678 ns</td>
+<td style="text-align: right;">17.83</td>
+<td style="text-align: right;">968 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,484.811 ns</td>
+<td style="text-align: right;">40.93</td>
+<td style="text-align: right;">272 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,498.509 ns</td>
+<td style="text-align: right;">41.31</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,598.035 ns</td>
+<td style="text-align: right;">44.05</td>
+<td style="text-align: right;">504 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">197.073 ns</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">240.851 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">253.671 ns</td>
+<td style="text-align: right;">1.05</td>
+<td style="text-align: right;">880 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">451.128 ns</td>
+<td style="text-align: right;">1.87</td>
+<td style="text-align: right;">1680 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">565.469 ns</td>
+<td style="text-align: right;">2.35</td>
+<td style="text-align: right;">4400 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">567.840 ns</td>
+<td style="text-align: right;">2.36</td>
+<td style="text-align: right;">2160 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">578.067 ns</td>
+<td style="text-align: right;">2.40</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">7,081.010 ns</td>
+<td style="text-align: right;">29.40</td>
+<td style="text-align: right;">2296 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">8,263.349 ns</td>
+<td style="text-align: right;">34.31</td>
+<td style="text-align: right;">1352 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">339.757 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">377.674 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">552.628 ns</td>
+<td style="text-align: right;">1.46</td>
+<td style="text-align: right;">1680 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">572.761 ns</td>
+<td style="text-align: right;">1.52</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,022.693 ns</td>
+<td style="text-align: right;">13.30</td>
+<td style="text-align: right;">6800 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">8,764.494 ns</td>
+<td style="text-align: right;">23.21</td>
+<td style="text-align: right;">1352 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10,892.329 ns</td>
+<td style="text-align: right;">28.84</td>
+<td style="text-align: right;">3888 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10,994.378 ns</td>
+<td style="text-align: right;">29.11</td>
+<td style="text-align: right;">5176 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">1,824.031 ns</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,212.582 ns</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">8800 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,252.599 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,467.492 ns</td>
+<td style="text-align: right;">1.98</td>
+<td style="text-align: right;">21120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,974.090 ns</td>
+<td style="text-align: right;">2.21</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">5,289.120 ns</td>
+<td style="text-align: right;">2.35</td>
+<td style="text-align: right;">21600 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">5,310.252 ns</td>
+<td style="text-align: right;">2.36</td>
+<td style="text-align: right;">41120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">51,740.124 ns</td>
+<td style="text-align: right;">22.97</td>
+<td style="text-align: right;">21738 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">52,126.799 ns</td>
+<td style="text-align: right;">23.14</td>
+<td style="text-align: right;">12158 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,179.227 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,519.580 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,035.855 ns</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,525.962 ns</td>
+<td style="text-align: right;">1.57</td>
+<td style="text-align: right;">21120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">60,399.318 ns</td>
+<td style="text-align: right;">17.16</td>
+<td style="text-align: right;">12155 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">62,085.556 ns</td>
+<td style="text-align: right;">17.64</td>
+<td style="text-align: right;">65120 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">81,425.204 ns</td>
+<td style="text-align: right;">23.14</td>
+<td style="text-align: right;">37736 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">93,239.964 ns</td>
+<td style="text-align: right;">26.50</td>
+<td style="text-align: right;">50542 B</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="asyncautoresetevent">AsyncAutoResetEvent</h2>
+<p><code>AsyncAutoResetEvent</code> releases exactly one waiter per <code>Set()</code> call. Three benchmarks cover: <code>Set</code> (no waiters — measures pure signal cost), <code>SetThenWait</code> (signal then immediately wait on the newly-reset event), and <code>WaitThenSet</code> (N waiters await then are unblocked one by one).</p>
+<h3 id="set-no-waiters">Set (no waiters)</h3>
+<p>The <code>Set</code> benchmark captures the cost of signaling an event that no one is waiting on — effectively a conditional interlocked operation plus any bookkeeping.</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled</strong> and <strong>ProtoPromise</strong>: sub-nanosecond pure-signal cost</li>
+<li><strong>System.AutoResetEvent</strong> (kernel): ~120× slower than Pooled; ~4× cheaper than on Windows</li>
+<li>Apple Silicon <code>mach_semaphore</code> signaling is significantly cheaper than Windows kernel event objects</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Set · AsyncAutoReset · ProtoPromise</td>
+<td style="text-align: right;">0.3773 ns</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Set · AsyncAutoReset · Pooled</td>
+<td style="text-align: right;">0.4524 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Set · AsyncAutoReset · RefImpl</td>
+<td style="text-align: right;">2.9948 ns</td>
+<td style="text-align: right;">6.62</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Set · AsyncAutoReset · Nito.AsyncEx</td>
+<td style="text-align: right;">3.3905 ns</td>
+<td style="text-align: right;">7.49</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Set · AutoResetEvent · System</td>
+<td style="text-align: right;">55.3979 ns</td>
+<td style="text-align: right;">122.45</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setthenwait">SetThenWait</h3>
+<p>Signals then immediately calls <code>WaitAsync</code>. Because the event was just set, <code>WaitAsync</code> returns synchronously — this measures the combined signal + synchronous check cost.</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled (ValueTask)</strong> and <strong>ProtoPromise</strong>: sub-10 ns combined signal + synchronous check</li>
+<li><strong>RefImpl</strong> and <strong>Nito</strong>: ~2× slower than Pooled</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SetThenWait · AsyncAutoReset · ProtoPromise</td>
+<td style="text-align: right;">3.628 ns</td>
+<td style="text-align: right;">0.77</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncAutoReset · Pooled (ValueTask)</td>
+<td style="text-align: right;">4.714 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncAutoReset · Pooled (AsTask)</td>
+<td style="text-align: right;">5.894 ns</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncAutoReset · RefImpl</td>
+<td style="text-align: right;">9.885 ns</td>
+<td style="text-align: right;">2.10</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncAutoReset · Nito.AsyncEx</td>
+<td style="text-align: right;">10.082 ns</td>
+<td style="text-align: right;">2.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="waitthenset">WaitThenSet</h3>
+<p>N waiters call <code>WaitAsync</code>, then <code>Set()</code> is called N times from another context. Each Set/Wait round trip involves a full async scheduling cycle (suspend + resume).</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled (AsValueTask)</strong> at 1 waiter: ~14% faster than default <code>Pooled (ValueTask)</code> when using the <code>AsValueTask()</code> overload</li>
+<li><strong>Pooled (AsValueTask SyncCont)</strong>: synchronized continuation (inline resume) saves a context switch; similar result</li>
+<li>At 100 waiters: Pooled (VT) <strong>~25% faster</strong> than Windows for the ValueTask path</li>
+<li><strong>Nito</strong> at 100 waiters with <code>NotCancelled</code>: hundreds of microseconds — 100 per-waiter CancellationToken registrations dominate</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">17.96 ns</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">18.43 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">18.49 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">21.41 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">21.58 ns</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">24.44 ns</td>
+<td style="text-align: right;">1.14</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">29.64 ns</td>
+<td style="text-align: right;">1.38</td>
+<td style="text-align: right;">80 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">31.51 ns</td>
+<td style="text-align: right;">1.47</td>
+<td style="text-align: right;">160 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,230.34 ns</td>
+<td style="text-align: right;">57.47</td>
+<td style="text-align: right;">229 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">29.64 ns</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">29.84 ns</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">30.59 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">32.65 ns</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">33.57 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">41.08 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">80 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">628.48 ns</td>
+<td style="text-align: right;">18.72</td>
+<td style="text-align: right;">400 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,369.58 ns</td>
+<td style="text-align: right;">40.80</td>
+<td style="text-align: right;">232 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">34.51 ns</td>
+<td style="text-align: right;">0.71</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">43.38 ns</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">45.39 ns</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · RefImpl</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">47.53 ns</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">192 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">48.84 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">49.37 ns</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">60.79 ns</td>
+<td style="text-align: right;">1.24</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">72.14 ns</td>
+<td style="text-align: right;">1.48</td>
+<td style="text-align: right;">160 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">1,814.28 ns</td>
+<td style="text-align: right;">37.15</td>
+<td style="text-align: right;">342 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">61.65 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">67.33 ns</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">68.59 ns</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">71.95 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">72.46 ns</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">94.77 ns</td>
+<td style="text-align: right;">1.32</td>
+<td style="text-align: right;">160 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,071.33 ns</td>
+<td style="text-align: right;">14.89</td>
+<td style="text-align: right;">800 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,935.44 ns</td>
+<td style="text-align: right;">26.90</td>
+<td style="text-align: right;">344 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">165.84 ns</td>
+<td style="text-align: right;">0.64</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">230.77 ns</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">235.56 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">237.92 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">960 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">258.24 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">265.52 ns</td>
+<td style="text-align: right;">1.03</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">298.09 ns</td>
+<td style="text-align: right;">1.15</td>
+<td style="text-align: right;">1600 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">364.88 ns</td>
+<td style="text-align: right;">1.41</td>
+<td style="text-align: right;">800 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">5,112.86 ns</td>
+<td style="text-align: right;">19.80</td>
+<td style="text-align: right;">1239 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">313.55 ns</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">348.47 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">355.19 ns</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">376.28 ns</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">381.33 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">475.57 ns</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">800 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,104.58 ns</td>
+<td style="text-align: right;">13.39</td>
+<td style="text-align: right;">4000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">6,877.33 ns</td>
+<td style="text-align: right;">18.04</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">1,606.21 ns</td>
+<td style="text-align: right;">0.64</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,147.13 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">9600 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,157.25 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,184.42 ns</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,501.68 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,519.45 ns</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,873.12 ns</td>
+<td style="text-align: right;">1.15</td>
+<td style="text-align: right;">16000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">3,552.41 ns</td>
+<td style="text-align: right;">1.42</td>
+<td style="text-align: right;">8000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">33,795.11 ns</td>
+<td style="text-align: right;">13.51</td>
+<td style="text-align: right;">11319 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · ProtoPromise</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,062.41 ns</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,339.76 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,360.55 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (ValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,679.41 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,722.32 ns</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,558.07 ns</td>
+<td style="text-align: right;">1.24</td>
+<td style="text-align: right;">8000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Nito.AsyncEx</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">61,744.88 ns</td>
+<td style="text-align: right;">16.78</td>
+<td style="text-align: right;">40000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncAutoReset · Pooled (AsTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">112,610.58 ns</td>
+<td style="text-align: right;">30.61</td>
+<td style="text-align: right;">11326 B</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="asyncmanualresetevent">AsyncManualResetEvent</h2>
+<p><code>AsyncManualResetEvent</code> releases <strong>all</strong> waiters when set and stays set until explicitly reset. The <code>SetReset</code> benchmark measures the rapid set/reset cycle. <code>SetThenWait</code> measures a set followed by a synchronous wait (which completes immediately since the event is already set). <code>WaitThenSet</code> drives N concurrent waiters.</p>
+<h3 id="setreset">SetReset</h3>
+<p>Combined set-then-reset cycle — captures the cost of toggling the event state with no waiters.</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled</strong>: ~4× faster than <code>ManualResetEventSlim.Set+Reset</code> and ~65× faster than <code>ManualResetEvent</code></li>
+<li><strong>ProtoPromise</strong>: fastest overall; <strong>ManualResetEvent</strong> (kernel): ~4× cheaper on macOS than Windows</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SetReset · AsyncManualReset · ProtoPromise</td>
+<td style="text-align: right;">1.009 ns</td>
+<td style="text-align: right;">0.62</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetReset · AsyncManualReset · Pooled</td>
+<td style="text-align: right;">1.616 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetReset · ManualResetEventSlim · System</td>
+<td style="text-align: right;">6.662 ns</td>
+<td style="text-align: right;">4.12</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetReset · AsyncManualReset · RefImpl</td>
+<td style="text-align: right;">9.369 ns</td>
+<td style="text-align: right;">5.80</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>SetReset · AsyncManualReset · Nito.AsyncEx</td>
+<td style="text-align: right;">15.199 ns</td>
+<td style="text-align: right;">9.40</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>SetReset · ManualResetEvent · System</td>
+<td style="text-align: right;">108.067 ns</td>
+<td style="text-align: right;">66.87</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setthenwait-1">SetThenWait</h3>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SetThenWait · AsyncManualReset · ProtoPromise</td>
+<td style="text-align: right;">4.203 ns</td>
+<td style="text-align: right;">0.65</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · Pooled (AsTask)</td>
+<td style="text-align: right;">5.999 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · Pooled (ValueTask)</td>
+<td style="text-align: right;">6.505 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · RefImpl</td>
+<td style="text-align: right;">12.832 ns</td>
+<td style="text-align: right;">1.97</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · Nito.AsyncEx</td>
+<td style="text-align: right;">21.813 ns</td>
+<td style="text-align: right;">3.35</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="waitthenset-1">WaitThenSet</h3>
+<p>Unlike <code>AsyncAutoResetEvent</code>, the <code>AsyncManualResetEvent</code> <code>WaitThenSet</code> benchmark releases all N waiters in a single <code>Set()</code> call (broadcast semantics). This means the allocation for <code>RefImpl</code> stays constant regardless of waiter count (single <code>TaskCompletionSource</code> shared by all).</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled (AsValueTask)</strong> at 1 waiter: ~15% faster than Windows</li>
+<li><code>NotCancelled</code> adds roughly 50–60% overhead per waiter at 1 iteration for the CancellationToken registration</li>
+<li><strong>Nito</strong> <code>NotCancelled</code> at 100 waiters: hundreds of microseconds — 100 per-waiter registrations dominate</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">16.47 ns</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">17.19 ns</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">17.54 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">18.54 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">20.44 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">20.75 ns</td>
+<td style="text-align: right;">1.02</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">26.62 ns</td>
+<td style="text-align: right;">1.30</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">28.74 ns</td>
+<td style="text-align: right;">1.41</td>
+<td style="text-align: right;">80 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,291.26 ns</td>
+<td style="text-align: right;">63.19</td>
+<td style="text-align: right;">230 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">28.78 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">29.50 ns</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">31.40 ns</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">31.65 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">31.71 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">41.95 ns</td>
+<td style="text-align: right;">1.32</td>
+<td style="text-align: right;">80 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,443.13 ns</td>
+<td style="text-align: right;">45.52</td>
+<td style="text-align: right;">808 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,496.60 ns</td>
+<td style="text-align: right;">47.21</td>
+<td style="text-align: right;">232 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">20.27 ns</td>
+<td style="text-align: right;">0.44</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">33.62 ns</td>
+<td style="text-align: right;">0.73</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">34.65 ns</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">42.09 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">43.47 ns</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">43.78 ns</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">45.88 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">65.24 ns</td>
+<td style="text-align: right;">1.42</td>
+<td style="text-align: right;">160 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">1,777.86 ns</td>
+<td style="text-align: right;">38.76</td>
+<td style="text-align: right;">343 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">62.17 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">65.48 ns</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">66.38 ns</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">67.42 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">68.71 ns</td>
+<td style="text-align: right;">1.02</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">103.73 ns</td>
+<td style="text-align: right;">1.54</td>
+<td style="text-align: right;">160 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,228.65 ns</td>
+<td style="text-align: right;">33.06</td>
+<td style="text-align: right;">344 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,316.48 ns</td>
+<td style="text-align: right;">34.36</td>
+<td style="text-align: right;">1488 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">58.16 ns</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">100.26 ns</td>
+<td style="text-align: right;">0.40</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">159.08 ns</td>
+<td style="text-align: right;">0.64</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">212.14 ns</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">217.21 ns</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">248.87 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">250.88 ns</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">338.66 ns</td>
+<td style="text-align: right;">1.36</td>
+<td style="text-align: right;">800 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">6,269.22 ns</td>
+<td style="text-align: right;">25.19</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">303.05 ns</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">344.64 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">347.10 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">376.76 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">377.14 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">477.58 ns</td>
+<td style="text-align: right;">1.27</td>
+<td style="text-align: right;">800 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">6,880.06 ns</td>
+<td style="text-align: right;">18.24</td>
+<td style="text-align: right;">6464 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">7,417.03 ns</td>
+<td style="text-align: right;">19.67</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">460.79 ns</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">806.83 ns</td>
+<td style="text-align: right;">0.33</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">1,457.80 ns</td>
+<td style="text-align: right;">0.60</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,082.27 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,088.38 ns</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,413.12 ns</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,428.53 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">3,272.00 ns</td>
+<td style="text-align: right;">1.35</td>
+<td style="text-align: right;">8000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">32,830.61 ns</td>
+<td style="text-align: right;">13.52</td>
+<td style="text-align: right;">11320 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,838.95 ns</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,284.09 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,321.15 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,575.24 ns</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,642.58 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,450.96 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">8000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">103,311.74 ns</td>
+<td style="text-align: right;">28.36</td>
+<td style="text-align: right;">11327 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">150,459.74 ns</td>
+<td style="text-align: right;">41.31</td>
+<td style="text-align: right;">61615 B</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="asyncsemaphore">AsyncSemaphore</h2>
+<p><code>AsyncSemaphore</code> manages a counted resource permit. The single-permit benchmark measures the wait+release cycle uncontested (the permit is available, so <code>WaitAsync</code> takes the fast path).</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled</strong>: <strong>~30% faster than Windows</strong> — the largest relative advantage across all uncontested benchmarks</li>
+<li><strong>ProtoPromise</strong>: ~25% faster than Pooled</li>
+<li><strong>System.SemaphoreSlim</strong>: ~2× slower than Pooled; ~25% cheaper than on Windows (lighter macOS kernel semaphore)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WaitRelease · AsyncSemaphore · ProtoPromise</td>
+<td style="text-align: right;">4.945 ns</td>
+<td style="text-align: right;">0.77</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · AsyncSemaphore · Pooled</td>
+<td style="text-align: right;">6.412 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · AsyncSemaphore · Nito.AsyncEx</td>
+<td style="text-align: right;">11.604 ns</td>
+<td style="text-align: right;">1.81</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · AsyncSemaphore · RefImpl</td>
+<td style="text-align: right;">11.697 ns</td>
+<td style="text-align: right;">1.82</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · SemaphoreSlim · System</td>
+<td style="text-align: right;">12.635 ns</td>
+<td style="text-align: right;">1.97</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="asynccountdownevent">AsyncCountdownEvent</h2>
+<p><code>AsyncCountdownEvent</code> completes when signaled N times. Two scenarios: <code>SignalAndWait</code> (last signal also unblocks the single waiter atomically), and <code>WaitAndSignal</code> (the waiter is already blocking when signals arrive).</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled</strong> (SignalAndWait, P=1): <strong>~28% faster than Windows</strong></li>
+<li><strong>System.CountdownEvent</strong>: near-identical on both platforms — kernel countdown objects normalize across architectures</li>
+<li>At P=10, all implementations are within 2× of each other; Pooled matches System.CountdownEvent</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>ParticipantCount</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · ProtoPromise</td>
+<td>1</td>
+<td style="text-align: right;">4.295 ns</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · Pooled</td>
+<td>1</td>
+<td style="text-align: right;">5.787 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · CountdownEvent · System</td>
+<td>1</td>
+<td style="text-align: right;">6.401 ns</td>
+<td style="text-align: right;">1.11</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · RefImpl</td>
+<td>1</td>
+<td style="text-align: right;">13.402 ns</td>
+<td style="text-align: right;">2.32</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · ProtoPromise</td>
+<td>1</td>
+<td style="text-align: right;">14.133 ns</td>
+<td style="text-align: right;">2.44</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · Pooled</td>
+<td>1</td>
+<td style="text-align: right;">34.716 ns</td>
+<td style="text-align: right;">6.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · ProtoPromise</td>
+<td>10</td>
+<td style="text-align: right;">15.277 ns</td>
+<td style="text-align: right;">0.69</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · CountdownEvent · System</td>
+<td>10</td>
+<td style="text-align: right;">16.036 ns</td>
+<td style="text-align: right;">0.72</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · RefImpl</td>
+<td>10</td>
+<td style="text-align: right;">21.003 ns</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · Pooled</td>
+<td>10</td>
+<td style="text-align: right;">22.133 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · ProtoPromise</td>
+<td>10</td>
+<td style="text-align: right;">22.524 ns</td>
+<td style="text-align: right;">1.02</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · Pooled</td>
+<td>10</td>
+<td style="text-align: right;">45.687 ns</td>
+<td style="text-align: right;">2.06</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="asyncbarrier">AsyncBarrier</h2>
+<p><code>AsyncBarrier</code> blocks all N participants until all have signaled, then releases them simultaneously. The <code>SignalAndWait</code> benchmark measures the end-to-end barrier phase cycle.</p>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled</strong> at P=1: <strong>~39% faster than Windows</strong></li>
+<li><strong>System.Barrier</strong> at P=1: ~160× slower than Pooled; the ratio vs Pooled is much worse here than on Windows (~42×); <code>System.Barrier</code> performs full OS thread synchronization internally</li>
+<li>At P=10: Pooled ~23% faster than Windows; <strong>System.Barrier ~2.8× cheaper than on Windows</strong> at P=10</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>ParticipantCount</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SignalAndWait · AsyncBarrier · Pooled</td>
+<td>1</td>
+<td style="text-align: right;">6.663 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · Barrier · System</td>
+<td>1</td>
+<td style="text-align: right;">1,080.414 ns</td>
+<td style="text-align: right;">162.15</td>
+<td style="text-align: right;">239 B</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncBarrier · RefImpl</td>
+<td>1</td>
+<td style="text-align: right;">1,664.424 ns</td>
+<td style="text-align: right;">249.80</td>
+<td style="text-align: right;">8473 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncBarrier · Pooled</td>
+<td>10</td>
+<td style="text-align: right;">195.938 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncBarrier · RefImpl</td>
+<td>10</td>
+<td style="text-align: right;">1,848.135 ns</td>
+<td style="text-align: right;">9.43</td>
+<td style="text-align: right;">8691 B</td>
+</tr>
+<tr>
+<td>SignalAndWait · Barrier · System</td>
+<td>10</td>
+<td style="text-align: right;">14,392.134 ns</td>
+<td style="text-align: right;">73.46</td>
+<td style="text-align: right;">1392 B</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="asyncreaderwriterlock">AsyncReaderWriterLock</h2>
+<p><code>AsyncReaderWriterLock</code> supports multiple concurrent readers or a single exclusive writer, plus an upgradeable reader that can atomically promote to writer. Benchmarks cover four access patterns:</p>
+<ul>
+<li><strong>WriterLock</strong> — exclusive write acquire+release (uncontested)</li>
+<li><strong>ReaderLock</strong> — shared read acquire+release at N concurrent readers</li>
+<li><strong>UpgradeableReaderLock</strong> — upgradeable acquire at N concurrent upgradeables</li>
+<li><strong>UpgradedWriterLock</strong> — upgrade from upgradeable to writer at N concurrent upgradeables</li>
+</ul>
+<h3 id="writerlock-uncontested">WriterLock (uncontested)</h3>
+<p><strong>Key observations:</strong></p>
+<ul>
+<li><strong>Pooled</strong> and <strong>ProtoPromise</strong>: near parity — fastest async writer lock on this platform</li>
+<li>Both are <strong>~34% faster than Windows</strong> for the Pooled path</li>
+<li><strong>System.ReaderWriterLockSlim</strong>: ~35% faster than Pooled (synchronous acquire path); ~33% faster than Windows equivalent</li>
+<li><strong>VS.Threading</strong>: async overhead ~215× vs Pooled due to its queuing model</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WriterLock · RWLockSlim · System</td>
+<td style="text-align: right;">4.605 ns</td>
+<td style="text-align: right;">0.67</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · Proto.Promises</td>
+<td style="text-align: right;">6.874 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · Pooled</td>
+<td style="text-align: right;">6.881 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · RefImpl</td>
+<td style="text-align: right;">12.124 ns</td>
+<td style="text-align: right;">1.76</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · Nito.AsyncEx</td>
+<td style="text-align: right;">58.594 ns</td>
+<td style="text-align: right;">8.51</td>
+<td style="text-align: right;">496 B</td>
+</tr>
+<tr>
+<td>WriterLock · AsyncRWLock · VS.Threading</td>
+<td style="text-align: right;">1,481.982 ns</td>
+<td style="text-align: right;">215.36</td>
+<td style="text-align: right;">584 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="readerlock">ReaderLock</h3>
+<p>The reader lock benchmark reveals a notable <strong>contention inversion</strong> between platforms:</p>
+<ul>
+<li><strong>Uncontested (0 concurrent readers)</strong>: M4 <strong>~2× faster</strong> than Windows — the strongest single uncontested advantage across all threading benchmarks</li>
+<li><strong>1 concurrent reader</strong>: <strong>Windows ~32% faster</strong> with a single contending reader; scheduling a resume on macOS ThreadPool costs more for the RWLock resumption path</li>
+<li><strong>100 concurrent readers</strong>: <strong>Windows ~2× faster</strong> at high contention</li>
+<li><strong>ProtoPromise</strong> at 100 readers: macOS dramatically outperforms Windows (~0.13 vs 0.73 ratio to Pooled) — ProtoPromise's lock-free reader promotion is particularly effective at broadcast-style reader release on M4</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">6.172 ns</td>
+<td style="text-align: right;">0.71</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">8.639 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">11.373 ns</td>
+<td style="text-align: right;">1.32</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">13.955 ns</td>
+<td style="text-align: right;">1.62</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">42.188 ns</td>
+<td style="text-align: right;">4.89</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">169.288 ns</td>
+<td style="text-align: right;">19.60</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">8.813 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">11.912 ns</td>
+<td style="text-align: right;">1.35</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">41.956 ns</td>
+<td style="text-align: right;">4.77</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">173.597 ns</td>
+<td style="text-align: right;">19.72</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">10.560 ns</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">16.098 ns</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">23.725 ns</td>
+<td style="text-align: right;">0.52</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">45.892 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">84.073 ns</td>
+<td style="text-align: right;">1.83</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">403.626 ns</td>
+<td style="text-align: right;">8.80</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">16.784 ns</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">45.025 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">93.791 ns</td>
+<td style="text-align: right;">2.08</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">405.231 ns</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">53.209 ns</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">54.324 ns</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">114.815 ns</td>
+<td style="text-align: right;">0.34</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">341.559 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">480.115 ns</td>
+<td style="text-align: right;">1.41</td>
+<td style="text-align: right;">3520 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">2,924.869 ns</td>
+<td style="text-align: right;">8.56</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">54.705 ns</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">348.494 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">466.506 ns</td>
+<td style="text-align: right;">1.34</td>
+<td style="text-align: right;">3520 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,913.725 ns</td>
+<td style="text-align: right;">8.36</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">452.161 ns</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · RWLockSlim · System</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">489.782 ns</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">991.034 ns</td>
+<td style="text-align: right;">0.29</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">3,419.210 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,250.900 ns</td>
+<td style="text-align: right;">1.24</td>
+<td style="text-align: right;">32320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">73,780.822 ns</td>
+<td style="text-align: right;">21.58</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">473.818 ns</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Pooled</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,412.131 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · Nito.AsyncEx</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,264.565 ns</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">32320 B</td>
+</tr>
+<tr>
+<td>ReaderLock · AsyncRWLock · VS.Threading</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">73,570.658 ns</td>
+<td style="text-align: right;">21.56</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="upgradeablereaderlock">UpgradeableReaderLock</h3>
+<p>Same contention inversion pattern as reader lock:</p>
+<ul>
+<li><strong>Uncontested</strong>: M4 <strong>~2× faster</strong> than Windows</li>
+<li><strong>System.ReaderWriterLockSlim</strong> upgradeable: ~40% faster than Pooled uncontested; ~30% cheaper than on Windows</li>
+<li><strong>VS.Threading</strong> upgradeable: ~1.4× slower than Windows uncontested due to lock-free upgradeable state tracking differences; allocates 616 B per acquire</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">4.970 ns</td>
+<td style="text-align: right;">0.59</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">8.437 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">12.288 ns</td>
+<td style="text-align: right;">1.46</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">1,509.803 ns</td>
+<td style="text-align: right;">178.98</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">8.484 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">12.314 ns</td>
+<td style="text-align: right;">1.45</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,552.237 ns</td>
+<td style="text-align: right;">182.97</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">4.977 ns</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">11.034 ns</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">36.772 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,431.211 ns</td>
+<td style="text-align: right;">38.93</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">11.031 ns</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">36.280 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,497.189 ns</td>
+<td style="text-align: right;">41.27</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">4.963 ns</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">11.068 ns</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">36.723 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">1,524.603 ns</td>
+<td style="text-align: right;">41.52</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">11.024 ns</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">36.582 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,537.993 ns</td>
+<td style="text-align: right;">42.04</td>
+<td style="text-align: right;">616 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · RWLockSlim · System</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">19.204 ns</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">22.802 ns</td>
+<td style="text-align: right;">0.17</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">136.771 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">2,051.705 ns</td>
+<td style="text-align: right;">15.00</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">23.691 ns</td>
+<td style="text-align: right;">0.17</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">135.748 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradeableReaderLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,151.423 ns</td>
+<td style="text-align: right;">15.85</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="upgradedwriterlock">UpgradedWriterLock</h3>
+<p>The upgraded writer lock holds an upgradeable reader then atomically promotes to exclusive writer, requiring all active readers to drain first.</p>
+<ul>
+<li><strong>Uncontested</strong>: M4 <strong>~32% faster</strong> than Windows</li>
+<li><strong>1 concurrent upgraded writer</strong>: <strong>Windows ~30% faster</strong> (same inversion as reader lock)</li>
+<li><strong>5 concurrent upgraded writers</strong>: <strong>Windows ~2.5× faster</strong> — writer upgrade queuing is the scenario where Windows ThreadPool's Task scheduling advantage is most visible</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">10.34 ns</td>
+<td style="text-align: right;">0.67</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">15.45 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">21.60 ns</td>
+<td style="text-align: right;">1.40</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">1,601.02 ns</td>
+<td style="text-align: right;">103.64</td>
+<td style="text-align: right;">824 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">15.31 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">18.73 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,580.17 ns</td>
+<td style="text-align: right;">103.18</td>
+<td style="text-align: right;">824 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">16.29 ns</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">31.34 ns</td>
+<td style="text-align: right;">0.45</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">70.25 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,865.61 ns</td>
+<td style="text-align: right;">26.56</td>
+<td style="text-align: right;">1032 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">42.41 ns</td>
+<td style="text-align: right;">0.60</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">70.82 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,903.70 ns</td>
+<td style="text-align: right;">26.89</td>
+<td style="text-align: right;">1032 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">20.74 ns</td>
+<td style="text-align: right;">0.17</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">35.07 ns</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">125.18 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">2,172.35 ns</td>
+<td style="text-align: right;">17.36</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">46.73 ns</td>
+<td style="text-align: right;">0.36</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">128.91 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">2,287.06 ns</td>
+<td style="text-align: right;">17.74</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · RWLockSlim · System</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">33.92 ns</td>
+<td style="text-align: right;">0.11</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">46.46 ns</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">305.75 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>None</td>
+<td style="text-align: right;">3,287.80 ns</td>
+<td style="text-align: right;">10.75</td>
+<td style="text-align: right;">1864 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Proto.Promises</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">58.86 ns</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · Pooled</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">312.35 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>UpgradedWriterLock · AsyncRWLock · VS.Threading</td>
+<td>5</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,500.68 ns</td>
+<td style="text-align: right;">11.21</td>
+<td style="text-align: right;">1864 B</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks/macos-arm64-apple-m4/threading.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

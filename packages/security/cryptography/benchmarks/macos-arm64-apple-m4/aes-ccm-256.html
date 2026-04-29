@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-ccm-256.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../../index.html">
+            <img id="logo" class="svg" src="../../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>TestDataSize</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Error</th>
+<th style="text-align: right;">StdDev</th>
+<th style="text-align: right;">Median</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>128B</td>
+<td style="text-align: right;">337.8 ns</td>
+<td style="text-align: right;">6.49 ns</td>
+<td style="text-align: right;">5.75 ns</td>
+<td style="text-align: right;">339.0 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">1,437.3 ns</td>
+<td style="text-align: right;">28.78 ns</td>
+<td style="text-align: right;">63.78 ns</td>
+<td style="text-align: right;">1,407.8 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">2,113.7 ns</td>
+<td style="text-align: right;">42.01 ns</td>
+<td style="text-align: right;">118.48 ns</td>
+<td style="text-align: right;">2,078.6 ns</td>
+<td style="text-align: right;">2808 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>128B</td>
+<td style="text-align: right;">272.3 ns</td>
+<td style="text-align: right;">0.33 ns</td>
+<td style="text-align: right;">0.31 ns</td>
+<td style="text-align: right;">272.5 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">1,209.3 ns</td>
+<td style="text-align: right;">0.45 ns</td>
+<td style="text-align: right;">0.43 ns</td>
+<td style="text-align: right;">1,209.4 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">1,759.0 ns</td>
+<td style="text-align: right;">1.36 ns</td>
+<td style="text-align: right;">1.27 ns</td>
+<td style="text-align: right;">1,758.8 ns</td>
+<td style="text-align: right;">2848 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,988.8 ns</td>
+<td style="text-align: right;">39.16 ns</td>
+<td style="text-align: right;">60.97 ns</td>
+<td style="text-align: right;">1,964.0 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">9,733.2 ns</td>
+<td style="text-align: right;">193.41 ns</td>
+<td style="text-align: right;">180.91 ns</td>
+<td style="text-align: right;">9,743.4 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">10,563.3 ns</td>
+<td style="text-align: right;">206.98 ns</td>
+<td style="text-align: right;">383.65 ns</td>
+<td style="text-align: right;">10,490.3 ns</td>
+<td style="text-align: right;">2808 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,716.5 ns</td>
+<td style="text-align: right;">1.43 ns</td>
+<td style="text-align: right;">1.34 ns</td>
+<td style="text-align: right;">1,716.7 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">7,904.6 ns</td>
+<td style="text-align: right;">1.19 ns</td>
+<td style="text-align: right;">1.06 ns</td>
+<td style="text-align: right;">7,904.5 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">8,874.2 ns</td>
+<td style="text-align: right;">3.47 ns</td>
+<td style="text-align: right;">3.24 ns</td>
+<td style="text-align: right;">8,873.8 ns</td>
+<td style="text-align: right;">2848 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>8KB</td>
+<td style="text-align: right;">14,769.1 ns</td>
+<td style="text-align: right;">228.42 ns</td>
+<td style="text-align: right;">368.85 ns</td>
+<td style="text-align: right;">14,659.5 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">74,334.0 ns</td>
+<td style="text-align: right;">1,429.61 ns</td>
+<td style="text-align: right;">1,701.85 ns</td>
+<td style="text-align: right;">74,752.2 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">74,908.0 ns</td>
+<td style="text-align: right;">619.45 ns</td>
+<td style="text-align: right;">579.43 ns</td>
+<td style="text-align: right;">74,797.7 ns</td>
+<td style="text-align: right;">2808 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>8KB</td>
+<td style="text-align: right;">13,200.3 ns</td>
+<td style="text-align: right;">4.76 ns</td>
+<td style="text-align: right;">3.98 ns</td>
+<td style="text-align: right;">13,201.8 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">64,871.5 ns</td>
+<td style="text-align: right;">1,275.19 ns</td>
+<td style="text-align: right;">2,165.37 ns</td>
+<td style="text-align: right;">65,645.0 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">71,548.6 ns</td>
+<td style="text-align: right;">1,389.83 ns</td>
+<td style="text-align: right;">1,300.05 ns</td>
+<td style="text-align: right;">71,899.2 ns</td>
+<td style="text-align: right;">2848 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>128KB</td>
+<td style="text-align: right;">238,909.2 ns</td>
+<td style="text-align: right;">4,709.22 ns</td>
+<td style="text-align: right;">8,491.69 ns</td>
+<td style="text-align: right;">235,102.1 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,147,014.8 ns</td>
+<td style="text-align: right;">22,832.17 ns</td>
+<td style="text-align: right;">32,745.21 ns</td>
+<td style="text-align: right;">1,157,165.6 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · AES-256-CCM (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,281,403.6 ns</td>
+<td style="text-align: right;">13,744.75 ns</td>
+<td style="text-align: right;">12,856.85 ns</td>
+<td style="text-align: right;">1,276,111.1 ns</td>
+<td style="text-align: right;">2808 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-ARM-AES)</td>
+<td>128KB</td>
+<td style="text-align: right;">226,366.6 ns</td>
+<td style="text-align: right;">1,819.51 ns</td>
+<td style="text-align: right;">1,612.95 ns</td>
+<td style="text-align: right;">226,620.7 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,083,294.2 ns</td>
+<td style="text-align: right;">19,719.07 ns</td>
+<td style="text-align: right;">24,938.32 ns</td>
+<td style="text-align: right;">1,086,819.6 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · AES-256-CCM (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">1,156,635.3 ns</td>
+<td style="text-align: right;">17,336.29 ns</td>
+<td style="text-align: right;">20,637.62 ns</td>
+<td style="text-align: right;">1,156,524.3 ns</td>
+<td style="text-align: right;">2848 B</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/macos-arm64-apple-m4/aes-ccm-256.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>CryptoHives.Foundation.Threading.Analyzers | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="CryptoHives.Foundation.Threading.Analyzers | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading.analyzers/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cryptohivesfoundationthreadinganalyzers">CryptoHives.Foundation.Threading.Analyzers</h1>
+
+<h2 id="overview">Overview</h2>
+<p>This package provides Roslyn analyzers that detect common <code>ValueTask</code> misuse patterns at compile time. These analyzers help developers avoid subtle bugs and performance issues when working with <code>ValueTask</code> and the pooled async primitives in the CryptoHives Threading library.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package CryptoHives.Foundation.Threading.Analyzers
+</code></pre>
+<p>Or add to your project file:</p>
+<pre><code class="lang-xml">&lt;PackageReference Include=&quot;CryptoHives.Foundation.Threading.Analyzers&quot; Version=&quot;*&quot; PrivateAssets=&quot;all&quot; /&gt;
+</code></pre>
+<h2 id="diagnostic-rules">Diagnostic Rules</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Severity</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="CHT001.html">CHT001</a></td>
+<td>Error</td>
+<td>ValueTask awaited multiple times</td>
+</tr>
+<tr>
+<td><a href="CHT002.html">CHT002</a></td>
+<td>Warning</td>
+<td>ValueTask.GetAwaiter().GetResult() used (blocking)</td>
+</tr>
+<tr>
+<td><a href="CHT003.html">CHT003</a></td>
+<td>Warning</td>
+<td>ValueTask stored in field</td>
+</tr>
+<tr>
+<td><a href="CHT004.html">CHT004</a></td>
+<td>Error</td>
+<td>ValueTask.AsTask() called multiple times</td>
+</tr>
+<tr>
+<td><a href="CHT005.html">CHT005</a></td>
+<td>Warning</td>
+<td>ValueTask.Result accessed directly</td>
+</tr>
+<tr>
+<td><a href="CHT006.html">CHT006</a></td>
+<td>Warning</td>
+<td>ValueTask passed to potentially unsafe method</td>
+</tr>
+<tr>
+<td><a href="CHT007.html">CHT007</a></td>
+<td>Info</td>
+<td>AsTask() stored before signaling (performance)</td>
+</tr>
+<tr>
+<td><a href="CHT008.html">CHT008</a></td>
+<td>Warning</td>
+<td>ValueTask not awaited or consumed</td>
+</tr>
+</tbody>
+</table>
+<h2 id="quick-reference">Quick Reference</h2>
+<h3 id="-anti-patterns-detected">❌ Anti-Patterns Detected</h3>
+<pre><code class="lang-csharp">// CHT001: Multiple await (Error)
+ValueTask vt = GetValueTask();
+await vt;
+await vt; // Error: already consumed
+
+// CHT002: Blocking with GetAwaiter().GetResult() (Warning)
+ValueTask vt = GetValueTask();
+vt.GetAwaiter().GetResult(); // Warning: undefined behavior
+
+// CHT003: Stored in field (Warning)
+private ValueTask _task; // Warning: may be consumed multiple times
+
+// CHT004: Multiple AsTask() calls (Error)
+ValueTask vt = GetValueTask();
+var t1 = vt.AsTask();
+var t2 = vt.AsTask(); // Error: already consumed
+
+// CHT005: Direct .Result access (Warning)
+ValueTask&lt;int&gt; vt = GetValueTask();
+int result = vt.Result; // Warning: undefined behavior
+
+// CHT006: Passed to unsafe method (Warning)
+await Task.WhenAll(GetValueTask()); // Warning: use AsTask() or Preserve()
+
+// CHT007: AsTask() stored before signaling (Info)
+Task t = GetValueTask().AsTask(); // Info: may cause perf degradation
+DoSomething();
+await t;
+
+// CHT008: Not consumed (Warning)
+GetValueTask(); // Warning: result not awaited
+</code></pre>
+<h3 id="-correct-patterns">✅ Correct Patterns</h3>
+<pre><code class="lang-csharp">// Single await - correct
+await GetValueTask();
+
+// Store, then single await - correct
+ValueTask vt = GetValueTask();
+await vt;
+
+// Use Preserve() for safe multiple consumption (built-in on most platforms)
+ValueTask vt = GetValueTask();
+ValueTask preserved = vt.Preserve();
+await preserved;
+await preserved; // Safe!
+
+// Use AsTask() once, store Task - correct (all platforms)
+Task t = GetValueTask().AsTask();
+await t;
+await t; // Task can be awaited multiple times
+
+// Pass Task to WhenAll - correct
+await Task.WhenAll(
+    GetValueTask().AsTask(),
+    GetValueTask().AsTask()
+);
+
+// Explicit discard - correct
+_ = GetValueTask();
+</code></pre>
+<h2 id="code-fixes">Code Fixes</h2>
+<p>The analyzer package includes automatic code fixes for most diagnostics:</p>
+<table>
+<thead>
+<tr>
+<th>Diagnostic</th>
+<th>Available Fixes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CHT001</td>
+<td>Convert to AsTask() at declaration, Use Preserve()</td>
+</tr>
+<tr>
+<td>CHT002</td>
+<td>Convert to await, Use AsTask() before GetAwaiter().GetResult()</td>
+</tr>
+<tr>
+<td>CHT003</td>
+<td>Change field type to Task</td>
+</tr>
+<tr>
+<td>CHT004</td>
+<td>Store AsTask() result in variable</td>
+</tr>
+<tr>
+<td>CHT005</td>
+<td>Convert to await, Use AsTask().Result</td>
+</tr>
+<tr>
+<td>CHT007</td>
+<td>Await ValueTask directly</td>
+</tr>
+<tr>
+<td>CHT008</td>
+<td>Add await, Explicitly discard with _ =</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-preserve-method">The Preserve() Method</h2>
+<h3 id="built-in-preserve">Built-in Preserve()</h3>
+<p>The <code>ValueTask.Preserve()</code> is available on all platforms.</p>
+<pre><code class="lang-csharp">ValueTask vt = GetValueTask();
+ValueTask preserved = vt.Preserve(); // Returns ValueTask that can be awaited multiple times
+
+await preserved;
+await preserved; // Safe!
+</code></pre>
+<h2 id="configuration">Configuration</h2>
+<h3 id="suppressing-diagnostics">Suppressing Diagnostics</h3>
+<p>You can suppress specific diagnostics using standard methods:</p>
+<pre><code class="lang-csharp">// Pragma directive
+#pragma warning disable CHT002
+valueTask.GetAwaiter().GetResult();
+#pragma warning restore CHT002
+
+// SuppressMessage attribute
+[SuppressMessage(&quot;Usage&quot;, &quot;CHT002&quot;)]
+public void Method() { }
+</code></pre>
+<h3 id="editorconfig">.editorconfig</h3>
+<p>Configure rule severity in <code>.editorconfig</code>:</p>
+<pre><code class="lang-ini"># Make CHT007 a warning instead of info
+dotnet_diagnostic.CHT007.severity = warning
+
+# Disable CHT003 entirely
+dotnet_diagnostic.CHT003.severity = none
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../threading/index.html">CryptoHives.Foundation.Threading Package</a></li>
+<li><a href="https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/">ValueTask Best Practices</a></li>
+<li><a href="https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2012">CA2012: Use ValueTasks correctly</a></li>
+<li><a href="https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask.preserve">ValueTask.Preserve() API Reference</a></li>
+</ul>
+<hr>
+<p>© 2025 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading.analyzers/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

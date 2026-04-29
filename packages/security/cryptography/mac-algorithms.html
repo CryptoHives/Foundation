@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>MAC Algorithms Reference | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="MAC Algorithms Reference | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/mac-algorithms.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="mac-algorithms-reference">MAC Algorithms Reference</h1>
+
+<p>This page provides detailed documentation for all Message Authentication Code (MAC) algorithms implemented in the CryptoHives.Foundation.Security.Cryptography package.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Mac;
+</code></pre>
+<hr>
+<h2 id="overview">Overview</h2>
+<p>Message Authentication Codes (MACs) provide both data integrity and authenticity verification. Unlike simple hash functions, MACs require a secret key, ensuring that only parties with the key can generate or verify the authentication tag.</p>
+<h3 id="mac-vs-hash">MAC vs Hash</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Hash</th>
+<th>MAC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Secret key required</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Data integrity</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Data authenticity</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Use case</td>
+<td>Fingerprinting</td>
+<td>Authentication</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="kmac128">KMAC128</h2>
+<p>KMAC128 is the Keccak Message Authentication Code with 128-bit security, defined in NIST SP 800-185.</p>
+<h3 id="class-declaration">Class Declaration</h3>
+<pre><code class="lang-csharp">public sealed class KMac128 : HashAlgorithm
+</code></pre>
+<h3 id="properties">Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Security</td>
+<td>128 bits</td>
+</tr>
+<tr>
+<td>Output Size</td>
+<td>Variable (default 32 bytes)</td>
+</tr>
+<tr>
+<td>Key Size</td>
+<td>Any length</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>168 bytes (rate)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="constructor">Constructor</h3>
+<pre><code class="lang-csharp">public KMac128(byte[] key, int outputBytes = 32, string customization = &quot;&quot;)
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key</code> - The secret key (any length, cannot be empty)</li>
+<li><code>outputBytes</code> - Desired output size in bytes (default: 32)</li>
+<li><code>customization</code> - Optional customization string for domain separation</li>
+</ul>
+<h3 id="factory-method">Factory Method</h3>
+<pre><code class="lang-csharp">public static KMac128 Create(byte[] key, int outputBytes = 32, string customization = &quot;&quot;)
+</code></pre>
+<h3 id="usage-examples">Usage Examples</h3>
+<pre><code class="lang-csharp">byte[] key = new byte[32];
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes(&quot;Hello, World!&quot;);
+
+// Basic KMAC128
+using var kmac = KMac128.Create(key, outputBytes: 32);
+Span&lt;byte&gt; mac = stackalloc byte[32];
+kmac.TryComputeHash(message, mac, out _);
+
+// With customization string
+using var kmacCustom = KMac128.Create(key, outputBytes: 32, customization: &quot;MyApp v1.0&quot;);
+Span&lt;byte&gt; macCustom = stackalloc byte[32];
+kmacCustom.TryComputeHash(message, macCustom, out _);
+
+// Variable output length
+using var kmacLong = KMac128.Create(key, outputBytes: 64);
+Span&lt;byte&gt; longMac = stackalloc byte[64];
+kmacLong.TryComputeHash(message, longMac, out _);
+</code></pre>
+<h3 id="incremental-usage">Incremental Usage</h3>
+<pre><code class="lang-csharp">using var kmac = KMac128.Create(key, outputBytes: 32, customization: &quot;&quot;);
+
+// Process data in chunks — zero allocations
+kmac.AppendData(chunk1);
+kmac.AppendData(chunk2);
+kmac.AppendData(chunk3);
+
+Span&lt;byte&gt; mac = stackalloc byte[32];
+kmac.TryGetHashAndReset(mac, out _);
+</code></pre>
+<hr>
+<h2 id="kmac256">KMAC256</h2>
+<p>KMAC256 is the Keccak Message Authentication Code with 256-bit security, defined in NIST SP 800-185.</p>
+<h3 id="class-declaration-1">Class Declaration</h3>
+<pre><code class="lang-csharp">public sealed class KMac256 : HashAlgorithm
+</code></pre>
+<h3 id="properties-1">Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Security</td>
+<td>256 bits</td>
+</tr>
+<tr>
+<td>Output Size</td>
+<td>Variable (default 64 bytes)</td>
+</tr>
+<tr>
+<td>Key Size</td>
+<td>Any length</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>136 bytes (rate)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="constructor-1">Constructor</h3>
+<pre><code class="lang-csharp">public KMac256(byte[] key, int outputBytes = 64, string customization = &quot;&quot;)
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key</code> - The secret key (any length, cannot be empty)</li>
+<li><code>outputBytes</code> - Desired output size in bytes (default: 64)</li>
+<li><code>customization</code> - Optional customization string for domain separation</li>
+</ul>
+<h3 id="factory-method-1">Factory Method</h3>
+<pre><code class="lang-csharp">public static KMac256 Create(byte[] key, int outputBytes = 64, string customization = &quot;&quot;)
+</code></pre>
+<h3 id="usage-examples-1">Usage Examples</h3>
+<pre><code class="lang-csharp">byte[] key = new byte[32];
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes(&quot;Hello, World!&quot;);
+
+// Basic KMAC256
+using var kmac = KMac256.Create(key, outputBytes: 64);
+Span&lt;byte&gt; mac = stackalloc byte[64];
+kmac.TryComputeHash(message, mac, out _);
+
+// With customization string for domain separation
+using var kmacCustom = KMac256.Create(key, outputBytes: 64, customization: &quot;Session Authentication&quot;);
+Span&lt;byte&gt; macCustom = stackalloc byte[64];
+kmacCustom.TryComputeHash(message, macCustom, out _);
+</code></pre>
+<hr>
+<h2 id="hmac-hash-based-message-authentication-code">HMAC (Hash-based Message Authentication Code)</h2>
+<p>HMAC is the most widely used MAC construction, defined in RFC 2104 and FIPS 198-1. It works with any cryptographic hash function and is used extensively in TLS, SSH, IPsec, and OAuth.</p>
+<h3 id="imac-interface">IMac Interface</h3>
+<p>All new MAC types implement the <code>IMac</code> interface for consistent API:</p>
+<pre><code class="lang-csharp">public interface IMac : IDisposable
+{
+    string AlgorithmName { get; }
+    int MacSize { get; }
+    void Update(ReadOnlySpan&lt;byte&gt; input);
+    void Finalize(Span&lt;byte&gt; destination);
+    void Reset();
+}
+</code></pre>
+<h3 id="available-hmac-variants">Available HMAC Variants</h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Hash</th>
+<th>MAC Size</th>
+<th>Security</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HmacSha256</code></td>
+<td>SHA-256</td>
+<td>32 bytes</td>
+<td>256 bits</td>
+<td>✅ Recommended</td>
+</tr>
+<tr>
+<td><code>HmacSha384</code></td>
+<td>SHA-384</td>
+<td>48 bytes</td>
+<td>384 bits</td>
+<td>✅ Recommended</td>
+</tr>
+<tr>
+<td><code>HmacSha512</code></td>
+<td>SHA-512</td>
+<td>64 bytes</td>
+<td>512 bits</td>
+<td>✅ Recommended</td>
+</tr>
+<tr>
+<td><code>HmacSha3_256</code></td>
+<td>SHA3-256</td>
+<td>32 bytes</td>
+<td>256 bits</td>
+<td>✅ Cross-platform</td>
+</tr>
+<tr>
+<td><code>HmacSha1</code></td>
+<td>SHA-1</td>
+<td>20 bytes</td>
+<td>160 bits</td>
+<td>⚠️ Legacy</td>
+</tr>
+<tr>
+<td><code>HmacMd5</code></td>
+<td>MD5</td>
+<td>16 bytes</td>
+<td>128 bits</td>
+<td>⚠️ Legacy</td>
+</tr>
+</tbody>
+</table>
+<h3 id="constructor-2">Constructor</h3>
+<pre><code class="lang-csharp">public HmacSha256(byte[] key)
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key</code> - The secret key (any length; keys longer than the hash block size are hashed first)</li>
+</ul>
+<h3 id="factory-method-2">Factory Method</h3>
+<pre><code class="lang-csharp">public static HmacSha256 Create(byte[] key)
+</code></pre>
+<h3 id="static-one-shot">Static One-Shot</h3>
+<pre><code class="lang-csharp">public static byte[] Hash(byte[] key, byte[] data)
+</code></pre>
+<h3 id="usage-examples-2">Usage Examples</h3>
+<pre><code class="lang-csharp">byte[] key = new byte[32];
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes(&quot;Hello, World!&quot;);
+
+// One-shot API
+byte[] tag = HmacSha256.Hash(key, message);
+
+// Instance-based API
+using var hmac = HmacSha256.Create(key);
+byte[] mac = hmac.ComputeHash(message);
+
+// Streaming API (IMac interface)
+using var hmac = HmacSha256.Create(key);
+hmac.Update(chunk1);
+hmac.Update(chunk2);
+byte[] result = new byte[hmac.MacSize];
+hmac.Finalize(result);
+
+// Reuse with same key
+hmac.Reset();
+hmac.Update(newData);
+hmac.Finalize(result);
+</code></pre>
+<h3 id="hmac-sha3-256-cross-platform">HMAC-SHA3-256 (Cross-Platform)</h3>
+<p>Unlike .NET's built-in <code>HMACSHA3_256</code> which requires Windows 11+ or OpenSSL 1.1.1+, the CryptoHives implementation works on all platforms:</p>
+<pre><code class="lang-csharp">using var hmac = HmacSha3_256.Create(key);
+byte[] mac = hmac.ComputeHash(message);
+</code></pre>
+<h3 id="generic-hmac-with-any-hash">Generic HMAC with Any Hash</h3>
+<p>The <code>HmacCore</code> base class works with any <code>HashAlgorithm</code> from the library. Create custom HMAC variants by subclassing:</p>
+<pre><code class="lang-csharp">public sealed class HmacSm3 : HmacCore
+{
+    public HmacSm3(byte[] key) : base(&quot;HMAC-SM3&quot;, SM3.Create(), SM3.Create(), key) { }
+}
+</code></pre>
+<hr>
+<h2 id="aes-cmac-cipher-based-mac">AES-CMAC (Cipher-based MAC)</h2>
+<p>AES-CMAC is a MAC based on the AES block cipher, defined in NIST SP 800-38B and RFC 4493. Unlike HMAC, it computes the tag in a single pass and does not require a hash function.</p>
+<blockquote>
+<p><strong>Note:</strong> .NET does not provide a portable CMAC implementation. This is a CryptoHives differentiator.</p>
+</blockquote>
+<h3 id="class-declaration-2">Class Declaration</h3>
+<pre><code class="lang-csharp">public sealed class AesCmac : IMac
+</code></pre>
+<h3 id="properties-2">Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MAC Size</td>
+<td>128 bits (16 bytes)</td>
+</tr>
+<tr>
+<td>Key Sizes</td>
+<td>128, 192, or 256 bits</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>128 bits (AES)</td>
+</tr>
+<tr>
+<td>Hardware Accel.</td>
+<td>AES-NI when available</td>
+</tr>
+</tbody>
+</table>
+<h3 id="constructor-3">Constructor</h3>
+<pre><code class="lang-csharp">public AesCmac(byte[] key)
+public AesCmac(ReadOnlySpan&lt;byte&gt; key)
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key</code> - The secret key (16, 24, or 32 bytes for AES-128/192/256)</li>
+</ul>
+<h3 id="factory-method-3">Factory Method</h3>
+<pre><code class="lang-csharp">public static AesCmac Create(byte[] key)
+</code></pre>
+<h3 id="static-one-shot-1">Static One-Shot</h3>
+<pre><code class="lang-csharp">public static byte[] Hash(byte[] key, byte[] data)
+</code></pre>
+<h3 id="usage-examples-3">Usage Examples</h3>
+<pre><code class="lang-csharp">byte[] key = new byte[16]; // AES-128
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes(&quot;Hello, World!&quot;);
+
+// One-shot API
+byte[] tag = AesCmac.Hash(key, message);
+
+// Instance-based API
+using var cmac = AesCmac.Create(key);
+byte[] mac = cmac.ComputeHash(message);
+
+// Streaming API
+using var cmac = AesCmac.Create(key);
+cmac.Update(chunk1);
+cmac.Update(chunk2);
+byte[] result = new byte[cmac.MacSize];
+cmac.Finalize(result);
+</code></pre>
+<h3 id="aes-256-cmac">AES-256 CMAC</h3>
+<pre><code class="lang-csharp">byte[] key = new byte[32]; // AES-256
+RandomNumberGenerator.Fill(key);
+
+using var cmac = AesCmac.Create(key);
+byte[] mac = cmac.ComputeHash(message);
+</code></pre>
+<hr>
+<h2 id="aes-gmac-galois-mac">AES-GMAC (Galois MAC)</h2>
+<p>AES-GMAC is the authentication-only mode of AES-GCM, defined in NIST SP 800-38D. It produces a 128-bit tag using the Galois field multiplication (GHASH) used in GCM.</p>
+<blockquote>
+<p><strong>Note:</strong> .NET does not provide a standalone GMAC class. This is a CryptoHives differentiator.</p>
+</blockquote>
+<h3 id="class-declaration-3">Class Declaration</h3>
+<pre><code class="lang-csharp">public sealed class AesGmac : IDisposable
+</code></pre>
+<h3 id="properties-3">Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MAC Size</td>
+<td>128 bits (16 bytes)</td>
+</tr>
+<tr>
+<td>Key Sizes</td>
+<td>128, 192, or 256 bits</td>
+</tr>
+<tr>
+<td>Nonce Size</td>
+<td>96 bits (12 bytes)</td>
+</tr>
+<tr>
+<td>Hardware Accel.</td>
+<td>AES-NI + PCLMULQDQ</td>
+</tr>
+</tbody>
+</table>
+<h3 id="constructor-4">Constructor</h3>
+<pre><code class="lang-csharp">public AesGmac(ReadOnlySpan&lt;byte&gt; key)
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key</code> - The secret key (16, 24, or 32 bytes)</li>
+</ul>
+<h3 id="factory-method-4">Factory Method</h3>
+<pre><code class="lang-csharp">public static AesGmac Create(byte[] key)
+</code></pre>
+<h3 id="usage-examples-4">Usage Examples</h3>
+<pre><code class="lang-csharp">byte[] key = new byte[16];
+RandomNumberGenerator.Fill(key);
+byte[] nonce = new byte[12]; // MUST be unique per message
+RandomNumberGenerator.Fill(nonce);
+byte[] data = Encoding.UTF8.GetBytes(&quot;authenticated data&quot;);
+
+// Compute tag
+using var gmac = AesGmac.Create(key);
+byte[] tag = gmac.ComputeTag(nonce, data);
+
+// Verify tag
+bool valid = gmac.VerifyTag(nonce, data, tag);
+</code></pre>
+<h3 id="important-nonce-requirements">Important: Nonce Requirements</h3>
+<p><strong>Never reuse a nonce with the same key.</strong> Each GMAC invocation must use a unique 12-byte nonce. Nonce reuse completely compromises the authentication guarantee.</p>
+<pre><code class="lang-csharp">// CORRECT: Generate a fresh nonce for each message
+byte[] nonce = new byte[12];
+RandomNumberGenerator.Fill(nonce);
+
+// WRONG: Reusing the same nonce with the same key
+// byte[] nonce = new byte[12]; // reused - INSECURE!
+</code></pre>
+<hr>
+<h2 id="poly1305">Poly1305</h2>
+<p>Poly1305 is a high-speed one-time authenticator designed by Daniel J. Bernstein, defined in <a href="https://tools.ietf.org/html/rfc8439">RFC 8439</a>. It is the MAC component of ChaCha20-Poly1305 and XChaCha20-Poly1305 AEAD constructions.</p>
+<blockquote>
+<p><strong>Note:</strong> .NET does not provide a standalone Poly1305 class. This is a CryptoHives differentiator.</p>
+</blockquote>
+<h3 id="class-declaration-4">Class Declaration</h3>
+<pre><code class="lang-csharp">public sealed class Poly1305Mac : IMac
+</code></pre>
+<h3 id="properties-4">Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MAC Size</td>
+<td>128 bits (16 bytes)</td>
+</tr>
+<tr>
+<td>Key Size</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>128 bits (16 bytes)</td>
+</tr>
+<tr>
+<td>One-Time Key</td>
+<td><strong>Yes — key must be unique per message</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="constructor-5">Constructor</h3>
+<pre><code class="lang-csharp">public Poly1305Mac(ReadOnlySpan&lt;byte&gt; key)
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key</code> - A 32-byte one-time key. <strong>Must be unique for every message.</strong></li>
+</ul>
+<h3 id="factory-method-5">Factory Method</h3>
+<pre><code class="lang-csharp">public static Poly1305Mac Create(byte[] key)
+public static Poly1305Mac Create(ReadOnlySpan&lt;byte&gt; key)
+</code></pre>
+<h3 id="static-one-shot-2">Static One-Shot</h3>
+<pre><code class="lang-csharp">public static byte[] Hash(byte[] key, byte[] data)
+</code></pre>
+<h3 id="usage-examples-5">Usage Examples</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] key = new byte[32]; // Must be exactly 32 bytes, unique per message
+RandomNumberGenerator.Fill(key);
+byte[] message = Encoding.UTF8.GetBytes(&quot;Hello, World!&quot;);
+
+// One-shot API
+byte[] tag = Poly1305Mac.Hash(key, message);
+
+// Instance-based API
+using var mac = Poly1305Mac.Create(key);
+byte[] result = mac.ComputeHash(message);
+
+// Streaming API (IMac interface)
+using var mac = Poly1305Mac.Create(key);
+mac.Update(chunk1);
+mac.Update(chunk2);
+byte[] tag = new byte[mac.MacSize]; // 16 bytes
+mac.Finalize(tag);
+</code></pre>
+<h3 id="important-key-requirements">Important: Key Requirements</h3>
+<p><strong>The 32-byte key must be used for exactly one message.</strong> Reusing a key across multiple messages allows an attacker to forge tags. In practice, the key is derived from a session key and nonce:</p>
+<pre><code class="lang-csharp">// Typical pattern: derive Poly1305 key from ChaCha20 key stream
+// (This is done internally by ChaCha20-Poly1305)
+byte[] sessionKey = ...; // 256-bit session key
+byte[] nonce = ...;      // 96-bit nonce
+
+// Generate one-time key from ChaCha20 block 0
+byte[] oneTimeKey = ChaCha20KeyStream(sessionKey, nonce, blockCounter: 0);
+using var mac = Poly1305Mac.Create(oneTimeKey);
+</code></pre>
+<h3 id="reset-behavior">Reset Behavior</h3>
+<p>Calling <code>Reset()</code> restores the accumulator to the initial state with the <strong>same key</strong>. This allows computing multiple MACs with the same key (for testing or if the one-time key property is managed externally):</p>
+<pre><code class="lang-csharp">using var mac = Poly1305Mac.Create(key);
+
+mac.Update(message1);
+byte[] tag1 = new byte[16];
+mac.Finalize(tag1);
+
+mac.Reset(); // Resets accumulator, same key
+mac.Update(message2);
+byte[] tag2 = new byte[16];
+mac.Finalize(tag2);
+</code></pre>
+<hr>
+<h2 id="blake2-mac">BLAKE2 MAC</h2>
+<p>BLAKE2b and BLAKE2s support built-in keyed hashing mode for message authentication.</p>
+<h3 id="blake2b-keyed-mode">Blake2b Keyed Mode</h3>
+<pre><code class="lang-csharp">public static Blake2b Create(byte[]? key = null, int hashSize = 64)
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Security: Up to 256 bits (depends on key and output size)</li>
+<li>Key Size: 1-64 bytes</li>
+<li>Output Size: 1-64 bytes</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">byte[] key = new byte[32]; // Up to 64 bytes
+RandomNumberGenerator.Fill(key);
+
+using var blake2b = Blake2b.Create(key: key, hashSize: 32);
+Span&lt;byte&gt; mac = stackalloc byte[32];
+blake2b.TryComputeHash(message, mac, out _);
+</code></pre>
+<h3 id="blake2s-keyed-mode">Blake2s Keyed Mode</h3>
+<pre><code class="lang-csharp">public static Blake2s Create(byte[]? key = null, int hashSize = 32)
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Security: Up to 128 bits (depends on key and output size)</li>
+<li>Key Size: 1-32 bytes</li>
+<li>Output Size: 1-32 bytes</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">byte[] key = new byte[16]; // Up to 32 bytes
+RandomNumberGenerator.Fill(key);
+
+using var blake2s = Blake2s.Create(key: key, hashSize: 16);
+Span&lt;byte&gt; mac = stackalloc byte[16];
+blake2s.TryComputeHash(message, mac, out _);
+</code></pre>
+<hr>
+<h2 id="blake3-mac">BLAKE3 MAC</h2>
+<p>BLAKE3 provides a dedicated keyed hashing mode for message authentication.</p>
+<h3 id="blake3-keyed-mode">Blake3 Keyed Mode</h3>
+<pre><code class="lang-csharp">public static Blake3 CreateKeyed(byte[] key, int outputBytes = 32)
+</code></pre>
+<p><strong>Properties:</strong></p>
+<ul>
+<li>Security: 128 bits</li>
+<li>Key Size: Exactly 32 bytes</li>
+<li>Output Size: Variable (default 32 bytes)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">byte[] key = new byte[32]; // Must be exactly 32 bytes
+RandomNumberGenerator.Fill(key);
+
+// Standard 32-byte MAC
+using var blake3 = Blake3.CreateKeyed(key);
+Span&lt;byte&gt; mac = stackalloc byte[32];
+blake3.TryComputeHash(message, mac, out _);
+
+// Extended 64-byte MAC
+using var blake3Long = Blake3.CreateKeyed(key, outputBytes: 64);
+Span&lt;byte&gt; longMac = stackalloc byte[64];
+blake3Long.TryComputeHash(message, longMac, out _);
+</code></pre>
+<h3 id="blake3-key-derivation">BLAKE3 Key Derivation</h3>
+<p>BLAKE3 also supports key derivation from a context string and input key material:</p>
+<pre><code class="lang-csharp">public static Blake3 CreateDeriveKey(string context, int outputBytes = 32)
+</code></pre>
+<p><strong>Usage:</strong></p>
+<pre><code class="lang-csharp">string context = &quot;MyApp 2026-01-01 encryption key&quot;;
+byte[] inputKeyMaterial = ...; // Your master key or password-derived key
+
+using var blake3 = Blake3.CreateDeriveKey(context);
+Span&lt;byte&gt; derivedKey = stackalloc byte[32];
+blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
+</code></pre>
+<hr>
+<h2 id="algorithm-comparison">Algorithm Comparison</h2>
+<h3 id="security-levels">Security Levels</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Security Strength</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HMAC-SHA-512</td>
+<td>512 bits</td>
+<td>Maximum HMAC security</td>
+</tr>
+<tr>
+<td>HMAC-SHA-256</td>
+<td>256 bits</td>
+<td>Most widely used, recommended</td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td>256 bits</td>
+<td>Highest security, NIST approved</td>
+</tr>
+<tr>
+<td>HMAC-SHA3-256</td>
+<td>256 bits</td>
+<td>Cross-platform SHA-3 HMAC</td>
+</tr>
+<tr>
+<td>Poly1305</td>
+<td>128 bits</td>
+<td>Ultra-fast one-time authenticator</td>
+</tr>
+<tr>
+<td>AES-CMAC</td>
+<td>128 bits</td>
+<td>Cipher-based, single-pass</td>
+</tr>
+<tr>
+<td>AES-GMAC</td>
+<td>128 bits</td>
+<td>Galois field, nonce-required</td>
+</tr>
+<tr>
+<td>KMAC128</td>
+<td>128 bits</td>
+<td>Good security, NIST approved</td>
+</tr>
+<tr>
+<td>BLAKE3 keyed</td>
+<td>128 bits</td>
+<td>High performance</td>
+</tr>
+<tr>
+<td>BLAKE2b keyed</td>
+<td>Up to 256 bits</td>
+<td>Depends on key/output size</td>
+</tr>
+<tr>
+<td>BLAKE2s keyed</td>
+<td>Up to 128 bits</td>
+<td>Good for embedded systems</td>
+</tr>
+</tbody>
+</table>
+<h3 id="performance">Performance</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Relative Speed</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Poly1305</td>
+<td>Fastest</td>
+<td>AEAD constructions, one-time auth</td>
+</tr>
+<tr>
+<td>BLAKE3 keyed</td>
+<td>Very fast</td>
+<td>High-throughput applications</td>
+</tr>
+<tr>
+<td>BLAKE2b keyed</td>
+<td>Very fast</td>
+<td>General purpose on 64-bit</td>
+</tr>
+<tr>
+<td>AES-GMAC</td>
+<td>Very fast (AES-NI)</td>
+<td>When nonce management is feasible</td>
+</tr>
+<tr>
+<td>AES-CMAC</td>
+<td>Fast (AES-NI)</td>
+<td>Protocol compliance (EAP, 802.11i)</td>
+</tr>
+<tr>
+<td>HMAC-SHA-256</td>
+<td>Moderate</td>
+<td>General purpose, widest compatibility</td>
+</tr>
+<tr>
+<td>HMAC-SHA-512</td>
+<td>Moderate</td>
+<td>Maximum security on 64-bit</td>
+</tr>
+<tr>
+<td>HMAC-SHA3-256</td>
+<td>Moderate</td>
+<td>Cross-platform SHA-3</td>
+</tr>
+<tr>
+<td>BLAKE2s keyed</td>
+<td>Fast</td>
+<td>32-bit and embedded systems</td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td>Moderate</td>
+<td>Maximum security</td>
+</tr>
+<tr>
+<td>KMAC128</td>
+<td>Moderate</td>
+<td>NIST compliance</td>
+</tr>
+</tbody>
+</table>
+<h3 id="feature-comparison">Feature Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>HMAC</th>
+<th>AES-CMAC</th>
+<th>AES-GMAC</th>
+<th>Poly1305</th>
+<th>KMAC</th>
+<th>BLAKE2</th>
+<th>BLAKE3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Variable output</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Customization string</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>Nonce required</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅</td>
+<td>❌¹</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>One-time key required</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>NIST approved</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>.NET built-in</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>Partial</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>Key derivation</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Arbitrary key size</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td></td>
+</tr>
+<tr>
+<td>Hardware accelerated</td>
+<td>❌</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<p>¹ Poly1305 does not use a nonce directly, but its key must be unique per message (typically derived from a nonce via ChaCha20).</p>
+<hr>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="key-generation">Key Generation</h3>
+<p>Always use cryptographically secure random number generators for key generation:</p>
+<pre><code class="lang-csharp">byte[] key = new byte[32];
+RandomNumberGenerator.Fill(key);
+</code></pre>
+<h3 id="key-storage">Key Storage</h3>
+<ul>
+<li>Never hardcode keys in source code</li>
+<li>Use secure key storage (Azure Key Vault, AWS KMS, etc.)</li>
+<li>Rotate keys periodically</li>
+</ul>
+<h3 id="domain-separation">Domain Separation</h3>
+<p>Use customization strings (KMAC) or different contexts (BLAKE3) to separate different uses of the same key:</p>
+<pre><code class="lang-csharp">// Authentication for different message types
+using var kmacAuth = KMac256.Create(key, customization: &quot;Auth&quot;);
+using var kmacEncrypt = KMac256.Create(key, customization: &quot;Encrypt&quot;);
+
+// BLAKE3 key derivation with context
+using var authKey = Blake3.CreateDeriveKey(&quot;MyApp Auth Key&quot;);
+using var encKey = Blake3.CreateDeriveKey(&quot;MyApp Encryption Key&quot;);
+</code></pre>
+<h3 id="verification">Verification</h3>
+<p>When verifying MACs, use constant-time comparison to prevent timing attacks:</p>
+<pre><code class="lang-csharp">using System.Security.Cryptography;
+
+bool VerifyMac(byte[] expected, byte[] actual)
+{
+    return CryptographicOperations.FixedTimeEquals(expected, actual);
+}
+</code></pre>
+<hr>
+<h2 id="common-patterns">Common Patterns</h2>
+<h3 id="authenticated-encryption">Authenticated Encryption</h3>
+<pre><code class="lang-csharp">public class AuthenticatedMessage
+{
+    public byte[] Ciphertext { get; set; }
+    public byte[] Mac { get; set; }
+
+    public static AuthenticatedMessage Create(byte[] key, byte[] plaintext)
+    {
+        // Encrypt (using your preferred cipher)
+        byte[] ciphertext = Encrypt(plaintext);
+
+        // Authenticate
+        using var kmac = KMac256.Create(key, customization: &quot;Auth&quot;);
+        Span&lt;byte&gt; mac = stackalloc byte[64];
+        kmac.TryComputeHash(ciphertext, mac, out _);
+
+        return new AuthenticatedMessage { Ciphertext = ciphertext, Mac = mac.ToArray() };
+    }
+
+    public bool Verify(byte[] key)
+    {
+        using var kmac = KMac256.Create(key, customization: &quot;Auth&quot;);
+        Span&lt;byte&gt; expectedMac = stackalloc byte[64];
+        kmac.TryComputeHash(Ciphertext, expectedMac, out _);
+        return CryptographicOperations.FixedTimeEquals(Mac, expectedMac);
+    }
+}
+</code></pre>
+<h3 id="api-request-signing">API Request Signing</h3>
+<pre><code class="lang-csharp">public string SignRequest(byte[] key, string method, string path, string timestamp)
+{
+    string message = $&quot;{method}:{path}:{timestamp}&quot;;
+    byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+
+    using var blake3 = Blake3.CreateKeyed(key);
+    Span&lt;byte&gt; signature = stackalloc byte[32];
+    blake3.TryComputeHash(messageBytes, signature, out _);
+
+    return Convert.ToBase64String(signature);
+}
+</code></pre>
+<h3 id="session-token-generation">Session Token Generation</h3>
+<pre><code class="lang-csharp">public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expiry)
+{
+    string context = $&quot;session:{userId}:{expiry:O}&quot;;
+    using var blake3 = Blake3.CreateDeriveKey(context);
+    Span&lt;byte&gt; sessionKey = stackalloc byte[32];
+    blake3.TryComputeHash(masterKey, sessionKey, out _);
+    return sessionKey.ToArray();
+}
+</code></pre>
+<hr>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="hash-algorithms.html">Hash Algorithms</a></li>
+<li><a href="cipher-algorithms.html">Cipher Algorithms</a></li>
+<li><a href="kdf-algorithms.html">KDF Algorithms</a></li>
+<li><a href="index.html">Cryptography Package Overview</a></li>
+<li><a href="specs/NIST-SP-800-185.html">KMAC Specifications</a></li>
+<li><a href="specs/RFC-2104.html">HMAC Specification (RFC 2104)</a></li>
+<li><a href="specs/NIST-SP-800-38B.html">CMAC Specification (SP 800-38B)</a></li>
+<li><a href="specs/HMAC-vectors.html">HMAC Test Vectors</a></li>
+<li><a href="specs/CMAC-vectors.html">CMAC Test Vectors</a></li>
+<li><a href="specs/ChaCha20-vectors.html">Poly1305 / ChaCha20 Test Vectors</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/mac-algorithms.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

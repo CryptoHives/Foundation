@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Streebog (GOST R 34.11-2012) Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Streebog (GOST R 34.11-2012) Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Streebog-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="streebog-gost-r-3411-2012-test-vectors">Streebog (GOST R 34.11-2012) Test Vectors</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Streebog is the Russian national cryptographic hash standard defined in
+GOST R 34.11-2012. It supports two output sizes: 256-bit and 512-bit.</p>
+<h2 id="specification">Specification</h2>
+<ul>
+<li><strong>Standard:</strong> GOST R 34.11-2012 (Russia), RFC 6986</li>
+<li><strong>Output Sizes:</strong> 256 bits or 512 bits</li>
+<li><strong>Block Size:</strong> 512 bits (64 bytes)</li>
+<li><strong>Rounds:</strong> 12</li>
+<li><strong>State Size:</strong> 512 bits (64 bytes)</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li>GOST R 34.11-2012</li>
+<li>RFC 6986: &quot;GOST R 34.11-2012: Hash Function&quot;</li>
+<li><a href="https://tc26.ru/">https://tc26.ru/</a> (Technical Committee for Standardization)</li>
+</ul>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="streebog-512">Streebog-512</h3>
+<h4 id="vector-1-message-m1-32-bytes">Vector 1: Message M1 (32 bytes)</h4>
+<pre><code>Input (hex): 323130393837363534333231303938373635343332313039383736353433323130393837363534333231303938373635343332313039383736353433323130
+(ASCII: &quot;012345678901234567890123456789012345678901234567890123456789012&quot;)
+Length: 63 bytes
+
+Output: 1b54d01a4af5b9d5cc3d86d68d285462b19abc2475222f35c085122be4ba1ffa
+        00ad30f8767b3a82384c6574f024c311e2a481332b08ef7f41797891c1646f48
+</code></pre>
+<h4 id="vector-2-message-m2-72-bytes">Vector 2: Message M2 (72 bytes)</h4>
+<pre><code>Input (hex): fbe2e5f0eee3c820fbeafaebef20fffbf0e1e0f0f520e0ed20e8ece0ebe5f0f2f120fff0eeec20f120faf2fee5e2202ce8f6f3ede220e8e6eee1e8f0f2d1202ce8f0f2e5e220e5d1
+Length: 72 bytes
+
+Output: 28fbc9bada033b1460642bdcddb90c3fb3e56c497ccd0f62b8a2ad4935e85f03
+        7613966de4ee00531ae60f3b5a47f8dae06915d5f2f194996fcabf2622f6e00561b47db2d2e11
+</code></pre>
+<h4 id="vector-3-empty-string">Vector 3: Empty string</h4>
+<pre><code>Input:  &quot;&quot; (empty)
+Length: 0 bytes
+
+Output (Streebog-512):
+8e945da209aa869f0455928529bcae4679e9873ab707b55315f56ceb98bef0a7
+362f715528356ee83cda5f2aac4c6ad2ba3a715c1bcd81cb8e9f90bf4c1c1a8a
+</code></pre>
+<h3 id="streebog-256">Streebog-256</h3>
+<h4 id="vector-1-message-m1">Vector 1: Message M1</h4>
+<pre><code>Input (hex): 323130393837363534333231303938373635343332313039383736353433323130393837363534333231303938373635343332313039383736353433323130
+Length: 63 bytes
+
+Output: 9d151eefd8590b89daa6ba6cb74af9275dd051026bb149a452fd84e5e57b5500
+</code></pre>
+<h4 id="vector-2-message-m2">Vector 2: Message M2</h4>
+<pre><code>Input (hex): fbe2e5f0eee3c820fbeafaebef20fffbf0e1e0f0f520e0ed20e8ece0ebe5f0f2f120fff0eeec20f120faf2fee5e2202ce8f6f3ede220e8e6eee1e8f0f2d1202ce8f0f2e5e220e5d1
+Length: 72 bytes
+
+Output: 9dd2fe4e90409e5da87f53976d7405b0c0cac628fc669a741d50063c557e8f50
+</code></pre>
+<h4 id="vector-3-empty-string-1">Vector 3: Empty string</h4>
+<pre><code>Input:  &quot;&quot; (empty)
+Length: 0 bytes
+
+Output (Streebog-256):
+3f539a213e97c802cc229d474c6aa32a825a360b2a933a949fd925208d9ce1bb
+</code></pre>
+<h2 id="algorithm-details">Algorithm Details</h2>
+<h3 id="initial-vector-iv">Initial Vector (IV)</h3>
+<pre><code>Streebog-512: IV = 0x00 repeated 64 times
+Streebog-256: IV = 0x01 repeated 64 times
+</code></pre>
+<h3 id="compression-function-g_n">Compression Function g_N</h3>
+<p>The compression function uses:</p>
+<ul>
+<li><strong>LPS transform:</strong> L(P(S(x))) - Linear, Permutation, Substitution</li>
+<li><strong>Key schedule:</strong> 12 iterations</li>
+<li><strong>Miyaguchi-Preneel mode</strong></li>
+</ul>
+<h3 id="s-box-pi">S-box (Pi)</h3>
+<p>The S-box is a 256-byte substitution table defined in the standard.</p>
+<h3 id="permutation-tau">Permutation (Tau)</h3>
+<p>The permutation rearranges bytes in the state according to a fixed pattern.</p>
+<h3 id="linear-transform-l">Linear Transform (L)</h3>
+<p>The linear transformation uses a 64×64 binary matrix over GF(2).</p>
+<h3 id="iteration-constants-c">Iteration Constants (C)</h3>
+<p>12 iteration constants derived from LPS transform of sequential values.</p>
+<h2 id="compliance-requirements">Compliance Requirements</h2>
+<p>Streebog is required for:</p>
+<ul>
+<li>Russian government cryptographic applications</li>
+<li>Russian banking and financial systems (together with GOST R 34.10-2012 signatures)</li>
+<li>Products certified under Russian cryptography regulations</li>
+</ul>
+<h2 id="implementation-notes">Implementation Notes</h2>
+<ul>
+<li>Uses big-endian byte order within the algorithm</li>
+<li>State organized as 64-byte array</li>
+<li>Counter N tracks message length in bits</li>
+<li>Checksum Sigma accumulates message blocks</li>
+<li>Final stage includes additional compressions with N and Sigma</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Streebog-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

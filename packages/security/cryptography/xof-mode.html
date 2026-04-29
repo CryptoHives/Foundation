@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Extendable-Output Functions (XOF) | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Extendable-Output Functions (XOF) | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/xof-mode.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="extendable-output-functions-xof">Extendable-Output Functions (XOF)</h1>
+
+<h2 id="overview">Overview</h2>
+<p>An <strong>Extendable-Output Function (XOF)</strong> is a hash function that can produce an arbitrarily long output. Unlike traditional hash algorithms with a fixed digest size, XOFs allow callers to request as many output bytes as needed.</p>
+<p>The CryptoHives Cryptography package exposes XOF functionality through the <code>IExtendableOutput</code> interface, providing a unified, allocation-free API across all supported algorithms.</p>
+<h2 id="the-iextendableoutput-interface">The <code>IExtendableOutput</code> Interface</h2>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+public interface IExtendableOutput
+{
+    void Absorb(ReadOnlySpan&lt;byte&gt; input);
+    void Squeeze(Span&lt;byte&gt; output);
+    void Reset();
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Absorb</code></td>
+<td>Feeds input data into the XOF state. May be called multiple times before squeezing.</td>
+</tr>
+<tr>
+<td><code>Squeeze</code></td>
+<td>Extracts output bytes. The first call finalizes the hash; subsequent calls continue the output stream.</td>
+</tr>
+<tr>
+<td><code>Reset</code></td>
+<td>Resets the XOF state so the instance can be reused for a new computation.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="supported-algorithms">Supported Algorithms</h2>
+<h3 id="hash-algorithms">Hash Algorithms</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Class</th>
+<th>XOF Mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHAKE128</td>
+<td><code>Shake128</code></td>
+<td>Keccak sponge (rate 168)</td>
+</tr>
+<tr>
+<td>SHAKE256</td>
+<td><code>Shake256</code></td>
+<td>Keccak sponge (rate 136)</td>
+</tr>
+<tr>
+<td>TurboSHAKE128</td>
+<td><code>TurboShake128</code></td>
+<td>Keccak sponge (rate 168, reduced rounds)</td>
+</tr>
+<tr>
+<td>TurboSHAKE256</td>
+<td><code>TurboShake256</code></td>
+<td>Keccak sponge (rate 136, reduced rounds)</td>
+</tr>
+<tr>
+<td>cSHAKE128</td>
+<td><code>CShake128</code></td>
+<td>Keccak sponge with customization</td>
+</tr>
+<tr>
+<td>cSHAKE256</td>
+<td><code>CShake256</code></td>
+<td>Keccak sponge with customization</td>
+</tr>
+<tr>
+<td>KT128</td>
+<td><code>KT128</code></td>
+<td>KangarooTwelve (TurboSHAKE128-based)</td>
+</tr>
+<tr>
+<td>KT256</td>
+<td><code>KT256</code></td>
+<td>KangarooTwelve (TurboSHAKE256-based)</td>
+</tr>
+<tr>
+<td>BLAKE3</td>
+<td><code>Blake3</code></td>
+<td>Counter-mode output expansion</td>
+</tr>
+<tr>
+<td>Ascon-XOF128</td>
+<td><code>AsconXof128</code></td>
+<td>Ascon permutation sponge</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mac-algorithms">MAC Algorithms</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Class</th>
+<th>XOF Mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KMAC128</td>
+<td><code>KMac128</code></td>
+<td>Keccak sponge with key (NIST SP 800-185)</td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td><code>KMac256</code></td>
+<td>Keccak sponge with key (NIST SP 800-185)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage">Usage</h2>
+<h3 id="basic-absorb--squeeze">Basic Absorb / Squeeze</h3>
+<pre><code class="lang-csharp">using var shake = Shake256.Create(64);
+
+// Absorb input data
+shake.Absorb(stackalloc byte[] { 0x01, 0x02, 0x03 });
+
+// Squeeze output into a stack-allocated buffer
+Span&lt;byte&gt; output = stackalloc byte[64];
+shake.Squeeze(output);
+</code></pre>
+<h3 id="multi-absorb-incremental-input">Multi-Absorb (Incremental Input)</h3>
+<p>Data can be absorbed in multiple calls before squeezing. The result is identical to absorbing all data at once:</p>
+<pre><code class="lang-csharp">using var xof = TurboShake128.Create(32);
+
+xof.Absorb(header);
+xof.Absorb(payload);
+xof.Absorb(footer);
+
+Span&lt;byte&gt; digest = stackalloc byte[32];
+xof.Squeeze(digest);
+</code></pre>
+<h3 id="streaming-squeeze-multi-squeeze">Streaming Squeeze (Multi-Squeeze)</h3>
+<p>After the first <code>Squeeze</code> call finalizes the hash, subsequent calls continue the output stream. This is useful for producing large or incremental output without allocating a single large buffer:</p>
+<pre><code class="lang-csharp">using var blake3 = Blake3.Create();
+blake3.Absorb(data);
+
+// Squeeze 256 bytes in 64-byte chunks
+Span&lt;byte&gt; chunk = stackalloc byte[64];
+for (int i = 0; i &lt; 4; i++)
+{
+    blake3.Squeeze(chunk);
+    ProcessChunk(chunk);
+}
+</code></pre>
+<p>The output from multiple <code>Squeeze</code> calls is identical to a single call requesting the same total length:</p>
+<pre><code class="lang-csharp">// These produce the same output:
+
+// Option A: single call
+Span&lt;byte&gt; outputA = stackalloc byte[128];
+xof.Squeeze(outputA);
+
+// Option B: two calls
+Span&lt;byte&gt; outputB1 = stackalloc byte[64];
+Span&lt;byte&gt; outputB2 = stackalloc byte[64];
+xof.Squeeze(outputB1);
+xof.Squeeze(outputB2);
+</code></pre>
+<h3 id="reuse-with-reset">Reuse with Reset</h3>
+<p>The <code>Reset</code> method allows reusing an instance for a new computation without allocating a new object:</p>
+<pre><code class="lang-csharp">using var xof = CShake256.Create(
+    outputBytes: 32,
+    functionName: &quot;&quot;,
+    customization: &quot;session-key&quot;);
+
+// First computation
+xof.Absorb(input1);
+Span&lt;byte&gt; hash1 = stackalloc byte[32];
+xof.Squeeze(hash1);
+
+// Reset and compute again
+xof.Reset();
+xof.Absorb(input2);
+Span&lt;byte&gt; hash2 = stackalloc byte[32];
+xof.Squeeze(hash2);
+</code></pre>
+<h3 id="runtime-detection">Runtime Detection</h3>
+<p>Use pattern matching to detect XOF support on any hash algorithm:</p>
+<pre><code class="lang-csharp">using System.Security.Cryptography;
+
+HashAlgorithm algo = GetAlgorithm();
+
+if (algo is IExtendableOutput xof)
+{
+    xof.Absorb(data);
+    Span&lt;byte&gt; output = stackalloc byte[128];
+    xof.Squeeze(output);
+}
+else
+{
+    byte[] hash = algo.ComputeHash(data); // allocates, but non-XOF algorithms don't support Absorb/Squeeze
+}
+</code></pre>
+<h3 id="kmac-in-xof-mode">KMAC in XOF Mode</h3>
+<p>KMAC supports XOF output through the same interface, combining keyed authentication with variable-length output:</p>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Mac;
+
+byte[] key = GetSecretKey();
+using var kmac = KMac256.Create(key, outputBytes: 64, customization: &quot;MyApp&quot;);
+
+kmac.Absorb(message);
+
+Span&lt;byte&gt; tag = stackalloc byte[64];
+kmac.Squeeze(tag);
+</code></pre>
+<h2 id="fixed-output-vs-xof-mode">Fixed-Output vs XOF Mode</h2>
+<p>All XOF algorithms also support the standard <code>HashAlgorithm</code> API with a fixed output size specified at construction:</p>
+<pre><code class="lang-csharp">// Fixed-output mode (standard HashAlgorithm API) — zero allocations
+using var shake = Shake256.Create(outputBytes: 32);
+Span&lt;byte&gt; hash = stackalloc byte[32];
+shake.TryComputeHash(data, hash, out _);            // Always 32 bytes
+
+// XOF mode (IExtendableOutput API) — zero allocations, any length
+using var xof = Shake256.Create(outputBytes: 32);
+xof.Absorb(data);
+Span&lt;byte&gt; output = stackalloc byte[128];            // Any length
+xof.Squeeze(output);
+</code></pre>
+<p>The <code>outputBytes</code> constructor parameter controls the size returned by <code>ComputeHash</code> and <code>TryHashFinal</code>. The <code>Squeeze</code> method ignores this parameter and fills the entire output span.</p>
+<h2 id="important-notes">Important Notes</h2>
+<ul>
+<li><strong>No absorb after squeeze</strong>: Once <code>Squeeze</code> is called, the hash is finalized. Further <code>Absorb</code> calls are not supported without calling <code>Reset</code> first.</li>
+<li><strong>Deterministic streaming</strong>: Multiple <code>Squeeze</code> calls produce the same byte stream as a single large call. The output is fully deterministic.</li>
+<li><strong>Thread safety</strong>: Like all hash algorithm instances, XOF instances are not thread-safe. Create separate instances for concurrent use.</li>
+</ul>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="hash-algorithms.html">Hash Algorithms Reference</a></li>
+<li><a href="mac-algorithms.html">MAC Algorithms Reference</a></li>
+<li><a href="specs/SHAKE-vectors.html">SHAKE Test Vectors</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/xof-mode.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

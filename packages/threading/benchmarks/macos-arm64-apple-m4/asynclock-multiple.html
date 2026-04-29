@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks/macos-arm64-apple-m4/asynclock-multiple.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">7.891 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">9.628 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">9.871 ns</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">12.949 ns</td>
+<td style="text-align: right;">1.64</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">13.427 ns</td>
+<td style="text-align: right;">1.70</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">14.463 ns</td>
+<td style="text-align: right;">1.83</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">18.020 ns</td>
+<td style="text-align: right;">2.28</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">41.402 ns</td>
+<td style="text-align: right;">5.25</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">52.997 ns</td>
+<td style="text-align: right;">6.72</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">8.057 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10.232 ns</td>
+<td style="text-align: right;">1.27</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10.256 ns</td>
+<td style="text-align: right;">1.27</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">12.621 ns</td>
+<td style="text-align: right;">1.57</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">14.560 ns</td>
+<td style="text-align: right;">1.81</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">18.759 ns</td>
+<td style="text-align: right;">2.33</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">41.284 ns</td>
+<td style="text-align: right;">5.12</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">52.493 ns</td>
+<td style="text-align: right;">6.52</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">23.490 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">28.130 ns</td>
+<td style="text-align: right;">1.20</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">37.045 ns</td>
+<td style="text-align: right;">1.58</td>
+<td style="text-align: right;">88 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">54.599 ns</td>
+<td style="text-align: right;">2.32</td>
+<td style="text-align: right;">168 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">68.697 ns</td>
+<td style="text-align: right;">2.92</td>
+<td style="text-align: right;">216 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">94.316 ns</td>
+<td style="text-align: right;">4.02</td>
+<td style="text-align: right;">728 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">109.366 ns</td>
+<td style="text-align: right;">4.66</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,216.363 ns</td>
+<td style="text-align: right;">51.79</td>
+<td style="text-align: right;">350 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">1,381.198 ns</td>
+<td style="text-align: right;">58.80</td>
+<td style="text-align: right;">271 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">36.277 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">44.412 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">63.203 ns</td>
+<td style="text-align: right;">1.74</td>
+<td style="text-align: right;">168 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">107.268 ns</td>
+<td style="text-align: right;">2.96</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">646.678 ns</td>
+<td style="text-align: right;">17.83</td>
+<td style="text-align: right;">968 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,484.811 ns</td>
+<td style="text-align: right;">40.93</td>
+<td style="text-align: right;">272 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,498.509 ns</td>
+<td style="text-align: right;">41.31</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,598.035 ns</td>
+<td style="text-align: right;">44.05</td>
+<td style="text-align: right;">504 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">197.073 ns</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">240.851 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">253.671 ns</td>
+<td style="text-align: right;">1.05</td>
+<td style="text-align: right;">880 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">451.128 ns</td>
+<td style="text-align: right;">1.87</td>
+<td style="text-align: right;">1680 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">565.469 ns</td>
+<td style="text-align: right;">2.35</td>
+<td style="text-align: right;">4400 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">567.840 ns</td>
+<td style="text-align: right;">2.36</td>
+<td style="text-align: right;">2160 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">578.067 ns</td>
+<td style="text-align: right;">2.40</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">7,081.010 ns</td>
+<td style="text-align: right;">29.40</td>
+<td style="text-align: right;">2296 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">8,263.349 ns</td>
+<td style="text-align: right;">34.31</td>
+<td style="text-align: right;">1352 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">339.757 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">377.674 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">552.628 ns</td>
+<td style="text-align: right;">1.46</td>
+<td style="text-align: right;">1680 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">572.761 ns</td>
+<td style="text-align: right;">1.52</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,022.693 ns</td>
+<td style="text-align: right;">13.30</td>
+<td style="text-align: right;">6800 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">8,764.494 ns</td>
+<td style="text-align: right;">23.21</td>
+<td style="text-align: right;">1352 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10,892.329 ns</td>
+<td style="text-align: right;">28.84</td>
+<td style="text-align: right;">3888 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10,994.378 ns</td>
+<td style="text-align: right;">29.11</td>
+<td style="text-align: right;">5176 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">1,824.031 ns</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,212.582 ns</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">8800 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,252.599 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,467.492 ns</td>
+<td style="text-align: right;">1.98</td>
+<td style="text-align: right;">21120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,974.090 ns</td>
+<td style="text-align: right;">2.21</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">5,289.120 ns</td>
+<td style="text-align: right;">2.35</td>
+<td style="text-align: right;">21600 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">5,310.252 ns</td>
+<td style="text-align: right;">2.36</td>
+<td style="text-align: right;">41120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">51,740.124 ns</td>
+<td style="text-align: right;">22.97</td>
+<td style="text-align: right;">21738 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">52,126.799 ns</td>
+<td style="text-align: right;">23.14</td>
+<td style="text-align: right;">12158 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,179.227 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,519.580 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,035.855 ns</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,525.962 ns</td>
+<td style="text-align: right;">1.57</td>
+<td style="text-align: right;">21120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">60,399.318 ns</td>
+<td style="text-align: right;">17.16</td>
+<td style="text-align: right;">12155 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">62,085.556 ns</td>
+<td style="text-align: right;">17.64</td>
+<td style="text-align: right;">65120 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">81,425.204 ns</td>
+<td style="text-align: right;">23.14</td>
+<td style="text-align: right;">37736 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">93,239.964 ns</td>
+<td style="text-align: right;">26.50</td>
+<td style="text-align: right;">50542 B</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/benchmarks/macos-arm64-apple-m4/asynclock-multiple.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

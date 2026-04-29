@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>LSH (KS X 3262) Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="LSH (KS X 3262) Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/LSH-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="lsh-ks-x-3262-test-vectors">LSH (KS X 3262) Test Vectors</h1>
+
+<h2 id="overview">Overview</h2>
+<p>LSH is the Korean national cryptographic hash standard defined in KS X 3262, designed by KISA
+(Korea Internet &amp; Security Agency). It comes in two families: LSH-256 (32-bit words) and
+LSH-512 (64-bit words), each supporting multiple output sizes.</p>
+<h2 id="specification">Specification</h2>
+<ul>
+<li><strong>Standard:</strong> KS X 3262 (South Korea), approved by KCMVP</li>
+<li><strong>Families:</strong> LSH-256 (32-bit words) and LSH-512 (64-bit words)</li>
+<li><strong>Output Sizes:</strong>
+<ul>
+<li>LSH-256: 224 or 256 bits</li>
+<li>LSH-512: 224, 256, 384, or 512 bits</li>
+</ul>
+</li>
+<li><strong>Block Size:</strong> 128 bytes (LSH-256) or 256 bytes (LSH-512)</li>
+<li><strong>Steps:</strong> 26 (LSH-256) or 28 (LSH-512)</li>
+<li><strong>Structure:</strong> Wide-pipe Merkle-Damgård with 16-word chaining variable split into left/right halves</li>
+</ul>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li>KS X 3262 — Korean national standard for hash functions</li>
+<li>KISA (Korea Internet &amp; Security Agency): <a href="https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do">https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do</a></li>
+</ul>
+<h2 id="test-vectors">Test Vectors</h2>
+<p>Test vectors sourced from the <a href="https://en.wikipedia.org/wiki/LSH_(hash_function)">Wikipedia LSH hash function article</a>.</p>
+<h3 id="lsh-256">LSH-256</h3>
+<h4 id="vector-1-abc--lsh-256-224">Vector 1: &quot;abc&quot; — LSH-256-224</h4>
+<pre><code>Input:  &quot;abc&quot; (ASCII)
+Length: 3 bytes
+
+Output (LSH-256-224):
+F7C53BA4034E708E74FBA42E55997CA5126BB7623688F85342F73732
+</code></pre>
+<h4 id="vector-2-abc--lsh-256-256">Vector 2: &quot;abc&quot; — LSH-256-256</h4>
+<pre><code>Input:  &quot;abc&quot; (ASCII)
+Length: 3 bytes
+
+Output (LSH-256-256):
+5FBF365DAEA5446A7053C52B57404D77A07A5F48A1F7C1963A0898BA1B714741
+</code></pre>
+<h3 id="lsh-512">LSH-512</h3>
+<h4 id="vector-1-abc--lsh-512-224">Vector 1: &quot;abc&quot; — LSH-512-224</h4>
+<pre><code>Input:  &quot;abc&quot; (ASCII)
+Length: 3 bytes
+
+Output (LSH-512-224):
+D1683234513EC5698394571EAD128A8CD5373E97661BA20DCF89E489
+</code></pre>
+<h4 id="vector-2-abc--lsh-512-256">Vector 2: &quot;abc&quot; — LSH-512-256</h4>
+<pre><code>Input:  &quot;abc&quot; (ASCII)
+Length: 3 bytes
+
+Output (LSH-512-256):
+CD892310532602332B613F1EC11A6962FCA61EA09ECFFCD4BCF75858D802EDEC
+</code></pre>
+<h4 id="vector-3-abc--lsh-512-384">Vector 3: &quot;abc&quot; — LSH-512-384</h4>
+<pre><code>Input:  &quot;abc&quot; (ASCII)
+Length: 3 bytes
+
+Output (LSH-512-384):
+5F344EFAA0E43CCD2E5E194D6039794B4FB431F10FB4B65FD45E9DA4ECDE0F27
+B66E8DBDFA47252E0D0B741BFD91F9FE
+</code></pre>
+<h4 id="vector-4-abc--lsh-512-512">Vector 4: &quot;abc&quot; — LSH-512-512</h4>
+<pre><code>Input:  &quot;abc&quot; (ASCII)
+Length: 3 bytes
+
+Output (LSH-512-512):
+A3D93CFE60DC1AACDD3BD4BEF0A6985381A396C7D49D9FD177795697C3535208
+B5C57224BEF21084D42083E95A4BD8EB33E869812B65031C428819A1E7CE596D
+</code></pre>
+<h2 id="algorithm-details">Algorithm Details</h2>
+<h3 id="chaining-variable">Chaining Variable</h3>
+<p>Both families use a 16-word chaining variable (CV) split into left and right halves of 8 words:</p>
+<pre><code>LSH-256: CV = 16 × 32-bit words = 512 bits (wide-pipe for ≤256-bit output)
+LSH-512: CV = 16 × 64-bit words = 1024 bits (wide-pipe for ≤512-bit output)
+</code></pre>
+<h3 id="step-function">Step Function</h3>
+<p>Each step applies three operations in sequence:</p>
+<ol>
+<li><strong>Message Addition</strong> — XOR sub-message words into the chaining variable</li>
+<li><strong>Mixing Function</strong> — Rotation-based diffusion with alternating constants:
+<ul>
+<li>LSH-256: α=29, β=1 (even steps); α=5, β=17 (odd steps); γ = [0, 8, 16, 24, 24, 16, 8, 0]</li>
+<li>LSH-512: α=23, β=59 (even steps); α=7, β=3 (odd steps); γ = [0, 16, 32, 48, 8, 24, 40, 56]</li>
+</ul>
+</li>
+<li><strong>Word Permutation</strong> — Fixed permutation τ applied to the chaining variable words</li>
+</ol>
+<h3 id="finalization">Finalization</h3>
+<p>After all steps:</p>
+<pre><code>H[l] = cv_L[l] ⊕ cv_R[l]    (for l = 0..7)
+</code></pre>
+<p>The hash is taken from the first <code>hashSize</code> bytes of H.</p>
+<h3 id="padding">Padding</h3>
+<p>LSH uses standard one-zeros padding: append <code>0x80</code>, then zero bytes to fill the block.</p>
+<h2 id="compliance-requirements">Compliance Requirements</h2>
+<p>LSH is required for:</p>
+<ul>
+<li>Korean government cryptographic applications</li>
+<li>Products certified under KCMVP (Korea Cryptographic Module Validation Program)</li>
+<li>Systems requiring compliance with KS X 3262</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/LSH-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

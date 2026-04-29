@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>SHA-2 Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="SHA-2 Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/SHA2-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="sha-2-test-vectors">SHA-2 Test Vectors</h1>
+
+<h2 id="source">Source</h2>
+<p>NIST FIPS 180-4: Secure Hash Standard (SHS)</p>
+<ul>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf">https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA384.pdf">https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA384.pdf</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf">https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf</a></li>
+</ul>
+<hr>
+<h1 id="sha-256">SHA-256</h1>
+<h2 id="algorithm-parameters">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>512 bits (64 bytes)</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>32 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>64</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="vector-1-empty-string">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bits)
+Message (hex): (empty)
+SHA-256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+</code></pre>
+<h3 id="vector-2-abc">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (24 bits)
+Message (hex): 616263
+SHA-256: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+</code></pre>
+<h3 id="vector-3-one-block-message-448-bits">Vector 3: One Block Message (448 bits)</h3>
+<pre><code>Message: &quot;abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq&quot;
+Message (hex): 6162636462636465636465666465666765666768666768696768696a68696a6b
+              696a6b6c6a6b6c6d6b6c6d6e6c6d6e6f6d6e6f706e6f7071
+SHA-256: 248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+</code></pre>
+<h3 id="vector-4-two-block-message-896-bits">Vector 4: Two Block Message (896 bits)</h3>
+<pre><code>Message: &quot;abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmn
+          hijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu&quot;
+Message (hex): 61626364656667686263646566676869636465666768696a6465666768696a6b
+              65666768696a6b6c666768696a6b6c6d6768696a6b6c6d6e68696a6b6c6d6e6f
+              696a6b6c6d6e6f706a6b6c6d6e6f70716b6c6d6e6f7071726c6d6e6f70717273
+              6d6e6f70717273746e6f707172737475
+SHA-256: cf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1
+</code></pre>
+<h3 id="vector-5-long-message-1000000-a-characters">Vector 5: Long Message (1,000,000 'a' characters)</h3>
+<pre><code>Message: 1,000,000 repetitions of 'a' (8,000,000 bits)
+SHA-256: cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0
+</code></pre>
+<h2 id="intermediate-values-for-abc">Intermediate Values (for &quot;abc&quot;)</h2>
+<h3 id="initial-hash-value-h0">Initial Hash Value (H(0))</h3>
+<pre><code>H0 = 6a09e667
+H1 = bb67ae85
+H2 = 3c6ef372
+H3 = a54ff53a
+H4 = 510e527f
+H5 = 9b05688c
+H6 = 1f83d9ab
+H7 = 5be0cd19
+</code></pre>
+<h3 id="round-constants-k">Round Constants (K)</h3>
+<pre><code>K[ 0..7 ] = 428a2f98 71374491 b5c0fbcf e9b5dba5 3956c25b 59f111f1 923f82a4 ab1c5ed5
+K[ 8..15] = d807aa98 12835b01 243185be 550c7dc3 72be5d74 80deb1fe 9bdc06a7 c19bf174
+K[16..23] = e49b69c1 efbe4786 0fc19dc6 240ca1cc 2de92c6f 4a7484aa 5cb0a9dc 76f988da
+K[24..31] = 983e5152 a831c66d b00327c8 bf597fc7 c6e00bf3 d5a79147 06ca6351 14292967
+K[32..39] = 27b70a85 2e1b2138 4d2c6dfc 53380d13 650a7354 766a0abb 81c2c92e 92722c85
+K[40..47] = a2bfe8a1 a81a664b c24b8b70 c76c51a3 d192e819 d6990624 f40e3585 106aa070
+K[48..55] = 19a4c116 1e376c08 2748774c 34b0bcb5 391c0cb3 4ed8aa4a 5b9cca4f 682e6ff3
+K[56..63] = 748f82ee 78a5636f 84c87814 8cc70208 90befffa a4506ceb bef9a3f7 c67178f2
+</code></pre>
+<hr>
+<h1 id="sha-384">SHA-384</h1>
+<h2 id="algorithm-parameters-1">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>384 bits (48 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>1024 bits (128 bytes)</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>64 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>80</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors-1">Test Vectors</h2>
+<h3 id="vector-1-empty-string-1">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bits)
+Message (hex): (empty)
+SHA-384: 38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da
+         274edebfe76f65fbd51ad2f14898b95b
+</code></pre>
+<h3 id="vector-2-abc-1">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (24 bits)
+Message (hex): 616263
+SHA-384: cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed
+         8086072ba1e7cc2358baeca134c825a7
+</code></pre>
+<h3 id="vector-3-two-block-message-896-bits">Vector 3: Two Block Message (896 bits)</h3>
+<pre><code>Message: &quot;abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmn
+          hijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu&quot;
+SHA-384: 09330c33f71147e83d192fc782cd1b4753111b173b3b05d22fa08086e3b0f712
+         fcc7c71a557e2db966c3e9fa91746039
+</code></pre>
+<h3 id="vector-4-long-message-1000000-a-characters">Vector 4: Long Message (1,000,000 'a' characters)</h3>
+<pre><code>Message: 1,000,000 repetitions of 'a' (8,000,000 bits)
+SHA-384: 9d0e1809716474cb086e834e310a4a1ced149e9c00f248527972cec5704c2a5b
+         07b8b3dc38ecc4ebae97ddd87f3d8985
+</code></pre>
+<h2 id="intermediate-values-for-abc-1">Intermediate Values (for &quot;abc&quot;)</h2>
+<h3 id="initial-hash-value-h0-1">Initial Hash Value (H(0))</h3>
+<pre><code>H0 = cbbb9d5dc1059ed8
+H1 = 629a292a367cd507
+H2 = 9159015a3070dd17
+H3 = 152fecd8f70e5939
+H4 = 67332667ffc00b31
+H5 = 8eb44a8768581511
+H6 = db0c2e0d64f98fa7
+H7 = 47b5481dbefa4fa4
+</code></pre>
+<hr>
+<h1 id="sha-512">SHA-512</h1>
+<h2 id="algorithm-parameters-2">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>512 bits (64 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>1024 bits (128 bytes)</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>64 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>80</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors-2">Test Vectors</h2>
+<h3 id="vector-1-empty-string-2">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bits)
+Message (hex): (empty)
+SHA-512: cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce
+         47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e
+</code></pre>
+<h3 id="vector-2-abc-2">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (24 bits)
+Message (hex): 616263
+SHA-512: ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a
+         2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f
+</code></pre>
+<h3 id="vector-3-two-block-message-896-bits-1">Vector 3: Two Block Message (896 bits)</h3>
+<pre><code>Message: &quot;abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmn
+          hijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu&quot;
+SHA-512: 8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018
+         501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909
+</code></pre>
+<h3 id="vector-4-long-message-1000000-a-characters-1">Vector 4: Long Message (1,000,000 'a' characters)</h3>
+<pre><code>Message: 1,000,000 repetitions of 'a' (8,000,000 bits)
+SHA-512: e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973eb
+         de0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b
+</code></pre>
+<h2 id="intermediate-values-for-abc-2">Intermediate Values (for &quot;abc&quot;)</h2>
+<h3 id="initial-hash-value-h0-2">Initial Hash Value (H(0))</h3>
+<pre><code>H0 = 6a09e667f3bcc908
+H1 = bb67ae8584caa73b
+H2 = 3c6ef372fe94f82b
+H3 = a54ff53a5f1d36f1
+H4 = 510e527fade682d1
+H5 = 9b05688c2b3e6c1f
+H6 = 1f83d9abfb41bd6b
+H7 = 5be0cd19137e2179
+</code></pre>
+<h3 id="round-constants-k---first-16">Round Constants (K) - First 16</h3>
+<pre><code>K[ 0] = 428a2f98d728ae22    K[ 1] = 7137449123ef65cd
+K[ 2] = b5c0fbcfec4d3b2f    K[ 3] = e9b5dba58189dbbc
+K[ 4] = 3956c25bf348b538    K[ 5] = 59f111f1b605d019
+K[ 6] = 923f82a4af194f9b    K[ 7] = ab1c5ed5da6d8118
+K[ 8] = d807aa98a3030242    K[ 9] = 12835b0145706fbe
+K[10] = 243185be4ee4b28c    K[11] = 550c7dc3d5ffb4e2
+K[12] = 72be5d74f27b896f    K[13] = 80deb1fe3b1696b1
+K[14] = 9bdc06a725c71235    K[15] = c19bf174cf692694
+</code></pre>
+<hr>
+<h1 id="sha-512224">SHA-512/224</h1>
+<h2 id="algorithm-parameters-3">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>224 bits (28 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>1024 bits (128 bytes)</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>64 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>80</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors-3">Test Vectors</h2>
+<h3 id="vector-1-empty-string-3">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bits)
+SHA-512/224: 6ed0dd02806fa89e25de060c19d3ac86cabb87d6a0ddd05c333b84f4
+</code></pre>
+<h3 id="vector-2-abc-3">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (24 bits)
+SHA-512/224: 4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa
+</code></pre>
+<hr>
+<h1 id="sha-512256">SHA-512/256</h1>
+<h2 id="algorithm-parameters-4">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>1024 bits (128 bytes)</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>64 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>80</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors-4">Test Vectors</h2>
+<h3 id="vector-1-empty-string-4">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bits)
+SHA-512/256: c672b8d1ef56ed28ab87c3622c5114069bdd3ad7b8f9737498d0c01ecef0967a
+</code></pre>
+<h3 id="vector-2-abc-4">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (24 bits)
+SHA-512/256: 53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23
+</code></pre>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/SHA2-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

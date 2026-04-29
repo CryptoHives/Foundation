@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Whirlpool Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Whirlpool Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Whirlpool-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="whirlpool-test-vectors">Whirlpool Test Vectors</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Whirlpool is a cryptographic hash function designed by Vincent Rijmen and
+Paulo S. L. M. Barreto. It produces a 512-bit hash value and is based on
+a modified AES-like block cipher.</p>
+<h2 id="specification">Specification</h2>
+<ul>
+<li><strong>Standard:</strong> ISO/IEC 10118-3:2004</li>
+<li><strong>Output Size:</strong> 512 bits (64 bytes)</li>
+<li><strong>Block Size:</strong> 512 bits (64 bytes)</li>
+<li><strong>Rounds:</strong> 10</li>
+<li><strong>State Size:</strong> 8×8 bytes (64 bytes)</li>
+</ul>
+<p>This implementation uses Whirlpool 3.0 (the final, standardized version).</p>
+<h2 id="official-reference">Official Reference</h2>
+<ul>
+<li>ISO/IEC 10118-3:2004</li>
+<li>NESSIE project: <a href="https://www.cosic.esat.kuleuven.be/nessie/">https://www.cosic.esat.kuleuven.be/nessie/</a></li>
+<li>Original paper: &quot;The Whirlpool Hashing Function&quot;</li>
+<li><a href="https://www.larc.usp.br/%7Epbarreto/WhirlpoolPage.html">https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html</a></li>
+</ul>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="vector-1-empty-string">Vector 1: Empty string</h3>
+<pre><code>Input:  &quot;&quot; (empty)
+Length: 0 bytes
+
+Output: 19FA61D75522A4669B44E39C1D2E1726C530232130D407F89AFEE0964997F7A7
+        3E83BE698B288FEBCF88E3E03C4F0757EA8964E59B63D93708B138CC42A66EB3
+</code></pre>
+<h3 id="vector-2-single-character-a">Vector 2: Single character &quot;a&quot;</h3>
+<pre><code>Input:  &quot;a&quot;
+Length: 1 byte
+Hex:    61
+
+Output: 8ACA2602792AEC6F11A67206531FB7D7F0DFF59413145E6973C45001D0087B42
+        D11BC645413AEFF63A42391A39145A591A92200D560195E53B478584FDAE231A
+</code></pre>
+<h3 id="vector-3-abc">Vector 3: &quot;abc&quot;</h3>
+<pre><code>Input:  &quot;abc&quot;
+Length: 3 bytes
+Hex:    616263
+
+Output: 4E2448A4C6F486BB16B6562C73B4020BF3043E3A731BCE721AE1B303D97E6D4C
+        7181EEBDB6C57E277D0E34957114CBD6C797FC9D95D8B582D225292076D4EEF5
+</code></pre>
+<h3 id="vector-4-message-digest">Vector 4: &quot;message digest&quot;</h3>
+<pre><code>Input:  &quot;message digest&quot;
+Length: 14 bytes
+
+Output: 378C84A4126E2DC6E56DCC7458377AAC838D00032230F53CE1F5700C0FFB4D3B
+        8421557659EF55C106B4B52AC5A4AAA692ED920052838F3362E86DBD37A8903E
+</code></pre>
+<h3 id="vector-5-lowercase-alphabet">Vector 5: Lowercase alphabet</h3>
+<pre><code>Input:  &quot;abcdefghijklmnopqrstuvwxyz&quot;
+Length: 26 bytes
+
+Output: F1D754662636FFE92C82EBB9212A484A8D38631EAD4238F5442EE13B8054E41B
+        08BF2A9251C30B6A0B8AAE86177AB4A6F68F673E7207865D5D9819A3DBA4EB3B
+</code></pre>
+<h3 id="vector-6-full-alphanumeric">Vector 6: Full alphanumeric</h3>
+<pre><code>Input:  &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789&quot;
+Length: 62 bytes
+
+Output: DC37E008CF9EE69BF11F00ED9ABA26901DD7C28CDEC066CC6AF42E40F82F3A1E
+        08EBA26629129D8FB7CB57211B9281A65517CC879D7B962142C65F5A7AF01467
+</code></pre>
+<h3 id="vector-7-extended-numeric">Vector 7: Extended numeric</h3>
+<pre><code>Input:  &quot;12345678901234567890123456789012345678901234567890123456789012345678901234567890&quot;
+Length: 80 bytes
+
+Output: 466EF18BABB0154D25B9D38A6414F5C08784372BCCB204D6549C4AFADB601429
+        4D5BD8DF2A6C44E538CD047B2681A51A2C60481E88C5A20B2C2A80CF3A9A083B
+</code></pre>
+<h3 id="vector-8-the-quick-brown-fox">Vector 8: &quot;The quick brown fox...&quot;</h3>
+<pre><code>Input:  &quot;The quick brown fox jumps over the lazy dog&quot;
+Length: 43 bytes
+
+Output: B97DE512E91E3828B40D2B0FDCE9CEB3C4A71F9BEA8D88E75C4FA854DF36725F
+        D2B52EB6544EDCACD6F8BEDDFEA403CB55AE31F03AD62A5EF54E42EE82C3FB35
+</code></pre>
+<h3 id="vector-9-million-a-characters">Vector 9: Million &quot;a&quot; characters</h3>
+<pre><code>Input:  &quot;a&quot; repeated 1,000,000 times
+Length: 1,000,000 bytes
+
+Output: 0C99005BEB57EFF50A7CF005560DDF5D29057FD86B20BFD62DECA0F1CCEA4AF5
+        1FC15490EDDC47AF32BB2B66C34FF9AD8C6008AD677F77126953B226E4ED8B01
+</code></pre>
+<h2 id="algorithm-details">Algorithm Details</h2>
+<h3 id="structure">Structure</h3>
+<ul>
+<li>Uses Miyaguchi-Preneel compression function</li>
+<li>10 rounds per block</li>
+<li>8×8 byte state matrix</li>
+<li>AES-like operations: SubBytes, ShiftColumns, MixRows, AddRoundKey</li>
+</ul>
+<h3 id="s-box">S-box</h3>
+<p>The S-box is derived from the composition of:</p>
+<ul>
+<li>Multiplicative inverse in GF(2^8)</li>
+<li>Affine transformation</li>
+</ul>
+<h3 id="mds-matrix">MDS Matrix</h3>
+<p>The MDS (Maximum Distance Separable) matrix uses elements from GF(2^8)
+with reduction polynomial x^8 + x^4 + x^3 + x^2 + 1.</p>
+<h3 id="round-constants">Round Constants</h3>
+<p>Round constants are derived from the S-box applied to sequential indices.</p>
+<h2 id="implementation-notes">Implementation Notes</h2>
+<ul>
+<li>Uses big-endian byte order</li>
+<li>256-bit message length counter (supports very large messages)</li>
+<li>State organized as 8×8 byte matrix (columns = state words)</li>
+<li>Cyclical shift pattern different from AES</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Whirlpool-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

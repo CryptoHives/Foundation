@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>AsyncLock Class | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="AsyncLock Class | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asynclock.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="asynclock-class">AsyncLock Class</h1>
+
+<p>A pooled async mutual exclusion lock for coordinating access to shared resources.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">CryptoHives.Foundation.Threading.Async.Pooled
+</code></pre>
+<h2 id="syntax">Syntax</h2>
+<pre><code class="lang-csharp">public sealed class AsyncLock : IResettable
+</code></pre>
+<h2 id="overview">Overview</h2>
+<p><code>AsyncLock</code> provides async mutual exclusion, similar to <code>SemaphoreSlim(1,1)</code> but optimized for the common async locking pattern. It returns a small value-type releaser that implements <code>IDisposable</code>/<code>IAsyncDisposable</code> so the lock can be released with a <code>using</code> pattern. The implementation uses pooled <code>IValueTaskSource</code> instances to minimize allocations in high-throughput scenarios and a local reusable waiter to avoid allocations for the first queued waiter.</p>
+<h2 id="benefits">Benefits</h2>
+<ul>
+<li><strong>Zero-allocation fast path</strong>: When the lock is uncontended the operation completes synchronously without heap allocations.</li>
+<li><strong>Pooled Task Sources</strong>: Reuses <code>IValueTaskSource&lt;Releaser&gt;</code> instances from an object pool when waiters are queued.</li>
+<li><strong>ValueTask-Based</strong>: Returns <code>ValueTask&lt;Releaser&gt;</code> for minimal allocation when the lock is available.</li>
+<li><strong>RAII Pattern</strong>: Uses disposable lock handles for automatic release.</li>
+<li><strong>Cancellation Support (optimized)</strong>: Supports <code>CancellationToken</code> for queued waiters; on .NET 6+ registration uses <code>UnsafeRegister</code> with a static delegate to reduce execution-context capture and per-registration overhead.</li>
+<li><strong>High Performance</strong>: Optimized for both uncontended and contended scenarios while keeping allocations low.</li>
+</ul>
+<h2 id="constructor">Constructor</h2>
+<pre><code class="lang-csharp">public AsyncLock(
+    IGetPooledManualResetValueTaskSource&lt;Releaser&gt;? pool = null)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pool</code></td>
+<td>Optional custom pool for ValueTaskSource instances.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> Unlike other primitives in this library, <code>AsyncLock</code> always runs continuations asynchronously (hardcoded to <code>true</code>). This prevents potential deadlocks in common lock usage patterns.</p>
+</blockquote>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IsTaken</code></td>
+<td><code>bool</code></td>
+<td>Gets whether the lock is currently held by a caller or queued handoff.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="lockasync">LockAsync</h3>
+<pre><code class="lang-csharp">public ValueTask&lt;Releaser&gt; LockAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Asynchronously acquires the lock. Returns a disposable that releases the lock when disposed.</p>
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code>cancellationToken</code> - Optional cancellation token; only observed if the lock cannot be acquired immediately.</li>
+</ul>
+<p><strong>Returns</strong>: A <code>ValueTask&lt;Releaser&gt;</code> that completes when the lock is acquired. Dispose the result to release the lock.</p>
+<p><strong>Notes on allocations and cancellation</strong>:</p>
+<ul>
+<li>The <strong>fast path</strong> (uncontended) completes synchronously and performs no heap allocations.</li>
+<li>The implementation maintains a <strong>local waiter</strong> instance that serves the first queued waiter without allocating. Subsequent waiters use instances obtained from the configured object pool; if the pool is exhausted a new instance is allocated.</li>
+<li>Passing a <code>CancellationToken</code> will register a callback when the waiter is queued. On .NET 6+ the code uses <code>UnsafeRegister</code> together with a static delegate and a small struct context to minimize capture and reduce allocation/ExecutionContext overhead. Even so, cancellation registrations and creating <code>Task</code> objects for pre-cancelled tokens may allocate; prefer avoiding cancellation tokens unless necessary for the scenario.</li>
+</ul>
+<p><strong>Throws</strong>:</p>
+<ul>
+<li><code>OperationCanceledException</code> - If the operation is canceled via the cancellation token.</li>
+</ul>
+<h3 id="tryreset">TryReset</h3>
+<pre><code class="lang-csharp">public bool TryReset()
+</code></pre>
+<p>Implements <code>IResettable</code> to allow returning this instance to a <code>DefaultObjectPool&lt;AsyncLock&gt;</code>.</p>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>Attempts to acquire the internal spin lock. If the lock is already held by a concurrent operation, the method returns <code>false</code> immediately and the pool discards the instance.</li>
+<li>If the lock is acquired but the logical lock is currently held (<code>IsTaken == true</code>) or waiters are queued, the method returns <code>false</code> — the instance is still in active use and must not be recycled.</li>
+<li>Otherwise the local waiter is reset and the method returns <code>true</code>.</li>
+</ul>
+<p><strong>Thread Safety</strong>: <code>TryReset()</code> is safe to call concurrently with other operations. It will simply return <code>false</code> if the instance is in use.</p>
+<p><strong>Example</strong>:</p>
+<pre><code class="lang-csharp">// Using AsyncLock with an object pool
+var pool = new DefaultObjectPool&lt;AsyncLock&gt;(
+    new DefaultPooledObjectPolicy&lt;AsyncLock&gt;());
+
+var lk = pool.Get();
+try
+{
+    using (await lk.LockAsync(ct))
+    {
+        // critical section
+    }
+}
+finally
+{
+    pool.Return(lk); // calls TryReset() internally
+}
+</code></pre>
+<h2 id="thread-safety">Thread Safety</h2>
+<p><strong>Thread-safe</strong>. All public methods are thread-safe and can be called concurrently from multiple threads.</p>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Uncontended Lock</strong>: O(1), synchronous completion (no allocation)</li>
+<li><strong>Contended Lock</strong>: O(1) to enqueue waiter; waiter instances are reused from the object pool (allocation only if pool is exhausted)</li>
+<li><strong>Lock Release</strong>: O(1) to signal next waiter</li>
+<li><strong>Memory</strong>: Minimal allocations due to pooled task sources and local waiter reuse</li>
+</ul>
+<h2 id="benchmark-results">Benchmark Results</h2>
+<p>The benchmarks compare various <code>AsyncLock</code> implementations:</p>
+<ul>
+<li>PooledAsyncLock: The pooled implementation from this library</li>
+<li>ProtoPromiseAsyncLock: The implementation from the Proto.Promises.Threading library</li>
+<li>RefImplAsyncLock: The reference implementation from Stephen Toub's blog, which does not support cancellation tokens</li>
+<li>NitoAsyncLock: The implementation from the Nito.AsyncEx library</li>
+<li>NeoSmartAsyncLock: The implementation from the NeoSmart.AsyncLock library</li>
+<li>AsyncNonKeyedLocker: An implementation from the AsyncKeyedLock.AsyncNonKeyedLocker library which uses SemaphoreSlim internally</li>
+<li>SemaphoreSlim: The .NET built-in synchronization primitive</li>
+<li>VS.Threading AsyncSemaphore: The Microsoft.VisualStudio.Threading semaphore used as a lock-compatible baseline</li>
+</ul>
+<h3 id="single-lock-benchmark">Single Lock Benchmark</h3>
+<p>This benchmark measures the performance of acquiring and releasing a single lock in an uncontended scenario.
+In order to understand the impact of moving from a <code>lock</code> or <code>Interlocked</code> implementation to an async lock, the <code>InterlockedIncrement</code>, <code>lock</code> and .NET 9 <code>Lock</code> with <code>EnterScope()</code> are also measured with a integer increment as workload.
+The benchmark shows both throughput (operations per second) and allocations per operation. ProtoPromise is currently a strong uncontended competitor and can beat the pooled implementation on raw throughput, while the pooled implementation stays allocation-free and keeps the same API shape and cancellation behavior used throughout this library. VS.Threading is also included as a semaphore-based comparison point, but in the published uncontended results it trails both ProtoPromise and the pooled implementation.
+The new .NET 9 <code>Lock</code> primitive shows slighlty better performance than the well known lock on an object, but <code>AsyncLock</code> remains competitive due to the fast path implementation with Interlocked variable based state.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lock · Increment · System</td>
+<td style="text-align: right;">0.0010 ns</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Interlocked.Add · System</td>
+<td style="text-align: right;">0.1764 ns</td>
+<td style="text-align: right;">0.021</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Interlocked.Inc · System</td>
+<td style="text-align: right;">0.1925 ns</td>
+<td style="text-align: right;">0.023</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Interlocked.Exchange · System</td>
+<td style="text-align: right;">0.5166 ns</td>
+<td style="text-align: right;">0.062</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Interlocked.CmpX · System</td>
+<td style="text-align: right;">0.8476 ns</td>
+<td style="text-align: right;">0.102</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Lock · System</td>
+<td style="text-align: right;">3.0566 ns</td>
+<td style="text-align: right;">0.368</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · Lock.EnterScope · System</td>
+<td style="text-align: right;">3.1459 ns</td>
+<td style="text-align: right;">0.379</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SpinLock · SpinLock · CryptoHives</td>
+<td style="text-align: right;">3.2782 ns</td>
+<td style="text-align: right;">0.395</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Lock · lock() · System</td>
+<td style="text-align: right;">4.0113 ns</td>
+<td style="text-align: right;">0.483</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · ProtoPromise</td>
+<td style="text-align: right;">7.0620 ns</td>
+<td style="text-align: right;">0.851</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · Pooled</td>
+<td style="text-align: right;">8.3011 ns</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncSemaphore · VS.Threading</td>
+<td style="text-align: right;">15.7214 ns</td>
+<td style="text-align: right;">1.894</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · SemaphoreSlim · System</td>
+<td style="text-align: right;">16.4273 ns</td>
+<td style="text-align: right;">1.979</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · RefImpl</td>
+<td style="text-align: right;">17.8237 ns</td>
+<td style="text-align: right;">2.147</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · NonKeyed</td>
+<td style="text-align: right;">19.4962 ns</td>
+<td style="text-align: right;">2.349</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · Nito.AsyncEx</td>
+<td style="text-align: right;">37.5934 ns</td>
+<td style="text-align: right;">4.529</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>SpinWait · SpinOnce · System</td>
+<td style="text-align: right;">41.3498 ns</td>
+<td style="text-align: right;">4.981</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SpinLock · SpinLock · System</td>
+<td style="text-align: right;">44.9287 ns</td>
+<td style="text-align: right;">5.412</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>LockAsync · AsyncLock · NeoSmart</td>
+<td style="text-align: right;">55.3936 ns</td>
+<td style="text-align: right;">6.673</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="multiple-concurrent-lock-benchmark">Multiple Concurrent Lock Benchmark</h3>
+<p>This benchmark measures performance under contention with multiple concurrent lock requests (iterations).
+The benchmark shows both throughput (operations per second) and allocations per operation. Zero iterations duplicates the uncontended scenario.
+It is noticable that all implementations except the pooled one and ProtoPromise require memory allocations on contention, as long as the <code>ValueTask</code> is not converted to <code>Task</code>.
+ProtoPromise is particularly competitive here and can outperform the pooled <code>AsyncLock</code> in several low- and mid-contention cases, especially when comparing pure throughput. The pooled implementation still distinguishes itself by combining allocation-free <code>ValueTask</code> usage with built-in cancellation support and predictable behavior when integrated with the rest of this library. VS.Threading is included as another real-world baseline, but its semaphore-based path is slower and allocates under contention in the published results.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">9.944 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">10.279 ns</td>
+<td style="text-align: right;">1.03</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">11.144 ns</td>
+<td style="text-align: right;">1.12</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">17.640 ns</td>
+<td style="text-align: right;">1.77</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">18.594 ns</td>
+<td style="text-align: right;">1.87</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">19.394 ns</td>
+<td style="text-align: right;">1.95</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">20.600 ns</td>
+<td style="text-align: right;">2.07</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">39.078 ns</td>
+<td style="text-align: right;">3.93</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>0</td>
+<td>None</td>
+<td style="text-align: right;">58.457 ns</td>
+<td style="text-align: right;">5.88</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10.323 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">10.642 ns</td>
+<td style="text-align: right;">1.03</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">11.886 ns</td>
+<td style="text-align: right;">1.15</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">17.517 ns</td>
+<td style="text-align: right;">1.70</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">19.447 ns</td>
+<td style="text-align: right;">1.88</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">21.326 ns</td>
+<td style="text-align: right;">2.07</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">38.806 ns</td>
+<td style="text-align: right;">3.76</td>
+<td style="text-align: right;">320 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>0</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">56.755 ns</td>
+<td style="text-align: right;">5.50</td>
+<td style="text-align: right;">208 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">28.165 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">36.486 ns</td>
+<td style="text-align: right;">1.30</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">42.075 ns</td>
+<td style="text-align: right;">1.49</td>
+<td style="text-align: right;">88 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">64.412 ns</td>
+<td style="text-align: right;">2.29</td>
+<td style="text-align: right;">168 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">76.101 ns</td>
+<td style="text-align: right;">2.70</td>
+<td style="text-align: right;">216 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">91.453 ns</td>
+<td style="text-align: right;">3.25</td>
+<td style="text-align: right;">728 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">116.605 ns</td>
+<td style="text-align: right;">4.14</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">480.060 ns</td>
+<td style="text-align: right;">17.05</td>
+<td style="text-align: right;">271 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">543.285 ns</td>
+<td style="text-align: right;">19.29</td>
+<td style="text-align: right;">352 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">46.467 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">78.408 ns</td>
+<td style="text-align: right;">1.69</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">79.121 ns</td>
+<td style="text-align: right;">1.70</td>
+<td style="text-align: right;">168 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">119.281 ns</td>
+<td style="text-align: right;">2.57</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">394.059 ns</td>
+<td style="text-align: right;">8.48</td>
+<td style="text-align: right;">968 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">516.424 ns</td>
+<td style="text-align: right;">11.12</td>
+<td style="text-align: right;">272 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">565.700 ns</td>
+<td style="text-align: right;">12.18</td>
+<td style="text-align: right;">504 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">660.724 ns</td>
+<td style="text-align: right;">14.22</td>
+<td style="text-align: right;">640 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">261.829 ns</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">270.938 ns</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">880 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">309.915 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">511.846 ns</td>
+<td style="text-align: right;">1.65</td>
+<td style="text-align: right;">1680 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">542.904 ns</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">4400 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">619.827 ns</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">2160 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">634.247 ns</td>
+<td style="text-align: right;">2.05</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">3,191.047 ns</td>
+<td style="text-align: right;">10.30</td>
+<td style="text-align: right;">1352 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">3,509.004 ns</td>
+<td style="text-align: right;">11.32</td>
+<td style="text-align: right;">2296 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">466.087 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">515.058 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">628.808 ns</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">2288 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">700.242 ns</td>
+<td style="text-align: right;">1.36</td>
+<td style="text-align: right;">1680 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,204.949 ns</td>
+<td style="text-align: right;">6.22</td>
+<td style="text-align: right;">6800 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,474.221 ns</td>
+<td style="text-align: right;">6.75</td>
+<td style="text-align: right;">1352 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,349.064 ns</td>
+<td style="text-align: right;">8.45</td>
+<td style="text-align: right;">3888 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,972.770 ns</td>
+<td style="text-align: right;">9.66</td>
+<td style="text-align: right;">5176 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,582.434 ns</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,587.874 ns</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">8800 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">3,169.397 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,740.432 ns</td>
+<td style="text-align: right;">1.50</td>
+<td style="text-align: right;">21120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">5,232.310 ns</td>
+<td style="text-align: right;">1.65</td>
+<td style="text-align: right;">41120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">6,004.082 ns</td>
+<td style="text-align: right;">1.89</td>
+<td style="text-align: right;">21600 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">6,037.141 ns</td>
+<td style="text-align: right;">1.91</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">34,158.735 ns</td>
+<td style="text-align: right;">10.78</td>
+<td style="text-align: right;">12215 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">35,626.170 ns</td>
+<td style="text-align: right;">11.24</td>
+<td style="text-align: right;">21800 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · ProtoPromise</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,536.588 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (ValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,987.139 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NeoSmart</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,916.785 ns</td>
+<td style="text-align: right;">1.19</td>
+<td style="text-align: right;">21008 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncSemaphore · VS.Threading</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">6,643.265 ns</td>
+<td style="text-align: right;">1.33</td>
+<td style="text-align: right;">21120 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Pooled (Task)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">33,360.289 ns</td>
+<td style="text-align: right;">6.69</td>
+<td style="text-align: right;">12216 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · Nito</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">33,478.485 ns</td>
+<td style="text-align: right;">6.71</td>
+<td style="text-align: right;">65120 B</td>
+</tr>
+<tr>
+<td>Multiple · SemaphoreSlim · System</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">43,340.455 ns</td>
+<td style="text-align: right;">8.69</td>
+<td style="text-align: right;">37792 B</td>
+</tr>
+<tr>
+<td>Multiple · AsyncLock · NonKeyed</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">51,865.969 ns</td>
+<td style="text-align: right;">10.40</td>
+<td style="text-align: right;">50600 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmark-analysis">Benchmark Analysis</h3>
+<p><strong>Key Findings:</strong></p>
+<ol>
+<li><p><strong>Uncontended Performance</strong>: <code>AsyncLock</code> performs comparably to or better than <code>SemaphoreSlim</code> in uncontended scenarios due to the optimized fast path that avoids allocations entirely.</p>
+</li>
+<li><p><strong>Memory Efficiency</strong>: The pooled <code>IValueTaskSource</code> approach significantly reduces allocations compared to <code>TaskCompletionSource</code>-based implementations. This is especially beneficial in high-throughput scenarios.</p>
+</li>
+<li><p><strong>Contended Scenarios</strong>: Under contention, the local waiter optimization ensures the first queued waiter incurs no allocation, while subsequent waiters benefit from pool reuse. ProtoPromise can outperform the pooled implementation in several published throughput measurements, while <code>SemaphoreSlim</code> is also competitive in some cases but always at the cost of allocations.</p>
+</li>
+<li><p><strong>ValueTask Advantage</strong>: Returning <code>ValueTask&lt;Releaser&gt;</code> instead of <code>Task</code> allows always allocation free completion.</p>
+</li>
+</ol>
+<p><strong>When to Choose AsyncLock:</strong></p>
+<ul>
+<li>High-throughput scenarios where lock acquisition is frequent</li>
+<li>Memory-sensitive applications where allocation pressure matters</li>
+<li>Scenarios where locks are typically contended or allocation free cancellation support is needed</li>
+</ul>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="do-use-the-using-pattern-to-ensure-lock-release-and-await-the-result-directly">DO: Use the using pattern to ensure lock release and await the result directly</h3>
+<pre><code class="lang-csharp">// Good: Minimal time holding lock
+public async Task UpdateAsync(Data newData)
+{
+    // Prepare outside lock
+    var processed = await PrepareDataAsync(newData);
+
+    // using ensures lock is released
+    using (await _lock.LockAsync())
+    {
+        _data = processed;
+    }
+}
+</code></pre>
+<h3 id="do-keep-critical-sections-short">DO: Keep critical sections short</h3>
+<pre><code class="lang-csharp">// Good: Minimal time holding lock
+using (await _lock.LockAsync())
+{
+    _data = processed;
+}
+</code></pre>
+<h3 id="do-prefer-avoiding-cancellationtoken-for-hot-path-locks">DO: Prefer avoiding CancellationToken for hot-path locks</h3>
+<p>Cancellation registrations allocate a small control structure. For hot-path code, omit the token when possible, or perform an early <code>cancellationToken.IsCancellationRequested</code> check before calling <code>LockAsync</code> to avoid allocations from <code>Task.FromCanceled</code>.</p>
+<h3 id="do-configure-a-larger-pool-under-high-contention">DO: Configure a larger pool under high contention</h3>
+<p>If you expect many concurrent waiters, provide a custom object pool with a larger retention size so allocations are avoided when the pool can satisfy requests.</p>
+<h3 id="dont-create-new-locks-repeatedly">DON'T: Create new locks repeatedly</h3>
+<pre><code class="lang-csharp">// Bad: Creating new lock each time
+public async Task OperationAsync()
+{
+    var lock = new AsyncLock(); // Don't do this!
+    Task.Run(async ()=&gt; await Work(lock));
+    Task.Run(async ()=&gt; await Work(lock));
+}
+
+public async Task Work(AsyncLock lock)
+{
+    using (await lock.LockAsync())
+    {
+        // Work...
+    }
+}
+</code></pre>
+<h3 id="dont-hold-the-lock-during-long-running-operations">DON'T: Hold the lock during long-running operations</h3>
+<pre><code class="lang-csharp">// Bad: Holding lock during slow operation
+using (await _lock.LockAsync())
+{
+    await SlowDatabaseQueryAsync(); // Don't hold lock!
+}
+</code></pre>
+<h3 id="dont-nest-locks-may-deadlock">DON'T: Nest locks (may deadlock)</h3>
+<pre><code class="lang-csharp">// Bad: Risk of deadlock
+using (await _lock1.LockAsync())
+{
+    using (await _lock2.LockAsync()) // Deadlock risk!
+    {
+        // Work...
+    }
+}
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="index.html">Threading Package Overview</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a> - Manual-reset event variant</li>
+<li><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a> - Async reader-writer lock</li>
+<li><a href="asynccountdownevent.html">AsyncCountdownEvent</a> - Async countdown event</li>
+<li><a href="asyncbarrier.html">AsyncBarrier</a> - Async barrier synchronization primitive</li>
+<li><a href="asyncsemaphore.html">AsyncSemaphore</a> - Async semaphore primitive</li>
+<li><a href="benchmarks.html">Benchmarks</a> - Benchmark description</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asynclock.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class AesKeyWrapPad | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class AesKeyWrapPad | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="AES Key Wrap with Padding as specified in RFC 5649 (and AES Key Wrap per RFC 3394).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad">
+
+
+
+  <h1 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad" class="text-break">
+Class AesKeyWrapPad  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Security.html">Security</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.html">Cryptography</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.html">Cipher</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Security.Cryptography.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>AES Key Wrap with Padding as specified in RFC 5649 (and AES Key Wrap per RFC 3394).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class AesKeyWrapPad : IDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">AesKeyWrapPad</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+AES Key Wrap with Padding (KWP) extends RFC 3394 AES Key Wrap to support
+arbitrary-length key material (1 byte minimum), adding zero-padding and a
+message length indicator to the integrity check value.
+</p>
+<p>
+<b>Algorithm overview:</b>
+<ul><li>Uses AES ECB as the underlying block cipher</li><li>Supports 128, 192, and 256-bit key encryption keys (KEKs)</li><li>Wrap output is input length rounded up to 8-byte boundary + 8 bytes overhead</li><li>Deterministic: same input always produces the same output</li></ul>
+
+<p>
+<b>Example usage:</b>
+<pre><code class="lang-csharp">using var kwp = new AesKeyWrapPad(kek);
+<p>// Wrap a key
+byte[] wrapped = kwp.WrapKey(keyToProtect);</p>
+<p>// Unwrap a key
+byte[] unwrapped = kwp.UnwrapKey(wrapped);</p></code></pre>
+
+<p>
+References:
+<ul><li><a href="https://www.rfc-editor.org/rfc/rfc5649">RFC 5649 — AES Key Wrap with Padding</a></li><li><a href="https://www.rfc-editor.org/rfc/rfc3394">RFC 3394 — AES Key Wrap</a></li><li><a href="https://csrc.nist.gov/pubs/sp/800/38/f/final">NIST SP 800-38F</a></li></ul>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad__ctor_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad__ctor_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.#ctor(System.ReadOnlySpan{System.Byte})">
+  AesKeyWrapPad(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.html">AesKeyWrapPad</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AesKeyWrapPad(ReadOnlySpan&lt;byte&gt; kek)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>kek</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The key encryption key (16, 24, or 32 bytes).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown when <code class="paramref">kek</code> is not 16, 24, or 32 bytes.</p>
+</dd>
+  </dl>
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_Dispose_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.Dispose*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_Dispose" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L469"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_UnwrapKey_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.UnwrapKey*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_UnwrapKey_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.UnwrapKey(System.ReadOnlySpan{System.Byte})">
+  UnwrapKey(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L215"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Unwraps key material using AES Key Wrap with Padding (RFC 5649).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] UnwrapKey(ReadOnlySpan&lt;byte&gt; wrappedKey)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>wrappedKey</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The wrapped key to unwrap (minimum 16 bytes, multiple of 8).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The original key material.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown when <code class="paramref">wrappedKey</code> has invalid length.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.cryptographicexception">CryptographicException</a></dt>
+    <dd><p>Thrown when integrity check fails.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.objectdisposedexception">ObjectDisposedException</a></dt>
+    <dd><p>Thrown when the instance has been disposed.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_UnwrapKeyNoPad_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.UnwrapKeyNoPad*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_UnwrapKeyNoPad_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.UnwrapKeyNoPad(System.ReadOnlySpan{System.Byte})">
+  UnwrapKeyNoPad(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L292"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Unwraps key material using AES Key Wrap (RFC 3394) without padding.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] UnwrapKeyNoPad(ReadOnlySpan&lt;byte&gt; wrappedKey)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>wrappedKey</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The wrapped key to unwrap. Must be a multiple of 8 bytes and at least 24 bytes.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The original key material (wrapped key length - 8 bytes).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown when <code class="paramref">wrappedKey</code> has invalid length.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.cryptographicexception">CryptographicException</a></dt>
+    <dd><p>Thrown when integrity check fails.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.objectdisposedexception">ObjectDisposedException</a></dt>
+    <dd><p>Thrown when the instance has been disposed.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_WrapKey_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.WrapKey*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_WrapKey_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.WrapKey(System.ReadOnlySpan{System.Byte})">
+  WrapKey(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps key material using AES Key Wrap with Padding (RFC 5649).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] WrapKey(ReadOnlySpan&lt;byte&gt; keyToWrap)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>keyToWrap</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The key material to wrap (1 or more bytes).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The wrapped key. Length is input length rounded up to 8-byte boundary + 8 bytes.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown when <code class="paramref">keyToWrap</code> is empty.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.objectdisposedexception">ObjectDisposedException</a></dt>
+    <dd><p>Thrown when the instance has been disposed.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_WrapKeyNoPad_" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.WrapKeyNoPad*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Cipher_AesKeyWrapPad_WrapKeyNoPad_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.AesKeyWrapPad.WrapKeyNoPad(System.ReadOnlySpan{System.Byte})">
+  WrapKeyNoPad(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L260"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps key material using AES Key Wrap (RFC 3394) without padding.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte[] WrapKeyNoPad(ReadOnlySpan&lt;byte&gt; keyToWrap)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>keyToWrap</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The key material to wrap. Must be a multiple of 8 bytes and at least 16 bytes.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The wrapped key (input length + 8 bytes).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown when <code class="paramref">keyToWrap</code> is less than 16 bytes or not a multiple of 8.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.objectdisposedexception">ObjectDisposedException</a></dt>
+    <dd><p>Thrown when the instance has been disposed.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/Aes/AesKeyWrapPad.cs/#L55" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

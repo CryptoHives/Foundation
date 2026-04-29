@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Cryptographic Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Cryptographic Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/README.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cryptographic-test-vectors">Cryptographic Test Vectors</h1>
+
+<p>This folder contains test vectors for cryptographic hash algorithms from official sources.</p>
+<h2 id="implementation-status">Implementation Status</h2>
+<h3 id="fips-180-4-secure-hash-standard">FIPS 180-4 (Secure Hash Standard)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-1</td>
+<td>160 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA1</code></td>
+</tr>
+<tr>
+<td>SHA-224</td>
+<td>224 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA224</code></td>
+</tr>
+<tr>
+<td>SHA-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA256</code></td>
+</tr>
+<tr>
+<td>SHA-384</td>
+<td>384 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA384</code></td>
+</tr>
+<tr>
+<td>SHA-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA512</code></td>
+</tr>
+<tr>
+<td>SHA-512/224</td>
+<td>224 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA512_224</code></td>
+</tr>
+<tr>
+<td>SHA-512/256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA512_256</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="fips-202-sha-3-standard">FIPS 202 (SHA-3 Standard)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA3-224</td>
+<td>224 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_224</code></td>
+</tr>
+<tr>
+<td>SHA3-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_256</code></td>
+</tr>
+<tr>
+<td>SHA3-384</td>
+<td>384 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_384</code></td>
+</tr>
+<tr>
+<td>SHA3-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>SHA3_512</code></td>
+</tr>
+<tr>
+<td>SHAKE128</td>
+<td>Variable</td>
+<td>✅ Implemented</td>
+<td><code>Shake128</code></td>
+</tr>
+<tr>
+<td>SHAKE256</td>
+<td>Variable</td>
+<td>✅ Implemented</td>
+<td><code>Shake256</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="nist-sp-800-185-sha-3-derived-functions">NIST SP 800-185 (SHA-3 Derived Functions)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Security</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cSHAKE128</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>CShake128</code></td>
+</tr>
+<tr>
+<td>cSHAKE256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>CShake256</code></td>
+</tr>
+<tr>
+<td>KMAC128</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>KMac128</code></td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>KMac256</code></td>
+</tr>
+<tr>
+<td>TupleHash128</td>
+<td>128 bits</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+<tr>
+<td>TupleHash256</td>
+<td>256 bits</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+<tr>
+<td>ParallelHash128</td>
+<td>128 bits</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+<tr>
+<td>ParallelHash256</td>
+<td>256 bits</td>
+<td>⬜ Not implemented</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rfc-9861-turboshake-and-kangarootwelve">RFC 9861 (TurboSHAKE and KangarooTwelve)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Security</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TurboSHAKE128</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>TurboShake128</code></td>
+</tr>
+<tr>
+<td>TurboSHAKE256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>TurboShake256</code></td>
+</tr>
+<tr>
+<td>KT128</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>KT128</code></td>
+</tr>
+<tr>
+<td>KT256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>KT256</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> KT128 and KT256 (formerly KangarooTwelve and MarsupilamiFourteen) are defined in RFC 9861.
+They use reduced-round Keccak (12 rounds) for ~2× faster performance than SHAKE.</p>
+</blockquote>
+<h3 id="nist-fips-207-ascon-lightweight-cryptography">NIST FIPS 207 (Ascon Lightweight Cryptography)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ascon-Hash256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>AsconHash256</code></td>
+</tr>
+<tr>
+<td>Ascon-XOF128</td>
+<td>Variable</td>
+<td>✅ Implemented</td>
+<td><code>AsconXof128</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> Ascon was selected as the NIST Lightweight Cryptography standard in 2023.
+It is designed for constrained environments (IoT, embedded systems).</p>
+</blockquote>
+<h3 id="keccak-original-algorithm">Keccak (Original Algorithm)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Keccak-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>Keccak256</code></td>
+</tr>
+<tr>
+<td>Keccak-384</td>
+<td>384 bits</td>
+<td>✅ Implemented</td>
+<td><code>Keccak384</code></td>
+</tr>
+<tr>
+<td>Keccak-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>Keccak512</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> Keccak uses the original Keccak padding (0x01) as used in Ethereum.
+SHA-3 uses different padding (0x06). Use <code>SHA3_256</code> for NIST SHA-3 compliance.</p>
+</blockquote>
+<h3 id="rfc-7693-blake2">RFC 7693 (BLAKE2)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Features</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BLAKE2b</td>
+<td>1-64 bytes</td>
+<td>Hash, Keyed (MAC)</td>
+<td>✅ Implemented</td>
+<td><code>Blake2b</code></td>
+</tr>
+<tr>
+<td>BLAKE2s</td>
+<td>1-32 bytes</td>
+<td>Hash, Keyed (MAC)</td>
+<td>✅ Implemented</td>
+<td><code>Blake2s</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="blake2-features">BLAKE2 Features</h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>BLAKE2b</th>
+<th>BLAKE2s</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Variable output</td>
+<td>✅</td>
+<td>✅</td>
+<td>Output size 1-64 bytes (b) or 1-32 bytes (s)</td>
+</tr>
+<tr>
+<td>Keyed hashing (MAC)</td>
+<td>✅</td>
+<td>✅</td>
+<td>Built-in MAC mode with key up to 64/32 bytes</td>
+</tr>
+<tr>
+<td>Salt</td>
+<td>❌</td>
+<td>❌</td>
+<td>Optional (not implemented)</td>
+</tr>
+<tr>
+<td>Personalization</td>
+<td>❌</td>
+<td>❌</td>
+<td>Optional (not implemented)</td>
+</tr>
+<tr>
+<td>Tree hashing</td>
+<td>❌</td>
+<td>❌</td>
+<td>Optional (not implemented)</td>
+</tr>
+<tr>
+<td>Parallel variants</td>
+<td>❌</td>
+<td>❌</td>
+<td>BLAKE2bp/BLAKE2sp (not implemented)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="blake3">BLAKE3</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Features</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BLAKE3</td>
+<td>Variable</td>
+<td>Hash, Keyed, Derive Key</td>
+<td>✅ Implemented</td>
+<td><code>Blake3</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="blake3-modes">BLAKE3 Modes</h4>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Status</th>
+<th>Factory Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash</td>
+<td>✅</td>
+<td><code>Blake3.Create()</code></td>
+<td>Standard cryptographic hashing</td>
+</tr>
+<tr>
+<td>Keyed Hash</td>
+<td>✅</td>
+<td><code>Blake3.CreateKeyed(key)</code></td>
+<td>MAC with 32-byte key</td>
+</tr>
+<tr>
+<td>Derive Key</td>
+<td>✅</td>
+<td><code>Blake3.CreateDeriveKey(context)</code></td>
+<td>Key derivation from context + input</td>
+</tr>
+<tr>
+<td>XOF</td>
+<td>✅</td>
+<td><code>Blake3.Create(outputBytes)</code></td>
+<td>Extendable output (any length)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ripemd-family">RIPEMD Family</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RIPEMD-160</td>
+<td>160 bits</td>
+<td>✅ Implemented</td>
+<td><code>Ripemd160</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> RIPEMD-160 is widely used in cryptocurrency systems (Bitcoin address generation).</p>
+</blockquote>
+<h3 id="sm3-chinese-national-standard">SM3 (Chinese National Standard)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SM3</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>SM3</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Standard:</strong> GB/T 32905-2016 (China), ISO/IEC 10118-3:2018</p>
+</blockquote>
+<h3 id="whirlpool-isoiec-10118-3">Whirlpool (ISO/IEC 10118-3)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Whirlpool</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>Whirlpool</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Standard:</strong> ISO/IEC 10118-3:2004, NESSIE recommended</p>
+</blockquote>
+<h3 id="streebog--gost-r-3411-2012-russian-national-standard">Streebog / GOST R 34.11-2012 (Russian National Standard)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Streebog-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>Streebog</code></td>
+</tr>
+<tr>
+<td>Streebog-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>Streebog</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Standard:</strong> GOST R 34.11-2012, RFC 6986</p>
+</blockquote>
+<h3 id="kupyna--dstu-75642014-ukrainian-national-standard">Kupyna / DSTU 7564:2014 (Ukrainian National Standard)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kupyna-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>Kupyna</code></td>
+</tr>
+<tr>
+<td>Kupyna-384</td>
+<td>384 bits</td>
+<td>✅ Implemented</td>
+<td><code>Kupyna</code></td>
+</tr>
+<tr>
+<td>Kupyna-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>Kupyna</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Standard:</strong> DSTU 7564:2014 (Ukraine)</p>
+</blockquote>
+<h3 id="lsh--ks-x-3262-korean-national-standard">LSH / KS X 3262 (Korean National Standard)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LSH-256-224</td>
+<td>224 bits</td>
+<td>✅ Implemented</td>
+<td><code>Lsh256</code></td>
+</tr>
+<tr>
+<td>LSH-256-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>Lsh256</code></td>
+</tr>
+<tr>
+<td>LSH-512-256</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>Lsh512</code></td>
+</tr>
+<tr>
+<td>LSH-512-384</td>
+<td>384 bits</td>
+<td>✅ Implemented</td>
+<td><code>Lsh512</code></td>
+</tr>
+<tr>
+<td>LSH-512-512</td>
+<td>512 bits</td>
+<td>✅ Implemented</td>
+<td><code>Lsh512</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Standard:</strong> KS X 3262 (South Korea), approved by KCMVP</p>
+</blockquote>
+<h3 id="legacy-algorithms">Legacy Algorithms</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MD5</td>
+<td>128 bits</td>
+<td>✅ Implemented (deprecated)</td>
+<td><code>MD5</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Warning:</strong> MD5 is cryptographically broken and should NOT be used for security purposes.
+It is provided only for legacy compatibility and non-cryptographic uses.</p>
+</blockquote>
+<hr>
+<h2 id="mac-algorithms">MAC Algorithms</h2>
+<h3 id="rfc-2104--fips-198-1-hmac">RFC 2104 / FIPS 198-1 (HMAC)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Hash</th>
+<th>MAC Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HMAC-SHA-256</td>
+<td>SHA-256</td>
+<td>32 bytes</td>
+<td>✅ Implemented</td>
+<td><code>HmacSha256</code></td>
+</tr>
+<tr>
+<td>HMAC-SHA-384</td>
+<td>SHA-384</td>
+<td>48 bytes</td>
+<td>✅ Implemented</td>
+<td><code>HmacSha384</code></td>
+</tr>
+<tr>
+<td>HMAC-SHA-512</td>
+<td>SHA-512</td>
+<td>64 bytes</td>
+<td>✅ Implemented</td>
+<td><code>HmacSha512</code></td>
+</tr>
+<tr>
+<td>HMAC-SHA3-256</td>
+<td>SHA3-256</td>
+<td>32 bytes</td>
+<td>✅ Implemented</td>
+<td><code>HmacSha3_256</code></td>
+</tr>
+<tr>
+<td>HMAC-SHA-1</td>
+<td>SHA-1</td>
+<td>20 bytes</td>
+<td>✅ Implemented (legacy)</td>
+<td><code>HmacSha1</code></td>
+</tr>
+<tr>
+<td>HMAC-MD5</td>
+<td>MD5</td>
+<td>16 bytes</td>
+<td>✅ Implemented (legacy)</td>
+<td><code>HmacMd5</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The <code>HmacCore</code> base class works with any <code>HashAlgorithm</code>, so custom HMAC variants
+(HMAC-SM3, HMAC-Kupyna, etc.) can be created by subclassing.</p>
+</blockquote>
+<h3 id="sp-800-38b-aes-cmac">SP 800-38B (AES-CMAC)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>MAC Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128-CMAC</td>
+<td>128 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCmac</code></td>
+</tr>
+<tr>
+<td>AES-192-CMAC</td>
+<td>192 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCmac</code></td>
+</tr>
+<tr>
+<td>AES-256-CMAC</td>
+<td>256 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCmac</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Hardware acceleration:</strong> AES-NI on .NET 8+.
+<strong>Note:</strong> .NET does not provide a portable CMAC implementation.</p>
+</blockquote>
+<h3 id="sp-800-38d-aes-gmac">SP 800-38D (AES-GMAC)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>MAC Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128-GMAC</td>
+<td>128 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesGmac</code></td>
+</tr>
+<tr>
+<td>AES-192-GMAC</td>
+<td>192 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesGmac</code></td>
+</tr>
+<tr>
+<td>AES-256-GMAC</td>
+<td>256 bits</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesGmac</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Hardware acceleration:</strong> AES-NI + PCLMULQDQ on .NET 8+, VPCLMULQDQ on .NET 10+.
+<strong>Note:</strong> GMAC requires a unique nonce per invocation. .NET does not provide a standalone GMAC class.</p>
+</blockquote>
+<hr>
+<h2 id="cipher-algorithms">Cipher Algorithms</h2>
+<h3 id="fips-197-advanced-encryption-standard">FIPS 197 (Advanced Encryption Standard)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>Mode</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128</td>
+<td>128 bits</td>
+<td>ECB/CBC/CTR</td>
+<td>✅ Implemented</td>
+<td><code>Aes128</code></td>
+</tr>
+<tr>
+<td>AES-192</td>
+<td>192 bits</td>
+<td>ECB/CBC/CTR</td>
+<td>✅ Implemented</td>
+<td><code>Aes192</code></td>
+</tr>
+<tr>
+<td>AES-256</td>
+<td>256 bits</td>
+<td>ECB/CBC/CTR</td>
+<td>✅ Implemented</td>
+<td><code>Aes256</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Hardware acceleration:</strong> AES-NI (<code>AESENC</code>/<code>AESDEC</code>) on .NET 8+. CBC decrypt uses 8-block interleaving.
+OFB, CFB, and CTS modes are defined for compatibility but marked <code>[Obsolete]</code> and not implemented —
+modern protocols use AEAD modes (GCM, CCM) or CTR instead.</p>
+</blockquote>
+<h3 id="sp-800-38d-aes-gcm">SP 800-38D (AES-GCM)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128-GCM</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesGcm128</code></td>
+</tr>
+<tr>
+<td>AES-192-GCM</td>
+<td>192 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesGcm192</code></td>
+</tr>
+<tr>
+<td>AES-256-GCM</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesGcm256</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Hardware acceleration:</strong> AES-NI + PCLMULQDQ (.NET 8+), VPCLMULQDQ (.NET 10+).
+Uses 8-block stitched AES+GHASH pipeline with lagged carry-less multiplication and
+SymCrypt-style 2-CLMUL modular reduction.</p>
+</blockquote>
+<h3 id="rfc-3610-aes-ccm">RFC 3610 (AES-CCM)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128-CCM</td>
+<td>128 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCcm128</code></td>
+</tr>
+<tr>
+<td>AES-256-CCM</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>AesCcm256</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Hardware acceleration:</strong> AES-NI on .NET 8+ for CTR and CBC-MAC block operations.</p>
+</blockquote>
+<h3 id="rfc-8439-chacha20--chacha20-poly1305">RFC 8439 (ChaCha20 / ChaCha20-Poly1305)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChaCha20</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>ChaCha20</code></td>
+</tr>
+<tr>
+<td>Poly1305</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>Poly1305</code></td>
+</tr>
+<tr>
+<td>ChaCha20-Poly1305</td>
+<td>256 bits</td>
+<td>✅ Implemented</td>
+<td><code>ChaCha20Poly1305</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Hardware acceleration:</strong> SSSE3 (single-block) and AVX2 (dual-block) on .NET 8+.
+Poly1305 uses donna-64 (3×44-bit limbs) on .NET 8+, donna-32 (5×26-bit limbs) on older targets.</p>
+</blockquote>
+<h3 id="draft-irtf-cfrg-xchacha-xchacha20-poly1305">draft-irtf-cfrg-xchacha (XChaCha20-Poly1305)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Key Size</th>
+<th>Nonce Size</th>
+<th>Status</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>XChaCha20-Poly1305</td>
+<td>256 bits</td>
+<td>192 bits</td>
+<td>✅ Implemented</td>
+<td><code>XChaCha20Poly1305</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> XChaCha20-Poly1305 extends ChaCha20-Poly1305 with a 24-byte nonce (vs 12-byte),
+making random nonce generation safe for a practically unlimited number of messages.</p>
+</blockquote>
+<hr>
+<h2 id="sources">Sources</h2>
+<h3 id="nist-national-institute-of-standards-and-technology">NIST (National Institute of Standards and Technology)</h3>
+<p>Official test vectors and examples with intermediate values are available from:</p>
+<ul>
+<li><strong>NIST Cryptographic Standards and Guidelines Example Values</strong>:
+<a href="https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values">https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values</a></li>
+</ul>
+<h4 id="sha-1-and-sha-2-family-fips-180-4">SHA-1 and SHA-2 Family (FIPS 180-4)</h4>
+<p>The official FIPS 180-4 specification is available from NIST:</p>
+<ul>
+<li><strong><a href="NIST-FIPS-180-4.html">NIST-FIPS-180-4.md</a></strong> - Local reference with algorithm details and test vectors</li>
+<li><a href="https://csrc.nist.gov/pubs/fips/180-4/upd1/final">NIST FIPS 180-4</a> - Secure Hash Standard (SHS): SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256</li>
+</ul>
+<h5 id="sha-1-legacy-only">SHA-1 (Legacy Only)</h5>
+<ul>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf">SHA-1 Examples</a></li>
+</ul>
+<h5 id="sha-2-family">SHA-2 Family</h5>
+<ul>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA224.pdf">SHA-224 Examples</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf">SHA-256 Examples</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA384.pdf">SHA-384 Examples</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf">SHA-512 Examples</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512_224.pdf">SHA-512/224 Examples</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512_256.pdf">SHA-512/256 Examples</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA_All.pdf">All SHA-2 Examples</a></li>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA2_Additional.pdf">Additional SHA-2 Data</a></li>
+</ul>
+<h4 id="sha-3-and-shake-fips-202">SHA-3 and SHAKE (FIPS 202)</h4>
+<p>The official FIPS 202 specification is available from NIST:</p>
+<ul>
+<li><strong><a href="NIST-FIPS-202.html">NIST-FIPS-202.md</a></strong> - Local reference with algorithm details and test vectors</li>
+<li><a href="https://csrc.nist.gov/pubs/fips/202/final">NIST FIPS 202</a> - SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>0-bit</th>
+<th>5-bit</th>
+<th>30-bit</th>
+<th>1600-bit</th>
+<th>1605-bit</th>
+<th>1630-bit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA3-224</td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-224_Msg0.pdf">Msg0</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-224_Msg5.pdf">Msg5</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-224_Msg30.pdf">Msg30</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-224_1600.pdf">1600</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-224_1605.pdf">1605</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-224_1630.pdf">1630</a></td>
+</tr>
+<tr>
+<td>SHA3-256</td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_Msg0.pdf">Msg0</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_Msg5.pdf">Msg5</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_Msg30.pdf">Msg30</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_1600.pdf">1600</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_1605.pdf">1605</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_1630.pdf">1630</a></td>
+</tr>
+<tr>
+<td>SHA3-384</td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-384_Msg0.pdf">Msg0</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-384_Msg5.pdf">Msg5</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-384_Msg30.pdf">Msg30</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-384_1600.pdf">1600</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-384_1605.pdf">1605</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-384_1630.pdf">1630</a></td>
+</tr>
+<tr>
+<td>SHA3-512</td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_Msg0.pdf">Msg0</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_Msg5.pdf">Msg5</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_Msg30.pdf">Msg30</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_1600.pdf">1600</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_1605.pdf">1605</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_1630.pdf">1630</a></td>
+</tr>
+</tbody>
+</table>
+<h4 id="shake-xof-fips-202">SHAKE XOF (FIPS 202)</h4>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>0-bit</th>
+<th>5-bit</th>
+<th>30-bit</th>
+<th>1600-bit</th>
+<th>1605-bit</th>
+<th>1630-bit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHAKE128</td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE128_Msg0.pdf">Msg0</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE128_Msg5.pdf">Msg5</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE128_Msg30.pdf">Msg30</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE128_Msg1600.pdf">1600</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE128_Msg1605.pdf">1605</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE128_Msg1630.pdf">1630</a></td>
+</tr>
+<tr>
+<td>SHAKE256</td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE256_Msg0.pdf">Msg0</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE256_Msg5.pdf">Msg5</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE256_Msg30.pdf">Msg30</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE256_Msg1600.pdf">1600</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE256_Msg1605.pdf">1605</a></td>
+<td><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHAKE256_Msg1630.pdf">1630</a></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/ShakeTruncation.pdf">SHAKE Truncation Examples</a></li>
+</ul>
+<h4 id="nist-sp-800-185-sha-3-derived-functions-1">NIST SP 800-185 (SHA-3 Derived Functions)</h4>
+<p>Reference documentation for cSHAKE, KMAC, TupleHash, and ParallelHash:</p>
+<ul>
+<li><strong><a href="NIST-SP-800-185.html">NIST-SP-800-185.md</a></strong> - Local reference with test vectors</li>
+<li><a href="https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf">NIST SP 800-185 PDF</a></li>
+</ul>
+<h4 id="hmac-rfc-2104--fips-198-1">HMAC (RFC 2104 / FIPS 198-1)</h4>
+<ul>
+<li><strong><a href="RFC-2104.html">RFC-2104.md</a></strong> - Local reference with algorithm details</li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc2104">RFC 2104</a> - HMAC: Keyed-Hashing for Message Authentication</li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc4231">RFC 4231</a> - Test Vectors for HMAC-SHA-256, HMAC-SHA-384, HMAC-SHA-512</li>
+<li><a href="https://csrc.nist.gov/pubs/fips/198-1/final">FIPS 198-1</a> - The Keyed-Hash Message Authentication Code (HMAC)</li>
+</ul>
+<h4 id="aes-cmac-sp-800-38b--rfc-4493">AES-CMAC (SP 800-38B / RFC 4493)</h4>
+<ul>
+<li><strong><a href="NIST-SP-800-38B.html">NIST-SP-800-38B.md</a></strong> - Local reference with algorithm details and GMAC</li>
+<li><a href="https://csrc.nist.gov/pubs/sp/800-38b/upd1/final">NIST SP 800-38B</a> - CMAC Mode for Authentication</li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc4493">RFC 4493</a> - The AES-CMAC Algorithm</li>
+</ul>
+<h3 id="blake2-rfc-7693">BLAKE2 (RFC 7693)</h3>
+<p>The official RFC 7693 specification is available from IETF:</p>
+<ul>
+<li><a href="https://www.rfc-editor.org/rfc/rfc7693">RFC 7693</a> - The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC)</li>
+</ul>
+<p>Additional BLAKE2 resources:</p>
+<ul>
+<li><a href="https://www.blake2.net/">https://www.blake2.net/</a></li>
+<li><a href="https://github.com/BLAKE2/BLAKE2">https://github.com/BLAKE2/BLAKE2</a></li>
+</ul>
+<h3 id="blake3-1">BLAKE3</h3>
+<p>BLAKE3 test vectors are from the official BLAKE3 specification:</p>
+<ul>
+<li><a href="https://github.com/BLAKE3-team/BLAKE3">https://github.com/BLAKE3-team/BLAKE3</a></li>
+</ul>
+<h3 id="ripemd-160">RIPEMD-160</h3>
+<ul>
+<li><strong><a href="RIPEMD-160-vectors.html">RIPEMD-160-vectors.md</a></strong> - Test vectors</li>
+<li>Original specification: <a href="https://homes.esat.kuleuven.be/%7Ebosselae/ripemd160.html">https://homes.esat.kuleuven.be/~bosselae/ripemd160.html</a></li>
+</ul>
+<h3 id="sm3-gbt-32905-2016">SM3 (GB/T 32905-2016)</h3>
+<ul>
+<li><strong><a href="SM3-vectors.html">SM3-vectors.md</a></strong> - Test vectors</li>
+<li>GB/T 32905-2016 (Chinese national standard)</li>
+<li>ISO/IEC 10118-3:2018</li>
+</ul>
+<h3 id="whirlpool">Whirlpool</h3>
+<ul>
+<li><strong><a href="Whirlpool-vectors.html">Whirlpool-vectors.md</a></strong> - Test vectors</li>
+<li>ISO/IEC 10118-3:2004</li>
+<li><a href="https://www.larc.usp.br/%7Epbarreto/WhirlpoolPage.html">https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html</a></li>
+</ul>
+<h3 id="streebog-gost-r-3411-2012">Streebog (GOST R 34.11-2012)</h3>
+<ul>
+<li><strong><a href="Streebog-vectors.html">Streebog-vectors.md</a></strong> - Test vectors</li>
+<li>RFC 6986: <a href="https://www.rfc-editor.org/rfc/rfc6986">https://www.rfc-editor.org/rfc/rfc6986</a></li>
+</ul>
+<h3 id="kupyna-dstu-75642014">Kupyna (DSTU 7564:2014)</h3>
+<ul>
+<li><strong><a href="Kupyna-vectors.html">Kupyna-vectors.md</a></strong> - Test vectors</li>
+<li>IACR ePrint 2015/885: <a href="https://eprint.iacr.org/2015/885.pdf">https://eprint.iacr.org/2015/885.pdf</a></li>
+<li>Reference implementation: <a href="https://github.com/Roman-Oliynykov/Kupyna-reference">https://github.com/Roman-Oliynykov/Kupyna-reference</a></li>
+</ul>
+<h3 id="lsh-ks-x-3262">LSH (KS X 3262)</h3>
+<ul>
+<li>KS X 3262 specification (Korean standard)</li>
+<li>Reference implementation: <a href="https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do">https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do</a></li>
+</ul>
+<h3 id="md5-rfc-1321">MD5 (RFC 1321)</h3>
+<p>MD5 is defined in RFC 1321:</p>
+<ul>
+<li><a href="https://www.ietf.org/rfc/rfc1321.txt">https://www.ietf.org/rfc/rfc1321.txt</a></li>
+</ul>
+<h3 id="aes-fips-197">AES (FIPS 197)</h3>
+<p>The official FIPS 197 specification is available from NIST:</p>
+<ul>
+<li><strong><a href="NIST-FIPS-197.html">NIST-FIPS-197.md</a></strong> - Local reference with algorithm details and test vectors</li>
+<li><a href="https://csrc.nist.gov/pubs/fips/197/final">NIST FIPS 197</a> - Advanced Encryption Standard (AES)</li>
+</ul>
+<h3 id="aes-gcm-sp-800-38d">AES-GCM (SP 800-38D)</h3>
+<ul>
+<li><a href="https://csrc.nist.gov/pubs/sp/800-38d/final">NIST SP 800-38D</a> - Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM)</li>
+</ul>
+<h3 id="aes-ccm-rfc-3610">AES-CCM (RFC 3610)</h3>
+<ul>
+<li><a href="https://www.rfc-editor.org/rfc/rfc3610">RFC 3610</a> - Counter with CBC-MAC (CCM)</li>
+</ul>
+<h3 id="chacha20--chacha20-poly1305-rfc-8439">ChaCha20 / ChaCha20-Poly1305 (RFC 8439)</h3>
+<ul>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc8439">RFC 8439</a> - ChaCha20 and Poly1305 for IETF Protocols</li>
+</ul>
+<h3 id="xchacha20-poly1305-draft-irtf-cfrg-xchacha">XChaCha20-Poly1305 (draft-irtf-cfrg-xchacha)</h3>
+<ul>
+<li><a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha">draft-irtf-cfrg-xchacha</a> - XChaCha20 and XChaCha20-Poly1305</li>
+</ul>
+<h2 id="file-organization">File Organization</h2>
+<pre><code>specs/
+├── README.md              # This file
+├── toc.yml                # DocFX table of contents
+├── NIST-FIPS-180-4.md     # NIST FIPS 180-4 - SHA-1, SHA-2 reference
+├── NIST-FIPS-197.md       # NIST FIPS 197 - AES reference
+├── NIST-FIPS-202.md       # NIST FIPS 202 - SHA-3, SHAKE reference
+├── NIST-SP-800-185.md     # NIST SP 800-185 - cSHAKE, KMAC reference
+├── RFC-2104.md            # RFC 2104 - HMAC reference
+├── NIST-SP-800-38B.md     # NIST SP 800-38B - CMAC, GMAC reference
+├── NIST-SP-800-232.md     # NIST SP 800-232 - Ascon hash and XOF reference
+├── SHA1-vectors.md        # SHA-1 test vectors (legacy)
+├── SHA2-vectors.md        # SHA-2 family test vectors
+├── SHA3-vectors.md        # SHA-3 family test vectors
+├── SHAKE-vectors.md       # SHAKE128, SHAKE256 test vectors
+├── Keccak-vectors.md      # Keccak-256, Keccak-384, Keccak-512 test vectors
+├── KT-vectors.md          # KT128, KT256 (KangarooTwelve) test vectors
+├── TurboSHAKE-vectors.md  # TurboSHAKE128, TurboSHAKE256 test vectors
+├── BLAKE2-vectors.md      # BLAKE2b, BLAKE2s test vectors
+├── BLAKE3-vectors.md      # BLAKE3 test vectors
+├── RIPEMD-160-vectors.md  # RIPEMD-160 test vectors
+├── SM3-vectors.md         # SM3 test vectors
+├── Whirlpool-vectors.md   # Whirlpool test vectors
+├── Streebog-vectors.md    # Streebog (GOST) test vectors
+├── Kupyna-vectors.md      # Kupyna (DSTU 7564) test vectors
+├── LSH-vectors.md         # LSH (KS X 3262) test vectors
+├── MD5-vectors.md         # MD5 test vectors (legacy)
+├── HMAC-vectors.md        # HMAC-SHA-256/384/512 test vectors (RFC 4231)
+├── CMAC-vectors.md        # AES-CMAC test vectors (SP 800-38B)
+├── AES-vectors.md         # AES ECB/GCM/CCM test vectors
+├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
+└── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
+</code></pre>
+<h2 id="usage">Usage</h2>
+<p>These test vectors are used by the unit tests in <code>tests/Security/Cryptography/</code> to verify
+the correctness of our hash implementations against known good values from official sources.</p>
+<h2 id="license">License</h2>
+<p>The test vectors themselves are derived from public standards and specifications.
+See individual specification documents for their respective terms.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/README.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

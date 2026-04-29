@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>AsyncManualResetEvent | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="AsyncManualResetEvent | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncmanualresetevent.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="asyncmanualresetevent">AsyncManualResetEvent</h1>
+
+<h2 id="overview">Overview</h2>
+<p><code>AsyncManualResetEvent</code> is a pooled async version of <code>ManualResetEvent</code> that uses <code>ValueTask</code> to minimize memory allocations. It provides async signaling by reusing pooled <code>IValueTaskSource</code> instances. Unlike <code>AsyncAutoResetEvent</code>, it releases <strong>all</strong> waiting threads when signaled and remains signaled until explicitly reset.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Async.Pooled;
+</code></pre>
+<h2 id="class-declaration">Class Declaration</h2>
+<pre><code class="lang-csharp">public sealed class AsyncManualResetEvent : IResettable
+</code></pre>
+<h2 id="key-features">Key Features</h2>
+<ul>
+<li><strong>Broadcast signaling</strong>: Releases <strong>all</strong> waiting threads when set</li>
+<li><strong>Persistent state</strong>: Remains signaled until explicitly reset</li>
+<li><strong>ValueTask-based API</strong>: Low-allocation async operations</li>
+<li><strong>Cancellation support</strong>: Full <code>CancellationToken</code> support for queued waiters</li>
+<li><strong>Thread-safe</strong>: All operations are thread-safe</li>
+<li><strong>Pooled task sources</strong>: Reuses <code>IValueTaskSource</code> instances to minimize allocations</li>
+</ul>
+<h2 id="constructor">Constructor</h2>
+<pre><code class="lang-csharp">public AsyncManualResetEvent(
+    bool set = false,
+    bool runContinuationAsynchronously = true,
+    IGetPooledManualResetValueTaskSource&lt;bool&gt;? pool = null)
+</code></pre>
+<h3 id="parameters">Parameters</h3>
+<ul>
+<li><code>set</code>: The initial state of the event (default: <code>false</code>).</li>
+<li><code>runContinuationAsynchronously</code>: Controls whether continuations are forced to run asynchronously (default: <code>true</code>).</li>
+<li><code>pool</code>: Optional custom source provider implementing <code>IGetPooledManualResetValueTaskSource&lt;bool&gt;</code> which supplies pooled <code>PooledManualResetValueTaskSource&lt;bool&gt;</code> instances (helps avoid allocations under contention). You may pass a <code>ValueTaskSourceObjectPool&lt;bool&gt;</code> or a custom provider that implements the interface.</li>
+</ul>
+<h2 id="properties">Properties</h2>
+<h3 id="isset">IsSet</h3>
+<pre><code class="lang-csharp">public bool IsSet { get; }
+</code></pre>
+<p>Gets whether this event is currently in the signaled state.</p>
+<h3 id="runcontinuationasynchronously">RunContinuationAsynchronously</h3>
+<pre><code class="lang-csharp">public bool RunContinuationAsynchronously { get; set; }
+</code></pre>
+<p>Controls how continuations are executed when the event is signaled:</p>
+<ul>
+<li><code>true</code> (default): Continuations are forced to the thread pool, preventing the signaling thread from being blocked.</li>
+<li><code>false</code>: Continuations may execute synchronously on the signaling thread.</li>
+</ul>
+<p><strong>Performance Warning</strong>: When <code>true</code>, converting returned <code>ValueTask</code> instances to <code>Task</code> via <code>AsTask()</code> before signaling may force asynchronous completion paths and cause severe performance degradation (often 10x-100x slower).</p>
+<blockquote>
+<p>Note: The implementation exposes an internal property <code>InternalWaiterInUse</code> used by tests to detect whether the fast-path local waiter is currently held. This is not part of the public API surface for consumers.</p>
+</blockquote>
+<h2 id="methods">Methods</h2>
+<h3 id="waitasync">WaitAsync</h3>
+<pre><code class="lang-csharp">public ValueTask WaitAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Asynchronously waits for the event to be signaled.</p>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>If the event is signaled the call returns a completed <code>ValueTask</code> (synchronous, zero-allocation).</li>
+<li>Otherwise the call enqueues a pooled waiter and returns a <code>ValueTask</code> that completes when <code>Set()</code> is called.</li>
+</ul>
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code>cancellationToken</code> - Optional cancellation token. If the token is already cancelled, the method returns a canceled <code>ValueTask</code>. When a waiter is queued, the token is registered and a later cancellation will complete that waiter with an <code>OperationCanceledException</code> and remove it from the internal queue.</li>
+</ul>
+<p><strong>Returns</strong>: A <code>ValueTask</code> that completes when the event is signaled.</p>
+<p><strong>Throws</strong>:</p>
+<ul>
+<li><code>OperationCanceledException</code> - If the operation is canceled via the cancellation token while queued</li>
+<li><code>InvalidOperationException</code> - If a returned <code>ValueTask</code> instance is awaited more than once (ValueTask usage restriction)</li>
+</ul>
+<p><strong>Important</strong>: The returned <code>ValueTask</code> can only be awaited or converted to <code>Task</code> <strong>once</strong>. Additional attempts throw <code>InvalidOperationException</code>.</p>
+<p><strong>Examples</strong>:</p>
+<pre><code class="lang-csharp">// Direct await (recommended)
+await _event.WaitAsync(ct);
+
+// Single AsTask() with multiple awaits (allowed for Task)
+Task t = _event.WaitAsync().AsTask();
+await t;
+await t;  // OK - Task may be awaited multiple times
+
+// BAD: Multiple ValueTask awaits
+ValueTask vt = _event.WaitAsync();
+await vt;
+await vt;  // Throws InvalidOperationException!
+</code></pre>
+<h3 id="set">Set</h3>
+<pre><code class="lang-csharp">public void Set()
+</code></pre>
+<p>Signals the event, releasing <strong>all</strong> waiting threads. The event remains in the signaled state until <code>Reset()</code> is called.</p>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>All current waiters are released immediately.</li>
+<li>All future <code>WaitAsync()</code> calls complete immediately until <code>Reset()</code> is called.</li>
+<li>When <code>RunContinuationAsynchronously</code> is <code>false</code>, continuations may run synchronously on the signaling thread.</li>
+</ul>
+<h3 id="reset">Reset</h3>
+<pre><code class="lang-csharp">public void Reset()
+</code></pre>
+<p>Resets the event to the non-signaled state.</p>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>Future <code>WaitAsync()</code> calls will wait until <code>Set()</code> is called again.</li>
+</ul>
+<h3 id="tryreset">TryReset</h3>
+<pre><code class="lang-csharp">public bool TryReset()
+</code></pre>
+<p>Implements <code>IResettable</code> to allow returning this instance to a <code>DefaultObjectPool&lt;AsyncManualResetEvent&gt;</code>.</p>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>Attempts to acquire the internal spin lock. If the lock is already held (a concurrent <code>Set()</code> or <code>WaitAsync()</code> is in progress), the method returns <code>false</code> immediately and the pool discards the instance.</li>
+<li>If the lock is acquired and waiters are currently queued, the method returns <code>false</code> — the instance is still in active use and must not be recycled.</li>
+<li>If the lock is acquired and no waiters are queued, the signaled flag and options are reset to initial defaults and the local waiter is reset; the method returns <code>true</code>.</li>
+</ul>
+<p><strong>Thread Safety</strong>: <code>TryReset()</code> is safe to call concurrently with other operations. It will simply return <code>false</code> if the instance is in use.</p>
+<p><strong>Example</strong>:</p>
+<pre><code class="lang-csharp">// Using AsyncManualResetEvent with an object pool
+var pool = new DefaultObjectPool&lt;AsyncManualResetEvent&gt;(
+    new DefaultPooledObjectPolicy&lt;AsyncManualResetEvent&gt;());
+
+var ev = pool.Get();
+try
+{
+    await ev.WaitAsync(ct);
+}
+finally
+{
+    pool.Return(ev); // calls TryReset() internally
+}
+</code></pre>
+<h2 id="cancellation-notes">Cancellation Notes</h2>
+<ul>
+<li>Cancellation is supported for queued waiters. The token is only registered when the waiter is enqueued (fast-path avoids registration). When cancelled, the waiter completes with an <code>OperationCanceledException</code> and is removed from the internal queue.</li>
+<li>Avoid passing cancellation tokens for hot-path uncontended waits to minimize allocation overhead from token registration. If a token is already canceled before calling <code>WaitAsync</code>, the method returns a canceled <code>ValueTask</code> (which may allocate a <code>Task</code> wrapper on some frameworks).</li>
+</ul>
+<h2 id="thread-safety">Thread Safety</h2>
+<p>✓ <strong>Thread-safe</strong>. All public methods are thread-safe and can be called concurrently.</p>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Set()</strong>: O(n) where n is the number of waiters (must signal all)</li>
+<li><strong>Reset()</strong>: O(1) operation</li>
+<li><strong>WaitAsync()</strong>: O(1) when signaled, otherwise enqueues waiter</li>
+<li><strong>Memory</strong>: Allocates one <code>IValueTaskSource</code> per waiter (unlike Task-based implementations that share a single <code>Task</code>). When a pool is provided, allocations are avoided when the pool can supply instances. The implementation also provides a local reusable waiter to avoid allocations for the first queued waiter.</li>
+</ul>
+<h2 id="benchmark-results">Benchmark Results</h2>
+<p>The following benchmarks compare <code>AsyncManualResetEvent</code> against popular alternatives including <code>Nito.AsyncEx.AsyncManualResetEvent</code> and reference <code>TaskCompletionSource</code>-based implementations.</p>
+<h3 id="setreset-cycle-benchmark">Set/Reset Cycle Benchmark</h3>
+<p>Measures the performance of rapid uncontended Set/Reset cycles. No surprises here except for Nito and Refimpl which expose some memory allocations, probably for a TaskCompletionSource instance.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SetReset · AsyncManualReset · ProtoPromise</td>
+<td style="text-align: right;">1.424 ns</td>
+<td style="text-align: right;">0.70</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetReset · AsyncManualReset · Pooled</td>
+<td style="text-align: right;">2.043 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetReset · ManualResetEventSlim · System</td>
+<td style="text-align: right;">5.633 ns</td>
+<td style="text-align: right;">2.76</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetReset · AsyncManualReset · RefImpl</td>
+<td style="text-align: right;">10.499 ns</td>
+<td style="text-align: right;">5.14</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>SetReset · AsyncManualReset · Nito.AsyncEx</td>
+<td style="text-align: right;">17.007 ns</td>
+<td style="text-align: right;">8.33</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>SetReset · ManualResetEvent · System</td>
+<td style="text-align: right;">426.864 ns</td>
+<td style="text-align: right;">208.98</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="set-then-wait-benchmark">Set Then Wait Benchmark</h3>
+<p>Measures the pattern where the event is set before waiters arrive (synchronous completion path). Again no surprises here; all implementations complete synchronously but Nito and Refimpl require allocations.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SetThenWait · AsyncManualReset · ProtoPromise</td>
+<td style="text-align: right;">6.130 ns</td>
+<td style="text-align: right;">0.71</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · Pooled (ValueTask)</td>
+<td style="text-align: right;">8.679 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · Pooled (AsTask)</td>
+<td style="text-align: right;">10.352 ns</td>
+<td style="text-align: right;">1.19</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · RefImpl</td>
+<td style="text-align: right;">14.084 ns</td>
+<td style="text-align: right;">1.62</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>SetThenWait · AsyncManualReset · Nito.AsyncEx</td>
+<td style="text-align: right;">24.532 ns</td>
+<td style="text-align: right;">2.83</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wait-then-set-benchmark">Wait Then Set Benchmark</h3>
+<p>Measures the pattern where waiters are queued before the event is signaled (asynchronous completion path). The pooled implementation shows strong performance here without allocations, especially when a cancellation token is provided.
+Nito and Refimpl again show higher allocation counts due to TaskCompletionSource usage. In the tests for non cancellable tokens, Nito is ahead of the pack because it can share a single TaskCompletionSource with all waiters, but falls back when real cancellable tokens are used.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Iterations</th>
+<th>cancellationType</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">21.77 ns</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">23.40 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">24.13 ns</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">25.07 ns</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">25.56 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">26.57 ns</td>
+<td style="text-align: right;">1.04</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">28.83 ns</td>
+<td style="text-align: right;">1.13</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">36.29 ns</td>
+<td style="text-align: right;">1.42</td>
+<td style="text-align: right;">80 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>1</td>
+<td>None</td>
+<td style="text-align: right;">442.78 ns</td>
+<td style="text-align: right;">17.33</td>
+<td style="text-align: right;">231 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">38.68 ns</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">40.45 ns</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">40.63 ns</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">41.05 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">49.45 ns</td>
+<td style="text-align: right;">1.21</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">60.87 ns</td>
+<td style="text-align: right;">1.48</td>
+<td style="text-align: right;">80 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">492.64 ns</td>
+<td style="text-align: right;">12.01</td>
+<td style="text-align: right;">232 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>1</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">650.27 ns</td>
+<td style="text-align: right;">15.85</td>
+<td style="text-align: right;">808 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">26.16 ns</td>
+<td style="text-align: right;">0.46</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">39.16 ns</td>
+<td style="text-align: right;">0.69</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">46.20 ns</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">51.22 ns</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">53.31 ns</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">54.87 ns</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">57.20 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">82.64 ns</td>
+<td style="text-align: right;">1.45</td>
+<td style="text-align: right;">160 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>2</td>
+<td>None</td>
+<td style="text-align: right;">714.79 ns</td>
+<td style="text-align: right;">12.50</td>
+<td style="text-align: right;">343 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">89.91 ns</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">91.04 ns</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">91.89 ns</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">93.81 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">95.38 ns</td>
+<td style="text-align: right;">1.02</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">129.08 ns</td>
+<td style="text-align: right;">1.38</td>
+<td style="text-align: right;">160 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">803.51 ns</td>
+<td style="text-align: right;">8.57</td>
+<td style="text-align: right;">344 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>2</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">1,185.20 ns</td>
+<td style="text-align: right;">12.64</td>
+<td style="text-align: right;">1488 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">64.93 ns</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">110.41 ns</td>
+<td style="text-align: right;">0.34</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">214.27 ns</td>
+<td style="text-align: right;">0.66</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">298.82 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">300.43 ns</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">324.51 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">325.91 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">453.70 ns</td>
+<td style="text-align: right;">1.40</td>
+<td style="text-align: right;">800 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>10</td>
+<td>None</td>
+<td style="text-align: right;">1,971.93 ns</td>
+<td style="text-align: right;">6.08</td>
+<td style="text-align: right;">1239 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">454.68 ns</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">482.97 ns</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">497.87 ns</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">515.24 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">531.65 ns</td>
+<td style="text-align: right;">1.03</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">737.97 ns</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;">800 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">3,031.89 ns</td>
+<td style="text-align: right;">5.88</td>
+<td style="text-align: right;">1240 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>10</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,436.31 ns</td>
+<td style="text-align: right;">8.61</td>
+<td style="text-align: right;">6464 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · RefImpl</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">533.53 ns</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">928.28 ns</td>
+<td style="text-align: right;">0.27</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,275.95 ns</td>
+<td style="text-align: right;">0.65</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,857.04 ns</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">2,901.30 ns</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">3,161.49 ns</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">3,482.75 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">4,674.61 ns</td>
+<td style="text-align: right;">1.34</td>
+<td style="text-align: right;">8000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>100</td>
+<td>None</td>
+<td style="text-align: right;">15,704.57 ns</td>
+<td style="text-align: right;">4.51</td>
+<td style="text-align: right;">11320 B</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · ProtoPromise</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,415.36 ns</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,908.97 ns</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,971.60 ns</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">4,996.67 ns</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (ValueTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">5,026.19 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">7,174.00 ns</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;">8000 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Nito.AsyncEx</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">115,582.83 ns</td>
+<td style="text-align: right;">23.00</td>
+<td style="text-align: right;">61617 B</td>
+</tr>
+<tr>
+<td>WaitThenSet · AsyncManualReset · Pooled (AsTask)</td>
+<td>100</td>
+<td>NotCancelled</td>
+<td style="text-align: right;">263,666.83 ns</td>
+<td style="text-align: right;">52.46</td>
+<td style="text-align: right;">11327 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmark-analysis">Benchmark Analysis</h3>
+<p><strong>Key Findings:</strong></p>
+<ol>
+<li><p><strong>Per-Waiter Overhead</strong>: Unlike <code>Task</code>-based implementations where all waiters share a single <code>TaskCompletionSource</code>, each waiter in the pooled implementation requires its own <code>IValueTaskSource</code>. This is an inherent trade-off of the <code>ValueTask</code> model, but other implementations only leverage this advantage when non cancellable tokens are used. With cancellable tokens, they also require per-waiter instances and fall back in perf and allocations.</p>
+</li>
+<li><p><strong>Pool Mitigation</strong>: The object pool effectively mitigates allocation overhead. The local waiter optimization ensures the first queued waiter incurs no allocation.</p>
+</li>
+<li><p><strong>Synchronous Fast Path</strong>: When the event is already signaled, <code>WaitAsync()</code> completes synchronously with zero allocations and without entering the lock.</p>
+</li>
+<li><p><strong>Set() Performance</strong>: For broadcasts to many waiters, the overhead of signaling each <code>IValueTaskSource</code> individually may be higher than a single shared <code>Task</code>. Consider the trade-off based on your use case.</p>
+</li>
+</ol>
+<p><strong>When to Choose AsyncManualResetEvent:</strong></p>
+<ul>
+<li>Initialization patterns where you wait for a one-time signal</li>
+<li>Scenarios with few concurrent waiters or where cancellable tokens are widely used</li>
+<li>Memory-sensitive applications where the pooling benefits outweigh per-waiter overhead</li>
+</ul>
+<p><strong>When to Consider Alternatives:</strong></p>
+<ul>
+<li>Broadcasting to many concurrent waiters where a shared <code>Task</code> would be more efficient</li>
+<li>Scenarios where <code>ValueTask</code> restrictions are inconvenient</li>
+</ul>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="-do-use-for-initialization-signals">✓ DO: Use for Initialization Signals</h3>
+<pre><code class="lang-csharp">public class DataService
+{
+    private readonly AsyncManualResetEvent _ready = new(false);
+    
+    public async Task InitializeAsync()
+    {
+        await LoadDataAsync();
+        _ready.Set(); // Release all waiting callers
+    }
+    
+    public async Task&lt;Data&gt; GetDataAsync(CancellationToken ct)
+    {
+        await _ready.WaitAsync(ct); // Wait until initialized
+        return GetData();
+    }
+}
+</code></pre>
+<h3 id="-do-use-for-broadcasting">✓ DO: Use for Broadcasting</h3>
+<pre><code class="lang-csharp">// Good: Release all waiting threads simultaneously
+var start = new AsyncManualResetEvent(false);
+
+var workers = Enumerable.Range(0, 10).Select(async i =&gt; {
+    await start.WaitAsync();
+    await DoWorkAsync(i);
+}).ToArray();
+
+start.Set();
+await Task.WhenAll(workers);
+</code></pre>
+<h3 id="-do-use-a-custom-pool-when-high-contention-is-expected">✓ DO: Use a custom pool when high contention is expected</h3>
+<p>Provide a larger object pool to avoid temporary allocations when many waiters are queued simultaneously.</p>
+<h3 id="-do-always-await-valuetask-directly-when-possible">✓ DO: Always await <code>ValueTask</code> directly when possible</h3>
+<pre><code class="lang-csharp">// Good: Direct await
+await _event.WaitAsync();
+
+// Good: Immediate AsTask()
+await _event.WaitAsync().AsTask();
+</code></pre>
+<h3 id="-dont-use-for-one-at-a-time-signaling">✗ DON'T: Use for One-at-a-Time Signaling</h3>
+<pre><code class="lang-csharp">// Bad: Releases ALL waiters, not just one
+var evt = new AsyncManualResetEvent(false);
+
+var task1 = evt.WaitAsync();
+var task2 = evt.WaitAsync();
+
+evt.Set(); // Both tasks complete!
+
+// Better: Use AsyncAutoResetEvent for one-at-a-time
+</code></pre>
+<h3 id="-dont-store-astask-before-signaling-when-runcontinuationasynchronously--true">✗ DON'T: Store <code>AsTask()</code> Before Signaling (when <code>RunContinuationAsynchronously == true</code>)</h3>
+<p>Storing the <code>Task</code> result of <code>AsTask()</code> before <code>Set()</code> forces an asynchronous completion path that can be much slower. Prefer awaiting the <code>ValueTask</code> directly.</p>
+<h3 id="-dont-await-valuetask-multiple-times">✗ DON'T: Await <code>ValueTask</code> Multiple Times</h3>
+<pre><code class="lang-csharp">// Bad: Throws InvalidOperationException
+ValueTask vt = _event.WaitAsync();
+await vt;
+await vt;  // Exception!
+
+// Good: Convert to Task for multiple awaits
+Task t = _event.WaitAsync().AsTask();
+await t;
+await t;  // OK
+</code></pre>
+<h2 id="common-patterns">Common Patterns</h2>
+<p>(See examples in this file and <code>asyncautoresetevent.md</code> for additional patterns.)</p>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="index.html">Threading Package Overview</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a> - Async reader-writer lock</li>
+<li><a href="asynclock.html">AsyncLock</a> - Async mutual exclusion lock</li>
+<li><a href="asynccountdownevent.html">AsyncCountdownEvent</a> - Async countdown event</li>
+<li><a href="asyncbarrier.html">AsyncBarrier</a> - Async barrier synchronization primitive</li>
+<li><a href="asyncsemaphore.html">AsyncSemaphore</a> - Async semaphore primitive</li>
+<li><a href="benchmarks.html">Benchmarks</a> - Benchmark description</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncmanualresetevent.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Cryptography Benchmarks | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Cryptography Benchmarks | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cryptography-benchmarks">Cryptography Benchmarks</h1>
+
+<p>This page collects BenchmarkDotNet measurements for <code>CryptoHives.Foundation.Security.Cryptography</code> and organizes them by platform run. Each run is stored in its own platform folder so values from different hosts are never mixed.</p>
+<h2 id="live-benchmark-dashboard">Live Benchmark Dashboard</h2>
+<p>Historical benchmark trends tracked by CI are published to GitHub Pages:</p>
+<ul>
+<li><strong><a href="https://cryptohives.github.io/Foundation/dev/bench/cryptography/">Cryptography benchmark trends</a></strong> — hash and cipher algorithm history across weekly CI runs</li>
+<li><strong><a href="https://cryptohives.github.io/Foundation/dev/bench/threading/">Threading benchmark trends</a></strong> — async primitive performance history across weekly CI runs</li>
+</ul>
+<p>The dashboard shows mean execution time per commit with interactive Chart.js graphs. Data points link back to the originating commit. A new data point is appended automatically every Monday by the <a href="https://github.com/CryptoHives/Foundation/actions/workflows/benchmarks.yml">Benchmarks workflow</a> running a curated set of representative algorithms.</p>
+<blockquote>
+<p><strong>Note:</strong> GitHub Pages must be configured to serve from the <code>gh-pages</code> branch (repo <strong>Settings → Pages → Source: Deploy from a branch → gh-pages / root</strong>) for the dashboard URLs above to work.</p>
+</blockquote>
+<h2 id="benchmark-categories">Benchmark Categories</h2>
+<h3 id="hash-algorithm-benchmarks"><a href="benchmarks-hash.html">Hash Algorithm Benchmarks</a></h3>
+<p>Run selector and platform-specific hash results (SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards).</p>
+<h3 id="cipher-algorithm-benchmarks"><a href="benchmarks-cipher.html">Cipher Algorithm Benchmarks</a></h3>
+<p>Run selector and platform-specific cipher results (AES-CBC/GCM/CCM, ChaCha family, and regional block ciphers).</p>
+<h2 id="published-benchmark-runs">Published Benchmark Runs</h2>
+<table>
+<thead>
+<tr>
+<th>Platform ID</th>
+<th>Host</th>
+<th>Published Pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>macos-arm64-apple-m4</code></td>
+<td>macOS Tahoe, Apple M4, Arm64</td>
+<td><a href="benchmarks/macos-arm64-apple-m4/hash.html">Hash</a>, <a href="benchmarks/macos-arm64-apple-m4/cipher.html">Cipher</a></td>
+</tr>
+<tr>
+<td><code>windows-x64-amd-ryzen-5-7600x</code></td>
+<td>Windows 11, AMD Ryzen 5 7600X, X64</td>
+<td><a href="benchmarks/windows-x64-amd-ryzen-5-7600x/hash.html">Hash</a>, <a href="benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.html">Cipher</a></td>
+</tr>
+</tbody>
+</table>
+<p>Platform-specific pages keep benchmark tables isolated per machine so later runs such as Linux Arm64 or additional macOS/Windows hosts can be added without mixing incompatible numbers into the same page.</p>
+<h2 id="ui-structure-recommendation">UI Structure Recommendation</h2>
+<p>For a feasible long-term docfx UI:</p>
+<ol>
+<li>Keep this page as the top-level run catalog.</li>
+<li>Keep <code>benchmarks-hash.md</code> and <code>benchmarks-cipher.md</code> as selectors only (no raw table dumps).</li>
+<li>Keep full benchmark tables only in platform pages (<code>benchmarks/&lt;platform-id&gt;/hash.md</code> and <code>benchmarks/&lt;platform-id&gt;/cipher.md</code>).</li>
+<li>Add a tiny comparison summary table (5-10 representative algorithms) on selector pages for quick cross-platform snapshots.</li>
+</ol>
+<p>This keeps pages small, avoids duplicate content, and scales cleanly as platform count grows.</p>
+<h2 id="memory-footprint">Memory Footprint</h2>
+<p>The following tables show the per-instance memory footprint (internal state + buffers) and any static lookup tables shared across all instances. These are the raw data sizes; actual managed object overhead adds ~16–40 bytes per object and ~24 bytes per array on 64-bit runtimes.</p>
+<h3 id="hash-algorithms">Hash Algorithms</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Instance State</th>
+<th>Block Size</th>
+<th>Static Tables</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SHA-224</td>
+<td>96 B</td>
+<td>64 B</td>
+<td>256 B</td>
+<td>uint[8] state + byte[64] buffer</td>
+</tr>
+<tr>
+<td>SHA-256</td>
+<td>96 B</td>
+<td>64 B</td>
+<td>256 B</td>
+<td>uint[8] state + byte[64] buffer</td>
+</tr>
+<tr>
+<td>SHA-384</td>
+<td>192 B</td>
+<td>128 B</td>
+<td>640 B</td>
+<td>ulong[8] state + byte[128] buffer</td>
+</tr>
+<tr>
+<td>SHA-512</td>
+<td>192 B</td>
+<td>128 B</td>
+<td>640 B</td>
+<td>ulong[8] state + byte[128] buffer</td>
+</tr>
+<tr>
+<td>SHA-512/224</td>
+<td>192 B</td>
+<td>128 B</td>
+<td>640 B</td>
+<td>SHA-512 core with truncated output</td>
+</tr>
+<tr>
+<td>SHA-512/256</td>
+<td>192 B</td>
+<td>128 B</td>
+<td>640 B</td>
+<td>SHA-512 core with truncated output</td>
+</tr>
+<tr>
+<td>SHA3-224</td>
+<td>336 B</td>
+<td>144 B</td>
+<td>192 B</td>
+<td>200 B Keccak state + byte[rate] buffer</td>
+</tr>
+<tr>
+<td>SHA3-256</td>
+<td>336 B</td>
+<td>136 B</td>
+<td>192 B</td>
+<td>200 B Keccak state + byte[rate] buffer</td>
+</tr>
+<tr>
+<td>SHA3-384</td>
+<td>304 B</td>
+<td>104 B</td>
+<td>192 B</td>
+<td>200 B Keccak state + byte[rate] buffer</td>
+</tr>
+<tr>
+<td>SHA3-512</td>
+<td>272 B</td>
+<td>72 B</td>
+<td>192 B</td>
+<td>200 B Keccak state + byte[rate] buffer</td>
+</tr>
+<tr>
+<td>SHAKE128</td>
+<td>368 B</td>
+<td>168 B</td>
+<td>192 B</td>
+<td>Keccak XOF, variable output</td>
+</tr>
+<tr>
+<td>SHAKE256</td>
+<td>336 B</td>
+<td>136 B</td>
+<td>192 B</td>
+<td>Keccak XOF, variable output</td>
+</tr>
+<tr>
+<td>cSHAKE128</td>
+<td>368 B+</td>
+<td>168 B</td>
+<td>192 B</td>
+<td>+ encoded function/customization</td>
+</tr>
+<tr>
+<td>cSHAKE256</td>
+<td>336 B+</td>
+<td>136 B</td>
+<td>192 B</td>
+<td>+ encoded function/customization</td>
+</tr>
+<tr>
+<td>TurboSHAKE128</td>
+<td>368 B</td>
+<td>168 B</td>
+<td>192 B</td>
+<td>Reduced-round Keccak</td>
+</tr>
+<tr>
+<td>TurboSHAKE256</td>
+<td>336 B</td>
+<td>136 B</td>
+<td>192 B</td>
+<td>Reduced-round Keccak</td>
+</tr>
+<tr>
+<td>KT128</td>
+<td>368 B</td>
+<td>168 B</td>
+<td>192 B</td>
+<td>KangarooTwelve</td>
+</tr>
+<tr>
+<td>KT256</td>
+<td>336 B</td>
+<td>136 B</td>
+<td>192 B</td>
+<td>KangarooTwelve</td>
+</tr>
+<tr>
+<td>Keccak-256</td>
+<td>336 B</td>
+<td>136 B</td>
+<td>192 B</td>
+<td>Ethereum compatible</td>
+</tr>
+<tr>
+<td>Keccak-384</td>
+<td>304 B</td>
+<td>104 B</td>
+<td>192 B</td>
+<td>Ethereum compatible</td>
+</tr>
+<tr>
+<td>Keccak-512</td>
+<td>272 B</td>
+<td>72 B</td>
+<td>192 B</td>
+<td>Ethereum compatible</td>
+</tr>
+<tr>
+<td>BLAKE2b</td>
+<td>192 B+</td>
+<td>128 B</td>
+<td>256 B</td>
+<td>ulong[8] state + byte[128] buffer + key</td>
+</tr>
+<tr>
+<td>BLAKE2s</td>
+<td>96 B+</td>
+<td>64 B</td>
+<td>192 B</td>
+<td>uint[8] state + byte[64] buffer + key</td>
+</tr>
+<tr>
+<td>BLAKE3</td>
+<td>2,816 B</td>
+<td>64 B</td>
+<td>—</td>
+<td>Merkle tree: 1 KB chunk buffer + 1.7 KB CV stack</td>
+</tr>
+<tr>
+<td>Ascon-Hash256</td>
+<td>48 B</td>
+<td>8 B</td>
+<td>—</td>
+<td>5 × ulong state + byte[8] buffer</td>
+</tr>
+<tr>
+<td>Ascon-XOF128</td>
+<td>48 B</td>
+<td>8 B</td>
+<td>—</td>
+<td>5 × ulong state + byte[8] buffer</td>
+</tr>
+<tr>
+<td>RIPEMD-160</td>
+<td>84 B</td>
+<td>64 B</td>
+<td>—</td>
+<td>uint[5] state + byte[64] buffer</td>
+</tr>
+<tr>
+<td>SM3</td>
+<td>96 B</td>
+<td>64 B</td>
+<td>—</td>
+<td>8 × uint state + byte[64] buffer</td>
+</tr>
+<tr>
+<td>Whirlpool</td>
+<td>128 B</td>
+<td>64 B</td>
+<td>16.3 KB</td>
+<td>ulong[8] state + byte[64] buffer; 8 T-tables</td>
+</tr>
+<tr>
+<td>Streebog</td>
+<td>256 B</td>
+<td>64 B</td>
+<td>16.5 KB</td>
+<td>3 × ulong[8] state + byte[64] buffer; 8 T-tables</td>
+</tr>
+<tr>
+<td>Kupyna-256</td>
+<td>192 B</td>
+<td>64 B</td>
+<td>16 KB</td>
+<td>ulong[8] state + scratch + byte[64]; 8 T-tables</td>
+</tr>
+<tr>
+<td>Kupyna-512</td>
+<td>384 B</td>
+<td>128 B</td>
+<td>16 KB</td>
+<td>ulong[16] state + scratch + byte[128]; 8 T-tables</td>
+</tr>
+<tr>
+<td>LSH-256</td>
+<td>384 B</td>
+<td>128 B</td>
+<td>832 B</td>
+<td>CV + submsg registers + byte[128] buffer</td>
+</tr>
+<tr>
+<td>LSH-512</td>
+<td>768 B</td>
+<td>256 B</td>
+<td>1.8 KB</td>
+<td>CV + submsg registers + byte[256] buffer</td>
+</tr>
+<tr>
+<td>SHA-1</td>
+<td>404 B</td>
+<td>64 B</td>
+<td>—</td>
+<td>uint[5] state + uint[80] W + byte[64]</td>
+</tr>
+<tr>
+<td>MD5</td>
+<td>80 B</td>
+<td>64 B</td>
+<td>512 B</td>
+<td>uint[4] state + byte[64] buffer</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cipher-algorithms">Cipher Algorithms</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Instance State</th>
+<th>Block Size</th>
+<th>Static Tables</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128 (ECB/CBC/CTR)</td>
+<td>288 B</td>
+<td>16 B</td>
+<td>10.5 KB</td>
+<td>Fixed: uint[44] keys + IV + counter + feedback; T-tables</td>
+</tr>
+<tr>
+<td>AES-192 (ECB/CBC/CTR)</td>
+<td>288 B</td>
+<td>16 B</td>
+<td>10.5 KB</td>
+<td>Fixed: uint[52] keys (shared fixed buffer)</td>
+</tr>
+<tr>
+<td>AES-256 (ECB/CBC/CTR)</td>
+<td>288 B</td>
+<td>16 B</td>
+<td>10.5 KB</td>
+<td>Fixed: uint[60] keys (shared fixed buffer)</td>
+</tr>
+<tr>
+<td>AES-GCM-128</td>
+<td>~640 B</td>
+<td>16 B</td>
+<td>10.6 KB</td>
+<td>Round keys + H + Shoup table + H-powers (CLMUL)</td>
+</tr>
+<tr>
+<td>AES-GCM-192</td>
+<td>~680 B</td>
+<td>16 B</td>
+<td>10.6 KB</td>
+<td>Larger round key schedule</td>
+</tr>
+<tr>
+<td>AES-GCM-256</td>
+<td>~720 B</td>
+<td>16 B</td>
+<td>10.6 KB</td>
+<td>Largest round key schedule</td>
+</tr>
+<tr>
+<td>AES-CCM-128</td>
+<td>240 B</td>
+<td>16 B</td>
+<td>10.5 KB</td>
+<td>Fixed: uint[44] round keys</td>
+</tr>
+<tr>
+<td>AES-CCM-256</td>
+<td>240 B</td>
+<td>16 B</td>
+<td>10.5 KB</td>
+<td>Fixed: uint[60] round keys</td>
+</tr>
+<tr>
+<td>ChaCha20</td>
+<td>~128 B</td>
+<td>64 B</td>
+<td>16 B</td>
+<td>uint[16] state + keystream buffer</td>
+</tr>
+<tr>
+<td>ChaCha20-Poly1305</td>
+<td>~192 B</td>
+<td>64 B</td>
+<td>16 B</td>
+<td>ChaCha20 state + Poly1305 accumulator</td>
+</tr>
+<tr>
+<td>XChaCha20-Poly1305</td>
+<td>~192 B</td>
+<td>64 B</td>
+<td>16 B</td>
+<td>Same as ChaCha20-Poly1305 (HChaCha subkey)</td>
+</tr>
+<tr>
+<td>Ascon-AEAD-128</td>
+<td>56 B</td>
+<td>16 B</td>
+<td>—</td>
+<td>5 × ulong state + nonce; permutation-based</td>
+</tr>
+<tr>
+<td>SM4 (ECB/CBC/CTR)</td>
+<td>176 B</td>
+<td>16 B</td>
+<td>4 KB</td>
+<td>uint[32] round keys + IV + feedback; S-box + CK table</td>
+</tr>
+<tr>
+<td>ARIA-128 (ECB/CBC/CTR)</td>
+<td>288 B</td>
+<td>16 B</td>
+<td>1 KB</td>
+<td>byte[16×17] round keys + IV + feedback; 4 S-boxes</td>
+</tr>
+<tr>
+<td>ARIA-192 (ECB/CBC/CTR)</td>
+<td>288 B</td>
+<td>16 B</td>
+<td>1 KB</td>
+<td>byte[16×15] round keys (shared buffer)</td>
+</tr>
+<tr>
+<td>ARIA-256 (ECB/CBC/CTR)</td>
+<td>288 B</td>
+<td>16 B</td>
+<td>1 KB</td>
+<td>byte[16×17] round keys (shared buffer)</td>
+</tr>
+<tr>
+<td>Camellia-128 (ECB/CBC/CTR)</td>
+<td>320 B</td>
+<td>16 B</td>
+<td>4.5 KB</td>
+<td>uint[52] subkeys + IV + feedback; 6 SP-boxes</td>
+</tr>
+<tr>
+<td>Camellia-192 (ECB/CBC/CTR)</td>
+<td>400 B</td>
+<td>16 B</td>
+<td>4.5 KB</td>
+<td>uint[68] subkeys (shared SP-boxes)</td>
+</tr>
+<tr>
+<td>Camellia-256 (ECB/CBC/CTR)</td>
+<td>400 B</td>
+<td>16 B</td>
+<td>4.5 KB</td>
+<td>uint[68] subkeys (shared SP-boxes)</td>
+</tr>
+<tr>
+<td>Kuznyechik (ECB/CBC/CTR)</td>
+<td>320 B</td>
+<td>16 B</td>
+<td>8 KB</td>
+<td>byte[10×16] round keys + IV + feedback; LS/IL tables</td>
+</tr>
+<tr>
+<td>Kalyna-128 (ECB/CBC/CTR)</td>
+<td>320 B</td>
+<td>16 B</td>
+<td>5 KB</td>
+<td>ulong[22] round keys + IV + feedback; 4 S-boxes + MDS</td>
+</tr>
+<tr>
+<td>Kalyna-256 (ECB/CBC/CTR)</td>
+<td>400 B</td>
+<td>16 B</td>
+<td>5 KB</td>
+<td>ulong[30] round keys (shared S-boxes/MDS)</td>
+</tr>
+<tr>
+<td>SEED (ECB/CBC/CTR)</td>
+<td>192 B</td>
+<td>16 B</td>
+<td>4 KB</td>
+<td>uint[32] round keys + IV + feedback; 4 SS-boxes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="message-authentication-codes-mac">Message Authentication Codes (MAC)</h3>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Instance State</th>
+<th>Block Size</th>
+<th>Static Tables</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KMAC128</td>
+<td>368 B+</td>
+<td>168 B</td>
+<td>192 B</td>
+<td>Keccak state + buffer + encoded key/customization</td>
+</tr>
+<tr>
+<td>KMAC256</td>
+<td>336 B+</td>
+<td>136 B</td>
+<td>192 B</td>
+<td>Keccak state + buffer + encoded key/customization</td>
+</tr>
+<tr>
+<td>BLAKE2b (keyed)</td>
+<td>192 B+</td>
+<td>128 B</td>
+<td>256 B</td>
+<td>Same as BLAKE2b + key material</td>
+</tr>
+<tr>
+<td>BLAKE2s (keyed)</td>
+<td>96 B+</td>
+<td>64 B</td>
+<td>192 B</td>
+<td>Same as BLAKE2s + key material</td>
+</tr>
+<tr>
+<td>BLAKE3 (keyed)</td>
+<td>2,816 B</td>
+<td>64 B</td>
+<td>—</td>
+<td>Same as BLAKE3 with key words</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Static tables</strong> are shared across all instances of algorithms in the same family and are loaded once into memory. AES T-tables (10.5 KB) are shared by all AES-based algorithms (ECB, CBC, CTR, GCM, CCM). Keccak round constants (192 B) are shared by all SHA-3, SHAKE, cSHAKE, TurboSHAKE, KT, and KMAC instances. Algorithms marked &quot;—&quot; use no static lookup tables (permutation-based or constant-time by design).</p>
+</blockquote>
+<h2 id="updating-benchmark-documentation">Updating benchmark documentation</h2>
+<ol>
+<li>Run the cryptography benchmarks (either via the helper script or directly through BenchmarkSwitcher):
+<pre><code class="lang-powershell"># Run a specific algorithm family
+.\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE
+
+# Run a single algorithm
+.\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
+
+# Run cipher benchmarks
+.\scripts\run-benchmarks.ps1 -Project Cryptography -Family AesGcm128
+
+# Run all regional cipher benchmarks
+.\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher
+
+# Direct invocation
+cd tests/Security/Cryptography
+dotnet run -c Release --framework net10.0 -- --filter *SHA256*
+</code></pre>
+</li>
+<li>Mirror the freshly generated markdown into the documentation folder:
+<pre><code class="lang-powershell">.\scripts\update-benchmark-docs.ps1 -Project Cryptography
+</code></pre>
+The script trims the machine header from the BenchmarkDotNet export, writes it once to a platform-local <code>machine-spec.md</code>, and stores each algorithm's benchmark table under the derived platform folder.</li>
+</ol>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="hash-algorithms.html">Hash Algorithms Reference</a></li>
+<li><a href="cipher-algorithms.html">Cipher Algorithms Reference</a></li>
+<li><a href="mac-algorithms.html">MAC Algorithms Reference</a></li>
+<li><a href="xof-mode.html">XOF Mode (Extendable-Output)</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

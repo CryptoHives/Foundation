@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ArrayPoolBufferWriter&lt;T&gt; Class | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ArrayPoolBufferWriter&lt;T&gt; Class | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/arraypoolbufferwriter.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="arraypoolbufferwritert-class">ArrayPoolBufferWriter&lt;T&gt; Class</h1>
+
+<p>A high-performance implementation of <code>IBufferWriter&lt;T&gt;</code> that uses pooled memory segments from <code>ArrayPool&lt;T&gt;</code>.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">CryptoHives.Foundation.Memory.Buffers
+</code></pre>
+<h2 id="inheritance">Inheritance</h2>
+<p><code>Object</code> ? <strong><code>ArrayPoolBufferWriter&lt;T&gt;</code></strong></p>
+<h2 id="implements">Implements</h2>
+<ul>
+<li><code>IBufferWriter&lt;T&gt;</code></li>
+<li><code>IDisposable</code></li>
+</ul>
+<h2 id="syntax">Syntax</h2>
+<pre><code class="lang-csharp">public sealed class ArrayPoolBufferWriter&lt;T&gt; : IBufferWriter&lt;T&gt;, IDisposable
+</code></pre>
+<h2 id="type-parameters">Type Parameters</h2>
+<p><strong><code>T</code></strong> - The type of elements in the buffer</p>
+<h2 id="overview">Overview</h2>
+<p><code>ArrayPoolBufferWriter&lt;T&gt;</code> provides an efficient way to build sequences of data using pooled memory segments. It implements <code>IBufferWriter&lt;T&gt;</code>, making it compatible with serializers and other APIs that write to buffers. The writer grows by allocating progressively larger chunks from the array pool, avoiding continuous reallocations.</p>
+<h2 id="benefits">Benefits</h2>
+<ul>
+<li><strong>Pooled Memory</strong>: Uses <code>ArrayPool&lt;T&gt;.Shared</code> to minimize allocations</li>
+<li><strong>ArrayPool Backed</strong>: Efficient recycling of arrays for high-performance scenarios</li>
+<li><strong>Buffer Clear Option</strong>: Optionally clears arrays before returning to pool for privacy</li>
+<li><strong>Progressive Growth</strong>: Chunks grow exponentially up to a maximum size</li>
+<li><strong>Zero-Copy Access</strong>: <code>GetReadOnlySequence()</code> provides direct access without copying</li>
+<li><strong>IBufferWriter Support</strong>: Works with <code>System.Text.Json</code>, Protocol Buffers, and other modern serializers</li>
+<li><strong>Disposable</strong>: Returns arrays to the pool on disposal</li>
+<li><strong>Configurable</strong>: Customizable chunk sizes and clearing behavior</li>
+</ul>
+<h2 id="constructors">Constructors</h2>
+<table>
+<thead>
+<tr>
+<th>Constructor</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ArrayPoolBufferWriter()</code></td>
+<td>Creates with default settings (256-byte initial chunks, 64KB max)</td>
+</tr>
+<tr>
+<td><code>ArrayPoolBufferWriter(int defaultChunksize, int maxChunkSize)</code></td>
+<td>Creates with custom chunk sizes</td>
+</tr>
+<tr>
+<td><code>ArrayPoolBufferWriter(bool clearArray, int defaultChunksize, int maxChunkSize)</code></td>
+<td>Creates with full customization including array clearing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DefaultChunkSize</code></td>
+<td><code>int</code> (static)</td>
+<td>Default initial chunk size (256 bytes)</td>
+</tr>
+<tr>
+<td><code>MaxChunkSize</code></td>
+<td><code>int</code> (static)</td>
+<td>Default maximum chunk size (64KB)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="ibufferwriter-implementation">IBufferWriter Implementation</h3>
+<pre><code class="lang-csharp">public void Advance(int count)
+</code></pre>
+<p>Advances the writer by the specified number of elements that were written to the span/memory obtained from <code>GetSpan</code>/<code>GetMemory</code>.</p>
+<pre><code class="lang-csharp">public Memory&lt;T&gt; GetMemory(int sizeHint = 0)
+</code></pre>
+<p>Returns a <code>Memory&lt;T&gt;</code> to write to. The memory is at least <code>sizeHint</code> elements large.</p>
+<pre><code class="lang-csharp">public Span&lt;T&gt; GetSpan(int sizeHint = 0)
+</code></pre>
+<p>Returns a <code>Span&lt;T&gt;</code> to write to. The span is at least <code>sizeHint</code> elements large.</p>
+<h3 id="sequence-access">Sequence Access</h3>
+<pre><code class="lang-csharp">public ReadOnlySequence&lt;T&gt; GetReadOnlySequence()
+</code></pre>
+<p>Returns a <code>ReadOnlySequence&lt;T&gt;</code> representing all written data. The sequence is valid until the next write operation or disposal.</p>
+<h3 id="disposal">Disposal</h3>
+<pre><code class="lang-csharp">public void Dispose()
+</code></pre>
+<p>Returns all pooled arrays to <code>ArrayPool&lt;T&gt;.Shared</code> and invalidates the writer.</p>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="basic-usage">Basic Usage</h3>
+<pre><code class="lang-csharp">using var writer = new ArrayPoolBufferWriter&lt;byte&gt;();
+
+// Get span and write
+Span&lt;byte&gt; span = writer.GetSpan(100);
+for (int i = 0; i &lt; 100; i++)
+{
+  span[i] = (byte)i;
+}
+writer.Advance(100);
+
+// Get the result
+ReadOnlySequence&lt;byte&gt; sequence = writer.GetReadOnlySequence();
+</code></pre>
+<h3 id="with-json-serialization">With JSON Serialization</h3>
+<pre><code class="lang-csharp">using var writer = new ArrayPoolBufferWriter&lt;byte&gt;();
+using var jsonWriter = new Utf8JsonWriter(writer);
+
+jsonWriter.WriteStartObject();
+jsonWriter.WriteString(&quot;name&quot;u8, &quot;value&quot;u8);
+jsonWriter.WriteEndObject();
+await jsonWriter.FlushAsync();
+
+ReadOnlySequence&lt;byte&gt; jsonBytes = writer.GetReadOnlySequence();
+mqttClient.Publish(&quot;topic&quot;, jsonBytes);
+</code></pre>
+<h3 id="building-protocol-messages">Building Protocol Messages</h3>
+<pre><code class="lang-csharp">using var writer = new ArrayPoolBufferWriter&lt;byte&gt;();
+
+// Write header
+Span&lt;byte&gt; header = writer.GetSpan(4);
+BinaryPrimitives.WriteInt32LittleEndian(header, messageId);
+writer.Advance(4);
+
+// Write payload
+payload.CopyTo(writer.GetSpan(payload.Length));
+writer.Advance(payload.Length);
+
+ReadOnlySequence&lt;byte&gt; message = writer.GetReadOnlySequence();
+</code></pre>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Memory Allocation</strong>: array allocations as chunks overflow, but size grows exponentially to upper limit</li>
+<li><strong>Write Operations</strong>: O(1) amortized for sequential writes</li>
+<li><strong>Sequence Access</strong>: O(n) to get <code>ReadOnlySequence&lt;T&gt;</code></li>
+<li><strong>Disposal</strong>: O(n) (returns arrays to pool)</li>
+</ul>
+<p>(where n is number of memory chunks)</p>
+<h2 id="configuration">Configuration</h2>
+<h3 id="chunk-growth-strategy">Chunk Growth Strategy</h3>
+<p>The writer starts with <code>defaultChunksize</code> and doubles the chunk size on each allocation until reaching <code>maxChunkSize</code>:</p>
+<pre><code class="lang-csharp">// Start with 1KB, grow to max 16KB
+using var writer = new ArrayPoolBufferWriter&lt;byte&gt;(
+    defaultChunksize: 1024,
+    maxChunkSize: 16384
+);
+</code></pre>
+<h3 id="array-clearing">Array Clearing</h3>
+<p>For sensitive data, enable array clearing before returning to pool:</p>
+<pre><code class="lang-csharp">using var writer = new ArrayPoolBufferWriter&lt;byte&gt;(
+    clearArray: true,
+    defaultChunksize: 4096,
+    maxChunkSize: 65536
+);
+</code></pre>
+<h2 id="thread-safety">Thread Safety</h2>
+<p>⚠️ <strong>Not thread-safe</strong>. External synchronization required for concurrent access.</p>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="do-dispose-properly">DO: Dispose Properly</h3>
+<pre><code class="lang-csharp">using var writer = new ArrayPoolBufferWriter&lt;byte&gt;();
+// Use writer...
+// Automatically disposed and arrays returned
+</code></pre>
+<h3 id="do-provide-size-hints">DO: Provide Size Hints</h3>
+<pre><code class="lang-csharp">// If you know the size, provide a hint
+Span&lt;byte&gt; span = writer.GetSpan(sizeHint: 1024);
+</code></pre>
+<h3 id="dont-use-readonlysequence-after-more-writes">DON'T: Use ReadOnlySequence After More Writes</h3>
+<pre><code class="lang-csharp">var sequence1 = writer.GetReadOnlySequence();
+writer.GetSpan(100); // This invalidates sequence1!
+</code></pre>
+<h3 id="do-get-sequence-once-at-the-end">DO: Get Sequence Once at the End</h3>
+<pre><code class="lang-csharp">// Write all data
+WriteData(writer);
+
+// Get sequence once at the end
+ReadOnlySequence&lt;byte&gt; finalSequence = writer.GetReadOnlySequence();
+</code></pre>
+<h2 id="comparison-with-alternatives">Comparison with Alternatives</h2>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Allocations</th>
+<th>LOH Pressure</th>
+<th>Complexity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>List&lt;T&gt;</code> + <code>ToArray()</code></td>
+<td>High</td>
+<td>High for large data</td>
+<td>Low</td>
+</tr>
+<tr>
+<td><code>MemoryStream</code></td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Low</td>
+</tr>
+<tr>
+<td><code>ArrayPoolBufferWriter&lt;T&gt;</code></td>
+<td>Low</td>
+<td>Low</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Manual pooling</td>
+<td>Lowest</td>
+<td>Lowest</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="arraypoolmemorystream.html">ArrayPoolMemoryStream</a></li>
+<li><a href="https://docs.microsoft.com/en-us/dotnet/api/system.buffers.ibufferwriter-1">IBufferWriter&lt;T&gt; Documentation</a></li>
+<li><a href="index.html">Memory Package Overview</a></li>
+</ul>
+<hr>
+<p>© 2025 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/arraypoolbufferwriter.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

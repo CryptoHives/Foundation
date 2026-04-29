@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>CryptoHives.Foundation.Threading Package | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="CryptoHives.Foundation.Threading Package | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cryptohivesfoundationthreading-package">CryptoHives.Foundation.Threading Package</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Threading package provides high-performance, pooled async synchronization primitives for .NET applications with high throughput workloads, where many small memory allocations matter. All synchronization primitives leverage <code>ValueTask</code> and pooled <code>IValueTaskSource</code> for efficient async operations. They are not meant to replace but to complement existing popular async libraries.</p>
+<p>There are already a number of popular async synchronization libraries available for .NET, but many of these incur significant memory allocations under high contention due to per-waiter <code>Task</code> and <code>TaskCompletionSource</code> allocations or cancellation handling.
+In recent years, the introduction of <code>ValueTask</code> and <code>IValueTaskSource</code> has enabled the creation of low-allocation async primitives that can be pooled and reused to minimize allocations in high-throughput scenarios.
+This library is the result of the research done by the <em>Keepers of the CryptoHives</em> into building efficient, pooled async synchronization primitives that leverage these modern .NET features.
+By demand, more primitives might be added in the future.</p>
+<h2 id="key-features">Key Features</h2>
+<ul>
+<li><strong>Pooled Primitives</strong>: Synchronization objects backed by object pools</li>
+<li><strong>ValueTask-based</strong>: Low-allocation async operations</li>
+<li><strong>High Performance</strong>: Optimized for concurrent access patterns</li>
+<li><strong>Thread-safe</strong>: All operations are thread-safe</li>
+<li><strong>Ease of use</strong>: Drop-in replacement to replace other popular libraries by changing the namespace</li>
+<li><strong>Cancellation support</strong>: Full <code>CancellationToken</code> support across all primitives</li>
+<li><strong>Configurable continuations</strong>: Control synchronous vs asynchronous continuation execution</li>
+<li><strong>Custom ObjectPools</strong>: Supply your own object pools for fine-grained control</li>
+<li><strong>Included Analyzers</strong>: Roslyn analyzers automatically detect common ValueTask misuse patterns</li>
+</ul>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package CryptoHives.Foundation.Threading
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> This package includes <a href="../threading.analyzers/index.html">Threading Analyzers</a> automatically. The analyzers are transitive, so any project that references a project using this package will also benefit from the ValueTask misuse detection at compile time.</p>
+</blockquote>
+<h2 id="namespaces">Namespaces</h2>
+<h3 id="async-synchronization-primitives">Async Synchronization Primitives</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Async.Pooled;
+</code></pre>
+<h3 id="pooling-infrastructure">Pooling Infrastructure</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Pools;
+</code></pre>
+<h2 id="classes">Classes</h2>
+<h3 id="synchronization-primitives">Synchronization Primitives</h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Description</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="asynclock.html">AsyncLock</a></td>
+<td>Pooled async mutual exclusion lock</td>
+<td><a href="asynclock.html">Details</a></td>
+</tr>
+<tr>
+<td><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a></td>
+<td>Pooled async auto-reset event (one waiter per signal)</td>
+<td><a href="asyncautoresetevent.html">Details</a></td>
+</tr>
+<tr>
+<td><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a></td>
+<td>Pooled async manual-reset event (all waiters per signal)</td>
+<td><a href="asyncmanualresetevent.html">Details</a></td>
+</tr>
+<tr>
+<td><a href="asyncsemaphore.html">AsyncSemaphore</a></td>
+<td>Pooled async semaphore with configurable permit count</td>
+<td><a href="asyncsemaphore.html">Details</a></td>
+</tr>
+<tr>
+<td><a href="asynccountdownevent.html">AsyncCountdownEvent</a></td>
+<td>Pooled async countdown event (signals when count reaches zero)</td>
+<td><a href="asynccountdownevent.html">Details</a></td>
+</tr>
+<tr>
+<td><a href="asyncbarrier.html">AsyncBarrier</a></td>
+<td>Pooled async barrier (synchronizes multiple participants)</td>
+<td><a href="asyncbarrier.html">Details</a></td>
+</tr>
+<tr>
+<td><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a></td>
+<td>Pooled async reader-writer lock (multiple readers or single writer)</td>
+<td><a href="asyncreaderwriterlock.html">Details</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="pooling-support-classes">Pooling Support Classes</h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Description</th>
+<th>Namespace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IGetPooledManualResetValueTaskSource&lt;T&gt;</code></td>
+<td>Interface to get pooled <code>IValueTaskSource&lt;T&gt;</code> implementations (providers return <code>PooledManualResetValueTaskSource&lt;T&gt;</code> instances)</td>
+<td><code>CryptoHives.Foundation.Threading.Pools</code></td>
+</tr>
+<tr>
+<td><code>ManualResetValueTaskSource&lt;T&gt;</code></td>
+<td>Abstract base for pooled <code>IValueTaskSource&lt;T&gt;</code> implementations</td>
+<td><code>CryptoHives.Foundation.Threading.Pools</code></td>
+</tr>
+<tr>
+<td><code>PooledManualResetValueTaskSource&lt;T&gt;</code></td>
+<td>Pooled <code>IValueTaskSource&lt;T&gt;</code> implementation with automatic pool return</td>
+<td><code>CryptoHives.Foundation.Threading.Pools</code></td>
+</tr>
+<tr>
+<td><code>LocalManualResetValueTaskSource&lt;T&gt;</code></td>
+<td>Object-local <code>IValueTaskSource&lt;T&gt;</code> without pool integration</td>
+<td><code>CryptoHives.Foundation.Threading.Pools</code></td>
+</tr>
+<tr>
+<td><code>PooledValueTaskSourceObjectPolicy&lt;T&gt;</code></td>
+<td>Object pool policy for <code>PooledManualResetValueTaskSource&lt;T&gt;</code></td>
+<td><code>CryptoHives.Foundation.Threading.Pools</code></td>
+</tr>
+<tr>
+<td><code>ValueTaskSourceObjectPool&lt;T&gt;</code></td>
+<td>Specialized provider that implements <code>IGetPooledManualResetValueTaskSource&lt;T&gt;</code> and returns pooled task sources</td>
+<td><code>CryptoHives.Foundation.Threading.Pools</code></td>
+</tr>
+<tr>
+<td><code>ValueTaskSourceObjectPools</code></td>
+<td>Static helper with shared pool instances and constants</td>
+<td><code>CryptoHives.Foundation.Threading.Pools</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="-known-issues-and-caveats">⚠️ Known Issues and Caveats</h2>
+<ol>
+<li>Strictly only <strong>await a ValueTask once</strong>. An additional await or AsTask() may throw an <code>InvalidOperationException</code>.</li>
+<li>Strictly only <strong>use AsTask() once</strong>, and only if you have to. An additional await or AsTask() may throw an <code>InvalidOperationException</code>. Adds also a Task allocation on contention.</li>
+<li><strong>RunContinuationsAsynchronously</strong> is by default enabled. In rare cases perf degradation may occur if the Task derived from a ValueTask is not immediately awaited (see benchmarks).</li>
+<li><strong>Pool Exhaustion</strong>: In extreme high-throughput scenarios with many waiters, the pool may exhaust. Monitor and adjust usage patterns accordingly. Use a custom pool if necessary.</li>
+<li>Always await a ValueTask or AsTask() waiter primitive, or the <code>IValueTaskSource</code> is not returned to the pool.</li>
+<li><strong>AsTask() Performance Warning</strong>: When <code>RunContinuationAsynchronously=true</code> (default), storing the result of <code>AsTask()</code> before signaling causes severe performance degradation (10x-100x slower). Always await <code>ValueTask</code> directly when possible.</li>
+</ol>
+<h2 id="benchmarks">Benchmarks</h2>
+<p>Microbenchmarks and contention tests with a discussion of the performance characteristics are available to validate performance and allocation characteristics.</p>
+<p>Please be aware that not all new replacement classes behave better than existing popular implementations in all scenarios; But most of the time they do.</p>
+<p>For example the <code>AsyncManualResetEvent</code> implementation has an overhead of a <code>IValueTaskSource</code> per waiter, because <code>ValueTask</code> cannot be awaited by multiple instances. In contrast to a Task-based implementation all waiters can share the same wake-up Task and <code>TaskCompletionSource</code>.</p>
+<p>See the Benchmarks overview:</p>
+<ul>
+<li><a href="benchmarks.html">Benchmarks Overview</a></li>
+</ul>
+<p>Run reports are stored under:</p>
+<ul>
+<li><code>tests/Threading/BenchmarkDotNet.Artifacts/results/</code></li>
+</ul>
+<h2 id="quick-examples">Quick Examples</h2>
+<h3 id="asynclock">AsyncLock</h3>
+<pre><code class="lang-csharp">private readonly AsyncLock _lock = new AsyncLock();
+
+public async Task AccessSharedResourceAsync(CancellationToken ct)
+{
+    using (await _lock.LockAsync(ct))
+    {
+        // Critical section - only one task at a time
+        await ModifySharedStateAsync();
+    }
+}
+</code></pre>
+<h3 id="asyncautoresetevent">AsyncAutoResetEvent</h3>
+<pre><code class="lang-csharp">private readonly AsyncAutoResetEvent _event = new AsyncAutoResetEvent(false);
+
+// Producer
+public async Task ProduceAsync()
+{
+    await ProduceItemAsync();
+    _event.Set(); // Signal one waiter
+}
+
+// Consumer
+public async Task ConsumeAsync(CancellationToken ct)
+{
+    await _event.WaitAsync(ct); // Wait for signal
+    await ProcessItemAsync();
+}
+</code></pre>
+<h3 id="asyncmanualresetevent">AsyncManualResetEvent</h3>
+<pre><code class="lang-csharp">private readonly AsyncManualResetEvent _event = new AsyncManualResetEvent(false);
+
+// Controller
+public void SignalReady()
+{
+    _event.Set(); // Signal all waiters
+}
+
+// Worker
+public async Task WaitForReadyAsync(CancellationToken ct)
+{
+    await _event.WaitAsync(ct); // Multiple tasks can wait
+    await DoWorkAsync();
+}
+</code></pre>
+<h3 id="asyncsemaphore">AsyncSemaphore</h3>
+<pre><code class="lang-csharp">private readonly AsyncSemaphore _semaphore = new AsyncSemaphore(3);
+
+// Limited concurrent access
+public async Task AccessLimitedResourceAsync(CancellationToken ct)
+{
+    await _semaphore.WaitAsync(ct);
+    try
+    {
+        // Max 3 concurrent tasks can access this section
+        await AccessResourceAsync();
+    }
+    finally
+    {
+        _semaphore.Release();
+    }
+}
+</code></pre>
+<h3 id="asynccountdownevent">AsyncCountdownEvent</h3>
+<pre><code class="lang-csharp">private readonly AsyncCountdownEvent _countdown = new AsyncCountdownEvent(3);
+
+// Coordinator
+public async Task WaitForWorkersAsync(CancellationToken ct)
+{
+    await _countdown.WaitAsync(ct);
+    // All workers have signaled
+}
+
+// Worker
+public void WorkerCompleted()
+{
+    _countdown.Signal();
+}
+</code></pre>
+<h3 id="asyncbarrier">AsyncBarrier</h3>
+<pre><code class="lang-csharp">private readonly AsyncBarrier _barrier = new AsyncBarrier(3);
+
+// Participant
+public async Task ParticipantWorkAsync(CancellationToken ct)
+{
+    await DoPhase1WorkAsync();
+    await _barrier.SignalAndWaitAsync(ct); // Wait for all participants
+    await DoPhase2WorkAsync();
+}
+</code></pre>
+<h3 id="asyncreaderwriterlock">AsyncReaderWriterLock</h3>
+<pre><code class="lang-csharp">private readonly AsyncReaderWriterLock _rwLock = new AsyncReaderWriterLock();
+
+// Reader
+public async Task ReadAsync(CancellationToken ct)
+{
+    using (await _rwLock.ReaderLockAsync(ct))
+    {
+        // Multiple readers can hold the lock concurrently
+        await ReadDataAsync();
+    }
+}
+
+// Writer
+public async Task WriteAsync(CancellationToken ct)
+{
+    using (await _rwLock.WriterLockAsync(ct))
+    {
+        // Exclusive access
+        await WriteDataAsync();
+    }
+}
+</code></pre>
+<h2 id="benefits">Benefits</h2>
+<h3 id="reduced-allocations">Reduced Allocations</h3>
+<ul>
+<li>Reuses <code>IValueTaskSource</code> instances from object pools</li>
+<li>ValueTask-based APIs avoid Task allocations when operations complete synchronously</li>
+<li>Best case: zero allocation overhead for async state machines</li>
+<li>On latest .NET versions cancellation token registration is allocation free</li>
+</ul>
+<h3 id="high-throughput">High Throughput</h3>
+<ul>
+<li>Optimized for high-contention scenarios</li>
+<li>Lock-free operations where possible</li>
+<li>Configurable continuation scheduling</li>
+</ul>
+<h3 id="compatibility">Compatibility</h3>
+<ul>
+<li>Drop in replacement of existing libraries by changing namespace</li>
+<li>Works with async/await patterns</li>
+<li>Cancellation token support</li>
+<li>ConfigureAwait support</li>
+</ul>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>AsyncLock</strong>: O(1) acquire when uncontended, FIFO queue for waiters</li>
+<li><strong>AsyncAutoResetEvent</strong>: O(1) Set/Wait, FIFO queue for single waiter release</li>
+<li><strong>AsyncManualResetEvent</strong>: O(n) Set broadcast to all n waiters, O(1) Reset</li>
+</ul>
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Determine benefits</strong>: Are pooled primitives and ValueTask beneficial for your workload?</li>
+<li><strong>Reuse instances</strong>: Create synchronization primitives once and reuse them</li>
+<li><strong>Do not reuse ValueTask</strong>: Always await or AsTask() only once per ValueTask instance</li>
+<li><strong>Always Await ValueTask and Task</strong>: If not awaited, resources are not returned to the pool</li>
+<li><strong>Avoid holding locks</strong>: Keep critical sections as short as possible</li>
+<li><strong>Use cancellation</strong>: Always pass CancellationToken for long waits</li>
+<li><strong>ConfigureAwait(false)</strong>: Use in library code to avoid context capture</li>
+<li><strong>Avoid AsTask() before signaling</strong>: When <code>RunContinuationAsynchronously=true</code>, this causes severe performance degradation</li>
+</ol>
+<h2 id="common-patterns">Common Patterns</h2>
+<h3 id="producer-consumer">Producer-Consumer</h3>
+<pre><code class="lang-csharp">private readonly AsyncAutoResetEvent _itemAvailable = new AsyncAutoResetEvent(false);
+private readonly Queue&lt;Item&gt; _queue = new();
+
+public async Task ProducerAsync(Item item)
+{
+    _queue.Enqueue(item);
+    _itemAvailable.Set();
+}
+
+public async Task&lt;Item&gt; ConsumerAsync(CancellationToken ct)
+{
+    await _itemAvailable.WaitAsync(ct);
+    return _queue.Dequeue();
+}
+</code></pre>
+<h3 id="async-initialization">Async Initialization</h3>
+<pre><code class="lang-csharp">private readonly AsyncManualResetEvent _initialized = new AsyncManualResetEvent(false);
+
+public async Task InitializeAsync()
+{
+    await DoInitializationAsync();
+    _initialized.Set();
+}
+
+public async Task UseServiceAsync(CancellationToken ct)
+{
+    await _initialized.WaitAsync(ct);
+    // Service is now initialized
+}
+</code></pre>
+<h3 id="rate-limiting">Rate Limiting</h3>
+<pre><code class="lang-csharp">private readonly AsyncLock _rateLimiter = new AsyncLock();
+
+public async Task&lt;T&gt; RateLimitedOperationAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; operation, CancellationToken ct)
+{
+    using (await _rateLimiter.LockAsync(ct))
+    {
+        await Task.Delay(100, ct); // Rate limit
+        return await operation();
+    }
+}
+</code></pre>
+<h2 id="comparison-with-standard-library">Comparison with Standard Library</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Threading Package</th>
+<th>System.Threading</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Allocation overhead</td>
+<td>Minimal (pooled)</td>
+<td>Higher (per operation)</td>
+</tr>
+<tr>
+<td>ValueTask support</td>
+<td>Yes</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td>Pooling</td>
+<td>Built-in</td>
+<td>Manual</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Optimized for high-throughput</td>
+<td>Standard</td>
+</tr>
+<tr>
+<td>Cancellation</td>
+<td>Full support</td>
+<td>Varies</td>
+</tr>
+</tbody>
+</table>
+<h2 id="advanced-custom-pooling">Advanced: Custom Pooling</h2>
+<p>You can provide a custom provider that implements <code>IGetPooledManualResetValueTaskSource&lt;T&gt;</code> for fine-grained control over pool behavior. The built-in <code>ValueTaskSourceObjectPool&lt;T&gt;</code> implements this interface and can be used directly.</p>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Pools;
+using Microsoft.Extensions.ObjectPool;
+
+// Create a custom pool provider (ValueTaskSourceObjectPool implements IGetPooledManualResetValueTaskSource&lt;T&gt;)
+var customPolicy = new PooledValueTaskSourceObjectPolicy&lt;bool&gt;();
+var customPool = new ValueTaskSourceObjectPool&lt;bool&gt;(customPolicy, maximumRetained: 64);
+
+// Use custom provider with event
+var evt = new AsyncAutoResetEvent(
+    initialState: false,
+    runContinuationAsynchronously: true,
+    pool: customPool); // accepts any IGetPooledManualResetValueTaskSource&lt;bool&gt;
+</code></pre>
+<h2 id="valuetasksource-details">ValueTaskSource Details</h2>
+<p>The <code>ManualResetValueTaskSource&lt;T&gt;</code> abstract base class provides:</p>
+<ul>
+<li><code>Version</code> property for versioning support</li>
+<li><code>RunContinuationsAsynchronously</code> property to control continuation scheduling</li>
+<li><code>CancellationToken</code> and <code>CancellationTokenRegistration</code> for cancellation support</li>
+<li><code>SetResult()</code> and <code>SetException()</code> for completion</li>
+<li><code>TryReset()</code> for pool reuse</li>
+</ul>
+<p>The <code>PooledManualResetValueTaskSource&lt;T&gt;</code> sealed implementation:</p>
+<ul>
+<li>Automatically returns to pool after <code>GetResult()</code> is called</li>
+<li>Integrates with <code>IResettable</code> for pool compatibility</li>
+<li>Manages cancellation token registration lifecycle</li>
+</ul>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../threading.analyzers/index.html">Threading Analyzers</a> - Roslyn analyzers for detecting ValueTask misuse</li>
+<li><a href="../memory/index.html">Memory Package</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a> - Manual-reset event variant</li>
+<li><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a> - Async reader-writer lock</li>
+<li><a href="asynclock.html">AsyncLock</a> - Async mutual exclusion lock</li>
+<li><a href="asynccountdownevent.html">AsyncCountdownEvent</a> - Async countdown event</li>
+<li><a href="asyncbarrier.html">AsyncBarrier</a> - Async barrier synchronization primitive</li>
+<li><a href="asyncsemaphore.html">AsyncSemaphore</a> - Async semaphore primitive</li>
+<li><a href="benchmarks.html">Benchmarks</a> - Benchmark description</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

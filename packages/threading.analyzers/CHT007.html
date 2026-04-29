@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>CHT007: AsTask() stored before signaling may cause performance degradation | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="CHT007: AsTask() stored before signaling may cause performance degradation | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading.analyzers/CHT007.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cht007-astask-stored-before-signaling-may-cause-performance-degradation">CHT007: AsTask() stored before signaling may cause performance degradation</h1>
+
+<h2 id="cause">Cause</h2>
+<p>The result of <code>AsTask()</code> is stored in a variable before the underlying async operation completes.</p>
+<h2 id="rule-description">Rule Description</h2>
+<p>When <code>RunContinuationsAsynchronously</code> is <code>true</code> (the default for CryptoHives.Foundation.Threading primitives), storing the result of <code>AsTask()</code> before the operation signals completion can cause severe performance degradation—often 10x to 100x slower.</p>
+<p>This occurs because:</p>
+<ol>
+<li><strong><code>ManualResetValueTaskSourceCore</code></strong> internally queues continuations</li>
+<li><strong>Storing a <code>Task</code> reference</strong> before signaling prevents synchronous completion</li>
+<li><strong>Forces asynchronous scheduling</strong> to the thread pool even when the event is already signaled</li>
+<li><strong>Adds memory allocations</strong> for the Task wrapper and continuation state</li>
+</ol>
+<h2 id="how-to-fix">How to Fix</h2>
+<h3 id="option-1-await-valuetask-directly-recommended">Option 1: Await ValueTask directly (Recommended)</h3>
+<pre><code class="lang-csharp">// Before (slow)
+Task t = asyncEvent.WaitAsync().AsTask();
+asyncEvent.Set();
+await t;
+
+// After (fast)
+var waitTask = asyncEvent.WaitAsync();
+asyncEvent.Set();
+await waitTask;
+</code></pre>
+<h3 id="option-2-convert-to-task-immediately-before-awaiting">Option 2: Convert to Task immediately before awaiting</h3>
+<pre><code class="lang-csharp">// Before (slow)
+Task t = asyncEvent.WaitAsync().AsTask();  // Stored before Set()
+DoSomeWork();
+asyncEvent.Set();
+await t;
+
+// After (faster)
+var vt = asyncEvent.WaitAsync();
+DoSomeWork();
+asyncEvent.Set();
+await vt.AsTask();  // Convert immediately before await
+</code></pre>
+<h3 id="option-3-store-valuetask-not-task">Option 3: Store ValueTask, not Task</h3>
+<pre><code class="lang-csharp">// Before (slow)
+Task t = asyncEvent.WaitAsync().AsTask();
+asyncEvent.Set();
+await t;
+
+// After (fast)
+ValueTask vt = asyncEvent.WaitAsync();
+asyncEvent.Set();
+await vt;
+</code></pre>
+<h2 id="when-to-suppress">When to Suppress</h2>
+<p>Suppress if:</p>
+<ol>
+<li>You understand the performance implications and they are acceptable</li>
+<li>You need a <code>Task</code> reference for API compatibility reasons</li>
+<li><code>RunContinuationsAsynchronously</code> is set to <code>false</code></li>
+</ol>
+<pre><code class="lang-csharp">#pragma warning disable CHT007
+Task t = asyncEvent.WaitAsync().AsTask();
+#pragma warning restore CHT007
+</code></pre>
+<h2 id="example">Example</h2>
+<h3 id="violating-code">Violating Code</h3>
+<pre><code class="lang-csharp">public async Task WaitForSignalAsync()
+{
+    // CHT007: Storing AsTask() result before signal
+    Task t = _asyncEvent.WaitAsync().AsTask();
+    
+    // Some other work...
+    PrepareData();
+    
+    // Signal the event
+    _asyncEvent.Set();
+    
+    // Wait for completion (10-100x slower!)
+    await t;
+}
+</code></pre>
+<h3 id="fixed-code">Fixed Code</h3>
+<pre><code class="lang-csharp">public async Task WaitForSignalAsync()
+{
+    // Store ValueTask instead
+    ValueTask vt = _asyncEvent.WaitAsync();
+    
+    // Some other work...
+    PrepareData();
+    
+    // Signal the event
+    _asyncEvent.Set();
+    
+    // Wait for completion (optimal performance)
+    await vt;
+}
+</code></pre>
+<h2 id="performance-impact">Performance Impact</h2>
+<p>Benchmark comparison (typical results):</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Time</th>
+<th>Allocations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>await valueTask</code></td>
+<td>~50 ns</td>
+<td>0 B</td>
+</tr>
+<tr>
+<td><code>await valueTask.AsTask()</code> (immediate)</td>
+<td>~100 ns</td>
+<td>96 B</td>
+</tr>
+<tr>
+<td><code>Task t = vt.AsTask(); ... await t</code> (stored)</td>
+<td>~5,000 ns</td>
+<td>200+ B</td>
+</tr>
+</tbody>
+</table>
+<p>The stored pattern can be <strong>50-100x slower</strong> due to forced async scheduling.</p>
+<h2 id="technical-details">Technical Details</h2>
+<p>The performance degradation occurs because:</p>
+<ol>
+<li><code>ManualResetValueTaskSourceCore&lt;T&gt;</code> uses a continuation field</li>
+<li>When <code>AsTask()</code> is called, it registers a continuation to complete the Task</li>
+<li>If <code>RunContinuationsAsynchronously=true</code>, the continuation must be queued</li>
+<li>If the Task already exists when <code>SetResult()</code> is called, synchronous completion is impossible</li>
+<li>The continuation is forced through <code>ThreadPool.QueueUserWorkItem</code></li>
+</ol>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="CHT001.html">CHT001: ValueTask awaited multiple times</a></li>
+<li><a href="../threading/asyncautoresetevent.html">AsyncAutoResetEvent Documentation</a></li>
+<li><a href="https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/">Understanding ValueTask</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading.analyzers/CHT007.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

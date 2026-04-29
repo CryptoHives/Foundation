@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ObjectPools Class | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ObjectPools Class | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/objectpools.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="objectpools-class">ObjectPools Class</h1>
+
+<p>Static helper class for obtaining pooled objects with automatic return to pool.</p>
+<h2 id="namespace">Namespace</h2>
+<pre><code class="lang-csharp">CryptoHives.Foundation.Memory.Pools
+</code></pre>
+<h2 id="inheritance">Inheritance</h2>
+<p><code>Object</code> ? <strong><code>ObjectPools</code></strong></p>
+<h2 id="syntax">Syntax</h2>
+<pre><code class="lang-csharp">public static class ObjectPools
+</code></pre>
+<h2 id="overview">Overview</h2>
+<p><code>ObjectPools</code> provides convenient static methods for obtaining commonly-used pooled objects wrapped in <code>ObjectOwner&lt;T&gt;</code> for automatic cleanup. This eliminates the need to manually manage object pool instances for standard types.</p>
+<h2 id="methods">Methods</h2>
+<h3 id="getstringbuilder">GetStringBuilder</h3>
+<pre><code class="lang-csharp">public static ObjectOwner&lt;StringBuilder&gt; GetStringBuilder()
+</code></pre>
+<p>Gets a pooled <code>StringBuilder</code> instance wrapped in an <code>ObjectOwner&lt;StringBuilder&gt;</code>.</p>
+<p><strong>Returns</strong>: An <code>ObjectOwner&lt;StringBuilder&gt;</code> that will return the <code>StringBuilder</code> to the pool when disposed.</p>
+<p><strong>Remarks</strong>: The returned <code>StringBuilder</code> is cleared before being returned to the pool. The initial capacity is 128 characters, and instances up to 1024 characters are retained in the pool.</p>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="basic-stringbuilder-usage">Basic StringBuilder Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Memory.Pools;
+
+using var owner = ObjectPools.GetStringBuilder();
+StringBuilder sb = owner.Object;
+
+sb.Append(&quot;Hello&quot;);
+sb.Append(&quot; World&quot;);
+
+string result = sb.ToString();
+// StringBuilder automatically cleared and returned to pool
+</code></pre>
+<h3 id="string-formatting">String Formatting</h3>
+<pre><code class="lang-csharp">public string FormatMessage(string name, string email)
+{
+    using var owner = ObjectPools.GetStringBuilder();
+    StringBuilder sb = owner.Object;
+    
+    sb.Append(&quot;Name: &quot;);
+    sb.Append(name);
+    sb.Append(&quot;, Email: &quot;);
+    sb.Append(email);
+    
+    return sb.ToString();
+}
+</code></pre>
+<h2 id="configuration">Configuration</h2>
+<p>The shared <code>StringBuilder</code> pool uses the following default settings:</p>
+<ul>
+<li><strong>Initial Capacity</strong>: 128 characters</li>
+<li><strong>Maximum Retained Capacity</strong>: 1024 characters</li>
+<li><strong>Pool Size</strong>: Recommended 1024 instances (may vary based on implementation)</li>
+</ul>
+<p>Instances that exceed the maximum retained capacity are not returned to the pool.</p>
+<h2 id="thread-safety">Thread Safety</h2>
+<p>? <strong>Thread-safe</strong>. The underlying pool is thread-safe, and <code>ObjectOwner&lt;StringBuilder&gt;</code> can be used concurrently across threads (each thread gets its own owner instance).</p>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="do-use-for-temporary-string-building">DO: Use for Temporary String Building</h3>
+<pre><code class="lang-csharp">// Good: Temporary string construction
+using var owner = ObjectPools.GetStringBuilder();
+StringBuilder sb = owner.Object;
+sb.Append(&quot;Temporary data&quot;);
+return sb.ToString();
+</code></pre>
+<h3 id="do-use-in-loops">DO: Use in Loops</h3>
+<pre><code class="lang-csharp">// Good: Reusing pool across iterations
+for (int i = 0; i &lt; 1000; i++)
+{
+    using var owner = ObjectPools.GetStringBuilder();
+    StringBuilder sb = owner.Object;
+    
+    sb.Append(&quot;Item &quot;);
+    sb.Append(i);
+    
+    ProcessString(sb.ToString());
+}
+</code></pre>
+<h3 id="dont-use-for-single-concatenation">DON'T: Use for Single Concatenation</h3>
+<pre><code class="lang-csharp">// Bad: Overhead not worth it
+using var owner = ObjectPools.GetStringBuilder();
+string result = owner.Object.Append(&quot;Hello&quot;).ToString();
+
+// Better: Just use string
+string result = &quot;Hello&quot;;
+</code></pre>
+<h3 id="dont-use-for-long-lived-instances">DON'T: Use for Long-Lived Instances</h3>
+<pre><code class="lang-csharp">// Bad: Holding pooled object too long
+var owner = ObjectPools.GetStringBuilder();
+_cachedBuilder = owner.Object; // Don't store pooled objects!
+</code></pre>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Get Operation</strong>: O(1) - retrieves from pool</li>
+<li><strong>Return Operation</strong>: O(1) - returns to pool (on dispose)</li>
+<li><strong>Memory</strong>: Zero allocations when pool has available instances</li>
+</ul>
+<h2 id="comparison-with-alternatives">Comparison with Alternatives</h2>
+<h3 id="vs-new-instance-every-time">vs. New Instance Every Time</h3>
+<pre><code class="lang-csharp">// Without pooling
+for (int i = 0; i &lt; 1000; i++)
+{
+    var sb = new StringBuilder(); // 1000 allocations
+    sb.Append(&quot;Item &quot;);
+    sb.Append(i);
+    Process(sb.ToString());
+}
+
+// With pooling
+for (int i = 0; i &lt; 1000; i++)
+{
+    using var owner = ObjectPools.GetStringBuilder(); // Reuses instances
+    StringBuilder sb = owner.Object;
+    sb.Append(&quot;Item &quot;);
+    sb.Append(i);
+    Process(sb.ToString());
+}
+</code></pre>
+<h2 id="extension-points">Extension Points</h2>
+<p>While <code>ObjectPools</code> currently only provides <code>GetStringBuilder()</code>, the pattern can be extended:</p>
+<pre><code class="lang-csharp">// Future extension example
+public static class MyObjectPools
+{
+  public static ObjectOwner&lt;List&lt;T&gt;&gt; GetList&lt;T&gt;() =&gt; 
+        new ObjectOwner&lt;List&lt;T&gt;&gt;(SharedListPool&lt;T&gt;.Instance);
+    
+    public static ObjectOwner&lt;Dictionary&lt;TKey, TValue&gt;&gt; GetDictionary&lt;TKey, TValue&gt;() =&gt;
+        new ObjectOwner&lt;Dictionary&lt;TKey, TValue&gt;&gt;(SharedDictionaryPool&lt;TKey, TValue&gt;.Instance);
+}
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="objectowner.html">ObjectOwner&lt;T&gt;</a></li>
+<li><a href="https://docs.microsoft.com/en-us/dotnet/api/system.text.stringbuilder">StringBuilder Documentation</a></li>
+<li><a href="https://docs.microsoft.com/en-us/dotnet/api/microsoft.extensions.objectpool.objectpool-1">ObjectPool&lt;T&gt; Documentation</a></li>
+<li><a href="index.html">Memory Package Overview</a></li>
+</ul>
+<hr>
+<p>© 2025 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/memory/objectpools.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

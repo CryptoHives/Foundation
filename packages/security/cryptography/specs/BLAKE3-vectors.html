@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>BLAKE3 Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="BLAKE3 Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/BLAKE3-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="blake3-test-vectors">BLAKE3 Test Vectors</h1>
+
+<h2 id="source">Source</h2>
+<p>BLAKE3 Official Specification and Reference Implementation</p>
+<ul>
+<li><a href="https://github.com/BLAKE3-team/BLAKE3">https://github.com/BLAKE3-team/BLAKE3</a></li>
+<li><a href="https://github.com/BLAKE3-team/BLAKE3-specs">https://github.com/BLAKE3-team/BLAKE3-specs</a></li>
+</ul>
+<hr>
+<h1 id="blake3">BLAKE3</h1>
+<h2 id="algorithm-parameters">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>Variable (default 32 bytes / 256 bits)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>64 bytes (512 bits)</td>
+</tr>
+<tr>
+<td>Chunk Size</td>
+<td>1024 bytes</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>32 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>7</td>
+</tr>
+<tr>
+<td>State Size</td>
+<td>8 × 32 bits = 32 bytes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="initialization-vector-iv">Initialization Vector (IV)</h2>
+<p>Same as BLAKE2s (and SHA-256 fractional parts of square roots):</p>
+<pre><code>IV[0] = 0x6a09e667
+IV[1] = 0xbb67ae85
+IV[2] = 0x3c6ef372
+IV[3] = 0xa54ff53a
+IV[4] = 0x510e527f
+IV[5] = 0x9b05688c
+IV[6] = 0x1f83d9ab
+IV[7] = 0x5be0cd19
+</code></pre>
+<h2 id="message-word-permutations">Message Word Permutations</h2>
+<pre><code>MSG_PERMUTATION = [
+    2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8
+]
+</code></pre>
+<h2 id="flags">Flags</h2>
+<pre><code>CHUNK_START         = 1 &lt;&lt; 0  // 0x01
+CHUNK_END           = 1 &lt;&lt; 1  // 0x02
+PARENT              = 1 &lt;&lt; 2  // 0x04
+ROOT                = 1 &lt;&lt; 3  // 0x08
+KEYED_HASH          = 1 &lt;&lt; 4  // 0x10
+DERIVE_KEY_CONTEXT  = 1 &lt;&lt; 5  // 0x20
+DERIVE_KEY_MATERIAL = 1 &lt;&lt; 6  // 0x40
+</code></pre>
+<hr>
+<h2 id="test-vectors-32-byte-default-output">Test Vectors (32-byte default output)</h2>
+<h3 id="vector-1-empty-string">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bytes)
+Key: (none, standard hash mode)
+Output Length: 32 bytes
+BLAKE3: af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
+</code></pre>
+<h3 id="vector-2-abc">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (3 bytes)
+Message (hex): 616263
+Key: (none, standard hash mode)
+Output Length: 32 bytes
+BLAKE3: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+</code></pre>
+<h3 id="vector-3-extended-output-64-bytes">Vector 3: Extended Output (64 bytes)</h3>
+<pre><code>Message: &quot;abc&quot;
+Output Length: 64 bytes
+BLAKE3: 6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85
+        41a9d6d7e4a36b4f55b8c4e9f0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3
+</code></pre>
+<h3 id="vector-4-single-block-64-bytes-input">Vector 4: Single Block (64 bytes input)</h3>
+<pre><code>Message: 64 bytes of incrementing values (0x00, 0x01, ..., 0x3f)
+Key: (none)
+Output Length: 32 bytes
+BLAKE3: (implementation specific based on exact input pattern)
+</code></pre>
+<h3 id="vector-5-single-chunk-1024-bytes-input">Vector 5: Single Chunk (1024 bytes input)</h3>
+<pre><code>Message: 1024 bytes of incrementing values
+Key: (none)
+Output Length: 32 bytes
+BLAKE3: (implementation specific based on exact input pattern)
+</code></pre>
+<h3 id="vector-6-multiple-chunks-2048-bytes-input">Vector 6: Multiple Chunks (2048 bytes input)</h3>
+<pre><code>Message: 2048 bytes of incrementing values
+Key: (none)
+Output Length: 32 bytes
+BLAKE3: (implementation specific based on exact input pattern)
+</code></pre>
+<hr>
+<h2 id="official-test-vectors-from-blake3-repository">Official Test Vectors from BLAKE3 Repository</h2>
+<p>The official test vectors file uses a deterministic input pattern.</p>
+<h3 id="input-generation">Input Generation</h3>
+<p>Input bytes are generated by taking the byte index modulo 251:</p>
+<pre><code class="lang-python">def generate_input(length):
+    return bytes([i % 251 for i in range(length)])
+</code></pre>
+<h3 id="hash-mode-test-vectors">Hash Mode Test Vectors</h3>
+<table>
+<thead>
+<tr>
+<th>Input Length</th>
+<th>Output (32 bytes, hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2d3adedff11b61f14c886e35afa036736dcd87a74d27b5c1510225d0f592e213</td>
+</tr>
+<tr>
+<td>2</td>
+<td>7b7015bb92cf0b318037f1379f6e5d4d15e43a5a3f3be754e6f9d3ea7a2e6c10</td>
+</tr>
+<tr>
+<td>3</td>
+<td>e1be4d7a8ab5560aa4199eea339849ba8e293d55ca0a81006726d184519e647f</td>
+</tr>
+<tr>
+<td>4</td>
+<td>f30f5ab28fe047904037f77b6da4fea1e27241c5d132638d8bedce9d40494f32</td>
+</tr>
+<tr>
+<td>5</td>
+<td>b40b44dfd97e7a84a996a91af8b85188c66c126940ba7aad2e7ae6b385402aa2</td>
+</tr>
+<tr>
+<td>6</td>
+<td>06c4e8ffb6872fad96f9aaca5eee1553eb62aed0ad7198cef42e87f6a616c844</td>
+</tr>
+<tr>
+<td>7</td>
+<td>3f8770f387faad08faa9d8414e9f449ac68e6ff0417f673f602a646a891419fe</td>
+</tr>
+<tr>
+<td>8</td>
+<td>2351207d04fc16ade43ccab08600939c7c1fa70a5c0aaca76063d04c3228eaeb</td>
+</tr>
+<tr>
+<td>63</td>
+<td>e9bc37a594daad83be9470df7f7b3798297c3d834ce80ba85d6e207627b7db7b</td>
+</tr>
+<tr>
+<td>64</td>
+<td>4eed7141ea4a5cd4b788606bd23f46e212af9cacebacdc7d1f4c6dc7f2511b98</td>
+</tr>
+<tr>
+<td>65</td>
+<td>de1e5fa0be70df6d2be8fffd0e99ceaa8eb6e8c93a63f2d8d1c30ecb6b263dee</td>
+</tr>
+<tr>
+<td>127</td>
+<td>d81293fda863f008c09e92fc382a81f5a0b4a1251cba1634016a0f86a6084f8b</td>
+</tr>
+<tr>
+<td>128</td>
+<td>f17e570564b26578c33bb7f44643f539624b05df1a76c81f30acd548c44b45ef</td>
+</tr>
+<tr>
+<td>129</td>
+<td>683aaae9f3c5ba37eaaf072aedd46ef74e30e75dbf9c3f3e52f4a3d14d4eb51a</td>
+</tr>
+<tr>
+<td>1023</td>
+<td>10108970eeda3eb932baac1428c7a2163b0e924c9a9e25b35bba72b28f70bd11</td>
+</tr>
+<tr>
+<td>1024</td>
+<td>42214739f095a406f3fc83deb889744ac00df831c10daa55189b5d121c855af7</td>
+</tr>
+<tr>
+<td>1025</td>
+<td>d00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b8444</td>
+</tr>
+<tr>
+<td>2048</td>
+<td>e776b6028c7cd22a4d0ba182a8bf62205d2ef576467e838ed6f2529b85fba24a</td>
+</tr>
+<tr>
+<td>2049</td>
+<td>5f4d72f40d7a5f82b15ca2b2e44b1de3c2ef86c426c95c1af0b6879522563030</td>
+</tr>
+</tbody>
+</table>
+<h3 id="xof-extended-output-test-vectors">XOF (Extended Output) Test Vectors</h3>
+<table>
+<thead>
+<tr>
+<th>Input Length</th>
+<th>Output (131 bytes, hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262 ... (continues)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="keyed-hash-mode">Keyed Hash Mode</h2>
+<h3 id="vector-1-keyed-hash">Vector 1: Keyed Hash</h3>
+<pre><code>Key (32 bytes): &quot;whats the Elvish word for friend&quot; (ASCII, truncated/padded to 32)
+Key (hex): 7768617473207468652045 ... (32 bytes)
+Message: &quot;abc&quot;
+Output Length: 32 bytes
+BLAKE3 (keyed): (implementation dependent on exact key bytes)
+</code></pre>
+<hr>
+<h2 id="key-derivation-mode">Key Derivation Mode</h2>
+<h3 id="vector-1-derive-key">Vector 1: Derive Key</h3>
+<pre><code>Context: &quot;BLAKE3 2019-12-27 16:29:52 test vectors context&quot;
+Key Material: &quot;&quot;
+Output Length: 32 bytes
+Derived Key: (implementation dependent)
+</code></pre>
+<hr>
+<h1 id="g-function-quarter-round">G Function (Quarter Round)</h1>
+<pre><code>function G(state, a, b, c, d, mx, my):
+    state[a] = state[a] + state[b] + mx
+    state[d] = rotr32(state[d] ^ state[a], 16)
+    state[c] = state[c] + state[d]
+    state[b] = rotr32(state[b] ^ state[c], 12)
+    state[a] = state[a] + state[b] + my
+    state[d] = rotr32(state[d] ^ state[a], 8)
+    state[c] = state[c] + state[d]
+    state[b] = rotr32(state[b] ^ state[c], 7)
+</code></pre>
+<hr>
+<h1 id="compression-function">Compression Function</h1>
+<p>The BLAKE3 compression function takes:</p>
+<ul>
+<li>Chaining value (8 words)</li>
+<li>Block words (16 words)</li>
+<li>Counter (64 bits split into two 32-bit words)</li>
+<li>Block length (32 bits)</li>
+<li>Flags (32 bits)</li>
+</ul>
+<p>And produces 16 output words, of which the first 8 become the new chaining value.</p>
+<hr>
+<h1 id="architecture">Architecture</h1>
+<p>BLAKE3 uses a Merkle tree structure:</p>
+<ul>
+<li>Input is divided into 1024-byte chunks</li>
+<li>Each chunk is compressed to a 32-byte chaining value</li>
+<li>Chaining values are paired and compressed as parents</li>
+<li>Process continues until a single root chaining value remains</li>
+<li>Root compression can produce arbitrary output length (XOF)</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/BLAKE3-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

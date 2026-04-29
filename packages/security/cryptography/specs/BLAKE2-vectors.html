@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>BLAKE2 Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="BLAKE2 Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/BLAKE2-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="blake2-test-vectors">BLAKE2 Test Vectors</h1>
+
+<h2 id="source">Source</h2>
+<p>BLAKE2 Official Specification and Reference Implementation</p>
+<ul>
+<li><a href="https://www.blake2.net/">https://www.blake2.net/</a></li>
+<li><a href="https://github.com/BLAKE2/BLAKE2">https://github.com/BLAKE2/BLAKE2</a></li>
+<li>RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC)</li>
+</ul>
+<hr>
+<h1 id="blake2b">BLAKE2b</h1>
+<h2 id="algorithm-parameters">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>1-64 bytes (default 64 bytes / 512 bits)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>128 bytes (1024 bits)</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>64 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>12</td>
+</tr>
+<tr>
+<td>State Size</td>
+<td>8 × 64 bits = 64 bytes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="initialization-vector-iv">Initialization Vector (IV)</h2>
+<pre><code>IV[0] = 0x6a09e667f3bcc908
+IV[1] = 0xbb67ae8584caa73b
+IV[2] = 0x3c6ef372fe94f82b
+IV[3] = 0xa54ff53a5f1d36f1
+IV[4] = 0x510e527fade682d1
+IV[5] = 0x9b05688c2b3e6c1f
+IV[6] = 0x1f83d9abfb41bd6b
+IV[7] = 0x5be0cd19137e2179
+</code></pre>
+<h2 id="sigma-permutations">Sigma Permutations</h2>
+<pre><code>SIGMA[0]  = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }
+SIGMA[1]  = { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 }
+SIGMA[2]  = { 11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4 }
+SIGMA[3]  = { 7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8 }
+SIGMA[4]  = { 9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13 }
+SIGMA[5]  = { 2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9 }
+SIGMA[6]  = { 12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11 }
+SIGMA[7]  = { 13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10 }
+SIGMA[8]  = { 6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5 }
+SIGMA[9]  = { 10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0 }
+SIGMA[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }
+SIGMA[11] = { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 }
+</code></pre>
+<h2 id="test-vectors-64-byte-output">Test Vectors (64-byte output)</h2>
+<h3 id="vector-1-empty-string">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bytes)
+Key: (none)
+Output Length: 64 bytes
+BLAKE2b-512: 786a02f742015903c6c6fd852552d272912f4740e15847618a86e217f71f5419
+             d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce
+</code></pre>
+<h3 id="vector-2-abc">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (3 bytes)
+Message (hex): 616263
+Key: (none)
+Output Length: 64 bytes
+BLAKE2b-512: ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d1
+             7d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923
+</code></pre>
+<h3 id="vector-3-long-message">Vector 3: Long Message</h3>
+<pre><code>Message: &quot;The quick brown fox jumps over the lazy dog&quot;
+Key: (none)
+Output Length: 64 bytes
+BLAKE2b-512: a8add4bdddfd93e4877d2746e62817b116364a1fa7bc148d95090bc7333b3673
+             f82401cf7aa2e4cb1ecd90296e3f14cb5413f8ed77be73045b13914cdcd6a918
+</code></pre>
+<h3 id="vector-4-32-byte-output">Vector 4: 32-byte Output</h3>
+<pre><code>Message: &quot;abc&quot; (3 bytes)
+Key: (none)
+Output Length: 32 bytes
+BLAKE2b-256: bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319
+</code></pre>
+<h3 id="vector-5-with-key-mac-mode">Vector 5: With Key (MAC mode)</h3>
+<pre><code>Message: &quot;abc&quot; (3 bytes)
+Key: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+     202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+Key Length: 64 bytes
+Output Length: 64 bytes
+BLAKE2b-512: (keyed hash output - implementation dependent on exact key)
+</code></pre>
+<hr>
+<h1 id="blake2s">BLAKE2s</h1>
+<h2 id="algorithm-parameters-1">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash Size</td>
+<td>1-32 bytes (default 32 bytes / 256 bits)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>64 bytes (512 bits)</td>
+</tr>
+<tr>
+<td>Word Size</td>
+<td>32 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>10</td>
+</tr>
+<tr>
+<td>State Size</td>
+<td>8 × 32 bits = 32 bytes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="initialization-vector-iv-1">Initialization Vector (IV)</h2>
+<pre><code>IV[0] = 0x6a09e667
+IV[1] = 0xbb67ae85
+IV[2] = 0x3c6ef372
+IV[3] = 0xa54ff53a
+IV[4] = 0x510e527f
+IV[5] = 0x9b05688c
+IV[6] = 0x1f83d9ab
+IV[7] = 0x5be0cd19
+</code></pre>
+<h2 id="test-vectors-32-byte-output">Test Vectors (32-byte output)</h2>
+<h3 id="vector-1-empty-string-1">Vector 1: Empty String</h3>
+<pre><code>Message: &quot;&quot; (empty string, 0 bytes)
+Key: (none)
+Output Length: 32 bytes
+BLAKE2s-256: 69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9
+</code></pre>
+<h3 id="vector-2-abc-1">Vector 2: &quot;abc&quot;</h3>
+<pre><code>Message: &quot;abc&quot; (3 bytes)
+Message (hex): 616263
+Key: (none)
+Output Length: 32 bytes
+BLAKE2s-256: 508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982
+</code></pre>
+<h3 id="vector-3-long-message-1">Vector 3: Long Message</h3>
+<pre><code>Message: &quot;The quick brown fox jumps over the lazy dog&quot;
+Key: (none)
+Output Length: 32 bytes
+BLAKE2s-256: 606beeec743ccbeff6cbcdf5d5302aa855c256c29b88c8ed331ea1a6bf3c8812
+</code></pre>
+<h3 id="vector-4-16-byte-output">Vector 4: 16-byte Output</h3>
+<pre><code>Message: &quot;abc&quot; (3 bytes)
+Key: (none)
+Output Length: 16 bytes
+BLAKE2s-128: aa4938119b1dc7b87cbad0ffd200d0ae
+</code></pre>
+<h3 id="vector-5-with-key-mac-mode-1">Vector 5: With Key (MAC mode)</h3>
+<pre><code>Message: &quot;abc&quot; (3 bytes)
+Key: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+Key Length: 32 bytes
+Output Length: 32 bytes
+BLAKE2s-256: (keyed hash output - implementation dependent on exact key)
+</code></pre>
+<hr>
+<h1 id="g-function-mixing-function">G Function (Mixing Function)</h1>
+<h2 id="blake2b-g-function">BLAKE2b G Function</h2>
+<pre><code>function G(v, a, b, c, d, x, y):
+    v[a] = v[a] + v[b] + x
+    v[d] = rotr64(v[d] ^ v[a], 32)
+    v[c] = v[c] + v[d]
+    v[b] = rotr64(v[b] ^ v[c], 24)
+    v[a] = v[a] + v[b] + y
+    v[d] = rotr64(v[d] ^ v[a], 16)
+    v[c] = v[c] + v[d]
+    v[b] = rotr64(v[b] ^ v[c], 63)
+</code></pre>
+<h2 id="blake2s-g-function">BLAKE2s G Function</h2>
+<pre><code>function G(v, a, b, c, d, x, y):
+    v[a] = v[a] + v[b] + x
+    v[d] = rotr32(v[d] ^ v[a], 16)
+    v[c] = v[c] + v[d]
+    v[b] = rotr32(v[b] ^ v[c], 12)
+    v[a] = v[a] + v[b] + y
+    v[d] = rotr32(v[d] ^ v[a], 8)
+    v[c] = v[c] + v[d]
+    v[b] = rotr32(v[b] ^ v[c], 7)
+</code></pre>
+<hr>
+<h1 id="parameter-block">Parameter Block</h1>
+<h2 id="blake2b-parameter-block-64-bytes">BLAKE2b Parameter Block (64 bytes)</h2>
+<table>
+<thead>
+<tr>
+<th>Offset</th>
+<th>Length</th>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>digest_length</td>
+<td>1-64</td>
+</tr>
+<tr>
+<td>1</td>
+<td>1</td>
+<td>key_length</td>
+<td>0-64</td>
+</tr>
+<tr>
+<td>2</td>
+<td>1</td>
+<td>fanout</td>
+<td>1 for sequential</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1</td>
+<td>depth</td>
+<td>1 for sequential</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4</td>
+<td>leaf_length</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>8</td>
+<td>8</td>
+<td>node_offset</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>16</td>
+<td>1</td>
+<td>node_depth</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>17</td>
+<td>1</td>
+<td>inner_length</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>18</td>
+<td>14</td>
+<td>reserved</td>
+<td>All zeros</td>
+</tr>
+<tr>
+<td>32</td>
+<td>16</td>
+<td>salt</td>
+<td>Optional salt</td>
+</tr>
+<tr>
+<td>48</td>
+<td>16</td>
+<td>personal</td>
+<td>Optional personalization</td>
+</tr>
+</tbody>
+</table>
+<h2 id="blake2s-parameter-block-32-bytes">BLAKE2s Parameter Block (32 bytes)</h2>
+<table>
+<thead>
+<tr>
+<th>Offset</th>
+<th>Length</th>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>digest_length</td>
+<td>1-32</td>
+</tr>
+<tr>
+<td>1</td>
+<td>1</td>
+<td>key_length</td>
+<td>0-32</td>
+</tr>
+<tr>
+<td>2</td>
+<td>1</td>
+<td>fanout</td>
+<td>1 for sequential</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1</td>
+<td>depth</td>
+<td>1 for sequential</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4</td>
+<td>leaf_length</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>8</td>
+<td>6</td>
+<td>node_offset</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>14</td>
+<td>1</td>
+<td>node_depth</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>15</td>
+<td>1</td>
+<td>inner_length</td>
+<td>0 for sequential</td>
+</tr>
+<tr>
+<td>16</td>
+<td>8</td>
+<td>salt</td>
+<td>Optional salt</td>
+</tr>
+<tr>
+<td>24</td>
+<td>8</td>
+<td>personal</td>
+<td>Optional personalization</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/BLAKE2-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

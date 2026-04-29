@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>CryptoHives.Foundation.Security Packages | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="CryptoHives.Foundation.Security Packages | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="cryptohivesfoundationsecurity-packages">CryptoHives.Foundation.Security Packages</h1>
+
+<p>The Security package family provides specification-based cryptographic implementations for .NET applications.</p>
+<h2 id="overview">Overview</h2>
+<p>The CryptoHives Security packages deliver fully managed, cross-platform cryptographic primitives that do not rely on OS or hardware cryptographic APIs. This ensures deterministic behavior across all platforms and runtimes, making them ideal for:</p>
+<ul>
+<li><strong>Cross-platform consistency</strong> - Same results on Windows, Linux, macOS, and any .NET runtime</li>
+<li><strong>Embedded systems</strong> - Works where OS crypto APIs may not be available</li>
+<li><strong>Testing and verification</strong> - Predictable behavior for cryptographic testing</li>
+<li><strong>Educational purposes</strong> - Clear, readable implementations for learning</li>
+</ul>
+<h2 id="available-packages">Available Packages</h2>
+<h3 id="cryptography-package">Cryptography Package</h3>
+<p><strong>CryptoHives.Foundation.Security.Cryptography</strong> - Hash and MAC implementations</p>
+<p>Comprehensive suite of cryptographic hash algorithms and message authentication codes (MACs), all implemented as fully managed code without OS dependencies.</p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>SHA-1, SHA-2, SHA-3 family implementations</li>
+<li>SHAKE and cSHAKE extendable-output functions (XOF)</li>
+<li>KMAC (Keccak Message Authentication Code)</li>
+<li>Keccak (Ethereum), TurboShake and KangarooTwelve</li>
+<li>Ascon hashing and MAC</li>
+<li>BLAKE2 and BLAKE3 high-performance hashing</li>
+<li>Legacy algorithms (MD5, RIPEMD-160)</li>
+<li>International standards (SM3, Streebog, Kupyna, LSH, Whirlpool)</li>
+</ul>
+<p><strong><a href="cryptography/index.html">Cryptography Package Documentation</a></strong></p>
+<p><strong>Installation:</strong></p>
+<pre><code class="lang-bash">dotnet add package CryptoHives.Foundation.Security.Cryptography
+</code></pre>
+<p><strong>Quick Example:</strong></p>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+// Compute SHA-256 hash — zero allocations
+using var sha256 = SHA256.Create();
+Span&lt;byte&gt; hash = stackalloc byte[32];
+sha256.TryComputeHash(data, hash, out _);
+
+// Compute BLAKE3 hash with variable output — zero allocations
+using var blake3 = Blake3.Create(outputBytes: 64);
+Span&lt;byte&gt; longHash = stackalloc byte[64];
+blake3.TryComputeHash(data, longHash, out _);
+</code></pre>
+<hr>
+<h2 id="planned-packages">Planned Packages</h2>
+<p>The following packages are planned for future development:</p>
+<h3 id="certificates-planned">Certificates (Planned)</h3>
+<p><strong>CryptoHives.Foundation.Security.Certificates</strong> - Certificate handling and validation</p>
+<ul>
+<li>X.509 certificate building, parsing and validation</li>
+<li>Certificate chain building and validation</li>
+<li>CRL and OCSP support</li>
+</ul>
+<h3 id="encryption-planned">Encryption (Planned)</h3>
+<p><strong>CryptoHives.Foundation.Security.Encryption</strong> - Symmetric and asymmetric encryption</p>
+<ul>
+<li>AES, ChaCha20-Poly1305</li>
+<li>RSA, ECDH, ECDSA</li>
+<li>Key derivation functions (HKDF, PBKDF2, Argon2)</li>
+</ul>
+<hr>
+<h2 id="design-principles">Design Principles</h2>
+<h3 id="development-policy">Development Policy</h3>
+<p>All cryptographic code is written from scratch based on official specifications:</p>
+<ul>
+<li>Implementations are written from official public specifications and standards (NIST, RFC, ISO)</li>
+<li>Development may use AI-assisted tooling; no guarantee of clean-room provenance is claimed</li>
+<li>All algorithms are verified against official test vectors from specification documents</li>
+<li>Review process includes algorithm validation against reference implementations</li>
+</ul>
+<h3 id="no-os-dependencies">No OS Dependencies</h3>
+<p>Unlike <code>System.Security.Cryptography</code>, these implementations:</p>
+<ul>
+<li>Do not call into OS cryptographic APIs (CNG, OpenSSL, etc.)</li>
+<li>Work identically across all platforms and .NET versions</li>
+<li>Produce deterministic output regardless of the host system</li>
+<li>Are optimized with .NET intrinsic hardware acceleration when available, but can always fall back to pure managed code</li>
+</ul>
+<h3 id="standards-compliance">Standards Compliance</h3>
+<p>All implementations follow official standards:</p>
+<ul>
+<li>NIST FIPS 180-4, FIPS 202, SP 800-185</li>
+<li>RFCs (7693 for BLAKE2, 6986 for Streebog)</li>
+<li>ISO/IEC standards where applicable</li>
+</ul>
+<h2 id="target-frameworks">Target Frameworks</h2>
+<p>All Security packages support:</p>
+<ul>
+<li>.NET 10.0</li>
+<li>.NET 8.0</li>
+<li>.NET Framework 4.6.2</li>
+<li>.NET Standard 2.0</li>
+<li>.NET Standard 2.1</li>
+</ul>
+<h2 id="getting-help">Getting Help</h2>
+<ul>
+<li>📖 <a href="https://cryptohives.github.io/Foundation/">Full Documentation</a></li>
+<li>📋 <a href="cryptography/specs/README.html">Cryptographic Specifications</a></li>
+<li>🐛 <a href="https://github.com/CryptoHives/Foundation/issues">Report Issues</a></li>
+<li>💬 <a href="https://github.com/CryptoHives/Foundation/discussions">Discussions</a></li>
+</ul>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="cryptography/index.html">Cryptography Package</a></li>
+<li><a href="cryptography/specs/README.html">Specifications</a></li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

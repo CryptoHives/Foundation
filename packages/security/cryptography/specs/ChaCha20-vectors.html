@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ChaCha20 and Poly1305 Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ChaCha20 and Poly1305 Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/ChaCha20-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="chacha20-and-poly1305-test-vectors">ChaCha20 and Poly1305 Test Vectors</h1>
+
+<h2 id="source">Source</h2>
+<p>RFC 8439: ChaCha20 and Poly1305 for IETF Protocols</p>
+<ul>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc8439">https://datatracker.ietf.org/doc/html/rfc8439</a></li>
+</ul>
+<hr>
+<h1 id="chacha20-block-function">ChaCha20 Block Function</h1>
+<h2 id="algorithm-parameters">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Key Size</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Nonce Size</td>
+<td>96 bits (12 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>512 bits (64 bytes)</td>
+</tr>
+<tr>
+<td>Counter</td>
+<td>32 bits</td>
+</tr>
+<tr>
+<td>Rounds</td>
+<td>20 (10 double-rounds)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="rfc-8439-section-232-block-function">RFC 8439 Section 2.3.2: Block Function</h3>
+<pre><code>Key:     00010203 04050607 08090a0b 0c0d0e0f
+         10111213 14151617 18191a1b 1c1d1e1f
+Nonce:   00000009 0000004a 00000000
+Counter: 1
+
+Keystream Block:
+         10f1e7e4 d13b5915 500fdd1f a32071c4
+         c7d1f4c7 33c06803 0422aa9a c3d46c4e
+         d2826446 079faa09 14c2d705 d98b02a2
+         b5129cd1 de164eb9 cbd083e8 a2503c4e
+</code></pre>
+<hr>
+<h1 id="chacha20-encryption">ChaCha20 Encryption</h1>
+<h2 id="algorithm-parameters-1">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Key Size</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Nonce Size</td>
+<td>96 bits (12 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>512 bits (64 bytes)</td>
+</tr>
+<tr>
+<td>Initial Counter</td>
+<td>Configurable (typically 0 or 1)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors-1">Test Vectors</h2>
+<h3 id="rfc-8439-section-242-encryption">RFC 8439 Section 2.4.2: Encryption</h3>
+<pre><code>Key:       00010203 04050607 08090a0b 0c0d0e0f
+           10111213 14151617 18191a1b 1c1d1e1f
+Nonce:     00000000 0000004a 00000000
+Counter:   1
+
+Plaintext: &quot;Ladies and Gentlemen of the class of '99: If I could offer you
+            only one tip for the future, sunscreen would be it.&quot;
+
+Plaintext (hex):
+           4c616469 65732061 6e642047 656e746c
+           656d656e 206f6620 74686520 636c6173
+           73206f66 20273939 3a204966 20492063
+           6f756c64 206f6666 65722079 6f75206f
+           6e6c7920 6f6e6520 74697020 666f7220
+           74686520 66757475 72652c20 73756e73
+           63726565 6e20776f 756c6420 62652069
+           742e
+
+Ciphertext:
+           6e2e359a 2568f980 41ba0728 dd0d6981
+           e97e7aec 1d4360c2 0a27afcc fd9fae0b
+           f91b65c5 524733ab 8f593dab cd62b357
+           1639d624 e65152ab 8f530c35 9f0861d8
+           07ca0dbf 500d6a61 56a38e08 8a22b65e
+           52bc514d 16ccf806 818ce91a b7793736
+           5af90bbf 74a35be6 b40b8eed f2785e42
+           874d
+</code></pre>
+<hr>
+<h1 id="poly1305-mac">Poly1305 MAC</h1>
+<h2 id="algorithm-parameters-2">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Key Size</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Tag Size</td>
+<td>128 bits (16 bytes)</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>128 bits (16 bytes)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors-2">Test Vectors</h2>
+<h3 id="rfc-8439-section-252-poly1305-mac">RFC 8439 Section 2.5.2: Poly1305 MAC</h3>
+<pre><code>Key:     85d6be78 57556d33 7f4452fe 42d506a8
+         0103808a fb0db2fd 4abff6af 4149f51b
+Message: &quot;Cryptographic Forum Research Group&quot;
+Tag:     a8061dc1 305136c6 c22b8baf 0c0127a9
+</code></pre>
+<hr>
+<h1 id="chacha20-poly1305-aead">ChaCha20-Poly1305 AEAD</h1>
+<h2 id="algorithm-parameters-3">Algorithm Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Key Size</td>
+<td>256 bits (32 bytes)</td>
+</tr>
+<tr>
+<td>Nonce Size</td>
+<td>96 bits (12 bytes)</td>
+</tr>
+<tr>
+<td>Tag Size</td>
+<td>128 bits (16 bytes)</td>
+</tr>
+<tr>
+<td>Mode</td>
+<td>Authenticated Encryption with Associated Data (AEAD)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-vectors-3">Test Vectors</h2>
+<h3 id="rfc-8439-section-282-aead-encryption">RFC 8439 Section 2.8.2: AEAD Encryption</h3>
+<pre><code>Key:        80818283 84858687 88898a8b 8c8d8e8f
+            90919293 94959697 98999a9b 9c9d9e9f
+Nonce:      07000000 40414243 44454647
+AAD:        50515253 c0c1c2c3 c4c5c6c7
+
+Plaintext:  &quot;Ladies and Gentlemen of the class of '99: If I could offer you
+             only one tip for the future, sunscreen would be it.&quot;
+
+Plaintext (hex):
+            4c616469 65732061 6e642047 656e746c
+            656d656e 206f6620 74686520 636c6173
+            73206f66 20273939 3a204966 20492063
+            6f756c64 206f6666 65722079 6f75206f
+            6e6c7920 6f6e6520 74697020 666f7220
+            74686520 66757475 72652c20 73756e73
+            63726565 6e20776f 756c6420 62652069
+            742e
+
+Ciphertext:
+            d31a8d34 648e60db 7b86afbc 53ef7ec2
+            a4aded51 296e08fe a9e2b5a7 36ee62d6
+            3dbea45e 8ca96712 82fafb69 da92728b
+            1a71de0a 9e060b29 05d6a5b6 7ecd3b36
+            92ddbd7f 2d778b8c 9803aee3 28091b58
+            fab324e4 fad67594 5585808b 4831d7bc
+            3ff4def0 8e4b7a9d e576d265 86cec64b
+            6116
+
+Tag:        1ae10b59 4f09e26a 7e902ecb d0600691
+</code></pre>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/ChaCha20-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

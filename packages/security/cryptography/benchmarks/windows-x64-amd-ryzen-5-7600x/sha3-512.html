@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-512.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../../index.html">
+            <img id="logo" class="svg" src="../../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>TestDataSize</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Error</th>
+<th style="text-align: right;">StdDev</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-Scalar</td>
+<td>128B</td>
+<td style="text-align: right;">397.5 ns</td>
+<td style="text-align: right;">1.74 ns</td>
+<td style="text-align: right;">1.63 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · OS Native</td>
+<td>128B</td>
+<td style="text-align: right;">503.4 ns</td>
+<td style="text-align: right;">4.23 ns</td>
+<td style="text-align: right;">3.75 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX2</td>
+<td>128B</td>
+<td style="text-align: right;">544.5 ns</td>
+<td style="text-align: right;">2.11 ns</td>
+<td style="text-align: right;">1.65 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX512F</td>
+<td>128B</td>
+<td style="text-align: right;">561.4 ns</td>
+<td style="text-align: right;">0.83 ns</td>
+<td style="text-align: right;">0.74 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · BouncyCastle</td>
+<td>128B</td>
+<td style="text-align: right;">628.4 ns</td>
+<td style="text-align: right;">3.32 ns</td>
+<td style="text-align: right;">3.10 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-Scalar</td>
+<td>137B</td>
+<td style="text-align: right;">397.5 ns</td>
+<td style="text-align: right;">1.86 ns</td>
+<td style="text-align: right;">1.65 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · OS Native</td>
+<td>137B</td>
+<td style="text-align: right;">503.7 ns</td>
+<td style="text-align: right;">3.34 ns</td>
+<td style="text-align: right;">2.78 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX2</td>
+<td>137B</td>
+<td style="text-align: right;">543.4 ns</td>
+<td style="text-align: right;">1.65 ns</td>
+<td style="text-align: right;">1.55 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX512F</td>
+<td>137B</td>
+<td style="text-align: right;">563.0 ns</td>
+<td style="text-align: right;">1.97 ns</td>
+<td style="text-align: right;">1.84 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · BouncyCastle</td>
+<td>137B</td>
+<td style="text-align: right;">630.4 ns</td>
+<td style="text-align: right;">3.72 ns</td>
+<td style="text-align: right;">2.90 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-Scalar</td>
+<td>1KB</td>
+<td style="text-align: right;">2,930.4 ns</td>
+<td style="text-align: right;">19.11 ns</td>
+<td style="text-align: right;">16.94 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · OS Native</td>
+<td>1KB</td>
+<td style="text-align: right;">3,560.2 ns</td>
+<td style="text-align: right;">13.57 ns</td>
+<td style="text-align: right;">12.69 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX2</td>
+<td>1KB</td>
+<td style="text-align: right;">4,005.6 ns</td>
+<td style="text-align: right;">7.96 ns</td>
+<td style="text-align: right;">7.44 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX512F</td>
+<td>1KB</td>
+<td style="text-align: right;">4,123.3 ns</td>
+<td style="text-align: right;">10.96 ns</td>
+<td style="text-align: right;">10.25 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · BouncyCastle</td>
+<td>1KB</td>
+<td style="text-align: right;">4,525.2 ns</td>
+<td style="text-align: right;">30.00 ns</td>
+<td style="text-align: right;">28.06 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-Scalar</td>
+<td>1025B</td>
+<td style="text-align: right;">3,011.3 ns</td>
+<td style="text-align: right;">58.95 ns</td>
+<td style="text-align: right;">60.54 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · OS Native</td>
+<td>1025B</td>
+<td style="text-align: right;">3,540.0 ns</td>
+<td style="text-align: right;">28.46 ns</td>
+<td style="text-align: right;">23.77 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX2</td>
+<td>1025B</td>
+<td style="text-align: right;">4,009.7 ns</td>
+<td style="text-align: right;">7.87 ns</td>
+<td style="text-align: right;">7.36 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX512F</td>
+<td>1025B</td>
+<td style="text-align: right;">4,108.9 ns</td>
+<td style="text-align: right;">15.44 ns</td>
+<td style="text-align: right;">12.05 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · BouncyCastle</td>
+<td>1025B</td>
+<td style="text-align: right;">4,625.2 ns</td>
+<td style="text-align: right;">15.59 ns</td>
+<td style="text-align: right;">13.82 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-Scalar</td>
+<td>8KB</td>
+<td style="text-align: right;">22,688.6 ns</td>
+<td style="text-align: right;">117.75 ns</td>
+<td style="text-align: right;">104.39 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · OS Native</td>
+<td>8KB</td>
+<td style="text-align: right;">27,168.3 ns</td>
+<td style="text-align: right;">116.87 ns</td>
+<td style="text-align: right;">109.32 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX2</td>
+<td>8KB</td>
+<td style="text-align: right;">30,874.1 ns</td>
+<td style="text-align: right;">553.56 ns</td>
+<td style="text-align: right;">568.47 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX512F</td>
+<td>8KB</td>
+<td style="text-align: right;">31,465.6 ns</td>
+<td style="text-align: right;">140.83 ns</td>
+<td style="text-align: right;">117.60 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · BouncyCastle</td>
+<td>8KB</td>
+<td style="text-align: right;">34,955.9 ns</td>
+<td style="text-align: right;">101.28 ns</td>
+<td style="text-align: right;">84.57 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-Scalar</td>
+<td>128KB</td>
+<td style="text-align: right;">361,595.1 ns</td>
+<td style="text-align: right;">1,332.76 ns</td>
+<td style="text-align: right;">1,181.46 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · OS Native</td>
+<td>128KB</td>
+<td style="text-align: right;">431,914.3 ns</td>
+<td style="text-align: right;">1,653.65 ns</td>
+<td style="text-align: right;">1,546.83 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX2</td>
+<td>128KB</td>
+<td style="text-align: right;">488,040.2 ns</td>
+<td style="text-align: right;">1,170.30 ns</td>
+<td style="text-align: right;">1,094.70 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · CryptoHives-AVX512F</td>
+<td>128KB</td>
+<td style="text-align: right;">503,092.2 ns</td>
+<td style="text-align: right;">5,960.81 ns</td>
+<td style="text-align: right;">4,977.54 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · SHA3-512 · BouncyCastle</td>
+<td>128KB</td>
+<td style="text-align: right;">561,587.0 ns</td>
+<td style="text-align: right;">3,252.43 ns</td>
+<td style="text-align: right;">3,042.33 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/sha3-512.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

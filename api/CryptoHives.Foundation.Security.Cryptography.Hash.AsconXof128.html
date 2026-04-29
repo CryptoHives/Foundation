@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class AsconXof128 | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class AsconXof128 | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="Computes the Ascon-XOF128 (Extendable Output Function) for the input data.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128">
+
+
+
+  <h1 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128" class="text-break">
+Class AsconXof128  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Security.html">Security</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.html">Cryptography</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.html">Hash</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Security.Cryptography.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Computes the Ascon-XOF128 (Extendable Output Function) for the input data.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class AsconXof128 : AsconHashAlgorithm, ICryptoTransform, IDisposable, IExtendableOutput</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm">HashAlgorithm</a></div>
+      <div><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html">HashAlgorithm</a></div>
+      <div><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.html">AsconHashAlgorithm</a></div>
+      <div><span class="xref">AsconXof128</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.icryptotransform">ICryptoTransform</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+      <div><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.IExtendableOutput.html">IExtendableOutput</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_AsconHashAlgorithm_RateBytes">AsconHashAlgorithm.RateBytes</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_AsconHashAlgorithm_BlockSize">AsconHashAlgorithm.BlockSize</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_AsconHashAlgorithm_Initialize">AsconHashAlgorithm.Initialize()</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconHashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_AsconHashAlgorithm_P12">AsconHashAlgorithm.P12()</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_Create_System_String_System_Boolean_">HashAlgorithm.Create(string, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_Create_System_String_">HashAlgorithm.Create(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_TryComputeHash_System_ReadOnlySpan_System_Byte__System_Span_System_Byte__System_Int32__">HashAlgorithm.TryComputeHash(ReadOnlySpan&lt;byte&gt;, Span&lt;byte&gt;, out int)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_AppendData_System_ReadOnlySpan_System_Byte__">HashAlgorithm.AppendData(ReadOnlySpan&lt;byte&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm.html#CryptoHives_Foundation_Security_Cryptography_Hash_HashAlgorithm_TryGetHashAndReset_System_Span_System_Byte__System_Int32__">HashAlgorithm.TryGetHashAndReset(Span&lt;byte&gt;, out int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.computehash#system-security-cryptography-hashalgorithm-computehash(system-io-stream)">HashAlgorithm.ComputeHash(Stream)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.computehash#system-security-cryptography-hashalgorithm-computehash(system-byte())">HashAlgorithm.ComputeHash(byte[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.computehash#system-security-cryptography-hashalgorithm-computehash(system-byte()-system-int32-system-int32)">HashAlgorithm.ComputeHash(byte[], int, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.transformblock">HashAlgorithm.TransformBlock(byte[], int, int, byte[], int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.transformfinalblock">HashAlgorithm.TransformFinalBlock(byte[], int, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.dispose#system-security-cryptography-hashalgorithm-dispose">HashAlgorithm.Dispose()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.clear">HashAlgorithm.Clear()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.hashsize">HashAlgorithm.HashSize</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.hash">HashAlgorithm.Hash</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.inputblocksize">HashAlgorithm.InputBlockSize</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.outputblocksize">HashAlgorithm.OutputBlockSize</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.cantransformmultipleblocks">HashAlgorithm.CanTransformMultipleBlocks</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.hashalgorithm.canreusetransform">HashAlgorithm.CanReuseTransform</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This is a fully managed implementation of Ascon-XOF128 that does not rely on
+OS or hardware cryptographic APIs, ensuring deterministic behavior across
+all platforms and runtimes.
+</p>
+<p>
+Ascon-XOF128 is defined in NIST SP 800-232.
+It is based on the Ascon permutation with 12 rounds and produces variable-length output.
+</p>
+<p>
+Ascon was the winner of the NIST Lightweight Cryptography competition (2023).
+</p>
+<p>
+References:
+<ul><li><a href="https://csrc.nist.gov/pubs/sp/800/232/final">NIST SP 800-232</a></li><li><a href="https://github.com/ascon/ascon-c">Reference Implementation</a></li><li><a href="https://ascon.iaik.tugraz.at/">Ascon Homepage</a></li></ul>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128__ctor_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128__ctor" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.#ctor">
+  AsconXof128()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.html">AsconXof128</a> class with default output size.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AsconXof128()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128__ctor_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.#ctor*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128__ctor_System_Int32_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.#ctor(System.Int32)">
+  AsconXof128(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L69"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.html">AsconXof128</a> class with the specified output size.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AsconXof128(int outputSizeBytes)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>outputSizeBytes</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The desired output size in bytes.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception">ArgumentOutOfRangeException</a></dt>
+    <dd><p>Thrown when outputSizeBytes is less than 1.</p>
+</dd>
+  </dl>
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_DefaultOutputSizeBits" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.DefaultOutputSizeBits">
+  DefaultOutputSizeBits
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The default output size in bits.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int DefaultOutputSizeBits = 256</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_DefaultOutputSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.DefaultOutputSizeBytes">
+  DefaultOutputSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The default output size in bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int DefaultOutputSizeBytes = 32</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_AlgorithmName_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.AlgorithmName*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_AlgorithmName" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.AlgorithmName">
+  AlgorithmName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the name of the hash algorithm.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string AlgorithmName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_InitializationVector_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.InitializationVector*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_InitializationVector" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.InitializationVector">
+  InitializationVector
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the initialization vector values for this variant.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override (ulong IV0, ulong IV1, ulong IV2, ulong IV3, ulong IV4) InitializationVector { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple-system.uint64,system.uint64,system.uint64,system.uint64,system.uint64-.iv0">IV0</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple-system.uint64,system.uint64,system.uint64,system.uint64,system.uint64-.iv1">IV1</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple-system.uint64,system.uint64,system.uint64,system.uint64,system.uint64-.iv2">IV2</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple-system.uint64,system.uint64,system.uint64,system.uint64,system.uint64-.iv3">IV3</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple-system.uint64,system.uint64,system.uint64,system.uint64,system.uint64-.iv4">IV4</a>)</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_OutputSizeBytes_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.OutputSizeBytes*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_OutputSizeBytes" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.OutputSizeBytes">
+  OutputSizeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the output size in bytes for this variant.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override int OutputSizeBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Absorb_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Absorb*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Absorb_System_ReadOnlySpan_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Absorb(System.ReadOnlySpan{System.Byte})">
+  Absorb(ReadOnlySpan&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Absorbs input data into the XOF state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Absorb(ReadOnlySpan&lt;byte&gt; input)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>input</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The input data to absorb.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when data is added after output has been squeezed.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Create_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Create*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Create" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Create">
+  Create()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.html">AsconXof128</a> class with default output size.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static AsconXof128 Create()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.html">AsconXof128</a></dt>
+    <dd><p>A new Ascon-XOF128 algorithm instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Create_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Create*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Create_System_Int32_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Create(System.Int32)">
+  Create(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L98"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new instance of the <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.html">AsconXof128</a> class with the specified output size.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static AsconXof128 Create(int outputSizeBytes)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>outputSizeBytes</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The desired output size in bytes.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.html">AsconXof128</a></dt>
+    <dd><p>A new Ascon-XOF128 algorithm instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Reset_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Reset*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Reset" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Reset">
+  Reset()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resets the XOF state so the instance can be reused for a new computation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Reset()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Reset_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>After calling this method, the instance is in the same state as a newly constructed one.
+All previously absorbed data and squeezed output are discarded.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Squeeze_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Squeeze*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Squeeze_System_Span_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.Squeeze(System.Span{System.Byte})">
+  Squeeze(Span&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Squeezes output bytes from the Ascon-XOF128 state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Squeeze(Span&lt;byte&gt; output)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>output</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The buffer to receive the output bytes.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_Squeeze_System_Span_System_Byte___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>After the first call, the hash is finalized and no more data can be absorbed.
+May be called multiple times for streaming output.</p>
+</div>
+
+
+
+
+  <a id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_SqueezeOutput_" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.SqueezeOutput*"></a>
+
+  <h3 id="CryptoHives_Foundation_Security_Cryptography_Hash_AsconXof128_SqueezeOutput_System_Span_System_Byte__" data-uid="CryptoHives.Foundation.Security.Cryptography.Hash.AsconXof128.SqueezeOutput(System.Span{System.Byte})">
+  SqueezeOutput(Span&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L173"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Squeezes the output from the internal state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void SqueezeOutput(Span&lt;byte&gt; destination)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>destination</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The destination span for the output.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Hash/Ascon/AsconXof128.cs/#L34" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

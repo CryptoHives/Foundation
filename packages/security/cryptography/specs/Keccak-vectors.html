@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Keccak Test Vectors | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Keccak Test Vectors | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Keccak-vectors.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../index.html">
+            <img id="logo" class="svg" src="../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="keccak-test-vectors">Keccak Test Vectors</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Keccak is the original hash function family before it was standardized as SHA-3.
+The key difference is the padding: Keccak uses <code>0x01</code> while SHA-3 uses <code>0x06</code>.</p>
+<p>Keccak-256 is primarily used in Ethereum for:</p>
+<ul>
+<li>Address generation</li>
+<li>Transaction hashing</li>
+<li>Merkle tree nodes</li>
+<li>Smart contract function selectors</li>
+</ul>
+<h2 id="test-vectors">Test Vectors</h2>
+<h3 id="keccak-256">Keccak-256</h3>
+<h4 id="empty-string">Empty String</h4>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Output (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;&quot;</td>
+<td><code>c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="standard-test-messages">Standard Test Messages</h4>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Output (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;abc&quot;</td>
+<td><code>4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45</code></td>
+</tr>
+<tr>
+<td>&quot;testing&quot;</td>
+<td><code>5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02</code></td>
+</tr>
+<tr>
+<td>&quot;The quick brown fox jumps over the lazy dog&quot;</td>
+<td><code>4d741b6f1eb29cb2a9b9911c82f56fa8d73b04959d3d9d222895df6c0b28aa15</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="keccak-384">Keccak-384</h3>
+<h4 id="empty-string-1">Empty String</h4>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Output (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;&quot;</td>
+<td><code>2c23146a63a29acf99e73b88f8c24eaa7dc60aa771780ccc006afbfa8fe2479b2dd2b21362337441ac12b515911957ff</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="standard-test-messages-1">Standard Test Messages</h4>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Output (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;abc&quot;</td>
+<td><code>f7df1165f033337be098e7d288ad6a2f74409d7a60b49c36642218de161b1f99f8c681e4afaf31a34db29fb763e3c28e</code></td>
+</tr>
+<tr>
+<td>&quot;The quick brown fox jumps over the lazy dog&quot;</td>
+<td><code>283990fa9d5fb731d786c5bbee94ea4db4910f18c62c03d173fc0a5e494422e8a0b3da7574dae7fa0baf005e504063b3</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="keccak-512">Keccak-512</h3>
+<h4 id="empty-string-2">Empty String</h4>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Output (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;&quot;</td>
+<td><code>0eab42de4c3ceb9235fc91acffe746b29c29a8c366b7c60e4e67c466f36a4304c00fa9caf9d87976ba469bcbe06713b435f091ef2769fb160cdab33d3670680e</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="standard-test-messages-2">Standard Test Messages</h4>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Output (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;abc&quot;</td>
+<td><code>18587dc2ea106b9a1563e32b3312421ca164c7f1f07bc922a9c83d77cea3a1e5d0c69910739025372dc14ac9642629379540c17e2a65b19d77aa511a9d00bb96</code></td>
+</tr>
+<tr>
+<td>&quot;The quick brown fox jumps over the lazy dog&quot;</td>
+<td><code>d135bb84d0439dbac432247ee573a23ea7d3c9deb2a968eb31d47c4fb45f1ef4422d6c531b5b9bd6f449ebcc449ea94d0a8f05f62130fda612da53c79659f609</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="comparison-keccak-vs-sha-3">Comparison: Keccak vs SHA-3</h2>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Keccak-256</th>
+<th>SHA3-256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;test&quot;</td>
+<td><code>9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658</code></td>
+<td><code>36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80</code></td>
+</tr>
+</tbody>
+</table>
+<p>The outputs differ due to different domain separation padding bytes.</p>
+<h2 id="references">References</h2>
+<ul>
+<li>Ethereum Yellow Paper: <a href="https://ethereum.github.io/yellowpaper/paper.pdf">https://ethereum.github.io/yellowpaper/paper.pdf</a></li>
+<li>Keccak Team: <a href="https://keccak.team/">https://keccak.team/</a></li>
+<li>BouncyCastle KeccakDigest: Used as reference implementation</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/specs/Keccak-vectors.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

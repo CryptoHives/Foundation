@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/chacha20-poly1305.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../../index.html">
+            <img id="logo" class="svg" src="../../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>TestDataSize</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Error</th>
+<th style="text-align: right;">StdDev</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>128B</td>
+<td style="text-align: right;">340.1 ns</td>
+<td style="text-align: right;">5.76 ns</td>
+<td style="text-align: right;">5.39 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (OS)</td>
+<td>128B</td>
+<td style="text-align: right;">355.0 ns</td>
+<td style="text-align: right;">2.40 ns</td>
+<td style="text-align: right;">2.13 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>128B</td>
+<td style="text-align: right;">393.1 ns</td>
+<td style="text-align: right;">4.04 ns</td>
+<td style="text-align: right;">3.58 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>128B</td>
+<td style="text-align: right;">590.9 ns</td>
+<td style="text-align: right;">2.55 ns</td>
+<td style="text-align: right;">2.26 ns</td>
+<td style="text-align: right;">48 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">737.7 ns</td>
+<td style="text-align: right;">4.73 ns</td>
+<td style="text-align: right;">4.43 ns</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">914.9 ns</td>
+<td style="text-align: right;">14.82 ns</td>
+<td style="text-align: right;">13.87 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>128B</td>
+<td style="text-align: right;">291.5 ns</td>
+<td style="text-align: right;">2.18 ns</td>
+<td style="text-align: right;">1.93 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>128B</td>
+<td style="text-align: right;">349.9 ns</td>
+<td style="text-align: right;">6.27 ns</td>
+<td style="text-align: right;">5.87 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (OS)</td>
+<td>128B</td>
+<td style="text-align: right;">362.0 ns</td>
+<td style="text-align: right;">5.92 ns</td>
+<td style="text-align: right;">5.53 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>128B</td>
+<td style="text-align: right;">427.2 ns</td>
+<td style="text-align: right;">6.07 ns</td>
+<td style="text-align: right;">5.38 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>128B</td>
+<td style="text-align: right;">544.8 ns</td>
+<td style="text-align: right;">4.69 ns</td>
+<td style="text-align: right;">3.92 ns</td>
+<td style="text-align: right;">48 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>128B</td>
+<td style="text-align: right;">859.3 ns</td>
+<td style="text-align: right;">13.70 ns</td>
+<td style="text-align: right;">12.82 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,290.6 ns</td>
+<td style="text-align: right;">11.75 ns</td>
+<td style="text-align: right;">10.99 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,738.1 ns</td>
+<td style="text-align: right;">3.36 ns</td>
+<td style="text-align: right;">3.14 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,755.2 ns</td>
+<td style="text-align: right;">12.97 ns</td>
+<td style="text-align: right;">12.14 ns</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (OS)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,793.7 ns</td>
+<td style="text-align: right;">6.40 ns</td>
+<td style="text-align: right;">5.99 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>1KB</td>
+<td style="text-align: right;">2,656.4 ns</td>
+<td style="text-align: right;">15.41 ns</td>
+<td style="text-align: right;">14.41 ns</td>
+<td style="text-align: right;">72 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">4,566.8 ns</td>
+<td style="text-align: right;">27.65 ns</td>
+<td style="text-align: right;">24.51 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,236.2 ns</td>
+<td style="text-align: right;">7.77 ns</td>
+<td style="text-align: right;">6.89 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,464.5 ns</td>
+<td style="text-align: right;">22.00 ns</td>
+<td style="text-align: right;">20.58 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,739.2 ns</td>
+<td style="text-align: right;">34.03 ns</td>
+<td style="text-align: right;">34.95 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (OS)</td>
+<td>1KB</td>
+<td style="text-align: right;">1,806.1 ns</td>
+<td style="text-align: right;">19.25 ns</td>
+<td style="text-align: right;">17.07 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>1KB</td>
+<td style="text-align: right;">2,618.3 ns</td>
+<td style="text-align: right;">48.71 ns</td>
+<td style="text-align: right;">45.57 ns</td>
+<td style="text-align: right;">72 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>1KB</td>
+<td style="text-align: right;">4,581.0 ns</td>
+<td style="text-align: right;">87.72 ns</td>
+<td style="text-align: right;">93.86 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>8KB</td>
+<td style="text-align: right;">8,800.9 ns</td>
+<td style="text-align: right;">36.11 ns</td>
+<td style="text-align: right;">32.01 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">9,859.2 ns</td>
+<td style="text-align: right;">73.26 ns</td>
+<td style="text-align: right;">68.53 ns</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>8KB</td>
+<td style="text-align: right;">12,443.6 ns</td>
+<td style="text-align: right;">26.82 ns</td>
+<td style="text-align: right;">22.40 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (OS)</td>
+<td>8KB</td>
+<td style="text-align: right;">13,277.8 ns</td>
+<td style="text-align: right;">31.32 ns</td>
+<td style="text-align: right;">27.77 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>8KB</td>
+<td style="text-align: right;">18,633.1 ns</td>
+<td style="text-align: right;">99.59 ns</td>
+<td style="text-align: right;">93.15 ns</td>
+<td style="text-align: right;">72 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">33,956.8 ns</td>
+<td style="text-align: right;">361.42 ns</td>
+<td style="text-align: right;">338.07 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>8KB</td>
+<td style="text-align: right;">8,840.1 ns</td>
+<td style="text-align: right;">164.71 ns</td>
+<td style="text-align: right;">154.07 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>8KB</td>
+<td style="text-align: right;">9,720.5 ns</td>
+<td style="text-align: right;">183.37 ns</td>
+<td style="text-align: right;">180.10 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>8KB</td>
+<td style="text-align: right;">12,560.6 ns</td>
+<td style="text-align: right;">233.48 ns</td>
+<td style="text-align: right;">218.40 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (OS)</td>
+<td>8KB</td>
+<td style="text-align: right;">13,328.8 ns</td>
+<td style="text-align: right;">135.29 ns</td>
+<td style="text-align: right;">119.93 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>8KB</td>
+<td style="text-align: right;">19,108.5 ns</td>
+<td style="text-align: right;">379.93 ns</td>
+<td style="text-align: right;">406.52 ns</td>
+<td style="text-align: right;">72 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>8KB</td>
+<td style="text-align: right;">34,108.0 ns</td>
+<td style="text-align: right;">636.60 ns</td>
+<td style="text-align: right;">595.47 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>128KB</td>
+<td style="text-align: right;">137,147.5 ns</td>
+<td style="text-align: right;">382.31 ns</td>
+<td style="text-align: right;">357.61 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">150,580.9 ns</td>
+<td style="text-align: right;">1,054.92 ns</td>
+<td style="text-align: right;">935.16 ns</td>
+<td style="text-align: right;">416 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>128KB</td>
+<td style="text-align: right;">195,815.1 ns</td>
+<td style="text-align: right;">698.66 ns</td>
+<td style="text-align: right;">653.53 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (OS)</td>
+<td>128KB</td>
+<td style="text-align: right;">209,457.1 ns</td>
+<td style="text-align: right;">2,572.46 ns</td>
+<td style="text-align: right;">2,406.28 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>128KB</td>
+<td style="text-align: right;">301,524.9 ns</td>
+<td style="text-align: right;">1,655.87 ns</td>
+<td style="text-align: right;">1,548.90 ns</td>
+<td style="text-align: right;">72 B</td>
+</tr>
+<tr>
+<td>Decrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">537,618.9 ns</td>
+<td style="text-align: right;">4,345.09 ns</td>
+<td style="text-align: right;">4,064.40 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-AVX2)</td>
+<td>128KB</td>
+<td style="text-align: right;">137,765.4 ns</td>
+<td style="text-align: right;">2,026.47 ns</td>
+<td style="text-align: right;">1,796.41 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (BouncyCastle)</td>
+<td>128KB</td>
+<td style="text-align: right;">154,914.0 ns</td>
+<td style="text-align: right;">2,926.50 ns</td>
+<td style="text-align: right;">3,252.79 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-SSSE3)</td>
+<td>128KB</td>
+<td style="text-align: right;">198,854.7 ns</td>
+<td style="text-align: right;">3,339.44 ns</td>
+<td style="text-align: right;">3,123.72 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (OS)</td>
+<td>128KB</td>
+<td style="text-align: right;">213,292.6 ns</td>
+<td style="text-align: right;">3,658.50 ns</td>
+<td style="text-align: right;">3,422.16 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (NaCl.Core)</td>
+<td>128KB</td>
+<td style="text-align: right;">302,588.3 ns</td>
+<td style="text-align: right;">5,606.65 ns</td>
+<td style="text-align: right;">5,244.46 ns</td>
+<td style="text-align: right;">72 B</td>
+</tr>
+<tr>
+<td>Encrypt · ChaCha20-Poly1305 (CryptoHives-Scalar)</td>
+<td>128KB</td>
+<td style="text-align: right;">538,066.4 ns</td>
+<td style="text-align: right;">5,095.20 ns</td>
+<td style="text-align: right;">4,254.72 ns</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/windows-x64-amd-ryzen-5-7600x/chacha20-poly1305.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

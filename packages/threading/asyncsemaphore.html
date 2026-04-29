@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>AsyncSemaphore | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="AsyncSemaphore | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncsemaphore.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="asyncsemaphore">AsyncSemaphore</h1>
+
+<p>A pooled, allocation-free async semaphore that limits concurrent access using ValueTask-based waiters.</p>
+<h2 id="overview">Overview</h2>
+<p><code>AsyncSemaphore</code> is an async-compatible semaphore that allows a configurable number of concurrent operations. It uses pooled <code>IValueTaskSource</code> instances to minimize allocations in high-throughput scenarios.</p>
+<h2 id="usage">Usage</h2>
+<h3 id="basic-usage">Basic Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Async.Pooled;
+
+private readonly AsyncSemaphore _semaphore = new AsyncSemaphore(3);
+
+public async Task AccessLimitedResourceAsync(CancellationToken ct)
+{
+    await _semaphore.WaitAsync(ct);
+    try
+    {
+        // Max 3 concurrent tasks can access this section
+        await AccessResourceAsync();
+    }
+    finally
+    {
+        _semaphore.Release();
+    }
+}
+</code></pre>
+<h3 id="rate-limiting">Rate Limiting</h3>
+<pre><code class="lang-csharp">private readonly AsyncSemaphore _rateLimiter = new AsyncSemaphore(5);
+
+public async Task&lt;T&gt; RateLimitedOperationAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; operation, CancellationToken ct)
+{
+    await _rateLimiter.WaitAsync(ct);
+    try
+    {
+        return await operation();
+    }
+    finally
+    {
+        _rateLimiter.Release();
+    }
+}
+</code></pre>
+<h2 id="constructor">Constructor</h2>
+<pre><code class="lang-csharp">public AsyncSemaphore(
+    int initialCount,
+    bool runContinuationAsynchronously = true,
+    IGetPooledManualResetValueTaskSource&lt;bool&gt;? pool = null)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>initialCount</code></td>
+<td>The initial number of available permits. Must be non-negative.</td>
+</tr>
+<tr>
+<td><code>runContinuationAsynchronously</code></td>
+<td>If true (default), continuations run on the thread pool.</td>
+</tr>
+<tr>
+<td><code>pool</code></td>
+<td>Optional custom pool for ValueTaskSource instances.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CurrentCount</code></td>
+<td><code>int</code></td>
+<td>Gets the current number of available permits.</td>
+</tr>
+<tr>
+<td><code>RunContinuationAsynchronously</code></td>
+<td><code>bool</code></td>
+<td>Gets or sets whether continuations run asynchronously.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="waitasync">WaitAsync</h3>
+<pre><code class="lang-csharp">public ValueTask WaitAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Asynchronously waits to acquire a permit from the semaphore.</p>
+<h3 id="release">Release</h3>
+<pre><code class="lang-csharp">public void Release()
+public void Release(int releaseCount)
+</code></pre>
+<p>Releases one or more permits back to the semaphore.</p>
+<h2 id="performance">Performance</h2>
+<ul>
+<li><strong>O(1)</strong> acquisition when permits are available</li>
+<li><strong>FIFO</strong> queue for waiters when no permits are available</li>
+<li><strong>Zero allocations</strong> on the fast path (uncontended)</li>
+<li>Pooled ValueTaskSource instances for waiters</li>
+</ul>
+<h2 id="benchmark-results">Benchmark Results</h2>
+<p>The following benchmarks compare <code>AsyncSemaphore</code> against <code>SemaphoreSlim</code>, <code>Nito.AsyncEx.AsyncSemaphore</code>, <code>Proto.Promises.Threading.AsyncSemaphore</code> and a Task based reference implementation.
+TODO: Currently benchmarks are only available on uncontended scenarios to measure the overhead of a semaphore acquisition and release.</p>
+<h3 id="single-waitrelease-benchmark">Single Wait/Release Benchmark</h3>
+<p>Measures the performance of acquiring and releasing a single permit. In the current published results, ProtoPromise is slightly faster than the pooled implementation on raw uncontended throughput, while the pooled implementation preserves the same <code>ValueTask</code>-first design and behavior used across this library.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WaitRelease · AsyncSemaphore · ProtoPromise</td>
+<td style="text-align: right;">6.506 ns</td>
+<td style="text-align: right;">0.71</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · AsyncSemaphore · Pooled</td>
+<td style="text-align: right;">9.162 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · AsyncSemaphore · Nito.AsyncEx</td>
+<td style="text-align: right;">14.745 ns</td>
+<td style="text-align: right;">1.61</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · SemaphoreSlim · System</td>
+<td style="text-align: right;">16.958 ns</td>
+<td style="text-align: right;">1.85</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitRelease · AsyncSemaphore · RefImpl</td>
+<td style="text-align: right;">18.116 ns</td>
+<td style="text-align: right;">1.98</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmark-analysis">Benchmark Analysis</h3>
+<p><strong>Key Findings:</strong></p>
+<ol>
+<li><p><strong>Fast Path Performance</strong>: When permits are available, <code>AsyncSemaphore</code> completes synchronously with zero allocations, providing excellent performance for uncontended scenarios even though ProtoPromise currently posts the best published raw throughput.</p>
+</li>
+<li><p><strong>Contention Handling</strong>: Under contention, the pooled <code>IValueTaskSource</code> approach reduces allocation pressure compared to <code>SemaphoreSlim.WaitAsync()</code>.</p>
+</li>
+<li><p><strong>Memory Efficiency</strong>: The local waiter optimization ensures the first queued waiter incurs no allocation, with subsequent waiters benefiting from pool reuse.</p>
+</li>
+<li><p><strong>ValueTask Advantage</strong>: Returning <code>ValueTask</code> instead of <code>Task</code> avoids allocations when permits are immediately available.</p>
+</li>
+</ol>
+<p><strong>When to Choose AsyncSemaphore:</strong></p>
+<ul>
+<li>Rate limiting scenarios with frequent permit acquisition</li>
+<li>Connection pooling where semaphore operations are hot paths</li>
+<li>High-throughput scenarios where allocation pressure matters</li>
+</ul>
+<p><strong>Comparison with SemaphoreSlim:</strong></p>
+<p><code>SemaphoreSlim</code> is a mature, well-tested synchronization primitive in the .NET BCL. Choose <code>AsyncSemaphore</code> when:</p>
+<ul>
+<li>You need lower allocation overhead in high-frequency scenarios</li>
+<li>Your application is allocation-sensitive</li>
+<li>You want consistent <code>ValueTask</code>-based APIs across your codebase</li>
+</ul>
+<h2 id="comparison-with-semaphoreslim">Comparison with SemaphoreSlim</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>AsyncSemaphore</th>
+<th>SemaphoreSlim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Allocation overhead</td>
+<td>Minimal (pooled)</td>
+<td>Higher (per wait)</td>
+</tr>
+<tr>
+<td>ValueTask support</td>
+<td>Native</td>
+<td>Via WaitAsync</td>
+</tr>
+<tr>
+<td>Cancellation</td>
+<td>Full support</td>
+<td>Full support</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Optimized</td>
+<td>Standard</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="index.html">Threading Package Overview</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a> - Manual-reset event variant</li>
+<li><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a> - Async reader-writer lock</li>
+<li><a href="asynclock.html">AsyncLock</a> - Async mutual exclusion lock</li>
+<li><a href="asynccountdownevent.html">AsyncCountdownEvent</a> - Async countdown event</li>
+<li><a href="asyncbarrier.html">AsyncBarrier</a> - Async barrier synchronization primitive</li>
+<li><a href="benchmarks.html">Benchmarks</a> - Benchmark description</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asyncsemaphore.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

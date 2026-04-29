@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Enum CipherMode | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Enum CipherMode | CryptoHives .NET Foundation ">
+      
+      <meta name="description" content="Specifies the block cipher mode of operation.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/new/main/apiSpec/new?filename=CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode.md&amp;value=---%0Auid%3A%20CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode">
+
+
+
+
+  <h1 id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode" data-uid="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode" class="text-break">
+Enum CipherMode  <a class="header-action link-secondary" title="View source" href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/CipherMode.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="CryptoHives.html">CryptoHives</a>.<a class="xref" href="CryptoHives.Foundation.html">Foundation</a>.<a class="xref" href="CryptoHives.Foundation.Security.html">Security</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.html">Cryptography</a>.<a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.html">Cipher</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>CryptoHives.Foundation.Security.Cryptography.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Specifies the block cipher mode of operation.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[SuppressMessage(&quot;Design&quot;, &quot;CA1008:Enums should have zero value&quot;, Justification = &quot;Mirror runtime implementation&quot;)]
+public enum CipherMode</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+  <h2 id="fields">Fields
+</h2>
+  <dl class="parameters">
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_CBC"><code>CBC = 1</code></dt>
+  <dd><p>Cipher Block Chaining mode. Each plaintext block is XORed with the
+previous ciphertext block before encryption.</p>
+<p>Requires an initialization vector (IV) for the first block.
+Provides better diffusion than ECB but is not parallelizable for encryption.
+Value matches <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.ciphermode#system-security-cryptography-ciphermode-cbc">CBC</a>.</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_CCM"><code>CCM = 102</code></dt>
+  <dd><p>Counter with CBC-MAC mode. Provides authenticated encryption with associated data (AEAD).</p>
+<p>
+CCM is designed for constrained environments (IoT, embedded systems).
+It combines CTR mode encryption with CBC-MAC authentication.
+</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_CFB"><code>[Obsolete(&quot;CFB is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. CFB was designed for self-synchronization on noisy serial links, which is irrelevant on modern reliable transports.&quot;)]
+CFB = 4</code></dt>
+  <dd><p>Cipher Feedback mode. Converts a block cipher into a self-synchronizing stream cipher.</p>
+<p>
+Value matches <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.ciphermode#system-security-cryptography-ciphermode-cfb">CFB</a>.
+</p>
+<p>
+<b>Obsolete:</b> CFB was designed for environments requiring self-synchronization
+after bit errors (e.g. noisy serial links), a property irrelevant on modern reliable
+transports. Modern protocols use AEAD modes (GCM, CCM, ChaCha20-Poly1305) which provide
+both confidentiality and integrity. CFB is retained for compatibility but is not
+implemented in this library.
+</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_CTR"><code>CTR = 100</code></dt>
+  <dd><p>Counter mode. Converts a block cipher into a stream cipher by encrypting
+successive counter values and XORing with plaintext.</p>
+<p>
+CTR mode is parallelizable and allows random access to encrypted data.
+The nonce/counter combination must never repeat for the same key.
+</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_CTS"><code>[Obsolete(&quot;CTS is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. CTS is a niche mode used primarily in Kerberos (RFC 3962); modern modes handle arbitrary-length data without padding.&quot;)]
+CTS = 5</code></dt>
+  <dd><p>Cipher Text Stealing mode. Handles plaintext that is not a multiple of the block size.</p>
+<p>
+Value matches <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.ciphermode#system-security-cryptography-ciphermode-cts">CTS</a>.
+</p>
+<p>
+<b>Niche:</b> CTS avoids ciphertext expansion by stealing bits from the penultimate block.
+It is used in Kerberos (RFC 3962) and some disk encryption schemes, but is otherwise
+uncommon. Modern AEAD modes and CTR mode handle arbitrary-length data without padding.
+CTS is retained for compatibility but is not implemented in this library.
+</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_ECB"><code>ECB = 2</code></dt>
+  <dd><p>Electronic Codebook mode. Each block is encrypted independently.</p>
+<p><b>Warning:</b> ECB mode does not provide semantic security and should
+generally be avoided. Identical plaintext blocks produce identical
+ciphertext blocks, revealing patterns in the data.
+Value matches <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.ciphermode#system-security-cryptography-ciphermode-ecb">ECB</a>.</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_GCM"><code>GCM = 101</code></dt>
+  <dd><p>Galois/Counter Mode. Provides authenticated encryption with associated data (AEAD).</p>
+<p>
+GCM combines CTR mode encryption with Galois field multiplication for
+authentication. It produces both ciphertext and an authentication tag.
+</p>
+<p>
+<b>Important:</b> Nonce reuse completely breaks GCM security.
+Each (key, nonce) pair must be unique.
+</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_OFB"><code>[Obsolete(&quot;OFB is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. OFB is superseded by CTR which offers the same parallelism with simpler implementation.&quot;)]
+OFB = 3</code></dt>
+  <dd><p>Output Feedback mode. Converts a block cipher into a synchronous stream cipher.</p>
+<p>
+Value matches <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.ciphermode#system-security-cryptography-ciphermode-ofb">OFB</a>.
+</p>
+<p>
+<b>Obsolete:</b> OFB is largely superseded by CTR mode, which offers the same
+parallelism and random-access benefits with simpler implementation. Modern protocols
+(TLS 1.3, QUIC, WireGuard, IPsec) exclusively use AEAD modes (GCM, CCM, ChaCha20-Poly1305)
+or CTR. OFB is retained for compatibility but is not implemented in this library.
+</p>
+</dd>
+  
+    <dt id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_Stream"><code>Stream = 200</code></dt>
+  <dd><p>Stream cipher mode. Used for ciphers like ChaCha20 that are natively stream ciphers.</p>
+<p>Stream mode indicates the cipher operates on arbitrary-length data
+without block padding requirements.</p>
+</dd>
+  
+  </dl>
+
+
+  <h2 id="CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Block cipher modes determine how blocks of plaintext are processed
+and how they relate to each other during encryption/decryption.
+</p>
+<p>
+Values for ECB, CBC, OFB, and CFB match
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.security.cryptography.ciphermode">CipherMode</a> for compatibility.
+Additional modes (CTR, GCM, CCM, Stream) extend beyond the system enum.
+</p>
+<p>
+<b>Security guidance:</b>
+<ul><li><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode.html#CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_ECB">ECB</a> should be avoided for most use cases due to lack of diffusion.</li><li><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode.html#CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_GCM">GCM</a> and <a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode.html#CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_CCM">CCM</a> provide authenticated encryption (AEAD).</li><li><a class="xref" href="CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode.html#CryptoHives_Foundation_Security_Cryptography_Cipher_CipherMode_CTR">CTR</a> is suitable for streaming but requires unique nonces.</li></ul>
+
+</div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/Cipher/CipherMode.cs/#L31" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

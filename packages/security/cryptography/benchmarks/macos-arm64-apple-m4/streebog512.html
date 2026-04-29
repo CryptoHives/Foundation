@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../../../../favicon.ico">
+      <link rel="stylesheet" href="../../../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/macos-arm64-apple-m4/streebog512.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../../../index.html">
+            <img id="logo" class="svg" src="../../../../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>TestDataSize</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Error</th>
+<th style="text-align: right;">StdDev</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TryComputeHash · Streebog-512 · CryptoHives-Scalar</td>
+<td>128B</td>
+<td style="text-align: right;">1.839 μs</td>
+<td style="text-align: right;">0.0027 μs</td>
+<td style="text-align: right;">0.0026 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · OpenGost</td>
+<td>128B</td>
+<td style="text-align: right;">2.985 μs</td>
+<td style="text-align: right;">0.0242 μs</td>
+<td style="text-align: right;">0.0202 μs</td>
+<td style="text-align: right;">176 B</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · BouncyCastle</td>
+<td>128B</td>
+<td style="text-align: right;">3.749 μs</td>
+<td style="text-align: right;">0.0044 μs</td>
+<td style="text-align: right;">0.0034 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · CryptoHives-Scalar</td>
+<td>137B</td>
+<td style="text-align: right;">1.844 μs</td>
+<td style="text-align: right;">0.0037 μs</td>
+<td style="text-align: right;">0.0029 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · OpenGost</td>
+<td>137B</td>
+<td style="text-align: right;">2.970 μs</td>
+<td style="text-align: right;">0.0015 μs</td>
+<td style="text-align: right;">0.0014 μs</td>
+<td style="text-align: right;">176 B</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · BouncyCastle</td>
+<td>137B</td>
+<td style="text-align: right;">3.781 μs</td>
+<td style="text-align: right;">0.0037 μs</td>
+<td style="text-align: right;">0.0033 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · CryptoHives-Scalar</td>
+<td>1KB</td>
+<td style="text-align: right;">6.985 μs</td>
+<td style="text-align: right;">0.0099 μs</td>
+<td style="text-align: right;">0.0093 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · OpenGost</td>
+<td>1KB</td>
+<td style="text-align: right;">11.271 μs</td>
+<td style="text-align: right;">0.0057 μs</td>
+<td style="text-align: right;">0.0051 μs</td>
+<td style="text-align: right;">176 B</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · BouncyCastle</td>
+<td>1KB</td>
+<td style="text-align: right;">14.416 μs</td>
+<td style="text-align: right;">0.0069 μs</td>
+<td style="text-align: right;">0.0065 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · CryptoHives-Scalar</td>
+<td>1025B</td>
+<td style="text-align: right;">6.975 μs</td>
+<td style="text-align: right;">0.0124 μs</td>
+<td style="text-align: right;">0.0116 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · OpenGost</td>
+<td>1025B</td>
+<td style="text-align: right;">11.280 μs</td>
+<td style="text-align: right;">0.0065 μs</td>
+<td style="text-align: right;">0.0060 μs</td>
+<td style="text-align: right;">176 B</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · BouncyCastle</td>
+<td>1025B</td>
+<td style="text-align: right;">14.491 μs</td>
+<td style="text-align: right;">0.0371 μs</td>
+<td style="text-align: right;">0.0347 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · CryptoHives-Scalar</td>
+<td>8KB</td>
+<td style="text-align: right;">48.079 μs</td>
+<td style="text-align: right;">0.1239 μs</td>
+<td style="text-align: right;">0.1159 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · OpenGost</td>
+<td>8KB</td>
+<td style="text-align: right;">77.780 μs</td>
+<td style="text-align: right;">0.0528 μs</td>
+<td style="text-align: right;">0.0494 μs</td>
+<td style="text-align: right;">176 B</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · BouncyCastle</td>
+<td>8KB</td>
+<td style="text-align: right;">96.388 μs</td>
+<td style="text-align: right;">0.1456 μs</td>
+<td style="text-align: right;">0.1291 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · CryptoHives-Scalar</td>
+<td>128KB</td>
+<td style="text-align: right;">759.183 μs</td>
+<td style="text-align: right;">1.5654 μs</td>
+<td style="text-align: right;">1.3877 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · OpenGost</td>
+<td>128KB</td>
+<td style="text-align: right;">1,222.793 μs</td>
+<td style="text-align: right;">1.5618 μs</td>
+<td style="text-align: right;">1.4609 μs</td>
+<td style="text-align: right;">176 B</td>
+</tr>
+<tr>
+<td>TryComputeHash · Streebog-512 · BouncyCastle</td>
+<td>128KB</td>
+<td style="text-align: right;">1,466.465 μs</td>
+<td style="text-align: right;">1.1029 μs</td>
+<td style="text-align: right;">1.0317 μs</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/security/cryptography/benchmarks/macos-arm64-apple-m4/streebog512.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

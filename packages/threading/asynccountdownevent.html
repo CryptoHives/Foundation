@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>AsyncCountdownEvent | CryptoHives .NET Foundation </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="AsyncCountdownEvent | CryptoHives .NET Foundation ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asynccountdownevent.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/logo.png" alt="CryptoHives .NET Foundation">
+            CryptoHives .NET Foundation
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="asynccountdownevent">AsyncCountdownEvent</h1>
+
+<p>A pooled, allocation-free async countdown event that signals when a count reaches zero using ValueTask-based waiters.</p>
+<h2 id="overview">Overview</h2>
+<p><code>AsyncCountdownEvent</code> is an async-compatible countdown synchronization primitive. It allows one or more tasks to wait until a specified number of signals have been received. It uses pooled <code>IValueTaskSource</code> instances to minimize allocations.</p>
+<h2 id="usage">Usage</h2>
+<h3 id="basic-usage">Basic Usage</h3>
+<pre><code class="lang-csharp">using CryptoHives.Foundation.Threading.Async.Pooled;
+
+private readonly AsyncCountdownEvent _countdown = new AsyncCountdownEvent(3);
+
+// Coordinator waits for all workers
+public async Task WaitForWorkersAsync(CancellationToken ct)
+{
+    await _countdown.WaitAsync(ct);
+    Console.WriteLine(&quot;All workers completed!&quot;);
+}
+
+// Each worker signals when done
+public void WorkerCompleted()
+{
+    _countdown.Signal();
+}
+</code></pre>
+<h3 id="fan-outfan-in-pattern">Fan-Out/Fan-In Pattern</h3>
+<pre><code class="lang-csharp">public async Task ProcessBatchAsync(IEnumerable&lt;Item&gt; items, CancellationToken ct)
+{
+    var itemList = items.ToList();
+    var countdown = new AsyncCountdownEvent(itemList.Count);
+
+    foreach (var item in itemList)
+    {
+        _ = Task.Run(async () =&gt;
+        {
+            await ProcessItemAsync(item, ct);
+            countdown.Signal();
+        }, ct);
+    }
+
+    await countdown.WaitAsync(ct);
+    Console.WriteLine(&quot;All items processed!&quot;);
+}
+</code></pre>
+<h3 id="signal-and-wait">Signal and Wait</h3>
+<pre><code class="lang-csharp">public async Task ParticipantWorkAsync(CancellationToken ct)
+{
+    await DoWorkAsync();
+    await _countdown.SignalAndWaitAsync(ct);
+    // All participants have completed
+}
+</code></pre>
+<h2 id="constructor">Constructor</h2>
+<pre><code class="lang-csharp">public AsyncCountdownEvent(
+    int initialCount,
+    bool runContinuationAsynchronously = true,
+    IGetPooledManualResetValueTaskSource&lt;bool&gt;? pool = null)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>initialCount</code></td>
+<td>The initial count. Must be greater than zero.</td>
+</tr>
+<tr>
+<td><code>runContinuationAsynchronously</code></td>
+<td>If true (default), continuations are forced to run on the thread pool.</td>
+</tr>
+<tr>
+<td><code>pool</code></td>
+<td>Optional custom pool for ValueTaskSource instances.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="properties">Properties</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CurrentCount</code></td>
+<td><code>int</code></td>
+<td>Gets the current count remaining.</td>
+</tr>
+<tr>
+<td><code>InitialCount</code></td>
+<td><code>int</code></td>
+<td>Gets the initial count.</td>
+</tr>
+<tr>
+<td><code>IsSet</code></td>
+<td><code>bool</code></td>
+<td>Gets whether the count has reached zero.</td>
+</tr>
+<tr>
+<td><code>RunContinuationAsynchronously</code></td>
+<td><code>bool</code></td>
+<td>Gets or sets whether continuations run asynchronously.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods</h2>
+<h3 id="waitasync">WaitAsync</h3>
+<pre><code class="lang-csharp">public ValueTask WaitAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Asynchronously waits for the countdown to reach zero.</p>
+<h3 id="signal">Signal</h3>
+<pre><code class="lang-csharp">public void Signal()
+public void Signal(int signalCount)
+</code></pre>
+<p>Decrements the countdown by one or more.</p>
+<h3 id="signalandwaitasync">SignalAndWaitAsync</h3>
+<pre><code class="lang-csharp">public ValueTask SignalAndWaitAsync(CancellationToken cancellationToken = default)
+</code></pre>
+<p>Signals the countdown and waits for it to reach zero.</p>
+<h3 id="addcount">AddCount</h3>
+<pre><code class="lang-csharp">public void AddCount()
+public void AddCount(int signalCount)
+</code></pre>
+<p>Increments the countdown.</p>
+<h3 id="tryaddcount">TryAddCount</h3>
+<pre><code class="lang-csharp">public bool TryAddCount(int signalCount = 1)
+</code></pre>
+<p>Attempts to increment the countdown. Returns false if already set.</p>
+<h3 id="reset">Reset</h3>
+<pre><code class="lang-csharp">public void Reset(int count = 0)
+</code></pre>
+<p>Resets the countdown to the specified count, or to the initial count if not specified.</p>
+<h2 id="performance">Performance</h2>
+<ul>
+<li><strong>O(1)</strong> signal and wait operations</li>
+<li><strong>O(n)</strong> broadcast to all waiters when count reaches zero</li>
+<li><strong>Zero allocations</strong> when count reaches zero with no waiters</li>
+<li>Pooled ValueTaskSource instances for waiters</li>
+</ul>
+<h2 id="benchmark-results">Benchmark Results</h2>
+<p>The following benchmarks compare <code>AsyncCountdownEvent</code> against <code>CountdownEvent</code>, <code>Proto.Promises.Threading.AsyncCountdownEvent</code>, <code>Nito.AsyncEx.AsyncCountdownEvent</code> and reference implementations.</p>
+<h3 id="signal-operation-benchmark">Signal Operation Benchmark</h3>
+<p>Measures the performance of signaling and waiting on the countdown event.
+The standard implementation does not support <code>Task</code>-based waiters, while <code>AsyncCountdownEvent</code> uses pooled <code>IValueTaskSource</code> instances. Hence the tests run only uncontested for standard implementations.
+ProtoPromise is included as an additional comparison point and is faster than the pooled implementation in the published <code>SignalAndWait</code> results, while the pooled implementation is much faster in the published <code>WaitAndSignal</code> scenario.
+Only the pooled <code>AsyncCountdownEvent</code> is benchmarked in a contested and a uncontested scenario to proof that no memory allocations occur.
+The Nito.Async implementation can not be benchmarked due to its internal design which doesn't allow to Reset the event, a new allocation for the AsyncCountdownEvent were necessary for each run so it was left out of contest.</p>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>ParticipantCount</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Ratio</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SignalAndWait · CountdownEvent · System</td>
+<td>1</td>
+<td style="text-align: right;">6.661 ns</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · ProtoPromise</td>
+<td>1</td>
+<td style="text-align: right;">7.370 ns</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · Pooled</td>
+<td>1</td>
+<td style="text-align: right;">8.016 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · RefImpl</td>
+<td>1</td>
+<td style="text-align: right;">15.803 ns</td>
+<td style="text-align: right;">1.97</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · ProtoPromise</td>
+<td>1</td>
+<td style="text-align: right;">18.378 ns</td>
+<td style="text-align: right;">2.29</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · Pooled</td>
+<td>1</td>
+<td style="text-align: right;">43.926 ns</td>
+<td style="text-align: right;">5.48</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · ProtoPromise</td>
+<td>10</td>
+<td style="text-align: right;">17.067 ns</td>
+<td style="text-align: right;">0.77</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · CountdownEvent · System</td>
+<td>10</td>
+<td style="text-align: right;">20.834 ns</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · Pooled</td>
+<td>10</td>
+<td style="text-align: right;">22.233 ns</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · ProtoPromise</td>
+<td>10</td>
+<td style="text-align: right;">28.077 ns</td>
+<td style="text-align: right;">1.26</td>
+<td style="text-align: right;">-</td>
+</tr>
+<tr>
+<td>SignalAndWait · AsyncCountdownEv · RefImpl</td>
+<td>10</td>
+<td style="text-align: right;">28.195 ns</td>
+<td style="text-align: right;">1.27</td>
+<td style="text-align: right;">96 B</td>
+</tr>
+<tr>
+<td>WaitAndSignal · AsyncCountdownEv · Pooled</td>
+<td>10</td>
+<td style="text-align: right;">57.694 ns</td>
+<td style="text-align: right;">2.60</td>
+<td style="text-align: right;">-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmark-analysis">Benchmark Analysis</h3>
+<p><strong>Key Findings:</strong></p>
+<ol>
+<li><p><strong>Signal Performance</strong>: The <code>Signal()</code> operation is O(1) until the final signal triggers the broadcast to all waiters. ProtoPromise currently leads the published <code>SignalAndWait</code> microbenchmark, while the pooled implementation performs better in the <code>WaitAndSignal</code> pattern.</p>
+</li>
+<li><p><strong>Memory Efficiency</strong>: Pooled <code>IValueTaskSource</code> instances reduce allocation pressure in repeated countdown cycles (e.g., using <code>Reset()</code> to reuse the countdown). CancellationTokens do not add memory allocations.</p>
+</li>
+<li><p><strong>Broadcast Overhead</strong>: When the count reaches zero, all waiters are signaled individually. For scenarios with many waiters, consider the trade-off compared to shared <code>Task</code>-based approaches.</p>
+</li>
+<li><p><strong>SignalAndWaitAsync</strong>: This combined operation is optimized for the common pattern where a participant signals and then waits for others.</p>
+</li>
+</ol>
+<p><strong>When to Choose AsyncCountdownEvent:</strong></p>
+<ul>
+<li>Fan-out/fan-in coordination patterns</li>
+<li>Batch processing with parallel workers</li>
+<li>Scenarios where the countdown is frequently reset and reused</li>
+</ul>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="index.html">Threading Package Overview</a></li>
+<li><a href="asyncautoresetevent.html">AsyncAutoResetEvent</a> - Auto-reset event variant</li>
+<li><a href="asyncmanualresetevent.html">AsyncManualResetEvent</a> - Manual-reset event variant</li>
+<li><a href="asyncreaderwriterlock.html">AsyncReaderWriterLock</a> - Async reader-writer lock</li>
+<li><a href="asynclock.html">AsyncLock</a> - Async mutual exclusion lock</li>
+<li><a href="asyncbarrier.html">AsyncBarrier</a> - Async barrier synchronization primitive</li>
+<li><a href="asyncsemaphore.html">AsyncSemaphore</a> - Async semaphore primitive</li>
+<li><a href="benchmarks.html">Benchmarks</a> - Benchmark description</li>
+</ul>
+<hr>
+<p>© 2026 The Keepers of the CryptoHives</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/CryptoHives/Foundation/blob/main/docfx/packages/threading/asynccountdownevent.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          © 2026 The Keepers of the CryptoHives
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
