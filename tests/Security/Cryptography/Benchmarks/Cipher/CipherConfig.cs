@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Benchmarks.Cipher;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Exporters.Json;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
@@ -41,8 +42,9 @@ public class CipherConfig : ManualConfig
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestCipherAlgorithm");
 
-        // Export formats: markdown with short file names (class name only, no namespace)
+        // Export formats: markdown for local docfx runs; JSON for CI benchmark tracking
         AddExporter(ShortExporter);
+        AddExporter(JsonExporter.Default);
     }
 
     /// <summary>

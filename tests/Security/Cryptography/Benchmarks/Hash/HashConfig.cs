@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Benchmarks.Hash;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Exporters.Json;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
@@ -36,8 +37,9 @@ public class HashConfig : ManualConfig
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestHashAlgorithm", "TestXofAlgorithm");
 
-        // Export formats: markdown for docfx (custom R script generates grouped charts from it)
+        // Export formats: markdown for local docfx runs; JSON for CI benchmark tracking
         AddExporter(ShortExporter);
+        AddExporter(JsonExporter.Default);
     }
 
     /// <summary>

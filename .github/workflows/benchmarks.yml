@@ -1,0 +1,128 @@
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+name: Benchmarks
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Weekly Monday 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      cryptography-filter:
+        description: 'BenchmarkDotNet filter for Cryptography (use * for all, slow)'
+        default: '*SHA256Benchmark* *SHA3_256Benchmark* *Blake3Benchmark* *AesGcm256Benchmark* *ChaCha20Poly1305Benchmark*'
+        required: false
+      threading-filter:
+        description: 'BenchmarkDotNet filter for Threading (use * for all)'
+        default: '*'
+        required: false
+
+# Serialize with docfx to avoid concurrent gh-pages branch writes.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark-cryptography:
+    name: Cryptography Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
+
+      - name: Run benchmarks
+        run: |
+          FILTER="${{ github.event.inputs.cryptography-filter || '*SHA256Benchmark* *SHA3_256Benchmark* *Blake3Benchmark* *AesGcm256Benchmark* *ChaCha20Poly1305Benchmark*' }}"
+          FILTER_ARGS=""
+          for f in $FILTER; do
+            FILTER_ARGS="$FILTER_ARGS --filter $f"
+          done
+          dotnet run -c Release -f net10.0 --no-build \
+            --project tests/Security/Cryptography/Cryptography.Tests.csproj -- \
+            $FILTER_ARGS \
+            --artifacts ./BenchmarkResults
+
+      - name: Merge JSON reports
+        run: |
+          jq -s '{
+            Title: "Cryptography Benchmarks",
+            HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
+            Benchmarks: ([.[].Benchmarks] | flatten)
+          }' BenchmarkResults/results/*.json > BenchmarkResults/results/combined.json
+
+      - name: Store results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Cryptography
+          tool: benchmarkdotnet
+          output-file-path: BenchmarkResults/results/combined.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench/cryptography
+          # 130% threshold accounts for variability on shared GitHub-hosted runners
+          alert-threshold: '130%'
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
+
+  benchmark-threading:
+    name: Threading Benchmarks
+    # Run after cryptography to avoid concurrent gh-pages branch writes within the same workflow run.
+    needs: benchmark-cryptography
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build tests/Threading/Threading.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
+
+      - name: Run benchmarks
+        run: |
+          FILTER="${{ github.event.inputs.threading-filter || '*' }}"
+          FILTER_ARGS=""
+          for f in $FILTER; do
+            FILTER_ARGS="$FILTER_ARGS --filter $f"
+          done
+          dotnet run -c Release -f net10.0 --no-build \
+            --project tests/Threading/Threading.Tests.csproj -- \
+            $FILTER_ARGS \
+            --artifacts ./BenchmarkResults
+
+      - name: Merge JSON reports
+        run: |
+          jq -s '{
+            Title: "Threading Benchmarks",
+            HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
+            Benchmarks: ([.[].Benchmarks] | flatten)
+          }' BenchmarkResults/results/*.json > BenchmarkResults/results/combined.json
+
+      - name: Store results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Threading
+          tool: benchmarkdotnet
+          output-file-path: BenchmarkResults/results/combined.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench/threading
+          alert-threshold: '130%'
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
