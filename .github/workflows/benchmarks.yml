@@ -42,14 +42,11 @@ jobs:
 
       - name: Run benchmarks
         run: |
+          set -f
           FILTER="${{ github.event.inputs.cryptography-filter || '*SHA256Benchmark* *SHA3_256Benchmark* *Blake3Benchmark* *AesGcm256Benchmark* *ChaCha20Poly1305Benchmark*' }}"
-          FILTER_ARGS=""
-          for f in $FILTER; do
-            FILTER_ARGS="$FILTER_ARGS --filter $f"
-          done
           dotnet run -c Release -f net10.0 --no-build \
             --project tests/Security/Cryptography/Cryptography.Tests.csproj -- \
-            $FILTER_ARGS \
+            --filter $FILTER \
             --artifacts ./BenchmarkResults
 
       - name: Merge JSON reports
@@ -94,14 +91,11 @@ jobs:
 
       - name: Run benchmarks
         run: |
+          set -f
           FILTER="${{ github.event.inputs.threading-filter || '*' }}"
-          FILTER_ARGS=""
-          for f in $FILTER; do
-            FILTER_ARGS="$FILTER_ARGS --filter $f"
-          done
           dotnet run -c Release -f net10.0 --no-build \
             --project tests/Threading/Threading.Tests.csproj -- \
-            $FILTER_ARGS \
+            --filter $FILTER \
             --artifacts ./BenchmarkResults
 
       - name: Merge JSON reports
