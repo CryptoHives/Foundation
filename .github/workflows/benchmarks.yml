@@ -47,7 +47,7 @@ jobs:
 
       - name: Run benchmarks
         run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*SHA2Benchmarks* *KeccakBenchmarks* *BlakeBenchmarks* *XofBenchmarks* *KmacBenchmarks* *SpecialtyBenchmarks* *ParameterizedHashBenchmark* *ParameterizedXofBenchmark*' }}"
+          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Hash*' }}"
           JOB_ARGS=""
           [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
           dotnet run -c Release -f net10.0 --no-build \
@@ -105,7 +105,7 @@ jobs:
 
       - name: Run benchmarks
         run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*SHA2Benchmarks* *KeccakBenchmarks* *BlakeBenchmarks* *XofBenchmarks* *KmacBenchmarks* *SpecialtyBenchmarks* *ParameterizedHashBenchmark* *ParameterizedXofBenchmark*' }}"
+          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Hash*' }}"
           JOB_ARGS=""
           [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
           dotnet run -c Release -f net10.0 --no-build \
@@ -163,7 +163,7 @@ jobs:
 
       - name: Run benchmarks
         run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*RegionalCipherBenchmarks* *ChaCha20Poly1305Benchmarks* *ChaCha20Benchmarks* *AsconAead128Benchmarks* *AesKeyWrapBenchmarks* *AesGcmBenchmarks* *AesCcmBenchmarks* *AesCbcBenchmarks*' }}"
+          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Cipher*' }}"
           JOB_ARGS=""
           [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
           dotnet run -c Release -f net10.0 --no-build \
@@ -221,7 +221,7 @@ jobs:
 
       - name: Run benchmarks
         run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*RegionalCipherBenchmarks* *ChaCha20Poly1305Benchmarks* *ChaCha20Benchmarks* *AsconAead128Benchmarks* *AesKeyWrapBenchmarks* *AesGcmBenchmarks* *AesCcmBenchmarks* *AesCbcBenchmarks*' }}"
+          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Cipher*' }}"
           JOB_ARGS=""
           [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
           dotnet run -c Release -f net10.0 --no-build \
