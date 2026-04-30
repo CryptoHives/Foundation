@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 name: Benchmarks
@@ -35,7 +35,7 @@ jobs:
     name: Hash Benchmarks (Linux x64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -93,7 +93,7 @@ jobs:
     name: Hash Benchmarks (macOS ARM64)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -151,7 +151,7 @@ jobs:
     name: Cipher Benchmarks (Linux x64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -209,7 +209,7 @@ jobs:
     name: Cipher Benchmarks (macOS ARM64)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -267,7 +267,7 @@ jobs:
     name: Threading Benchmarks (Linux x64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -325,7 +325,7 @@ jobs:
     name: Threading Benchmarks (macOS ARM64)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
