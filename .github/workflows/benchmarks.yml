@@ -26,14 +26,21 @@ permissions:
   checks: write
 
 jobs:
-  # ── Phase 1: run all benchmarks in parallel ──────────────────────────────────
-  # Each job runs one category on one platform, merges BDN JSON output into a
-  # single combined.json, then submits it to Bencher for tracking and alerting.
-  # Jobs are fully independent and require no serialisation between them.
-
-  bench-crypto-hash-linux:
-    name: Hash Benchmarks (Linux x64)
-    runs-on: ubuntu-latest
+  # Each matrix cell runs one benchmark category on one platform, merges BDN JSON
+  # output into a single combined.json, and submits it to Bencher for tracking.
+  bench:
+    name: ${{ matrix.category }} (${{ matrix.os-label }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { category: Hash,      os-label: Linux x64,   runs-on: ubuntu-latest, testbed: linux-x64,   project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Hash*',   filter-kind: cryptography }
+          - { category: Hash,      os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Hash*',   filter-kind: cryptography }
+          - { category: Cipher,    os-label: Linux x64,   runs-on: ubuntu-latest, testbed: linux-x64,   project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Cipher*', filter-kind: cryptography }
+          - { category: Cipher,    os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Cipher*', filter-kind: cryptography }
+          - { category: Threading, os-label: Linux x64,   runs-on: ubuntu-latest, testbed: linux-x64,   project: 'tests/Threading/Threading.Tests.csproj',                 default-filter: '*',                   filter-kind: threading }
+          - { category: Threading, os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Threading/Threading.Tests.csproj',                 default-filter: '*',                   filter-kind: threading }
     steps:
       - uses: actions/checkout@v6
 
@@ -43,15 +50,20 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Build
-        run: dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
+        run: dotnet build ${{ matrix.project }} -c Release -f net10.0 /p:CustomTestTarget=net10.0
 
       - name: Run benchmarks
         run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Hash*' }}"
+          if [[ "${{ matrix.filter-kind }}" == "cryptography" ]]; then
+            FILTER="${{ github.event.inputs.cryptography-filter }}"
+          else
+            FILTER="${{ github.event.inputs.threading-filter }}"
+          fi
+          FILTER="${FILTER:-${{ matrix.default-filter }}}"
           JOB_ARGS=""
           [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
           dotnet run -c Release -f net10.0 --no-build \
-            --project tests/Security/Cryptography/Cryptography.Tests.csproj -- \
+            --project ${{ matrix.project }} -- \
             --filter "$FILTER" $JOB_ARGS \
             --artifacts ./BenchmarkResults
 
@@ -60,7 +72,7 @@ jobs:
         run: |
           if ls BenchmarkResults/results/*.json 2>/dev/null | grep -q .; then
             jq -s '{
-              Title: "Cryptography Hash Benchmarks",
+              Title: "${{ matrix.category }} Benchmarks (${{ matrix.os-label }})",
               HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
               Benchmarks: ([.[].Benchmarks] | flatten)
             }' BenchmarkResults/results/*.json > combined.json
@@ -79,297 +91,7 @@ jobs:
             --project cryptohives-foundation-project \
             --token '${{ secrets.BENCHER_API_TOKEN }}' \
             --branch '${{ github.ref_name }}' \
-            --testbed linux-x64 \
-            --threshold-measure latency \
-            --threshold-test t_test \
-            --threshold-max-sample-size 64 \
-            --threshold-upper-boundary 0.99 \
-            --thresholds-reset \
-            --adapter c_sharp_dot_net \
-            --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-            --file combined.json
-
-  bench-crypto-hash-macos:
-    name: Hash Benchmarks (macOS ARM64)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build
-        run: dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
-
-      - name: Run benchmarks
-        run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Hash*' }}"
-          JOB_ARGS=""
-          [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
-          dotnet run -c Release -f net10.0 --no-build \
-            --project tests/Security/Cryptography/Cryptography.Tests.csproj -- \
-            --filter "$FILTER" $JOB_ARGS \
-            --artifacts ./BenchmarkResults
-
-      - name: Merge results
-        id: merge
-        run: |
-          if ls BenchmarkResults/results/*.json 2>/dev/null | grep -q .; then
-            jq -s '{
-              Title: "Cryptography Hash Benchmarks (macOS ARM64)",
-              HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
-              Benchmarks: ([.[].Benchmarks] | flatten)
-            }' BenchmarkResults/results/*.json > combined.json
-            echo "has_results=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_results=false" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: bencherdev/bencher@main
-        if: steps.merge.outputs.has_results == 'true'
-
-      - name: Track with Bencher
-        if: steps.merge.outputs.has_results == 'true'
-        run: |
-          bencher run \
-            --project cryptohives-foundation-project \
-            --token '${{ secrets.BENCHER_API_TOKEN }}' \
-            --branch '${{ github.ref_name }}' \
-            --testbed macos-arm64 \
-            --threshold-measure latency \
-            --threshold-test t_test \
-            --threshold-max-sample-size 64 \
-            --threshold-upper-boundary 0.99 \
-            --thresholds-reset \
-            --adapter c_sharp_dot_net \
-            --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-            --file combined.json
-
-  bench-crypto-cipher-linux:
-    name: Cipher Benchmarks (Linux x64)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build
-        run: dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
-
-      - name: Run benchmarks
-        run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Cipher*' }}"
-          JOB_ARGS=""
-          [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
-          dotnet run -c Release -f net10.0 --no-build \
-            --project tests/Security/Cryptography/Cryptography.Tests.csproj -- \
-            --filter "$FILTER" $JOB_ARGS \
-            --artifacts ./BenchmarkResults
-
-      - name: Merge results
-        id: merge
-        run: |
-          if ls BenchmarkResults/results/*.json 2>/dev/null | grep -q .; then
-            jq -s '{
-              Title: "Cryptography Cipher Benchmarks",
-              HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
-              Benchmarks: ([.[].Benchmarks] | flatten)
-            }' BenchmarkResults/results/*.json > combined.json
-            echo "has_results=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_results=false" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: bencherdev/bencher@main
-        if: steps.merge.outputs.has_results == 'true'
-
-      - name: Track with Bencher
-        if: steps.merge.outputs.has_results == 'true'
-        run: |
-          bencher run \
-            --project cryptohives-foundation-project \
-            --token '${{ secrets.BENCHER_API_TOKEN }}' \
-            --branch '${{ github.ref_name }}' \
-            --testbed linux-x64 \
-            --threshold-measure latency \
-            --threshold-test t_test \
-            --threshold-max-sample-size 64 \
-            --threshold-upper-boundary 0.99 \
-            --thresholds-reset \
-            --adapter c_sharp_dot_net \
-            --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-            --file combined.json
-
-  bench-crypto-cipher-macos:
-    name: Cipher Benchmarks (macOS ARM64)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build
-        run: dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
-
-      - name: Run benchmarks
-        run: |
-          FILTER="${{ github.event.inputs.cryptography-filter || '*Benchmarks.Cipher*' }}"
-          JOB_ARGS=""
-          [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
-          dotnet run -c Release -f net10.0 --no-build \
-            --project tests/Security/Cryptography/Cryptography.Tests.csproj -- \
-            --filter "$FILTER" $JOB_ARGS \
-            --artifacts ./BenchmarkResults
-
-      - name: Merge results
-        id: merge
-        run: |
-          if ls BenchmarkResults/results/*.json 2>/dev/null | grep -q .; then
-            jq -s '{
-              Title: "Cryptography Cipher Benchmarks (macOS ARM64)",
-              HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
-              Benchmarks: ([.[].Benchmarks] | flatten)
-            }' BenchmarkResults/results/*.json > combined.json
-            echo "has_results=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_results=false" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: bencherdev/bencher@main
-        if: steps.merge.outputs.has_results == 'true'
-
-      - name: Track with Bencher
-        if: steps.merge.outputs.has_results == 'true'
-        run: |
-          bencher run \
-            --project cryptohives-foundation-project \
-            --token '${{ secrets.BENCHER_API_TOKEN }}' \
-            --branch '${{ github.ref_name }}' \
-            --testbed macos-arm64 \
-            --threshold-measure latency \
-            --threshold-test t_test \
-            --threshold-max-sample-size 64 \
-            --threshold-upper-boundary 0.99 \
-            --thresholds-reset \
-            --adapter c_sharp_dot_net \
-            --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-            --file combined.json
-
-  bench-threading-linux:
-    name: Threading Benchmarks (Linux x64)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build
-        run: dotnet build tests/Threading/Threading.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
-
-      - name: Run benchmarks
-        run: |
-          FILTER="${{ github.event.inputs.threading-filter || '*' }}"
-          JOB_ARGS=""
-          [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
-          dotnet run -c Release -f net10.0 --no-build \
-            --project tests/Threading/Threading.Tests.csproj -- \
-            --filter "$FILTER" $JOB_ARGS \
-            --artifacts ./BenchmarkResults
-
-      - name: Merge results
-        id: merge
-        run: |
-          if ls BenchmarkResults/results/*.json 2>/dev/null | grep -q .; then
-            jq -s '{
-              Title: "Threading Benchmarks",
-              HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
-              Benchmarks: ([.[].Benchmarks] | flatten)
-            }' BenchmarkResults/results/*.json > combined.json
-            echo "has_results=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_results=false" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: bencherdev/bencher@main
-        if: steps.merge.outputs.has_results == 'true'
-
-      - name: Track with Bencher
-        if: steps.merge.outputs.has_results == 'true'
-        run: |
-          bencher run \
-            --project cryptohives-foundation-project \
-            --token '${{ secrets.BENCHER_API_TOKEN }}' \
-            --branch '${{ github.ref_name }}' \
-            --testbed linux-x64 \
-            --threshold-measure latency \
-            --threshold-test t_test \
-            --threshold-max-sample-size 64 \
-            --threshold-upper-boundary 0.99 \
-            --thresholds-reset \
-            --adapter c_sharp_dot_net \
-            --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-            --file combined.json
-
-  bench-threading-macos:
-    name: Threading Benchmarks (macOS ARM64)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build
-        run: dotnet build tests/Threading/Threading.Tests.csproj -c Release -f net10.0 /p:CustomTestTarget=net10.0
-
-      - name: Run benchmarks
-        run: |
-          FILTER="${{ github.event.inputs.threading-filter || '*' }}"
-          JOB_ARGS=""
-          [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
-          dotnet run -c Release -f net10.0 --no-build \
-            --project tests/Threading/Threading.Tests.csproj -- \
-            --filter "$FILTER" $JOB_ARGS \
-            --artifacts ./BenchmarkResults
-
-      - name: Merge results
-        id: merge
-        run: |
-          if ls BenchmarkResults/results/*.json 2>/dev/null | grep -q .; then
-            jq -s '{
-              Title: "Threading Benchmarks (macOS ARM64)",
-              HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
-              Benchmarks: ([.[].Benchmarks] | flatten)
-            }' BenchmarkResults/results/*.json > combined.json
-            echo "has_results=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_results=false" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: bencherdev/bencher@main
-        if: steps.merge.outputs.has_results == 'true'
-
-      - name: Track with Bencher
-        if: steps.merge.outputs.has_results == 'true'
-        run: |
-          bencher run \
-            --project cryptohives-foundation-project \
-            --token '${{ secrets.BENCHER_API_TOKEN }}' \
-            --branch '${{ github.ref_name }}' \
-            --testbed macos-arm64 \
+            --testbed ${{ matrix.testbed }} \
             --threshold-measure latency \
             --threshold-test t_test \
             --threshold-max-sample-size 64 \
