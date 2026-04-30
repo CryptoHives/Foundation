@@ -2,6 +2,10 @@
 
 This page is the cipher benchmark run selector. Each published run is isolated by platform so numbers from different CPUs/OS combinations are not mixed in one table.
 
+## Continuous Benchmark Trends
+
+CI benchmark results are tracked on [Bencher](https://bencher.dev/perf/cryptohives-foundation-project). Use the testbed and benchmark filters on the Bencher dashboard to compare cipher latencies (including AEAD throughput per data size) across `linux-x64` and `macos-arm64` over time. Regression alerts are raised automatically when a run exceeds the configured threshold.
+
 ## Published Runs
 
 | Platform ID | Host | Page |
