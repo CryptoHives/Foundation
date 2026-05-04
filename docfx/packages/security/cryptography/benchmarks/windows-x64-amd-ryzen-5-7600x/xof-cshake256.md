@@ -1,13 +1,13 @@
 ﻿| Description                                    | TestDataSize | Mean       | Error     | StdDev    | Allocated |
 |----------------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 128B         |   3.316 μs | 0.0112 μs | 0.0104 μs |         - |
-| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 128B         |   4.915 μs | 0.0330 μs | 0.0309 μs |         - |
+| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 128B         |   3.183 μs | 0.0157 μs | 0.0139 μs |         - |
+| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 128B         |   4.908 μs | 0.0226 μs | 0.0211 μs |         - |
 |                                                |              |            |           |           |           |
-| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 1KB          |   5.245 μs | 0.0358 μs | 0.0299 μs |         - |
-| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 1KB          |   7.151 μs | 0.0306 μs | 0.0287 μs |    1120 B |
+| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 1KB          |   4.525 μs | 0.0328 μs | 0.0307 μs |         - |
+| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 1KB          |   7.109 μs | 0.0296 μs | 0.0247 μs |    1120 B |
 |                                                |              |            |           |           |           |
-| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 8KB          |  19.923 μs | 0.0970 μs | 0.0860 μs |         - |
-| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 8KB          |  24.214 μs | 0.1118 μs | 0.1046 μs |    9600 B |
+| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 8KB          |  14.678 μs | 0.0494 μs | 0.0462 μs |         - |
+| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 8KB          |  24.327 μs | 0.0797 μs | 0.0665 μs |    9600 B |
 |                                                |              |            |           |           |           |
-| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 128KB        | 270.663 μs | 0.9881 μs | 0.8759 μs |         - |
-| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 128KB        | 316.950 μs | 1.3381 μs | 1.1862 μs |  154080 B |
+| AbsorbSqueeze · cSHAKE256 · CryptoHives-Scalar | 128KB        | 187.876 μs | 0.5233 μs | 0.4370 μs |         - |
+| AbsorbSqueeze · cSHAKE256 · BouncyCastle       | 128KB        | 314.991 μs | 1.1409 μs | 1.0114 μs |  154080 B |

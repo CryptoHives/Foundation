@@ -6,8 +6,9 @@ This directory stores published BenchmarkDotNet results for the cryptography has
 
 Each checked-in benchmark run lives in its own platform directory:
 
-- `macos-arm64-apple-m4/` for the current macOS Apple Silicon run
-- future folders such as `windows-x64-amd-ryzen-5-7600x/` or `linux-arm64-aws-graviton-4/` for additional hosts
+- `windows-x64-amd-ryzen-5-7600x/` — Windows 11, AMD Ryzen 5 7600X, X64
+- `macos-arm64-apple-m4/` — macOS Tahoe, Apple M4, Arm64
+- future folders such as `linux-arm64-aws-graviton-4/` for additional hosts
 
 The platform identifier format is:
 
@@ -52,7 +53,7 @@ This keeps the top-level pages short and comparable, while full benchmark tables
 ### BLAKE Family
 - `blake2b256.md`, `blake2b512.md`, `blake2s128.md`, `blake2s256.md`, `blake3.md`
 
-### Legacy/Regional
+### Legacy/Regional Hash
 - `md5.md`, `sha1.md`, `sm3.md`, `streebog256.md`, `streebog512.md`, `whirlpool.md`, `ripemd160.md`
 - `kupyna256.md`, `kupyna384.md`, `kupyna512.md`
 - `lsh256-256.md`, `lsh512-256.md`, `lsh512-512.md`
@@ -68,6 +69,14 @@ This keeps the top-level pages short and comparable, while full benchmark tables
 - `xof-kt128.md`, `xof-kt256.md`
 - `xof-turboshake128.md`, `xof-turboshake256.md`
 - `xof-blake3.md`, `xof-asconxof128.md`
+
+### Regional Block Ciphers (CBC)
+- `sm4-cbc.md`
+- `aria-cbc-128.md`, `aria-cbc-256.md`
+- `camellia-cbc-128.md`, `camellia-cbc-192.md`, `camellia-cbc-256.md`
+- `kuznyechik-cbc.md`
+- `kalyna-cbc-128.md`, `kalyna-cbc-256.md`
+- `seed-cbc.md`
 
 ### AES-CBC (Block Cipher)
 - `aes-cbc-128.md`, `aes-cbc-256.md`

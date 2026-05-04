@@ -9,6 +9,9 @@ using System.Buffers;
 /// <summary>
 /// Defines the contract for an incremental hash computation over arbitrary value types.
 /// </summary>
+/// <typeparam name="TR">
+/// The element reset type. The information required to reset the hash, e.g. a byte[] key or a bool.
+/// </typeparam>
 /// <remarks>
 /// <para>
 /// Implementations are expected to be lightweight structs that hold the full hash state
@@ -33,7 +36,7 @@ using System.Buffers;
 /// API surface.
 /// </para>
 /// </remarks>
-public interface IIncrementalHash : IDisposable
+internal interface IIncrementalHash<TR> : IDisposable
 {
     /// <summary>
     /// Gets the length of the hash digest produced by this instance, in bytes.
@@ -117,5 +120,5 @@ public interface IIncrementalHash : IDisposable
     /// Any previously appended data and any partially computed digest are discarded.
     /// </remarks>
     /// <param name="state">An additional state that is kept external.</param>
-    void Reset(object? state);
+    void Reset(TR state);
 }

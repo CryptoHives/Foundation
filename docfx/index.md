@@ -52,21 +52,23 @@ The Threading package provides high-performance async synchronization primitives
 
 ### 🔐 [Security.Cryptography Package](packages/security/cryptography/index.md)
 
-The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), and cipher/AEAD algorithms, all implemented as fully managed code without OS dependencies.
-
-> **Note:** This package continues to expand and already includes hash, MAC, cipher (AES, ChaCha20-family), and AEAD implementations.
+The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), cipher algorithms, and key derivation functions, all implemented as fully managed code without OS dependencies.
 
 **Key Features:**
 - SHA-1, SHA-2, SHA-3 family implementations with full test vector validation
 - SHAKE and cSHAKE extendable-output functions (XOF) for variable-length output
 - TurboSHAKE and KangarooTwelve (KT128/KT256) high-performance XOFs
 - KMAC (Keccak Message Authentication Code) for authenticated hashing
-- Ascon lightweight hashing (NIST FIPS 207) for constrained environments
+- Ascon lightweight hashing and AEAD (NIST SP 800-232) for constrained environments
 - BLAKE2b, BLAKE2s, and BLAKE3 high-performance hashing with keyed modes
 - Keccak-256, Keccak-384, Keccak-512 for Ethereum compatibility
 - International standards: SM3 (Chinese), Streebog/GOST (Russian), Kupyna/DSTU (Ukrainian), LSH/KS (Korean), Whirlpool (ISO)
 - Legacy algorithms: MD5, SHA-1, RIPEMD-160 (for compatibility only)
-- Aes, Aes-Gcm, Aes-Ccm and ChaCha20-Poly1305 cipher implementations.
+- AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128 cipher implementations
+- Regional block ciphers: SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED
+- Key derivation: HKDF, KBKDF, Concat KDF, PBKDF2, BLAKE3 DeriveKey
+- MACs: HMAC, AES-CMAC, AES-GMAC, Poly1305, KMAC, BLAKE2/3 keyed
+- AES Key Wrap with Padding (RFC 3394/5649)
 - Cross-platform consistency without OS crypto API dependencies
 
 [Explore Security.Cryptography Package](packages/security/cryptography/index.md)

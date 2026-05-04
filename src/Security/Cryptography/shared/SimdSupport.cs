@@ -77,13 +77,19 @@ internal enum SimdSupport
     ArmSha256 = 1 << 10,
 
     /// <summary>
+    /// ARM64 specific implementation.
+    /// </summary>
+    Arm64 = 1 << 11,
+
+    /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
-    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256 | ArmAes | ArmPmull | ArmSha256,
+    All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256 | ArmAes | ArmPmull | ArmSha256 | Arm64,
 
     /// <summary>
     /// The default optimization to use for Keccak based algorithms.
-    /// Set to None since Keccak is faster with scalar instructions.
+    /// Enables the ARM64 scalar path (<see cref="Arm64"/>) which is automatically
+    /// masked to <see cref="None"/> on non-ARM64 platforms.
     /// </summary>
-    KeccakDefault = None
+    KeccakDefault = Arm64
 }

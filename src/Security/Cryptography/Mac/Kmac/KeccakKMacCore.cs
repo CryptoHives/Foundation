@@ -161,12 +161,14 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
             // cSHAKE domain separator (0x04 for customized)
             _buffer[_bufferLength++] = 0x04;
 
-            while (_bufferLength < _rateBytes - 1)
+            int clearLen = _rateBytes - 1 - _bufferLength;
+            if (clearLen > 0)
             {
-                _buffer[_bufferLength++] = 0x00;
+                _buffer.AsSpan(_bufferLength, clearLen).Clear();
             }
+            _bufferLength = _rateBytes - 1;
 
-            _buffer[_rateBytes - 1] |= 0x80;
+            _buffer[_bufferLength] |= 0x80;
 
             _keccakCore.Absorb(_buffer, _rateBytes);
             _finalized = true;

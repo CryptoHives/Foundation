@@ -178,12 +178,14 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
             byte domainSep = _isCustomized ? (byte)0x04 : (byte)0x1F;
             _buffer[_bufferLength++] = domainSep;
 
-            while (_bufferLength < RateBytes - 1)
+            int clearLen = RateBytes - 1 - _bufferLength;
+            if (clearLen > 0)
             {
-                _buffer[_bufferLength++] = 0x00;
+                _buffer.AsSpan(_bufferLength, clearLen).Clear();
             }
+            _bufferLength = RateBytes - 1;
 
-            _buffer[RateBytes - 1] |= 0x80;
+            _buffer[_bufferLength] |= 0x80;
 
             _keccakCore.Absorb(_buffer, RateBytes);
             _finalized = true;

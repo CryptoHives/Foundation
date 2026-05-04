@@ -46,39 +46,52 @@ public class SM3Tests
     }
 
     /// <summary>
-    /// Test SM3 with official GB/T 32905-2016 test vectors.
+    /// Test SM3 with official GB/T 32905-2016 test vectors across all implementations.
     /// </summary>
     /// <remarks>
     /// Test vectors from Chinese national standard GB/T 32905-2016.
     /// </remarks>
+    /// <param name="factory">The hash algorithm factory.</param>
     /// <param name="input">The input string.</param>
     /// <param name="expectedHex">The expected hash in hexadecimal.</param>
-    [TestCase("abc", "66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0")]
-    [TestCase("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", "debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732")]
-    public void OfficialTestVectors(string input, string expectedHex)
+    [TestCaseSource(nameof(OfficialTestVectorData))]
+    public void OfficialTestVectors(HashAlgorithmFactory factory, string input, string expectedHex)
     {
         byte[] data = Encoding.UTF8.GetBytes(input);
         byte[] expected = TestHelpers.FromHexString(expectedHex);
 
-        using var sm3 = SM3.Create();
-        byte[] actual = sm3.ComputeHash(data);
+        using var impl = factory.Create();
+        byte[] actual = impl.ComputeHash(data);
 
-        Assert.That(actual, Is.EqualTo(expected), $"SM3 mismatch for: \"{input}\"");
+        Assert.That(actual, Is.EqualTo(expected));
     }
 
     /// <summary>
-    /// Test SM3 empty string.
+    /// Provides test data combining SM3 implementations with official test vectors.
     /// </summary>
-    [Test]
-    public void EmptyStringHash()
+    public static System.Collections.IEnumerable OfficialTestVectorData
     {
-        byte[] data = [];
-        byte[] expected = TestHelpers.FromHexString("1ab21d8355cfa17f8e61194831e81a8f22bec8c728fefb747ed035eb5082aa2b");
+        get
+        {
+            var testVectors = new (string input, string hash)[]
+            {
+                ("", "1ab21d8355cfa17f8e61194831e81a8f22bec8c728fefb747ed035eb5082aa2b"),
+                ("a", "623476ac18f65a2909e43c7fec61b49c7e764a91a18ccb82f1917a29c86c5e88"),
+                ("abc", "66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0"),
+                ("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", "debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732"),
+                ("The quick brown fox jumps over the lazy dog", "5fdfe814b8573ca021983970fc79b2218c9570369b4859684e2e4c3fc76cb8ea"),
+            };
 
-        using var sm3 = SM3.Create();
-        byte[] actual = sm3.ComputeHash(data);
-
-        Assert.That(actual, Is.EqualTo(expected));
+            foreach (HashAlgorithmFactory factory in Sm3Implementations.All)
+            {
+                foreach (var (input, hash) in testVectors)
+                {
+                    string label = input.Length > 20 ? input[..20] + "..." : input;
+                    yield return new TestCaseData(factory, input, hash)
+                        .SetName($"OfficialTestVectors({factory.Name}, \"{label}\")");
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -100,20 +113,6 @@ public class SM3Tests
         Assert.That(hash2, Is.EqualTo(hash1));
     }
 
-    /// <summary>
-    /// Cross-implementation test with all implementations.
-    /// </summary>
-    /// <param name="factory">The hash algorithm factory.</param>
-    [TestCaseSource(typeof(Sm3Implementations), nameof(Sm3Implementations.All))]
-    public void AllImplementationsMatch(HashAlgorithmFactory factory)
-    {
-        byte[] input = Encoding.UTF8.GetBytes("cross-implementation test");
-
-        using var impl = factory.Create();
-        byte[] hash = impl.ComputeHash(input);
-
-        Assert.That(hash, Has.Length.EqualTo(32), $"{factory.Name} should produce 32-byte hash");
-    }
 
     /// <summary>
     /// Test padding boundary (55 bytes - last byte before padding needs extra block).

@@ -93,9 +93,9 @@ No OS crypto dependency — deterministic results on every platform. Hardware ac
 | SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
 | TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
 | BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
-| Ascon | Ascon-Hash256, Ascon-XOF128 (NIST lightweight) |
-| MAC | KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
-| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/256), ChaCha20-Poly1305, XChaCha20-Poly1305 |
+| Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
+| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
+| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
 | Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
 | Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256), SEED |
 | Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |

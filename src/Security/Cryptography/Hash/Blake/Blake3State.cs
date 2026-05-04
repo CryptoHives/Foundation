@@ -24,7 +24,7 @@ using System.Runtime.InteropServices;
 /// compression blocks. This struct manages the full Merkle tree state.
 /// </para>
 /// </remarks>
-internal unsafe partial struct Blake3State : IIncrementalHash
+internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 {
     /// <summary>
     /// The default hash size in bits.
@@ -74,11 +74,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash
     internal const uint FlagDeriveKeyMaterial = 1 << 6;
 
     // BLAKE3 IV (same as BLAKE2s)
-    internal static ReadOnlySpan<uint> IV =>
-    [
+    private static readonly uint[] s_IV = new uint[] {
         0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU,
         0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U
-    ];
+    };
+
+    internal static ReadOnlySpan<uint> IV => s_IV;
 
     // Fixed buffers for all state
     private fixed byte _chunkBuffer[ChunkSizeBytes];
@@ -151,9 +152,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash
     public bool Squeezed => _squeezed;
 
     /// <inheritdoc/>
-    public void Reset(object? resetState)
+    public void Reset(bool keyedMode)
     {
-        bool keyedMode = resetState as bool? ?? false;
         if (!keyedMode)
         {
             InitializeHash();
