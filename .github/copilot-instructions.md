@@ -28,10 +28,6 @@ src/
     ├── Hash/                   # Hash algorithms
     ├── Mac/                    # Mac algorithms (HMAC, AES-CMAC, AES-GMAC, KMAC, Poly1305)
     ├── Cipher/                 # Symmetric ciphers and AEAD
-    │   ├── Aes/                # AES block cipher
-    │   ├── ChaCha/             # ChaCha20, Poly1305Core, ChaCha20-Poly1305, XChaCha20-Poly1305
-    │   ├── Gcm/                # AES-GCM
-    │   └── Ccm/                # AES-CCM
     ├── Kdf/                    # Key derivation functions (HKDF, KBKDF, Concat KDF, PBKDF2)
     └── shared/                 # common helpers and abstractions
 
@@ -121,7 +117,7 @@ When modifying CI pipelines:
 
 - Run a build: `dotnet build` or use existing CI commands. Ensure no compilation warnings or errors were introduced.
 - Run unit tests locally if appropriate: `dotnet test` for the relevant test project.
-- Run docfx locally if documentation changes were made: `docfx docfx.json --serve`
+- Run docfx locally if documentation changes were made: `docfx docfx.json`
 - Keep changes minimal and follow the repository patterns. If introducing an API surface change, add or update unit tests to cover the behavior. Check docfx and readme for inconsistencies and fix them.
 
 ## When in doubt

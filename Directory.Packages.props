@@ -41,4 +41,15 @@
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
+
+  <!-- NuGet package validation: versions for the just-built first-party packages.    -->
+  <!-- Activate with /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>  -->
+  <PropertyGroup Condition="'$(UsePackedNuGetPackages)' == 'true' AND '$(Configuration)' == 'Debug'">
+    <_NuGetPackageSuffix>.Debug</_NuGetPackageSuffix>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UsePackedNuGetPackages)' == 'true'">
+    <PackageVersion Include="CryptoHives.Foundation.Security.Cryptography$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
+    <PackageVersion Include="CryptoHives.Foundation.Memory$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
+    <PackageVersion Include="CryptoHives.Foundation.Threading$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
+  </ItemGroup>
 </Project>
