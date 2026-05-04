@@ -42,7 +42,9 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
     private AsyncReaderWriterLock.Releaser[]? _rwLockRefImpHandle;
     private Microsoft.VisualStudio.Threading.AsyncReaderWriterLock.Releaser[]? _rwlockVSThreadingHandle;
     private CryptoHives.Foundation.Threading.Async.Pooled.AsyncReaderWriterLock.Releaser[]? _rwLockPooledHandle;
+#if !SIGNASSEMBLY
     private IDisposable[]? _rwLockNitoHandle;
+#endif
 #if !NETFRAMEWORK
     private Proto.Promises.Threading.AsyncReaderWriterLock.ReaderKey[]? _rwlockProtoPromisesHandle;
 #endif
