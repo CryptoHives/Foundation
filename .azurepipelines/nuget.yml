@@ -114,6 +114,30 @@ jobs:
       script: |
         NuGetKeyVaultSignTool sign $(Build.ArtifactStagingDirectory)/**/CryptoHives.*.nupkg --file-digest sha256 --timestamp-rfc3161 http://timestamp.digicert.com --timestamp-digest sha256 --azure-key-vault-url "$(SigningVaultURL)" --azure-key-vault-client-id "$(SigningClientId)" --azure-key-vault-tenant-id "$(SigningTenantId)" --azure-key-vault-client-secret "$(SigningClientSecret)" --azure-key-vault-certificate "$(SigningCertName)" 
         NuGetKeyVaultSignTool sign $(Build.ArtifactStagingDirectory)/**/CryptoHives.*.snupkg --file-digest sha256 --timestamp-rfc3161 http://timestamp.digicert.com --timestamp-digest sha256 --azure-key-vault-url "$(SigningVaultURL)" --azure-key-vault-client-id "$(SigningClientId)" --azure-key-vault-tenant-id "$(SigningTenantId)" --azure-key-vault-client-secret "$(SigningClientSecret)" --azure-key-vault-certificate "$(SigningCertName)" 
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Artifacts'
+    inputs:
+      path: $(Build.ArtifactStagingDirectory)
+      artifact: 'cryptohives_${{parameters.config}}_$(NBGV_Version)_$(NBGV_NugetPackageVersion)'
+  - task: DotNetCoreCLI@2
+    displayName: 'Add local NuGet source for package test'
+    inputs:
+      command: 'custom'
+      custom: 'nuget'
+      arguments: 'add source "$(Build.ArtifactStagingDirectory)" --name LocalPackages'
+  - task: DotNetCoreCLI@2
+    displayName: 'Build Tests (NuGet package validation ${{parameters.config}})'
+    inputs:
+      command: build
+      projects: 'tests/**/*.Tests.csproj'
+      arguments: '--force --configuration ${{parameters.config}} ${{variables.msbuildsign}} /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:CustomTestTarget=net10.0 /p:EnableExperimentalAlgorithms=false'
+      restoreArguments: '--disable-parallel'
+  - task: DotNetCoreCLI@2
+    displayName: 'Test NuGet packages (${{parameters.config}})'
+    inputs:
+      command: test
+      projects: 'tests/**/*.Tests.csproj'
+      arguments: '--no-restore --no-build --configuration ${{parameters.config}} ${{variables.msbuildsign}} /p:CustomTestTarget=net10.0 /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:EnableExperimentalAlgorithms=false'
   - ${{ if eq(parameters.upload, 'True') }}:
     - task: NuGetCommand@2
       displayName: Upload Nuget Preview
@@ -123,8 +147,3 @@ jobs:
         nuGetFeedType: 'internal'
         publishVstsFeed: '$(VSTSFEED)'
         allowPackageConflicts: true
-  - task: PublishPipelineArtifact@1
-    displayName: 'Publish Artifacts'
-    inputs:
-      path: $(Build.ArtifactStagingDirectory)
-      artifact: 'cryptohives_${{parameters.config}}_$(NBGV_Version)_$(NBGV_NugetPackageVersion)'
