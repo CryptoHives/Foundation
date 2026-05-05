@@ -3,7 +3,6 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
-using CryptoHives.Foundation.Security.Cryptography.Cipher.Compat;
 using System;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 using OS = System.Security.Cryptography;

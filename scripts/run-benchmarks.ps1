@@ -55,12 +55,12 @@ param(
         "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256",
         "SeedCbc",
         # Group aliases (run multiple benchmarks)
-        "SHA2", "SHA3", "Keccak", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
+        "SHA2", "SHA3", "Keccak", "KeccakCore", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
         "Legacy", "RegionalHash", "Kupyna", "LSH", "Ascon", "KMAC",
         "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
         "AES-GCM", "AES-CCM", "AES-CBC", "ChaCha",
-        "RegionalCipher",
+        "RegionalCipher", "SimdArm",
         "Cipher", "AEAD",
         "All"
     )]
@@ -119,7 +119,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
     Write-Host "   - Filter — one or more string globs applied to full benchmark name — \"*\"  "
     Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
-    Write-Host "   - Runtimes — comma list (e.g. \"net10.0,net8.0\") — \"net10.0\"  "
+    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\") — \"net10.0\"  "
     Write-Host "   - Configuration — Release | Debug — Release  "
     Write-Host "   - Verbosity — q | m | n | d | diag — n  "
     Write-Host "   - List — switch (show benchmarks) — off  "
@@ -141,141 +141,143 @@ if ($PSBoundParameters.Count -gt 0 -and -not $Project) {
 # Individual algorithm to benchmark category mapping
 $AlgorithmBenchmarkMap = @{
     # SHA-2
-    "SHA224"      = "SHA224"
-    "SHA256"      = "SHA256"
-    "SHA384"      = "SHA384"
-    "SHA512"      = "SHA512"
-    "SHA512_224"  = "SHA512_224"
-    "SHA512_256"  = "SHA512_256"
+    "SHA224"            = "SHA224"
+    "SHA256"            = "SHA256"
+    "SHA384"            = "SHA384"
+    "SHA512"            = "SHA512"
+    "SHA512_224"        = "SHA512_224"
+    "SHA512_256"        = "SHA512_256"
     # SHA-3
-    "SHA3_224"    = "SHA3_224"
-    "SHA3_256"    = "SHA3_256"
-    "SHA3_384"    = "SHA3_384"
-    "SHA3_512"    = "SHA3_512"
+    "SHA3_224"          = "SHA3_224"
+    "SHA3_256"          = "SHA3_256"
+    "SHA3_384"          = "SHA3_384"
+    "SHA3_512"          = "SHA3_512"
     # Keccak
-    "Keccak256"   = "Keccak256"
-    "Keccak384"   = "Keccak384"
-    "Keccak512"   = "Keccak512"
+    "Keccak256"         = "Keccak256"
+    "Keccak384"         = "Keccak384"
+    "Keccak512"         = "Keccak512"
     # SHAKE
-    "Shake128"    = "Shake128"
-    "Shake256"    = "Shake256"
+    "Shake128"          = "Shake128"
+    "Shake256"          = "Shake256"
     # cSHAKE
-    "CShake128"   = "CShake128"
-    "CShake256"   = "CShake256"
+    "CShake128"         = "CShake128"
+    "CShake256"         = "CShake256"
     # KT
-    "KT128"       = "KT128"
-    "KT256"       = "KT256"
+    "KT128"             = "KT128"
+    "KT256"             = "KT256"
     # TurboSHAKE
-    "TurboShake128" = "TurboShake128"
-    "TurboShake256" = "TurboShake256"
+    "TurboShake128"     = "TurboShake128"
+    "TurboShake256"     = "TurboShake256"
     # BLAKE2b
-    "Blake2b256"  = "Blake2b256"
-    "Blake2b512"  = "Blake2b512"
+    "Blake2b256"        = "Blake2b256"
+    "Blake2b512"        = "Blake2b512"
     # BLAKE2s
-    "Blake2s128"  = "Blake2s128"
-    "Blake2s256"  = "Blake2s256"
+    "Blake2s128"        = "Blake2s128"
+    "Blake2s256"        = "Blake2s256"
     # BLAKE3
-    "Blake3"      = "Blake3"
+    "Blake3"            = "Blake3"
     # Legacy
-    "MD5"         = "MD5"
-    "SHA1"        = "SHA1"
+    "MD5"               = "MD5"
+    "SHA1"              = "SHA1"
     # Regional Hash
-    "SM3"         = "SM3"
-    "Streebog256" = "Streebog256"
-    "Streebog512" = "Streebog512"
-    "Whirlpool"   = "Whirlpool"
-    "Ripemd160"   = "Ripemd160"
+    "SM3"               = "SM3"
+    "Streebog256"       = "Streebog256"
+    "Streebog512"       = "Streebog512"
+    "Whirlpool"         = "Whirlpool"
+    "Ripemd160"         = "Ripemd160"
     # Kupyna (DSTU 7564)
-    "Kupyna256"   = "Kupyna256"
-    "Kupyna384"   = "Kupyna384"
-    "Kupyna512"   = "Kupyna512"
+    "Kupyna256"         = "Kupyna256"
+    "Kupyna384"         = "Kupyna384"
+    "Kupyna512"         = "Kupyna512"
     # LSH (KS X 3262)
-    "Lsh256_256"  = "Lsh256_256"
-    "Lsh512_256"  = "Lsh512_256"
-    "Lsh512_512"  = "Lsh512_512"
+    "Lsh256_256"        = "Lsh256_256"
+    "Lsh512_256"        = "Lsh512_256"
+    "Lsh512_512"        = "Lsh512_512"
     # Ascon
-    "AsconHash256" = "AsconHash256"
-    "AsconXof128" = "AsconXof128"
+    "AsconHash256"      = "AsconHash256"
+    "AsconXof128"       = "AsconXof128"
     # KMAC
-    "KMac128"     = "KMac128"
-    "KMac256"     = "KMac256"
+    "KMac128"           = "KMac128"
+    "KMac256"           = "KMac256"
     # XOF (Absorb/Squeeze)
-    "Shake128Xof"      = "Shake128Xof"
-    "Shake256Xof"      = "Shake256Xof"
-    "CShake128Xof"     = "CShake128Xof"
-    "CShake256Xof"     = "CShake256Xof"
-    "TurboShake128Xof" = "TurboShake128Xof"
-    "TurboShake256Xof" = "TurboShake256Xof"
-    "KT128Xof"         = "KT128Xof"
-    "KT256Xof"         = "KT256Xof"
-    "KMac128Xof"       = "KMac128Xof"
-    "KMac256Xof"       = "KMac256Xof"
-    "Blake3Xof"        = "Blake3Xof"
-    "AsconXof128Xof"   = "AsconXof128Xof"
+    "Shake128Xof"       = "Shake128Xof"
+    "Shake256Xof"       = "Shake256Xof"
+    "CShake128Xof"      = "CShake128Xof"
+    "CShake256Xof"      = "CShake256Xof"
+    "TurboShake128Xof"  = "TurboShake128Xof"
+    "TurboShake256Xof"  = "TurboShake256Xof"
+    "KT128Xof"          = "KT128Xof"
+    "KT256Xof"          = "KT256Xof"
+    "KMac128Xof"        = "KMac128Xof"
+    "KMac256Xof"        = "KMac256Xof"
+    "Blake3Xof"         = "Blake3Xof"
+    "AsconXof128Xof"    = "AsconXof128Xof"
     # Ciphers - AES-GCM
-    "AesGcm128"   = "AesGcm128"
-    "AesGcm192"   = "AesGcm192"
-    "AesGcm256"   = "AesGcm256"
+    "AesGcm128"         = "AesGcm128"
+    "AesGcm192"         = "AesGcm192"
+    "AesGcm256"         = "AesGcm256"
     # Ciphers - AES-CCM
-    "AesCcm128"   = "AesCcm128"
-    "AesCcm256"   = "AesCcm256"
+    "AesCcm128"         = "AesCcm128"
+    "AesCcm256"         = "AesCcm256"
     # Ciphers - AES-CBC
-    "AesCbc128"   = "AesCbc128"
-    "AesCbc256"   = "AesCbc256"
+    "AesCbc128"         = "AesCbc128"
+    "AesCbc256"         = "AesCbc256"
     # Ciphers - ChaCha
-    "ChaCha20"    = "ChaCha20"
-    "ChaCha20Poly1305" = "ChaCha20Poly1305"
+    "ChaCha20"          = "ChaCha20"
+    "ChaCha20Poly1305"  = "ChaCha20Poly1305"
     "XChaCha20Poly1305" = "XChaCha20Poly1305"
     # Ciphers - Regional
-    "Sm4Cbc"      = "Sm4Cbc"
-    "AriaCbc128"  = "AriaCbc128"
-    "AriaCbc256"  = "AriaCbc256"
-    "CamelliaCbc128" = "CamelliaCbc128"
-    "CamelliaCbc192" = "CamelliaCbc192"
-    "CamelliaCbc256" = "CamelliaCbc256"
-    "KuznyechikCbc" = "KuznyechikCbc"
-    "KalynaCbc128" = "KalynaCbc128"
-    "KalynaCbc256" = "KalynaCbc256"
-    "SeedCbc"     = "SeedCbc"
+    "Sm4Cbc"            = "Sm4Cbc"
+    "AriaCbc128"        = "AriaCbc128"
+    "AriaCbc256"        = "AriaCbc256"
+    "CamelliaCbc128"    = "CamelliaCbc128"
+    "CamelliaCbc192"    = "CamelliaCbc192"
+    "CamelliaCbc256"    = "CamelliaCbc256"
+    "KuznyechikCbc"     = "KuznyechikCbc"
+    "KalynaCbc128"      = "KalynaCbc128"
+    "KalynaCbc256"      = "KalynaCbc256"
+    "SeedCbc"           = "SeedCbc"
     # Group Aliases
-    "All"         = "Hash"
+    "All"               = "Hash"
 }
 
 # Group aliases expand to multiple individual benchmarks
 $GroupAliases = @{
-    "SHA2"        = @("SHA224", "SHA256", "SHA384", "SHA512", "SHA512_224", "SHA512_256")
-    "SHA3"        = @("SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512")
-    "Keccak"      = @("Keccak256", "Keccak384", "Keccak512")
-    "SHAKE"       = @("Shake128", "Shake256")
-    "cSHAKE"      = @("CShake128", "CShake256")
-    "KT"          = @("KT128", "KT256")
-    "TurboSHAKE"  = @("TurboShake128", "TurboShake256")
-    "BLAKE2"      = @("Blake2b256", "Blake2b512", "Blake2s256", "Blake2s128")
-    "BLAKE2b"     = @("Blake2b256", "Blake2b512")
-    "BLAKE2s"     = @("Blake2s256", "Blake2s128")
-    "BLAKE"       = @("Blake3", "Blake2s256", "Blake2b256", "Blake2s128", "Blake2b512")
-    "Legacy"      = @("MD5", "SHA1")
-    "RegionalHash"= @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160", "Kupyna256", "Kupyna384", "Kupyna512", "Lsh256_256", "Lsh512_256", "Lsh512_512")
-    "Kupyna"      = @("Kupyna256", "Kupyna384", "Kupyna512")
-    "LSH"         = @("Lsh256_256", "Lsh512_256", "Lsh512_512")
-    "Ascon"       = @("AsconHash256", "AsconXof128")
-    "KMAC"        = @("KMac128", "KMac256")
-    "XOF"         = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof", "KMac128Xof", "KMac256Xof", "Blake3Xof", "AsconXof128Xof")
-    "KeccakXOF"   = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof")
-    "BlakeXOF"    = @("Blake3Xof")
-    "MacXOF"      = @("KMac128Xof", "KMac256Xof")
-    "AsconXOF"    = @("AsconXof128Xof")
-    "AES-GCM"     = @("AesGcm128", "AesGcm192", "AesGcm256")
-    "AES-CCM"     = @("AesCcm128", "AesCcm256")
-    "AES-CBC"     = @("AesCbc128", "AesCbc256")
-    "ChaCha"      = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "SHA2"           = @("SHA224", "SHA256", "SHA384", "SHA512", "SHA512_224", "SHA512_256")
+    "SHA3"           = @("SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512")
+    "Keccak"         = @("Keccak256", "Keccak384", "Keccak512")
+    "SHAKE"          = @("Shake128", "Shake256")
+    "cSHAKE"         = @("CShake128", "CShake256")
+    "KT"             = @("KT128", "KT256")
+    "TurboSHAKE"     = @("TurboShake128", "TurboShake256")
+    "KeccakCore"     = @("SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512", "Keccak256", "Keccak384", "Keccak512", "Shake128", "Shake256", "CShake128", "CShake256", "KT128", "KT256", "TurboShake128", "TurboShake256")
+    "BLAKE2"         = @("Blake2b256", "Blake2b512", "Blake2s256", "Blake2s128")
+    "BLAKE2b"        = @("Blake2b256", "Blake2b512")
+    "BLAKE2s"        = @("Blake2s256", "Blake2s128")
+    "BLAKE"          = @("Blake3", "Blake2s256", "Blake2b256", "Blake2s128", "Blake2b512")
+    "Legacy"         = @("MD5", "SHA1")
+    "RegionalHash"   = @("SM3", "Streebog256", "Streebog512", "Whirlpool", "Ripemd160", "Kupyna256", "Kupyna384", "Kupyna512", "Lsh256_256", "Lsh512_256", "Lsh512_512")
+    "Kupyna"         = @("Kupyna256", "Kupyna384", "Kupyna512")
+    "LSH"            = @("Lsh256_256", "Lsh512_256", "Lsh512_512")
+    "Ascon"          = @("AsconHash256", "AsconXof128")
+    "KMAC"           = @("KMac128", "KMac256")
+    "XOF"            = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof", "KMac128Xof", "KMac256Xof", "Blake3Xof", "AsconXof128Xof")
+    "KeccakXOF"      = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof")
+    "BlakeXOF"       = @("Blake3Xof")
+    "MacXOF"         = @("KMac128Xof", "KMac256Xof")
+    "AsconXOF"       = @("AsconXof128Xof")
+    "AES-GCM"        = @("AesGcm128", "AesGcm192", "AesGcm256")
+    "AES-CCM"        = @("AesCcm128", "AesCcm256")
+    "AES-CBC"        = @("AesCbc128", "AesCbc256")
+    "ChaCha"         = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
-    "AEAD"        = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "Cipher"      = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
+    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
+    "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
 }
 
-# 'All' should run all hash-related benchmarks (convenience alias)
-$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"]
+# 'All' should run all hash and cipher benchmarks (convenience alias)
+$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"] + $GroupAliases["Cipher"]
 
 # 'Hash' alias groups the common hash families (excluding XOF-specific families)
 $GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"]
@@ -317,7 +319,8 @@ if ($Project -eq "Cryptography" -and $Family) {
                 $benchmarkClasses += $AlgorithmBenchmarkMap[$alg]
             }
         }
-    } else {
+    }
+    else {
         $algKey = $AlgorithmBenchmarkMap.Keys | Where-Object { $_.ToLower() -eq $lowerFamily } | Select-Object -First 1
         if ($algKey) {
             $benchmarkClasses += $AlgorithmBenchmarkMap[$algKey]
@@ -349,7 +352,8 @@ Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
 try {
     $resolvedTestProject = (Resolve-Path -LiteralPath $testProject -ErrorAction Stop).Path
-} catch {
+}
+catch {
     $resolvedTestProject = $testProject
 }
 Write-Host "  Path:          $resolvedTestProject"
@@ -390,6 +394,7 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
     Write-Host "  -Family SHA3       runs: SHA3_224, SHA3_256, SHA3_384, SHA3_512"
     Write-Host "  -Family Keccak     runs: Keccak256, Keccak384, Keccak512"
+    Write-Host "  -Family KeccakCore runs: Keccak, SHA3, SHAKE, cSHAKE, TurboSHAKE, KT (all Keccak-core algorithms)"
     Write-Host "  -Family SHAKE      runs: Shake128, Shake256"
     Write-Host "  -Family cSHAKE     runs: CShake128, CShake256"
     Write-Host "  -Family KT         runs: KT128, KT256"
@@ -415,7 +420,7 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
     Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA, Camellia-128/192/256, Kuznyechik, Kalyna, SEED)"
     Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
-    Write-Host "  -Family All        runs: All Hash benchmarks"
+    Write-Host "  -Family All        runs: All Hash and Cipher benchmarks"
     Write-Host ""
     exit 0
 }
@@ -437,7 +442,8 @@ $dotnetArgs = @(
 
 if ($List) {
     $dotnetArgs += "--list"
-} else {
+}
+else {
     # Add filter patterns - multiple patterns are space-separated after --filter
     $dotnetArgs += "--filter"
     if ($filterPatterns.Count -gt 0) {
@@ -445,7 +451,8 @@ if ($List) {
             # Cast to string to avoid PowerShell wildcard expansion when splatting arguments
             $dotnetArgs += [string]$pattern
         }
-    } else {
+    }
+    else {
         foreach ($pattern in $filterArgs) {
             $dotnetArgs += [string]$pattern
         }

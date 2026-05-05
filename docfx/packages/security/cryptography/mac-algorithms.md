@@ -591,7 +591,7 @@ public static Blake3 CreateDeriveKey(string context, int outputBytes = 32)
 
 **Usage:**
 ```csharp
-string context = "MyApp 2025-01-01 encryption key";
+string context = "MyApp 2026-01-01 encryption key";
 byte[] inputKeyMaterial = ...; // Your master key or password-derived key
 
 using var blake3 = Blake3.CreateDeriveKey(context);

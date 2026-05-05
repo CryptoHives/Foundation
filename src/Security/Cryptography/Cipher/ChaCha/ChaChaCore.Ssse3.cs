@@ -3,15 +3,14 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
+#if NET8_0_OR_GREATER
+
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
-#if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-#endif
 
 /// <summary>
 /// Core ChaCha20 operations as specified in RFC 8439.
@@ -31,25 +30,8 @@ using System.Runtime.Intrinsics.X86;
 /// </list>
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal readonly partial struct ChaChaCore
 {
-    /// <summary>
-    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
-    /// </summary>
-    internal static SimdSupport SimdSupport
-    {
-        get
-        {
-            var support = SimdSupport.None;
-#if NET8_0_OR_GREATER
-            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
-#endif
-            return support;
-        }
-    }
-
-#if NET8_0_OR_GREATER
     // Byte-shuffle masks for SSSE3 rotate-left on packed 32-bit words.
     // ROL16: swap the two 16-bit halves within each 32-bit lane.
     private static readonly Vector128<byte> RotateLeftMask16 = Vector128.Create(
@@ -61,6 +43,19 @@ internal partial struct ChaChaCore
 
     // Vector constant for incrementing the block counter without scalar round-trip.
     private static readonly Vector128<uint> CounterIncrement = Vector128.Create(1u, 0u, 0u, 0u);
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
+    /// </summary>
+    private static SimdSupport SimdSupportSsse3
+    {
+        get
+        {
+            var support = SimdSupport.None;
+            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+            return support;
+        }
+    }
 
     /// <summary>
     /// SSSE3-accelerated ChaCha20 Transform operating on 4 × <see cref="Vector128{T}"/> rows.
@@ -94,10 +89,15 @@ internal partial struct ChaChaCore
         Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
         Vector128<uint> row2 = Vector128.LoadUnsafe(ref keyRef, 16).AsUInt32();
 
-        ReadOnlySpan<uint> nonceUInt = MemoryMarshal.Cast<byte, uint>(nonce);
+        ref byte nonceRef = ref MemoryMarshal.GetReference(nonce);
+        uint nc0 = Unsafe.ReadUnaligned<uint>(ref nonceRef);
+        uint nc1 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 4));
+        uint nc2 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 8));
         Vector128<uint> row3Base = Vector128.Create(
-            counter, nonceUInt[0], nonceUInt[1], nonceUInt[2]);
+            counter, nc0, nc1, nc2);
 
+        ref byte inputBase = ref MemoryMarshal.GetReference(input);
+        ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
         int offset = 0;
         Span<byte> ks = stackalloc byte[BlockSizeBytes];
@@ -132,8 +132,8 @@ internal partial struct ChaChaCore
             if (remaining >= BlockSizeBytes)
             {
                 // Full block: XOR keystream with input
-                ref byte inRef = ref MemoryMarshal.GetReference(input.Slice(offset));
-                ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(offset));
+                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
 
                 Vector128<byte> in0 = Vector128.LoadUnsafe(ref inRef);
                 Vector128<byte> in1 = Vector128.LoadUnsafe(ref inRef, 16);
@@ -153,9 +153,12 @@ internal partial struct ChaChaCore
                 w2.AsByte().CopyTo(ks.Slice(32));
                 w3.AsByte().CopyTo(ks.Slice(48));
 
+                ref byte pInRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte pOutRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+                ref byte pKsRef = ref MemoryMarshal.GetReference(ks);
                 for (int i = 0; i < remaining; i++)
                 {
-                    output[offset + i] = (byte)(input[offset + i] ^ ks[i]);
+                    Unsafe.Add(ref pOutRef, i) = (byte)(Unsafe.Add(ref pInRef, i) ^ Unsafe.Add(ref pKsRef, i));
                 }
             }
 
@@ -164,6 +167,53 @@ internal partial struct ChaChaCore
             // Increment counter in vector domain (no scalar round-trip)
             row3Base = Sse2.Add(row3Base, CounterIncrement);
         }
+    }
+
+    /// <summary>
+    /// SSSE3-accelerated generation of a single 64-byte ChaCha20 keystream block.
+    /// </summary>
+    /// <remarks>
+    /// Equivalent to <see cref="TransformSsse3"/> over a zero-filled single block, but without
+    /// the XOR step. Used by <see cref="ChaChaCore.Block"/> to avoid scalar overhead when SIMD
+    /// is available, most notably for Poly1305 key generation in ChaCha20-Poly1305.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void BlockSsse3(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
+    {
+        Vector128<uint> row0 = Vector128.LoadUnsafe(
+            ref MemoryMarshal.GetArrayDataReference(Sigma));
+
+        ref byte keyRef = ref MemoryMarshal.GetReference(key);
+        Vector128<uint> row1 = Vector128.LoadUnsafe(ref keyRef).AsUInt32();
+        Vector128<uint> row2 = Vector128.LoadUnsafe(ref keyRef, 16).AsUInt32();
+
+        ref byte nonceRef = ref MemoryMarshal.GetReference(nonce);
+        uint nc0 = Unsafe.ReadUnaligned<uint>(ref nonceRef);
+        uint nc1 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 4));
+        uint nc2 = Unsafe.ReadUnaligned<uint>(ref Unsafe.AddByteOffset(ref nonceRef, 8));
+        Vector128<uint> row3 = Vector128.Create(counter, nc0, nc1, nc2);
+
+        Vector128<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
+
+        for (int i = 0; i < Rounds; i += 2)
+        {
+            QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
+            DiagPermuteSse2(ref w1, ref w2, ref w3);
+            QRoundSsse3(ref w0, ref w1, ref w2, ref w3);
+            DiagPermuteSse2(ref w3, ref w2, ref w1);
+        }
+
+        w0 = Sse2.Add(w0, row0);
+        w1 = Sse2.Add(w1, row1);
+        w2 = Sse2.Add(w2, row2);
+        w3 = Sse2.Add(w3, row3);
+
+        ref byte outRef = ref MemoryMarshal.GetReference(output);
+        w0.AsByte().StoreUnsafe(ref outRef);
+        w1.AsByte().StoreUnsafe(ref outRef, 16);
+        w2.AsByte().StoreUnsafe(ref outRef, 32);
+        w3.AsByte().StoreUnsafe(ref outRef, 48);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -200,5 +250,5 @@ internal partial struct ChaChaCore
         b = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftLeftLogical(b, 7), Sse2.ShiftRightLogical(b, 25));
     }
-#endif
 }
+#endif

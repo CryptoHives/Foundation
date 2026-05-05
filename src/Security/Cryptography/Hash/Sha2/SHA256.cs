@@ -40,11 +40,22 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
     /// </summary>
     public const int HashSizeBytes = HashSizeBits / 8;
 
+    private readonly SimdSupport _simdSupport;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA256"/> class.
     /// </summary>
-    public SHA256()
+    public SHA256() : this(SimdSupport.All)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SHA256"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    internal SHA256(SimdSupport simdSupport)
+    {
+        _simdSupport = simdSupport & SimdSupport;
         HashSizeValue = HashSizeBits;
     }
 
@@ -61,10 +72,32 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
     protected override int OutputSizeBytes => HashSizeBytes;
 
     /// <summary>
+    /// Gets the SIMD instruction sets supported by SHA-256 on the current platform.
+    /// </summary>
+    internal new static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (SHA256Core.IsArmSha256Supported) support |= SimdSupport.ArmSha256;
+#endif
+            return support;
+        }
+    }
+
+    /// <summary>
     /// Creates a new instance of the <see cref="SHA256"/> class.
     /// </summary>
     /// <returns>A new SHA-256 hash algorithm instance.</returns>
     public static new SHA256 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="SHA256"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new SHA-256 hash algorithm instance.</returns>
+    internal static SHA256 Create(SimdSupport simdSupport) => new(simdSupport);
 
     /// <inheritdoc/>
     protected override void InitializeState()
@@ -83,6 +116,13 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
     /// <inheritdoc/>
     protected override void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.ArmSha256) != 0)
+        {
+            SHA256Core.ProcessBlockArm(block, state);
+            return;
+        }
+#endif
         SHA256Core.ProcessBlock(block, state);
     }
 

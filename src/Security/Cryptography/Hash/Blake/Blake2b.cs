@@ -2,17 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
+#pragma warning disable CS0414  // _simdSupport is read inside #if NET8_0_OR_GREATER guard
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
-using System.Buffers.Binary;
-using System.Numerics;
-using System.Runtime.CompilerServices;
-#if NET8_0_OR_GREATER
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-#endif
 
 /// <summary>
 /// Computes the BLAKE2b hash for the input data.
@@ -31,83 +25,31 @@ using System.Runtime.Intrinsics.X86;
 /// BLAKE2b supports an optional key for keyed hashing (MAC mode) with keys up to 64 bytes.
 /// </para>
 /// </remarks>
-public sealed partial class Blake2b : HashAlgorithm
+public sealed class Blake2b : HashAlgorithm
 {
     /// <summary>
     /// The maximum hash size in bits.
     /// </summary>
-    public const int MaxHashSizeBits = 512;
+    public const int MaxHashSizeBits = Blake2bState.MaxHashSizeBits;
 
     /// <summary>
     /// The maximum hash size in bytes.
     /// </summary>
-    public const int MaxHashSizeBytes = MaxHashSizeBits / 8;
+    public const int MaxHashSizeBytes = Blake2bState.MaxHashSizeBytes;
 
     /// <summary>
     /// The maximum key size in bytes.
     /// </summary>
-    public const int MaxKeySizeBytes = 64;
+    public const int MaxKeySizeBytes = Blake2bState.MaxKeySizeBytes;
 
     /// <summary>
     /// The block size in bytes.
     /// </summary>
-    public const int BlockSizeBytes = 128;
+    public const int BlockSizeBytes = Blake2bState.BlockSizeBytes;
 
-    // Rounds of mixing
-    private const int Rounds = 12;
-
-    // The size of the state buffer
-    private const int StateSize = 8;
-
-    // The size of the scratch buffers
-    private const int ScratchSize = 16;
-
-    // BLAKE2b IV constants (same as SHA-512)
-    private static readonly ulong[] IV =
-    [
-        0x6a09e667f3bcc908UL,
-        0xbb67ae8584caa73bUL,
-        0x3c6ef372fe94f82bUL,
-        0xa54ff53a5f1d36f1UL,
-        0x510e527fade682d1UL,
-        0x9b05688c2b3e6c1fUL,
-        0x1f83d9abfb41bd6bUL,
-        0x5be0cd19137e2179UL
-    ];
-
-    // BLAKE2b sigma permutations for message scheduling
-    private static readonly byte[] Sigma = new byte[Rounds * ScratchSize]
-    {
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-        14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3,
-        11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4,
-        7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8,
-        9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13,
-        2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9,
-        12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11,
-        13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10,
-        6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5,
-        10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0,
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-        14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3
-    };
-
-    // Delegate types for SIMD dispatch — set once in constructor, avoiding per-call branch checks
-    private delegate void CompressAction(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal);
-    private delegate void InitializeStateAction(ulong paramBlock);
-    private delegate void ExtractOutputAction(Span<byte> destination);
-
-    private readonly CompressAction _compress;
-    private readonly InitializeStateAction _initializeState;
-    private readonly ExtractOutputAction _extractOutput;
-
-    // Scalar state for non-AVX2 path and output extraction
-    private readonly ulong[] _state;
-    private readonly byte[] _buffer;
+    // Blake2b core state
+    private Blake2bState _core;
     private readonly byte[]? _key;
-    private readonly int _outputBytes;
-    private ulong _bytesCompressed;
-    private int _bufferLength;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2b"/> class with default output size (64 bytes).
@@ -128,8 +70,8 @@ public sealed partial class Blake2b : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2b"/> class with specified output size and key.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-64 bytes.</param>
-    public Blake2b(int outputBytes, byte[]? key) : this(SimdSupport.All, outputBytes, key)
+    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
+    public Blake2b(int outputBytes, ReadOnlySpan<byte> key) : this(SimdSupport.All, outputBytes, key)
     {
     }
 
@@ -137,9 +79,9 @@ public sealed partial class Blake2b : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2b"/> class with specified output size, key, and SIMD support.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-64 bytes.</param>
+    /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal Blake2b(SimdSupport simdSupport, int outputBytes, byte[]? key)
+    internal Blake2b(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key)
     {
         if (outputBytes < 1 || outputBytes > MaxHashSizeBytes)
         {
@@ -147,42 +89,18 @@ public sealed partial class Blake2b : HashAlgorithm
                 $"Output size must be between 1 and {MaxHashSizeBytes} bytes.");
         }
 
-        if (key != null && key.Length > MaxKeySizeBytes)
+        if (!key.IsEmpty && key.Length > MaxKeySizeBytes)
         {
             throw new ArgumentOutOfRangeException(nameof(key),
                 $"Key size must be between 0 and {MaxKeySizeBytes} bytes.");
         }
 
-        _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
-        _state = new ulong[StateSize];
-        _buffer = new byte[BlockSizeBytes];
-
-#if NET8_0_OR_GREATER
-        if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Avx2) != 0)
-        {
-            _compress = CompressAvx2;
-            _initializeState = InitializeStateAvx2;
-            _extractOutput = ExtractOutputAvx2;
-        }
-        else if ((simdSupport & Blake2b.SimdSupport & SimdSupport.Neon) != 0)
-        {
-            _compress = CompressNeon;
-            _initializeState = InitializeStateNeon;
-            _extractOutput = ExtractOutputNeon;
-        }
-        else
-#endif
-        {
-            _compress = CompressScalar;
-            _initializeState = InitializeStateScalar;
-            _extractOutput = ExtractOutputScalar;
-        }
-
-        if (key != null && key.Length > 0)
+        _core = new Blake2bState(simdSupport, outputBytes);
+        if (!key.IsEmpty)
         {
             _key = new byte[key.Length];
-            Array.Copy(key, _key, key.Length);
+            key.CopyTo(_key);
         }
 
         Initialize();
@@ -224,16 +142,16 @@ public sealed partial class Blake2b : HashAlgorithm
     /// Creates a new keyed instance of the <see cref="Blake2b"/> class.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    /// <param name="key">The key for keyed hashing (up to 64 bytes).</param>
+    /// <param name="key">The key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
     /// <returns>A new BLAKE2b instance configured for keyed hashing.</returns>
-    public static Blake2b CreateKeyed(int outputBytes, byte[] key) => new(outputBytes, key);
+    public static Blake2b CreateKeyed(int outputBytes, ReadOnlySpan<byte> key) => new(outputBytes, key);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake2b"/> class with default output size.
     /// </summary>
-    /// <param name="key">The key for keyed hashing (up to 64 bytes).</param>
+    /// <param name="key">The key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
     /// <returns>A new BLAKE2b instance configured for keyed hashing.</returns>
-    public static Blake2b CreateKeyed(byte[] key) => new(MaxHashSizeBytes, key);
+    public static Blake2b CreateKeyed(ReadOnlySpan<byte> key) => new(MaxHashSizeBytes, key);
 
     /// <summary>
     /// Creates a new keyed instance of the <see cref="Blake2b"/> class with specified SIMD support.
@@ -242,117 +160,31 @@ public sealed partial class Blake2b : HashAlgorithm
     /// <param name="key">The key for keyed hashing (up to 64 bytes).</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <returns>A new BLAKE2b instance configured for keyed hashing.</returns>
-    internal static Blake2b CreateKeyed(SimdSupport simdSupport, int outputBytes, byte[] key) => new(simdSupport, outputBytes, key);
+    internal static Blake2b CreateKeyed(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key) => new(simdSupport, outputBytes, key);
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    internal static new SimdSupport SimdSupport => Blake2bState.SimdSupport;
+#endif
 
     /// <inheritdoc/>
     public override void Initialize()
     {
-        int keyLength = _key?.Length ?? 0;
-        ulong paramBlock = 0x01010000UL | ((ulong)keyLength << 8) | (uint)_outputBytes;
-
-        _initializeState(paramBlock);
-
-        _bytesCompressed = 0;
-        _bufferLength = 0;
-        ClearBuffer(_buffer);
-
-        // If keyed, the first block is the zero-padded key
-        if (_key != null && _key.Length > 0)
-        {
-            Array.Copy(_key, _buffer, _key.Length);
-            _bufferLength = BlockSizeBytes;
-        }
-    }
-
-    private void InitializeStateScalar(ulong paramBlock)
-    {
-        Array.Copy(IV, _state, StateSize);
-        _state[0] ^= paramBlock;
+        _core.Reset(_key);
     }
 
     /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
-        int offset = 0;
-
-        // If we have data in buffer, fill it first
-        if (_bufferLength > 0)
-        {
-            int toCopy = Math.Min(BlockSizeBytes - _bufferLength, source.Length);
-            source.Slice(0, toCopy).CopyTo(_buffer.AsSpan(_bufferLength));
-            _bufferLength += toCopy;
-            offset += toCopy;
-
-            // Only compress if buffer is full AND there's more data coming
-            // (we need to keep the last block for finalization)
-            if (_bufferLength == BlockSizeBytes && offset < source.Length)
-            {
-                _compress(_buffer, BlockSizeBytes, false);
-                _bufferLength = 0;
-            }
-        }
-
-        // Process full blocks, but always keep at least one block for finalization
-        while (offset + BlockSizeBytes < source.Length)
-        {
-            _compress(source.Slice(offset, BlockSizeBytes), BlockSizeBytes, false);
-            offset += BlockSizeBytes;
-        }
-
-        // Store remaining bytes in buffer
-        if (offset < source.Length)
-        {
-            int remaining = source.Length - offset;
-            if (_bufferLength == 0)
-            {
-                source.Slice(offset, remaining).CopyTo(_buffer.AsSpan());
-                _bufferLength = remaining;
-            }
-            else
-            {
-                // Buffer already has data, append to it
-                source.Slice(offset, remaining).CopyTo(_buffer.AsSpan(_bufferLength));
-                _bufferLength += remaining;
-            }
-        }
+        _core.Append(source);
     }
 
     /// <inheritdoc/>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
-        if (destination.Length < _outputBytes)
-        {
-            bytesWritten = 0;
-            return false;
-        }
-
-        // Zero-pad the remaining buffer
-        _buffer.AsSpan(_bufferLength).Clear();
-
-        // Compress final block
-        _compress(_buffer, _bufferLength, true);
-
-        // Extract output using dispatch delegate
-        _extractOutput(destination);
-
-        bytesWritten = _outputBytes;
-        return true;
-    }
-
-    private void ExtractOutputScalar(Span<byte> destination)
-    {
-        int fullWords = _outputBytes / sizeof(UInt64);
-
-        BinarySpans.WriteUInt64LittleEndian(_state.AsSpan(0, fullWords), destination);
-
-        // Handle partial final word
-        int remainingBytes = _outputBytes % sizeof(UInt64);
-        if (remainingBytes > 0)
-        {
-            Span<byte> temp = stackalloc byte[sizeof(UInt64)];
-            BinaryPrimitives.WriteUInt64LittleEndian(temp, _state[fullWords]);
-            temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt64)));
-        }
+        return _core.TryGetCurrentHash(destination, out bytesWritten);
     }
 
     /// <inheritdoc/>
@@ -360,84 +192,9 @@ public sealed partial class Blake2b : HashAlgorithm
     {
         if (disposing)
         {
-#if NET8_0_OR_GREATER
-            _stateVec0 = default;
-            _stateVec1 = default;
-#endif
-            Array.Clear(_state, 0, _state.Length);
-            ClearBuffer(_buffer);
-            if (_key != null)
-            {
-                ClearBuffer(_key);
-            }
+            _core.Dispose();
+            ClearBuffer(_key);
         }
         base.Dispose(disposing);
-    }
-
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressScalar(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
-    {
-        _bytesCompressed += (ulong)bytesConsumed;
-
-        // Use stackalloc for working vectors to avoid heap allocations
-        Span<ulong> v = stackalloc ulong[ScratchSize];
-        Span<ulong> m = stackalloc ulong[ScratchSize];
-
-        // Parse message block into 16 64-bit words (little-endian)
-        BinarySpans.ReadUInt64LittleEndian(block, m);
-
-        // Initialize working vector
-        _state.CopyTo(v.Slice(0, StateSize));
-        IV.CopyTo(v.Slice(StateSize, StateSize));
-
-        v[12] ^= _bytesCompressed;                  // XOR with low 64 bits of counter
-                                                    // v[13] = IV[5];                           // XOR with high 64 bits (always 0 for us)
-        v[14] = isFinal ? ~IV[6] : IV[6];           // Invert if final block
-
-        // 12 rounds of mixing
-        for (int round = 0; round < Rounds * ScratchSize; round += ScratchSize)
-        {
-            // Column step
-            G(ref v[0], ref v[4], ref v[8], ref v[12], m[Sigma[round + 0]], m[Sigma[round + 1]]);
-            G(ref v[1], ref v[5], ref v[9], ref v[13], m[Sigma[round + 2]], m[Sigma[round + 3]]);
-            G(ref v[2], ref v[6], ref v[10], ref v[14], m[Sigma[round + 4]], m[Sigma[round + 5]]);
-            G(ref v[3], ref v[7], ref v[11], ref v[15], m[Sigma[round + 6]], m[Sigma[round + 7]]);
-
-            // Diagonal step
-            G(ref v[0], ref v[5], ref v[10], ref v[15], m[Sigma[round + 8]], m[Sigma[round + 9]]);
-            G(ref v[1], ref v[6], ref v[11], ref v[12], m[Sigma[round + 10]], m[Sigma[round + 11]]);
-            G(ref v[2], ref v[7], ref v[8], ref v[13], m[Sigma[round + 12]], m[Sigma[round + 13]]);
-            G(ref v[3], ref v[4], ref v[9], ref v[14], m[Sigma[round + 14]], m[Sigma[round + 15]]);
-        }
-
-        // Finalize state
-        _state[0] ^= v[0] ^ v[8];
-        _state[1] ^= v[1] ^ v[9];
-        _state[2] ^= v[2] ^ v[10];
-        _state[3] ^= v[3] ^ v[11];
-        _state[4] ^= v[4] ^ v[12];
-        _state[5] ^= v[5] ^ v[13];
-        _state[6] ^= v[6] ^ v[14];
-        _state[7] ^= v[7] ^ v[15];
-    }
-
-    /// <summary>
-    /// BLAKE2b mixing function G.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void G(ref ulong a, ref ulong b, ref ulong c, ref ulong d, ulong x, ulong y)
-    {
-        unchecked
-        {
-            a = a + b + x;
-            d = BitOperations.RotateRight(d ^ a, 32);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 24);
-            a = a + b + y;
-            d = BitOperations.RotateRight(d ^ a, 16);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 63);
-        }
     }
 }

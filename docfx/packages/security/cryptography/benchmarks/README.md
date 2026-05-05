@@ -1,7 +1,30 @@
 # Benchmark Results
 
-This directory stores the published BenchmarkDotNet results for the cryptography hash and cipher suites.
+This directory stores published BenchmarkDotNet results for the cryptography hash and cipher suites.
 
+## Layout
+
+Each checked-in benchmark run lives in its own platform directory:
+
+- `windows-x64-amd-ryzen-5-7600x/` — Windows 11, AMD Ryzen 5 7600X, X64
+- `macos-arm64-apple-m4/` — macOS Tahoe, Apple M4, Arm64
+- future folders such as `linux-arm64-aws-graviton-4/` for additional hosts
+
+The platform identifier format is:
+
+- `<os>-<architecture>-<cpu-slug>`
+
+That keeps operating system, ISA, and CPU model visible in the path and avoids mixing results from incompatible hosts.
+
+## Suggested Docfx UI Structure
+
+Use a three-level navigation model:
+
+1. Overview page: `../benchmarks.md`
+2. Family selector pages: `../benchmarks-hash.md` and `../benchmarks-cipher.md`
+3. Platform pages: `./<platform-id>/hash.md` and `./<platform-id>/cipher.md`
+
+This keeps the top-level pages short and comparable, while full benchmark tables remain in platform-specific pages.
 ## File Structure
 
 | File | Description |
@@ -30,7 +53,7 @@ This directory stores the published BenchmarkDotNet results for the cryptography
 ### BLAKE Family
 - `blake2b256.md`, `blake2b512.md`, `blake2s128.md`, `blake2s256.md`, `blake3.md`
 
-### Legacy/Regional
+### Legacy/Regional Hash
 - `md5.md`, `sha1.md`, `sm3.md`, `streebog256.md`, `streebog512.md`, `whirlpool.md`, `ripemd160.md`
 - `kupyna256.md`, `kupyna384.md`, `kupyna512.md`
 - `lsh256-256.md`, `lsh512-256.md`, `lsh512-512.md`
@@ -46,6 +69,14 @@ This directory stores the published BenchmarkDotNet results for the cryptography
 - `xof-kt128.md`, `xof-kt256.md`
 - `xof-turboshake128.md`, `xof-turboshake256.md`
 - `xof-blake3.md`, `xof-asconxof128.md`
+
+### Regional Block Ciphers (CBC)
+- `sm4-cbc.md`
+- `aria-cbc-128.md`, `aria-cbc-256.md`
+- `camellia-cbc-128.md`, `camellia-cbc-192.md`, `camellia-cbc-256.md`
+- `kuznyechik-cbc.md`
+- `kalyna-cbc-128.md`, `kalyna-cbc-256.md`
+- `seed-cbc.md`
 
 ### AES-CBC (Block Cipher)
 - `aes-cbc-128.md`, `aes-cbc-256.md`
@@ -69,20 +100,24 @@ This directory stores the published BenchmarkDotNet results for the cryptography
    # Run a single algorithm
    .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
    ```
-   or execute the test harness directly:
+
+2. Copy the latest BenchmarkDotNet artifacts into the documentation tree:
    ```powershell
-   cd tests/Security/Cryptography
-   dotnet run -c Release --framework net10.0 -- --filter *SHA256* *SHA384*
+   .\scripts\update-benchmark-docs.ps1 -Project Cryptography
    ```
 
-2. Copy the latest BenchmarkDotNet artifacts into this folder:
+3. If you want to force the folder name instead of deriving it from the machine spec:
    ```powershell
-   .\scripts\update-benchmark-docs.ps1 -Package Cryptography
+   .\scripts\update-benchmark-docs.ps1 -Project Cryptography -PlatformId macos-arm64-apple-m4
    ```
 
 The helper script:
-- Reads the generated markdown under `tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results/`
-- Extracts the machine specification into `machine-spec.md`
-- Removes the duplicated machine header from each benchmark table
 
-Keep in mind that the measurements are machine-dependent. Re-run the suite on your own hardware to compare against these reference numbers.
+- reads the generated markdown under `tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results/`
+- derives a platform identifier from the captured machine spec unless `-PlatformId` is supplied
+- extracts the machine specification into a platform-local `machine-spec.md`
+- removes the duplicated machine header from each benchmark table
+
+If you publish a new platform, add matching docfx entry pages for that folder so it appears from [benchmarks-hash.md](../benchmarks-hash.md) and [benchmarks-cipher.md](../benchmarks-cipher.md).
+
+For a feasible long-term workflow, keep a compact comparison section in selector pages (only a handful of representative algorithms) and keep detailed full tables in platform pages only.

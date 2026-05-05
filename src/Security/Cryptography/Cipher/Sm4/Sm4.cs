@@ -45,7 +45,7 @@ public sealed class Sm4 : SymmetricCipher
     /// <summary>
     /// Initializes a new instance of the <see cref="Sm4"/> class.
     /// </summary>
-    public Sm4()
+    internal Sm4()
     {
         BlockSizeValue = Sm4Core.BlockSizeBits;
         KeySizeValue = KeySizeBits;
@@ -58,6 +58,11 @@ public sealed class Sm4 : SymmetricCipher
 
     /// <inheritdoc/>
     public override int IVSize => Sm4Core.BlockSizeBytes;
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by SM4 on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport => SimdSupport.None;
 
     /// <summary>
     /// Creates a new instance of the <see cref="Sm4"/> cipher.

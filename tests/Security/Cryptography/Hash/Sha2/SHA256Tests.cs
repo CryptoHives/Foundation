@@ -106,6 +106,22 @@ public class SHA256Tests
     }
 
     /// <summary>
+    /// NIST test vector: "The quick brown fox jumps over the lazy dog".
+    /// </summary>
+    /// <param name="factory">The hash algorithm factory.</param>
+    [TestCaseSource(typeof(Sha256Implementations), nameof(Sha256Implementations.All))]
+    public void ComputeHashQuickBrownFox(HashAlgorithmFactory factory)
+    {
+        byte[] expected = TestHelpers.FromHexString("d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592");
+        byte[] input = Encoding.ASCII.GetBytes("The quick brown fox jumps over the lazy dog");
+
+        using var algorithm = factory.Create();
+        byte[] hash = algorithm.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
     /// Test that hash size is correct for our managed implementation.
     /// </summary>
     [Test]

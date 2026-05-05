@@ -168,7 +168,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData, ciphertext, expectedTag);
 
         // Verify tag in constant time
-        if (!CryptoUtils.FixedTimeEquals(tag, expectedTag))
+        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag))
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;

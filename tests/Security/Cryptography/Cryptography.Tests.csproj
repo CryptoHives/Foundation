@@ -1,4 +1,4 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -33,6 +33,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="OpenGost.Security.Cryptography" />
+    <PackageReference Include="SauceControl.Blake2Fast" />
   </ItemGroup>
 
   <!-- Konscious.Security.Cryptography.Blake2 is not strong name signed -->
@@ -70,8 +71,11 @@
     <Compile Include="..\..\Common\Common.cs" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(UsePackedNuGetPackages)' != 'true'">
     <ProjectReference Include="..\..\..\src\Security\Cryptography\Cryptography.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsePackedNuGetPackages)' == 'true'">
+    <PackageReference Include="CryptoHives.Foundation.Security.Cryptography$(_NuGetPackageSuffix)" />
   </ItemGroup>
 
   <ItemGroup>

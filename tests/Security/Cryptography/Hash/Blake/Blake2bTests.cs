@@ -91,6 +91,41 @@ public class Blake2bTests
     }
 
     /// <summary>
+    /// Test vector: "The quick brown fox jumps over the lazy dog" with 32-byte output (BLAKE2b-256).
+    /// </summary>
+    /// <param name="factory">The hash algorithm factory.</param>
+    [TestCaseSource(typeof(Blake2b256Implementations), nameof(Blake2b256Implementations.All))]
+    public void ComputeHashQuickBrownFox256Bit(HashAlgorithmFactory factory)
+    {
+        byte[] expected = TestHelpers.FromHexString(
+            "01718cec35cd3d796dd00020e0bfecb473ad23457d063b75eff29c0ffa2e58a9");
+        byte[] input = Encoding.ASCII.GetBytes("The quick brown fox jumps over the lazy dog");
+
+        using var algorithm = factory.Create();
+        byte[] hash = algorithm.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Test vector: "The quick brown fox jumps over the lazy dog." with 64-byte output (BLAKE2b-512).
+    /// </summary>
+    /// <param name="factory">The hash algorithm factory.</param>
+    [TestCaseSource(typeof(Blake2b512Implementations), nameof(Blake2b512Implementations.All))]
+    public void ComputeHashQuickBrownFoxDot(HashAlgorithmFactory factory)
+    {
+        byte[] expected = TestHelpers.FromHexString(
+            "87af9dc4afe5651b7aa89124b905fd214bf17c79af58610db86a0fb1e0194622" +
+            "a4e9d8e395b352223a8183b0d421c0994b98286cbf8c68a495902e0fe6e2bda2");
+        byte[] input = Encoding.ASCII.GetBytes("The quick brown fox jumps over the lazy dog.");
+
+        using var algorithm = factory.Create();
+        byte[] hash = algorithm.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
     /// Test variable output size for our managed implementation.
     /// </summary>
     [Test]

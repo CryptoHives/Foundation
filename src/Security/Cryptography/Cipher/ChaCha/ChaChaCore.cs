@@ -26,7 +26,7 @@ using System.Runtime.InteropServices;
 /// </list>
 /// </para>
 /// </remarks>
-internal partial struct ChaChaCore
+internal readonly partial struct ChaChaCore
 {
     /// <summary>
     /// ChaCha20 block size in bytes (512 bits = 64 bytes).
@@ -64,6 +64,11 @@ internal partial struct ChaChaCore
     private const int StateWords = 16;
 
     /// <summary>
+    /// The SimD instruction sets to use for this instance.
+    /// </summary>
+    private readonly SimdSupport _simdSupport;
+
+    /// <summary>
     /// ChaCha constant "expand 32-byte k" as four 32-bit little-endian words.
     /// </summary>
     private static readonly uint[] Sigma =
@@ -75,9 +80,21 @@ internal partial struct ChaChaCore
     ];
 
     /// <summary>
-    /// The SimD instruction sets to use for this instance.
+    /// Gets the SIMD instruction sets supported by ChaCha20 on the current platform.
     /// </summary>
-    private readonly SimdSupport _simdSupport;
+    public static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            support |= SimdSupportSsse3;
+            support |= SimdSupportAvx2;
+            support |= SimdSupportNeon;
+#endif
+            return support;
+        }
+    }
 
     /// <summary>
     /// Initializes a new instance of the ChaChaCore class with the specified SIMD support settings.
@@ -85,6 +102,39 @@ internal partial struct ChaChaCore
     public ChaChaCore(SimdSupport simdSupport = SimdSupport.All)
     {
         _simdSupport = simdSupport & SimdSupport;
+    }
+
+    /// <summary>
+    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
+    /// </summary>
+    /// <param name="key">The 32-byte key.</param>
+    /// <param name="nonce">The 12-byte nonce.</param>
+    /// <param name="counter">The initial block counter.</param>
+    /// <param name="input">The input data.</param>
+    /// <param name="output">The output buffer (must be same size as input).</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public readonly void Transform(
+        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
+        ReadOnlySpan<byte> input, Span<byte> output)
+    {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        {
+            TransformAvx2(key, nonce, counter, input, output);
+        }
+        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            TransformSsse3(key, nonce, counter, input, output);
+        }
+        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            TransformNeon(key, nonce, counter, input, output);
+        }
+        else
+#endif
+        {
+            TransformScalar(key, nonce, counter, input, output);
+        }
     }
 
     /// <summary>
@@ -96,8 +146,21 @@ internal partial struct ChaChaCore
     /// <param name="output">The 64-byte output buffer for the keystream.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
+    public readonly void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
     {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Ssse3)) != 0)
+        {
+            BlockSsse3(key, nonce, counter, output);
+            return;
+        }
+        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            BlockNeon(key, nonce, counter, output);
+            return;
+        }
+#endif
+
         Span<uint> state = stackalloc uint[StateWords];
         Span<uint> wState = stackalloc uint[StateWords];
 
@@ -107,21 +170,7 @@ internal partial struct ChaChaCore
         // Copy state to working state
         state.CopyTo(wState);
 
-        // Perform 20 rounds (10 double-rounds)
-        for (int i = 0; i < Rounds; i += 2)
-        {
-            // Odd round (column round)
-            QRound(ref wState[0], ref wState[4], ref wState[8], ref wState[12]);
-            QRound(ref wState[1], ref wState[5], ref wState[9], ref wState[13]);
-            QRound(ref wState[2], ref wState[6], ref wState[10], ref wState[14]);
-            QRound(ref wState[3], ref wState[7], ref wState[11], ref wState[15]);
-
-            // Even round (diagonal round)
-            QRound(ref wState[0], ref wState[5], ref wState[10], ref wState[15]);
-            QRound(ref wState[1], ref wState[6], ref wState[11], ref wState[12]);
-            QRound(ref wState[2], ref wState[7], ref wState[8], ref wState[13]);
-            QRound(ref wState[3], ref wState[4], ref wState[9], ref wState[14]);
-        }
+        QRounds(wState);
 
         // Add original state to working state and serialize to output
         for (int i = 0; i < StateWords; i++)
@@ -133,32 +182,55 @@ internal partial struct ChaChaCore
     }
 
     /// <summary>
-    /// Encrypts or decrypts data using ChaCha20 with forced SIMD support level.
+    /// HChaCha20 is used for key derivation in XChaCha20.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
-    /// <param name="nonce">The 12-byte nonce.</param>
-    /// <param name="counter">The initial block counter.</param>
-    /// <param name="input">The input data.</param>
-    /// <param name="output">The output buffer (must be same size as input).</param>
+    /// <param name="nonce">The 16-byte nonce.</param>
+    /// <param name="subkey">The 32-byte output subkey.</param>
+    /// <remarks>
+    /// <para>
+    /// HChaCha20 performs the ChaCha20 operations but returns only the first
+    /// and last rows of the state (256 bits total) as the subkey.
+    /// </para>
+    /// <para>
+    /// State layout for HChaCha20:
+    /// <code>
+    /// cccccccc  cccccccc  cccccccc  cccccccc
+    /// kkkkkkkk  kkkkkkkk  kkkkkkkk  kkkkkkkk
+    /// kkkkkkkk  kkkkkkkk  kkkkkkkk  kkkkkkkk
+    /// nnnnnnnn  nnnnnnnn  nnnnnnnn  nnnnnnnn
+    /// </code>
+    /// Where c = constant, k = key, n = nonce (no counter).
+    /// </para>
+    /// </remarks>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Transform(
-        ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
-        ReadOnlySpan<byte> input, Span<byte> output)
+    public static void HChaCha20(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, Span<byte> subkey)
     {
-#if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
-        {
-            TransformAvx2(key, nonce, counter, input, output);
-            return;
-        }
+        if (key.Length != KeySizeBytes)
+            throw new ArgumentException($"Key must be {KeySizeBytes} bytes.", nameof(key));
+        if (nonce.Length != HNonceSizeBytes)
+            throw new ArgumentException($"Nonce must be {HNonceSizeBytes} bytes.", nameof(nonce));
+        if (subkey.Length < KeySizeBytes)
+            throw new ArgumentException($"Subkey buffer must be at least {KeySizeBytes} bytes.", nameof(subkey));
 
-        if ((_simdSupport & SimdSupport.Ssse3) != 0)
-        {
-            TransformSsse3(key, nonce, counter, input, output);
-            return;
-        }
-#endif
-        TransformScalar(key, nonce, counter, input, output);
+        Span<uint> state = stackalloc uint[StateWords];
+
+        // Initialize state (no counter, nonce is 16 bytes)
+        Sigma.AsSpan().CopyTo(state);
+
+        // Key (words 4-11)
+        BinarySpans.ReadUInt32LittleEndian(key, state.Slice(4));
+
+        // Nonce (words 12-15, instead of counter + nonce)
+        BinarySpans.ReadUInt32LittleEndian(nonce, state.Slice(12));
+
+        // Perform ChaCha rounds.
+        QRounds(state);
+
+        // Return first and last rows (words 0-3 and 12-15)
+        BinarySpans.WriteUInt32LittleEndian(state.Slice(0, 4), subkey);
+        BinarySpans.WriteUInt32LittleEndian(state.Slice(12, 4), subkey.Slice(4 * sizeof(UInt32)));
     }
 
     [SkipLocalsInit]
@@ -173,6 +245,9 @@ internal partial struct ChaChaCore
         // Initialize base state once (counter updated per block)
         InitializeState(key, nonce, counter, state);
 
+        ref byte inputBase = ref MemoryMarshal.GetReference(input);
+        ref byte outputBase = ref MemoryMarshal.GetReference(output);
+
         int offset = 0;
         Span<byte> ks = stackalloc byte[BlockSizeBytes];
         while (offset < input.Length)
@@ -180,19 +255,7 @@ internal partial struct ChaChaCore
             // Copy state to working state
             state.CopyTo(wState);
 
-            // Perform 20 rounds (10 double-rounds)
-            for (int i = 0; i < Rounds; i += 2)
-            {
-                QRound(ref wState[0], ref wState[4], ref wState[8], ref wState[12]);
-                QRound(ref wState[1], ref wState[5], ref wState[9], ref wState[13]);
-                QRound(ref wState[2], ref wState[6], ref wState[10], ref wState[14]);
-                QRound(ref wState[3], ref wState[7], ref wState[11], ref wState[15]);
-
-                QRound(ref wState[0], ref wState[5], ref wState[10], ref wState[15]);
-                QRound(ref wState[1], ref wState[6], ref wState[11], ref wState[12]);
-                QRound(ref wState[2], ref wState[7], ref wState[8], ref wState[13]);
-                QRound(ref wState[3], ref wState[4], ref wState[9], ref wState[14]);
-            }
+            QRounds(wState);
 
             // Add original state
             for (int i = 0; i < StateWords; i++)
@@ -205,10 +268,9 @@ internal partial struct ChaChaCore
             if (remaining >= BlockSizeBytes)
             {
                 // Full block: XOR keystream with input using widened operations
-                XorBlock(
-                    input.Slice(offset, BlockSizeBytes),
-                    MemoryMarshal.AsBytes(wState),
-                    output.Slice(offset, BlockSizeBytes));
+                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+                XorBlock(ref inRef, MemoryMarshal.AsBytes(wState), ref outRef);
             }
             else
             {
@@ -220,9 +282,11 @@ internal partial struct ChaChaCore
                     keystream = ks;
                 }
 
+                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
                 for (int i = 0; i < remaining; i++)
                 {
-                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
+                    Unsafe.Add(ref outRef, i) = (byte)(Unsafe.Add(ref inRef, i) ^ keystream[i]);
                 }
             }
 
@@ -237,35 +301,45 @@ internal partial struct ChaChaCore
     /// XORs a full 64-byte block using ulong-sized operations for throughput.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void XorBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
+    private static void XorBlock(ref byte input, ReadOnlySpan<byte> keystream, ref byte output)
     {
         if (BitConverter.IsLittleEndian)
         {
-            // Fast path: keystream is already in memory-native order
-            ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input);
-            ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
-            Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output);
+            ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
 
-            // 64 bytes / 8 = 8 ulongs
-            dst[0] = src[0] ^ ks[0];
-            dst[1] = src[1] ^ ks[1];
-            dst[2] = src[2] ^ ks[2];
-            dst[3] = src[3] ^ ks[3];
-            dst[4] = src[4] ^ ks[4];
-            dst[5] = src[5] ^ ks[5];
-            dst[6] = src[6] ^ ks[6];
-            dst[7] = src[7] ^ ks[7];
+            Unsafe.WriteUnaligned(ref output,
+                Unsafe.ReadUnaligned<ulong>(ref input) ^ Unsafe.ReadUnaligned<ulong>(ref ksRef));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 8),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 8)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 8)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 16),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 16)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 16)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 24),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 24)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 24)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 32),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 32)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 32)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 40),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 40)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 40)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 48),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 48)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 48)));
+            Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 56),
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 56)) ^
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 56)));
         }
         else
         {
-            // Big-endian: serialize keystream to LE bytes, then XOR
             Span<byte> ks = stackalloc byte[BlockSizeBytes];
             ReadOnlySpan<uint> ksWords = MemoryMarshal.Cast<byte, uint>(keystream);
             BinarySpans.WriteUInt32LittleEndian(ksWords.Slice(0, StateWords), ks);
 
             for (int i = 0; i < BlockSizeBytes; i++)
             {
-                output[i] = (byte)(input[i] ^ ks[i]);
+                Unsafe.Add(ref output, i) = (byte)(Unsafe.Add(ref input, i) ^ ks[i]);
             }
         }
     }
@@ -287,7 +361,6 @@ internal partial struct ChaChaCore
     /// </code>
     /// Where c = constant, k = key, b = block counter, n = nonce.
     /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void InitializeState(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<uint> state)
     {
         // Constants (words 0-3)
@@ -327,49 +400,11 @@ internal partial struct ChaChaCore
     }
 
     /// <summary>
-    /// HChaCha20 is used for key derivation in XChaCha20.
+    /// Performs 20 ChaCha quarter rounds on the state.
     /// </summary>
-    /// <param name="key">The 32-byte key.</param>
-    /// <param name="nonce">The 16-byte nonce.</param>
-    /// <param name="subkey">The 32-byte output subkey.</param>
-    /// <remarks>
-    /// <para>
-    /// HChaCha20 performs the ChaCha20 operations but returns only the first
-    /// and last rows of the state (256 bits total) as the subkey.
-    /// </para>
-    /// <para>
-    /// State layout for HChaCha20:
-    /// <code>
-    /// cccccccc  cccccccc  cccccccc  cccccccc
-    /// kkkkkkkk  kkkkkkkk  kkkkkkkk  kkkkkkkk
-    /// kkkkkkkk  kkkkkkkk  kkkkkkkk  kkkkkkkk
-    /// nnnnnnnn  nnnnnnnn  nnnnnnnn  nnnnnnnn
-    /// </code>
-    /// Where c = constant, k = key, n = nonce (no counter).
-    /// </para>
-    /// </remarks>
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void HChaCha20(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, Span<byte> subkey)
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void QRounds(Span<uint> state)
     {
-        if (key.Length != KeySizeBytes)
-            throw new ArgumentException($"Key must be {KeySizeBytes} bytes.", nameof(key));
-        if (nonce.Length != HNonceSizeBytes)
-            throw new ArgumentException($"Nonce must be {HNonceSizeBytes} bytes.", nameof(nonce));
-        if (subkey.Length < KeySizeBytes)
-            throw new ArgumentException($"Subkey buffer must be at least {KeySizeBytes} bytes.", nameof(subkey));
-
-        Span<uint> state = stackalloc uint[StateWords];
-
-        // Initialize state (no counter, nonce is 16 bytes)
-        Sigma.AsSpan().CopyTo(state);
-
-        // Key (words 4-11)
-        BinarySpans.ReadUInt32LittleEndian(key, state.Slice(4));
-
-        // Nonce (words 12-15, instead of counter + nonce)
-        BinarySpans.ReadUInt32LittleEndian(nonce, state.Slice(12));
-
         // Perform 20 rounds (10 double-rounds)
         for (int i = 0; i < Rounds; i += 2)
         {
@@ -385,9 +420,5 @@ internal partial struct ChaChaCore
             QRound(ref state[2], ref state[7], ref state[8], ref state[13]);
             QRound(ref state[3], ref state[4], ref state[9], ref state[14]);
         }
-
-        // Return first and last rows (words 0-3 and 12-15)
-        BinarySpans.WriteUInt32LittleEndian(state.Slice(0, 4), subkey);
-        BinarySpans.WriteUInt32LittleEndian(state.Slice(12, 4), subkey.Slice(4 * sizeof(UInt32)));
     }
 }

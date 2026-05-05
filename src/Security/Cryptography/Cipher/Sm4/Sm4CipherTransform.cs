@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// SM4 cipher transform for encryption or decryption operations.
@@ -17,10 +18,16 @@ using System;
 /// For decryption, the same round function is used with round keys applied in
 /// reverse order (rk[31] through rk[0]).
 /// </para>
+/// <para>
+/// When a NEON-capable SIMD path is selected, ECB mode uses a 4-block parallel
+/// round loop that issues 128-bit XOR instructions across four independent cipher
+/// blocks simultaneously, reducing instruction count for the state mixing step.
+/// </para>
 /// </remarks>
 internal sealed class Sm4CipherTransform : BlockCipherTransform
 {
-    private readonly uint[] _roundKeys = new uint[Sm4Core.Rounds];
+    private Sm4Core _core;
+    private readonly CipherMode _mode;
     private readonly bool _encrypting;
 
     /// <summary>
@@ -34,25 +41,26 @@ internal sealed class Sm4CipherTransform : BlockCipherTransform
     public Sm4CipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
         : base(iv, encrypting, mode, padding)
     {
+        _core = new Sm4Core(key);
+        _mode = mode;
         _encrypting = encrypting;
-        Sm4Core.ExpandKey(key, _roundKeys);
     }
 
     /// <inheritdoc/>
     protected override void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        Sm4Core.EncryptBlock(input, output, _roundKeys);
+        _core.EncryptBlock(input, output);
     }
 
     /// <inheritdoc/>
     protected override void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        Sm4Core.DecryptBlock(input, output, _roundKeys);
+        _core.DecryptBlock(input, output);
     }
 
     /// <inheritdoc/>
     protected override void ClearState()
     {
-        Array.Clear(_roundKeys, 0, _roundKeys.Length);
+        _core.Clear();
     }
 }

@@ -10,6 +10,7 @@ using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Runtime.Intrinsics.Arm;
 #endif
 
 /// <summary>
@@ -21,8 +22,9 @@ using System.Runtime.Intrinsics.X86;
 /// It supports ECB, CBC, and CTR modes with PKCS#7 padding.
 /// </para>
 /// <para>
-/// When AES-NI hardware acceleration is available, this transform automatically uses
-/// hardware-accelerated AES instructions for CBC decrypt for improved performance.
+/// When AES-NI (x86) or ARM AES crypto extension hardware acceleration is available,
+/// this transform automatically uses hardware-accelerated AES instructions for
+/// improved performance.
 /// </para>
 /// </remarks>
 internal sealed unsafe class AesCipherTransform : ICipherTransform
@@ -42,6 +44,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     private bool _disposed;
 #if NET8_0_OR_GREATER
     private readonly bool _useAesNi;
+    private readonly bool _useArmAes;
 #endif
 
     /// <summary>
@@ -105,6 +108,21 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     tempEnc.Clear();
                 }
             }
+            else if ((simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
+            {
+                _useArmAes = true;
+                var armView = MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys);
+                _rounds = AesCoreArm.ExpandKey(key, armView);
+
+                if (!encrypting && mode != CipherMode.CTR && mode != CipherMode.Stream)
+                {
+                    Span<uint> tempEnc = stackalloc uint[MaxRoundKeyWords];
+                    roundKeys.CopyTo(tempEnc);
+                    var encView = MemoryMarshal.Cast<uint, Vector128<byte>>(tempEnc);
+                    AesCoreArm.CreateDecryptionKeys(encView, armView, _rounds);
+                    tempEnc.Clear();
+                }
+            }
             else
 #endif
             {
@@ -144,7 +162,8 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     /// </summary>
     internal static SimdSupport SimdSupport =>
 #if NET8_0_OR_GREATER
-        AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None;
+        (AesCoreAesNi.IsSupported ? SimdSupport.AesNi : SimdSupport.None) |
+        (AesCoreArm.IsSupported ? SimdSupport.ArmAes : SimdSupport.None);
 #else
         SimdSupport.None;
 #endif
@@ -176,17 +195,17 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
 #if NET8_0_OR_GREATER
         // Vectorized CBC decrypt: process 8/4 blocks in parallel
-        if (_mode == CipherMode.CBC && !_encrypting && _useAesNi)
+        if (_mode == CipherMode.CBC && !_encrypting && (_useAesNi || _useArmAes))
         {
             return TransformCbcDecryptVectorized(input, output, blocks);
         }
 #endif
 
-        int bytesProcessed = 0;
+        int offset = 0;
         for (int i = 0; i < blocks; i++)
         {
-            var inBlock = input.Slice(i * BlockSize, BlockSize);
-            var outBlock = output.Slice(i * BlockSize, BlockSize);
+            var inBlock = input.Slice(offset, BlockSize);
+            var outBlock = output.Slice(offset, BlockSize);
 
             switch (_mode)
             {
@@ -203,10 +222,10 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     throw new NotSupportedException($"Cipher mode {_mode} is not supported.");
             }
 
-            bytesProcessed += BlockSize;
+            offset += BlockSize;
         }
 
-        return bytesProcessed;
+        return offset;
     }
 
     /// <inheritdoc/>
@@ -376,16 +395,17 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
 #if NET8_0_OR_GREATER
     // ========================================================================
-    // Vectorized CBC Decrypt (8/4-block interleaved AES-NI)
+    // Vectorized CBC Decrypt (8/4-block interleaved hardware AES)
     // ========================================================================
 
     /// <summary>
-    /// Processes CBC decrypt using 8/4-block interleaved AES-NI for parallelism.
+    /// Processes CBC decrypt using 8/4-block interleaved hardware AES for parallelism.
     /// </summary>
     /// <remarks>
     /// CBC decryption is parallelizable: each ciphertext block is independently
     /// AES-decrypted, then XOR'd with the previous ciphertext block. By decrypting
     /// 8 blocks simultaneously, we saturate the AES pipeline (latency=4, throughput=1).
+    /// Supports both AES-NI (x86) and ARM AES crypto extensions.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -400,7 +420,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
             fixed (uint* p = _buffers.Keys)
             {
-                var aesNiKeys = MemoryMarshal.Cast<uint, Vector128<byte>>(new ReadOnlySpan<uint>(p, MaxRoundKeyWords));
+                var keys = MemoryMarshal.Cast<uint, Vector128<byte>>(new ReadOnlySpan<uint>(p, MaxRoundKeyWords));
 
                 // 8-block loop
                 while (offset + 8 * BlockSize <= blocks * BlockSize)
@@ -417,18 +437,27 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     var b0 = ct0; var b1 = ct1; var b2 = ct2; var b3 = ct3;
                     var b4 = ct4; var b5 = ct5; var b6 = ct6; var b7 = ct7;
 
-                    AesCoreAesNi.DecryptBlocks8(ref b0, ref b1, ref b2, ref b3,
-                                                 ref b4, ref b5, ref b6, ref b7,
-                                                 aesNiKeys, _rounds);
+                    if (_useAesNi)
+                    {
+                        AesCoreAesNi.DecryptBlocks8(ref b0, ref b1, ref b2, ref b3,
+                                                     ref b4, ref b5, ref b6, ref b7,
+                                                     keys, _rounds);
+                    }
+                    else
+                    {
+                        AesCoreArm.DecryptBlocks8(ref b0, ref b1, ref b2, ref b3,
+                                                   ref b4, ref b5, ref b6, ref b7,
+                                                   keys, _rounds);
+                    }
 
-                    Sse2.Xor(b0, feedback).CopyTo(output.Slice(offset));
-                    Sse2.Xor(b1, ct0).CopyTo(output.Slice(offset + BlockSize));
-                    Sse2.Xor(b2, ct1).CopyTo(output.Slice(offset + 2 * BlockSize));
-                    Sse2.Xor(b3, ct2).CopyTo(output.Slice(offset + 3 * BlockSize));
-                    Sse2.Xor(b4, ct3).CopyTo(output.Slice(offset + 4 * BlockSize));
-                    Sse2.Xor(b5, ct4).CopyTo(output.Slice(offset + 5 * BlockSize));
-                    Sse2.Xor(b6, ct5).CopyTo(output.Slice(offset + 6 * BlockSize));
-                    Sse2.Xor(b7, ct6).CopyTo(output.Slice(offset + 7 * BlockSize));
+                    (b0 ^ feedback).CopyTo(output.Slice(offset));
+                    (b1 ^ ct0).CopyTo(output.Slice(offset + BlockSize));
+                    (b2 ^ ct1).CopyTo(output.Slice(offset + 2 * BlockSize));
+                    (b3 ^ ct2).CopyTo(output.Slice(offset + 3 * BlockSize));
+                    (b4 ^ ct3).CopyTo(output.Slice(offset + 4 * BlockSize));
+                    (b5 ^ ct4).CopyTo(output.Slice(offset + 5 * BlockSize));
+                    (b6 ^ ct5).CopyTo(output.Slice(offset + 6 * BlockSize));
+                    (b7 ^ ct6).CopyTo(output.Slice(offset + 7 * BlockSize));
 
                     feedback = ct7;
                     offset += 8 * BlockSize;
@@ -444,13 +473,21 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
                     var b0 = ct0; var b1 = ct1; var b2 = ct2; var b3 = ct3;
 
-                    AesCoreAesNi.DecryptBlocks4(ref b0, ref b1, ref b2, ref b3,
-                                                 aesNiKeys, _rounds);
+                    if (_useAesNi)
+                    {
+                        AesCoreAesNi.DecryptBlocks4(ref b0, ref b1, ref b2, ref b3,
+                                                     keys, _rounds);
+                    }
+                    else
+                    {
+                        AesCoreArm.DecryptBlocks4(ref b0, ref b1, ref b2, ref b3,
+                                                   keys, _rounds);
+                    }
 
-                    Sse2.Xor(b0, feedback).CopyTo(output.Slice(offset));
-                    Sse2.Xor(b1, ct0).CopyTo(output.Slice(offset + BlockSize));
-                    Sse2.Xor(b2, ct1).CopyTo(output.Slice(offset + 2 * BlockSize));
-                    Sse2.Xor(b3, ct2).CopyTo(output.Slice(offset + 3 * BlockSize));
+                    (b0 ^ feedback).CopyTo(output.Slice(offset));
+                    (b1 ^ ct0).CopyTo(output.Slice(offset + BlockSize));
+                    (b2 ^ ct1).CopyTo(output.Slice(offset + 2 * BlockSize));
+                    (b3 ^ ct2).CopyTo(output.Slice(offset + 3 * BlockSize));
 
                     feedback = ct3;
                     offset += 4 * BlockSize;
@@ -461,11 +498,21 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                 {
                     var ct = Vector128.Create(input.Slice(offset, BlockSize));
 
-                    AesCoreAesNi.DecryptBlock(input.Slice(offset, BlockSize),
-                                               output.Slice(offset, BlockSize),
-                                               aesNiKeys, _rounds);
+                    if (_useAesNi)
+                    {
+                        AesCoreAesNi.DecryptBlock(input.Slice(offset, BlockSize),
+                                                   output.Slice(offset, BlockSize),
+                                                   keys, _rounds);
+                    }
+                    else
+                    {
+                        AesCoreArm.DecryptBlock(input.Slice(offset, BlockSize),
+                                                 output.Slice(offset, BlockSize),
+                                                 keys, _rounds);
+                    }
+
                     var plain = Vector128.Create(output.Slice(offset, BlockSize));
-                    Sse2.Xor(plain, feedback).CopyTo(output.Slice(offset));
+                    (plain ^ feedback).CopyTo(output.Slice(offset));
 
                     feedback = ct;
                     offset += BlockSize;
@@ -584,7 +631,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     }
 
     // ========================================================================
-    // AES-NI Dispatch
+    // Hardware AES Dispatch
     // ========================================================================
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -597,6 +644,13 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
             if (_useAesNi)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
+                    MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
+                return;
+            }
+
+            if (_useArmAes)
+            {
+                AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
@@ -615,6 +669,13 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
             if (_useAesNi)
             {
                 AesCoreAesNi.DecryptBlock(input, output,
+                    MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
+                return;
+            }
+
+            if (_useArmAes)
+            {
+                AesCoreArm.DecryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }

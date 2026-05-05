@@ -94,6 +94,24 @@ public class SHA384Tests
     }
 
     /// <summary>
+    /// NIST test vector: "The quick brown fox jumps over the lazy dog".
+    /// </summary>
+    /// <param name="factory">The hash algorithm factory.</param>
+    [TestCaseSource(typeof(Sha384Implementations), nameof(Sha384Implementations.All))]
+    public void ComputeHashQuickBrownFox(HashAlgorithmFactory factory)
+    {
+        byte[] expected = TestHelpers.FromHexString(
+            "ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a50" +
+            "9cb1e5dc1e85a941bbee3d7f2afbc9b1");
+        byte[] input = Encoding.ASCII.GetBytes("The quick brown fox jumps over the lazy dog");
+
+        using var algorithm = factory.Create();
+        byte[] hash = algorithm.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
     /// Test that hash size is correct for our managed implementation.
     /// </summary>
     [Test]

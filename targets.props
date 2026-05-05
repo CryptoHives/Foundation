@@ -100,6 +100,19 @@
         <LibTargetFrameworks>net10.0</LibTargetFrameworks>
       </PropertyGroup>
     </When>
+
+    <!-- On macOS default to the latest .NET target only. -->
+    <When Condition="$([System.OperatingSystem]::IsMacOS())">
+      <PropertyGroup>
+        <AnalysisLevel>preview</AnalysisLevel>
+        <AnalysisMode>all</AnalysisMode>
+        <AnalysisModeStyle>default</AnalysisModeStyle>
+        <AppTargetFrameworks>net10.0</AppTargetFrameworks>
+        <AppTargetFramework>net10.0</AppTargetFramework>
+        <TestsTargetFrameworks>net10.0</TestsTargetFrameworks>
+        <LibTargetFrameworks>net10.0</LibTargetFrameworks>
+      </PropertyGroup>
+    </When>
     
     <!-- Visual Studio 2026, supports .NET Framework 4.6.2, .NET Standard2.0/2.1, .NET 8/10-->
     <When  Condition="'$(VisualStudioVersion)' == '18.0'">

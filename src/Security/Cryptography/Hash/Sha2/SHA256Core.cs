@@ -22,7 +22,7 @@ using System.Runtime.InteropServices;
 /// output truncation.
 /// </para>
 /// </remarks>
-internal static class SHA256Core
+internal static partial class SHA256Core
 {
     /// <summary>
     /// The number of rounds in the SHA-256 compression function.

@@ -252,7 +252,7 @@ blake3.TryComputeHash(message, mac, out _);
 ### Key Derivation with BLAKE3
 
 ```csharp
-string context = "MyApp 2025-01-01 session key";
+string context = "MyApp 2026-01-01 session key";
 
 // BLAKE3 derive key mode
 using var blake3 = Blake3.CreateDeriveKey(context);

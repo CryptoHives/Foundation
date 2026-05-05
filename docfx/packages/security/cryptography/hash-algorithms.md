@@ -640,7 +640,7 @@ Span<byte> mac = stackalloc byte[32];
 blake3Mac.TryComputeHash(data, mac, out _);
 
 // Key derivation
-string context = "MyApp 2025 session key";
+string context = "MyApp 2026 session key";
 using var blake3Kdf = Blake3.CreateDeriveKey(context);
 Span<byte> derivedKey = stackalloc byte[32];
 blake3Kdf.TryComputeHash(inputKeyMaterial, derivedKey, out _);

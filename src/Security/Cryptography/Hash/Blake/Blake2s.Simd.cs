@@ -8,20 +8,18 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 #if NET8_0_OR_GREATER
 
 using System;
-using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 
 /// <summary>
-/// BLAKE2s SIMD-accelerated compression using SSE2, SSSE3 and AVX2 intrinsics.
+/// BLAKE2s x86 SIMD-accelerated compression.
 /// </summary>
-public sealed partial class Blake2s
+internal unsafe partial struct Blake2sState
 {
     // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words
-    // BLAKE2s rotations: 16, 12, 8, 7 bits
-
     // Rotate right by 16 bits (swap high/low 16-bit halves within each 32-bit word)
     private static readonly Vector128<byte> RotateMask16 = Vector128.Create(
         (byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
@@ -30,283 +28,228 @@ public sealed partial class Blake2s
     private static readonly Vector128<byte> RotateMask8 = Vector128.Create(
         (byte)1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
 
-    // Pre-computed IV vectors for SSE/AVX path (Vector128<uint> holds 4 elements = 1 row)
     private static readonly Vector128<uint> IVLow = Vector128.Create(
         0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU);
 
     private static readonly Vector128<uint> IVHigh = Vector128.Create(
         0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U);
 
-    // Finalization mask for inverting element 2 of row3 (v[14])
     private static readonly Vector128<uint> FinalMask = Vector128.Create(0U, 0U, ~0U, 0U);
 
-    // Pre-computed Vector128<int> indices for gather operations (scaled by 4 for uint stride)
-    private static readonly Vector128<int>[] GatherIndicesX = new Vector128<int>[Rounds * 2];
-    private static readonly Vector128<int>[] GatherIndicesY = new Vector128<int>[Rounds * 2];
-
-    // Vector state for SSE path (2 x Vector128<uint> = 8 elements = full state)
-    private Vector128<uint> _stateVec0;
-    private Vector128<uint> _stateVec1;
-
-    static Blake2s()
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
+    /// </summary>
+    internal static SimdSupport SimdSupport
     {
+        get
+        {
+            var support = SimdSupport.None;
+            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
+#if EXPERIMENTAL
+            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+            if (Sse2.IsSupported) support |= SimdSupport.Sse2;
+            if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
+#endif
+            return support;
+        }
+    }
+
+#if EXPERIMENTAL
+    // Pre-computed Vector128<int> indices for gather operations (scaled by 4 for uint stride)
+    private static readonly Vector128<int>[] GatherIndicesX = InitGatherIndicesX();
+    private static readonly Vector128<int>[] GatherIndicesY = InitGatherIndicesY();
+
+    private static Vector128<int>[] InitGatherIndicesX()
+    {
+        var indices = new Vector128<int>[Rounds * 2];
         for (int round = 0; round < Rounds; round++)
         {
             int offset = round * ScratchSize;
-
-            // Column step indices (multiply by 4 for byte offset of uint)
-            GatherIndicesX[round * 2] = Vector128.Create(
+            indices[round * 2] = Vector128.Create(
                 Sigma[offset + 0] * 4, Sigma[offset + 2] * 4,
                 Sigma[offset + 4] * 4, Sigma[offset + 6] * 4);
-            GatherIndicesY[round * 2] = Vector128.Create(
-                Sigma[offset + 1] * 4, Sigma[offset + 3] * 4,
-                Sigma[offset + 5] * 4, Sigma[offset + 7] * 4);
-
-            // Diagonal step indices
-            GatherIndicesX[round * 2 + 1] = Vector128.Create(
+            indices[round * 2 + 1] = Vector128.Create(
                 Sigma[offset + 8] * 4, Sigma[offset + 10] * 4,
                 Sigma[offset + 12] * 4, Sigma[offset + 14] * 4);
-            GatherIndicesY[round * 2 + 1] = Vector128.Create(
+        }
+        return indices;
+    }
+
+    private static Vector128<int>[] InitGatherIndicesY()
+    {
+        var indices = new Vector128<int>[Rounds * 2];
+        for (int round = 0; round < Rounds; round++)
+        {
+            int offset = round * ScratchSize;
+            indices[round * 2] = Vector128.Create(
+                Sigma[offset + 1] * 4, Sigma[offset + 3] * 4,
+                Sigma[offset + 5] * 4, Sigma[offset + 7] * 4);
+            indices[round * 2 + 1] = Vector128.Create(
                 Sigma[offset + 9] * 4, Sigma[offset + 11] * 4,
                 Sigma[offset + 13] * 4, Sigma[offset + 15] * 4);
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void InitializeStateSse2(uint paramBlock)
-    {
-        _stateVec0 = Sse2.Xor(IVLow, Vector128.Create(paramBlock, 0U, 0U, 0U));
-        _stateVec1 = IVHigh;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ExtractOutputSse2(Span<byte> destination)
-    {
-        // Store vectors to stack, then copy required bytes
-        Span<uint> temp = stackalloc uint[8];
-        _stateVec0.CopyTo(temp[..4]);
-        _stateVec1.CopyTo(temp[4..]);
-
-        int fullWords = _outputBytes / sizeof(UInt32);
-
-        BinarySpans.WriteUInt32LittleEndian(temp.Slice(0, fullWords), destination);
-
-        int remainingBytes = _outputBytes % sizeof(UInt32);
-        if (remainingBytes > 0)
-        {
-            Span<byte> tempBytes = stackalloc byte[sizeof(UInt32)];
-            BinaryPrimitives.WriteUInt32LittleEndian(tempBytes, temp[fullWords]);
-            tempBytes.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt32)));
-        }
+        return indices;
     }
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressSse2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
+    private static void CompressSse2(byte* msgPtr, uint* state, ulong bytesCompressed, bool isFinal)
     {
-        _bytesCompressed += (ulong)bytesConsumed;
-
         // Initialize rows from vector state
         // row0 = v[0..3] = state[0..3]
         // row1 = v[4..7] = state[4..7]
         // row2 = v[8..11] = IV[0..3]
         // row3 = v[12..15] = IV[4..7] with counter/finalization
-        var row0 = _stateVec0;
-        var row1 = _stateVec1;
+        var row0 = Sse2.LoadVector128(state);
+        var row1 = Sse2.LoadVector128(state + 4);
         var row2 = IVLow;
-
-        // row3 = IVHigh with counter/finalization applied
-        var counterVec = Vector128.Create((uint)_bytesCompressed, (uint)(_bytesCompressed >> 32), 0U, 0U);
+        var counterVec = Vector128.Create((uint)bytesCompressed, (uint)(bytesCompressed >> 32), 0U, 0U);
         var row3 = Sse2.Xor(IVHigh, counterVec);
+        if (isFinal) row3 = Sse2.Xor(row3, FinalMask);
 
-        if (isFinal)
+        var orig0 = row0;
+        var orig1 = row1;
+        fixed (byte* sigmaPtr = Sigma)
         {
-            row3 = Sse2.Xor(row3, FinalMask);
-        }
-
-        // Parse message block into 16 32-bit words (little-endian)
-        Span<uint> m = stackalloc uint[ScratchSize];
-        BinarySpans.ReadUInt32LittleEndian(block, m);
-
-        // Get base references (avoids bounds checking in loop)
-        ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);
-        ref uint mBase = ref MemoryMarshal.GetReference(m);
-
-        // 10 rounds of mixing
-        for (int sigmaIdx = 0; sigmaIdx < Rounds * ScratchSize; sigmaIdx += ScratchSize)
-        {
-            // Column step: G on (v[0],v[4],v[8],v[12]), (v[1],v[5],v[9],v[13]), etc.
-            var mx0 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 0)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 2)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 4)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 6)));
-            var my0 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 1)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 3)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 5)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 7)));
-
-            GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx0, my0);
-
-            // Diagonal step: rotate rows to align diagonals
-            row1 = Sse2.Shuffle(row1, 0b00_11_10_01); // 1,2,3,0
-            row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
-            row3 = Sse2.Shuffle(row3, 0b10_01_00_11); // 3,0,1,2
-
-            var mx1 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 8)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 10)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 12)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 14)));
-            var my1 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 9)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 11)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 13)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 15)));
-
-            GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx1, my1);
-
-            // Un-rotate rows to restore column order
-            row1 = Sse2.Shuffle(row1, 0b10_01_00_11); // 3,0,1,2
-            row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
-            row3 = Sse2.Shuffle(row3, 0b00_11_10_01); // 1,2,3,0
-        }
-
-        // Finalize: state ^= row0 ^ row2, state ^= row1 ^ row3
-        _stateVec0 = Sse2.Xor(_stateVec0, Sse2.Xor(row0, row2));
-        _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
-    }
-
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressSsse3(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
-    {
-        _bytesCompressed += (ulong)bytesConsumed;
-
-        // Initialize rows from vector state
-        var row0 = _stateVec0;
-        var row1 = _stateVec1;
-        var row2 = IVLow;
-
-        var counterVec = Vector128.Create((uint)_bytesCompressed, (uint)(_bytesCompressed >> 32), 0U, 0U);
-        var row3 = Sse2.Xor(IVHigh, counterVec);
-
-        if (isFinal)
-        {
-            row3 = Sse2.Xor(row3, FinalMask);
-        }
-
-        // Parse message block into 16 32-bit words (little-endian)
-        Span<uint> m = stackalloc uint[ScratchSize];
-        BinarySpans.ReadUInt32LittleEndian(block, m);
-
-        // Get base references (avoids bounds checking in loop)
-        ref byte sigmaBase = ref MemoryMarshal.GetArrayDataReference(Sigma);
-        ref uint mBase = ref MemoryMarshal.GetReference(m);
-
-        // 10 rounds of mixing
-        for (int sigmaIdx = 0; sigmaIdx < Rounds * ScratchSize; sigmaIdx += ScratchSize)
-        {
-            // Column step
-            var mx0 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 0)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 2)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 4)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 6)));
-            var my0 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 1)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 3)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 5)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 7)));
-
-            GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx0, my0);
-
-            // Diagonal step: rotate rows
-            row1 = Sse2.Shuffle(row1, 0b00_11_10_01); // 1,2,3,0
-            row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
-            row3 = Sse2.Shuffle(row3, 0b10_01_00_11); // 3,0,1,2
-
-            var mx1 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 8)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 10)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 12)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 14)));
-            var my1 = Vector128.Create(
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 9)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 11)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 13)),
-                Unsafe.Add(ref mBase, Unsafe.Add(ref sigmaBase, sigmaIdx + 15)));
-
-            GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
-
-            // Un-rotate rows
-            row1 = Sse2.Shuffle(row1, 0b10_01_00_11); // 3,0,1,2
-            row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
-            row3 = Sse2.Shuffle(row3, 0b00_11_10_01); // 1,2,3,0
-        }
-
-        _stateVec0 = Sse2.Xor(_stateVec0, Sse2.Xor(row0, row2));
-        _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
-    }
-
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private unsafe void CompressAvx2(ReadOnlySpan<byte> block, int bytesConsumed, bool isFinal)
-    {
-        _bytesCompressed += (ulong)bytesConsumed;
-
-        // Pin the message block for gather operations
-        fixed (byte* mPtr = block)
-        {
-            // Get base references for gather indices (avoids bounds checking in loop)
-            ref Vector128<int> gatherXBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesX);
-            ref Vector128<int> gatherYBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesY);
-
-            // Initialize rows from vector state
-            var row0 = _stateVec0;
-            var row1 = _stateVec1;
-            var row2 = IVLow;
-
-            // row3 = IVHigh with counter/finalization applied
-            var counterVec = Vector128.Create((uint)_bytesCompressed, (uint)(_bytesCompressed >> 32), 0U, 0U);
-            var row3 = Sse2.Xor(IVHigh, counterVec);
-
-            if (isFinal)
-            {
-                row3 = Sse2.Xor(row3, FinalMask);
-            }
+            uint* m = (uint*)msgPtr;
+            byte* s = sigmaPtr;
 
             // 10 rounds of mixing
-            for (int gatherIdx = 0; gatherIdx < Rounds * 2; gatherIdx+=2)
+            for (int round = 0; round < Rounds; round++)
             {
-                // Column step - use AVX2 gather for message words
-                var mx0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx), 1).AsUInt32();
-                var my0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx), 1).AsUInt32();
+                // Column step
+                var mx0 = Vector128.Create(m[s[0]], m[s[2]], m[s[4]], m[s[6]]);
+                var my0 = Vector128.Create(m[s[1]], m[s[3]], m[s[5]], m[s[7]]);
+
+                GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx0, my0);
+
+                // Diagonal step: rotate rows
+                Permute(ref row1, ref row2, ref row3);
+
+                var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
+                var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
+
+                GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx1, my1);
+
+                // Un-rotate rows
+                Permute(ref row3, ref row2, ref row1);
+
+                s += ScratchSize;
+            }
+        }
+
+
+        row0 = Sse2.Xor(Sse2.Xor(row0, row2), orig0);
+        row1 = Sse2.Xor(Sse2.Xor(row1, row3), orig1);
+
+        Sse2.Store(state, row0);
+        Sse2.Store(state + 4, row1);
+    }
+#endif
+
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressSsse3(byte* msgPtr, uint* state, ulong bytesCompressed, bool isFinal)
+    {
+        var row0 = Sse2.LoadVector128(state);
+        var row1 = Sse2.LoadVector128(state + 4);
+        var row2 = IVLow;
+        var counterVec = Vector128.Create((uint)bytesCompressed, (uint)(bytesCompressed >> 32), 0U, 0U);
+        var row3 = Sse2.Xor(IVHigh, counterVec);
+        if (isFinal) row3 = Sse2.Xor(row3, FinalMask);
+
+        var orig0 = row0;
+        var orig1 = row1;
+
+        fixed (byte* sigmaPtr = Sigma)
+        {
+            uint* m = (uint*)msgPtr;
+            byte* s = sigmaPtr;
+
+            // 10 rounds of mixing
+            for (int round = 0; round < Rounds; round++)
+            {
+                // Column step
+                var mx0 = Vector128.Create(m[s[0]], m[s[2]], m[s[4]], m[s[6]]);
+                var my0 = Vector128.Create(m[s[1]], m[s[3]], m[s[5]], m[s[7]]);
 
                 GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx0, my0);
 
-                // Diagonal step: rotate rows to align diagonals
-                row1 = Sse2.Shuffle(row1, 0b00_11_10_01); // 1,2,3,0
-                row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
-                row3 = Sse2.Shuffle(row3, 0b10_01_00_11); // 3,0,1,2
+                // Diagonal step: rotate rows
+                Permute(ref row1, ref row2, ref row3);
 
-                // Diagonal step - use AVX2 gather for message words
-                var mx1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx + 1), 1).AsUInt32();
-                var my1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx + 1), 1).AsUInt32();
+                var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
+                var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
 
                 GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
-                // Un-rotate rows to restore column order
-                row1 = Sse2.Shuffle(row1, 0b10_01_00_11); // 3,0,1,2
-                row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
-                row3 = Sse2.Shuffle(row3, 0b00_11_10_01); // 1,2,3,0
-            }
+                // Un-rotate rows
+                Permute(ref row3, ref row2, ref row1);
 
-            // Finalize: state ^= row0 ^ row2, state ^= row1 ^ row3
-            _stateVec0 = Sse2.Xor(_stateVec0, Sse2.Xor(row0, row2));
-            _stateVec1 = Sse2.Xor(_stateVec1, Sse2.Xor(row1, row3));
+                s += ScratchSize;
+            }
         }
+
+        row0 = Sse2.Xor(Sse2.Xor(row0, row2), orig0);
+        row1 = Sse2.Xor(Sse2.Xor(row1, row3), orig1);
+
+        Sse2.Store(state, row0);
+        Sse2.Store(state + 4, row1);
+    }
+
+#if EXPERIMENTAL
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressAvx2(byte* mPtr, uint* state, ulong bytesCompressed, bool isFinal)
+    {
+        // Get base references for gather indices (avoids bounds checking in loop)
+        ref Vector128<int> gatherXBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesX);
+        ref Vector128<int> gatherYBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesY);
+
+        // Initialize rows from vector state
+        var row0 = Sse2.LoadVector128(state);
+        var row1 = Sse2.LoadVector128(state + 4);
+        var row2 = IVLow;
+
+        // row3 = IVHigh with counter/finalization applied
+        var counterVec = Vector128.Create((uint)bytesCompressed, (uint)(bytesCompressed >> 32), 0U, 0U);
+        var row3 = Sse2.Xor(IVHigh, counterVec);
+
+        if (isFinal)
+        {
+            row3 = Sse2.Xor(row3, FinalMask);
+        }
+
+        var orig0 = row0;
+        var orig1 = row1;
+
+        // 10 rounds of mixing
+        for (int gatherIdx = 0; gatherIdx < Rounds * 2; gatherIdx += 2)
+        {
+            // Column step - use AVX2 gather for message words
+            var mx0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx), 1).AsUInt32();
+            var my0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx), 1).AsUInt32();
+
+            GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx0, my0);
+
+            // Diagonal step: rotate rows to align diagonals
+            Permute(ref row1, ref row2, ref row3);
+
+            // Diagonal step - use AVX2 gather for message words
+            var mx1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx + 1), 1).AsUInt32();
+            var my1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx + 1), 1).AsUInt32();
+
+            GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
+
+            // Un-rotate rows to restore column order
+            Permute(ref row3, ref row2, ref row1);
+        }
+
+        row0 = Sse2.Xor(Sse2.Xor(row0, row2), orig0);
+        row1 = Sse2.Xor(Sse2.Xor(row1, row3), orig1);
+
+        Sse2.Store(state, row0);
+        Sse2.Store(state + 4, row1);
     }
 
     /// <summary>
@@ -345,6 +288,7 @@ public sealed partial class Blake2s
         var t3 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t3, 7), Sse2.ShiftLeftLogical(t3, 25));
     }
+#endif
 
     /// <summary>
     /// Performs one G round on 4 parallel lanes using SSSE3 shuffle for byte-aligned rotations.
@@ -379,6 +323,19 @@ public sealed partial class Blake2s
         // b = ror(b ^ c, 7) - must use shift+or (not byte-aligned)
         var t2 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t2, 7), Sse2.ShiftLeftLogical(t2, 25));
+    }
+
+    /// <summary>
+    /// Diagonal permutation. Call as <c>Permute(ref row1, ref row2, ref row3)</c> to
+    /// diagonalize and <c>Permute(ref row3, ref row2, ref row1)</c> to un-diagonalize.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void Permute(
+        ref Vector128<uint> a, ref Vector128<uint> b, ref Vector128<uint> c)
+    {
+        a = Sse2.Shuffle(a, 0b00_11_10_01);
+        b = Sse2.Shuffle(b, 0b01_00_11_10);
+        c = Sse2.Shuffle(c, 0b10_01_00_11);
     }
 }
 

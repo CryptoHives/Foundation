@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -8,7 +8,6 @@
     <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <Description>CryptoHives Security Cryptography Library</Description>
-    <!-- set to true when experimental Nuget package is ready to ship-->
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
@@ -17,6 +16,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Cryptographic operations use intentional bit manipulation that requires unchecked arithmetic -->
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+    <!-- Experimental algorithms are enabled by default for development and CI test builds.
+         NuGet packaging pipelines must explicitly pass /p:EnableExperimentalAlgorithms=false. -->
+    <EnableExperimentalAlgorithms>true</EnableExperimentalAlgorithms>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -25,6 +27,10 @@
 
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EnableExperimentalAlgorithms)' == 'true'">
+    <DefineConstants>$(DefineConstants);EXPERIMENTAL</DefineConstants>
   </PropertyGroup>
 
   <Choose>

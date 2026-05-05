@@ -3,7 +3,7 @@
 
 # update-benchmark-docs.ps1
 # Copies BenchmarkDotNet results to docfx benchmark documentation folder
-# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>] [-DryRun]
+# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>] [-PlatformId <slug>] [-DryRun]
 
 [CmdletBinding()]
 param(
@@ -16,6 +16,9 @@ param(
 
     [Parameter(HelpMessage = "Destination directory for docfx benchmark documentation")]
     [string]$DestDir,
+
+    [Parameter(HelpMessage = "Optional platform identifier override (for example: macos-arm64-apple-m4)")]
+    [string]$PlatformId,
 
     [Parameter(HelpMessage = "Dry run - show actions without executing")]
     [switch]$DryRun
@@ -234,6 +237,42 @@ function Normalize-BenchmarkContent {
     return $normalized.Trim()
 }
 
+function ConvertTo-Slug {
+    param([string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+
+    $slug = $Value.ToLowerInvariant() -replace '[^a-z0-9]+', '-'
+    $slug = $slug -replace '^-+', ''
+    $slug = $slug -replace '-+$', ''
+
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        return $null
+    }
+
+    return $slug
+}
+
+function Ensure-Directory {
+    param(
+        [string]$Path,
+        [switch]$DryRunMode
+    )
+
+    if (Test-Path $Path) {
+        return
+    }
+
+    if ($DryRunMode) {
+        Write-Host "  [DRY RUN] New-Item -ItemType Directory -Force -Path $Path" -ForegroundColor Yellow
+        return
+    }
+
+    New-Item -ItemType Directory -Force -Path $Path | Out-Null
+}
+
 # Function to extract machine specification from benchmark content
 function Extract-MachineSpec {
     param([string]$Content)
@@ -293,6 +332,76 @@ function Strip-MachineSpec {
     return $resultLines -join "`n"
 }
 
+function Get-PlatformIdFromMachineSpec {
+    param([string]$MachineSpec)
+
+    $lines = $MachineSpec -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    $osLine = if ($lines.Count -gt 0) { $lines[0] } else { "" }
+    $cpuLine = if ($lines.Count -gt 1) { $lines[1] } else { "" }
+
+    # Prefer host/runtime lines that carry architecture information, and ignore the SDK line.
+    $runtimeLine = $lines | Where-Object {
+        $_ -match '^\[Host\]' -or
+        $_ -match '^\.NET\s+\d'
+    } | Select-Object -First 1
+
+    if (-not $runtimeLine) {
+        $runtimeLine = $lines | Where-Object {
+            $_ -match 'Arm64|arm64|armv8|x86-64|\bX64\b|\bx64\b|\bx86\b'
+        } | Select-Object -First 1
+    }
+
+    $osSlug = switch -Regex ($osLine) {
+        'Windows' { 'windows'; break }
+        'macOS'   { 'macos'; break }
+        'Linux'   { 'linux'; break }
+        default   { 'unknown-os' }
+    }
+
+    $archSlug = switch -Regex ($runtimeLine) {
+        'Arm64|arm64|armv8' { 'arm64'; break }
+        'X64|x86-64|x64'    { 'x64'; break }
+        '\bx86\b'         { 'x86'; break }
+        default             { 'unknown-arch' }
+    }
+
+    $cpuName = $cpuLine -replace ',.*$', ''
+    $cpuName = $cpuName -replace '\s+[0-9.]+GHz\b', ''
+    $cpuSlug = ConvertTo-Slug -Value $cpuName
+
+    if (-not $cpuSlug) {
+        $cpuSlug = 'unknown-cpu'
+    }
+
+    return "$osSlug-$archSlug-$cpuSlug"
+}
+
+function Test-PlatformIdFormat {
+    param([string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+
+    # Expect at least os-arch-cpu and only lowercase slug segments.
+    return $Value -match '^[a-z0-9]+(?:-[a-z0-9]+){2,}$'
+}
+
+function Assert-PlatformId {
+    param(
+        [string]$Value,
+        [string]$SourceLabel
+    )
+
+    if (-not (Test-PlatformIdFormat -Value $Value)) {
+        throw "Invalid platform identifier from ${SourceLabel}: '$Value'. Expected a slug like 'macos-arm64-apple-m4'."
+    }
+
+    if ($Value -match 'unknown-os|unknown-arch|unknown-cpu') {
+        throw "Platform identifier from $SourceLabel contains unknown components: '$Value'. Check machine-spec parsing or pass -PlatformId explicitly."
+    }
+}
+
 Write-Host "Copying benchmark results..."
 Write-Host ""
 
@@ -300,6 +409,22 @@ $copied = 0
 $missing = 0
 $machineSpec = $null
 $machineSpecExtracted = $false
+$destinationRoot = $DestDir
+$resolvedDestDir = $null
+
+Ensure-Directory -Path $destinationRoot -DryRunMode:$DryRun
+
+if (-not [string]::IsNullOrWhiteSpace($PlatformId)) {
+    Assert-PlatformId -Value $PlatformId -SourceLabel "-PlatformId"
+    $resolvedDestDir = Join-Path $destinationRoot $PlatformId
+    Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
+}
+
+Write-Host "Destination root: $destinationRoot"
+if ($PlatformId) {
+    Write-Host "PlatformId: $PlatformId"
+}
+Write-Host ""
 
 foreach ($mapping in $benchmarkMappings) {
     $sourceFile = Join-Path $SourceDir $mapping.Source
@@ -314,12 +439,24 @@ foreach ($mapping in $benchmarkMappings) {
             $machineSpec = Extract-MachineSpec -Content $content
             $machineSpecExtracted = $true
             Write-Host "  [INFO] Extracted machine specification from $($mapping.Source)" -ForegroundColor Cyan
+
+            if (-not $PlatformId) {
+                $PlatformId = Get-PlatformIdFromMachineSpec -MachineSpec $machineSpec
+                Assert-PlatformId -Value $PlatformId -SourceLabel "machine specification"
+                $resolvedDestDir = Join-Path $destinationRoot $PlatformId
+                Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
+                Write-Host "  [INFO] Derived platform identifier: $PlatformId" -ForegroundColor Cyan
+            }
+        }
+
+        if (-not $resolvedDestDir) {
+            $resolvedDestDir = $destinationRoot
         }
 
         # Strip machine spec and remove BenchmarkDotNet emphasis markers
         $tableContent = Strip-MachineSpec -Content $content
         $tableContent = Normalize-BenchmarkContent -Content $tableContent
-        $destFile = Join-Path $DestDir $targetName
+        $destFile = Join-Path $resolvedDestDir $targetName
 
         # Write the stripped content as UTF-8 with BOM
         if ($DryRun) {
@@ -338,7 +475,11 @@ foreach ($mapping in $benchmarkMappings) {
 
 # Save machine specification to separate file
 if ($machineSpec) {
-    $machineSpecFile = Join-Path $DestDir "machine-spec.md"
+    if (-not $resolvedDestDir) {
+        $resolvedDestDir = $destinationRoot
+    }
+
+    $machineSpecFile = Join-Path $resolvedDestDir "machine-spec.md"
     $machineSpecContent = @"
 ## Machine Specification
 
@@ -364,10 +505,13 @@ Write-Host ""
 Write-Host "========================================"
 Write-Host " Benchmark documentation updated!"
 Write-Host " Copied: $copied, Missing: $missing"
+if ($PlatformId) {
+    Write-Host " Platform: $PlatformId"
+}
 Write-Host "========================================"
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Review the updated files in $DestDir"
+Write-Host "  1. Review the updated files in $resolvedDestDir"
 Write-Host "  2. Build docfx to verify: docfx docfx/docfx.json"
 Write-Host "  3. Commit the changes"
 Write-Host ""
