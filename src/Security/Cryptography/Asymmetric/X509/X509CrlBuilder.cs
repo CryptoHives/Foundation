@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
@@ -350,7 +350,10 @@ public sealed class X509CrlBuilder
     {
         int i = 0;
         while (i < value.Length - 1 && value[i] == 0)
+        {
             i++;
+        }
+
         return value.AsSpan(i);
     }
 

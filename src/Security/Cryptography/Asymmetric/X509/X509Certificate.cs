@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
@@ -7,7 +7,7 @@ using System;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 
-using ManagedHash = CryptoHives.Foundation.Security.Cryptography.Hash;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Represents an X.509 v1/v2/v3 certificate per RFC 5280.
@@ -115,7 +115,7 @@ public sealed class X509Certificate
     {
         get
         {
-            using var sha = ManagedHash.SHA256.Create();
+            using var sha = CH.SHA256.Create();
             byte[] hash = new byte[32];
             sha.TryComputeHash(RawDer, hash, out _);
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();

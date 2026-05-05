@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
@@ -140,7 +140,10 @@ public static class CsrParser
         byte[] der = PemHelper.Decode(pem, out string label);
         if (!label.Equals("CERTIFICATE REQUEST", StringComparison.OrdinalIgnoreCase) &&
             !label.Equals("NEW CERTIFICATE REQUEST", StringComparison.OrdinalIgnoreCase))
+        {
             throw new CryptographicException($"Unexpected PEM label: {label}");
+        }
+
         return ParseDer(der);
     }
 }

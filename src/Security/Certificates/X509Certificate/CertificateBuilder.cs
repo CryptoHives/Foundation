@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Certificates;
@@ -387,7 +387,8 @@ public class CertificateBuilder : CertificateBuilderBase
             X509KeyUsageFlags keyUsageFlags;
             if (_isCA)
             {
-                keyUsageFlags = X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign;
+                keyUsageFlags = X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign
+                    | X509KeyUsageFlags.CrlSign;
             }
             else
             {
@@ -403,6 +404,7 @@ public class CertificateBuilder : CertificateBuilderBase
                     keyUsageFlags = X509KeyUsageFlags.DataEncipherment | X509KeyUsageFlags.KeyEncipherment
                         | X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.NonRepudiation;
                 }
+
                 if (IssuerCAKeyCert == null)
                 {
                     // self signed case
@@ -411,9 +413,9 @@ public class CertificateBuilder : CertificateBuilderBase
             }
 
             request.CertificateExtensions.Add(
-                                new X509KeyUsageExtension(
-                                    keyUsageFlags,
-                                    true));
+                new X509KeyUsageExtension(
+                    keyUsageFlags,
+                    true));
         }
 
         if (!_isCA)

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
@@ -223,8 +223,16 @@ public sealed class CsrBuilder
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence();
-        if (isCA) writer.WriteBoolean(true);
-        if (pathLengthConstraint.HasValue) writer.WriteInteger(pathLengthConstraint.Value);
+        if (isCA)
+        {
+            writer.WriteBoolean(true);
+        }
+
+        if (pathLengthConstraint.HasValue)
+        {
+            writer.WriteInteger(pathLengthConstraint.Value);
+        }
+
         writer.PopSequence();
         _extensions.Add(new X509Extension(X509ExtensionCollection.OidBasicConstraints, true, writer.Encode()));
         return this;
@@ -241,7 +249,10 @@ public sealed class CsrBuilder
         byte[] bytes = [(byte)(bits >> 8), (byte)(bits & 0xFF)];
         int unusedBits = 0;
         if (bytes[1] == 0) { bytes = [bytes[0]]; }
-        for (int i = 0; i < 8 && (bytes[^1] & (1 << i)) == 0; i++) unusedBits++;
+        for (int i = 0; i < 8 && (bytes[^1] & (1 << i)) == 0; i++)
+        {
+            unusedBits++;
+        }
 
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.WriteBitString(bytes, unusedBits);
@@ -306,7 +317,10 @@ public sealed class CsrBuilder
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence();
         foreach (string oid in oids)
+        {
             writer.WriteObjectIdentifier(oid);
+        }
+
         writer.PopSequence();
         _extensions.Add(new X509Extension(X509ExtensionCollection.OidExtendedKeyUsage, false, writer.Encode()));
         return this;
@@ -328,7 +342,9 @@ public sealed class CsrBuilder
         if (privateKey is null) throw new ArgumentNullException(nameof(privateKey));
 
         if (_publicKeySpkiDer is null)
+        {
             SetPublicKey(privateKey);
+        }
 
         string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch
         {
@@ -432,10 +448,14 @@ public sealed class CsrBuilder
     public X509CertificateSigningRequest Build()
     {
         if (_autoRsaKey is not null)
+        {
             return BuildRsa(_autoRsaKey);
+        }
 
         if (_autoEcPrivateKey is not null && _autoEcCurveName is not null)
+        {
             return BuildEcDsa(_autoEcPrivateKey, _autoEcCurveName, _autoEcHashAlgorithm ?? "SHA256");
+        }
 
         if (_autoEdSeed is not null && _autoEdAlgorithm is not null)
         {
@@ -485,7 +505,11 @@ public sealed class CsrBuilder
             {
                 writer.PushSequence();
                 writer.WriteObjectIdentifier(ext.Oid);
-                if (ext.Critical) writer.WriteBoolean(true);
+                if (ext.Critical)
+                {
+                    writer.WriteBoolean(true);
+                }
+
                 writer.WriteOctetString(ext.Value);
                 writer.PopSequence();
             }
@@ -526,7 +550,9 @@ public sealed class CsrBuilder
 
         string keyAlg = SignatureAlgorithm.GetKeyAlgorithm(oid);
         if (keyAlg == "RSA" && oid != SignatureAlgorithm.OidRsaPss)
+        {
             writer.WriteNull();
+        }
 
         writer.PopSequence();
     }
@@ -554,7 +580,10 @@ public sealed class CsrBuilder
     {
         int i = 0;
         while (i < value.Length - 1 && value[i] == 0)
+        {
             i++;
+        }
+
         return value.AsSpan(i);
     }
 
