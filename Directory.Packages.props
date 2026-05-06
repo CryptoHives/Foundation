@@ -13,14 +13,14 @@
     <PackageVersion Include="Konscious.Security.Cryptography.Blake2" Version="1.1.1" />
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.5" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
-    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.5" />
-    <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="10.0.7" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.7" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading" Version="17.14.15" />
     <PackageVersion Include="NaCl.Core" Version="2.1.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
@@ -37,12 +37,11 @@
     <PackageVersion Include="OpenGost.Security.Cryptography" Version="0.3.0" />
     <PackageVersion Include="ProtoPromise" Version="3.5.1" />
     <PackageVersion Include="SharpFuzz" Version="2.2.0" />
-    <PackageVersion Include="System.Formats.Asn1" Version="10.0.5" />
+    <PackageVersion Include="System.Formats.Asn1" Version="10.0.7" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
-
   <!-- NuGet package validation: versions for the just-built first-party packages.    -->
   <!-- Activate with /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>  -->
   <PropertyGroup Condition="'$(UsePackedNuGetPackages)' == 'true' AND '$(Configuration)' == 'Debug'">

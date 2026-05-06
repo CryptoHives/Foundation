@@ -93,6 +93,7 @@ public abstract class CertificateBuilderBase
     /// <inheritdoc/>
     public abstract X509Certificate2 CreateForECDsa(X509SignatureGenerator generator);
 #endif
+
     /// <inheritdoc/>
     public ICertificateBuilder SetSerialNumberLength(int length)
     {
