@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
@@ -191,14 +191,19 @@ public sealed class OcspResponse
         {
             // Non-successful responses have no responseBytes
             if (outerSeq.HasData)
+            {
                 outerSeq.ReadEncodedValue(); // skip optional responseBytes if present
+            }
+
             return new OcspResponse(statusValue, null, null, null, null, null, null);
         }
 
         // responseBytes [0] EXPLICIT ResponseBytes
         var ctx0 = new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true);
         if (!outerSeq.HasData || !outerSeq.PeekTag().HasSameClassAndValue(ctx0))
+        {
             throw new CryptographicException("Successful OCSP response missing responseBytes.");
+        }
 
         var responseBytesWrapper = outerSeq.ReadSequence(ctx0);
         var responseBytesSeq = responseBytesWrapper.ReadSequence();
@@ -207,7 +212,9 @@ public sealed class OcspResponse
         // responseType OID
         string responseType = responseBytesSeq.ReadObjectIdentifier();
         if (responseType != OidBasicOcspResponse)
+        {
             throw new CryptographicException($"Unsupported OCSP response type: {responseType}");
+        }
 
         // response OCTET STRING — contains DER-encoded BasicOCSPResponse
         byte[] basicResponseDer = responseBytesSeq.ReadOctetString();
@@ -224,7 +231,9 @@ public sealed class OcspResponse
     public OcspSingleResponse? FindResponse(OcspCertId certId)
     {
         if (certId is null || Responses is null)
+        {
             return null;
+        }
 
         return Responses.FirstOrDefault(r =>
             r.CertId.HashAlgorithmOid == certId.HashAlgorithmOid &&
@@ -248,10 +257,14 @@ public sealed class OcspResponse
     {
         if (issuerCert is null) throw new ArgumentNullException(nameof(issuerCert));
         if (TbsResponseDataDer is null || SignatureValue is null || SignatureAlgorithmOid is null)
+        {
             return false;
+        }
 
         if (VerifyWithPublicKey(TbsResponseDataDer, SignatureValue, SignatureAlgorithmOid, issuerCert.SubjectPublicKeyInfoDer))
+        {
             return true;
+        }
 
         // Try embedded responder certs
         if (ResponderCerts is not null)
@@ -259,7 +272,9 @@ public sealed class OcspResponse
             foreach (var cert in ResponderCerts)
             {
                 if (VerifyWithPublicKey(TbsResponseDataDer, SignatureValue, SignatureAlgorithmOid, cert.SubjectPublicKeyInfoDer))
+                {
                     return true;
+                }
             }
         }
 
@@ -280,7 +295,9 @@ public sealed class OcspResponse
         var sigAlgSeq = basicSeq.ReadSequence();
         string sigAlgOid = sigAlgSeq.ReadObjectIdentifier();
         while (sigAlgSeq.HasData)
+        {
             sigAlgSeq.ReadEncodedValue(); // skip optional parameters
+        }
 
         // signature BIT STRING
         byte[] signatureValue = basicSeq.ReadBitString(out _);
@@ -321,14 +338,20 @@ public sealed class OcspResponse
         // version [0] EXPLICIT Version DEFAULT v1
         var versionTag = new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true);
         if (tbsReader.HasData && tbsReader.PeekTag().HasSameClassAndValue(versionTag))
+        {
             tbsReader.ReadSequence(versionTag); // skip version
+        }
 
         // responderID — CHOICE: [1] byName or [2] byKeyHash
         var tag = tbsReader.PeekTag();
         if (tag.TagClass == TagClass.ContextSpecific)
+        {
             tbsReader.ReadEncodedValue(); // skip responderID (we don't need it for basic verification)
+        }
         else
+        {
             tbsReader.ReadEncodedValue(); // skip
+        }
 
         // producedAt GeneralizedTime
         DateTimeOffset producedAt = tbsReader.ReadGeneralizedTime();
@@ -344,7 +367,9 @@ public sealed class OcspResponse
         // responseExtensions [1] EXPLICIT Extensions OPTIONAL
         var extTag = new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true);
         if (tbsReader.HasData && tbsReader.PeekTag().HasSameClassAndValue(extTag))
+        {
             tbsReader.ReadEncodedValue(); // skip extensions
+        }
 
         tbsReader.ThrowIfNotEmpty();
         return (producedAt, responses);
@@ -409,7 +434,9 @@ public sealed class OcspResponse
         // singleExtensions [1] EXPLICIT Extensions OPTIONAL
         var singleExtTag = new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true);
         if (singleSeq.HasData && singleSeq.PeekTag().HasSameClassAndValue(singleExtTag))
+        {
             singleSeq.ReadEncodedValue(); // skip
+        }
 
         singleSeq.ThrowIfNotEmpty();
 
@@ -446,7 +473,10 @@ public sealed class OcspResponse
         byte[] hash = ComputeHash(tbsDer, hashAlg);
         using var rsa = new RsaCipher(rsaKey);
         if (sigAlgOid == SignatureAlgorithm.OidRsaPss)
+        {
             return rsa.VerifyPss(hash, signature, hashAlg);
+        }
+
         return rsa.VerifyPkcs1(hash, signature, hashAlg);
     }
 
@@ -456,7 +486,9 @@ public sealed class OcspResponse
         byte[] pubPoint = KeyEncoding.ImportSubjectPublicKeyInfo(spkiDer, out _, out string? curveOid);
 
         if (pubPoint.Length < 3 || pubPoint[0] != 0x04)
+        {
             return false;
+        }
 
         int coordLen = (pubPoint.Length - 1) / 2;
         byte[] qx = new byte[coordLen];
@@ -517,13 +549,20 @@ public sealed class OcspResponse
         ReadOnlyMemory<byte> bytes = reader.ReadIntegerBytes();
         ReadOnlySpan<byte> span = bytes.Span;
         if (span.Length > 1 && span[0] == 0)
+        {
             return span[1..].ToArray();
+        }
+
         return span.ToArray();
     }
 
     private static byte[] PadLeft(byte[] data, int length)
     {
-        if (data.Length >= length) return data;
+        if (data.Length >= length)
+        {
+            return data;
+        }
+
         byte[] padded = new byte[length];
         Buffer.BlockCopy(data, 0, padded, length - data.Length, data.Length);
         return padded;
