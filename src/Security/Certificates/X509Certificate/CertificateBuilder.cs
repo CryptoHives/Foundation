@@ -149,7 +149,7 @@ public class CertificateBuilder : CertificateBuilderBase
         return rsaKeyPair == null ? signedCert : signedCert.CopyWithPrivateKey(rsaKeyPair);
     }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     /// <inheritdoc/>
     public override X509Certificate2 CreateForECDsa()
     {

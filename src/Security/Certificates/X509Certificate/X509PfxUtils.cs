@@ -202,7 +202,7 @@ public static class X509PfxUtils
         return rsaPublicKey.VerifyData(testBlock, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
     }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     /// <summary>
     /// Verify ECDsa key pair of two certificates.
     /// </summary>

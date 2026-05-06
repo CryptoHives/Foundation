@@ -1,9 +1,9 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Certificates.Tests;
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
 using System;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;

@@ -34,7 +34,7 @@ public interface ICertificateBuilderIssuer
 /// </summary>
 public interface ICertificateBuilderPublicKey
     : ICertificateBuilderRSAPublicKey
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     , ICertificateBuilderECDsaPublicKey
 #endif
 { }
@@ -44,7 +44,7 @@ public interface ICertificateBuilderPublicKey
 /// </summary>
 public interface ICertificateBuilderParameter
     : ICertificateBuilderRSAParameter
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     , ICertificateBuilderECCParameter
 #endif
 { }
@@ -54,7 +54,7 @@ public interface ICertificateBuilderParameter
 /// </summary>
 public interface ICertificateBuilderCreate
     : ICertificateBuilderCreateForRSA
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     , ICertificateBuilderCreateForECDsa
 #endif
 { }
@@ -64,7 +64,7 @@ public interface ICertificateBuilderCreate
 /// </summary>
 public interface ICertificateBuilderCreateGenerator
     : ICertificateBuilderCreateForRSAGenerator
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     , ICertificateBuilderCreateForECDsaGenerator
 #endif
 { }
@@ -77,7 +77,7 @@ public interface ICertificateBuilderCreateForRSAAny
     , ICertificateBuilderCreateForRSAGenerator
 { }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
 /// <summary>
 /// The interface to create a ECDSA based certificate.
 /// </summary>
@@ -218,7 +218,7 @@ public interface ICertificateBuilderRSAParameter
     ICertificateBuilderCreateForRSAAny SetRSAKeySize(ushort keySize);
 }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
 /// <summary>
 /// The interface to select the ECCurve.
 /// </summary>
@@ -250,7 +250,7 @@ public interface ICertificateBuilderRSAPublicKey
     ICertificateBuilderCreateForRSAAny SetRSAPublicKey(RSA publicKey);
 }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
 /// <summary>
 /// The interface to set a ECDSA public key for a certificate.
 /// </summary>
@@ -294,7 +294,7 @@ public interface ICertificateBuilderCreateForRSAGenerator
     X509Certificate2 CreateForRSA(X509SignatureGenerator generator);
 }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
 /// <summary>
 /// The interface to create a certificate using the ECDSA algorithm.
 /// </summary>

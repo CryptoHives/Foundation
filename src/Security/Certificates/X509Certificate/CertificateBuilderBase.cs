@@ -23,7 +23,7 @@ public abstract class CertificateBuilderBase
     , ICertificateBuilderRSAPublicKey
     , ICertificateBuilderCreateForRSA
     , ICertificateBuilderCreateForRSAAny
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     , ICertificateBuilderCreateForECDsa
     , ICertificateBuilderECDsaPublicKey
     , ICertificateBuilderECCParameter
@@ -86,7 +86,7 @@ public abstract class CertificateBuilderBase
     /// <inheritdoc/>
     public abstract X509Certificate2 CreateForRSA(X509SignatureGenerator generator);
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     /// <inheritdoc/>
     public abstract X509Certificate2 CreateForECDsa();
 
@@ -203,7 +203,7 @@ public abstract class CertificateBuilderBase
         return this;
     }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     /// <inheritdoc/>
     public virtual ICertificateBuilderCreateForECDsaAny SetECCurve(ECCurve curve)
     {
@@ -330,7 +330,7 @@ public abstract class CertificateBuilderBase
     /// The size of a RSA key pair to create.
     /// </summary>
     private protected int _keySize;
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     /// <summary>
     /// The ECDsa public to use when if a certificate is signed.
     /// </summary>

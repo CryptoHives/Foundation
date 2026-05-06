@@ -244,7 +244,7 @@ public sealed class CrlBuilder : IX509CRL
         return CreateSignature(generator);
     }
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
     /// <summary>
     /// Create the CRL with signature for ECDsa.
     /// </summary>

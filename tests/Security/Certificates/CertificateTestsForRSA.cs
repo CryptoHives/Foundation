@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Certificates.Tests;
@@ -452,12 +452,12 @@ public class CertificateTestsForRSA
         PEMWriter.ExportCertificateAsPEM(certificate);
         if (certificate.HasPrivateKey)
         {
-#if NETFRAMEWORK || NETCOREAPP2_1 || !ECC_SUPPORT
+#if NETFRAMEWORK || NETCOREAPP2_1 || !ECDSA_SUPPORT
                 // The implementation based on bouncy castle has no support to export with password
                 password = null;
 #endif
             PEMWriter.ExportPrivateKeyAsPEM(certificate, password);
-#if NETCOREAPP3_1_OR_GREATER && ECC_SUPPORT
+#if NETCOREAPP3_1_OR_GREATER && ECDSA_SUPPORT
             PEMWriter.ExportRSAPrivateKeyAsPEM(certificate);
 #endif
         }

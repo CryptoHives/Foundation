@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Certificates.Tests;
@@ -63,7 +63,7 @@ public class KeyHashPairCollection : List<KeyHashPair>
 }
 #endregion
 
-#if ECC_SUPPORT
+#if ECDSA_SUPPORT
 #region ECCurveHashPair Helper
 public class ECCurveHashPair : IFormattable
 {

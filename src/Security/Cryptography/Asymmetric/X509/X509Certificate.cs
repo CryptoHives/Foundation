@@ -115,7 +115,7 @@ public sealed class X509Certificate
     {
         get
         {
-            using var sha = CH.SHA256.Create();
+            using var sha = CH.Hash.SHA256.Create();
             byte[] hash = new byte[32];
             sha.TryComputeHash(RawDer, hash, out _);
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();

@@ -1,4 +1,4 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -30,7 +30,7 @@
     </When>
     <Otherwise>
       <PropertyGroup>
-        <DefineConstants>$(DefineConstants);ECC_SUPPORT</DefineConstants>
+        <DefineConstants>$(DefineConstants);ECDSA_SUPPORT</DefineConstants>
       </PropertyGroup>
     </Otherwise>
   </Choose>
