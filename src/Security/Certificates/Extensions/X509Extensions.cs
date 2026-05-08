@@ -109,7 +109,7 @@ public static class X509Extensions
         }
 
         var generalNameUriChoice = new Asn1Tag(TagClass.ContextSpecific, 6);
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         AsnWriter writer = pooledWriter.Writer;
         writer.PushSequence();
         if (caIssuerUrls != null)
@@ -160,7 +160,7 @@ public static class X509Extensions
         Asn1Tag distributionPointChoice = context0;
         Asn1Tag fullNameChoice = context0;
         var generalNameUriChoice = new Asn1Tag(TagClass.ContextSpecific, 6);
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         AsnWriter writer = pooledWriter.Writer;
         writer.PushSequence();
         writer.PushSequence();
@@ -233,7 +233,7 @@ public static class X509Extensions
     /// </summary>
     public static X509Extension BuildX509CRLReason(CRLReason reason)
     {
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         pooledWriter.Writer.WriteEnumeratedValue(reason);
         return new X509Extension(Oids.CrlReasonCode, pooledWriter.Encode(), false);
     }
@@ -273,7 +273,7 @@ public static class X509Extensions
     /// </summary>
     public static X509Extension BuildCRLNumber(BigInteger crlNumber)
     {
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         pooledWriter.Writer.WriteInteger(crlNumber);
         return new X509Extension(Oids.CrlNumber, pooledWriter.Encode(), false);
     }

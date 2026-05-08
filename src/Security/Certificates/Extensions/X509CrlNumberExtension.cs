@@ -113,7 +113,8 @@ public class X509CrlNumberExtension : X509Extension
     /// </summary>
     private byte[] Encode()
     {
-        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using var owner = PooledAsnWriterDer.Get();
+        var writer = owner.Writer;
         writer.WriteInteger(CrlNumber);
         return writer.Encode();
     }

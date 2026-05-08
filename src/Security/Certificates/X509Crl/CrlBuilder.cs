@@ -294,7 +294,7 @@ public sealed class CrlBuilder : IX509CRL
     /// </remarks>
     internal byte[] Encode()
     {
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         AsnWriter crlWriter = pooledWriter.Writer;
         {
             // tbsCertList

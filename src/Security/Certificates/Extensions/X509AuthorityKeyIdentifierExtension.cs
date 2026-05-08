@@ -215,7 +215,7 @@ public class X509AuthorityKeyIdentifierExtension : X509Extension
     #region Private Methods
     private byte[] Encode()
     {
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         AsnWriter writer = pooledWriter.Writer;
         writer.PushSequence();
 

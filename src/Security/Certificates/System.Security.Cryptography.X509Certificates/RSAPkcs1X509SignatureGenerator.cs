@@ -81,7 +81,8 @@ internal sealed class RSAPkcs1X509SignatureGenerator : X509SignatureGenerator
                 $"'{hashAlgorithm.Name}' is not a known hash algorithm.");
         }
 
-        AsnWriter writer = new AsnWriter(AsnEncodingRules.DER);
+        using var owner = PooledAsnWriterDer.Get();
+        var writer = owner.Writer;
         writer.PushSequence();
         writer.WriteObjectIdentifier(oid);
         writer.WriteNull();
@@ -98,7 +99,8 @@ internal sealed class RSAPkcs1X509SignatureGenerator : X509SignatureGenerator
             throw new CryptographicException("Invalid RSA Parameters.");
         }
 
-        AsnWriter writer = new AsnWriter(AsnEncodingRules.DER);
+        using var owner = PooledAsnWriterDer.Get();
+        var writer = owner.Writer;
         writer.PushSequence();
         writer.WriteKeyParameterInteger(rsaParameters.Modulus);
         writer.WriteKeyParameterInteger(rsaParameters.Exponent);

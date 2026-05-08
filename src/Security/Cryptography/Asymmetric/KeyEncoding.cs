@@ -10,8 +10,7 @@ using CryptoHives.Foundation.Security.Cryptography.Asymmetric.Rsa;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Kdf;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
-using ManagedCipherMode = CryptoHives.Foundation.Security.Cryptography.Cipher.CipherMode;
-using ManagedPaddingMode = CryptoHives.Foundation.Security.Cryptography.Cipher.PaddingMode;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Provides ASN.1 DER encoding and decoding for asymmetric key types
@@ -20,19 +19,19 @@ using ManagedPaddingMode = CryptoHives.Foundation.Security.Cryptography.Cipher.P
 /// </summary>
 public static class KeyEncoding
 {
-    private const string OidRsa = "1.2.840.113549.1.1.1";
-    private const string OidEcPublicKey = "1.2.840.10045.2.1";
-    private const string OidP256 = "1.2.840.10045.3.1.7";
-    private const string OidP384 = "1.3.132.0.34";
-    private const string OidP521 = "1.3.132.0.35";
-    private const string OidSecp256k1 = "1.3.132.0.10";
-    private const string OidBrainpoolP256r1 = "1.3.36.3.3.2.8.1.1.7";
-    private const string OidBrainpoolP384r1 = "1.3.36.3.3.2.8.1.1.11";
-    private const string OidBrainpoolP512r1 = "1.3.36.3.3.2.8.1.1.13";
-    private const string OidEd25519 = "1.3.101.112";
-    private const string OidEd448 = "1.3.101.113";
-    private const string OidX25519 = "1.3.101.110";
-    private const string OidX448 = "1.3.101.111";
+    internal const string OidRsa = "1.2.840.113549.1.1.1";
+    internal const string OidEcPublicKey = "1.2.840.10045.2.1";
+    internal const string OidP256 = "1.2.840.10045.3.1.7";
+    internal const string OidP384 = "1.3.132.0.34";
+    internal const string OidP521 = "1.3.132.0.35";
+    internal const string OidSecp256k1 = "1.3.132.0.10";
+    internal const string OidBrainpoolP256r1 = "1.3.36.3.3.2.8.1.1.7";
+    internal const string OidBrainpoolP384r1 = "1.3.36.3.3.2.8.1.1.11";
+    internal const string OidBrainpoolP512r1 = "1.3.36.3.3.2.8.1.1.13";
+    internal const string OidEd25519 = "1.3.101.112";
+    internal const string OidEd448 = "1.3.101.113";
+    internal const string OidX25519 = "1.3.101.110";
+    internal const string OidX448 = "1.3.101.111";
 
     // ========================================================================
     // RSA PKCS#1 (RFC 8017)
@@ -452,8 +451,8 @@ public static class KeyEncoding
         {
             aes.Key = derivedKey;
             aes.IV = iv;
-            aes.Mode = ManagedCipherMode.CBC;
-            aes.Padding = ManagedPaddingMode.PKCS7;
+            aes.Mode = CH.Cipher.CipherMode.CBC;
+            aes.Padding = CH.Cipher.PaddingMode.PKCS7;
             encrypted = aes.Encrypt(pkcs8Der);
         }
 
@@ -509,8 +508,8 @@ public static class KeyEncoding
             using var aes = derivedKeyLen == 32 ? (SymmetricCipher)Aes256.Create() : Aes128.Create();
             aes.Key = derivedKey;
             aes.IV = iv;
-            aes.Mode = ManagedCipherMode.CBC;
-            aes.Padding = ManagedPaddingMode.PKCS7;
+            aes.Mode = CH.Cipher.CipherMode.CBC;
+            aes.Padding = CH.Cipher.PaddingMode.PKCS7;
             pkcs8Der = aes.Decrypt(encryptedData);
         }
         catch (Exception ex) when (ex is not CryptographicException)

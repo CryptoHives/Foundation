@@ -1,15 +1,18 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
+
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+#pragma warning disable CS0618 // Type or member is obsolete
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
 
+using CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
+using CryptoHives.Foundation.Security.Cryptography.Asymmetric.Rsa;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
-using CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
-using CryptoHives.Foundation.Security.Cryptography.Asymmetric.Rsa;
-using ManagedHash = CryptoHives.Foundation.Security.Cryptography.Hash;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Builds X.509 v3 certificates using a fluent builder pattern.
@@ -116,8 +119,7 @@ public sealed class X509CertificateBuilder
         Buffer.BlockCopy(qy, 0, pubPoint, 1 + qx.Length, qy.Length);
         byte[] spki = KeyEncoding.ExportSubjectPublicKeyInfo("1.2.840.10045.2.1", curveOid, pubPoint);
 
-        string hash = hashAlgorithm ?? (curve.FieldBits switch
-        {
+        string hash = hashAlgorithm ?? (curve.FieldBits switch {
             <= 256 => "SHA256",
             <= 384 => "SHA384",
             _ => "SHA512",
@@ -499,8 +501,7 @@ public sealed class X509CertificateBuilder
     {
         if (privateKey is null) throw new ArgumentNullException(nameof(privateKey));
 
-        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch
-        {
+        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch {
             "SHA256" => SignatureAlgorithm.OidSha256WithRsa,
             "SHA384" => SignatureAlgorithm.OidSha384WithRsa,
             "SHA512" => SignatureAlgorithm.OidSha512WithRsa,
@@ -537,8 +538,7 @@ public sealed class X509CertificateBuilder
     {
         if (ecPrivateKey is null) throw new ArgumentNullException(nameof(ecPrivateKey));
 
-        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch
-        {
+        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch {
             "SHA256" => SignatureAlgorithm.OidEcdsaWithSha256,
             "SHA384" => SignatureAlgorithm.OidEcdsaWithSha384,
             "SHA512" => SignatureAlgorithm.OidEcdsaWithSha512,
@@ -767,8 +767,7 @@ public sealed class X509CertificateBuilder
         return value.AsSpan(i);
     }
 
-    private static HashAlgorithmName ToHashAlgorithmName(string name) => name.ToUpperInvariant() switch
-    {
+    private static HashAlgorithmName ToHashAlgorithmName(string name) => name.ToUpperInvariant() switch {
         "SHA1" => HashAlgorithmName.SHA1,
         "SHA256" => HashAlgorithmName.SHA256,
         "SHA384" => HashAlgorithmName.SHA384,
@@ -809,18 +808,14 @@ public sealed class X509CertificateBuilder
     /// Computes the Subject Key Identifier as the SHA-1 hash of the public key
     /// BIT STRING content per RFC 5280 §4.2.1.2.
     /// </summary>
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-#pragma warning disable CS0618 // Type or member is obsolete
     private static byte[] ComputeSubjectKeyIdentifier(byte[] spkiDer)
     {
         byte[] publicKeyBytes = KeyEncoding.ImportSubjectPublicKeyInfo(spkiDer, out _, out _);
-        using var sha1 = new ManagedHash.SHA1();
+        using var sha1 = new CH.Hash.SHA1();
         byte[] ski = new byte[20];
         sha1.TryComputeHash(publicKeyBytes, ski, out _);
         return ski;
     }
-#pragma warning restore CS0618
-#pragma warning restore CA5350
 
     /// <summary>
     /// Builds a certificate signed by an RSA issuer key.
@@ -837,8 +832,7 @@ public sealed class X509CertificateBuilder
         var savedIssuer = _issuer;
         _issuer = issuerName;
 
-        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch
-        {
+        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch {
             "SHA256" => SignatureAlgorithm.OidSha256WithRsa,
             "SHA384" => SignatureAlgorithm.OidSha384WithRsa,
             "SHA512" => SignatureAlgorithm.OidSha512WithRsa,
@@ -872,8 +866,7 @@ public sealed class X509CertificateBuilder
         var savedIssuer = _issuer;
         _issuer = issuerName;
 
-        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch
-        {
+        string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch {
             "SHA256" => SignatureAlgorithm.OidEcdsaWithSha256,
             "SHA384" => SignatureAlgorithm.OidEcdsaWithSha384,
             "SHA512" => SignatureAlgorithm.OidEcdsaWithSha512,
@@ -945,8 +938,7 @@ public sealed class X509CertificateBuilder
         throw new InvalidOperationException("No key material available. Use a factory method or a typed BuildSigned overload.");
     }
 
-    private static string GetCurveOid(string curveName) => curveName switch
-    {
+    private static string GetCurveOid(string curveName) => curveName switch {
         "nistP256" or "P-256" or "secp256r1" or "prime256v1" or "ECDSA_P256"
             => "1.2.840.10045.3.1.7",
         "nistP384" or "P-384" or "secp384r1" or "ECDSA_P384"

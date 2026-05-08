@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="'$(EnableExperimentalAlgorithms)' == 'true'">
     <DefineConstants>$(DefineConstants);EXPERIMENTAL</DefineConstants>
   </PropertyGroup>
@@ -54,7 +54,7 @@
         <PackageReference Include="BouncyCastle.Cryptography" />
         <PackageReference Include="Microsoft.Bcl.Cryptography" />
         <PackageReference Include="Microsoft.Bcl.Hashcode" />
-        <PackageReference Include="Microsoft.Bcl.Memory"/>
+        <PackageReference Include="Microsoft.Bcl.Memory" />
       </ItemGroup>
     </When>
     <When Condition="'$(TargetFramework)' == 'net8.0'">
@@ -70,10 +70,14 @@
       <ItemGroup>
         <PackageReference Include="Microsoft.Bcl.Cryptography" />
         <PackageReference Include="Microsoft.Bcl.Hashcode" />
-        <PackageReference Include="Microsoft.Bcl.Memory"/>
+        <PackageReference Include="Microsoft.Bcl.Memory" />
       </ItemGroup>
     </Otherwise>
   </Choose>
+  
+  <ItemGroup>
+    <Compile Include="..\..\Memory\Pools\ObjectOwner{T}.cs" Link="ObjectOwner{T}.cs" />
+  </ItemGroup>
 
   <!-- Common package references -->
   <ItemGroup>

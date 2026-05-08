@@ -71,7 +71,7 @@ public class X509Signature
     /// <returns>X509 ASN format of EncodedData+SignatureOID+Signature bytes.</returns>
     public byte[] Encode()
     {
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         AsnWriter writer = pooledWriter.Writer;
 
         Asn1Tag tag = Asn1Tag.Sequence;
@@ -217,7 +217,7 @@ public class X509Signature
         // Encode from IEEE signature format to ASN1 DER encoded 
         // signature format for ecdsa certificates.
         // ECDSA-Sig-Value ::= SEQUENCE { r INTEGER, s INTEGER }
-        using var pooledWriter = PooledAsnWriter.Get();
+        using var pooledWriter = PooledAsnWriterDer.Get();
         AsnWriter writer = pooledWriter.Writer;
         Asn1Tag tag = Asn1Tag.Sequence;
         writer.PushSequence(tag);

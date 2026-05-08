@@ -1,16 +1,19 @@
-// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
+
+#pragma warning disable CA1024 // Return properties where appropriate.
 
 namespace CryptoHives.Foundation.Security.Certificates;
 
+using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Formats.Asn1;
-using Microsoft.Extensions.ObjectPool;
 
 /// <summary>
 /// Provides a pool of <see cref="AsnWriter"/> instances to reduce allocations.
+/// The encoding for the pooled writers is <see cref="AsnEncodingRules.DER"/>.
 /// </summary>
-internal static class AsnWriterPool
+public static class AsnWriterPoolDer
 {
     /// <summary>
     /// The shared pool of AsnWriter instances using DER encoding.
@@ -20,6 +23,7 @@ internal static class AsnWriterPool
 
     /// <summary>
     /// Gets an <see cref="AsnWriter"/> from the pool with DER encoding rules.
+    /// The caller is responsible for returning the writer to the pool.
     /// </summary>
     /// <returns>A pooled AsnWriter instance.</returns>
     public static AsnWriter Get() => s_derWriterPool.Get();
@@ -44,9 +48,36 @@ internal static class AsnWriterPool
     /// <returns>The encoded byte array.</returns>
     public static byte[] EncodeAndReturn(AsnWriter writer)
     {
-        byte[] result = writer.Encode();
-        Return(writer);
-        return result;
+        if (writer == null) throw new ArgumentNullException(nameof(writer));
+
+        try
+        {
+            return writer.Encode();
+        }
+        finally
+        {
+            Return(writer);
+        }
+    }
+
+    /// <summary>
+    /// Encodes the data from the writer and returns the writer to the pool.
+    /// <see cref="AsnWriter.TryEncode(Span{byte}, out int)"/> for the underlying ASN writer API.
+    /// </summary>
+    /// <param name="writer">The writer to encode and return.</param>
+    /// <param name="buffer">The buffer to which the encoded data is written.</param>
+    /// <param name="bytesWritten">The number</param>
+    /// <returns>The encoded byte array.</returns>
+    public static bool TryEncodeAndReturn(AsnWriter writer, Span<byte> buffer, out int bytesWritten)
+    {
+        if (writer == null) throw new ArgumentNullException(nameof(writer));
+
+        if (writer.TryEncode(buffer, out bytesWritten))
+        {
+            Return(writer);
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -75,46 +106,3 @@ internal static class AsnWriterPool
     }
 }
 
-/// <summary>
-/// A disposable wrapper for pooled <see cref="AsnWriter"/> instances.
-/// </summary>
-internal readonly struct PooledAsnWriter : IDisposable
-{
-    private readonly AsnWriter _writer;
-
-    /// <summary>
-    /// Creates a new pooled writer wrapper.
-    /// </summary>
-    private PooledAsnWriter(AsnWriter writer)
-    {
-        _writer = writer;
-    }
-
-    /// <summary>
-    /// Gets a pooled <see cref="AsnWriter"/> wrapped in a disposable struct.
-    /// </summary>
-    /// <returns>A disposable wrapper that returns the writer to the pool when disposed.</returns>
-    public static PooledAsnWriter Get()
-    {
-        return new PooledAsnWriter(AsnWriterPool.Get());
-    }
-
-    /// <summary>
-    /// Gets the underlying <see cref="AsnWriter"/>.
-    /// </summary>
-    public AsnWriter Writer => _writer;
-
-    /// <summary>
-    /// Encodes the data from the writer.
-    /// </summary>
-    /// <returns>The encoded byte array.</returns>
-    public byte[] Encode() => _writer.Encode();
-
-    /// <summary>
-    /// Returns the writer to the pool.
-    /// </summary>
-    public void Dispose()
-    {
-        AsnWriterPool.Return(_writer);
-    }
-}
