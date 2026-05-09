@@ -95,10 +95,10 @@ public class X509CRL : IX509CRL
     public string Issuer => IssuerName.Name;
 
     /// <inheritdoc/>
-    public DateTime ThisUpdate => _thisUpdate;
+    public DateTimeOffset ThisUpdate => _thisUpdate;
 
     /// <inheritdoc/>
-    public DateTime NextUpdate => _nextUpdate;
+    public DateTimeOffset NextUpdate => _nextUpdate;
 
     /// <inheritdoc/>
     public HashAlgorithmName HashAlgorithmName => _hashAlgorithmName;
@@ -339,8 +339,8 @@ public class X509CRL : IX509CRL
     private bool _decoded = false;
     private X509Signature? _signature;
     private X500DistinguishedName _issuerName;
-    private DateTime _thisUpdate;
-    private DateTime _nextUpdate;
+    private DateTimeOffset _thisUpdate;
+    private DateTimeOffset _nextUpdate;
     private HashAlgorithmName _hashAlgorithmName;
     private List<RevokedCertificate> _revokedCertificates;
     private X509ExtensionCollection _crlExtensions;

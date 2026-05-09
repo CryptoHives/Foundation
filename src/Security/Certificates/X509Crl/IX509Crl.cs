@@ -26,12 +26,12 @@ public interface IX509CRL
     /// <summary>
     /// When the CRL was last updated.
     /// </summary>
-    DateTime ThisUpdate { get; }
+    DateTimeOffset ThisUpdate { get; }
 
     /// <summary>
     /// When the CRL is due for its next update.
     /// </summary>
-    DateTime NextUpdate { get; }
+    DateTimeOffset NextUpdate { get; }
 
     /// <summary>
     /// The hash algorithm used to sign the CRL.

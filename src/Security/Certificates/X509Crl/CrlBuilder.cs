@@ -96,10 +96,10 @@ public sealed class CrlBuilder : IX509CRL
     public string Issuer => IssuerName.Name;
 
     /// <inheritdoc/>
-    public DateTime ThisUpdate { get; private set; }
+    public DateTimeOffset ThisUpdate { get; private set; }
 
     /// <inheritdoc/>
-    public DateTime NextUpdate { get; private set; }
+    public DateTimeOffset NextUpdate { get; private set; }
 
     /// <inheritdoc/>
     public HashAlgorithmName HashAlgorithmName { get; private set; }
@@ -384,9 +384,9 @@ public sealed class CrlBuilder : IX509CRL
     /// </summary>
     /// <param name="writer">The writer to write to.</param>
     /// <param name="dateTime">The date time to write.</param>
-    private static void WriteTime(AsnWriter writer, DateTime dateTime)
+    private static void WriteTime(AsnWriter writer, DateTimeOffset dateTime)
     {
-        DateTime utcTime = dateTime.ToUniversalTime();
+        DateTimeOffset utcTime = dateTime.ToUniversalTime();
         if (utcTime.Year < 2050)
         {
             writer.WriteUtcTime(utcTime);

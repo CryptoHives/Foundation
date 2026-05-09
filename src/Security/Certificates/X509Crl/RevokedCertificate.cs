@@ -92,7 +92,7 @@ public class RevokedCertificate
     /// <summary>
     /// The UTC time of the revocation event.
     /// </summary>
-    public DateTime RevocationDate { get; set; }
+    public DateTimeOffset RevocationDate { get; set; }
 
     /// <summary>
     /// The list of crl entry extensions.
