@@ -38,11 +38,12 @@ internal readonly struct PooledAsnWriterDer : IDisposable
     /// </summary>
     public AsnWriter Writer => _writer;
 
-    /// <summary>
-    /// Encodes the data from the writer.
-    /// </summary>
-    /// <returns>The encoded byte array.</returns>
+    /// <inheritdoc cref="AsnWriter.Encode()"/>
     public byte[] Encode() => _writer.Encode();
+
+    /// <inheritdoc cref="AsnWriter.TryEncode(Span{byte}, out int)"/>
+    public bool TryEncode(Span<byte> buffer, out int bytesWritten)
+        => _writer.TryEncode(buffer, out bytesWritten);
 
     /// <summary>
     /// Returns the writer to the pool.

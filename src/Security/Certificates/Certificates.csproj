@@ -75,10 +75,6 @@
     </Otherwise>
   </Choose>
   
-  <ItemGroup>
-    <Compile Include="..\..\Memory\Pools\ObjectOwner{T}.cs" Link="ObjectOwner{T}.cs" />
-  </ItemGroup>
-
   <!-- Common package references -->
   <ItemGroup>
     <PackageReference Include="System.Formats.Asn1" />

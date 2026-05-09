@@ -153,7 +153,7 @@ public static class Oids
         {
             return oid;
         }
-        throw new CryptographicException($"Signing RSA with hash {hashAlgorithm.Name} is not supported. ");
+        throw new CryptographicException("Signing RSA with hash {0} is not supported. ", hashAlgorithm.Name);
     }
 
     /// <summary>
@@ -166,7 +166,7 @@ public static class Oids
         {
             return oid;
         }
-        throw new CryptographicException($"Signing ECDsa with hash {hashAlgorithm.Name} is not supported. ");
+        throw new CryptographicException("Signing ECDsa with hash {0} is not supported. ", hashAlgorithm.Name);
     }
 
     /// <summary>
@@ -179,7 +179,7 @@ public static class Oids
         {
             return hashAlgorithm;
         }
-        throw new CryptographicException($"Hash algorithm {oid} is not supported. ");
+        throw new CryptographicException($"Hash algorithm {0} is not supported. ", oid);
     }
 }
 

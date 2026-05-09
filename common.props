@@ -26,6 +26,13 @@
     <!--<GenerateCompatibilitySuppressionFile>true</GenerateCompatibilitySuppressionFile>-->
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAudit>true</NuGetAudit>
+    <!-- Experimental algorithms are enabled by default for development and CI test builds.
+         NuGet packaging pipelines must explicitly pass /p:EnableExperimentalAlgorithms=false. -->
+    <EnableExperimentalAlgorithms>true</EnableExperimentalAlgorithms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EnableExperimentalAlgorithms)' == 'true'">
+    <DefineConstants>$(DefineConstants);EXPERIMENTAL</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>
