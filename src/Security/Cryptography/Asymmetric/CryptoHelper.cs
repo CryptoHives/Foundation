@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric;
@@ -7,8 +7,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
-using ManagedHash = CryptoHives.Foundation.Security.Cryptography.Hash;
-using ManagedMac = CryptoHives.Foundation.Security.Cryptography.Mac;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Internal cryptographic helper for the asymmetric module.
@@ -77,21 +76,21 @@ internal static class CryptoHelper
     }
 
 #pragma warning disable CS0618 // SHA-1 obsolete warning - intentionally supported for legacy compatibility
-    private static ManagedHash.HashAlgorithm CreateHash(HashAlgorithmName hashAlgorithm)
+    private static CH.Hash.HashAlgorithm CreateHash(HashAlgorithmName hashAlgorithm)
     {
-        if (hashAlgorithm == HashAlgorithmName.SHA1) return ManagedHash.SHA1.Create();
-        if (hashAlgorithm == HashAlgorithmName.SHA256) return ManagedHash.SHA256.Create();
-        if (hashAlgorithm == HashAlgorithmName.SHA384) return ManagedHash.SHA384.Create();
-        if (hashAlgorithm == HashAlgorithmName.SHA512) return ManagedHash.SHA512.Create();
+        if (hashAlgorithm == HashAlgorithmName.SHA1) return CH.Hash.SHA1.Create();
+        if (hashAlgorithm == HashAlgorithmName.SHA256) return CH.Hash.SHA256.Create();
+        if (hashAlgorithm == HashAlgorithmName.SHA384) return CH.Hash.SHA384.Create();
+        if (hashAlgorithm == HashAlgorithmName.SHA512) return CH.Hash.SHA512.Create();
         throw new CryptographicException($"Unsupported hash algorithm: {hashAlgorithm.Name}");
     }
 #pragma warning restore CS0618
 
-    private static ManagedMac.HmacCore CreateHmac(HashAlgorithmName hashAlgorithm, byte[] key)
+    private static CH.Mac.HmacCore CreateHmac(HashAlgorithmName hashAlgorithm, byte[] key)
     {
-        if (hashAlgorithm == HashAlgorithmName.SHA256) return new ManagedMac.HmacSha256(key);
-        if (hashAlgorithm == HashAlgorithmName.SHA384) return new ManagedMac.HmacSha384(key);
-        if (hashAlgorithm == HashAlgorithmName.SHA512) return new ManagedMac.HmacSha512(key);
+        if (hashAlgorithm == HashAlgorithmName.SHA256) return new CH.Mac.HmacSha256(key);
+        if (hashAlgorithm == HashAlgorithmName.SHA384) return new CH.Mac.HmacSha384(key);
+        if (hashAlgorithm == HashAlgorithmName.SHA512) return new CH.Mac.HmacSha512(key);
         throw new CryptographicException($"Unsupported HMAC hash: {hashAlgorithm.Name}");
     }
 }

@@ -3,10 +3,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
-    <AssemblyName>Bcl.Certificates.Tests</AssemblyName>
+    <AssemblyName>Certificates.Tests</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <Choose>
@@ -44,14 +43,15 @@
     </PackageReference>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="Microsoft.Bcl.Memory" />
+    <PackageReference Include="BouncyCastle.Cryptography" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\..\Common\Main.cs" />
+    <Compile Include="..\..\Common\Main.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\Security\Bcl\Certificates\Bcl.Certificates.csproj" />
+    <ProjectReference Include="..\..\..\src\Security\Certificates\Certificates.csproj" />
   </ItemGroup>
 
   <ItemGroup>
