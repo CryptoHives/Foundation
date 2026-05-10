@@ -1,8 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if NET8_0_OR_GREATER
-
+#if !NET462 && !NETSTANDARD2_0
 namespace Cryptography.Tests.Asymmetric.EC;
 
 using System;
@@ -47,6 +46,7 @@ public class EcDhManagedTests
         Assert.That(aliceSecret, Is.EqualTo(bobSecret));
     }
 
+#if !NETFRAMEWORK
     // ========================================================================
     // Cross-Validation with BCL
     // ========================================================================
@@ -74,6 +74,7 @@ public class EcDhManagedTests
 
         Assert.That(managedSecret, Is.EqualTo(bclSecret));
     }
+#endif
 
     // ========================================================================
     // Invalid Public Key
@@ -104,5 +105,4 @@ public class EcDhManagedTests
         Assert.Throws<CryptographicException>(() => managed.DeriveRawSecretAgreement(badParams));
     }
 }
-
 #endif

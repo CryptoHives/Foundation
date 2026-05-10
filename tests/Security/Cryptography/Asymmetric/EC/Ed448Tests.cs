@@ -1,14 +1,15 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if NET8_0_OR_GREATER
+#pragma warning disable CA1872 // Prefer 'System.Convert.ToHexString(byte[])' over call chains based on 'System.BitConverter.ToString(byte[])'
 
 namespace Cryptography.Tests.Asymmetric.EC;
 
 using System;
 using System.Globalization;
 using System.Numerics;
-using System.Security.Cryptography;
+using Sys = System.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography.Rng;
 using CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
 using NUnit.Framework;
 
@@ -23,10 +24,10 @@ public class Ed448Tests
     [Test]
     public void Rfc8032Vector1PublicKey()
     {
-        byte[] seed = HexToBytes(
+        byte[] seed = TestHelpers.FromHexString(
             "6c82a562cb808d10d632be89c8513ebf6c929f34ddfa8c9f63c9960ef6e348a" +
             "3528c8a3fcc2f044e39a3fc5b94492f8f032e7549a20098f95b");
-        byte[] expectedPub = HexToBytes(
+        byte[] expectedPub = TestHelpers.FromHexString(
             "5fd7449b59b461fd2ce787ec616ad46a1da1342485a70e1f8a0ea75d80e96778" +
             "edf124769b46c7061bd6783df1e50f6cd1fa1abeafe8256180");
 
@@ -40,11 +41,11 @@ public class Ed448Tests
     [Test]
     public void Rfc8032Vector1Sign()
     {
-        byte[] seed = HexToBytes(
+        byte[] seed = TestHelpers.FromHexString(
             "6c82a562cb808d10d632be89c8513ebf6c929f34ddfa8c9f63c9960ef6e348a" +
             "3528c8a3fcc2f044e39a3fc5b94492f8f032e7549a20098f95b");
         byte[] message = Array.Empty<byte>();
-        byte[] expectedSig = HexToBytes(
+        byte[] expectedSig = TestHelpers.FromHexString(
             "533a37f6bbe457251f023c0d88f976ae2dfb504a843e34d2074fd823d41a591f" +
             "2b233f034f628281f2fd7a22ddd47d7828c59bd0a21bfd3980ff0d2028d4b18a" +
             "9df63e006c5d1c2d345b925d8dc00b4104852db99ac5c7cdda8530a113a0f4db" +
@@ -59,11 +60,11 @@ public class Ed448Tests
     [Test]
     public void Rfc8032Vector1Verify()
     {
-        byte[] pubKey = HexToBytes(
+        byte[] pubKey = TestHelpers.FromHexString(
             "5fd7449b59b461fd2ce787ec616ad46a1da1342485a70e1f8a0ea75d80e96778" +
             "edf124769b46c7061bd6783df1e50f6cd1fa1abeafe8256180");
         byte[] message = Array.Empty<byte>();
-        byte[] sig = HexToBytes(
+        byte[] sig = TestHelpers.FromHexString(
             "533a37f6bbe457251f023c0d88f976ae2dfb504a843e34d2074fd823d41a591f" +
             "2b233f034f628281f2fd7a22ddd47d7828c59bd0a21bfd3980ff0d2028d4b18a" +
             "9df63e006c5d1c2d345b925d8dc00b4104852db99ac5c7cdda8530a113a0f4db" +
@@ -76,10 +77,10 @@ public class Ed448Tests
     [Test]
     public void Rfc8032Vector2PublicKey()
     {
-        byte[] seed = HexToBytes(
+        byte[] seed = TestHelpers.FromHexString(
             "c4eab05d357007c632f3dbb48489924d552b08fe0c353a0d4a1f00acda2c463a" +
             "fbea67c5e8d2877c5e3bc397a659949ef8021e954e0a12274e");
-        byte[] expectedPub = HexToBytes(
+        byte[] expectedPub = TestHelpers.FromHexString(
             "43ba28f430cdff456ae531545f7ecd0ac834a55d9358c0372bfa0c6c6798c086" +
             "6aea01eb00742802b8438ea4cb82169c235160627b4c3a9480");
 
@@ -93,11 +94,11 @@ public class Ed448Tests
     [Test]
     public void Rfc8032Vector2Sign()
     {
-        byte[] seed = HexToBytes(
+        byte[] seed = TestHelpers.FromHexString(
             "c4eab05d357007c632f3dbb48489924d552b08fe0c353a0d4a1f00acda2c463a" +
             "fbea67c5e8d2877c5e3bc397a659949ef8021e954e0a12274e");
         byte[] message = [0x03];
-        byte[] expectedSig = HexToBytes(
+        byte[] expectedSig = TestHelpers.FromHexString(
             "26b8f91727bd62897af15e41eb43c377efb9c610d48f2335cb0bd0087810f435" +
             "2541b143c4b981b7e18f62de8ccdf633fc1bf037ab7cd779805e0dbcc0aae1cb" +
             "cee1afb2e027df36bc04dcecbf154336c19f0af7e0a6472905e799f1953d2a0f" +
@@ -112,11 +113,11 @@ public class Ed448Tests
     [Test]
     public void Rfc8032Vector2Verify()
     {
-        byte[] pubKey = HexToBytes(
+        byte[] pubKey = TestHelpers.FromHexString(
             "43ba28f430cdff456ae531545f7ecd0ac834a55d9358c0372bfa0c6c6798c086" +
             "6aea01eb00742802b8438ea4cb82169c235160627b4c3a9480");
         byte[] message = [0x03];
-        byte[] sig = HexToBytes(
+        byte[] sig = TestHelpers.FromHexString(
             "26b8f91727bd62897af15e41eb43c377efb9c610d48f2335cb0bd0087810f435" +
             "2541b143c4b981b7e18f62de8ccdf633fc1bf037ab7cd779805e0dbcc0aae1cb" +
             "cee1afb2e027df36bc04dcecbf154336c19f0af7e0a6472905e799f1953d2a0f" +
@@ -133,7 +134,7 @@ public class Ed448Tests
     [Test]
     public void BouncyCastlePublicKeyCrossValidation()
     {
-        byte[] seed = HexToBytes(
+        byte[] seed = TestHelpers.FromHexString(
             "6c82a562cb808d10d632be89c8513ebf6c929f34ddfa8c9f63c9960ef6e348a" +
             "3528c8a3fcc2f044e39a3fc5b94492f8f032e7549a20098f95b");
 
@@ -150,7 +151,7 @@ public class Ed448Tests
     [Test]
     public void BouncyCastleSignCrossValidation()
     {
-        byte[] seed = HexToBytes(
+        byte[] seed = TestHelpers.FromHexString(
             "6c82a562cb808d10d632be89c8513ebf6c929f34ddfa8c9f63c9960ef6e348a" +
             "3528c8a3fcc2f044e39a3fc5b94492f8f032e7549a20098f95b");
         byte[] message = "Hello, Ed448!"u8.ToArray();
@@ -172,7 +173,7 @@ public class Ed448Tests
     [Test]
     public void BouncyCastleVerifyCrossValidation()
     {
-        byte[] seed = HexToBytes(
+        byte[] seed = TestHelpers.FromHexString(
             "c4eab05d357007c632f3dbb48489924d552b08fe0c353a0d4a1f00acda2c463a" +
             "fbea67c5e8d2877c5e3bc397a659949ef8021e954e0a12274e");
         byte[] message = "Cross-validation test"u8.ToArray();
@@ -326,7 +327,7 @@ public class Ed448Tests
         // [L]*B should be the identity (0:1)
         // L = 2^446 − 13818066809895115352007386748515426880336692474882178609894547503885 (LE 56 bytes)
         byte[] lBytes = new byte[57];
-        byte[] lHex = HexToBytes("f34458ab92c27823558fc58d72c26c219036d6ae49db4ec4e923ca7cffffffffffffffffffffffffffffffffffffffffffffffffffffff3f");
+        byte[] lHex = TestHelpers.FromHexString("f34458ab92c27823558fc58d72c26c219036d6ae49db4ec4e923ca7cffffffffffffffffffffffffffffffffffffffffffffffffffffff3f");
         Array.Copy(lHex, lBytes, 56);
 
         Span<ulong> k = stackalloc ulong[7];
@@ -392,14 +393,42 @@ public class Ed448Tests
 
     private static byte[] BigIntRefScalarMulBase(byte[] scalarLE)
     {
-        BigInteger s = new BigInteger(scalarLE, isUnsigned: true, isBigEndian: false);
+        BigInteger s = BigIntegerFromLittleEndianUnsigned(scalarLE);
         var (rx, ry) = BigIntScalarMul(s, (RefBx, RefBy));
 
-        byte[] yBytes = ry.ToByteArray(isUnsigned: true, isBigEndian: false);
+        byte[] yBytes = BigIntegerToLittleEndianUnsigned(ry);
         byte[] encoded = new byte[57];
         Array.Copy(yBytes, encoded, Math.Min(yBytes.Length, 56));
         if (!rx.IsEven) encoded[56] = 0x80;
         return encoded;
+    }
+
+    private static BigInteger BigIntegerFromLittleEndianUnsigned(byte[] value)
+    {
+#if NET8_0_OR_GREATER
+        return new BigInteger(value, isUnsigned: true, isBigEndian: false);
+#else
+        byte[] tmp = new byte[value.Length + 1];
+        Buffer.BlockCopy(value, 0, tmp, 0, value.Length);
+        return new BigInteger(tmp);
+#endif
+    }
+
+    private static byte[] BigIntegerToLittleEndianUnsigned(BigInteger value)
+    {
+#if NET8_0_OR_GREATER
+        return value.ToByteArray(isUnsigned: true, isBigEndian: false);
+#else
+        byte[] bytes = value.ToByteArray();
+        if (bytes.Length > 1 && bytes[^1] == 0)
+        {
+            byte[] trimmed = new byte[bytes.Length - 1];
+            Buffer.BlockCopy(bytes, 0, trimmed, 0, trimmed.Length);
+            return trimmed;
+        }
+
+        return bytes;
+#endif
     }
 
     private static (BigInteger x, BigInteger y) BigIntScalarMul(
@@ -437,19 +466,4 @@ public class Ed448Tests
 
         return ((x3 + RefP) % RefP, (y3 + RefP) % RefP);
     }
-
-    // ========================================================================
-    // Helpers
-    // ========================================================================
-
-    private static byte[] HexToBytes(string hex)
-    {
-        hex = hex.Replace(" ", "").Replace("\n", "").Replace("\r", "");
-        byte[] bytes = new byte[hex.Length / 2];
-        for (int i = 0; i < bytes.Length; i++)
-            bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
-        return bytes;
-    }
 }
-
-#endif

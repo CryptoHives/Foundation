@@ -3,7 +3,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
+    <TargetFrameworks>$(CryptolibTargetFrameworks)</TargetFrameworks>
     <PackageId>$(PackagePrefix).Security.Certificates</PackageId>
     <AssemblyName>$(AssemblyPrefix).Security.Certificates</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>

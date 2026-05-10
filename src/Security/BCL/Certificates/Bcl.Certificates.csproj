@@ -1,9 +1,9 @@
-﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>$(CertlibTargetFrameworks)</TargetFrameworks>
+    <TargetFrameworks>$(CryptolibTargetFrameworks)</TargetFrameworks>
     <PackageId>$(PackagePrefix).Security.Bcl.Certificates</PackageId>
     <AssemblyName>$(AssemblyPrefix).Security.Bcl.Certificates</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>

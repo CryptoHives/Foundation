@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Asymmetric.EC;
@@ -18,7 +18,7 @@ public class X25519Tests
     [Test]
     public void Rfc7748Vector1()
     {
-        byte[] scalarAlice = HexToBytes(
+        byte[] scalarAlice = TestHelpers.FromHexString(
             "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a");
         byte[] basePoint = new byte[32];
         basePoint[0] = 9;
@@ -26,7 +26,7 @@ public class X25519Tests
         byte[] result = new byte[32];
         X25519.ScalarMult(scalarAlice, basePoint, result);
 
-        byte[] expected = HexToBytes(
+        byte[] expected = TestHelpers.FromHexString(
             "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a");
         Assert.That(result, Is.EqualTo(expected));
     }
@@ -34,7 +34,7 @@ public class X25519Tests
     [Test]
     public void Rfc7748Vector2()
     {
-        byte[] scalarBob = HexToBytes(
+        byte[] scalarBob = TestHelpers.FromHexString(
             "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb");
         byte[] basePoint = new byte[32];
         basePoint[0] = 9;
@@ -42,7 +42,7 @@ public class X25519Tests
         byte[] result = new byte[32];
         X25519.ScalarMult(scalarBob, basePoint, result);
 
-        byte[] expected = HexToBytes(
+        byte[] expected = TestHelpers.FromHexString(
             "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f");
         Assert.That(result, Is.EqualTo(expected));
     }
@@ -51,9 +51,9 @@ public class X25519Tests
     public void Rfc7748SharedSecret()
     {
         // Alice's scalar * Bob's public key should equal Bob's scalar * Alice's public key
-        byte[] scalarAlice = HexToBytes(
+        byte[] scalarAlice = TestHelpers.FromHexString(
             "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a");
-        byte[] scalarBob = HexToBytes(
+        byte[] scalarBob = TestHelpers.FromHexString(
             "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb");
 
         byte[] basePoint = new byte[32];
@@ -69,7 +69,7 @@ public class X25519Tests
         X25519.ScalarMult(scalarAlice, pubBob, secretAlice);
         X25519.ScalarMult(scalarBob, pubAlice, secretBob);
 
-        byte[] expected = HexToBytes(
+        byte[] expected = TestHelpers.FromHexString(
             "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742");
         Assert.That(secretAlice, Is.EqualTo(expected));
         Assert.That(secretBob, Is.EqualTo(expected));
@@ -82,12 +82,12 @@ public class X25519Tests
     [Test]
     public void ScalarMultBaseReturnsPublicKey()
     {
-        byte[] privKey = HexToBytes(
+        byte[] privKey = TestHelpers.FromHexString(
             "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a");
         byte[] pubKey = new byte[32];
         X25519.ScalarMultBase(privKey, pubKey);
 
-        byte[] expected = HexToBytes(
+        byte[] expected = TestHelpers.FromHexString(
             "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a");
         Assert.That(pubKey, Is.EqualTo(expected));
     }
@@ -108,20 +108,8 @@ public class X25519Tests
         byte[] output = new byte[32];
         X25519.ScalarMult(k, u, output);
 
-        byte[] expected = HexToBytes(
+        byte[] expected = TestHelpers.FromHexString(
             "422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079");
         Assert.That(output, Is.EqualTo(expected));
-    }
-
-    // ========================================================================
-    // Helpers
-    // ========================================================================
-
-    private static byte[] HexToBytes(string hex)
-    {
-        byte[] bytes = new byte[hex.Length / 2];
-        for (int i = 0; i < bytes.Length; i++)
-            bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
-        return bytes;
     }
 }

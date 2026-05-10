@@ -3,7 +3,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
+    <TargetFrameworks>$(CryptolibTargetFrameworks)</TargetFrameworks>
     <AssemblyName>$(AssemblyPrefix).Security.Cryptography</AssemblyName>
     <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
@@ -32,22 +32,19 @@
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
         <PackageReference Include="Microsoft.Bcl.Hashcode"/>
-        <PackageReference Include="System.Formats.Asn1" />
       </ItemGroup>
     </When>
     <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
-        <PackageReference Include="System.Formats.Asn1" />
       </ItemGroup>
     </When>
-    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net48'">
+    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
         <PackageReference Include="Microsoft.Bcl.Hashcode"/>
-        <PackageReference Include="System.Formats.Asn1" />
       </ItemGroup>
     </When>
     <Otherwise>

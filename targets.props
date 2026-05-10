@@ -32,7 +32,7 @@
         <AppTargetFramework>net462</AppTargetFramework>
         <TestsTargetFrameworks>net462</TestsTargetFrameworks>
         <LibTargetFrameworks>net462</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net462</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net462</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'netstandard2.0'">
@@ -44,7 +44,7 @@
         <AppTargetFramework>net8.0</AppTargetFramework>
         <TestsTargetFrameworks>net8.0</TestsTargetFrameworks>
         <LibTargetFrameworks>netstandard2.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>netstandard2.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>netstandard2.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'netstandard2.1'">
@@ -56,7 +56,7 @@
         <AppTargetFramework>net8.0</AppTargetFramework>
         <TestsTargetFrameworks>net8.0</TestsTargetFrameworks>
         <LibTargetFrameworks>netstandard2.1</LibTargetFrameworks>
-        <CertlibTargetFrameworks>netstandard2.1</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>netstandard2.1</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net472'">
@@ -68,7 +68,7 @@
         <AppTargetFramework>net472</AppTargetFramework>
         <TestsTargetFrameworks>net472</TestsTargetFrameworks>
         <LibTargetFrameworks>net472</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net472</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net472</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net48'">
@@ -80,7 +80,7 @@
         <AppTargetFramework>net48</AppTargetFramework>
         <TestsTargetFrameworks>net48</TestsTargetFrameworks>
         <LibTargetFrameworks>net48</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net48</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net48</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net6.0'">
@@ -92,7 +92,7 @@
         <AppTargetFramework>net6.0</AppTargetFramework>
         <TestsTargetFrameworks>net6.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net6.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net6.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net6.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net8.0'">
@@ -104,7 +104,7 @@
         <AppTargetFramework>net8.0</AppTargetFramework>
         <TestsTargetFrameworks>net8.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net8.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net8.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net8.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net9.0'">
@@ -116,7 +116,7 @@
         <AppTargetFramework>net9.0</AppTargetFramework>
         <TestsTargetFrameworks>net9.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net9.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net9.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net9.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     <When  Condition="'$(CustomTestTarget)' == 'net10.0'">
@@ -128,7 +128,7 @@
         <AppTargetFramework>net10.0</AppTargetFramework>
         <TestsTargetFrameworks>net10.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net10.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net10.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net10.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
 
@@ -142,7 +142,7 @@
         <AppTargetFramework>net10.0</AppTargetFramework>
         <TestsTargetFrameworks>net10.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net10.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net10.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net10.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     
@@ -156,7 +156,7 @@
         <AppTargetFramework>net10.0</AppTargetFramework>
         <TestsTargetFrameworks>net48;net8.0;net10.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net462;netstandard2.0;netstandard2.1;net8.0;net10.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net462;net472;netstandard2.0;netstandard2.1;net8.0;net10.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net462;net472;netstandard2.0;netstandard2.1;net8.0;net10.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     
@@ -170,7 +170,7 @@
         <AppTargetFramework>net8.0</AppTargetFramework>
         <TestsTargetFrameworks>net48;net8.0;net9.0</TestsTargetFrameworks>
         <LibTargetFrameworks>net462;netstandard2.0;netstandard2.1;net8.0;net9.0</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net462;net472;netstandard2.0;netstandard2.1;net8.0;net9.0</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net462;net472;netstandard2.0;netstandard2.1;net8.0;net9.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     
@@ -182,7 +182,7 @@
         <AppTargetFramework>net48</AppTargetFramework>
         <TestsTargetFrameworks>net48</TestsTargetFrameworks>
         <LibTargetFrameworks>net48;netstandard2.1</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net48;netstandard2.1</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net48;netstandard2.1</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     
@@ -193,7 +193,7 @@
         <AppTargetFramework>net48</AppTargetFramework>
         <TestsTargetFrameworks>net48</TestsTargetFrameworks>
         <LibTargetFrameworks>net48</LibTargetFrameworks>
-        <CertlibTargetFrameworks>net48</CertlibTargetFrameworks>
+        <CryptolibTargetFrameworks>net48</CryptolibTargetFrameworks>
       </PropertyGroup>
     </Otherwise>
   </Choose>

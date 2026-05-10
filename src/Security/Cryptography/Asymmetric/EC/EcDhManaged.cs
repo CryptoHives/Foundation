@@ -1,8 +1,7 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if NET8_0_OR_GREATER
-
+#if !NET462 && !NETSTANDARD2_0
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
 
 using System;
@@ -170,5 +169,4 @@ public sealed class EcDhManaged : ECDiffieHellman
         return padded;
     }
 }
-
 #endif

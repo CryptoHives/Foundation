@@ -1,8 +1,7 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#if NET8_0_OR_GREATER
-
+#if !NET462 && !NETSTANDARD2_0
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
 
 using System;
@@ -121,8 +120,10 @@ public sealed class EcDsaManaged : ECDsa
         if (signature.Length != fs * 2)
             return false;
 
-        byte[] r = signature[..fs];
-        byte[] s = signature[fs..];
+        byte[] r = new byte[fs];
+        byte[] s = new byte[fs];
+        Buffer.BlockCopy(signature, 0, r, 0, fs);
+        Buffer.BlockCopy(signature, fs, s, 0, fs);
 
         return EcDsaCore.Verify(
             hash, r, s,
@@ -218,9 +219,8 @@ public sealed class EcDsaManaged : ECDsa
         else
         {
             dst.Clear();
-            src.CopyTo(dst[(dst.Length - src.Length)..]);
+            src.AsSpan().CopyTo(dst.Slice(dst.Length - src.Length));
         }
     }
 }
-
 #endif
