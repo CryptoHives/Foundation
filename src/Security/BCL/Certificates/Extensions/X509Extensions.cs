@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Bcl.Certificates;
@@ -76,6 +76,30 @@ public static class X509Extensions
                     if (oidValue == X509CrlNumberExtension.CrlNumberOid)
                     {
                         return (T)(object)new X509CrlNumberExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509AuthorityInformationAccessExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    string? oidValue = ext.Oid?.Value;
+                    if (oidValue == X509AuthorityInformationAccessExtension.AuthorityInformationAccessOid)
+                    {
+                        return (T)(object)new X509AuthorityInformationAccessExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509CrlDistributionPointsExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    string? oidValue = ext.Oid?.Value;
+                    if (oidValue == X509CrlDistributionPointsExtension.CrlDistributionPointsOid)
+                    {
+                        return (T)(object)new X509CrlDistributionPointsExtension(ext, ext.Critical);
                     }
                 }
             }

@@ -3,12 +3,16 @@
 
 namespace CryptoHives.Foundation.Security.Bcl.Certificates.Tests;
 
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Security.Cryptography.X509Certificates;
 using CryptoHives.Foundation.Security.Bcl.Certificates;
 using CryptoHives.Foundation.Security.Certificates;
 using NUnit.Framework;
 using X509AuthorityKeyIdentifierExtension = CryptoHives.Foundation.Security.Bcl.Certificates.X509AuthorityKeyIdentifierExtension;
+using X509AuthorityInformationAccessExtension = CryptoHives.Foundation.Security.Bcl.Certificates.X509AuthorityInformationAccessExtension;
+using X509CrlDistributionPointsExtension = CryptoHives.Foundation.Security.Bcl.Certificates.X509CrlDistributionPointsExtension;
 
 /// <summary>
 /// Tests for the CertificateFactory class.
@@ -168,6 +172,55 @@ public class ExtensionTests
         TestContext.Out.WriteLine("Decoded:");
         TestContext.Out.WriteLine(decodednumber.Format(true));
         Assert.That(decodednumber.CrlNumber, Is.EqualTo(crlNumber));
+    }
+
+    [Test]
+    public void VerifyAuthorityInformationAccessExtension()
+    {
+        var caIssuers = new[]
+        {
+            "http://ca.example.org/issuer1.crt",
+            "http://ca.example.org/issuer2.crt"
+        };
+        const string ocsp = "http://ocsp.example.org";
+
+        var aia = new X509AuthorityInformationAccessExtension(caIssuers, ocsp);
+        Assert.That(aia.Oid.Value, Is.EqualTo(X509AuthorityInformationAccessExtension.AuthorityInformationAccessOid));
+        Assert.That(aia.CaIssuersUris, Is.EqualTo(caIssuers));
+        Assert.That(aia.OcspResponderUris.Count, Is.EqualTo(1));
+        Assert.That(aia.OcspResponderUris[0], Is.EqualTo(ocsp));
+
+        var decoded = new X509AuthorityInformationAccessExtension(aia.Oid.Value, aia.RawData, aia.Critical);
+        Assert.That(decoded.CaIssuersUris, Is.EqualTo(caIssuers));
+        Assert.That(decoded.OcspResponderUris.Count, Is.EqualTo(1));
+        Assert.That(decoded.OcspResponderUris[0], Is.EqualTo(ocsp));
+
+        var collection = new X509ExtensionCollection { aia };
+        var typed = collection.FindExtension<X509AuthorityInformationAccessExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.CaIssuersUris, Is.EqualTo(caIssuers));
+    }
+
+    [Test]
+    public void VerifyCrlDistributionPointsExtension()
+    {
+        var distributionPoints = new List<string>
+        {
+            "http://ca.example.org/ca1.crl",
+            "http://ca.example.org/ca2.crl"
+        };
+
+        var cdp = new X509CrlDistributionPointsExtension(distributionPoints);
+        Assert.That(cdp.Oid.Value, Is.EqualTo(X509CrlDistributionPointsExtension.CrlDistributionPointsOid));
+        Assert.That(cdp.DistributionPointUris, Is.EqualTo(distributionPoints));
+
+        var decoded = new X509CrlDistributionPointsExtension(cdp.Oid.Value, cdp.RawData, cdp.Critical);
+        Assert.That(decoded.DistributionPointUris, Is.EqualTo(distributionPoints));
+
+        var collection = new X509ExtensionCollection { cdp };
+        var typed = collection.FindExtension<X509CrlDistributionPointsExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.DistributionPointUris, Is.EqualTo(distributionPoints));
     }
     #endregion
 }
