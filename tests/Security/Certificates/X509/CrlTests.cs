@@ -284,6 +284,38 @@ public class CrlTests
     }
 
     // ========================================================================
+    // CRL Issuing Distribution Point and Delta CRL Indicator Round-Trip
+    // ========================================================================
+
+    [Test]
+    public void CrlIssuingDistributionPointAndDeltaIndicatorRoundTrip()
+    {
+        using var caRsa = RSA.Create(2048);
+        var caName = X509Name.FromString("CN=CRL Extension CA, C=US");
+        var now = DateTimeOffset.UtcNow;
+
+        using var caKey = ExportKey(caRsa);
+        var crl = new X509CrlBuilder()
+            .SetIssuer(caName)
+            .SetThisUpdate(now)
+            .SetNextUpdate(now.AddDays(7))
+            .AddIssuingDistributionPoint(["http://ca.example.org/issuing.crl"], indirectCrl: true)
+            .AddDeltaCrlIndicator(12)
+            .BuildSignedRsa(caKey);
+
+        var issuingDpExt = crl.Extensions.GetExtension(X509ExtensionCollection.OidIssuingDistributionPoint);
+        Assert.That(issuingDpExt, Is.Not.Null);
+        var (uris, indirect) = ExtensionParsers.IssuingDistributionPoint.Parse(issuingDpExt!.Value);
+        Assert.That(uris, Has.Count.EqualTo(1));
+        Assert.That(uris[0], Is.EqualTo("http://ca.example.org/issuing.crl"));
+        Assert.That(indirect, Is.True);
+
+        var deltaExt = crl.Extensions.GetExtension(X509ExtensionCollection.OidDeltaCrlIndicator);
+        Assert.That(deltaExt, Is.Not.Null);
+        Assert.That(ExtensionParsers.DeltaCrlIndicator.Parse(deltaExt!.Value), Is.EqualTo(12));
+    }
+
+    // ========================================================================
     // Helpers
     // ========================================================================
 

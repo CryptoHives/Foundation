@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Certificates;
@@ -103,6 +103,41 @@ public static class Oids
     /// The Oid string for CRL Distribution Point.
     /// </summary>
     public const string CRLDistributionPoint = "2.5.29.31";
+
+    /// <summary>
+    /// The OID string for Certificate Policies extension.
+    /// </summary>
+    public const string CertificatePolicies = "2.5.29.32";
+
+    /// <summary>
+    /// The OID string for Name Constraints extension.
+    /// </summary>
+    public const string NameConstraints = "2.5.29.30";
+
+    /// <summary>
+    /// The OID string for Policy Constraints extension.
+    /// </summary>
+    public const string PolicyConstraints = "2.5.29.36";
+
+    /// <summary>
+    /// The OID string for Inhibit AnyPolicy extension.
+    /// </summary>
+    public const string InhibitAnyPolicy = "2.5.29.54";
+
+    /// <summary>
+    /// The OID string for Issuing Distribution Point extension.
+    /// </summary>
+    public const string IssuingDistributionPoint = "2.5.29.28";
+
+    /// <summary>
+    /// The OID string for Delta CRL Indicator extension.
+    /// </summary>
+    public const string DeltaCrlIndicator = "2.5.29.27";
+
+    /// <summary>
+    /// The OID string for Freshest CRL extension.
+    /// </summary>
+    public const string FreshestCrl = "2.5.29.46";
 
     #region OID Lookup Dictionaries
     /// <summary>

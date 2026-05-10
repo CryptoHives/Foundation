@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Bcl.Certificates.Tests;
@@ -6,13 +6,10 @@ namespace CryptoHives.Foundation.Security.Bcl.Certificates.Tests;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Security.Cryptography.X509Certificates;
+using SysX509 = System.Security.Cryptography.X509Certificates;
 using CryptoHives.Foundation.Security.Bcl.Certificates;
 using CryptoHives.Foundation.Security.Certificates;
 using NUnit.Framework;
-using X509AuthorityKeyIdentifierExtension = CryptoHives.Foundation.Security.Bcl.Certificates.X509AuthorityKeyIdentifierExtension;
-using X509AuthorityInformationAccessExtension = CryptoHives.Foundation.Security.Bcl.Certificates.X509AuthorityInformationAccessExtension;
-using X509CrlDistributionPointsExtension = CryptoHives.Foundation.Security.Bcl.Certificates.X509CrlDistributionPointsExtension;
 
 /// <summary>
 /// Tests for the CertificateFactory class.
@@ -31,7 +28,7 @@ public class ExtensionTests
     [Theory]
     public void DecodeExtensions(CertificateAsset certAsset)
     {
-        using var x509Cert = X509CertificateLoader.LoadCertificate(certAsset.Cert);
+        using var x509Cert = SysX509.X509CertificateLoader.LoadCertificate(certAsset.Cert);
         Assert.That(x509Cert, Is.Not.Null);
         TestContext.Out.WriteLine("CertificateAsset:");
         TestContext.Out.WriteLine(x509Cert);
@@ -40,7 +37,7 @@ public class ExtensionTests
         {
             TestContext.Out.WriteLine("X509SubjectAltNameExtension:");
             TestContext.Out.WriteLine(altName.Format(true));
-            var ext = new X509Extension(altName.Oid, altName.RawData, altName.Critical);
+            var ext = new SysX509.X509Extension(altName.Oid, altName.RawData, altName.Critical);
             TestContext.Out.WriteLine(ext.Format(true));
         }
 
@@ -49,7 +46,7 @@ public class ExtensionTests
         {
             TestContext.Out.WriteLine("X509AuthorityKeyIdentifierExtension:");
             TestContext.Out.WriteLine(authority.Format(true));
-            var ext = new X509Extension(authority.Oid, authority.RawData, authority.Critical);
+            var ext = new SysX509.X509Extension(authority.Oid, authority.RawData, authority.Critical);
             TestContext.Out.WriteLine(ext.Format(true));
         }
 
@@ -66,7 +63,7 @@ public class ExtensionTests
     [Test]
     public void VerifyX509AuthorityKeyIdentifierExtension()
     {
-        var authorityName = new X500DistinguishedName("CN=Test, O=CryptoHives, DC=localhost");
+        var authorityName = new SysX509.X500DistinguishedName("CN=Test, O=CryptoHives, DC=localhost");
         byte[] serialNumber = new byte[] { 9, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
         byte[] subjectKeyIdentifier = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
         var aki = new X509AuthorityKeyIdentifierExtension(subjectKeyIdentifier, authorityName, serialNumber);
@@ -195,7 +192,7 @@ public class ExtensionTests
         Assert.That(decoded.OcspResponderUris.Count, Is.EqualTo(1));
         Assert.That(decoded.OcspResponderUris[0], Is.EqualTo(ocsp));
 
-        var collection = new X509ExtensionCollection { aia };
+        var collection = new SysX509.X509ExtensionCollection { aia };
         var typed = collection.FindExtension<X509AuthorityInformationAccessExtension>();
         Assert.That(typed, Is.Not.Null);
         Assert.That(typed!.CaIssuersUris, Is.EqualTo(caIssuers));
@@ -217,10 +214,137 @@ public class ExtensionTests
         var decoded = new X509CrlDistributionPointsExtension(cdp.Oid.Value, cdp.RawData, cdp.Critical);
         Assert.That(decoded.DistributionPointUris, Is.EqualTo(distributionPoints));
 
-        var collection = new X509ExtensionCollection { cdp };
+        var collection = new SysX509.X509ExtensionCollection { cdp };
         var typed = collection.FindExtension<X509CrlDistributionPointsExtension>();
         Assert.That(typed, Is.Not.Null);
         Assert.That(typed!.DistributionPointUris, Is.EqualTo(distributionPoints));
+    }
+
+    [Test]
+    public void VerifyCertificatePoliciesExtension()
+    {
+        var policyOids = new[] { "2.23.140.1.2.1", "1.3.6.1.4.1.311.60.2.1.3" };
+
+        var ext = new X509CertificatePoliciesExtension(policyOids);
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509CertificatePoliciesExtension.CertificatePoliciesOid));
+        Assert.That(ext.PolicyOids, Is.EqualTo(policyOids));
+
+        var decoded = new X509CertificatePoliciesExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.PolicyOids, Is.EqualTo(policyOids));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509CertificatePoliciesExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.PolicyOids, Is.EqualTo(policyOids));
+    }
+
+    [Test]
+    public void VerifyNameConstraintsExtension()
+    {
+        var permitted = new[] { ".example.org", ".internal.example.org" };
+        var excluded = new[] { ".blocked.example.org" };
+
+        var ext = new X509NameConstraintsExtension(permitted, excluded);
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509NameConstraintsExtension.NameConstraintsOid));
+        Assert.That(ext.PermittedDnsDomains, Is.EqualTo(permitted));
+        Assert.That(ext.ExcludedDnsDomains, Is.EqualTo(excluded));
+
+        var decoded = new X509NameConstraintsExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.PermittedDnsDomains, Is.EqualTo(permitted));
+        Assert.That(decoded.ExcludedDnsDomains, Is.EqualTo(excluded));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509NameConstraintsExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.PermittedDnsDomains, Is.EqualTo(permitted));
+    }
+
+    [Test]
+    public void VerifyPolicyConstraintsExtension()
+    {
+        var ext = new X509PolicyConstraintsExtension(requireExplicitPolicy: 1, inhibitPolicyMapping: 2);
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509PolicyConstraintsExtension.PolicyConstraintsOid));
+        Assert.That(ext.RequireExplicitPolicy, Is.EqualTo(1));
+        Assert.That(ext.InhibitPolicyMapping, Is.EqualTo(2));
+
+        var decoded = new X509PolicyConstraintsExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.RequireExplicitPolicy, Is.EqualTo(1));
+        Assert.That(decoded.InhibitPolicyMapping, Is.EqualTo(2));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509PolicyConstraintsExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.RequireExplicitPolicy, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void VerifyInhibitAnyPolicyExtension()
+    {
+        var ext = new X509InhibitAnyPolicyExtension(0);
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509InhibitAnyPolicyExtension.InhibitAnyPolicyOid));
+        Assert.That(ext.SkipCerts, Is.EqualTo(0));
+
+        var decoded = new X509InhibitAnyPolicyExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.SkipCerts, Is.EqualTo(0));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509InhibitAnyPolicyExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.SkipCerts, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void VerifyIssuingDistributionPointExtension()
+    {
+        var uris = new[] { "http://ca.example.org/issuing.crl" };
+
+        var ext = new X509IssuingDistributionPointExtension(uris, indirectCrl: true);
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509IssuingDistributionPointExtension.IssuingDistributionPointOid));
+        Assert.That(ext.DistributionPointUris, Is.EqualTo(uris));
+        Assert.That(ext.IndirectCrl, Is.True);
+
+        var decoded = new X509IssuingDistributionPointExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.DistributionPointUris, Is.EqualTo(uris));
+        Assert.That(decoded.IndirectCrl, Is.True);
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509IssuingDistributionPointExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.IndirectCrl, Is.True);
+    }
+
+    [Test]
+    public void VerifyDeltaCrlIndicatorExtension()
+    {
+        var ext = new X509DeltaCrlIndicatorExtension(new BigInteger(123));
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509DeltaCrlIndicatorExtension.DeltaCrlIndicatorOid));
+        Assert.That(ext.BaseCrlNumber, Is.EqualTo(new BigInteger(123)));
+
+        var decoded = new X509DeltaCrlIndicatorExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.BaseCrlNumber, Is.EqualTo(new BigInteger(123)));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509DeltaCrlIndicatorExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.BaseCrlNumber, Is.EqualTo(new BigInteger(123)));
+    }
+
+    [Test]
+    public void VerifyFreshestCrlExtension()
+    {
+        var uris = new[] { "http://ca.example.org/delta1.crl", "http://ca.example.org/delta2.crl" };
+
+        var ext = new X509FreshestCrlExtension(uris);
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509FreshestCrlExtension.FreshestCrlOid));
+        Assert.That(ext.DistributionPointUris, Is.EqualTo(uris));
+
+        var decoded = new X509FreshestCrlExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.DistributionPointUris, Is.EqualTo(uris));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509FreshestCrlExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.DistributionPointUris, Is.EqualTo(uris));
     }
     #endregion
 }

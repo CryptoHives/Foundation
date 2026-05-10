@@ -77,6 +77,27 @@ public sealed class X509ExtensionCollection : IReadOnlyList<X509Extension>
     /// <summary>OID for Authority Information Access extension.</summary>
     public const string OidAuthorityInfoAccess = "1.3.6.1.5.5.7.1.1";
 
+    /// <summary>OID for Certificate Policies extension.</summary>
+    public const string OidCertificatePolicies = "2.5.29.32";
+
+    /// <summary>OID for Name Constraints extension.</summary>
+    public const string OidNameConstraints = "2.5.29.30";
+
+    /// <summary>OID for Policy Constraints extension.</summary>
+    public const string OidPolicyConstraints = "2.5.29.36";
+
+    /// <summary>OID for Inhibit AnyPolicy extension.</summary>
+    public const string OidInhibitAnyPolicy = "2.5.29.54";
+
+    /// <summary>OID for Issuing Distribution Point extension.</summary>
+    public const string OidIssuingDistributionPoint = "2.5.29.28";
+
+    /// <summary>OID for Delta CRL Indicator extension.</summary>
+    public const string OidDeltaCrlIndicator = "2.5.29.27";
+
+    /// <summary>OID for Freshest CRL extension.</summary>
+    public const string OidFreshestCrl = "2.5.29.46";
+
     /// <summary>
     /// An empty extension collection.
     /// </summary>
@@ -529,6 +550,236 @@ public static class ExtensionParsers
             }
 
             return entries.AsReadOnly();
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Certificate Policies extension (OID 2.5.29.32).
+    /// </summary>
+    public static class CertificatePolicies
+    {
+        /// <summary>
+        /// Parses Certificate Policies extension value and returns policy OIDs.
+        /// </summary>
+        public static IReadOnlyList<string> Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            var seq = reader.ReadSequence();
+            reader.ThrowIfNotEmpty();
+
+            var policies = new List<string>();
+            while (seq.HasData)
+            {
+                var policyInfo = seq.ReadSequence();
+                policies.Add(policyInfo.ReadObjectIdentifier());
+                while (policyInfo.HasData)
+                {
+                    policyInfo.ReadEncodedValue();
+                }
+            }
+
+            return policies.AsReadOnly();
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Name Constraints extension (OID 2.5.29.30).
+    /// </summary>
+    public static class NameConstraints
+    {
+        /// <summary>
+        /// Parses Name Constraints and returns permitted and excluded DNS subtrees.
+        /// </summary>
+        public static (IReadOnlyList<string> PermittedDns, IReadOnlyList<string> ExcludedDns) Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            var seq = reader.ReadSequence();
+            reader.ThrowIfNotEmpty();
+
+            var permitted = new List<string>();
+            var excluded = new List<string>();
+
+            while (seq.HasData)
+            {
+                Asn1Tag tag = seq.PeekTag();
+                if (tag.TagClass != TagClass.ContextSpecific)
+                {
+                    seq.ReadEncodedValue();
+                    continue;
+                }
+
+                if (tag.TagValue == 0 || tag.TagValue == 1)
+                {
+                    var target = tag.TagValue == 0 ? permitted : excluded;
+                    var gs = seq.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, tag.TagValue, isConstructed: true));
+                    while (gs.HasData)
+                    {
+                        var subtree = gs.ReadSequence();
+                        if (subtree.HasData)
+                        {
+                            Asn1Tag baseTag = subtree.PeekTag();
+                            if (baseTag.TagClass == TagClass.ContextSpecific && baseTag.TagValue == 2)
+                            {
+                                target.Add(subtree.ReadCharacterString(UniversalTagNumber.IA5String, new Asn1Tag(TagClass.ContextSpecific, 2)));
+                            }
+                            else
+                            {
+                                subtree.ReadEncodedValue();
+                            }
+                        }
+                        while (subtree.HasData)
+                        {
+                            subtree.ReadEncodedValue();
+                        }
+                    }
+                }
+                else
+                {
+                    seq.ReadEncodedValue();
+                }
+            }
+
+            return (permitted.AsReadOnly(), excluded.AsReadOnly());
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Policy Constraints extension (OID 2.5.29.36).
+    /// </summary>
+    public static class PolicyConstraints
+    {
+        /// <summary>
+        /// Parses policy constraints values.
+        /// </summary>
+        public static (int? RequireExplicitPolicy, int? InhibitPolicyMapping) Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            var seq = reader.ReadSequence();
+            reader.ThrowIfNotEmpty();
+
+            int? requireExplicitPolicy = null;
+            int? inhibitPolicyMapping = null;
+
+            while (seq.HasData)
+            {
+                Asn1Tag tag = seq.PeekTag();
+                if (tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 0)
+                {
+                    requireExplicitPolicy = (int)seq.ReadInteger(new Asn1Tag(TagClass.ContextSpecific, 0));
+                }
+                else if (tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 1)
+                {
+                    inhibitPolicyMapping = (int)seq.ReadInteger(new Asn1Tag(TagClass.ContextSpecific, 1));
+                }
+                else
+                {
+                    seq.ReadEncodedValue();
+                }
+            }
+
+            return (requireExplicitPolicy, inhibitPolicyMapping);
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Inhibit AnyPolicy extension (OID 2.5.29.54).
+    /// </summary>
+    public static class InhibitAnyPolicy
+    {
+        /// <summary>
+        /// Parses skipCerts value.
+        /// </summary>
+        public static int Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            int skip = (int)reader.ReadInteger();
+            reader.ThrowIfNotEmpty();
+            return skip;
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Issuing Distribution Point extension (OID 2.5.29.28).
+    /// </summary>
+    public static class IssuingDistributionPoint
+    {
+        /// <summary>
+        /// Parses URI distribution points and indirectCRL flag.
+        /// </summary>
+        public static (IReadOnlyList<string> Uris, bool IndirectCrl) Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            var seq = reader.ReadSequence();
+            reader.ThrowIfNotEmpty();
+
+            var uris = new List<string>();
+            bool indirect = false;
+
+            while (seq.HasData)
+            {
+                Asn1Tag tag = seq.PeekTag();
+                if (tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 0)
+                {
+                    var dpName = seq.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+                    if (dpName.HasData && dpName.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
+                    {
+                        var fullName = dpName.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+                        while (fullName.HasData)
+                        {
+                            Asn1Tag t = fullName.PeekTag();
+                            if (t.TagClass == TagClass.ContextSpecific && t.TagValue == 6)
+                            {
+                                uris.Add(fullName.ReadCharacterString(UniversalTagNumber.IA5String, new Asn1Tag(TagClass.ContextSpecific, 6)));
+                            }
+                            else
+                            {
+                                fullName.ReadEncodedValue();
+                            }
+                        }
+                    }
+                }
+                else if (tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 4)
+                {
+                    indirect = seq.ReadBoolean(new Asn1Tag(TagClass.ContextSpecific, 4));
+                }
+                else
+                {
+                    seq.ReadEncodedValue();
+                }
+            }
+
+            return (uris.AsReadOnly(), indirect);
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Delta CRL Indicator extension (OID 2.5.29.27).
+    /// </summary>
+    public static class DeltaCrlIndicator
+    {
+        /// <summary>
+        /// Parses base CRL number.
+        /// </summary>
+        public static long Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            long number = (long)reader.ReadInteger();
+            reader.ThrowIfNotEmpty();
+            return number;
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Freshest CRL extension (OID 2.5.29.46).
+    /// </summary>
+    public static class FreshestCrl
+    {
+        /// <summary>
+        /// Parses URI distribution points.
+        /// </summary>
+        public static IReadOnlyList<string> Parse(byte[] value)
+        {
+            return CrlDistributionPoints.Parse(value);
         }
     }
 }

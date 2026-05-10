@@ -104,6 +104,83 @@ public static class X509Extensions
                 }
             }
 
+            if (typeof(T) == typeof(X509CertificatePoliciesExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509CertificatePoliciesExtension.CertificatePoliciesOid)
+                    {
+                        return (T)(object)new X509CertificatePoliciesExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509NameConstraintsExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509NameConstraintsExtension.NameConstraintsOid)
+                    {
+                        return (T)(object)new X509NameConstraintsExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509PolicyConstraintsExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509PolicyConstraintsExtension.PolicyConstraintsOid)
+                    {
+                        return (T)(object)new X509PolicyConstraintsExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509InhibitAnyPolicyExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509InhibitAnyPolicyExtension.InhibitAnyPolicyOid)
+                    {
+                        return (T)(object)new X509InhibitAnyPolicyExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509IssuingDistributionPointExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509IssuingDistributionPointExtension.IssuingDistributionPointOid)
+                    {
+                        return (T)(object)new X509IssuingDistributionPointExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509DeltaCrlIndicatorExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509DeltaCrlIndicatorExtension.DeltaCrlIndicatorOid)
+                    {
+                        return (T)(object)new X509DeltaCrlIndicatorExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509FreshestCrlExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509FreshestCrlExtension.FreshestCrlOid)
+                    {
+                        return (T)(object)new X509FreshestCrlExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
             // search builtin extension - avoid LINQ OfType<T>().FirstOrDefault()
             foreach (X509Extension ext in extensions)
             {

@@ -119,6 +119,61 @@ public sealed class X509CrlBuilder
         return this;
     }
 
+    /// <summary>
+    /// Adds an Issuing Distribution Point extension.
+    /// </summary>
+    /// <param name="distributionPointUris">Distribution point URIs for this issuing point.</param>
+    /// <param name="indirectCrl">Whether this CRL is an indirect CRL.</param>
+    /// <returns>This builder instance.</returns>
+    public X509CrlBuilder AddIssuingDistributionPoint(string[]? distributionPointUris = null, bool indirectCrl = false)
+    {
+        bool hasUris = distributionPointUris is { Length: > 0 };
+        if (!hasUris && !indirectCrl)
+        {
+            throw new ArgumentException("At least one distribution point URI or indirectCRL flag is required.");
+        }
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.PushSequence();
+
+        if (hasUris)
+        {
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            foreach (string uri in distributionPointUris!)
+            {
+                if (string.IsNullOrWhiteSpace(uri)) continue;
+                writer.WriteCharacterString(UniversalTagNumber.IA5String, uri, new Asn1Tag(TagClass.ContextSpecific, 6));
+            }
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+        }
+
+        if (indirectCrl)
+        {
+            writer.WriteBoolean(true, new Asn1Tag(TagClass.ContextSpecific, 4));
+        }
+
+        writer.PopSequence();
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidIssuingDistributionPoint, true, writer.Encode()));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a Delta CRL Indicator extension.
+    /// </summary>
+    /// <param name="baseCrlNumber">The base CRL number this delta applies to.</param>
+    /// <returns>This builder instance.</returns>
+    public X509CrlBuilder AddDeltaCrlIndicator(long baseCrlNumber)
+    {
+        if (baseCrlNumber < 0) throw new ArgumentOutOfRangeException(nameof(baseCrlNumber));
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.WriteInteger(baseCrlNumber);
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidDeltaCrlIndicator, true, writer.Encode()));
+        return this;
+    }
+
     // ========================================================================
     // Build Methods
     // ========================================================================

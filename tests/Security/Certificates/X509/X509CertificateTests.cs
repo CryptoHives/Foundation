@@ -533,7 +533,7 @@ public class X509CertificateTests
     }
 
     // ========================================================================
-    // Authority Key Identifier Builder
+    // Authority Key Identifier
     // ========================================================================
 
     [Test]
@@ -555,7 +555,7 @@ public class X509CertificateTests
     }
 
     // ========================================================================
-    // CRL Distribution Points Builder
+    // CRL Distribution Points
     // ========================================================================
 
     [Test]
@@ -576,7 +576,7 @@ public class X509CertificateTests
     }
 
     // ========================================================================
-    // Authority Information Access Builder
+    // Authority Information Access
     // ========================================================================
 
     [Test]

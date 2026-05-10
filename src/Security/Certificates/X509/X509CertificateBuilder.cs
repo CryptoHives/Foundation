@@ -491,6 +491,152 @@ public sealed class X509CertificateBuilder
     }
 
     /// <summary>
+    /// Adds a Certificate Policies extension.
+    /// </summary>
+    /// <param name="policyOids">The certificate policy OIDs.</param>
+    /// <returns>This builder instance.</returns>
+    public X509CertificateBuilder AddCertificatePolicies(params string[] policyOids)
+    {
+        if (policyOids is null) throw new ArgumentNullException(nameof(policyOids));
+        if (policyOids.Length == 0) throw new ArgumentException("At least one policy OID is required.", nameof(policyOids));
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.PushSequence();
+        foreach (string policyOid in policyOids)
+        {
+            if (string.IsNullOrWhiteSpace(policyOid)) continue;
+            writer.PushSequence();
+            writer.WriteObjectIdentifier(policyOid);
+            writer.PopSequence();
+        }
+        writer.PopSequence();
+
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidCertificatePolicies, false, writer.Encode()));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a Name Constraints extension (DNS subtrees).
+    /// </summary>
+    /// <param name="permittedDns">Permitted DNS subtrees.</param>
+    /// <param name="excludedDns">Excluded DNS subtrees.</param>
+    /// <returns>This builder instance.</returns>
+    public X509CertificateBuilder AddNameConstraints(string[]? permittedDns = null, string[]? excludedDns = null)
+    {
+        bool hasPermitted = permittedDns is { Length: > 0 };
+        bool hasExcluded = excludedDns is { Length: > 0 };
+        if (!hasPermitted && !hasExcluded)
+        {
+            throw new ArgumentException("At least one permitted or excluded DNS subtree is required.");
+        }
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.PushSequence();
+
+        if (hasPermitted)
+        {
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            foreach (string dns in permittedDns!)
+            {
+                if (string.IsNullOrWhiteSpace(dns)) continue;
+                writer.PushSequence();
+                writer.WriteCharacterString(UniversalTagNumber.IA5String, dns, new Asn1Tag(TagClass.ContextSpecific, 2));
+                writer.PopSequence();
+            }
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+        }
+
+        if (hasExcluded)
+        {
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true));
+            foreach (string dns in excludedDns!)
+            {
+                if (string.IsNullOrWhiteSpace(dns)) continue;
+                writer.PushSequence();
+                writer.WriteCharacterString(UniversalTagNumber.IA5String, dns, new Asn1Tag(TagClass.ContextSpecific, 2));
+                writer.PopSequence();
+            }
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true));
+        }
+
+        writer.PopSequence();
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidNameConstraints, true, writer.Encode()));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a Policy Constraints extension.
+    /// </summary>
+    /// <param name="requireExplicitPolicy">Require explicit policy skip certs value.</param>
+    /// <param name="inhibitPolicyMapping">Inhibit policy mapping skip certs value.</param>
+    /// <returns>This builder instance.</returns>
+    public X509CertificateBuilder AddPolicyConstraints(int? requireExplicitPolicy = null, int? inhibitPolicyMapping = null)
+    {
+        if (!requireExplicitPolicy.HasValue && !inhibitPolicyMapping.HasValue)
+            throw new ArgumentException("At least one policy constraint value is required.");
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.PushSequence();
+        if (requireExplicitPolicy.HasValue)
+        {
+            writer.WriteInteger(requireExplicitPolicy.Value, new Asn1Tag(TagClass.ContextSpecific, 0));
+        }
+
+        if (inhibitPolicyMapping.HasValue)
+        {
+            writer.WriteInteger(inhibitPolicyMapping.Value, new Asn1Tag(TagClass.ContextSpecific, 1));
+        }
+
+        writer.PopSequence();
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidPolicyConstraints, true, writer.Encode()));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds an Inhibit AnyPolicy extension.
+    /// </summary>
+    /// <param name="skipCerts">The skip certs value.</param>
+    /// <returns>This builder instance.</returns>
+    public X509CertificateBuilder AddInhibitAnyPolicy(int skipCerts)
+    {
+        if (skipCerts < 0) throw new ArgumentOutOfRangeException(nameof(skipCerts));
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.WriteInteger(skipCerts);
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidInhibitAnyPolicy, true, writer.Encode()));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a Freshest CRL extension with URI distribution points.
+    /// </summary>
+    /// <param name="uris">The freshest CRL distribution point URIs.</param>
+    /// <returns>This builder instance.</returns>
+    public X509CertificateBuilder AddFreshestCrl(params string[] uris)
+    {
+        if (uris is null) throw new ArgumentNullException(nameof(uris));
+        if (uris.Length == 0) throw new ArgumentException("At least one URI is required.", nameof(uris));
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.PushSequence();
+        foreach (string uri in uris)
+        {
+            writer.PushSequence();
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            writer.WriteCharacterString(
+                UniversalTagNumber.IA5String, uri, new Asn1Tag(TagClass.ContextSpecific, 6));
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+            writer.PopSequence();
+        }
+
+        writer.PopSequence();
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidFreshestCrl, false, writer.Encode()));
+        return this;
+    }
+
+    /// <summary>
     /// Builds a self-signed certificate using an RSA private key.
     /// </summary>
     /// <param name="privateKey">The RSA private key for signing.</param>
@@ -905,6 +1051,28 @@ public sealed class X509CertificateBuilder
 
         byte[] signature = Ed25519.Sign(issuerSeed, tbsDer);
         return BuildCertificate(tbsDer, SignatureAlgorithm.OidEd25519, signature);
+    }
+
+    /// <summary>
+    /// Builds a certificate signed by an Ed448 issuer key.
+    /// </summary>
+    /// <param name="issuerSeed">The 57-byte Ed448 private seed of the issuer.</param>
+    /// <param name="issuerName">The issuer's distinguished name.</param>
+    /// <returns>The built <see cref="X509Certificate"/>.</returns>
+    public X509Certificate BuildSignedEd448(byte[] issuerSeed, X509Name issuerName)
+    {
+        if (issuerSeed is null) throw new ArgumentNullException(nameof(issuerSeed));
+        if (issuerSeed.Length != 57) throw new ArgumentException("Ed448 seed must be 57 bytes.", nameof(issuerSeed));
+        if (issuerName is null) throw new ArgumentNullException(nameof(issuerName));
+
+        var savedIssuer = _issuer;
+        _issuer = issuerName;
+
+        byte[] tbsDer = BuildTbs(SignatureAlgorithm.OidEd448);
+        _issuer = savedIssuer;
+
+        byte[] signature = Ed448.Sign(issuerSeed, tbsDer);
+        return BuildCertificate(tbsDer, SignatureAlgorithm.OidEd448, signature);
     }
 
     /// <summary>
