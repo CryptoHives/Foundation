@@ -98,6 +98,15 @@ public sealed class X509ExtensionCollection : IReadOnlyList<X509Extension>
     /// <summary>OID for Freshest CRL extension.</summary>
     public const string OidFreshestCrl = "2.5.29.46";
 
+    /// <summary>OID for Private Key Usage Period extension.</summary>
+    public const string OidPrivateKeyUsagePeriod = "2.5.29.16";
+
+    /// <summary>OID for OCSP No Check extension.</summary>
+    public const string OidOcspNoCheck = "1.3.6.1.5.5.7.48.1.5";
+
+    /// <summary>OID for TLS Feature extension.</summary>
+    public const string OidTlsFeature = "1.3.6.1.5.5.7.1.24";
+
     /// <summary>
     /// An empty extension collection.
     /// </summary>
@@ -780,6 +789,94 @@ public static class ExtensionParsers
         public static IReadOnlyList<string> Parse(byte[] value)
         {
             return CrlDistributionPoints.Parse(value);
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the Private Key Usage Period extension (OID 2.5.29.16).
+    /// </summary>
+    public static class PrivateKeyUsagePeriod
+    {
+        /// <summary>
+        /// Parses notBefore and notAfter values.
+        /// </summary>
+        public static (DateTimeOffset? NotBefore, DateTimeOffset? NotAfter) Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            var seq = reader.ReadSequence();
+            reader.ThrowIfNotEmpty();
+
+            DateTimeOffset? notBefore = null;
+            DateTimeOffset? notAfter = null;
+
+            while (seq.HasData)
+            {
+                Asn1Tag tag = seq.PeekTag();
+                if (tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 0)
+                {
+                    var encoded = seq.ReadEncodedValue();
+                    var tagged = new AsnReader(encoded.ToArray(), AsnEncodingRules.DER);
+                    var inner = tagged.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+                    notBefore = inner.ReadGeneralizedTime();
+                    inner.ThrowIfNotEmpty();
+                    tagged.ThrowIfNotEmpty();
+                }
+                else if (tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 1)
+                {
+                    var encoded = seq.ReadEncodedValue();
+                    var tagged = new AsnReader(encoded.ToArray(), AsnEncodingRules.DER);
+                    var inner = tagged.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true));
+                    notAfter = inner.ReadGeneralizedTime();
+                    inner.ThrowIfNotEmpty();
+                    tagged.ThrowIfNotEmpty();
+                }
+                else
+                {
+                    seq.ReadEncodedValue();
+                }
+            }
+
+            return (notBefore, notAfter);
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the OCSP No Check extension (OID 1.3.6.1.5.5.7.48.1.5).
+    /// </summary>
+    public static class OcspNoCheck
+    {
+        /// <summary>
+        /// Parses and validates the NULL body.
+        /// </summary>
+        public static void Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            reader.ReadNull();
+            reader.ThrowIfNotEmpty();
+        }
+    }
+
+    /// <summary>
+    /// Provides parsing for the TLS Feature extension (OID 1.3.6.1.5.5.7.1.24).
+    /// </summary>
+    public static class TlsFeature
+    {
+        /// <summary>
+        /// Parses TLS feature identifiers.
+        /// </summary>
+        public static IReadOnlyList<int> Parse(byte[] value)
+        {
+            var reader = new AsnReader(value, AsnEncodingRules.DER);
+            var seq = reader.ReadSequence();
+            reader.ThrowIfNotEmpty();
+
+            var features = new List<int>();
+            while (seq.HasData)
+            {
+                features.Add((int)seq.ReadInteger());
+            }
+
+            return features.AsReadOnly();
         }
     }
 }

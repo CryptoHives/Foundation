@@ -139,6 +139,21 @@ public static class Oids
     /// </summary>
     public const string FreshestCrl = "2.5.29.46";
 
+    /// <summary>
+    /// The OID string for Private Key Usage Period extension.
+    /// </summary>
+    public const string PrivateKeyUsagePeriod = "2.5.29.16";
+
+    /// <summary>
+    /// The OID string for OCSP No Check extension.
+    /// </summary>
+    public const string OcspNoCheck = "1.3.6.1.5.5.7.48.1.5";
+
+    /// <summary>
+    /// The OID string for TLS Feature extension.
+    /// </summary>
+    public const string TlsFeature = "1.3.6.1.5.5.7.1.24";
+
     #region OID Lookup Dictionaries
     /// <summary>
     /// Maps signature algorithm OIDs to their corresponding hash algorithm names.

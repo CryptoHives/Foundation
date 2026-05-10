@@ -181,6 +181,39 @@ public static class X509Extensions
                 }
             }
 
+            if (typeof(T) == typeof(X509OcspNoCheckExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509OcspNoCheckExtension.OcspNoCheckOid)
+                    {
+                        return (T)(object)new X509OcspNoCheckExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509TlsFeatureExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509TlsFeatureExtension.TlsFeatureOid)
+                    {
+                        return (T)(object)new X509TlsFeatureExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
+            if (typeof(T) == typeof(X509PrivateKeyUsagePeriodExtension))
+            {
+                foreach (X509Extension ext in extensions)
+                {
+                    if (ext.Oid?.Value == X509PrivateKeyUsagePeriodExtension.PrivateKeyUsagePeriodOid)
+                    {
+                        return (T)(object)new X509PrivateKeyUsagePeriodExtension(ext, ext.Critical);
+                    }
+                }
+            }
+
             // search builtin extension - avoid LINQ OfType<T>().FirstOrDefault()
             foreach (X509Extension ext in extensions)
             {

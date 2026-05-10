@@ -491,148 +491,70 @@ public sealed class X509CertificateBuilder
     }
 
     /// <summary>
-    /// Adds a Certificate Policies extension.
+    /// Adds a Private Key Usage Period extension.
     /// </summary>
-    /// <param name="policyOids">The certificate policy OIDs.</param>
+    /// <param name="notBefore">Optional private key usage start.</param>
+    /// <param name="notAfter">Optional private key usage end.</param>
     /// <returns>This builder instance.</returns>
-    public X509CertificateBuilder AddCertificatePolicies(params string[] policyOids)
+    public X509CertificateBuilder AddPrivateKeyUsagePeriod(DateTimeOffset? notBefore = null, DateTimeOffset? notAfter = null)
     {
-        if (policyOids is null) throw new ArgumentNullException(nameof(policyOids));
-        if (policyOids.Length == 0) throw new ArgumentException("At least one policy OID is required.", nameof(policyOids));
-
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        writer.PushSequence();
-        foreach (string policyOid in policyOids)
-        {
-            if (string.IsNullOrWhiteSpace(policyOid)) continue;
-            writer.PushSequence();
-            writer.WriteObjectIdentifier(policyOid);
-            writer.PopSequence();
-        }
-        writer.PopSequence();
-
-        _extensions.Add(new X509Extension(X509ExtensionCollection.OidCertificatePolicies, false, writer.Encode()));
-        return this;
-    }
-
-    /// <summary>
-    /// Adds a Name Constraints extension (DNS subtrees).
-    /// </summary>
-    /// <param name="permittedDns">Permitted DNS subtrees.</param>
-    /// <param name="excludedDns">Excluded DNS subtrees.</param>
-    /// <returns>This builder instance.</returns>
-    public X509CertificateBuilder AddNameConstraints(string[]? permittedDns = null, string[]? excludedDns = null)
-    {
-        bool hasPermitted = permittedDns is { Length: > 0 };
-        bool hasExcluded = excludedDns is { Length: > 0 };
-        if (!hasPermitted && !hasExcluded)
-        {
-            throw new ArgumentException("At least one permitted or excluded DNS subtree is required.");
-        }
+        if (!notBefore.HasValue && !notAfter.HasValue)
+            throw new ArgumentException("At least one of notBefore or notAfter must be provided.");
 
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence();
 
-        if (hasPermitted)
+        if (notBefore.HasValue)
         {
             writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
-            foreach (string dns in permittedDns!)
-            {
-                if (string.IsNullOrWhiteSpace(dns)) continue;
-                writer.PushSequence();
-                writer.WriteCharacterString(UniversalTagNumber.IA5String, dns, new Asn1Tag(TagClass.ContextSpecific, 2));
-                writer.PopSequence();
-            }
+            writer.WriteGeneralizedTime(notBefore.Value, true);
             writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
         }
 
-        if (hasExcluded)
+        if (notAfter.HasValue)
         {
             writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true));
-            foreach (string dns in excludedDns!)
-            {
-                if (string.IsNullOrWhiteSpace(dns)) continue;
-                writer.PushSequence();
-                writer.WriteCharacterString(UniversalTagNumber.IA5String, dns, new Asn1Tag(TagClass.ContextSpecific, 2));
-                writer.PopSequence();
-            }
+            writer.WriteGeneralizedTime(notAfter.Value, true);
             writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true));
         }
 
         writer.PopSequence();
-        _extensions.Add(new X509Extension(X509ExtensionCollection.OidNameConstraints, true, writer.Encode()));
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidPrivateKeyUsagePeriod, false, writer.Encode()));
         return this;
     }
 
     /// <summary>
-    /// Adds a Policy Constraints extension.
+    /// Adds an OCSP No Check extension.
     /// </summary>
-    /// <param name="requireExplicitPolicy">Require explicit policy skip certs value.</param>
-    /// <param name="inhibitPolicyMapping">Inhibit policy mapping skip certs value.</param>
     /// <returns>This builder instance.</returns>
-    public X509CertificateBuilder AddPolicyConstraints(int? requireExplicitPolicy = null, int? inhibitPolicyMapping = null)
+    public X509CertificateBuilder AddOcspNoCheck()
     {
-        if (!requireExplicitPolicy.HasValue && !inhibitPolicyMapping.HasValue)
-            throw new ArgumentException("At least one policy constraint value is required.");
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.WriteNull();
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidOcspNoCheck, false, writer.Encode()));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a TLS Feature extension.
+    /// </summary>
+    /// <param name="featureIds">TLS feature identifiers (e.g. status_request=5).</param>
+    /// <returns>This builder instance.</returns>
+    public X509CertificateBuilder AddTlsFeature(params int[] featureIds)
+    {
+        if (featureIds is null) throw new ArgumentNullException(nameof(featureIds));
+        if (featureIds.Length == 0) throw new ArgumentException("At least one TLS feature identifier is required.", nameof(featureIds));
 
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence();
-        if (requireExplicitPolicy.HasValue)
+        foreach (int featureId in featureIds)
         {
-            writer.WriteInteger(requireExplicitPolicy.Value, new Asn1Tag(TagClass.ContextSpecific, 0));
+            if (featureId < 0) throw new ArgumentOutOfRangeException(nameof(featureIds));
+            writer.WriteInteger(featureId);
         }
-
-        if (inhibitPolicyMapping.HasValue)
-        {
-            writer.WriteInteger(inhibitPolicyMapping.Value, new Asn1Tag(TagClass.ContextSpecific, 1));
-        }
-
         writer.PopSequence();
-        _extensions.Add(new X509Extension(X509ExtensionCollection.OidPolicyConstraints, true, writer.Encode()));
-        return this;
-    }
 
-    /// <summary>
-    /// Adds an Inhibit AnyPolicy extension.
-    /// </summary>
-    /// <param name="skipCerts">The skip certs value.</param>
-    /// <returns>This builder instance.</returns>
-    public X509CertificateBuilder AddInhibitAnyPolicy(int skipCerts)
-    {
-        if (skipCerts < 0) throw new ArgumentOutOfRangeException(nameof(skipCerts));
-
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        writer.WriteInteger(skipCerts);
-        _extensions.Add(new X509Extension(X509ExtensionCollection.OidInhibitAnyPolicy, true, writer.Encode()));
-        return this;
-    }
-
-    /// <summary>
-    /// Adds a Freshest CRL extension with URI distribution points.
-    /// </summary>
-    /// <param name="uris">The freshest CRL distribution point URIs.</param>
-    /// <returns>This builder instance.</returns>
-    public X509CertificateBuilder AddFreshestCrl(params string[] uris)
-    {
-        if (uris is null) throw new ArgumentNullException(nameof(uris));
-        if (uris.Length == 0) throw new ArgumentException("At least one URI is required.", nameof(uris));
-
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        writer.PushSequence();
-        foreach (string uri in uris)
-        {
-            writer.PushSequence();
-            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
-            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
-            writer.WriteCharacterString(
-                UniversalTagNumber.IA5String, uri, new Asn1Tag(TagClass.ContextSpecific, 6));
-            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
-            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
-            writer.PopSequence();
-        }
-
-        writer.PopSequence();
-        _extensions.Add(new X509Extension(X509ExtensionCollection.OidFreshestCrl, false, writer.Encode()));
+        _extensions.Add(new X509Extension(X509ExtensionCollection.OidTlsFeature, false, writer.Encode()));
         return this;
     }
 

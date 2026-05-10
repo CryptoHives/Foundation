@@ -841,3 +841,71 @@ public class X509CertificateTests
         "mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d" +
         "emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=";
 }
+
+[TestFixture]
+[Parallelizable(ParallelScope.All)]
+public class X509CertificateExtensionsTests
+{
+    // ========================================================================
+    // OCSP No Check
+    // ========================================================================
+
+    [Test]
+    public void OcspNoCheckRoundTrip()
+    {
+        var cert = X509CertificateBuilder.CreateForRsa(2048)
+            .SetSubject(X509Name.FromString("CN=ocsp-responder.example.com"))
+            .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(365))
+            .AddOcspNoCheck()
+            .BuildSelfSigned();
+
+        var ext = cert.Extensions.GetExtension(X509ExtensionCollection.OidOcspNoCheck);
+        Assert.That(ext, Is.Not.Null);
+
+        Assert.DoesNotThrow(() => ExtensionParsers.OcspNoCheck.Parse(ext!.Value));
+    }
+
+    // ========================================================================
+    // TLS Feature
+    // ========================================================================
+
+    [Test]
+    public void TlsFeatureRoundTrip()
+    {
+        var cert = X509CertificateBuilder.CreateForRsa(2048)
+            .SetSubject(X509Name.FromString("CN=tls-feature.example.com"))
+            .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(365))
+            .AddTlsFeature(5, 17)
+            .BuildSelfSigned();
+
+        var ext = cert.Extensions.GetExtension(X509ExtensionCollection.OidTlsFeature);
+        Assert.That(ext, Is.Not.Null);
+
+        var features = ExtensionParsers.TlsFeature.Parse(ext!.Value);
+        Assert.That(features, Is.EqualTo(new[] { 5, 17 }));
+    }
+
+    // ========================================================================
+    // Private Key Usage Period
+    // ========================================================================
+
+    [Test]
+    public void PrivateKeyUsagePeriodRoundTrip()
+    {
+        DateTimeOffset notBefore = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        DateTimeOffset notAfter = new DateTimeOffset(2026, 12, 31, 23, 59, 59, TimeSpan.Zero);
+
+        var cert = X509CertificateBuilder.CreateForRsa(2048)
+            .SetSubject(X509Name.FromString("CN=pkup.example.com"))
+            .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(365))
+            .AddPrivateKeyUsagePeriod(notBefore, notAfter)
+            .BuildSelfSigned();
+
+        var ext = cert.Extensions.GetExtension(X509ExtensionCollection.OidPrivateKeyUsagePeriod);
+        Assert.That(ext, Is.Not.Null);
+
+        var (parsedNotBefore, parsedNotAfter) = ExtensionParsers.PrivateKeyUsagePeriod.Parse(ext!.Value);
+        Assert.That(parsedNotBefore, Is.EqualTo(notBefore));
+        Assert.That(parsedNotAfter, Is.EqualTo(notAfter));
+    }
+}

@@ -346,6 +346,57 @@ public class ExtensionTests
         Assert.That(typed, Is.Not.Null);
         Assert.That(typed!.DistributionPointUris, Is.EqualTo(uris));
     }
+
+    [Test]
+    public void VerifyOcspNoCheckExtension()
+    {
+        var ext = new X509OcspNoCheckExtension();
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509OcspNoCheckExtension.OcspNoCheckOid));
+
+        var decoded = new X509OcspNoCheckExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.Oid.Value, Is.EqualTo(X509OcspNoCheckExtension.OcspNoCheckOid));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509OcspNoCheckExtension>();
+        Assert.That(typed, Is.Not.Null);
+    }
+
+    [Test]
+    public void VerifyTlsFeatureExtension()
+    {
+        var ext = new X509TlsFeatureExtension(new[] { X509TlsFeatureExtension.StatusRequest, X509TlsFeatureExtension.StatusRequestV2 });
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509TlsFeatureExtension.TlsFeatureOid));
+        Assert.That(ext.FeatureIds, Is.EqualTo(new[] { X509TlsFeatureExtension.StatusRequest, X509TlsFeatureExtension.StatusRequestV2 }));
+
+        var decoded = new X509TlsFeatureExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.FeatureIds, Is.EqualTo(ext.FeatureIds));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509TlsFeatureExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.FeatureIds, Is.EqualTo(ext.FeatureIds));
+    }
+
+    [Test]
+    public void VerifyPrivateKeyUsagePeriodExtension()
+    {
+        DateTimeOffset notBefore = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        DateTimeOffset notAfter = new DateTimeOffset(2026, 12, 31, 23, 59, 59, TimeSpan.Zero);
+
+        var ext = new X509PrivateKeyUsagePeriodExtension(notBefore, notAfter);
+        Assert.That(ext.Oid.Value, Is.EqualTo(X509PrivateKeyUsagePeriodExtension.PrivateKeyUsagePeriodOid));
+        Assert.That(ext.NotBefore, Is.EqualTo(notBefore));
+        Assert.That(ext.NotAfter, Is.EqualTo(notAfter));
+
+        var decoded = new X509PrivateKeyUsagePeriodExtension(ext.Oid.Value!, ext.RawData, ext.Critical);
+        Assert.That(decoded.NotBefore, Is.EqualTo(notBefore));
+        Assert.That(decoded.NotAfter, Is.EqualTo(notAfter));
+
+        var collection = new SysX509.X509ExtensionCollection { ext };
+        var typed = collection.FindExtension<X509PrivateKeyUsagePeriodExtension>();
+        Assert.That(typed, Is.Not.Null);
+        Assert.That(typed!.NotAfter, Is.EqualTo(notAfter));
+    }
     #endregion
 }
 
