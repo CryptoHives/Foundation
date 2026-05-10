@@ -636,7 +636,7 @@ public class X509CertificateTests
         // ExportParameters returns fresh arrays each call; needed because
         // RsaCipher.Dispose zeroes the key data.
         var p1 = rsa.ExportParameters(true);
-        var caKey1 = new RsaKeyParameters(
+        using var caKey1 = new RsaKeyParameters(
             p1.Modulus!, p1.Exponent!, p1.D!, p1.P!, p1.Q!, p1.DP!, p1.DQ!, p1.InverseQ!);
 
         var caCertManual = new X509CertificateBuilder()
@@ -661,7 +661,7 @@ public class X509CertificateTests
         var leafName = X509Name.FromString("CN=leaf.example.com, O=CryptoHives, C=US");
         using var leafRsa = System.Security.Cryptography.RSA.Create(2048);
         var lp = leafRsa.ExportParameters(true);
-        var leafKey = new RsaKeyParameters(
+        using var leafKey = new RsaKeyParameters(
             lp.Modulus!, lp.Exponent!, lp.D!, lp.P!, lp.Q!, lp.DP!, lp.DQ!, lp.InverseQ!);
 
         var leafCert = new X509CertificateBuilder()

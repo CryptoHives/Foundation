@@ -27,7 +27,8 @@ public class OcspTests
         using var caRsa = RSA.Create(2048);
         var (caCert, _) = CreateCa(caRsa);
 
-        using var leafKey = ExportKey(RSA.Create(2048));
+        using RSA rsa = RSA.Create(2048);
+        using var leafKey = ExportKey(rsa);
         var leaf = CreateLeaf(caRsa, caCert.Subject);
         var certId = OcspCertId.Create(leaf, caCert);
 

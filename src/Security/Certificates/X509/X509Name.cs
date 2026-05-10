@@ -239,13 +239,14 @@ public sealed class X509Name : IEquatable<X509Name>
     /// <inheritdoc />
     public override int GetHashCode()
     {
-        int hash = 17;
+        var hash = new HashCode();
         foreach (var (oid, value) in _attributes)
         {
-            hash = hash * 31 + oid.GetHashCode();
-            hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(value);
+            hash.Add(oid);
+            hash.Add(StringComparer.OrdinalIgnoreCase.GetHashCode(value));
         }
-        return hash;
+
+        return hash.ToHashCode();
     }
 
     private static string ReadDirectoryString(AsnReader reader)

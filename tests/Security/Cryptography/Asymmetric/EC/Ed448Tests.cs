@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #if NET8_0_OR_GREATER
@@ -6,6 +6,7 @@
 namespace Cryptography.Tests.Asymmetric.EC;
 
 using System;
+using System.Globalization;
 using System.Numerics;
 using System.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
@@ -354,13 +355,13 @@ public class Ed448Tests
         // Verify Bx is even (RFC 8032 Table 2: X(B) has bit 0 = 0)
         Assert.That(RefBx.IsEven, Is.True, "Bx should be even (positive root)");
 
+        Span<ulong> k = stackalloc ulong[7];
         foreach (ulong scalar in new ulong[] { 1, 2, 3, 7, 15, 100, 1000 })
         {
             byte[] scalarBytes = new byte[56];
             scalarBytes[0] = (byte)(scalar & 0xFF);
             if (scalar > 255) scalarBytes[1] = (byte)((scalar >> 8) & 0xFF);
 
-            Span<ulong> k = stackalloc ulong[7];
             X25519.FromLittleEndianBytes(scalarBytes, k);
             byte[] result = new byte[57];
             Ed448.ScalarMulBaseEncoded(k, result);
@@ -383,11 +384,11 @@ public class Ed448Tests
     // Base point B from RFC 8032 §5.2 Table 2 (sourced from RFC 7748 edwards448 base point).
     // X(B) = 224580040295924300187604334099896036246789641632564134246125461686950415467406032909029192869357953282578032075146446173674602635247710
     private static readonly BigInteger RefBx = BigInteger.Parse(
-        "224580040295924300187604334099896036246789641632564134246125461686950415467406032909029192869357953282578032075146446173674602635247710");
+        "224580040295924300187604334099896036246789641632564134246125461686950415467406032909029192869357953282578032075146446173674602635247710", CultureInfo.InvariantCulture);
 
     // Y(B) = 298819210078481492676017930443930673437544040154080242095928241372331506189835876003536878655418784733982303233503462500531545062832660
     private static readonly BigInteger RefBy = BigInteger.Parse(
-        "298819210078481492676017930443930673437544040154080242095928241372331506189835876003536878655418784733982303233503462500531545062832660");
+        "298819210078481492676017930443930673437544040154080242095928241372331506189835876003536878655418784733982303233503462500531545062832660", CultureInfo.InvariantCulture);
 
     private static byte[] BigIntRefScalarMulBase(byte[] scalarLE)
     {

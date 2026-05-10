@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
@@ -117,16 +117,20 @@ public sealed class EcDsaCipher : IEcDsa
     public bool VerifyHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature)
     {
         if (_publicKeyX is null || _publicKeyY is null || _curve is null)
+        {
             throw new CryptographicException("No key imported.");
+        }
 
         int fs = _curve.FieldSize;
-        if (signature.Length != fs * 2) return false;
-
-        byte[] r = signature[..fs].ToArray();
-        byte[] s = signature[fs..].ToArray();
+        if (signature.Length != fs * 2)
+        {
+            return false;
+        }
 
         return EcDsaCore.Verify(
-            hash, r, s,
+            hash,
+            signature[..fs],
+            signature[fs..],
             PadLeft(_publicKeyX, fs),
             PadLeft(_publicKeyY, fs),
             _curve);
@@ -187,7 +191,10 @@ public sealed class EcDsaCipher : IEcDsa
             rng.GetBytes(dBytes);
             int excessBits = fs * 8 - orderBits;
             if (excessBits > 0)
+            {
                 dBytes[0] &= (byte)(0xFF >> excessBits);
+            }
+
             BigUInt.FromBigEndianBytes(dBytes, dLimbs);
         }
         while (BigUInt.IsZero(dLimbs) || BigUInt.Compare(dLimbs, order) >= 0);
@@ -202,16 +209,22 @@ public sealed class EcDsaCipher : IEcDsa
         _publicKeyY = qy;
     }
 
-    private static HashAlgorithmName GetDefaultHashAlgorithm(WeierstrassCurve curve) => curve.FieldBits switch
+    private static HashAlgorithmName GetDefaultHashAlgorithm(WeierstrassCurve curve)
     {
-        <= 256 => HashAlgorithmName.SHA256,
-        <= 384 => HashAlgorithmName.SHA384,
-        _ => HashAlgorithmName.SHA512
-    };
+        return curve.FieldBits switch {
+            <= 256 => HashAlgorithmName.SHA256,
+            <= 384 => HashAlgorithmName.SHA384,
+            _ => HashAlgorithmName.SHA512
+        };
+    }
 
     private static byte[] PadLeft(byte[] data, int length)
     {
-        if (data.Length >= length) return data;
+        if (data.Length >= length)
+        {
+            return data;
+        }
+
         byte[] padded = new byte[length];
         Buffer.BlockCopy(data, 0, padded, length - data.Length, data.Length);
         return padded;

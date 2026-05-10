@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #if NET8_0_OR_GREATER
@@ -34,12 +34,12 @@ public class EcDhManagedTests
         var bobParams = bob.ExportParameters(true);
 
         // Alice computes shared secret with Bob's public key
-        var aliceManaged = new EcDhManaged();
+        using var aliceManaged = new EcDhManaged();
         aliceManaged.ImportParameters(aliceParams);
         byte[] aliceSecret = aliceManaged.DeriveRawSecretAgreement(bob.ExportParameters(false));
 
         // Bob computes shared secret with Alice's public key
-        var bobManaged = new EcDhManaged();
+        using var bobManaged = new EcDhManaged();
         bobManaged.ImportParameters(bobParams);
         byte[] bobSecret = bobManaged.DeriveRawSecretAgreement(alice.ExportParameters(false));
 
@@ -68,7 +68,7 @@ public class EcDhManagedTests
         byte[] bclSecret = alice.DeriveRawSecretAgreement(bob.PublicKey);
 
         // Our managed shared secret
-        var managed = new EcDhManaged();
+        using var managed = new EcDhManaged();
         managed.ImportParameters(aliceParams);
         byte[] managedSecret = managed.DeriveRawSecretAgreement(bobPubParams);
 
@@ -85,7 +85,7 @@ public class EcDhManagedTests
         using var alice = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
         var aliceParams = alice.ExportParameters(true);
 
-        var managed = new EcDhManaged();
+        using var managed = new EcDhManaged();
         managed.ImportParameters(aliceParams);
 
         // Create an invalid public key

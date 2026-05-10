@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Security.Bcl.Certificates.X509Crl;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
@@ -28,6 +29,8 @@ public static partial class X509Utils
     /// <returns>The DNS names.</returns>
     public static IList<string> GetDomainsFromCertificate(X509Certificate2 certificate)
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
+
         List<string> dnsNames = new List<string>();
 
         // extracts the domain from the subject name.
@@ -213,11 +216,13 @@ public static partial class X509Utils
     /// <summary>
     /// Return the key usage flags of a certificate.
     /// </summary>
-    public static X509KeyUsageFlags GetKeyUsage(X509Certificate2 cert)
+    public static X509KeyUsageFlags GetKeyUsage(X509Certificate2 certificate)
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
+
         // Avoid LINQ OfType<T>() - use manual loop
         var allFlags = X509KeyUsageFlags.None;
-        foreach (X509Extension ext in cert.Extensions)
+        foreach (X509Extension ext in certificate.Extensions)
         {
             if (ext is X509KeyUsageExtension keyUsageExt)
             {
@@ -234,6 +239,8 @@ public static partial class X509Utils
     /// <returns>True if self signed.</returns>
     public static bool IsSelfSigned(X509Certificate2 certificate)
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
+
         return X509Utils.CompareDistinguishedName(certificate.SubjectName, certificate.IssuerName);
     }
 
@@ -299,8 +306,10 @@ public static partial class X509Utils
     /// <summary>
     /// Compares two distinguished names.
     /// </summary>
-    public static bool CompareDistinguishedName(X509Certificate2 certificate, List<string> parsedName)
+    public static bool CompareDistinguishedName(X509Certificate2 certificate, ReadOnlyCollection<string> parsedName)
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
+
         // can't compare if the number of fields is 0.
         if (parsedName.Count == 0)
         {
@@ -474,12 +483,14 @@ public static partial class X509Utils
     /// <summary>
     /// Verify the signature of a self signed certificate.
     /// </summary>
-    public static bool VerifySelfSigned(X509Certificate2 cert)
+    public static bool VerifySelfSigned(X509Certificate2 certificate)
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
+
         try
         {
-            var signature = new X509Signature(cert.RawData);
-            return signature.Verify(cert);
+            var signature = new X509Signature(certificate.RawData);
+            return signature.Verify(certificate);
         }
         catch
         {
@@ -495,6 +506,8 @@ public static partial class X509Utils
     /// <returns>The certificate</returns>
     public static X509Certificate2 CreateCopyWithPrivateKey(X509Certificate2 certificate, bool persisted)
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
+
         // a copy is only necessary on windows
         if (certificate.HasPrivateKey
 #if !NETFRAMEWORK

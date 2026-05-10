@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
@@ -19,7 +19,7 @@ public interface IEcDsa : IDisposable
     /// <summary>
     /// Gets the curve name (e.g., "P-256").
     /// </summary>
-    string CurveName { get; }
+    string CurveName { get; } 
 
     /// <summary>
     /// Gets the key size in bits.

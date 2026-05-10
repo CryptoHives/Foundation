@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #if NET8_0_OR_GREATER
@@ -372,13 +372,13 @@ public class Ed25519Tests
         // Verify Bx is the positive root (even)
         Assert.That(RefBx.IsEven, Is.True, "Bx should be even (positive root)");
 
+        Span<ulong> k = stackalloc ulong[4];
         foreach (ulong scalar in new ulong[] { 1, 2, 3, 7, 15, 100, 1000 })
         {
             byte[] scalarBytes = new byte[32];
             scalarBytes[0] = (byte)(scalar & 0xFF);
             if (scalar > 255) scalarBytes[1] = (byte)((scalar >> 8) & 0xFF);
 
-            Span<ulong> k = stackalloc ulong[4];
             X25519.FromLittleEndianBytes(scalarBytes, k);
             byte[] result = new byte[32];
             Ed25519.ScalarMulBaseEncoded(k, result);

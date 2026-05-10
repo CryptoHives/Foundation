@@ -135,6 +135,8 @@ public class CertificateBuilder : CertificateBuilderBase
         RSA privateKey,
         char[] passcode)
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
+
         Org.BouncyCastle.X509.X509Certificate x509 = new X509CertificateParser().ReadCertificate(certificate.RawData);
         using var cfrg = new CryptoApiRandomGenerator();
         return X509Utils.CreatePfxWithPrivateKey(
@@ -234,9 +236,8 @@ public class CertificateBuilder : CertificateBuilderBase
 
         if (generalNames.Count > 0)
         {
-            IList<DerObjectIdentifier> oids = new List<DerObjectIdentifier>();
-            IList<Org.BouncyCastle.Asn1.X509.X509Extension> values
-                = new List<Org.BouncyCastle.Asn1.X509.X509Extension>();
+            var oids = new List<DerObjectIdentifier>();
+            var values = new List<Org.BouncyCastle.Asn1.X509.X509Extension>();
             oids.Add(Org.BouncyCastle.Asn1.X509.X509Extensions.SubjectAlternativeName);
             values.Add(new Org.BouncyCastle.Asn1.X509.X509Extension(false,
                 new DerOctetString(new GeneralNames(generalNames.ToArray()).GetDerEncoded())));

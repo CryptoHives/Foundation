@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
@@ -750,12 +750,13 @@ internal static class Ed25519
         }
 
         int modBits = BigUInt.BitLength(modulus);
+        Span<ulong> shifted = stackalloc ulong[wideLimbs];
+        Span<ulong> temp = stackalloc ulong[wideLimbs];
 
         // Shift modulus left to align with the top of wide, then shift-subtract
         for (int shift = wideBits - modBits; shift >= 0; shift--)
         {
             // Check if rem >= (modulus << shift) by trial subtraction
-            Span<ulong> shifted = stackalloc ulong[wideLimbs];
             shifted.Clear();
 
             // Shift modulus left by 'shift' bits
@@ -771,7 +772,6 @@ internal static class Ed25519
 
             // Try subtraction
             ulong borrow = 0;
-            Span<ulong> temp = stackalloc ulong[wideLimbs];
             for (int j = 0; j < wideLimbs; j++)
             {
                 ulong diff = rem[j] - shifted[j] - borrow;
@@ -781,7 +781,9 @@ internal static class Ed25519
 
             // If no borrow, use the subtracted result
             if (borrow == 0)
+            {
                 temp.CopyTo(rem);
+            }
         }
 
         // Copy result (first modLimbs limbs)

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #if NET8_0_OR_GREATER
@@ -29,7 +29,7 @@ public class RsaCoreTests
     public void PublicPrivateRoundTrip()
     {
         var p = GetTestKey();
-        var key = new RsaKeyParameters(p.Modulus!, p.Exponent!, p.D!, p.P!, p.Q!, p.DP!, p.DQ!, p.InverseQ!);
+        using var key = new RsaKeyParameters(p.Modulus!, p.Exponent!, p.D!, p.P!, p.Q!, p.DP!, p.DQ!, p.InverseQ!);
 
         // Create a small message (padded to modulus length)
         byte[] message = new byte[p.Modulus!.Length];
@@ -45,7 +45,7 @@ public class RsaCoreTests
     public void PrivatePublicRoundTrip()
     {
         var p = GetTestKey();
-        var key = new RsaKeyParameters(p.Modulus!, p.Exponent!, p.D!, p.P!, p.Q!, p.DP!, p.DQ!, p.InverseQ!);
+        using var key = new RsaKeyParameters(p.Modulus!, p.Exponent!, p.D!, p.P!, p.Q!, p.DP!, p.DQ!, p.InverseQ!);
 
         byte[] message = new byte[p.Modulus!.Length];
         message[^1] = 0xFF;
@@ -66,7 +66,7 @@ public class RsaCoreTests
     {
         using var bclRsa = RSA.Create(2048);
         var p = bclRsa.ExportParameters(true);
-        var key = new RsaKeyParameters(p.Modulus!, p.Exponent!, p.D!, p.P!, p.Q!, p.DP!, p.DQ!, p.InverseQ!);
+        using var key = new RsaKeyParameters(p.Modulus!, p.Exponent!, p.D!, p.P!, p.Q!, p.DP!, p.DQ!, p.InverseQ!);
 
         // Encrypt with BCL, decrypt with our implementation
         byte[] plaintext = "Hello RSA!"u8.ToArray();
@@ -88,7 +88,7 @@ public class RsaCoreTests
     public void MessageTooLargeThrows()
     {
         var p = GetTestKey();
-        var key = new RsaKeyParameters(p.Modulus!, p.Exponent!);
+        using var key = new RsaKeyParameters(p.Modulus!, p.Exponent!);
 
         // Message equal to modulus should throw
         byte[] message = (byte[])p.Modulus!.Clone();
@@ -99,7 +99,7 @@ public class RsaCoreTests
     public void PrivateOpWithoutPrivateKeyThrows()
     {
         var p = GetTestKey();
-        var key = new RsaKeyParameters(p.Modulus!, p.Exponent!); // public-only
+        using var key = new RsaKeyParameters(p.Modulus!, p.Exponent!); // public-only
 
         byte[] message = new byte[p.Modulus!.Length];
         message[^1] = 1;
