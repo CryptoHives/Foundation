@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Bcl.Certificates.X509Crl;
@@ -305,26 +305,21 @@ public sealed class CrlBuilder : IX509CRL
             crlWriter.WriteInteger(1);
 
             // Signature Algorithm Identifier
-            crlWriter.PushSequence();
             string signatureAlgorithm = Oids.GetRSAOid(HashAlgorithmName);
-            crlWriter.WriteObjectIdentifier(signatureAlgorithm);
-            crlWriter.WriteNull();
-
-            // pop
-            crlWriter.PopSequence();
+            crlWriter.WriteAlgorithmIdentifier(signatureAlgorithm);
 
             // Issuer
             crlWriter.WriteEncodedValue((ReadOnlySpan<byte>)IssuerName.RawData);
 
             // this update
-            WriteTime(crlWriter, ThisUpdate);
+            crlWriter.WriteTime(ThisUpdate);
 
             // next update is OPTIONAL
             if (NextUpdate != DateTimeOffset.MinValue &&
                 NextUpdate > ThisUpdate)
             {
                 // next update
-                WriteTime(crlWriter, NextUpdate);
+                crlWriter.WriteTime(NextUpdate);
             }
 
             // revocedCertificates is OPTIONAL
@@ -339,7 +334,7 @@ public sealed class CrlBuilder : IX509CRL
 
                     var srlNumberValue = new BigInteger(revokedCert.UserCertificate);
                     crlWriter.WriteInteger(srlNumberValue);
-                    WriteTime(crlWriter, revokedCert.RevocationDate);
+                    crlWriter.WriteTime(revokedCert.RevocationDate);
 
                     if (revokedCert.CrlEntryExtensions.Count > 0)
                     {
@@ -380,23 +375,6 @@ public sealed class CrlBuilder : IX509CRL
         }
     }
 
-    /// <summary>
-    /// Write either a UTC time or a Generalized time depending if DataTime is before or after 2050.
-    /// </summary>
-    /// <param name="writer">The writer to write to.</param>
-    /// <param name="dateTime">The date time to write.</param>
-    private static void WriteTime(AsnWriter writer, DateTimeOffset dateTime)
-    {
-        DateTimeOffset utcTime = dateTime.ToUniversalTime();
-        if (utcTime.Year < 2050)
-        {
-            writer.WriteUtcTime(utcTime);
-        }
-        else
-        {
-            writer.WriteGeneralizedTime(utcTime, true);
-        }
-    }
     #endregion
 
     #region Private Fields

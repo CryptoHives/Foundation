@@ -3,6 +3,7 @@
 
 namespace CryptoHives.Foundation.Security.Certificates.X509;
 
+using CryptoHives.Foundation.Security.Certificates;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
@@ -200,7 +201,7 @@ public sealed class X509CrlBuilder
         };
 
         byte[] tbsDer = BuildTbsCertList(sigAlgOid);
-        byte[] hash = CryptoHelper.HashData(ToHashAlgorithmName(hashAlgorithm), tbsDer);
+        byte[] hash = CryptoHelper.HashData(AsnUtils.ToHashAlgorithmName(hashAlgorithm), tbsDer);
         using var rsa = new RsaCipher(issuerKey);
         byte[] signature = rsa.SignPkcs1(hash, hashAlgorithm);
 
@@ -229,10 +230,10 @@ public sealed class X509CrlBuilder
         };
 
         byte[] tbsDer = BuildTbsCertList(sigAlgOid);
-        byte[] hash = CryptoHelper.HashData(ToHashAlgorithmName(hashAlgorithm), tbsDer);
+        byte[] hash = CryptoHelper.HashData(AsnUtils.ToHashAlgorithmName(hashAlgorithm), tbsDer);
         var curve = EcDsaCipher.ResolveCurve(curveName);
-        var (r, s) = EcDsaCore.Sign(hash, issuerPrivateKey, curve, ToHashAlgorithmName(hashAlgorithm));
-        byte[] signature = EncodeEcdsaSignature(r, s);
+        var (r, s) = EcDsaCore.Sign(hash, issuerPrivateKey, curve, AsnUtils.ToHashAlgorithmName(hashAlgorithm));
+        byte[] signature = AsnUtils.EncodeEcdsaSignature(r, s);
 
         return BuildCrl(tbsDer, sigAlgOid, signature);
     }
@@ -290,17 +291,17 @@ public sealed class X509CrlBuilder
         writer.WriteInteger(1);
 
         // Signature AlgorithmIdentifier
-        WriteAlgorithmIdentifier(writer, sigAlgOid);
+        writer.WriteAlgorithmIdentifier(sigAlgOid);
 
         // Issuer
         _issuer.WriteTo(writer);
 
         // thisUpdate Time
-        WriteTime(writer, _thisUpdate);
+        writer.WriteTime(_thisUpdate);
 
         // nextUpdate Time OPTIONAL
         if (_nextUpdate.HasValue)
-            WriteTime(writer, _nextUpdate.Value);
+            writer.WriteTime(_nextUpdate.Value);
 
         // revokedCertificates SEQUENCE OF SEQUENCE OPTIONAL
         if (_revokedCertificates.Count > 0)
@@ -311,10 +312,10 @@ public sealed class X509CrlBuilder
                 writer.PushSequence();
 
                 // userCertificate CertificateSerialNumber (INTEGER)
-                writer.WriteIntegerUnsigned(TrimLeadingZeros(entry.SerialNumber));
+                writer.WriteIntegerUnsigned(AsnUtils.TrimLeadingZeros(entry.SerialNumber));
 
                 // revocationDate Time
-                WriteTime(writer, entry.RevocationDate);
+                writer.WriteTime(entry.RevocationDate);
 
                 // crlEntryExtensions Extensions OPTIONAL
                 if (entry.Reason != CrlReason.Unspecified)
@@ -347,7 +348,11 @@ public sealed class X509CrlBuilder
             {
                 writer.PushSequence();
                 writer.WriteObjectIdentifier(ext.Oid);
-                if (ext.Critical) writer.WriteBoolean(true);
+                if (ext.Critical)
+                {
+                    writer.WriteBoolean(true);
+                }
+
                 writer.WriteOctetString(ext.Value.Span);
                 writer.PopSequence();
             }
@@ -364,61 +369,11 @@ public sealed class X509CrlBuilder
         var outerWriter = new AsnWriter(AsnEncodingRules.DER);
         outerWriter.PushSequence();
         outerWriter.WriteEncodedValue(tbsDer);
-        WriteAlgorithmIdentifier(outerWriter, sigAlgOid);
+        outerWriter.WriteAlgorithmIdentifier(sigAlgOid);
         outerWriter.WriteBitString(signature);
         outerWriter.PopSequence();
 
         byte[] rawDer = outerWriter.Encode();
         return X509CrlParser.ParseDer(rawDer);
     }
-
-    private static void WriteAlgorithmIdentifier(AsnWriter writer, string oid)
-    {
-        writer.PushSequence();
-        writer.WriteObjectIdentifier(oid);
-
-        string keyAlg = SignatureAlgorithm.GetKeyAlgorithm(oid);
-        if (keyAlg == "RSA" && oid != SignatureAlgorithm.OidRsaPss)
-            writer.WriteNull();
-
-        writer.PopSequence();
-    }
-
-    private static void WriteTime(AsnWriter writer, DateTimeOffset time)
-    {
-        if (time.Year < 2050)
-            writer.WriteUtcTime(time);
-        else
-            writer.WriteGeneralizedTime(time, omitFractionalSeconds: true);
-    }
-
-    private static byte[] EncodeEcdsaSignature(byte[] r, byte[] s)
-    {
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        writer.PushSequence();
-        writer.WriteIntegerUnsigned(TrimLeadingZeros(r));
-        writer.WriteIntegerUnsigned(TrimLeadingZeros(s));
-        writer.PopSequence();
-        return writer.Encode();
-    }
-
-    private static ReadOnlySpan<byte> TrimLeadingZeros(byte[] value)
-    {
-        int i = 0;
-        while (i < value.Length - 1 && value[i] == 0)
-        {
-            i++;
-        }
-
-        return value.AsSpan(i);
-    }
-
-    private static HashAlgorithmName ToHashAlgorithmName(string name) => name.ToUpperInvariant() switch
-    {
-        "SHA1" => HashAlgorithmName.SHA1,
-        "SHA256" => HashAlgorithmName.SHA256,
-        "SHA384" => HashAlgorithmName.SHA384,
-        "SHA512" => HashAlgorithmName.SHA512,
-        _ => throw new ArgumentException($"Unsupported hash: {name}"),
-    };
 }

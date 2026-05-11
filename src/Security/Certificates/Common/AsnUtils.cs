@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Certificates;
@@ -226,6 +226,92 @@ public static class AsnUtils
             throw new CryptographicException("Failed to decode the X509 sequence.", ace);
         }
         throw new CryptographicException("Invalid ASN encoding for the X509 sequence.");
+    }
+
+    /// <summary>
+    /// Writes an X.509 time value as UTCTime (&lt;2050) or GeneralizedTime (&gt;=2050).
+    /// </summary>
+    /// <param name="writer">The ASN.1 writer.</param>
+    /// <param name="dateTime">The time value to encode.</param>
+    internal static void WriteTime(this AsnWriter writer, DateTimeOffset dateTime)
+    {
+        DateTimeOffset utcTime = dateTime.ToUniversalTime();
+        if (utcTime.Year < 2050)
+        {
+            writer.WriteUtcTime(utcTime);
+        }
+        else
+        {
+            writer.WriteGeneralizedTime(utcTime, true);
+        }
+    }
+
+    /// <summary>
+    /// Writes an AlgorithmIdentifier sequence with optional NULL parameters for RSA algorithms.
+    /// </summary>
+    /// <param name="writer">The ASN.1 writer.</param>
+    /// <param name="oid">The signature algorithm OID.</param>
+    internal static void WriteAlgorithmIdentifier(this AsnWriter writer, string oid)
+    {
+        writer.PushSequence();
+        writer.WriteObjectIdentifier(oid);
+
+        if (IsRsaSignatureAlgorithmOid(oid) && oid != Oids.RsaPss)
+        {
+            writer.WriteNull();
+        }
+
+        writer.PopSequence();
+    }
+
+    private static bool IsRsaSignatureAlgorithmOid(string oid)
+        => oid == Oids.RsaPkcs1Sha1
+        || oid == Oids.RsaPkcs1Sha256
+        || oid == Oids.RsaPkcs1Sha384
+        || oid == Oids.RsaPkcs1Sha512
+        || oid == Oids.RsaPss;
+
+    /// <summary>
+    /// Maps a hash algorithm name string to <see cref="HashAlgorithmName"/>.
+    /// </summary>
+    /// <param name="name">The hash algorithm name.</param>
+    internal static HashAlgorithmName ToHashAlgorithmName(string name) => name.ToUpperInvariant() switch
+    {
+        "SHA1" => HashAlgorithmName.SHA1,
+        "SHA256" => HashAlgorithmName.SHA256,
+        "SHA384" => HashAlgorithmName.SHA384,
+        "SHA512" => HashAlgorithmName.SHA512,
+        _ => throw new ArgumentException($"Unsupported hash: {name}"),
+    };
+
+    /// <summary>
+    /// Encodes an ECDSA signature as DER sequence of INTEGER r and INTEGER s.
+    /// </summary>
+    /// <param name="r">The signature r value.</param>
+    /// <param name="s">The signature s value.</param>
+    internal static byte[] EncodeEcdsaSignature(ReadOnlySpan<byte> r, ReadOnlySpan<byte> s)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.PushSequence();
+        writer.WriteIntegerUnsigned(TrimLeadingZeros(r));
+        writer.WriteIntegerUnsigned(TrimLeadingZeros(s));
+        writer.PopSequence();
+        return writer.Encode();
+    }
+
+    /// <summary>
+    /// Returns a slice with redundant leading zero bytes removed, preserving one byte minimum.
+    /// </summary>
+    /// <param name="value">The integer bytes.</param>
+    internal static ReadOnlySpan<byte> TrimLeadingZeros(ReadOnlySpan<byte> value)
+    {
+        int i = 0;
+        while (i < value.Length - 1 && value[i] == 0)
+        {
+            i++;
+        }
+
+        return value.Slice(i);
     }
 }
 

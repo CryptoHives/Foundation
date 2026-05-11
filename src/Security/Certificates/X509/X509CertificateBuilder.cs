@@ -6,13 +6,15 @@
 
 namespace CryptoHives.Foundation.Security.Certificates.X509;
 
+using CryptoHives.Foundation.Security.Certificates;
 using CryptoHives.Foundation.Security.Cryptography.Asymmetric;
 using CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
 using CryptoHives.Foundation.Security.Cryptography.Asymmetric.Rsa;
+using CryptoHives.Foundation.Security.Cryptography.Rng;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
-using System.Security.Cryptography;
+using Sys = System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
@@ -83,7 +85,7 @@ public sealed class X509CertificateBuilder
     {
         if (keySizeBits < 1024) throw new ArgumentOutOfRangeException(nameof(keySizeBits), "RSA key size must be at least 1024 bits.");
 
-        using var rsa = RSA.Create();
+        using var rsa = Sys.RSA.Create();
         rsa.KeySize = keySizeBits;
         var p = rsa.ExportParameters(true);
         var key = new RsaKeyParameters(
@@ -102,7 +104,7 @@ public sealed class X509CertificateBuilder
     /// <param name="hashAlgorithm">The hash algorithm for signing (default: auto-selected by curve size).</param>
     /// <returns>A builder pre-configured with the ECDSA key.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="curveName"/> is <c>null</c>.</exception>
-    /// <exception cref="CryptographicException">The curve is not supported.</exception>
+    /// <exception cref="System.Security.Cryptography.CryptographicException">The curve is not supported.</exception>
     public static X509CertificateBuilder CreateForEcDsa(string curveName, string? hashAlgorithm = null)
     {
         if (curveName is null) throw new ArgumentNullException(nameof(curveName));
@@ -141,7 +143,7 @@ public sealed class X509CertificateBuilder
     public static X509CertificateBuilder CreateForEd25519()
     {
         byte[] seed = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
+        using var rng = Sys.RandomNumberGenerator.Create();
         rng.GetBytes(seed);
 
         byte[] publicKey = new byte[32];
@@ -162,7 +164,7 @@ public sealed class X509CertificateBuilder
     public static X509CertificateBuilder CreateForEd448()
     {
         byte[] seed = new byte[57];
-        using var rng = RandomNumberGenerator.Create();
+        using var rng = Sys.RandomNumberGenerator.Create();
         rng.GetBytes(seed);
 
         byte[] publicKey = new byte[57];
@@ -630,7 +632,7 @@ public sealed class X509CertificateBuilder
 
         // Hash and sign
         byte[] hash = CryptoHelper.HashData(
-            ToHashAlgorithmName(hashAlgorithm), tbsDer);
+            AsnUtils.ToHashAlgorithmName(hashAlgorithm), tbsDer);
 
         using var rsa = new RsaCipher(privateKey);
         byte[] signature = rsa.SignPkcs1(hash, hashAlgorithm);
@@ -662,14 +664,12 @@ public sealed class X509CertificateBuilder
 
         // Hash the TBS
         byte[] hash = CryptoHelper.HashData(
-            ToHashAlgorithmName(hashAlgorithm), tbsDer);
+            AsnUtils.ToHashAlgorithmName(hashAlgorithm), tbsDer);
 
         // Sign with ECDSA
         var curve = EcDsaCipher.ResolveCurve(curveName);
-        var (r, s) = EcDsaCore.Sign(hash, ecPrivateKey, curve, ToHashAlgorithmName(hashAlgorithm));
-
-        // Encode as DER: SEQUENCE { INTEGER r, INTEGER s }
-        byte[] signature = EncodeEcdsaSignature(r, s);
+        var (r, s) = EcDsaCore.Sign(hash, ecPrivateKey, curve, AsnUtils.ToHashAlgorithmName(hashAlgorithm));
+        byte[] signature = AsnUtils.EncodeEcdsaSignature(r, s);
 
         return BuildCertificate(tbsDer, sigAlgOid, signature);
     }
@@ -765,15 +765,15 @@ public sealed class X509CertificateBuilder
         writer.WriteIntegerUnsigned(serial);
 
         // Signature algorithm
-        WriteAlgorithmIdentifier(writer, sigAlgOid);
+        writer.WriteAlgorithmIdentifier(sigAlgOid);
 
         // Issuer
         issuer.WriteTo(writer);
 
         // Validity
         writer.PushSequence();
-        WriteTime(writer, _notBefore);
-        WriteTime(writer, _notAfter);
+        writer.WriteTime(_notBefore);
+        writer.WriteTime(_notAfter);
         writer.PopSequence();
 
         // Subject
@@ -837,38 +837,12 @@ public sealed class X509CertificateBuilder
         var outerWriter = new AsnWriter(AsnEncodingRules.DER);
         outerWriter.PushSequence();
         outerWriter.WriteEncodedValue(tbsDer);
-        WriteAlgorithmIdentifier(outerWriter, sigAlgOid);
+        outerWriter.WriteAlgorithmIdentifier(sigAlgOid);
         outerWriter.WriteBitString(signature);
         outerWriter.PopSequence();
 
         byte[] rawDer = outerWriter.Encode();
         return X509CertificateParser.ParseDer(rawDer);
-    }
-
-    private static void WriteAlgorithmIdentifier(AsnWriter writer, string oid)
-    {
-        writer.PushSequence();
-        writer.WriteObjectIdentifier(oid);
-
-        string keyAlg = SignatureAlgorithm.GetKeyAlgorithm(oid);
-        if (keyAlg == "RSA" && oid != SignatureAlgorithm.OidRsaPss)
-        {
-            writer.WriteNull();
-        }
-
-        writer.PopSequence();
-    }
-
-    private static void WriteTime(AsnWriter writer, DateTimeOffset time)
-    {
-        if (time.Year < 2050)
-        {
-            writer.WriteUtcTime(time);
-        }
-        else
-        {
-            writer.WriteGeneralizedTime(time, omitFractionalSeconds: true);
-        }
     }
 
     private static byte[] GenerateRandomSerial()
@@ -884,35 +858,6 @@ public sealed class X509CertificateBuilder
 
         return serial;
     }
-
-    private static byte[] EncodeEcdsaSignature(byte[] r, byte[] s)
-    {
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        writer.PushSequence();
-        writer.WriteIntegerUnsigned(TrimLeadingZeros(r));
-        writer.WriteIntegerUnsigned(TrimLeadingZeros(s));
-        writer.PopSequence();
-        return writer.Encode();
-    }
-
-    private static ReadOnlySpan<byte> TrimLeadingZeros(byte[] value)
-    {
-        int i = 0;
-        while (i < value.Length - 1 && value[i] == 0)
-        {
-            i++;
-        }
-
-        return value.AsSpan(i);
-    }
-
-    private static HashAlgorithmName ToHashAlgorithmName(string name) => name.ToUpperInvariant() switch {
-        "SHA1" => HashAlgorithmName.SHA1,
-        "SHA256" => HashAlgorithmName.SHA256,
-        "SHA384" => HashAlgorithmName.SHA384,
-        "SHA512" => HashAlgorithmName.SHA512,
-        _ => throw new ArgumentException($"Unsupported hash: {name}"),
-    };
 
     private X509Certificate BuildSelfSignedEdDsa(byte[] seed, string sigAlgOid)
     {
@@ -982,7 +927,8 @@ public sealed class X509CertificateBuilder
         byte[] tbsDer = BuildTbs(sigAlgOid);
         _issuer = savedIssuer;
 
-        byte[] hash = CryptoHelper.HashData(ToHashAlgorithmName(hashAlgorithm), tbsDer);
+        byte[] hash = CryptoHelper.HashData(
+            AsnUtils.ToHashAlgorithmName(hashAlgorithm), tbsDer);
         using var rsa = new RsaCipher(issuerKey);
         byte[] signature = rsa.SignPkcs1(hash, hashAlgorithm);
 
@@ -1015,10 +961,11 @@ public sealed class X509CertificateBuilder
         byte[] tbsDer = BuildTbs(sigAlgOid);
         _issuer = savedIssuer;
 
-        byte[] hash = CryptoHelper.HashData(ToHashAlgorithmName(hashAlgorithm), tbsDer);
+        byte[] hash = CryptoHelper.HashData(
+            AsnUtils.ToHashAlgorithmName(hashAlgorithm), tbsDer);
         var curve = EcDsaCipher.ResolveCurve(issuerCurveName);
-        var (r, s) = EcDsaCore.Sign(hash, issuerPrivateKey, curve, ToHashAlgorithmName(hashAlgorithm));
-        byte[] signature = EncodeEcdsaSignature(r, s);
+        var (r, s) = EcDsaCore.Sign(hash, issuerPrivateKey, curve, AsnUtils.ToHashAlgorithmName(hashAlgorithm));
+        byte[] signature = AsnUtils.EncodeEcdsaSignature(r, s);
 
         return BuildCertificate(tbsDer, sigAlgOid, signature);
     }
@@ -1120,6 +1067,6 @@ public sealed class X509CertificateBuilder
             => "1.3.36.3.3.2.8.1.1.11",
         "brainpoolP512r1" or "1.3.36.3.3.2.8.1.1.13"
             => "1.3.36.3.3.2.8.1.1.13",
-        _ => throw new CryptographicException($"Unknown curve: {curveName}"),
+        _ => throw new Sys.CryptographicException($"Unknown curve: {curveName}"),
     };
 }
