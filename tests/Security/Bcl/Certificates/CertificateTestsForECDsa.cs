@@ -358,7 +358,9 @@ public class CertificateTestsForECDsa
             }
             finally
             {
+#pragma warning disable CA1508 // Avoid dead conditional code
                 key?.Dispose();
+#pragma warning restore CA1508 // Avoid dead conditional code
             }
             i++;
         }

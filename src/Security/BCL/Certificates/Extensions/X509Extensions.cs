@@ -24,6 +24,7 @@ public static class X509Extensions
     /// <param name="certificate">The certificate with extensions.</param>
     public static T? FindExtension<T>(this X509Certificate2 certificate) where T : X509Extension
     {
+        if (certificate == null) throw new ArgumentNullException(nameof(certificate));
         return certificate.Extensions.FindExtension<T>();
     }
 
@@ -34,10 +35,7 @@ public static class X509Extensions
     /// <param name="extensions">The extensions to search.</param>
     public static T? FindExtension<T>(this X509ExtensionCollection extensions) where T : X509Extension
     {
-        if (extensions == null)
-        {
-            throw new ArgumentNullException(nameof(extensions));
-        }
+        if (extensions == null) throw new ArgumentNullException(nameof(extensions));
 
         lock (extensions.SyncRoot)
         {

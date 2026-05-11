@@ -27,7 +27,8 @@ public sealed class X509IssuingDistributionPointExtension : X509Extension
     /// Creates an extension from ASN.1 encoded data.
     /// </summary>
     public X509IssuingDistributionPointExtension(AsnEncodedData encodedExtension, bool critical)
-        : this(encodedExtension.Oid ?? throw new ArgumentException("Oid cannot be null.", nameof(encodedExtension)), encodedExtension.RawData, critical)
+        : this(encodedExtension?.Oid ?? throw new ArgumentException("Oid cannot be null.", nameof(encodedExtension)),
+              encodedExtension.RawData, critical)
     {
     }
 

@@ -338,7 +338,7 @@ public class CertificateTestsForRSA
             Assert.Ignore("Cng provider only available on windows");
         }
         X509Certificate2 issuer = null;
-        CngKey cngKey = CngKey.Create(CngAlgorithm.Rsa);
+        using CngKey cngKey = CngKey.Create(CngAlgorithm.Rsa);
         using RSA rsaKeyPair = new RSACng(cngKey);
         // create cert with supplied keys
         var generator = X509SignatureGenerator.CreateForRSA(rsaKeyPair, RSASignaturePadding.Pkcs1);

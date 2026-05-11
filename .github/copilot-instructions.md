@@ -24,11 +24,14 @@ src/
 ├── Threading/                  # Threading utilities (ValueTask pooling, async primitives)
 ├── Threading.Analyzers/        # Roslyn analyzers for ValueTask misuse detection
 ├── Memory/                     # Memory utilities (pooling, buffers, streams)
+├── Security/Bcl.Certificates   # Certificates using BCL library implementation
+├── Security/Certificates       # Certificates managed implementation
 └── Security/Cryptography/      # Cryptographic algorithms
+    ├── Asymmetric/             # Asymmetric algorithms
     ├── Hash/                   # Hash algorithms
-    ├── Mac/                    # Mac algorithms (HMAC, AES-CMAC, AES-GMAC, KMAC, Poly1305)
+    ├── Mac/                    # Mac algorithms
     ├── Cipher/                 # Symmetric ciphers and AEAD
-    ├── Kdf/                    # Key derivation functions (HKDF, KBKDF, Concat KDF, PBKDF2)
+    ├── Kdf/                    # Key derivation functions
     └── shared/                 # common helpers and abstractions
 
 tests/
@@ -128,3 +131,7 @@ When modifying CI pipelines:
 ## Contact
 
 - If the change is non-trivial or touches public API, open an issue or PR and request review from repository maintainers.
+
+## Additional guidelines
+
+- Follow repository guidelines when adding tests and code changes in this repo.

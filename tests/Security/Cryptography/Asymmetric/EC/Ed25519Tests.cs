@@ -7,7 +7,6 @@ namespace Cryptography.Tests.Asymmetric.EC;
 
 using System;
 using System.Numerics;
-using Sys = System.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Rng;
 using CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
 using NUnit.Framework;
@@ -49,7 +48,7 @@ public class Ed25519Tests
         byte[] sig = Ed25519.Sign(seed, message);
 
         Assert.That(sig, Is.EqualTo(expectedSig),
-            $"Sig mismatch!\nGot:      {BitConverter.ToString(sig).Replace("-", "").ToLower()}\nExpected: e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b");
+            $"Sig mismatch!\nGot:      {BitConverter.ToString(sig).Replace("-", "").ToUpperInvariant()}\nExpected: e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b");
     }
 
     [Test]
@@ -61,7 +60,7 @@ public class Ed25519Tests
         // Get our public key
         byte[] pubKey = new byte[32];
         Ed25519.PublicKeyFromSeed(seed, pubKey);
-        string pubKeyHex = BitConverter.ToString(pubKey).Replace("-", "").ToLower();
+        string pubKeyHex = BitConverter.ToString(pubKey).Replace("-", "").ToUpperInvariant();
 
         // RFC expected
         byte[] rfcPubKey = TestHelpers.FromHexString(
@@ -70,7 +69,7 @@ public class Ed25519Tests
         // BouncyCastle
         var bcPriv = new Org.BouncyCastle.Crypto.Parameters.Ed25519PrivateKeyParameters(seed);
         byte[] bcPubKey = bcPriv.GeneratePublicKey().GetEncoded();
-        string bcPubHex = BitConverter.ToString(bcPubKey).Replace("-", "").ToLower();
+        string bcPubHex = BitConverter.ToString(bcPubKey).Replace("-", "").ToUpperInvariant();
 
         // Triple comparison
         Assert.That(bcPubKey, Is.EqualTo(rfcPubKey),
@@ -121,7 +120,7 @@ public class Ed25519Tests
 
         byte[] sig = Ed25519.Sign(seed, message);
         Assert.That(sig, Is.EqualTo(expectedSig),
-            $"Sig mismatch!\nGot:      {BitConverter.ToString(sig).Replace("-", "").ToLower()}\nExpected: 92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00");
+            $"Sig mismatch!\nGot:      {BitConverter.ToString(sig).Replace("-", "").ToUpperInvariant()}\nExpected: 92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00");
     }
 
     [Test]
@@ -212,7 +211,7 @@ public class Ed25519Tests
         scalar[0] &= 248;
         scalar[31] &= 127;
         scalar[31] |= 64;
-        string scalarHex = BitConverter.ToString(scalar).Replace("-", "").ToLower();
+        string scalarHex = BitConverter.ToString(scalar).Replace("-", "").ToUpperInvariant();
 
         // Expected clamped scalar from prior test
         string expected = "307c83864f2833cb427a2ef1c00a013cfdff2768d980c0a3a520f006904de94f";
@@ -223,7 +222,7 @@ public class Ed25519Tests
         var bcSigner = new Org.BouncyCastle.Crypto.Signers.Ed25519Signer();
         var bcPrivKey = new Org.BouncyCastle.Crypto.Parameters.Ed25519PrivateKeyParameters(seed);
         byte[] bcPub = bcPrivKey.GeneratePublicKey().GetEncoded();
-        string bcPubHex = BitConverter.ToString(bcPub).Replace("-", "").ToLower();
+        string bcPubHex = BitConverter.ToString(bcPub).Replace("-", "").ToUpperInvariant();
 
         byte[] rfcExpected = TestHelpers.FromHexString(
             "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a");
@@ -232,7 +231,7 @@ public class Ed25519Tests
 
         // Now check BigInteger reference
         byte[] refResult = BigIntRefScalarMulBase(scalar);
-        string refHex = BitConverter.ToString(refResult).Replace("-", "").ToLower();
+        string refHex = BitConverter.ToString(refResult).Replace("-", "").ToUpperInvariant();
 
         Assert.That(refResult, Is.EqualTo(rfcExpected),
             $"BigInt ref doesn't match RFC!\nBigInt:  {refHex}\nRFC:     d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a\nBCastle: {bcPubHex}");
@@ -270,7 +269,7 @@ public class Ed25519Tests
         k1[0] = 2;
         byte[] r1 = new byte[32];
         Ed25519.ScalarMulBaseEncoded(k1, r1);
-        string hex = BitConverter.ToString(r1).Replace("-", "").ToLower();
+        string hex = BitConverter.ToString(r1).Replace("-", "").ToUpperInvariant();
 
         byte[] expected2B = TestHelpers.FromHexString(
             "c9a3f86aae465f0e56513864510f3997561fa2c9e85ea21dc2292309f3cd6022");
@@ -292,15 +291,15 @@ public class Ed25519Tests
         // Cross-validate with BigInteger reference
         byte[] refResult = BigIntRefScalarMulBase(scalarBytes);
         Assert.That(result, Is.EqualTo(refResult),
-            $"Managed: {BitConverter.ToString(result).Replace("-", "").ToLower()}\n" +
-            $"BigInt:  {BitConverter.ToString(refResult).Replace("-", "").ToLower()}");
+            $"Managed: {BitConverter.ToString(result).Replace("-", "").ToUpperInvariant()}\n" +
+            $"BigInt:  {BitConverter.ToString(refResult).Replace("-", "").ToUpperInvariant()}");
 
         // Also check against the RFC expected public key
         byte[] rfcExpected = TestHelpers.FromHexString(
             "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a");
         Assert.That(result, Is.EqualTo(rfcExpected),
             $"Managed output doesn't match RFC!\n" +
-            $"Got: {BitConverter.ToString(result).Replace("-", "").ToLower()}");
+            $"Got: {BitConverter.ToString(result).Replace("-", "").ToUpperInvariant()}");
     }
 
     [Test]
@@ -317,7 +316,7 @@ public class Ed25519Tests
         byte[] identity = new byte[32];
         identity[0] = 1;
         Assert.That(result, Is.EqualTo(identity),
-            $"[L]*B should be identity!\nGot: {BitConverter.ToString(result).Replace("-", "").ToLower()}");
+            $"[L]*B should be identity!\nGot: {BitConverter.ToString(result).Replace("-", "").ToUpperInvariant()}");
     }
 
     [Test]
@@ -341,7 +340,7 @@ public class Ed25519Tests
         byte[] negB = TestHelpers.FromHexString(
             "58666666666666666666666666666666666666666666666666666666666666e6");
         Assert.That(result, Is.EqualTo(negB),
-            $"[L-1]*B should be -B!\nGot: {BitConverter.ToString(result).Replace("-", "").ToLower()}");
+            $"[L-1]*B should be -B!\nGot: {BitConverter.ToString(result).Replace("-", "").ToUpperInvariant()}");
     }
 
     [Test]
@@ -355,7 +354,7 @@ public class Ed25519Tests
         byte[] identity = new byte[32];
         identity[0] = 1;
         Assert.That(result, Is.EqualTo(identity),
-            $"BigInt [L]*B should be identity!\nGot: {BitConverter.ToString(result).Replace("-", "").ToLower()}");
+            $"BigInt [L]*B should be identity!\nGot: {BitConverter.ToString(result).Replace("-", "").ToUpperInvariant()}");
     }
 
     [Test]
@@ -391,8 +390,8 @@ public class Ed25519Tests
             byte[] refResult = BigIntRefScalarMulBase(scalarBytes);
             Assert.That(result, Is.EqualTo(refResult),
                 $"Failed for scalar {scalar}:\n" +
-                $"Managed: {BitConverter.ToString(result).Replace("-", "").ToLower()}\n" +
-                $"BigInt:  {BitConverter.ToString(refResult).Replace("-", "").ToLower()}");
+                $"Managed: {BitConverter.ToString(result).Replace("-", "").ToUpperInvariant()}\n" +
+                $"BigInt:  {BitConverter.ToString(refResult).Replace("-", "").ToUpperInvariant()}");
         }
     }
 
