@@ -144,7 +144,9 @@ public static class X509CertificateParser
 
         // Skip optional parameters (NULL, OID, or other)
         while (algSeq.HasData)
+        {
             algSeq.ReadEncodedValue();
+        }
     }
 
     private static DateTimeOffset ReadTime(AsnReader reader)

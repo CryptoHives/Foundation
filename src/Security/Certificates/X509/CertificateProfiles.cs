@@ -51,7 +51,7 @@ public static class CertificateProfiles
             .SetSubject(X509Name.FromString(subject))
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(1))
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature | KeyUsageFlags.KeyEncipherment)
+            .AddKeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment)
             .AddExtendedKeyUsage(ExtensionParsers.ExtendedKeyUsage.OidServerAuth)
             .AddSubjectAlternativeName(sanEntries);
     }
@@ -82,7 +82,7 @@ public static class CertificateProfiles
             .SetSubject(X509Name.FromString(subject))
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(1))
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature)
+            .AddKeyUsage(KeyUsage.DigitalSignature)
             .AddExtendedKeyUsage(ExtensionParsers.ExtendedKeyUsage.OidServerAuth)
             .AddSubjectAlternativeName(sanEntries);
     }
@@ -112,7 +112,7 @@ public static class CertificateProfiles
             .SetSubject(X509Name.FromString(subject))
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(1))
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature)
+            .AddKeyUsage(KeyUsage.DigitalSignature)
             .AddExtendedKeyUsage(ExtensionParsers.ExtendedKeyUsage.OidClientAuth);
     }
 
@@ -133,7 +133,7 @@ public static class CertificateProfiles
             .SetSubject(X509Name.FromString(subject))
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(1))
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature)
+            .AddKeyUsage(KeyUsage.DigitalSignature)
             .AddExtendedKeyUsage(ExtensionParsers.ExtendedKeyUsage.OidClientAuth);
     }
 
@@ -164,7 +164,7 @@ public static class CertificateProfiles
             .SetSubject(X509Name.FromString(subject))
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(10))
             .AddBasicConstraints(true, pathLengthConstraint)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign);
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign);
     }
 
     /// <summary>
@@ -186,7 +186,7 @@ public static class CertificateProfiles
             .SetSubject(X509Name.FromString(subject))
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(10))
             .AddBasicConstraints(true, pathLengthConstraint)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign);
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign);
     }
 
     /// <summary>
@@ -228,10 +228,10 @@ public static class CertificateProfiles
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(2))
             .AddBasicConstraints(false)
             .AddKeyUsage(
-                KeyUsageFlags.DigitalSignature |
-                KeyUsageFlags.NonRepudiation |
-                KeyUsageFlags.KeyEncipherment |
-                KeyUsageFlags.DataEncipherment)
+                KeyUsage.DigitalSignature |
+                KeyUsage.NonRepudiation |
+                KeyUsage.KeyEncipherment |
+                KeyUsage.DataEncipherment)
             .AddExtendedKeyUsage(
                 ExtensionParsers.ExtendedKeyUsage.OidServerAuth,
                 ExtensionParsers.ExtendedKeyUsage.OidClientAuth)
@@ -267,10 +267,10 @@ public static class CertificateProfiles
             .SetValidity(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(2))
             .AddBasicConstraints(false)
             .AddKeyUsage(
-                KeyUsageFlags.DigitalSignature |
-                KeyUsageFlags.NonRepudiation |
-                KeyUsageFlags.KeyEncipherment |
-                KeyUsageFlags.DataEncipherment)
+                KeyUsage.DigitalSignature |
+                KeyUsage.NonRepudiation |
+                KeyUsage.KeyEncipherment |
+                KeyUsage.DataEncipherment)
             .AddExtendedKeyUsage(
                 ExtensionParsers.ExtendedKeyUsage.OidServerAuth,
                 ExtensionParsers.ExtendedKeyUsage.OidClientAuth)

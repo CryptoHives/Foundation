@@ -244,7 +244,7 @@ public sealed class CsrBuilder
     /// </summary>
     /// <param name="flags">The key usage flags.</param>
     /// <returns>This builder instance.</returns>
-    public CsrBuilder AddKeyUsage(KeyUsageFlags flags)
+    public CsrBuilder AddKeyUsage(KeyUsage flags)
     {
         ushort bits = (ushort)flags;
         byte[] bytes = [(byte)(bits >> 8), (byte)(bits & 0xFF)];
@@ -511,7 +511,7 @@ public sealed class CsrBuilder
                     writer.WriteBoolean(true);
                 }
 
-                writer.WriteOctetString(ext.Value);
+                writer.WriteOctetString(ext.Value.Span);
                 writer.PopSequence();
             }
             writer.PopSequence();

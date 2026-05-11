@@ -25,7 +25,10 @@ internal static class PemHelper
         var sb = new StringBuilder();
         sb.Append("-----BEGIN ").Append(label).AppendLine("-----");
         for (int i = 0; i < base64.Length; i += LineLength)
+        {
             sb.AppendLine(base64.Substring(i, Math.Min(LineLength, base64.Length - i)));
+        }
+
         sb.Append("-----END ").Append(label).Append("-----");
         return sb.ToString();
     }
@@ -44,18 +47,27 @@ internal static class PemHelper
         const string suffix = "-----";
 
         int beginIdx = pem.IndexOf(beginPrefix, StringComparison.Ordinal);
-        if (beginIdx < 0) throw new ArgumentException("Invalid PEM: missing BEGIN marker.");
+        if (beginIdx < 0)
+        {
+            throw new ArgumentException("Invalid PEM: missing BEGIN marker.");
+        }
 
         int labelStart = beginIdx + beginPrefix.Length;
         int labelEnd = pem.IndexOf(suffix, labelStart, StringComparison.Ordinal);
-        if (labelEnd < 0) throw new ArgumentException("Invalid PEM: malformed BEGIN marker.");
+        if (labelEnd < 0)
+        {
+            throw new ArgumentException("Invalid PEM: malformed BEGIN marker.");
+        }
 
         label = pem.Substring(labelStart, labelEnd - labelStart);
 
         int dataStart = labelEnd + suffix.Length;
         string endMarker = endPrefix + label + suffix;
         int endIdx = pem.IndexOf(endMarker, dataStart, StringComparison.Ordinal);
-        if (endIdx < 0) throw new ArgumentException("Invalid PEM: missing END marker.");
+        if (endIdx < 0)
+        {
+            throw new ArgumentException("Invalid PEM: missing END marker.");
+        }
 
         string base64 = pem.Substring(dataStart, endIdx - dataStart);
 
@@ -63,7 +75,9 @@ internal static class PemHelper
         foreach (char c in base64)
         {
             if (!char.IsWhiteSpace(c))
+            {
                 cleanBase64.Append(c);
+            }
         }
 
         return Convert.FromBase64String(cleanBase64.ToString());

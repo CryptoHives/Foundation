@@ -228,7 +228,13 @@ public class EcDsaManagedTests
 #if NET8_0_OR_GREATER
         return ecdsa.SignHash(hash, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
 #else
-        return DerToP1363(ecdsa.SignHash(hash), ecdsa.KeySize);
+        byte[] signature = ecdsa.SignHash(hash);
+        if (IsDerEcdsaSignature(signature))
+        {
+            return DerToP1363(signature, ecdsa.KeySize);
+        }
+
+        return signature;
 #endif
     }
 
@@ -237,8 +243,41 @@ public class EcDsaManagedTests
 #if NET8_0_OR_GREATER
         return ecdsa.VerifyHash(hash, signature, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
 #else
-        return ecdsa.VerifyHash(hash, P1363ToDer(signature));
+        // .NET Framework providers may use either IEEE P1363 or DER.
+        if (ecdsa.VerifyHash(hash, signature))
+        {
+            return true;
+        }
+
+        byte[] derSignature = IsDerEcdsaSignature(signature) ? signature : P1363ToDer(signature);
+        return ecdsa.VerifyHash(hash, derSignature);
 #endif
+    }
+
+    private static bool IsDerEcdsaSignature(byte[] signature)
+    {
+        try
+        {
+            int offset = 0;
+            if (signature.Length < 8 || signature[offset++] != 0x30)
+            {
+                return false;
+            }
+
+            int sequenceLength = ReadDerLength(signature, ref offset);
+            if (offset + sequenceLength != signature.Length)
+            {
+                return false;
+            }
+
+            _ = ReadDerInteger(signature, ref offset);
+            _ = ReadDerInteger(signature, ref offset);
+            return offset == signature.Length;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static byte[] DerToP1363(byte[] derSignature, int keySizeBits)

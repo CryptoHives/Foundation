@@ -32,7 +32,7 @@ public class CsrTests
             .SetSubject(X509Name.FromString("CN=rsa-csr.example.com, O=Test, C=US"))
             .SetPublicKey(key)
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature | KeyUsageFlags.KeyEncipherment)
+            .AddKeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment)
             .AddExtendedKeyUsage(ExtensionParsers.ExtendedKeyUsage.OidServerAuth)
             .AddSubjectAlternativeName((SanType.DnsName, "rsa-csr.example.com"))
             .BuildRsa(key);
@@ -224,7 +224,7 @@ public class CsrTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(caKeySelf)
             .AddBasicConstraints(true, 1)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(caKeySelf);
 
         // Create a CSR

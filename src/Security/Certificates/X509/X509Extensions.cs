@@ -8,7 +8,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Formats.Asn1;
 using System.Net;
-using System.Security.Cryptography;
 
 /// <summary>
 /// Represents a single X.509 certificate extension per RFC 5280 §4.2.
@@ -32,7 +31,7 @@ public sealed class X509Extension
     /// <summary>
     /// Gets the raw DER value of the extension content.
     /// </summary>
-    public byte[] Value { get; }
+    public ReadOnlyMemory<byte> Value { get; }
 
     /// <summary>
     /// Initializes a new <see cref="X509Extension"/>.
@@ -194,7 +193,7 @@ public sealed class X509ExtensionCollection : IReadOnlyList<X509Extension>
 /// Specifies the key usage flags per RFC 5280 §4.2.1.3.
 /// </summary>
 [Flags]
-public enum KeyUsageFlags
+public enum KeyUsage
 {
     /// <summary>No usage specified.</summary>
     None = 0,
@@ -254,7 +253,7 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>A tuple of isCA flag and optional path length constraint.</returns>
-        public static (bool IsCA, int? PathLenConstraint) Parse(byte[] value)
+        public static (bool IsCA, int? PathLenConstraint) Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -290,23 +289,23 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>The key usage flags.</returns>
-        public static KeyUsageFlags Parse(byte[] value)
+        public static X509.KeyUsage Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             byte[] bits = reader.ReadBitString(out int unusedBits);
             reader.ThrowIfNotEmpty();
 
-            if (bits.Length == 0) return KeyUsageFlags.None;
+            if (bits.Length == 0) return X509.KeyUsage.None;
 
             int raw = bits[0];
-            var flags = KeyUsageFlags.None;
-            if ((raw & 0x80) != 0) flags |= KeyUsageFlags.DigitalSignature;
-            if ((raw & 0x40) != 0) flags |= KeyUsageFlags.NonRepudiation;
-            if ((raw & 0x20) != 0) flags |= KeyUsageFlags.KeyEncipherment;
-            if ((raw & 0x10) != 0) flags |= KeyUsageFlags.DataEncipherment;
-            if ((raw & 0x08) != 0) flags |= KeyUsageFlags.KeyAgreement;
-            if ((raw & 0x04) != 0) flags |= KeyUsageFlags.KeyCertSign;
-            if ((raw & 0x02) != 0) flags |= KeyUsageFlags.CrlSign;
+            var flags = X509.KeyUsage.None;
+            if ((raw & 0x80) != 0) flags |= X509.KeyUsage.DigitalSignature;
+            if ((raw & 0x40) != 0) flags |= X509.KeyUsage.NonRepudiation;
+            if ((raw & 0x20) != 0) flags |= X509.KeyUsage.KeyEncipherment;
+            if ((raw & 0x10) != 0) flags |= X509.KeyUsage.DataEncipherment;
+            if ((raw & 0x08) != 0) flags |= X509.KeyUsage.KeyAgreement;
+            if ((raw & 0x04) != 0) flags |= X509.KeyUsage.KeyCertSign;
+            if ((raw & 0x02) != 0) flags |= X509.KeyUsage.CrlSign;
 
             return flags;
         }
@@ -337,7 +336,7 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>The list of EKU OIDs.</returns>
-        public static IReadOnlyList<string> Parse(byte[] value)
+        public static IReadOnlyList<string> Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -360,7 +359,7 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>A list of SAN entries.</returns>
-        public static IReadOnlyList<(SanType Type, string Value)> Parse(byte[] value)
+        public static IReadOnlyList<(SanType Type, string Value)> Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -414,7 +413,7 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>The key identifier bytes.</returns>
-        public static byte[] Parse(byte[] value)
+        public static byte[] Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             byte[] ski = reader.ReadOctetString();
@@ -433,7 +432,7 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>A tuple of optional key identifier, issuer name, and serial number.</returns>
-        public static (byte[]? KeyId, X509Name? Issuer, byte[]? SerialNumber) Parse(byte[] value)
+        public static (byte[]? KeyId, X509Name? Issuer, byte[]? SerialNumber) Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -477,7 +476,7 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>A list of distribution point URIs.</returns>
-        public static IReadOnlyList<string> Parse(byte[] value)
+        public static IReadOnlyList<string> Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -533,7 +532,7 @@ public static class ExtensionParsers
         /// </summary>
         /// <param name="value">The raw extension value bytes.</param>
         /// <returns>A list of (accessMethod OID, accessLocation URI) tuples.</returns>
-        public static IReadOnlyList<(string Method, string Location)> Parse(byte[] value)
+        public static IReadOnlyList<(string Method, string Location)> Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -570,7 +569,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses Certificate Policies extension value and returns policy OIDs.
         /// </summary>
-        public static IReadOnlyList<string> Parse(byte[] value)
+        public static IReadOnlyList<string> Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -599,7 +598,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses Name Constraints and returns permitted and excluded DNS subtrees.
         /// </summary>
-        public static (IReadOnlyList<string> PermittedDns, IReadOnlyList<string> ExcludedDns) Parse(byte[] value)
+        public static (IReadOnlyList<string> PermittedDns, IReadOnlyList<string> ExcludedDns) Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -660,7 +659,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses policy constraints values.
         /// </summary>
-        public static (int? RequireExplicitPolicy, int? InhibitPolicyMapping) Parse(byte[] value)
+        public static (int? RequireExplicitPolicy, int? InhibitPolicyMapping) Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -698,7 +697,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses skipCerts value.
         /// </summary>
-        public static int Parse(byte[] value)
+        public static int Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             int skip = (int)reader.ReadInteger();
@@ -715,7 +714,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses URI distribution points and indirectCRL flag.
         /// </summary>
-        public static (IReadOnlyList<string> Uris, bool IndirectCrl) Parse(byte[] value)
+        public static (IReadOnlyList<string> Uris, bool IndirectCrl) Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -769,7 +768,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses base CRL number.
         /// </summary>
-        public static long Parse(byte[] value)
+        public static long Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             long number = (long)reader.ReadInteger();
@@ -786,7 +785,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses URI distribution points.
         /// </summary>
-        public static IReadOnlyList<string> Parse(byte[] value)
+        public static IReadOnlyList<string> Parse(ReadOnlyMemory<byte> value)
         {
             return CrlDistributionPoints.Parse(value);
         }
@@ -800,7 +799,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses notBefore and notAfter values.
         /// </summary>
-        public static (DateTimeOffset? NotBefore, DateTimeOffset? NotAfter) Parse(byte[] value)
+        public static (DateTimeOffset? NotBefore, DateTimeOffset? NotAfter) Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();
@@ -848,7 +847,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses and validates the NULL body.
         /// </summary>
-        public static void Parse(byte[] value)
+        public static void Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             reader.ReadNull();
@@ -864,7 +863,7 @@ public static class ExtensionParsers
         /// <summary>
         /// Parses TLS feature identifiers.
         /// </summary>
-        public static IReadOnlyList<int> Parse(byte[] value)
+        public static IReadOnlyList<int> Parse(ReadOnlyMemory<byte> value)
         {
             var reader = new AsnReader(value, AsnEncodingRules.DER);
             var seq = reader.ReadSequence();

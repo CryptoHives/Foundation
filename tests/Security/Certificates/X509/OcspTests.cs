@@ -321,7 +321,7 @@ public class OcspTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(key)
             .AddBasicConstraints(true)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(key);
         return (cert, name);
     }

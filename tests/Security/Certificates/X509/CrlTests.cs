@@ -75,7 +75,7 @@ public class CrlTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(spki)
             .AddBasicConstraints(true)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(d, "nistP256");
 
         var now = DateTimeOffset.UtcNow;
@@ -112,7 +112,7 @@ public class CrlTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(5))
             .SetPublicKey(spki)
             .AddBasicConstraints(true)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSignedEd25519(seed);
 
         var now = DateTimeOffset.UtcNow;
@@ -335,7 +335,7 @@ public class CrlTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(key)
             .AddBasicConstraints(true)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(key);
     }
 

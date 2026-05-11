@@ -88,8 +88,8 @@ public static class X509ChainValidator
                 X509Extension? kuExt = cert.Extensions.GetExtension(X509ExtensionCollection.OidKeyUsage);
                 if (kuExt is not null)
                 {
-                    KeyUsageFlags flags = ExtensionParsers.KeyUsage.Parse(kuExt.Value);
-                    if ((flags & KeyUsageFlags.KeyCertSign) == 0)
+                    KeyUsage flags = ExtensionParsers.KeyUsage.Parse(kuExt.Value);
+                    if ((flags & KeyUsage.KeyCertSign) == 0)
                     {
                         status |= ChainValidationStatus.InvalidKeyUsage;
                         errors.Add($"Certificate '{cert.Subject}' lacks keyCertSign key usage.");

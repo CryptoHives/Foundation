@@ -130,7 +130,9 @@ internal static class Ed25519
         // h = SHA-512(seed)
         Span<byte> h = stackalloc byte[64];
         using (var sha = new ManagedSha512())
+        {
             sha.TryComputeHash(seed[..SeedSize], h, out _);
+        }
 
         // Clamp scalar from first 32 bytes
         ClampScalar(h[..32]);
@@ -165,7 +167,9 @@ internal static class Ed25519
         // h = SHA-512(seed)
         Span<byte> h = stackalloc byte[64];
         using (var sha = new ManagedSha512())
+        {
             sha.TryComputeHash(seed[..SeedSize], h, out _);
+        }
 
         ClampScalar(h[..32]);
 
@@ -237,13 +241,17 @@ internal static class Ed25519
     public static bool Verify(ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> message, ReadOnlySpan<byte> signature)
     {
         if (signature.Length != SignatureSize || publicKey.Length != PublicKeySize)
+        {
             return false;
+        }
 
         // Decode R from first 32 bytes of signature
         Span<ulong> rPx = stackalloc ulong[N];
         Span<ulong> rPy = stackalloc ulong[N];
         if (!DecodePoint(signature[..32], rPx, rPy))
+        {
             return false;
+        }
 
         // Decode S from last 32 bytes of signature
         Span<ulong> sVal = stackalloc ulong[N];
@@ -251,13 +259,17 @@ internal static class Ed25519
 
         // Check S < L
         if (BigUInt.Compare(sVal, LOrder) >= 0)
+        {
             return false;
+        }
 
         // Decode A (public key)
         Span<ulong> aPx = stackalloc ulong[N];
         Span<ulong> aPy = stackalloc ulong[N];
         if (!DecodePoint(publicKey, aPx, aPy))
+        {
             return false;
+        }
 
         // k = SHA-512(R_encoded || A_encoded || message) mod L
         byte[] kHash = new byte[64];
@@ -509,7 +521,10 @@ internal static class Ed25519
         Span<ulong> tmpT = stackalloc ulong[N];
 
         int totalBits = BigUInt.BitLength(k);
-        if (totalBits == 0) return; // identity
+        if (totalBits == 0)
+        {
+            return; // identity
+        }
 
         for (int i = totalBits - 1; i >= 0; i--)
         {
@@ -594,7 +609,9 @@ internal static class Ed25519
 
         // Check y < p
         if (BigUInt.Compare(yNorm, PField) >= 0)
+        {
             return false;
+        }
 
         // Compute x² = (y² − 1) / (d·y² + 1) mod p
         Span<ulong> yMontLocal = stackalloc ulong[N];
@@ -684,7 +701,9 @@ internal static class Ed25519
             FieldCtx.FromMontgomery(check, checkNorm);
 
             if (!BigUInt.ConstantTimeEqual(checkNorm, uNorm))
+            {
                 return false;
+            }
 
             // Use the corrected candidate
             FieldCtx.FromMontgomery(candidate2Mont, candidate);
@@ -767,7 +786,9 @@ internal static class Ed25519
             {
                 shifted[j + limbShift] |= modulus[j] << bitShift;
                 if (bitShift > 0 && (j + limbShift + 1) < wideLimbs)
+                {
                     shifted[j + limbShift + 1] |= modulus[j] >> (64 - bitShift);
+                }
             }
 
             // Try subtraction
@@ -828,7 +849,9 @@ internal static class Ed25519
                 ks[pos] = sum;
                 carryHi += c;
                 if (carryHi != 0 && pos + 1 < 8)
+                {
                     ks[pos + 1] += carryHi;
+                }
             }
         }
 
@@ -873,7 +896,11 @@ internal static class Ed25519
 #if NET8_0_OR_GREATER
         return System.Numerics.BitOperations.LeadingZeroCount(value);
 #else
-        if (value == 0) return 64;
+        if (value == 0)
+        {
+            return 64;
+        }
+
         int count = 0;
         if ((value & 0xFFFFFFFF00000000UL) == 0) { count += 32; value <<= 32; }
         if ((value & 0xFFFF000000000000UL) == 0) { count += 16; value <<= 16; }

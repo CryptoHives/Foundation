@@ -348,7 +348,7 @@ public sealed class X509CrlBuilder
                 writer.PushSequence();
                 writer.WriteObjectIdentifier(ext.Oid);
                 if (ext.Critical) writer.WriteBoolean(true);
-                writer.WriteOctetString(ext.Value);
+                writer.WriteOctetString(ext.Value.Span);
                 writer.PopSequence();
             }
             writer.PopSequence();

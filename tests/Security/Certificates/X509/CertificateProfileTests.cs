@@ -47,8 +47,8 @@ public class CertificateProfileTests
         var ku = cert.Extensions.GetExtension(X509ExtensionCollection.OidKeyUsage);
         Assert.That(ku, Is.Not.Null);
         var flags = ExtensionParsers.KeyUsage.Parse(ku!.Value);
-        Assert.That(flags.HasFlag(KeyUsageFlags.DigitalSignature), Is.True);
-        Assert.That(flags.HasFlag(KeyUsageFlags.KeyEncipherment), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.DigitalSignature), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.KeyEncipherment), Is.True);
 
         Assert.That(X509CertificateValidator.VerifySelfSigned(cert), Is.True);
     }
@@ -88,8 +88,8 @@ public class CertificateProfileTests
 
         var ku = cert.Extensions.GetExtension(X509ExtensionCollection.OidKeyUsage);
         var flags = ExtensionParsers.KeyUsage.Parse(ku!.Value);
-        Assert.That(flags.HasFlag(KeyUsageFlags.DigitalSignature), Is.True);
-        Assert.That(flags.HasFlag(KeyUsageFlags.KeyEncipherment), Is.False);
+        Assert.That(flags.HasFlag(KeyUsage.DigitalSignature), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.KeyEncipherment), Is.False);
 
         Assert.That(X509CertificateValidator.VerifySelfSigned(cert), Is.True);
     }
@@ -122,8 +122,8 @@ public class CertificateProfileTests
 
         var ku = cert.Extensions.GetExtension(X509ExtensionCollection.OidKeyUsage);
         var flags = ExtensionParsers.KeyUsage.Parse(ku!.Value);
-        Assert.That(flags.HasFlag(KeyUsageFlags.KeyCertSign), Is.True);
-        Assert.That(flags.HasFlag(KeyUsageFlags.CrlSign), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.KeyCertSign), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.CrlSign), Is.True);
 
         var ski = cert.Extensions.GetExtension(X509ExtensionCollection.OidSubjectKeyIdentifier);
         Assert.That(ski, Is.Not.Null);
@@ -175,9 +175,9 @@ public class CertificateProfileTests
 
         var ku = cert.Extensions.GetExtension(X509ExtensionCollection.OidKeyUsage);
         var flags = ExtensionParsers.KeyUsage.Parse(ku!.Value);
-        Assert.That(flags.HasFlag(KeyUsageFlags.DigitalSignature), Is.True);
-        Assert.That(flags.HasFlag(KeyUsageFlags.NonRepudiation), Is.True);
-        Assert.That(flags.HasFlag(KeyUsageFlags.DataEncipherment), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.DigitalSignature), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.NonRepudiation), Is.True);
+        Assert.That(flags.HasFlag(KeyUsage.DataEncipherment), Is.True);
 
         Assert.That(X509CertificateValidator.VerifySelfSigned(cert), Is.True);
     }
@@ -231,7 +231,7 @@ public class CertificateProfileTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(key)
             .AddBasicConstraints(true, 0)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(key);
     }
 
@@ -248,7 +248,7 @@ public class CertificateProfileTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(365))
             .SetPublicKey(leafKey)
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature | KeyUsageFlags.KeyEncipherment)
+            .AddKeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment)
             .AddExtendedKeyUsage(ExtensionParsers.ExtendedKeyUsage.OidServerAuth)
             .AddSubjectAlternativeName((SanType.DnsName, "profile-leaf.example.com"))
             .BuildSignedRsa(issuerKey, issuerName);

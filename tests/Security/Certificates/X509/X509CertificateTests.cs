@@ -36,7 +36,7 @@ public class X509CertificateTests
                 DateTimeOffset.UtcNow.AddDays(365))
             .SetPublicKey(rsaKey)
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature | KeyUsageFlags.KeyEncipherment)
+            .AddKeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment)
             .BuildSelfSigned(rsaKey);
 
         byte[] der = cert.RawDer;
@@ -96,7 +96,7 @@ public class X509CertificateTests
                 DateTimeOffset.UtcNow.AddDays(365))
             .SetPublicKey(rsaKey)
             .AddBasicConstraints(true, 0)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(rsaKey, "SHA256");
 
         bool valid = X509CertificateValidator.VerifySelfSigned(cert);
@@ -177,7 +177,7 @@ public class X509CertificateTests
         using var rsaKey = CreateRsaKey(2048);
         var name = X509Name.FromString("CN=KU Test, C=US");
 
-        var flags = KeyUsageFlags.DigitalSignature | KeyUsageFlags.KeyEncipherment;
+        var flags = KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment;
         var cert = new X509CertificateBuilder()
             .SetSubject(name)
             .SetIssuer(name)
@@ -193,9 +193,9 @@ public class X509CertificateTests
         Assert.That(ext, Is.Not.Null);
 
         var parsed = ExtensionParsers.KeyUsage.Parse(ext!.Value);
-        Assert.That(parsed.HasFlag(KeyUsageFlags.DigitalSignature), Is.True);
-        Assert.That(parsed.HasFlag(KeyUsageFlags.KeyEncipherment), Is.True);
-        Assert.That(parsed.HasFlag(KeyUsageFlags.KeyCertSign), Is.False);
+        Assert.That(parsed.HasFlag(KeyUsage.DigitalSignature), Is.True);
+        Assert.That(parsed.HasFlag(KeyUsage.KeyEncipherment), Is.True);
+        Assert.That(parsed.HasFlag(KeyUsage.KeyCertSign), Is.False);
     }
 
     [Test]
@@ -249,7 +249,7 @@ public class X509CertificateTests
                 new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero))
             .SetPublicKey(rsaKey)
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature)
+            .AddKeyUsage(KeyUsage.DigitalSignature)
             .AddSubjectAlternativeName(
                 (SanType.DnsName, "roundtrip.example.com"))
             .BuildSelfSigned(rsaKey);
@@ -469,7 +469,7 @@ public class X509CertificateTests
                 DateTimeOffset.UtcNow.AddDays(365))
             .SetPublicKey(rsaKey)
             .AddBasicConstraints(true, 0)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(rsaKey, "SHA256");
 
         byte[] der = cert.RawDer;
@@ -612,7 +612,7 @@ public class X509CertificateTests
             .SetSubject(X509Name.FromString("CN=CA Auto SKI, C=US"))
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .AddBasicConstraints(true, 0)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned();
 
         var skiExt = cert.Extensions.GetExtension(X509ExtensionCollection.OidSubjectKeyIdentifier);
@@ -644,7 +644,7 @@ public class X509CertificateTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(caKey1)
             .AddBasicConstraints(true, 1)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(caKey1);
 
         byte[] caSki = ExtensionParsers.SubjectKeyIdentifier.Parse(
@@ -669,7 +669,7 @@ public class X509CertificateTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(365))
             .SetPublicKey(leafKey)
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature | KeyUsageFlags.KeyEncipherment)
+            .AddKeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment)
             .AddExtendedKeyUsage(ExtensionParsers.ExtendedKeyUsage.OidServerAuth)
             .AddSubjectAlternativeName((SanType.DnsName, "leaf.example.com"))
             .AddAuthorityKeyIdentifier(caSki)
@@ -705,7 +705,7 @@ public class X509CertificateTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(5))
             .SetPublicKey(caSpki)
             .AddBasicConstraints(true, 0)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(caD, "nistP256");
 
         byte[] caSki = ExtensionParsers.SubjectKeyIdentifier.Parse(

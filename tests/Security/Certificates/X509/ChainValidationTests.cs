@@ -283,7 +283,7 @@ public class ChainValidationTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(key)
             .AddBasicConstraints(true, pathLen >= 0 ? pathLen : null)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSelfSigned(key);
     }
 
@@ -299,7 +299,7 @@ public class ChainValidationTests
             .SetValidity(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(10))
             .SetPublicKey(subjectKey)
             .AddBasicConstraints(true, pathLen >= 0 ? pathLen : null)
-            .AddKeyUsage(KeyUsageFlags.KeyCertSign | KeyUsageFlags.CrlSign)
+            .AddKeyUsage(KeyUsage.KeyCertSign | KeyUsage.CrlSign)
             .BuildSignedRsa(issuerKey, issuerName);
     }
 
@@ -319,7 +319,7 @@ public class ChainValidationTests
                 notAfter ?? DateTimeOffset.UtcNow.AddDays(365))
             .SetPublicKey(leafKey)
             .AddBasicConstraints(false)
-            .AddKeyUsage(KeyUsageFlags.DigitalSignature)
+            .AddKeyUsage(KeyUsage.DigitalSignature)
             .BuildSignedRsa(issuerKey, issuerName);
     }
 }

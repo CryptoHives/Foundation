@@ -303,16 +303,16 @@ public sealed class X509CertificateBuilder
     /// </summary>
     /// <param name="flags">The key usage flags.</param>
     /// <returns>This builder instance.</returns>
-    public X509CertificateBuilder AddKeyUsage(KeyUsageFlags flags)
+    public X509CertificateBuilder AddKeyUsage(KeyUsage flags)
     {
         byte raw = 0;
-        if (flags.HasFlag(KeyUsageFlags.DigitalSignature)) raw |= 0x80;
-        if (flags.HasFlag(KeyUsageFlags.NonRepudiation)) raw |= 0x40;
-        if (flags.HasFlag(KeyUsageFlags.KeyEncipherment)) raw |= 0x20;
-        if (flags.HasFlag(KeyUsageFlags.DataEncipherment)) raw |= 0x10;
-        if (flags.HasFlag(KeyUsageFlags.KeyAgreement)) raw |= 0x08;
-        if (flags.HasFlag(KeyUsageFlags.KeyCertSign)) raw |= 0x04;
-        if (flags.HasFlag(KeyUsageFlags.CrlSign)) raw |= 0x02;
+        if (flags.HasFlag(KeyUsage.DigitalSignature)) raw |= 0x80;
+        if (flags.HasFlag(KeyUsage.NonRepudiation)) raw |= 0x40;
+        if (flags.HasFlag(KeyUsage.KeyEncipherment)) raw |= 0x20;
+        if (flags.HasFlag(KeyUsage.DataEncipherment)) raw |= 0x10;
+        if (flags.HasFlag(KeyUsage.KeyAgreement)) raw |= 0x08;
+        if (flags.HasFlag(KeyUsage.KeyCertSign)) raw |= 0x04;
+        if (flags.HasFlag(KeyUsage.CrlSign)) raw |= 0x02;
 
         // Count trailing zero bits for unused bits calculation
         int unusedBits = 0;
@@ -764,7 +764,7 @@ public sealed class X509CertificateBuilder
                 writer.PushSequence();
                 writer.WriteObjectIdentifier(ext.Oid);
                 if (ext.Critical) writer.WriteBoolean(true);
-                writer.WriteOctetString(ext.Value);
+                writer.WriteOctetString(ext.Value.Span);
                 writer.PopSequence();
             }
             writer.PopSequence();
@@ -927,9 +927,9 @@ public sealed class X509CertificateBuilder
     /// <param name="issuerName">The issuer's distinguished name.</param>
     /// <param name="hashAlgorithm">The hash algorithm name (default: "SHA256").</param>
     /// <returns>The built <see cref="X509Certificate"/>.</returns>
-    public X509Certificate BuildSignedEcDsa(byte[] issuerPrivateKey, string issuerCurveName, X509Name issuerName, string hashAlgorithm = "SHA256")
+    public X509Certificate BuildSignedEcDsa(ReadOnlySpan<byte> issuerPrivateKey, string issuerCurveName, X509Name issuerName, string hashAlgorithm = "SHA256")
     {
-        if (issuerPrivateKey is null) throw new ArgumentNullException(nameof(issuerPrivateKey));
+        if (issuerPrivateKey.IsEmpty) throw new ArgumentNullException(nameof(issuerPrivateKey));
         if (issuerName is null) throw new ArgumentNullException(nameof(issuerName));
 
         var savedIssuer = _issuer;

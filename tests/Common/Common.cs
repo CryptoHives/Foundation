@@ -47,14 +47,16 @@ static class TestHelpers
     /// </remarks>
     public static byte[] FromHexString(string hex)
     {
-#if NET5_0_OR_GREATER
-        return Convert.FromHexString(hex);
-#else
         if (hex is null)
         {
             throw new ArgumentNullException(nameof(hex));
         }
 
+        hex = hex.Replace(" ", "");
+
+#if NET5_0_OR_GREATER
+        return Convert.FromHexString(hex);
+#else
         if (hex.Length % 2 != 0)
         {
             throw new FormatException("The hexadecimal string must have an even length.");
