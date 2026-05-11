@@ -14,6 +14,8 @@
     <PackageTags>$(PackageTags) Certificates</PackageTags>
     <EnablePackageValidation>false</EnablePackageValidation>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- set to true when experimental Nuget package is ready to ship-->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <!-- Choose which platforms support ECC -->

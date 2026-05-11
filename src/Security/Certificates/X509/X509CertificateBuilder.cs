@@ -14,8 +14,8 @@ using CryptoHives.Foundation.Security.Cryptography.Rng;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
-using Sys = System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography;
+using Sys = System.Security.Cryptography;
 
 /// <summary>
 /// Builds X.509 v3 certificates using a fluent builder pattern.
@@ -649,9 +649,9 @@ public sealed class X509CertificateBuilder
     /// <returns>The built <see cref="X509Certificate"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="ecPrivateKey"/> is <c>null</c>.</exception>
     /// <exception cref="InvalidOperationException">Required fields are not set.</exception>
-    public X509Certificate BuildSelfSigned(byte[] ecPrivateKey, string curveName, string hashAlgorithm = "SHA256")
+    public X509Certificate BuildSelfSigned(ReadOnlySpan<byte> ecPrivateKey, string curveName, string hashAlgorithm = "SHA256")
     {
-        if (ecPrivateKey is null) throw new ArgumentNullException(nameof(ecPrivateKey));
+        if (ecPrivateKey.IsEmpty) throw new ArgumentNullException(nameof(ecPrivateKey));
 
         string sigAlgOid = hashAlgorithm.ToUpperInvariant() switch {
             "SHA256" => SignatureAlgorithm.OidEcdsaWithSha256,
@@ -682,9 +682,9 @@ public sealed class X509CertificateBuilder
     /// <exception cref="ArgumentNullException"><paramref name="seed"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException"><paramref name="seed"/> is not 32 bytes.</exception>
     /// <exception cref="InvalidOperationException">Required fields are not set.</exception>
-    public X509Certificate BuildSelfSignedEd25519(byte[] seed)
+    public X509Certificate BuildSelfSignedEd25519(ReadOnlySpan<byte> seed)
     {
-        if (seed is null) throw new ArgumentNullException(nameof(seed));
+        if (seed.IsEmpty) throw new ArgumentNullException(nameof(seed));
         if (seed.Length != 32) throw new ArgumentException("Ed25519 seed must be 32 bytes.", nameof(seed));
 
         return BuildSelfSignedEdDsa(seed, SignatureAlgorithm.OidEd25519);
@@ -698,9 +698,9 @@ public sealed class X509CertificateBuilder
     /// <exception cref="ArgumentNullException"><paramref name="seed"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException"><paramref name="seed"/> is not 57 bytes.</exception>
     /// <exception cref="InvalidOperationException">Required fields are not set.</exception>
-    public X509Certificate BuildSelfSignedEd448(byte[] seed)
+    public X509Certificate BuildSelfSignedEd448(ReadOnlySpan<byte> seed)
     {
-        if (seed is null) throw new ArgumentNullException(nameof(seed));
+        if (seed.IsEmpty) throw new ArgumentNullException(nameof(seed));
         if (seed.Length != 57) throw new ArgumentException("Ed448 seed must be 57 bytes.", nameof(seed));
 
         return BuildSelfSignedEdDsa(seed, SignatureAlgorithm.OidEd448);
@@ -831,7 +831,7 @@ public sealed class X509CertificateBuilder
         return writer.Encode();
     }
 
-    private X509Certificate BuildCertificate(byte[] tbsDer, string sigAlgOid, byte[] signature)
+    private X509Certificate BuildCertificate(ReadOnlySpan<byte> tbsDer, string sigAlgOid, ReadOnlySpan<byte> signature)
     {
         // Build outer Certificate SEQUENCE
         var outerWriter = new AsnWriter(AsnEncodingRules.DER);
@@ -859,7 +859,7 @@ public sealed class X509CertificateBuilder
         return serial;
     }
 
-    private X509Certificate BuildSelfSignedEdDsa(byte[] seed, string sigAlgOid)
+    private X509Certificate BuildSelfSignedEdDsa(ReadOnlySpan<byte> seed, string sigAlgOid)
     {
         // Auto-set public key if not already set
         if (_publicKeySpkiDer is null)
@@ -892,7 +892,7 @@ public sealed class X509CertificateBuilder
     /// Computes the Subject Key Identifier as the SHA-1 hash of the public key
     /// BIT STRING content per RFC 5280 §4.2.1.2.
     /// </summary>
-    private static byte[] ComputeSubjectKeyIdentifier(byte[] spkiDer)
+    private static byte[] ComputeSubjectKeyIdentifier(ReadOnlySpan<byte> spkiDer)
     {
         byte[] publicKeyBytes = KeyEncoding.ImportSubjectPublicKeyInfo(spkiDer, out _, out _);
         using var sha1 = new CH.Hash.SHA1();
@@ -976,9 +976,9 @@ public sealed class X509CertificateBuilder
     /// <param name="issuerSeed">The 32-byte Ed25519 private seed of the issuer.</param>
     /// <param name="issuerName">The issuer's distinguished name.</param>
     /// <returns>The built <see cref="X509Certificate"/>.</returns>
-    public X509Certificate BuildSignedEd25519(byte[] issuerSeed, X509Name issuerName)
+    public X509Certificate BuildSignedEd25519(ReadOnlySpan<byte> issuerSeed, X509Name issuerName)
     {
-        if (issuerSeed is null) throw new ArgumentNullException(nameof(issuerSeed));
+        if (issuerSeed.IsEmpty) throw new ArgumentNullException(nameof(issuerSeed));
         if (issuerSeed.Length != 32) throw new ArgumentException("Ed25519 seed must be 32 bytes.", nameof(issuerSeed));
         if (issuerName is null) throw new ArgumentNullException(nameof(issuerName));
 
@@ -998,9 +998,9 @@ public sealed class X509CertificateBuilder
     /// <param name="issuerSeed">The 57-byte Ed448 private seed of the issuer.</param>
     /// <param name="issuerName">The issuer's distinguished name.</param>
     /// <returns>The built <see cref="X509Certificate"/>.</returns>
-    public X509Certificate BuildSignedEd448(byte[] issuerSeed, X509Name issuerName)
+    public X509Certificate BuildSignedEd448(ReadOnlySpan<byte> issuerSeed, X509Name issuerName)
     {
-        if (issuerSeed is null) throw new ArgumentNullException(nameof(issuerSeed));
+        if (issuerSeed.IsEmpty) throw new ArgumentNullException(nameof(issuerSeed));
         if (issuerSeed.Length != 57) throw new ArgumentException("Ed448 seed must be 57 bytes.", nameof(issuerSeed));
         if (issuerName is null) throw new ArgumentNullException(nameof(issuerName));
 
