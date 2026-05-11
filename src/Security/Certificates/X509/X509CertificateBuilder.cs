@@ -291,8 +291,16 @@ public sealed class X509CertificateBuilder
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence();
-        if (isCA) writer.WriteBoolean(true);
-        if (pathLen.HasValue) writer.WriteInteger(pathLen.Value);
+        if (isCA)
+        {
+            writer.WriteBoolean(true);
+        }
+
+        if (pathLen.HasValue)
+        {
+            writer.WriteInteger(pathLen.Value);
+        }
+
         writer.PopSequence();
         _extensions.Add(new X509Extension(X509ExtensionCollection.OidBasicConstraints, true, writer.Encode()));
         return this;
@@ -306,13 +314,40 @@ public sealed class X509CertificateBuilder
     public X509CertificateBuilder AddKeyUsage(KeyUsage flags)
     {
         byte raw = 0;
-        if (flags.HasFlag(KeyUsage.DigitalSignature)) raw |= 0x80;
-        if (flags.HasFlag(KeyUsage.NonRepudiation)) raw |= 0x40;
-        if (flags.HasFlag(KeyUsage.KeyEncipherment)) raw |= 0x20;
-        if (flags.HasFlag(KeyUsage.DataEncipherment)) raw |= 0x10;
-        if (flags.HasFlag(KeyUsage.KeyAgreement)) raw |= 0x08;
-        if (flags.HasFlag(KeyUsage.KeyCertSign)) raw |= 0x04;
-        if (flags.HasFlag(KeyUsage.CrlSign)) raw |= 0x02;
+        if (flags.HasFlag(KeyUsage.DigitalSignature))
+        {
+            raw |= 0x80;
+        }
+
+        if (flags.HasFlag(KeyUsage.NonRepudiation))
+        {
+            raw |= 0x40;
+        }
+
+        if (flags.HasFlag(KeyUsage.KeyEncipherment))
+        {
+            raw |= 0x20;
+        }
+
+        if (flags.HasFlag(KeyUsage.DataEncipherment))
+        {
+            raw |= 0x10;
+        }
+
+        if (flags.HasFlag(KeyUsage.KeyAgreement))
+        {
+            raw |= 0x08;
+        }
+
+        if (flags.HasFlag(KeyUsage.KeyCertSign))
+        {
+            raw |= 0x04;
+        }
+
+        if (flags.HasFlag(KeyUsage.CrlSign))
+        {
+            raw |= 0x02;
+        }
 
         // Count trailing zero bits for unused bits calculation
         int unusedBits = 0;
@@ -396,7 +431,10 @@ public sealed class X509CertificateBuilder
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence();
         foreach (string oid in oids)
+        {
             writer.WriteObjectIdentifier(oid);
+        }
+
         writer.PopSequence();
         _extensions.Add(new X509Extension(X509ExtensionCollection.OidExtendedKeyUsage, false, writer.Encode()));
         return this;
@@ -462,7 +500,9 @@ public sealed class X509CertificateBuilder
     public X509CertificateBuilder AddAuthorityInfoAccess(string? ocspUri = null, string? caIssuersUri = null)
     {
         if (ocspUri is null && caIssuersUri is null)
+        {
             throw new ArgumentException("At least one of ocspUri or caIssuersUri must be provided.");
+        }
 
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence(); // AuthorityInfoAccessSyntax ::= SEQUENCE OF AccessDescription
@@ -499,7 +539,9 @@ public sealed class X509CertificateBuilder
     public X509CertificateBuilder AddPrivateKeyUsagePeriod(DateTimeOffset? notBefore = null, DateTimeOffset? notAfter = null)
     {
         if (!notBefore.HasValue && !notAfter.HasValue)
+        {
             throw new ArgumentException("At least one of notBefore or notAfter must be provided.");
+        }
 
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.PushSequence();
@@ -580,7 +622,9 @@ public sealed class X509CertificateBuilder
 
         // Auto-set public key from private key if not already set
         if (_publicKeySpkiDer is null)
+        {
             SetPublicKey(privateKey);
+        }
 
         byte[] tbsDer = BuildTbs(sigAlgOid);
 
@@ -678,10 +722,14 @@ public sealed class X509CertificateBuilder
     public X509Certificate BuildSelfSigned()
     {
         if (_autoRsaKey is not null)
+        {
             return BuildSelfSigned(_autoRsaKey);
+        }
 
         if (_autoEcPrivateKey is not null && _autoEcCurveName is not null)
+        {
             return BuildSelfSigned(_autoEcPrivateKey, _autoEcCurveName, _autoEcHashAlgorithm ?? "SHA256");
+        }
 
         if (_autoEdSeed is not null && _autoEdAlgorithm is not null)
         {
@@ -739,7 +787,11 @@ public sealed class X509CertificateBuilder
         bool isCA = false;
         foreach (var ext in _extensions)
         {
-            if (ext.Oid == X509ExtensionCollection.OidSubjectKeyIdentifier) hasSki = true;
+            if (ext.Oid == X509ExtensionCollection.OidSubjectKeyIdentifier)
+            {
+                hasSki = true;
+            }
+
             if (ext.Oid == X509ExtensionCollection.OidBasicConstraints)
             {
                 var (ca, _) = ExtensionParsers.BasicConstraints.Parse(ext.Value);
@@ -763,7 +815,11 @@ public sealed class X509CertificateBuilder
             {
                 writer.PushSequence();
                 writer.WriteObjectIdentifier(ext.Oid);
-                if (ext.Critical) writer.WriteBoolean(true);
+                if (ext.Critical)
+                {
+                    writer.WriteBoolean(true);
+                }
+
                 writer.WriteOctetString(ext.Value.Span);
                 writer.PopSequence();
             }
@@ -796,7 +852,9 @@ public sealed class X509CertificateBuilder
 
         string keyAlg = SignatureAlgorithm.GetKeyAlgorithm(oid);
         if (keyAlg == "RSA" && oid != SignatureAlgorithm.OidRsaPss)
+        {
             writer.WriteNull();
+        }
 
         writer.PopSequence();
     }
@@ -804,17 +862,26 @@ public sealed class X509CertificateBuilder
     private static void WriteTime(AsnWriter writer, DateTimeOffset time)
     {
         if (time.Year < 2050)
+        {
             writer.WriteUtcTime(time);
+        }
         else
+        {
             writer.WriteGeneralizedTime(time, omitFractionalSeconds: true);
+        }
     }
 
     private static byte[] GenerateRandomSerial()
     {
         byte[] serial = new byte[20];
         using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(serial);
-        serial[0] &= 0x7F; // ensure positive
+        do
+        {
+            rng.GetBytes(serial);
+            serial[0] &= 0x7F; // ensure positive
+        }
+        while (serial[0] == 0);
+
         return serial;
     }
 
@@ -832,7 +899,10 @@ public sealed class X509CertificateBuilder
     {
         int i = 0;
         while (i < value.Length - 1 && value[i] == 0)
+        {
             i++;
+        }
+
         return value.AsSpan(i);
     }
 
@@ -1007,15 +1077,21 @@ public sealed class X509CertificateBuilder
         if (issuerName is null) throw new ArgumentNullException(nameof(issuerName));
 
         if (_autoRsaKey is not null)
+        {
             return BuildSignedRsa(_autoRsaKey, issuerName);
+        }
 
         if (_autoEcPrivateKey is not null && _autoEcCurveName is not null)
+        {
             return BuildSignedEcDsa(_autoEcPrivateKey, _autoEcCurveName, issuerName, _autoEcHashAlgorithm ?? "SHA256");
+        }
 
         if (_autoEdSeed is not null && _autoEdAlgorithm is not null)
         {
             if (_autoEdAlgorithm == "Ed25519")
+            {
                 return BuildSignedEd25519(_autoEdSeed, issuerName);
+            }
 
             // Ed448
             var savedIssuer = _issuer;

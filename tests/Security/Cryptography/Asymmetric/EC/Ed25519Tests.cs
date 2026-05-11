@@ -214,7 +214,7 @@ public class Ed25519Tests
         string scalarHex = BitConverter.ToString(scalar).Replace("-", "").ToUpperInvariant();
 
         // Expected clamped scalar from prior test
-        string expected = "307c83864f2833cb427a2ef1c00a013cfdff2768d980c0a3a520f006904de94f";
+        string expected = "307c83864f2833cb427a2ef1c00a013cfdff2768d980c0a3a520f006904de94f".ToUpperInvariant();
         Assert.That(scalarHex, Is.EqualTo(expected),
             $"Clamped scalar mismatch!\nGot:      {scalarHex}\nExpected: {expected}");
 
