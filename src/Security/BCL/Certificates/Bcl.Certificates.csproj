@@ -4,6 +4,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(CryptolibTargetFrameworks)</TargetFrameworks>
+    <DefineConstants>$(DefineConstants);BCL_CERTIFICATES</DefineConstants>
     <PackageId>$(PackagePrefix).Security.Bcl.Certificates</PackageId>
     <AssemblyName>$(AssemblyPrefix).Security.Bcl.Certificates</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>

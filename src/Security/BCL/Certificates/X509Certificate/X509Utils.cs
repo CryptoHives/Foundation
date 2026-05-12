@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Bcl.Certificates;
 
 using CryptoHives.Foundation.Security.Bcl.Certificates.X509Crl;
+using CryptoHives.Foundation.Security.Certificates;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -576,6 +577,61 @@ public static partial class X509Utils
             return HashAlgorithmName.SHA512;
         }
     }
+
+#if NET472_OR_GREATER
+    /// <summary>
+    /// Imports an ECDSA public key from SPKI DER format for .NET Framework platforms.
+    /// </summary>
+    /// <remarks>
+    /// This method is used on .NET Framework 4.7.2 and earlier where ECDsa.ImportSubjectPublicKeyInfo
+    /// is not available. It uses KeyEncoding to parse the SPKI structure.
+    /// </remarks>
+    /// <param name="publicKeySpki">The SPKI-encoded ECDSA public key bytes.</param>
+    /// <returns>An ECDsa instance with the imported public key.</returns>
+    /// <exception cref="CryptographicException">The key format is invalid or unsupported.</exception>
+    internal static ECDsa ImportECDsaPublicKey(byte[] publicKeySpki)
+    {
+        byte[] publicKeyBytes = KeyEncoding.ImportSubjectPublicKeyInfo(
+            publicKeySpki,
+            out string algorithmOid,
+            out string? curveOid);
+
+        if (algorithmOid != KeyEncoding.OidEcPublicKey || curveOid == null)
+        {
+            throw new CryptographicException("Invalid EC public key format.");
+        }
+
+        ECCurve curve = curveOid switch
+        {
+            KeyEncoding.OidP256 => ECCurve.NamedCurves.nistP256,
+            KeyEncoding.OidP384 => ECCurve.NamedCurves.nistP384,
+            KeyEncoding.OidP521 => ECCurve.NamedCurves.nistP521,
+            _ => throw new CryptographicException($"Unsupported EC curve OID: {curveOid}"),
+        };
+
+        if (publicKeyBytes.Length < 1 || publicKeyBytes[0] != 0x04)
+        {
+            throw new CryptographicException("Unsupported EC public key format: expected uncompressed point.");
+        }
+
+        int coordLen = (publicKeyBytes.Length - 1) / 2;
+        byte[] qx = new byte[coordLen];
+        byte[] qy = new byte[coordLen];
+
+        Buffer.BlockCopy(publicKeyBytes, 1, qx, 0, coordLen);
+        Buffer.BlockCopy(publicKeyBytes, 1 + coordLen, qy, 0, coordLen);
+
+        var ecParams = new ECParameters
+        {
+            Curve = curve,
+            Q = new ECPoint { X = qx, Y = qy }
+        };
+
+        ECDsa ecdsa = ECDsa.Create();
+        ecdsa.ImportParameters(ecParams);
+        return ecdsa;
+    }
+#endif
 
     /// <summary>
     /// Create secure temporary passcode.

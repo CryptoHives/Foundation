@@ -13,7 +13,7 @@ using System.Formats.Asn1;
 /// Provides a pool of <see cref="AsnWriter"/> instances to reduce allocations.
 /// The encoding for the pooled writers is <see cref="AsnEncodingRules.DER"/>.
 /// </summary>
-public static class AsnWriterPoolDer
+internal static class AsnWriterPoolDer
 {
     /// <summary>
     /// The shared pool of AsnWriter instances using DER encoding.

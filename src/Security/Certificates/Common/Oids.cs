@@ -10,7 +10,7 @@ using System.Security.Cryptography;
 /// <summary>
 /// Oid constants defined for ASN encoding/decoding.
 /// </summary>
-public static class Oids
+internal static class Oids
 {
     /// <summary>
     /// The Oid string of the Digital Signature Algorithm (DSA) subject public key.

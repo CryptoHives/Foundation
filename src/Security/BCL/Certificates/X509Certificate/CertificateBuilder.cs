@@ -272,14 +272,17 @@ public class CertificateBuilder : CertificateBuilderBase
         {
             throw new ArgumentNullException(nameof(publicKey));
         }
-#if NET472_OR_GREATER
-        throw new NotSupportedException("Import a ECDsaPublicKey is not supported on this platform.");
-#else
+
         int bytes = 0;
         try
         {
+#if NET472_OR_GREATER
+            _ecdsaPublicKey = X509Utils.ImportECDsaPublicKey(publicKey);
+            bytes = publicKey.Length;
+#else
             _ecdsaPublicKey = ECDsa.Create();
             _ecdsaPublicKey.ImportSubjectPublicKeyInfo(publicKey, out bytes);
+#endif
         }
         catch (Exception e)
         {
@@ -290,8 +293,8 @@ public class CertificateBuilder : CertificateBuilderBase
         {
             throw new ArgumentException("Decoded the public key but extra bytes were found.");
         }
+
         return this;
-#endif
     }
 #endif
 

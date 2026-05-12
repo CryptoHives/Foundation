@@ -21,7 +21,11 @@ internal static class PemHelper
     /// <returns>The PEM-encoded string.</returns>
     internal static string Encode(ReadOnlySpan<byte> der, string label)
     {
+#if NETSTANDARD2_1_OR_GREATER
+        string base64 = Convert.ToBase64String(der);
+#else
         string base64 = Convert.ToBase64String(der.ToArray());
+#endif
         var sb = new StringBuilder();
         sb.Append("-----BEGIN ").Append(label).AppendLine("-----");
         for (int i = 0; i < base64.Length; i += LineLength)

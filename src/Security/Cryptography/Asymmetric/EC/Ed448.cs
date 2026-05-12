@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Asymmetric.EC;
@@ -710,9 +710,10 @@ internal static class Ed448
 
         int modBits = BigUInt.BitLength(modulus);
 
+        Span<ulong> shifted = stackalloc ulong[wideLimbs];
+        Span<ulong> temp = stackalloc ulong[wideLimbs];
         for (int shift = wideBits - modBits; shift >= 0; shift--)
         {
-            Span<ulong> shifted = stackalloc ulong[wideLimbs];
             shifted.Clear();
 
             int limbShift = shift / 64;
@@ -726,7 +727,6 @@ internal static class Ed448
             }
 
             ulong borrow = 0;
-            Span<ulong> temp = stackalloc ulong[wideLimbs];
             for (int j = 0; j < wideLimbs; j++)
             {
                 ulong diff = rem[j] - shifted[j] - borrow;
@@ -735,7 +735,9 @@ internal static class Ed448
             }
 
             if (borrow == 0)
+            {
                 temp.CopyTo(rem);
+            }
         }
 
         rem[..modLimbs].CopyTo(result);

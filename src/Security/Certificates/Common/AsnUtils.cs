@@ -12,7 +12,7 @@ using System.Text;
 /// <summary>
 /// Utils for ASN.1 encoding and decoding.
 /// </summary>
-public static class AsnUtils
+internal static class AsnUtils
 {
     /// <summary>
     /// Converts a buffer to a hexadecimal string.

@@ -3,21 +3,25 @@
 
 namespace CryptoHives.Foundation.Security.Certificates;
 
+#if !BCL_CERTIFICATES || (BCL_CERTIFICATES && NET472_OR_GREATER)
+
 using System;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
+#if !BCL_CERTIFICATES
 using CryptoHives.Foundation.Security.Cryptography.Asymmetric.Rsa;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Kdf;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using CH = CryptoHives.Foundation.Security.Cryptography;
+#endif
 
 /// <summary>
 /// Provides ASN.1 DER encoding and decoding for asymmetric key types
 /// including RSA (PKCS#1 RFC 8017, SPKI RFC 5280, PKCS#8 RFC 5958),
 /// EC Weierstrass (RFC 5915), and Edwards/Montgomery curves (RFC 8410).
 /// </summary>
-public static class KeyEncoding
+internal static class KeyEncoding
 {
     internal const string OidRsa = "1.2.840.113549.1.1.1";
     internal const string OidEcPublicKey = "1.2.840.10045.2.1";
@@ -33,6 +37,7 @@ public static class KeyEncoding
     internal const string OidX25519 = "1.3.101.110";
     internal const string OidX448 = "1.3.101.111";
 
+#if !BCL_CERTIFICATES
     // ========================================================================
     // RSA PKCS#1 (RFC 8017)
     // ========================================================================
@@ -120,6 +125,7 @@ public static class KeyEncoding
         seq.ThrowIfNotEmpty();
         return new RsaKeyParameters(modulus, publicExponent, privateExponent, p, q, dp, dq, qInv);
     }
+#endif
 
     // ========================================================================
     // EC Weierstrass (RFC 5915)
@@ -417,6 +423,7 @@ public static class KeyEncoding
     private const string OidHmacWithSha256 = "1.2.840.113549.2.9";
     private const string OidHmacWithSha1 = "1.2.840.113549.2.7";
 
+#if !BCL_CERTIFICATES
     /// <summary>
     /// Exports a PKCS#8 PrivateKeyInfo as an EncryptedPrivateKeyInfo DER structure (RFC 5958).
     /// </summary>
@@ -568,6 +575,7 @@ public static class KeyEncoding
 
         return ImportEncryptedPkcs8PrivateKey(der, password, out algorithmOid, out curveOid);
     }
+#endif
 
     // ========================================================================
     // Private Helpers
@@ -732,3 +740,4 @@ public static class KeyEncoding
         outer.ThrowIfNotEmpty();
     }
 }
+#endif

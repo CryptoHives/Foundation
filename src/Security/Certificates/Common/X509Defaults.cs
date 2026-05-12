@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 /// <summary>
 /// The defaults used in the library for Certificates.
 /// </summary>
-public static class X509Defaults
+internal static class X509Defaults
 {
     /// <summary>
     /// The default key size for RSA certificates in bits.
