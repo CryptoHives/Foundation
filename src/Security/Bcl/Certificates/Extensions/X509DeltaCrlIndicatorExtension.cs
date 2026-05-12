@@ -28,7 +28,7 @@ public sealed class X509DeltaCrlIndicatorExtension : X509Extension
     /// </summary>
     public X509DeltaCrlIndicatorExtension(AsnEncodedData encodedExtension, bool critical)
         : this(encodedExtension?.Oid ?? throw new ArgumentException("Oid cannot be null.", nameof(encodedExtension)),
-              encodedExtension.RawData, critical)
+            encodedExtension.RawData, critical)
     {
     }
 

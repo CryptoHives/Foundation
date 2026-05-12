@@ -36,7 +36,7 @@ public sealed class X509CrlDistributionPointsExtension : X509Extension
     /// </summary>
     public X509CrlDistributionPointsExtension(AsnEncodedData encodedExtension, bool critical)
         : this(encodedExtension?.Oid ?? throw new ArgumentException("Oid cannot be null.", nameof(encodedExtension)),
-              encodedExtension.RawData, critical)
+            encodedExtension.RawData, critical)
     {
     }
 

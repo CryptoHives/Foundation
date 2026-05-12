@@ -26,7 +26,7 @@ public sealed class X509OcspNoCheckExtension : X509Extension
     /// </summary>
     public X509OcspNoCheckExtension(AsnEncodedData encodedExtension, bool critical)
         : this(encodedExtension?.Oid ?? throw new ArgumentException("Oid cannot be null.", nameof(encodedExtension)),
-              encodedExtension.RawData, critical)
+            encodedExtension.RawData, critical)
     {
     }
 
