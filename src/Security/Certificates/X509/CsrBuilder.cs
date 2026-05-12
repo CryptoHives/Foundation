@@ -246,19 +246,27 @@ public sealed class CsrBuilder
     /// <returns>This builder instance.</returns>
     public CsrBuilder AddKeyUsage(KeyUsage flags)
     {
-        ushort bits = (ushort)flags;
-        byte[] bytes = [(byte)(bits >> 8), (byte)(bits & 0xFF)];
+        // RFC 5280 KeyUsage BitString: bit 0 (DigitalSignature) is the MSB of the first content byte.
+        // Reverse the enum byte so that enum bit N maps to ASN.1 named-bit N (MSB-first).
+        byte b0 = ReverseByte((byte)flags);
         int unusedBits = 0;
-        if (bytes[1] == 0) { bytes = [bytes[0]]; }
-        for (int i = 0; i < 8 && (bytes[^1] & (1 << i)) == 0; i++)
+        for (int i = 0; i < 8 && (b0 & (1 << i)) == 0; i++)
         {
             unusedBits++;
         }
 
         var writer = new AsnWriter(AsnEncodingRules.DER);
-        writer.WriteBitString(bytes, unusedBits);
+        writer.WriteBitString([b0], unusedBits);
         _extensions.Add(new X509Extension(X509ExtensionCollection.OidKeyUsage, true, writer.Encode()));
         return this;
+    }
+
+    private static byte ReverseByte(byte b)
+    {
+        b = (byte)((b & 0xF0) >> 4 | (b & 0x0F) << 4);
+        b = (byte)((b & 0xCC) >> 2 | (b & 0x33) << 2);
+        b = (byte)((b & 0xAA) >> 1 | (b & 0x55) << 1);
+        return b;
     }
 
     /// <summary>
