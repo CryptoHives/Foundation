@@ -105,6 +105,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docfx", "docfx", "{B1C2D3E4
 	ProjectSection(SolutionItems) = preProject
 		docfx\docfx.json = docfx\docfx.json
 		docfx\getting-started.md = docfx\getting-started.md
+		docfx\googled2fe7d86cf779a1b.html = docfx\googled2fe7d86cf779a1b.html
 		docfx\impressum.md = docfx\impressum.md
 		docfx\index.md = docfx\index.md
 		docfx\toc.yml = docfx\toc.yml

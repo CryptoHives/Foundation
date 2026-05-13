@@ -74,6 +74,7 @@
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' != 'true'">
     <ProjectReference Include="..\..\..\src\Security\Cryptography\Cryptography.csproj" />
   </ItemGroup>
+  
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' == 'true'">
     <PackageReference Include="CryptoHives.Foundation.Security.Cryptography$(_NuGetPackageSuffix)" />
   </ItemGroup>
