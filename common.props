@@ -7,7 +7,7 @@
     <AssemblyPrefix>CryptoHives.Foundation</AssemblyPrefix>
     <Company>CryptoHives Open Source Initiative</Company>
     <Authors>The Keepers of the CryptoHives</Authors>
-    <NoWarn>NU5125;CA2254;CA1307;CA1510;CA1512;CA1513</NoWarn>
+    <NoWarn>NU5125;CA2254;CA1307;CA1510;CA1512;CA1513;CS9057</NoWarn>
     <NeutralLanguage>en-US</NeutralLanguage>
     <HighEntropyVA>true</HighEntropyVA>
     <IsPackable>false</IsPackable>
@@ -26,6 +26,13 @@
     <!--<GenerateCompatibilitySuppressionFile>true</GenerateCompatibilitySuppressionFile>-->
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAudit>true</NuGetAudit>
+    <!-- Experimental algorithms are enabled by default for development and CI test builds.
+         NuGet packaging pipelines must explicitly pass /p:EnableExperimentalAlgorithms=false. -->
+    <EnableExperimentalAlgorithms>true</EnableExperimentalAlgorithms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EnableExperimentalAlgorithms)' == 'true'">
+    <DefineConstants>$(DefineConstants);EXPERIMENTAL</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>

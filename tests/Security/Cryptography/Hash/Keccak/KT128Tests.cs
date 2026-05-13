@@ -24,7 +24,7 @@ public class KT128Tests
     [Test]
     public void EmptyInputEmptyCustomization32Bytes()
     {
-        byte[] expected = HexToBytes("1A C2 D4 50 FC 3B 42 05 D1 9D A7 BF CA 1B 37 51 3C 08 03 57 7A C7 16 7F 06 FE 2C E1 F0 EF 39 E5");
+        byte[] expected = TestHelpers.FromHexString("1A C2 D4 50 FC 3B 42 05 D1 9D A7 BF CA 1B 37 51 3C 08 03 57 7A C7 16 7F 06 FE 2C E1 F0 EF 39 E5");
 
         using var kt128 = new KT128(32);
         byte[] hash = kt128.ComputeHash(Array.Empty<byte>());
@@ -38,7 +38,7 @@ public class KT128Tests
     [Test]
     public void EmptyInputEmptyCustomization64Bytes()
     {
-        byte[] expected = HexToBytes(
+        byte[] expected = TestHelpers.FromHexString(
             "1A C2 D4 50 FC 3B 42 05 D1 9D A7 BF CA 1B 37 51 3C 08 03 57 7A C7 16 7F 06 FE 2C E1 F0 EF 39 E5 " +
             "42 69 C0 56 B8 C8 2E 48 27 60 38 B6 D2 92 96 6C C0 7A 3D 46 45 27 2E 31 FF 38 50 81 39 EB 0A 71");
 
@@ -54,7 +54,7 @@ public class KT128Tests
     [Test]
     public void Pattern1ByteEmptyCustomization()
     {
-        byte[] expected = HexToBytes("2B DA 92 45 0E 8B 14 7F 8A 7C B6 29 E7 84 A0 58 EF CA 7C F7 D8 21 8E 02 D3 45 DF AA 65 24 4A 1F");
+        byte[] expected = TestHelpers.FromHexString("2B DA 92 45 0E 8B 14 7F 8A 7C B6 29 E7 84 A0 58 EF CA 7C F7 D8 21 8E 02 D3 45 DF AA 65 24 4A 1F");
         byte[] input = CreatePattern(1);
 
         using var kt128 = new KT128(32);
@@ -69,7 +69,7 @@ public class KT128Tests
     [Test]
     public void Pattern17BytesEmptyCustomization()
     {
-        byte[] expected = HexToBytes("6B F7 5F A2 23 91 98 DB 47 72 E3 64 78 F8 E1 9B 0F 37 12 05 F6 A9 A9 3A 27 3F 51 DF 37 12 28 88");
+        byte[] expected = TestHelpers.FromHexString("6B F7 5F A2 23 91 98 DB 47 72 E3 64 78 F8 E1 9B 0F 37 12 05 F6 A9 A9 3A 27 3F 51 DF 37 12 28 88");
         byte[] input = CreatePattern(17);
 
         using var kt128 = new KT128(32);
@@ -84,7 +84,7 @@ public class KT128Tests
     [Test]
     public void Pattern289BytesEmptyCustomization()
     {
-        byte[] expected = HexToBytes("0C 31 5E BC DE DB F6 14 26 DE 7D CF 8F B7 25 D1 E7 46 75 D7 F5 32 7A 50 67 F3 67 B1 08 EC B6 7C");
+        byte[] expected = TestHelpers.FromHexString("0C 31 5E BC DE DB F6 14 26 DE 7D CF 8F B7 25 D1 E7 46 75 D7 F5 32 7A 50 67 F3 67 B1 08 EC B6 7C");
         byte[] input = CreatePattern(17 * 17);
 
         using var kt128 = new KT128(32);
@@ -99,7 +99,7 @@ public class KT128Tests
     [Test]
     public void EmptyInputPattern1Customization()
     {
-        byte[] expected = HexToBytes("FA B6 58 DB 63 E9 4A 24 61 88 BF 7A F6 9A 13 30 45 F4 6E E9 84 C5 6E 3C 33 28 CA AF 1A A1 A5 83");
+        byte[] expected = TestHelpers.FromHexString("FA B6 58 DB 63 E9 4A 24 61 88 BF 7A F6 9A 13 30 45 F4 6E E9 84 C5 6E 3C 33 28 CA AF 1A A1 A5 83");
         byte[] customization = CreatePattern(1);
 
         using var kt128 = new KT128(32, customization);
@@ -184,17 +184,6 @@ public class KT128Tests
         for (int i = 0; i < length; i++)
         {
             result[i] = (byte)(i % 251); // 0x00 to 0xFA pattern
-        }
-        return result;
-    }
-
-    private static byte[] HexToBytes(string hex)
-    {
-        hex = hex.Replace(" ", "");
-        byte[] result = new byte[hex.Length / 2];
-        for (int i = 0; i < result.Length; i++)
-        {
-            result[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
         }
         return result;
     }

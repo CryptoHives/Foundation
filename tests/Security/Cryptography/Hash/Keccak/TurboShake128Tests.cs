@@ -24,7 +24,7 @@ public class TurboShake128Tests
     [TestCaseSource(typeof(TurboShake128Implementations), nameof(TurboShake128Implementations.All32))]
     public void EmptyInput32Bytes(HashAlgorithmFactory factory)
     {
-        byte[] expected = HexToBytes("1E 41 5F 1C 59 83 AF F2 16 92 17 27 7D 17 BB 53 8C D9 45 A3 97 DD EC 54 1F 1C E4 1A F2 C1 B7 4C");
+        byte[] expected = TestHelpers.FromHexString("1E 41 5F 1C 59 83 AF F2 16 92 17 27 7D 17 BB 53 8C D9 45 A3 97 DD EC 54 1F 1C E4 1A F2 C1 B7 4C");
 
         using var turbo = factory.Create();
         byte[] hash = turbo.ComputeHash(Array.Empty<byte>());
@@ -38,7 +38,7 @@ public class TurboShake128Tests
     [TestCaseSource(typeof(TurboShake128Implementations), nameof(TurboShake128Implementations.All64))]
     public void EmptyInput64Bytes(HashAlgorithmFactory factory)
     {
-        byte[] expected = HexToBytes(
+        byte[] expected = TestHelpers.FromHexString(
             "1E 41 5F 1C 59 83 AF F2 16 92 17 27 7D 17 BB 53 8C D9 45 A3 97 DD EC 54 1F 1C E4 1A F2 C1 B7 4C " +
             "3E 8C CA E2 A4 DA E5 6C 84 A0 4C 23 85 C0 3C 15 E8 19 3B DF 58 73 73 63 32 16 91 C0 54 62 C8 DF");
 
@@ -54,7 +54,7 @@ public class TurboShake128Tests
     [TestCaseSource(typeof(TurboShake128Implementations), nameof(TurboShake128Implementations.All32))]
     public void Pattern1Byte(HashAlgorithmFactory factory)
     {
-        byte[] expected = HexToBytes("55 CE DD 6F 60 AF 7B B2 9A 40 42 AE 83 2E F3 F5 8D B7 29 9F 89 3E BB 92 47 24 7D 85 69 58 DA A9");
+        byte[] expected = TestHelpers.FromHexString("55 CE DD 6F 60 AF 7B B2 9A 40 42 AE 83 2E F3 F5 8D B7 29 9F 89 3E BB 92 47 24 7D 85 69 58 DA A9");
         byte[] input = CreatePattern(1);
 
         using var turbo = factory.Create();
@@ -69,7 +69,7 @@ public class TurboShake128Tests
     [TestCaseSource(typeof(TurboShake128Implementations), nameof(TurboShake128Implementations.All32))]
     public void Pattern17Bytes(HashAlgorithmFactory factory)
     {
-        byte[] expected = HexToBytes("9C 97 D0 36 A3 BA C8 19 DB 70 ED E0 CA 55 4E C6 E4 C2 A1 A4 FF BF D9 EC 26 9C A6 A1 11 16 12 33");
+        byte[] expected = TestHelpers.FromHexString("9C 97 D0 36 A3 BA C8 19 DB 70 ED E0 CA 55 4E C6 E4 C2 A1 A4 FF BF D9 EC 26 9C A6 A1 11 16 12 33");
         byte[] input = CreatePattern(17);
 
         using var turbo = factory.Create();
@@ -84,7 +84,7 @@ public class TurboShake128Tests
     [TestCaseSource(typeof(TurboShake128Implementations), nameof(TurboShake128Implementations.All32))]
     public void Pattern289Bytes(HashAlgorithmFactory factory)
     {
-        byte[] expected = HexToBytes("96 C7 7C 27 9E 01 26 F7 FC 07 C9 B0 7F 5C DA E1 E0 BE 60 BD BE 10 62 00 40 E7 5D 72 23 A6 24 D2");
+        byte[] expected = TestHelpers.FromHexString("96 C7 7C 27 9E 01 26 F7 FC 07 C9 B0 7F 5C DA E1 E0 BE 60 BD BE 10 62 00 40 E7 5D 72 23 A6 24 D2");
         byte[] input = CreatePattern(17 * 17);
 
         using var turbo = factory.Create();
@@ -99,7 +99,7 @@ public class TurboShake128Tests
     [Test]
     public void DomainSeparator01()
     {
-        byte[] expected = HexToBytes("BF 32 3F 94 04 94 E8 8E E1 C5 40 FE 66 0B E8 A0 C9 3F 43 D1 5E C0 06 99 84 62 FA 99 4E ED 5D AB");
+        byte[] expected = TestHelpers.FromHexString("BF 32 3F 94 04 94 E8 8E E1 C5 40 FE 66 0B E8 A0 C9 3F 43 D1 5E C0 06 99 84 62 FA 99 4E ED 5D AB");
         byte[] input = new byte[] { 0xFF, 0xFF, 0xFF };
 
         using var turbo = new TurboShake128(32, 0x01);
@@ -114,7 +114,7 @@ public class TurboShake128Tests
     [Test]
     public void DomainSeparator06()
     {
-        byte[] expected = HexToBytes("8E C9 C6 64 65 ED 0D 4A 6C 35 D1 35 06 71 8D 68 7A 25 CB 05 C7 4C CA 1E 42 50 1A BD 83 87 4A 67");
+        byte[] expected = TestHelpers.FromHexString("8E C9 C6 64 65 ED 0D 4A 6C 35 D1 35 06 71 8D 68 7A 25 CB 05 C7 4C CA 1E 42 50 1A BD 83 87 4A 67");
         byte[] input = new byte[] { 0xFF };
 
         using var turbo = new TurboShake128(32, 0x06);
@@ -191,8 +191,8 @@ public class TurboShake128Tests
     [Test]
     public void ResetWithDomainSeparatorProducesCorrectOutput()
     {
-        byte[] expectedD06 = HexToBytes("8E C9 C6 64 65 ED 0D 4A 6C 35 D1 35 06 71 8D 68 7A 25 CB 05 C7 4C CA 1E 42 50 1A BD 83 87 4A 67");
-        byte[] expectedD01 = HexToBytes("BF 32 3F 94 04 94 E8 8E E1 C5 40 FE 66 0B E8 A0 C9 3F 43 D1 5E C0 06 99 84 62 FA 99 4E ED 5D AB");
+        byte[] expectedD06 = TestHelpers.FromHexString("8E C9 C6 64 65 ED 0D 4A 6C 35 D1 35 06 71 8D 68 7A 25 CB 05 C7 4C CA 1E 42 50 1A BD 83 87 4A 67");
+        byte[] expectedD01 = TestHelpers.FromHexString("BF 32 3F 94 04 94 E8 8E E1 C5 40 FE 66 0B E8 A0 C9 3F 43 D1 5E C0 06 99 84 62 FA 99 4E ED 5D AB");
 
         using var turbo = new TurboShake128(32, 0x1F);
 
@@ -223,17 +223,6 @@ public class TurboShake128Tests
         for (int i = 0; i < length; i++)
         {
             result[i] = (byte)(i % 251); // 0x00 to 0xFA pattern
-        }
-        return result;
-    }
-
-    private static byte[] HexToBytes(string hex)
-    {
-        hex = hex.Replace(" ", "");
-        byte[] result = new byte[hex.Length / 2];
-        for (int i = 0; i < result.Length; i++)
-        {
-            result[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
         }
         return result;
     }
