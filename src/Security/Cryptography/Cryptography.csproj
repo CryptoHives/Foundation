@@ -3,7 +3,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
+    <TargetFrameworks>$(CryptolibTargetFrameworks)</TargetFrameworks>
     <AssemblyName>$(AssemblyPrefix).Security.Cryptography</AssemblyName>
     <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
@@ -16,9 +16,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Cryptographic operations use intentional bit manipulation that requires unchecked arithmetic -->
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
-    <!-- Experimental algorithms are enabled by default for development and CI test builds.
-         NuGet packaging pipelines must explicitly pass /p:EnableExperimentalAlgorithms=false. -->
-    <EnableExperimentalAlgorithms>true</EnableExperimentalAlgorithms>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -29,15 +26,12 @@
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(EnableExperimentalAlgorithms)' == 'true'">
-    <DefineConstants>$(DefineConstants);EXPERIMENTAL</DefineConstants>
-  </PropertyGroup>
-
   <Choose>
     <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
       </ItemGroup>
     </When>
     <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
@@ -46,10 +40,11 @@
         <PackageReference Include="Microsoft.Bcl.Memory" />
       </ItemGroup>
     </When>
-    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net48'">
+    <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
+        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
       </ItemGroup>
     </When>
     <Otherwise>
