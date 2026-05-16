@@ -798,7 +798,7 @@ public sealed class X509CertificateBuilder
                 isCA = ca;
             }
         }
-        if (isCA && !hasSki && _publicKeySpkiDer is not null)
+        if (isCA && !hasSki)
         {
             byte[] ski = ComputeSubjectKeyIdentifier(_publicKeySpkiDer);
             var skiWriter = new AsnWriter(AsnEncodingRules.DER);
