@@ -3,9 +3,9 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
+using NUnit.Framework;
 using System;
 using System.Text;
-using NUnit.Framework;
 
 /// <summary>
 /// Tests for <see cref="ParallelHash"/> using NIST SP 800-185 sample vectors.
