@@ -433,3 +433,5 @@ docfx/api/
 .AppleDouble
 .LSOverride
 
+# Ignore github Copilot local MCP data
+/.playwright-mcp
