@@ -5,15 +5,12 @@ namespace Cryptography.Tests.Benchmarks.Hash;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
 
 /// <summary>
@@ -25,7 +22,7 @@ public class HashConfig : ManualConfig
     /// <summary>
     /// Shared instance of the short name markdown exporter.
     /// </summary>
-    private static readonly ShortNameMarkdownExporter ShortExporter = new();
+    private static readonly ShortNameMarkdownExporter ShortExporter = ShortNameMarkdownExporter.Default;
 
     public HashConfig()
     {
@@ -185,42 +182,6 @@ public class HashConfig : ManualConfig
             if (hashAlgorithm != null) return hashAlgorithm.Category;
             var xofAlgorithm = benchmark.Parameters["TestXofAlgorithm"] as XofAlgorithmType;
             return xofAlgorithm?.Category ?? "Unknown";
-        }
-    }
-
-    /// <summary>
-    /// Custom markdown exporter that uses short file names (class name only, no namespace).
-    /// </summary>
-    /// <remarks>
-    /// Produces files like "SHA256Benchmark-report.md" instead of
-    /// "Cryptography.Tests.Benchmarks.SHA256Benchmark-report-github.md".
-    /// </remarks>
-    private sealed class ShortNameMarkdownExporter : IExporter
-    {
-        private readonly IExporter _inner = MarkdownExporter.GitHub;
-
-        public string Name => "ShortMarkdown";
-
-        public IEnumerable<string> ExportToFiles(Summary summary, ILogger consoleLogger)
-        {
-            // Get short class name (without namespace)
-            var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
-
-            var fileName = $"{typeName}-report.md";
-            var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
-
-            // Export using the inner exporter's logic
-            using var writer = new StreamWriter(filePath);
-            using var logger = new StreamLogger(writer);
-            _inner.ExportToLog(summary, logger);
-
-            consoleLogger.WriteLine($"  // * Results exported to: {filePath}");
-            return [filePath];
-        }
-
-        public void ExportToLog(Summary summary, ILogger logger)
-        {
-            _inner.ExportToLog(summary, logger);
         }
     }
 }

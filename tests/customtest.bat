@@ -2,19 +2,19 @@
 setlocal enabledelayedexpansion
 
 echo This script is used to run custom platform tests for the CryptoHives Libraries
-echo Supported parameters: net462, netstandard2.0, netstandard2.1, net48, net8.0, net9.0, net10.0
+echo Supported parameters: net462, netstandard2.0, netstandard2.1, net48, net8.0, net9.0, net10.0, net11.0
 
 REM Check if the target framework parameter is provided
 if "%1"=="" (
     echo Usage: %0 [TargetFramework]
-    echo Allowed values for TargetFramework: net462, net48, netstandard2.0, netstandard2.1, net8.0, net9.0, net10.0, default
+    echo Allowed values for TargetFramework: net462, net48, netstandard2.0, netstandard2.1, net8.0, net9.0, net10.0, net11.0, default
     goto :eof
 )
 
 REM Check if the provided TargetFramework is valid
-set "validFrameworks= default net462 netstandard2.0 netstandard2.1 net48 net8.0 net9.0 net10.0"
+set "validFrameworks= default net462 netstandard2.0 netstandard2.1 net48 net8.0 net9.0 net10.0 net11.0"
 if "!validFrameworks: %1 =!"=="%validFrameworks%" (
-    echo Invalid TargetFramework specified. Allowed values are: default, net462, net48, netstandard2.0, netstandard2.1, net8.0, net9.0, net10.0
+    echo Invalid TargetFramework specified. Allowed values are: default, net462, net48, netstandard2.0, netstandard2.1, net8.0, net9.0, net10.0, net11.0
     goto :eof
 )
 
@@ -35,15 +35,20 @@ REM Set the root directory path as batch file location
 set "root=%~dp0"
 
 REM Delete 'obj' and 'bin' folders
-for /d /r "%root%" %%d in (*obj *bin) do (
+for /d /r "%root%" %%d in (obj) do (
     echo Deleting "%%d"
-	del /S /F /Q "%%d\*.*"
+    del /S /F /Q "%%d\*.*" 2>nul
+    rmdir /s /q "%%d"
+)
+for /d /r "%root%" %%d in (bin) do (
+    echo Deleting "%%d"
+    del /S /F /Q "%%d\*.*" 2>nul
     rmdir /s /q "%%d"
 )
 
 echo Clean up complete.
 
 echo restore %1
-dotnet restore -f "..\CryptoHives .NET Foundation.sln"
+dotnet restore --force "..\CryptoHives .NET Foundation.sln"
 dotnet build --no-restore "..\CryptoHives .NET Foundation.sln"
 dotnet test "..\CryptoHives .NET Foundation.sln"

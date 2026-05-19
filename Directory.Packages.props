@@ -4,10 +4,10 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="AsyncKeyedLock" Version="8.0.2" />
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.16.0-nightly.20260518.538" />
     <PackageVersion Include="Blake3" Version="2.2.1" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="HashifyNET" Version="7.1.1" />
     <PackageVersion Include="IndexRange" Version="1.1.1" />
     <PackageVersion Include="Konscious.Security.Cryptography.Blake2" Version="1.1.1" />
@@ -43,7 +43,6 @@
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
-  
   <!-- NuGet package validation: versions for the just-built first-party packages.    -->
   <!-- Activate with /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>  -->
   <PropertyGroup Condition="'$(UsePackedNuGetPackages)' == 'true' AND '$(Configuration)' == 'Debug'">
