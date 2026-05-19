@@ -61,6 +61,7 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 | SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 | [Details](hash-algorithms.md#sha-3-family) |
 | SHAKE | SHAKE128, SHAKE256 (XOF) | [Details](hash-algorithms.md#shake-xof) |
 | cSHAKE | cSHAKE128, cSHAKE256 (Customizable XOF) | [Details](hash-algorithms.md#cshake) |
+| ParallelHash | ParallelHash128, ParallelHash256 (SP 800-185) | [Details](hash-algorithms.md#parallelhash) |
 | TurboSHAKE | TurboSHAKE128, TurboSHAKE256 (High-performance XOF) | [Details](hash-algorithms.md#turboshake) |
 | KangarooTwelve | KT128, KT256 (Parallelizable XOF) | [Details](hash-algorithms.md#kangarootwelve-kt) |
 | Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) | [Details](hash-algorithms.md#keccak) |
