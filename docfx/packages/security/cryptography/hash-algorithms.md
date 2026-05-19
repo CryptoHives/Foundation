@@ -343,7 +343,82 @@ cshake.TryComputeHash(data, hash, out _);
 
 ---
 
-## TurboSHAKE
+## ParallelHash
+
+Tree-hashing construction for parallel processing of large inputs from NIST SP 800-185.
+
+### ParallelHash static class
+
+```csharp
+public static class ParallelHash
+```
+
+**Properties:**
+- Output Size: Variable (specified via output span length)
+- Security: 128 or 256 bits (choose variant)
+- Inner hash: SHAKE128 (128-bit) or SHAKE256 (256-bit)
+- Finalization: cSHAKE128 or cSHAKE256 with function name `"ParallelHash"`
+
+**Algorithm overview:**
+
+Input is split into `B`-byte blocks. Each block is hashed independently with SHAKE128/256 (32 or 64-byte chaining value). The chaining values, block count, and output length are concatenated and finalized with cSHAKE128/256 — enabling parallel computation of the inner block hashes.
+
+**Usage:**
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+byte[] data = new byte[1024];
+
+// ParallelHash128 — 32-byte output, 64-byte blocks
+Span<byte> hash128 = stackalloc byte[32];
+ParallelHash.ComputeHash128(hash128, data, blockSizeBytes: 64);
+
+// ParallelHash128 with customization string
+ParallelHash.ComputeHash128(hash128, data, blockSizeBytes: 64,
+    customization: System.Text.Encoding.UTF8.GetBytes("My Application"));
+
+// ParallelHash256 — 64-byte output
+Span<byte> hash256 = stackalloc byte[64];
+ParallelHash.ComputeHash256(hash256, data, blockSizeBytes: 64);
+
+// Variable-length output: pass any size output span
+Span<byte> xofOutput = stackalloc byte[128];
+ParallelHash.ComputeHash128(xofOutput, data, blockSizeBytes: 64);
+```
+
+### IncrementalParallelHash
+
+```csharp
+public sealed class IncrementalParallelHash : IDisposable
+```
+
+Streaming wrapper that accepts data in chunks and computes the ParallelHash on `Squeeze`.
+
+```csharp
+using var ph = new IncrementalParallelHash(
+    type: IncrementalParallelHash.ShakeType.Shake128,
+    blockSizeBytes: 64);
+
+ph.Absorb(chunk1);
+ph.Absorb(chunk2);
+ph.Absorb(chunk3);
+
+Span<byte> output = stackalloc byte[32];
+ph.Squeeze(output);
+
+// Reuse for another computation
+ph.Reset();
+ph.Absorb(newData);
+ph.Squeeze(output);
+```
+
+> **Note:** `IncrementalParallelHash` buffers the entire input until `Squeeze` is called
+> (parallel block hashing requires knowledge of total block count before finalizing).
+
+---
+
+
 
 High-performance XOFs from RFC 9861 (Reduced-round Keccak).
 
