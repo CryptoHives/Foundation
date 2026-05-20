@@ -122,11 +122,12 @@ public sealed class X509CertificateBuilder
         Buffer.BlockCopy(qy, 0, pubPoint, 1 + qx.Length, qy.Length);
         byte[] spki = KeyEncoding.ExportSubjectPublicKeyInfo("1.2.840.10045.2.1", curveOid, pubPoint);
 
-        string hash = hashAlgorithm ?? (curve.FieldBits switch {
+        string hash = hashAlgorithm ?? curve.FieldBits switch
+        {
             <= 256 => "SHA256",
             <= 384 => "SHA384",
             _ => "SHA512",
-        });
+        };
 
         var builder = new X509CertificateBuilder();
         builder._autoEcPrivateKey = d;

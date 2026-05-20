@@ -137,7 +137,10 @@ public sealed class X509ExtensionCollection : IReadOnlyList<X509Extension>
     {
         foreach (var ext in _extensions)
         {
-            if (ext.Oid == oid) return ext;
+            if (ext.Oid == oid)
+            {
+                return ext;
+            }
         }
         return null;
     }
@@ -262,14 +265,12 @@ public static class ExtensionParsers
             bool isCA = false;
             int? pathLen = null;
 
-            if (seq.HasData && seq.PeekTag().HasSameClassAndValue(
-                new Asn1Tag(UniversalTagNumber.Boolean)))
+            if (seq.HasData && seq.PeekTag().HasSameClassAndValue(new Asn1Tag(UniversalTagNumber.Boolean)))
             {
                 isCA = seq.ReadBoolean();
             }
 
-            if (seq.HasData && seq.PeekTag().HasSameClassAndValue(
-                new Asn1Tag(UniversalTagNumber.Integer)))
+            if (seq.HasData && seq.PeekTag().HasSameClassAndValue(new Asn1Tag(UniversalTagNumber.Integer)))
             {
                 pathLen = (int)seq.ReadInteger();
             }
@@ -295,7 +296,10 @@ public static class ExtensionParsers
             byte[] bits = reader.ReadBitString(out int unusedBits);
             reader.ThrowIfNotEmpty();
 
-            if (bits.Length == 0) return X509.KeyUsage.None;
+            if (bits.Length == 0)
+            {
+                return X509.KeyUsage.None;
+            }
 
             int raw = bits[0];
             var flags = X509.KeyUsage.None;
@@ -344,7 +348,10 @@ public static class ExtensionParsers
 
             var oids = new List<string>();
             while (seq.HasData)
+            {
                 oids.Add(seq.ReadObjectIdentifier());
+            }
+
             return oids.AsReadOnly();
         }
     }

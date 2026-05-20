@@ -131,7 +131,9 @@ public static class X509ChainValidator
 
         // CRL revocation checking.
         if (crls is not null && crls.Count > 0)
+        {
             CheckRevocation(chain, crls, errors, ref status);
+        }
 
         return new ChainValidationResult(status, chain.AsReadOnly(), errors.AsReadOnly());
     }
@@ -147,17 +149,23 @@ public static class X509ChainValidator
         while (true)
         {
             if (current.IsSelfSigned && IsTrustedRoot(current, trustedRoots))
+            {
                 return true;
+            }
 
             X509Certificate? issuer = FindIssuer(current, trustedRoots) ?? FindIssuer(current, intermediates);
             if (issuer is null)
+            {
                 return false;
+            }
 
             chain.Add(issuer);
             current = issuer;
 
             if (chain.Count > maxLength)
+            {
                 return false;
+            }
         }
     }
 
@@ -166,7 +174,9 @@ public static class X509ChainValidator
         for (int i = 0; i < trustedRoots.Count; i++)
         {
             if (ReferenceEquals(cert, trustedRoots[i]))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -185,7 +195,9 @@ public static class X509ChainValidator
                 {
                     X509Certificate candidate = candidates[i];
                     if (!candidate.Subject.Equals(cert.Issuer))
+                    {
                         continue;
+                    }
 
                     X509Extension? skiExt = candidate.Extensions.GetExtension(
                         X509ExtensionCollection.OidSubjectKeyIdentifier);
@@ -193,7 +205,9 @@ public static class X509ChainValidator
                     {
                         byte[] skiBytes = ExtensionParsers.SubjectKeyIdentifier.Parse(skiExt.Value);
                         if (akiKeyId.SequenceEqual(skiBytes))
+                        {
                             return candidate;
+                        }
                     }
                 }
             }
@@ -204,7 +218,9 @@ public static class X509ChainValidator
         {
             X509Certificate candidate = candidates[i];
             if (candidate.Subject.Equals(cert.Issuer) && !ReferenceEquals(candidate, cert))
+            {
                 return candidate;
+            }
         }
 
         return null;
@@ -220,16 +236,22 @@ public static class X509ChainValidator
             X509Certificate cert = chain[i];
             X509Extension? bcExt = cert.Extensions.GetExtension(X509ExtensionCollection.OidBasicConstraints);
             if (bcExt is null)
+            {
                 continue;
+            }
 
             (_, int? pathLen) = ExtensionParsers.BasicConstraints.Parse(bcExt.Value);
             if (!pathLen.HasValue)
+            {
                 continue;
+            }
 
             // Count CA certificates below this one, excluding the leaf.
             int caCertsBelow = 0;
             for (int j = i - 1; j >= 1; j--)
+            {
                 caCertsBelow++;
+            }
 
             if (caCertsBelow > pathLen.Value)
             {
