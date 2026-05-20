@@ -13,6 +13,7 @@
     <PackageLicenseFile></PackageLicenseFile>
     <PackageTags>$(PackageTags) Memory MemoryStream ArrayPool ReadOnlySequence</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
