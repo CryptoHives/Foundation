@@ -13,6 +13,7 @@
     <PackageLicenseFile></PackageLicenseFile>
     <PackageTags>$(PackageTags) Cryptography Hash MAC Ascon BLAKE SHA SHAKE SM3 Keccak Gost LSH Kupyna</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Cryptographic operations use intentional bit manipulation that requires unchecked arithmetic -->
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
