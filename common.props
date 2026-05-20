@@ -7,7 +7,7 @@
     <AssemblyPrefix>CryptoHives.Foundation</AssemblyPrefix>
     <Company>CryptoHives Open Source Initiative</Company>
     <Authors>The Keepers of the CryptoHives</Authors>
-    <NoWarn>NU5125;CA2254;CA1307;CA1510;CA1512;CA1513</NoWarn>
+    <NoWarn>NU5125;CA2254;CA1307;CA1510;CA1512;CA1513;CS9057</NoWarn>
     <NeutralLanguage>en-US</NeutralLanguage>
     <HighEntropyVA>true</HighEntropyVA>
     <IsPackable>false</IsPackable>
@@ -53,6 +53,8 @@
     <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Per-package READMEs: each project may override PackageReadmeSourceFile to point to its own README.md -->
+    <PackageReadmeSourceFile Condition="'$(PackageReadmeSourceFile)' == ''">$(MSBuildThisFileDirectory)/README.md</PackageReadmeSourceFile>
     <PackageTags>CryptoHives</PackageTags>
   </PropertyGroup>
 
@@ -69,7 +71,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
-    <None Include="$(MSBuildThisFileDirectory)/README.md" Pack="true" Visible="false" PackagePath="$(PackageReadmeFile)"/>
+    <None Include="$(PackageReadmeSourceFile)" Pack="true" Visible="false" PackagePath="$(PackageReadmeFile)"/>
   </ItemGroup>
 
   <ItemGroup Condition="'$(NBGV_PublicRelease)' != ''">

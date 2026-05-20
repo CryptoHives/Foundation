@@ -7,7 +7,73 @@ The goal of the CryptoHives Open Source Initiative is to provide a collection of
 
 ---
 
-## 🏛️ CryptoHives .NET Foundation Libraries
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      CryptoHives .NET Foundation                            │
+│                  CryptoHives Open Source Initiative                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+         ┌──────────────────────────┼──────────────────────────┐
+         │                          │                          │
+         ▼                          ▼                          ▼
+┌──────────────────┐   ┌──────────────────────┐   ┌──────────────────────────┐
+│     Memory       │   │      Threading       │   │  Security.Cryptography   │
+├──────────────────┤   ├──────────────────────┤   ├──────────────────────────┤
+│ ArrayPool-       │   │ AsyncLock            │   │ Hash                     │
+│  MemoryStream    │   │ AsyncSemaphore       │   │  SHA-2 · SHA-3           │
+│ ArrayPool-       │   │ AsyncAutoResetEvent  │   │  SHAKE · cSHAKE          │
+│  BufferWriter<T> │   │ AsyncManualReset-    │   │  TurboSHAKE · KT128/256  │
+│ ReadOnlySequence-│   │   Event             │   │  ParallelHash (SP 800-185)│
+│  MemoryStream    │   │ AsyncReaderWriter-   │   │  KMAC128 · KMAC256       │
+│ Ownership        │   │   Lock              │   │  Keccak · BLAKE2 · BLAKE3 │
+│  Primitives      │   │ AsyncBarrier        │   │  Ascon · Regional · Legacy│
+│                  │   │ AsyncCountdown-      │   │                          │
+│                  │   │   Event             │   │ MAC                      │
+│                  │   │                      │   │  HMAC · KMAC             │
+│                  │   │ IValueTaskSource<T>  │   │  AES-CMAC · AES-GMAC    │
+│                  │   │  backed by           │   │  Poly1305 · BLAKE2/3     │
+│                  │   │  ObjectPool<T>       │   │                          │
+│                  │   │                      │   │ Cipher                   │
+│                  │   ├──────────────────────┤   │  AES-GCM/CCM (AEAD)     │
+│                  │   │ Threading.Analyzers  │   │  ChaCha20-Poly1305       │
+│                  │   │  ValueTask Roslyn    │   │  XChaCha20-Poly1305      │
+│                  │   │  analyzers           │   │  Ascon-AEAD128           │
+└──────────────────┘   └──────────────────────┘   │  AES-128/192/256         │
+                                                    │  ChaCha20 (stream)       │
+                                                    │  SM4 · ARIA · Camellia   │
+                                                    │  Kuznyechik · Kalyna     │
+                                                    │  SEED                    │
+                                                    │                          │
+                                                    │ Key Derivation           │
+                                                    │  HKDF · KBKDF           │
+                                                    │  ConcatKDF · PBKDF2     │
+                                                    └──────────────────────────┘
+
+Keccak class hierarchy (Security.Cryptography):
+
+  HashAlgorithm
+  └── KeccakCore  (Keccak-p[1600] sponge, AVX2/SSSE3/scalar dispatch)
+      ├── KeccakHashCore  (fixed-length)
+      │   ├── SHA3_{224,256,384,512}
+      │   └── Keccak{256,384,512}  (Ethereum-compatible, domain sep 0x01)
+      ├── KeccakXofCore : IExtendableOutput  (variable-length)
+      │   ├── Shake{128,256}        (domain sep 0x1F, rate 168/136 bytes)
+      │   ├── TurboShake{128,256}   (12-round Keccak, domain sep 0x7F/0x7E)
+      │   └── KT{128,256}           (KangarooTwelve tree-hashing XOF)
+      └── CShake{128,256} : IExtendableOutput  (bytepad prefix, domain sep 0x04)
+
+  ParallelHash  (static, NIST SP 800-185)
+    per-block inner hash ─── Shake{128,256}
+    finalization         ─── CShake{128,256}  (N="ParallelHash", S=user)
+
+  IncrementalParallelHash  (streaming wrapper, buffers input until Squeeze)
+```
+
+---
+
+
 
 The **CryptoHives Open Source Initiative** is a collection of modern, high-assurance libraries for .NET, developed and maintained by **The Keepers of the CryptoHives**. 
 Each package is designed for security, interoperability, and clarity — making it easy to build secure systems for high performance transformation pipelines and for cryptography workloads without sacrificing developer experience.
@@ -91,6 +157,7 @@ No OS crypto dependency — deterministic results on every platform. Hardware ac
 | SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 |
 | Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) |
 | SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
+| ParallelHash (SP 800-185) | ParallelHash128, ParallelHash256 |
 | TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
 | BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |

@@ -205,7 +205,7 @@ internal static class AsnUtils
             AsnReader seqReader = x509Reader.ReadSequence(Asn1Tag.Sequence);
 
             // Tbs encoded data
-            ReadOnlyMemory<byte> tbs = seqReader.ReadEncodedValue();
+            _ = seqReader.ReadEncodedValue();
 
             // Signature Algorithm Identifier
             AsnReader sigOid = seqReader.ReadSequence();
