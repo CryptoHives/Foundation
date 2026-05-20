@@ -186,6 +186,21 @@ public async Task DoWorkAsync(CancellationToken ct)
 
 ---
 
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
+
+// Create a self-signed TLS server certificate with ECDSA P-256
+var cert = CertificateProfiles.CreateTlsServer(
+    "CN=myserver.example.com",
+    curveName: "P-256",
+    dnsNames: ["myserver.example.com", "localhost"]);
+
+// Export as PEM
+string pem = cert.Certificate.ExportPem();
+```
+
+---
+
 ## 🔐 Security Policy
 
 Security is our top priority.
