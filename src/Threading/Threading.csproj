@@ -14,6 +14,7 @@
     <PackageLicenseFile></PackageLicenseFile>
     <PackageTags>$(PackageTags) Threading Async ValueTask</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
