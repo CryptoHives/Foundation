@@ -29,7 +29,21 @@ internal static class HashAlgorithmPool<T>
     where T : HashAlgorithm, new()
 {
     private static readonly ObjectPool<T> _pool =
-        new DefaultObjectPool<T>(new DefaultPooledObjectPolicy<T>());
+        new DefaultObjectPool<T>(new PoolPolicy());
+
+    private sealed class PoolPolicy : PooledObjectPolicy<T>
+    {
+        public override T Create() => new T();
+
+        public override bool Return(T obj)
+        {
+            if (obj.TryReset())
+                return true;
+
+            obj.Dispose();
+            return false;
+        }
+    }
 
     /// <summary>
     /// Attempts to compute the hash of <paramref name="source"/> and write it into
@@ -167,6 +181,15 @@ internal static class HashAlgorithmPool
         public override T Create() => _factory();
 
         /// <inheritdoc/>
-        public override bool Return(T obj) => obj.TryReset();
+        public override bool Return(T obj)
+        {
+            if (obj.TryReset())
+                return true;
+
+            // TryReset failed — the instance is unhealthy; dispose and discard it
+            // so the pool creates a fresh one on the next Get().
+            obj.Dispose();
+            return false;
+        }
     }
 }
