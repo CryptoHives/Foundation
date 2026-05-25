@@ -82,4 +82,22 @@ public sealed class SHA3_384 : KeccakHashCore
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <returns>A new SHA3-384 hash algorithm instance.</returns>
     internal static SHA3_384 Create(SimdSupport simdSupport) => new(simdSupport);
+
+    /// <summary>
+    /// Computes the SHA3-384 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<SHA3_384>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the SHA3-384 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <returns>A new byte array containing the SHA3-384 hash.</returns>
+    public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<SHA3_384>.HashData(source);
 }

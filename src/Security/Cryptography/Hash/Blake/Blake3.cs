@@ -154,6 +154,26 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     public static new Blake3 Create() => new();
 
     /// <summary>
+    /// Computes the BLAKE3 hash of <paramref name="source"/> using the default output size (32 bytes)
+    /// and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="DefaultHashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<Blake3>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the BLAKE3 hash of <paramref name="source"/> using the default output size (32 bytes)
+    /// and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <returns>A new byte array containing the BLAKE3 hash.</returns>
+    public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<Blake3>.HashData(source);
+
+    /// <summary>
     /// Creates a new instance of the <see cref="Blake3"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>

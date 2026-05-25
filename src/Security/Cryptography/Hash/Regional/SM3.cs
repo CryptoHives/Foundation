@@ -80,6 +80,24 @@ public sealed class SM3 : HashAlgorithm
     /// <returns>A new SM3 hash algorithm instance.</returns>
     public static new SM3 Create() => new();
 
+    /// <summary>
+    /// Computes the SM3 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<SM3>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the SM3 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <returns>A new byte array containing the SM3 hash.</returns>
+    public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<SM3>.HashData(source);
+
     /// <inheritdoc/>
     public override void Initialize()
     {
