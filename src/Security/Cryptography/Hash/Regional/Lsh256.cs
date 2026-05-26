@@ -190,6 +190,48 @@ public sealed class Lsh256 : HashAlgorithm
     /// <returns>A new <see cref="Lsh256"/> instance.</returns>
     public static Lsh256 Create(int hashSizeBytes) => new(hashSizeBytes);
 
+    private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Lsh256> _pool224
+        = HashAlgorithmPool.CreatePool(() => new Lsh256(28));
+
+    private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Lsh256> _pool256
+        = HashAlgorithmPool.CreatePool(() => new Lsh256(32));
+
+    /// <summary>
+    /// Computes the LSH-256 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <paramref name="hashSizeBytes"/> bytes.</param>
+    /// <param name="hashSizeBytes">The desired output size in bytes (28 or 32).</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 28 or 32.</exception>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, int hashSizeBytes, out int bytesWritten)
+    {
+        var pool = hashSizeBytes switch {
+            28 => _pool224,
+            32 => _pool256,
+            _ => throw new ArgumentException("Hash size must be 28 or 32 bytes.", nameof(hashSizeBytes))
+        };
+        return HashAlgorithmPool.TryHashData(pool, source, destination, out bytesWritten);
+    }
+
+    /// <summary>
+    /// Computes the LSH-256 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="hashSizeBytes">The desired output size in bytes (28 or 32).</param>
+    /// <returns>A new byte array containing the LSH-256 hash.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 28 or 32.</exception>
+    public static byte[] HashData(ReadOnlySpan<byte> source, int hashSizeBytes)
+    {
+        var pool = hashSizeBytes switch {
+            28 => _pool224,
+            32 => _pool256,
+            _ => throw new ArgumentException("Hash size must be 28 or 32 bytes.", nameof(hashSizeBytes))
+        };
+        return HashAlgorithmPool.HashData(pool, source);
+    }
+
     /// <inheritdoc/>
     public override void Initialize()
     {

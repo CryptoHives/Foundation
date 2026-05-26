@@ -7,6 +7,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
+using Microsoft.Extensions.ObjectPool;
 using System;
 
 /// <summary>
@@ -23,7 +24,7 @@ using System;
 /// providing deterministic behavior across all platforms.
 /// </para>
 /// </remarks>
-public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
+public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm, IResettable
 {
     /// <summary>
     /// Gets the name of the hash algorithm.
@@ -284,6 +285,24 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
         bool result = TryHashFinal(destination, out bytesWritten);
         Initialize();
         return result;
+    }
+
+    /// <summary>
+    /// Resets this instance to its initial state so it can be returned to an object pool for reuse.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> always — all CryptoHives hash algorithms fully support reset via
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/>.
+    /// </returns>
+    /// <remarks>
+    /// This method implements <see cref="IResettable"/> from
+    /// <c>Microsoft.Extensions.ObjectPool</c>, enabling any CryptoHives hash algorithm to be
+    /// used with <c>DefaultObjectPool&lt;T&gt;</c> without a custom policy.
+    /// </remarks>
+    public bool TryReset()
+    {
+        Initialize();
+        return true;
     }
 
     /// <summary>
