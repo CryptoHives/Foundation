@@ -532,8 +532,7 @@ public class PooledHashApiTests
     public void StreebogHashDataInvalidSizeThrows()
     {
         Assert.Throws<ArgumentException>(() => Streebog.HashData(Abc, 16));
-        Assert.Throws<ArgumentException>(() =>
-        {
+        Assert.Throws<ArgumentException>(() => {
             Span<byte> buf = stackalloc byte[16];
             Streebog.TryHashData(Abc, buf, 16, out _);
         });
@@ -577,8 +576,7 @@ public class PooledHashApiTests
     public void KupynaHashDataInvalidSizeThrows()
     {
         Assert.Throws<ArgumentException>(() => Kupyna.HashData(Abc, 20));
-        Assert.Throws<ArgumentException>(() =>
-        {
+        Assert.Throws<ArgumentException>(() => {
             Span<byte> buf = stackalloc byte[20];
             Kupyna.TryHashData(Abc, buf, 20, out _);
         });

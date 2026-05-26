@@ -7,8 +7,8 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
-using System;
 using Microsoft.Extensions.ObjectPool;
+using System;
 
 /// <summary>
 /// Base class for the CryptoHives hash algorithm implementations.

@@ -3,9 +3,9 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography;
 
-using System;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using Microsoft.Extensions.ObjectPool;
+using System;
 
 /// <summary>
 /// Provides a per-type object pool of hash algorithm instances for use by static
