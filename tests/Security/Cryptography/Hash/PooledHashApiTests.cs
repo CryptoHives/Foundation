@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
+using System.Buffers;
 using System.Text;
 
 /// <summary>
@@ -792,5 +793,96 @@ public class PooledHashApiTests
         Span<byte> kupyna256Span = stackalloc byte[32];
         Kupyna.TryHashData(Abc, kupyna256Span, 32, out _);
         Assert.That(kupyna256Span.ToArray(), Is.EqualTo(kupyna256Array));
+    }
+
+    // ── ReadOnlySequence overloads ────────────────────────────────────────────
+
+    private static ReadOnlySequence<byte> BuildMultiSegmentSequence(byte[] data, int segmentSize)
+    {
+        // Split data into fixed-size segments linked via BufferSegment chain.
+        BufferSegment? first = null;
+        BufferSegment? last = null;
+        for (int offset = 0; offset < data.Length; offset += segmentSize)
+        {
+            int length = Math.Min(segmentSize, data.Length - offset);
+            var seg = new BufferSegment(data.AsMemory(offset, length));
+            if (first is null)
+            {
+                first = last = seg;
+            }
+            else
+            {
+                last = last!.Append(seg);
+            }
+        }
+        if (first is null)
+            return ReadOnlySequence<byte>.Empty;
+        return new ReadOnlySequence<byte>(first, 0, last!, last!.Memory.Length);
+    }
+
+    private sealed class BufferSegment : ReadOnlySequenceSegment<byte>
+    {
+        public BufferSegment(ReadOnlyMemory<byte> memory)
+        {
+            Memory = memory;
+        }
+
+        public BufferSegment Append(BufferSegment next)
+        {
+            next.RunningIndex = RunningIndex + Memory.Length;
+            Next = next;
+            return next;
+        }
+    }
+
+    [Test]
+    public void ReadOnlySequenceSingleSegmentMatchesSpanOverload()
+    {
+        ReadOnlySequence<byte> seq = new(Abc);
+
+        Assert.That(SHA256.HashData(seq), Is.EqualTo(SHA256.HashData(Abc.AsSpan())));
+        Assert.That(SHA512.HashData(seq), Is.EqualTo(SHA512.HashData(Abc.AsSpan())));
+        Assert.That(Blake3.HashData(seq), Is.EqualTo(Blake3.HashData(Abc.AsSpan())));
+        Assert.That(SM3.HashData(seq), Is.EqualTo(SM3.HashData(Abc.AsSpan())));
+        Assert.That(Streebog.HashData(seq, 32), Is.EqualTo(Streebog.HashData(Abc.AsSpan(), 32)));
+        Assert.That(Kupyna.HashData(seq, 32), Is.EqualTo(Kupyna.HashData(Abc.AsSpan(), 32)));
+        Assert.That(Lsh256.HashData(seq, 32), Is.EqualTo(Lsh256.HashData(Abc.AsSpan(), 32)));
+        Assert.That(Lsh512.HashData(seq, 64), Is.EqualTo(Lsh512.HashData(Abc.AsSpan(), 64)));
+    }
+
+    [Test]
+    public void ReadOnlySequenceMultiSegmentMatchesSpanOverload()
+    {
+        byte[] data = Encoding.ASCII.GetBytes("The quick brown fox jumps over the lazy dog");
+        ReadOnlySequence<byte> seq = BuildMultiSegmentSequence(data, 8);
+
+        Assert.That(SHA256.HashData(seq), Is.EqualTo(SHA256.HashData(data.AsSpan())));
+        Assert.That(Blake3.HashData(seq), Is.EqualTo(Blake3.HashData(data.AsSpan())));
+        Assert.That(Whirlpool.HashData(seq), Is.EqualTo(Whirlpool.HashData(data.AsSpan())));
+        Assert.That(Ripemd160.HashData(seq), Is.EqualTo(Ripemd160.HashData(data.AsSpan())));
+        Assert.That(AsconHash256.HashData(seq), Is.EqualTo(AsconHash256.HashData(data.AsSpan())));
+    }
+
+    [Test]
+    public void ReadOnlySequenceTryHashDataWritesCorrectBytes()
+    {
+        byte[] data = Encoding.ASCII.GetBytes("abc");
+        ReadOnlySequence<byte> seq = BuildMultiSegmentSequence(data, 1);
+
+        Span<byte> dest = stackalloc byte[32];
+        bool ok = SHA256.TryHashData(seq, dest, out int written);
+        Assert.That(ok, Is.True);
+        Assert.That(written, Is.EqualTo(32));
+        Assert.That(dest.ToArray(), Is.EqualTo(SHA256.HashData(data.AsSpan())));
+    }
+
+    [Test]
+    public void ReadOnlySequenceEmptyInputMatchesSpanOverload()
+    {
+        ReadOnlySequence<byte> emptySeq = ReadOnlySequence<byte>.Empty;
+
+        Assert.That(SHA256.HashData(emptySeq), Is.EqualTo(SHA256.HashData(ReadOnlySpan<byte>.Empty)));
+        Assert.That(Blake3.HashData(emptySeq), Is.EqualTo(Blake3.HashData(ReadOnlySpan<byte>.Empty)));
+        Assert.That(Streebog.HashData(emptySeq, 64), Is.EqualTo(Streebog.HashData(ReadOnlySpan<byte>.Empty, 64)));
     }
 }

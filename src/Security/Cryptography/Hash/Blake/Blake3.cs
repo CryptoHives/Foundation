@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -171,6 +172,26 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="source">The input data to hash.</param>
     /// <returns>A new byte array containing the BLAKE3 hash.</returns>
     public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<Blake3>.HashData(source);
+
+    /// <summary>
+    /// Computes the BLAKE3 hash of <paramref name="source"/> using the default output size (32 bytes)
+    /// and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="DefaultHashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<Blake3>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the BLAKE3 hash of <paramref name="source"/> using the default output size (32 bytes)
+    /// and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <returns>A new byte array containing the BLAKE3 hash.</returns>
+    public static byte[] HashData(in ReadOnlySequence<byte> source)
         => HashAlgorithmPool<Blake3>.HashData(source);
 
     /// <summary>
