@@ -20,8 +20,7 @@ using System.Security.Cryptography;
 /// </remarks>
 internal abstract class BlockCipherTransform : ICipherTransform
 {
-    private const int BlockSizeConst = 16;
-
+    private readonly int _blockSize;
     private readonly CipherMode _mode;
     private readonly PaddingMode _padding;
     private readonly bool _encrypting;
@@ -37,32 +36,34 @@ internal abstract class BlockCipherTransform : ICipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
-    protected BlockCipherTransform(ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
+    /// <param name="blockSizeBytes">The cipher block size in bytes.</param>
+    protected BlockCipherTransform(ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding, int blockSizeBytes = 16)
     {
+        _blockSize = blockSizeBytes;
         _encrypting = encrypting;
         _mode = mode;
         _padding = padding;
 
-        _iv = new byte[BlockSizeConst];
-        _counter = new byte[BlockSizeConst];
-        _feedback = new byte[BlockSizeConst];
+        _iv = new byte[_blockSize];
+        _counter = new byte[_blockSize];
+        _feedback = new byte[_blockSize];
 
         if (!iv.IsEmpty)
         {
-            iv.Slice(0, BlockSizeConst).CopyTo(_iv);
-            iv.Slice(0, BlockSizeConst).CopyTo(_counter);
-            iv.Slice(0, BlockSizeConst).CopyTo(_feedback);
+            iv.Slice(0, _blockSize).CopyTo(_iv);
+            iv.Slice(0, _blockSize).CopyTo(_counter);
+            iv.Slice(0, _blockSize).CopyTo(_feedback);
         }
     }
 
     /// <inheritdoc/>
-    public int BlockSize => BlockSizeConst;
+    public int BlockSize => _blockSize;
 
     /// <inheritdoc/>
-    int ICryptoTransform.InputBlockSize => BlockSizeConst;
+    int ICryptoTransform.InputBlockSize => _blockSize;
 
     /// <inheritdoc/>
-    int ICryptoTransform.OutputBlockSize => BlockSizeConst;
+    int ICryptoTransform.OutputBlockSize => _blockSize;
 
     /// <inheritdoc/>
     public bool CanTransformMultipleBlocks => true;
@@ -80,6 +81,11 @@ internal abstract class BlockCipherTransform : ICipherTransform
     /// Gets the current cipher mode of operation.
     /// </summary>
     protected CipherMode CurrentMode => _mode;
+
+    /// <summary>
+    /// Gets the block size in bytes.
+    /// </summary>
+    protected int BlockSizeBytes => _blockSize;
 
     /// <summary>
     /// Gets a <see cref="Span{T}"/> over the current CBC feedback register.
@@ -108,18 +114,18 @@ internal abstract class BlockCipherTransform : ICipherTransform
     /// <inheritdoc/>
     public virtual int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        if (input.Length < BlockSizeConst)
+        if (input.Length < _blockSize)
             throw new ArgumentException("Input must be at least one block.", nameof(input));
-        if (output.Length < BlockSizeConst)
+        if (output.Length < _blockSize)
             throw new ArgumentException("Output buffer too small.", nameof(output));
 
-        int blocks = input.Length / BlockSizeConst;
+        int blocks = input.Length / _blockSize;
         int bytesProcessed = 0;
 
         for (int i = 0; i < blocks; i++)
         {
-            var inBlock = input.Slice(i * BlockSizeConst, BlockSizeConst);
-            var outBlock = output.Slice(i * BlockSizeConst, BlockSizeConst);
+            var inBlock = input.Slice(i * _blockSize, _blockSize);
+            var outBlock = output.Slice(i * _blockSize, _blockSize);
 
             switch (_mode)
             {
@@ -136,7 +142,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
                     throw new NotSupportedException($"Cipher mode {_mode} is not supported.");
             }
 
-            bytesProcessed += BlockSizeConst;
+            bytesProcessed += _blockSize;
         }
 
         return bytesProcessed;
@@ -149,13 +155,13 @@ internal abstract class BlockCipherTransform : ICipherTransform
     /// <inheritdoc/>
     public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        int fullBlocks = input.Length / BlockSizeConst;
-        int remainder = input.Length % BlockSizeConst;
+        int fullBlocks = input.Length / _blockSize;
+        int remainder = input.Length % _blockSize;
         int written = 0;
 
         if (fullBlocks > 0)
         {
-            written = TransformBlock(input.Slice(0, fullBlocks * BlockSizeConst), output);
+            written = TransformBlock(input.Slice(0, fullBlocks * _blockSize), output);
         }
 
         if (_encrypting)
@@ -164,35 +170,35 @@ internal abstract class BlockCipherTransform : ICipherTransform
             {
                 if (remainder > 0)
                 {
-                    Span<byte> keystream = stackalloc byte[BlockSizeConst];
+                    Span<byte> keystream = stackalloc byte[_blockSize];
                     EncryptBlock(_counter, keystream);
                     IncrementCounter(_counter);
 
                     for (int i = 0; i < remainder; i++)
                     {
-                        output[written + i] = (byte)(input[fullBlocks * BlockSizeConst + i] ^ keystream[i]);
+                        output[written + i] = (byte)(input[fullBlocks * _blockSize + i] ^ keystream[i]);
                     }
                     written += remainder;
                 }
             }
             else if (_padding != PaddingMode.None)
             {
-                Span<byte> paddedBlock = stackalloc byte[BlockSizeConst];
-                int paddingLength = BlockSizeConst - remainder;
+                Span<byte> paddedBlock = stackalloc byte[_blockSize];
+                int paddingLength = _blockSize - remainder;
 
                 if (remainder > 0)
                 {
-                    input.Slice(fullBlocks * BlockSizeConst, remainder).CopyTo(paddedBlock);
+                    input.Slice(fullBlocks * _blockSize, remainder).CopyTo(paddedBlock);
                 }
 
                 byte padValue = (byte)paddingLength;
-                for (int i = remainder; i < BlockSizeConst; i++)
+                for (int i = remainder; i < _blockSize; i++)
                 {
                     paddedBlock[i] = padValue;
                 }
 
                 TransformBlock(paddedBlock, output.Slice(written));
-                written += BlockSizeConst;
+                written += _blockSize;
             }
             else if (remainder > 0)
             {
@@ -205,13 +211,13 @@ internal abstract class BlockCipherTransform : ICipherTransform
             {
                 if (remainder > 0)
                 {
-                    Span<byte> keystream = stackalloc byte[BlockSizeConst];
+                    Span<byte> keystream = stackalloc byte[_blockSize];
                     EncryptBlock(_counter, keystream);
                     IncrementCounter(_counter);
 
                     for (int i = 0; i < remainder; i++)
                     {
-                        output[written + i] = (byte)(input[fullBlocks * BlockSizeConst + i] ^ keystream[i]);
+                        output[written + i] = (byte)(input[fullBlocks * _blockSize + i] ^ keystream[i]);
                     }
                     written += remainder;
                 }
@@ -220,7 +226,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
             {
                 byte padValue = output[written - 1];
 
-                if (padValue < 1 || padValue > BlockSizeConst)
+                if (padValue < 1 || padValue > _blockSize)
                     throw new CryptographicException("Invalid padding.");
 
                 for (int i = 0; i < padValue; i++)
@@ -239,7 +245,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
     /// <inheritdoc/>
     public byte[] TransformFinalBlock(byte[] inputBuffer, int inputOffset, int inputCount)
     {
-        int maxOutput = inputCount + BlockSizeConst;
+        int maxOutput = inputCount + _blockSize;
         byte[] output = new byte[maxOutput];
 
         int written = TransformFinalBlock(
@@ -293,22 +299,22 @@ internal abstract class BlockCipherTransform : ICipherTransform
     {
         if (_encrypting)
         {
-            Span<byte> xored = stackalloc byte[BlockSizeConst];
-            for (int i = 0; i < BlockSizeConst; i++)
+            Span<byte> xored = stackalloc byte[_blockSize];
+            for (int i = 0; i < _blockSize; i++)
                 xored[i] = (byte)(input[i] ^ _feedback[i]);
 
             EncryptBlock(xored, output);
 
-            output.Slice(0, BlockSizeConst).CopyTo(_feedback);
+            output.Slice(0, _blockSize).CopyTo(_feedback);
         }
         else
         {
-            Span<byte> savedInput = stackalloc byte[BlockSizeConst];
+            Span<byte> savedInput = stackalloc byte[_blockSize];
             input.CopyTo(savedInput);
 
             DecryptBlock(input, output);
 
-            for (int i = 0; i < BlockSizeConst; i++)
+            for (int i = 0; i < _blockSize; i++)
                 output[i] ^= _feedback[i];
 
             savedInput.CopyTo(_feedback);
@@ -317,10 +323,10 @@ internal abstract class BlockCipherTransform : ICipherTransform
 
     private void TransformBlockCtr(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        Span<byte> keystream = stackalloc byte[BlockSizeConst];
+        Span<byte> keystream = stackalloc byte[_blockSize];
         EncryptBlock(_counter, keystream);
 
-        for (int i = 0; i < BlockSizeConst; i++)
+        for (int i = 0; i < _blockSize; i++)
             output[i] = (byte)(input[i] ^ keystream[i]);
 
         IncrementCounter(_counter);
@@ -329,7 +335,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void IncrementCounter(Span<byte> counter)
     {
-        for (int i = BlockSizeConst - 1; i >= 0; i--)
+        for (int i = counter.Length - 1; i >= 0; i--)
         {
             if (++counter[i] != 0)
                 break;

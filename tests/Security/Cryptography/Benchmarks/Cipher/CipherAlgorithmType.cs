@@ -334,6 +334,14 @@ public sealed class CipherAlgorithmType : IFormattable
     }
 
     /// <summary>
+    /// Returns Kalyna-512-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> KalynaCbc512()
+    {
+        return FromRegistry("Kalyna-512-CBC", CipherAlgorithmRegistry.Mode.CBC, 512);
+    }
+
+    /// <summary>
     /// Returns SEED-CBC implementations for benchmarking.
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> SeedCbc()
@@ -356,6 +364,7 @@ public sealed class CipherAlgorithmType : IFormattable
         foreach (var alg in KuznyechikCbc()) yield return alg;
         foreach (var alg in KalynaCbc128()) yield return alg;
         foreach (var alg in KalynaCbc256()) yield return alg;
+        foreach (var alg in KalynaCbc512()) yield return alg;
         foreach (var alg in SeedCbc()) yield return alg;
     }
 
