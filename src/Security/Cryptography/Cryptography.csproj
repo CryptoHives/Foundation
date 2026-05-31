@@ -30,22 +30,23 @@
   <Choose>
     <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
       <ItemGroup>
-        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.HashCode" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
-        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="System.Memory" />
       </ItemGroup>
     </When>
     <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
       <ItemGroup>
         <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
+        <PackageReference Include="System.Memory" />
       </ItemGroup>
     </When>
     <When Condition="'$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
       <ItemGroup>
-        <PackageReference Include="System.Memory" />
+        <PackageReference Include="Microsoft.Bcl.HashCode" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
-        <PackageReference Include="Microsoft.Bcl.Hashcode"/>
+        <PackageReference Include="System.Memory" />
       </ItemGroup>
     </When>
     <Otherwise>
@@ -59,18 +60,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Properties\" />
+    <Folder Include="Properties/" />
   </ItemGroup>
 
   <!-- DocFX Documentation -->
   <ItemGroup>
-    <None Include="..\..\..\docfx\packages\security\*.md" Link="docfx\%(Filename)%(Extension)" />
-    <None Include="..\..\..\docfx\packages\security\*.yml" Link="docfx\%(Filename)%(Extension)" />
-    <None Include="..\..\..\docfx\packages\security\cryptography\*.md" Link="docfx\cryptography\%(Filename)%(Extension)" />
-    <None Include="..\..\..\docfx\packages\security\cryptography\*.yml" Link="docfx\cryptography\%(Filename)%(Extension)" />
-    <None Include="..\..\..\docfx\packages\security\cryptography\specs\*.md" Link="specs\%(Filename)%(Extension)" />
-    <None Include="..\..\..\docfx\packages\security\cryptography\specs\*.yml" Link="specs\%(Filename)%(Extension)" />
-    <None Include="..\..\..\docfx\packages\security\cryptography\benchmarks\*.md" Link="docfx\benchmarks\%(Filename)%(Extension)" />
+    <None Include="../../../docfx/packages/security/*.md" Link="docfx/%(Filename)%(Extension)" />
+    <None Include="../../../docfx/packages/security/*.yml" Link="docfx/%(Filename)%(Extension)" />
+    <None Include="../../../docfx/packages/security/cryptography/*.md" Link="docfx/cryptography/%(Filename)%(Extension)" />
+    <None Include="../../../docfx/packages/security/cryptography/*.yml" Link="docfx/cryptography/%(Filename)%(Extension)" />
+    <None Include="../../../docfx/packages/security/cryptography/specs/*.md" Link="specs/%(Filename)%(Extension)" />
+    <None Include="../../../docfx/packages/security/cryptography/specs/*.yml" Link="specs/%(Filename)%(Extension)" />
+    <None Include="../../../docfx/packages/security/cryptography/benchmarks/*.md" Link="docfx/benchmarks/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />

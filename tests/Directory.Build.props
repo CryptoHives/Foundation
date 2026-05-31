@@ -1,6 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project>
+
   <!-- Import root Directory.Build.props first -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
@@ -12,6 +13,17 @@
 
   <!-- Include shared test files -->
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Common\GlobalSuppressions.cs" Link="Properties\GlobalSuppressions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Common/GlobalSuppressions.cs" Link="Properties/GlobalSuppressions.cs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="NUnit.Console" />
+    <PackageReference Include="NUnit3TestAdapter" PrivateAssets="all" />
+  </ItemGroup>
+
 </Project>
