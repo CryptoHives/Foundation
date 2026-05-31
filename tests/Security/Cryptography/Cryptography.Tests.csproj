@@ -13,6 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BouncyCastle.Cryptography" />
     <PackageReference Include="HashifyNET" />
     <PackageReference Include="NaCl.Core" />
