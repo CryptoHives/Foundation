@@ -10,46 +10,46 @@ The goal of the CryptoHives Open Source Initiative is to provide a collection of
 ## 🏗️ Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      CryptoHives .NET Foundation                            │
-│                  CryptoHives Open Source Initiative                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-         ┌──────────────────────────┼──────────────────────────┐
-         │                          │                          │
-         ▼                          ▼                          ▼
-┌──────────────────┐   ┌──────────────────────┐   ┌──────────────────────────┐
-│     Memory       │   │      Threading       │   │  Security.Cryptography   │
-├──────────────────┤   ├──────────────────────┤   ├──────────────────────────┤
-│ ArrayPool-       │   │ AsyncLock            │   │ Hash                     │
-│  MemoryStream    │   │ AsyncSemaphore       │   │  SHA-2 · SHA-3           │
-│ ArrayPool-       │   │ AsyncAutoResetEvent  │   │  SHAKE · cSHAKE          │
-│  BufferWriter<T> │   │ AsyncManualReset-    │   │  TurboSHAKE · KT128/256  │
-│ ReadOnlySequence-│   │   Event             │   │  ParallelHash (SP 800-185)│
-│  MemoryStream    │   │ AsyncReaderWriter-   │   │  KMAC128 · KMAC256       │
-│ Ownership        │   │   Lock              │   │  Keccak · BLAKE2 · BLAKE3 │
-│  Primitives      │   │ AsyncBarrier        │   │  Ascon · Regional · Legacy│
-│                  │   │ AsyncCountdown-      │   │                          │
-│                  │   │   Event             │   │ MAC                      │
-│                  │   │                      │   │  HMAC · KMAC             │
-│                  │   │ IValueTaskSource<T>  │   │  AES-CMAC · AES-GMAC    │
-│                  │   │  backed by           │   │  Poly1305 · BLAKE2/3     │
-│                  │   │  ObjectPool<T>       │   │                          │
-│                  │   │                      │   │ Cipher                   │
-│                  │   ├──────────────────────┤   │  AES-GCM/CCM (AEAD)     │
-│                  │   │ Threading.Analyzers  │   │  ChaCha20-Poly1305       │
-│                  │   │  ValueTask Roslyn    │   │  XChaCha20-Poly1305      │
-│                  │   │  analyzers           │   │  Ascon-AEAD128           │
-└──────────────────┘   └──────────────────────┘   │  AES-128/192/256         │
-                                                    │  ChaCha20 (stream)       │
-                                                    │  SM4 · ARIA · Camellia   │
-                                                    │  Kuznyechik · Kalyna     │
-                                                    │  SEED                    │
-                                                    │                          │
-                                                    │ Key Derivation           │
-                                                    │  HKDF · KBKDF           │
-                                                    │  ConcatKDF · PBKDF2     │
-                                                    └──────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        CryptoHives .NET Foundation                              │
+│                    CryptoHives Open Source Initiative                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                     │
+         ┌───────────────────────────┼────────────────────────────┐
+         │                           │                            │
+         ▼                           ▼                            ▼
+┌────────────────────┐   ┌───────────────────────┐   ┌────────────────────────────┐
+│     Memory         │   │      Threading        │   │  Security.Cryptography     │
+├────────────────────┤   ├───────────────────────┤   ├────────────────────────────┤
+│ ArrayPool-         │   │ AsyncLock             │   │ Hash                       │
+│    MemoryStream    │   │ AsyncSemaphore        │   │  SHA-2 · SHA-3             │
+│ ArrayPool-         │   │ AsyncAutoResetEvent   │   │  SHAKE · cSHAKE            │
+│    BufferWriter<T> │   │ AsyncManualResetEvent │   │  TurboSHAKE · KT128/256    │
+│ ReadOnlySequence-  │   │ AsyncReaderWriterLock │   │  ParallelHash (SP 800-185) │
+│    MemoryStream    │   │ AsyncBarrier          │   │  KMAC128 · KMAC256         │
+│ Ownership          │   │ AsyncCountdownEvent   │   │  Keccak · BLAKE2 · BLAKE3  │
+│    Primitives      │   │                       │   │  Ascon · Regional · Legacy │
+│                    │   │ IValueTaskSource<T>   │   │                            │
+│                    │   │    backed by          │   │ MAC                        │
+│                    │   │   ObjectPool<T>       │   │  HMAC · KMAC               │
+│                    │   │                       │   │  AES-CMAC · AES-GMAC       │
+│                    │   │                       │   │  Poly1305 · BLAKE2/3       │
+│                    │   │                       │   │                            │
+│                    │   │                       │   │ Cipher                     │
+│                    │   ├───────────────────────┤   │  AES-GCM/CCM (AEAD)        │
+│                    │   │ Threading.Analyzers   │   │  ChaCha20-Poly1305         │
+│                    │   │   ValueTask Roslyn    │   │  XChaCha20-Poly1305        │
+│                    │   │   analyzers           │   │  Ascon-AEAD128             │
+└────────────────────┘   └───────────────────────┘   │  AES-128/192/256           │
+                                                     │  ChaCha20 (stream)         │
+                                                     │  SM4 · ARIA · Camellia     │
+                                                     │  Kuznyechik · Kalyna       │
+                                                     │  SEED                      │
+                                                     │                            │
+                                                     │ Key Derivation             │
+                                                     │  HKDF · KBKDF              │
+                                                     │  ConcatKDF · PBKDF2        │
+                                                     └────────────────────────────┘
 
 Keccak class hierarchy (Security.Cryptography):
 
@@ -72,9 +72,6 @@ Keccak class hierarchy (Security.Cryptography):
 ```
 
 ---
-
-
-
 The **CryptoHives Open Source Initiative** is a collection of modern, high-assurance libraries for .NET, developed and maintained by **The Keepers of the CryptoHives**. 
 Each package is designed for security, interoperability, and clarity — making it easy to build secure systems for high performance transformation pipelines and for cryptography workloads without sacrificing developer experience.
 
