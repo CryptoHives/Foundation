@@ -1,4 +1,4 @@
-﻿# 🛡️ Security Policy — CryptoHives Open Source Initiative
+# 🛡️ Security Policy — CryptoHives Open Source Initiative
 
 Thank you for helping to keep **CryptoHives Open Source Initiative** and its ecosystem secure.
 
