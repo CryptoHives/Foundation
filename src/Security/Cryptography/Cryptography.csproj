@@ -37,7 +37,6 @@
     </When>
     <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
       <ItemGroup>
-        <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Bcl.Memory" />
         <PackageReference Include="System.Memory" />
       </ItemGroup>
@@ -50,8 +49,6 @@
       </ItemGroup>
     </When>
     <Otherwise>
-      <ItemGroup>
-      </ItemGroup>
     </Otherwise>
   </Choose>
 
