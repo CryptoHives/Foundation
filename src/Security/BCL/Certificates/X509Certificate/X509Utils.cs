@@ -390,7 +390,7 @@ public static partial class X509Utils
                 break;
             }
 
-            char ch = name[ii];
+            char ch;
 
             if (found)
             {
