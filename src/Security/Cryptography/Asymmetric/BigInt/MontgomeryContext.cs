@@ -118,7 +118,6 @@ internal sealed class MontgomeryContext
 
             // Step 2: Reduction — u = t[0] * m' mod 2^64, then t = (t + u*m) / 2^64
             ulong u = t[0] * _mPrime;
-            carry = 0;
 
             // First limb: we know (t[0] + u*m[0]) ≡ 0 (mod 2^64)
             ulong mhi = BigUInt.Mul128(u, m[0], out ulong mlo);
