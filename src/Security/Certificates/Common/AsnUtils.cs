@@ -210,7 +210,7 @@ internal static class AsnUtils
             // Signature Algorithm Identifier
             AsnReader sigOid = seqReader.ReadSequence();
             string signatureAlgorithm = sigOid.ReadObjectIdentifier();
-            HashAlgorithmName name = Oids.GetHashAlgorithmName(signatureAlgorithm);
+            _ = Oids.GetHashAlgorithmName(signatureAlgorithm);
 
             // Signature
             byte[] signature = seqReader.ReadBitString(out int unusedBitCount);
