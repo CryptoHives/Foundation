@@ -8,6 +8,7 @@ using CryptoHives.Foundation.Security.Certificates;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
+using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -116,12 +117,9 @@ public static class X509Extensions
 
             if (typeof(T) == typeof(X509NameConstraintsExtension))
             {
-                foreach (X509Extension ext in extensions)
+                foreach (X509Extension ext in extensions.Where(ext => ext.Oid?.Value == X509NameConstraintsExtension.NameConstraintsOid))
                 {
-                    if (ext.Oid?.Value == X509NameConstraintsExtension.NameConstraintsOid)
-                    {
-                        return (T)(object)new X509NameConstraintsExtension(ext, ext.Critical);
-                    }
+                    return (T)(object)new X509NameConstraintsExtension(ext, ext.Critical);
                 }
             }
 
