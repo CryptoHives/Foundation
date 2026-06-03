@@ -10,6 +10,8 @@
   href: kdf-algorithms.md
 - name: XOF Mode
   href: xof-mode.md
+- name: Pooled Hash API
+  href: pooled-hash-api.md
 - name: Benchmarks
   href: benchmarks.md
   items:

@@ -7,7 +7,9 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
+using Microsoft.Extensions.ObjectPool;
 using System;
+using System.Buffers;
 
 /// <summary>
 /// Base class for the CryptoHives hash algorithm implementations.
@@ -23,7 +25,7 @@ using System;
 /// providing deterministic behavior across all platforms.
 /// </para>
 /// </remarks>
-public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
+public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm, IResettable
 {
     /// <summary>
     /// Gets the name of the hash algorithm.
@@ -191,7 +193,7 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// <remarks>
     /// <para>
     /// The algorithm is automatically reset after a successful computation, allowing the
-    /// instance to be reused for subsequent <see cref="AppendData"/> calls or another
+    /// instance to be reused for subsequent <see cref="AppendData(System.ReadOnlySpan{byte})"/> calls or another
     /// <see cref="TryComputeHash"/> without calling
     /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> first.
     /// </para>
@@ -256,6 +258,35 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     }
 
     /// <summary>
+    /// Appends all segments of <paramref name="source"/> to the data already processed in the hash algorithm.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to append to the hash computation.</param>
+    /// <remarks>
+    /// <para>
+    /// Use this overload when data arrives from <c>System.IO.Pipelines</c> or any other source that
+    /// provides a <see cref="ReadOnlySequence{T}"/>. Each segment is fed directly into the algorithm
+    /// without copying the data into a contiguous buffer.
+    /// </para>
+    /// <para>
+    /// Call <see cref="TryGetHashAndReset"/> after all data has been appended to retrieve
+    /// the final hash value and reset the algorithm for reuse.
+    /// </para>
+    /// </remarks>
+    public void AppendData(in ReadOnlySequence<byte> source)
+    {
+        if (source.IsSingleSegment)
+        {
+            HashCore(source.First.Span);
+            return;
+        }
+
+        foreach (ReadOnlyMemory<byte> segment in source)
+        {
+            HashCore(segment.Span);
+        }
+    }
+
+    /// <summary>
     /// Finalizes the hash computation, writes the result into the provided buffer,
     /// and resets the algorithm for reuse.
     /// </summary>
@@ -284,6 +315,24 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
         bool result = TryHashFinal(destination, out bytesWritten);
         Initialize();
         return result;
+    }
+
+    /// <summary>
+    /// Resets this instance to its initial state so it can be returned to an object pool for reuse.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> always — all CryptoHives hash algorithms fully support reset via
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/>.
+    /// </returns>
+    /// <remarks>
+    /// This method implements <see cref="IResettable"/> from
+    /// <c>Microsoft.Extensions.ObjectPool</c>, enabling any CryptoHives hash algorithm to be
+    /// used with <c>DefaultObjectPool&lt;T&gt;</c> without a custom policy.
+    /// </remarks>
+    public bool TryReset()
+    {
+        Initialize();
+        return true;
     }
 
     /// <summary>

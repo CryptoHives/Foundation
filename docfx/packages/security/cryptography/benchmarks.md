@@ -158,6 +158,7 @@ The following tables show the per-instance memory footprint (internal state + bu
 ## See also
 
 - [Hash Algorithms Reference](hash-algorithms.md)
+- [Pooled Hash API](pooled-hash-api.md)
 - [Cipher Algorithms Reference](cipher-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
