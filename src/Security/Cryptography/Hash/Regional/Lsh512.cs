@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -214,6 +215,98 @@ public sealed class Lsh512 : HashAlgorithm
     /// <param name="hashSizeBytes">The hash size in bytes (28, 32, 48, or 64).</param>
     /// <returns>A new <see cref="Lsh512"/> instance.</returns>
     public static Lsh512 Create(int hashSizeBytes) => new(hashSizeBytes);
+
+    private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Lsh512> _pool224
+        = HashAlgorithmPool.CreatePool(() => new Lsh512(28));
+
+    private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Lsh512> _pool256
+        = HashAlgorithmPool.CreatePool(() => new Lsh512(32));
+
+    private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Lsh512> _pool384
+        = HashAlgorithmPool.CreatePool(() => new Lsh512(48));
+
+    private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Lsh512> _pool512
+        = HashAlgorithmPool.CreatePool(() => new Lsh512(64));
+
+    /// <summary>
+    /// Computes the LSH-512 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <paramref name="hashSizeBytes"/> bytes.</param>
+    /// <param name="hashSizeBytes">The desired output size in bytes (28, 32, 48, or 64).</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 28, 32, 48, or 64.</exception>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, int hashSizeBytes, out int bytesWritten)
+    {
+        var pool = hashSizeBytes switch {
+            28 => _pool224,
+            32 => _pool256,
+            48 => _pool384,
+            64 => _pool512,
+            _ => throw new ArgumentException("Hash size must be 28, 32, 48, or 64 bytes.", nameof(hashSizeBytes))
+        };
+        return HashAlgorithmPool.TryHashData(pool, source, destination, out bytesWritten);
+    }
+
+    /// <summary>
+    /// Computes the LSH-512 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="hashSizeBytes">The desired output size in bytes (28, 32, 48, or 64).</param>
+    /// <returns>A new byte array containing the LSH-512 hash.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 28, 32, 48, or 64.</exception>
+    public static byte[] HashData(ReadOnlySpan<byte> source, int hashSizeBytes)
+    {
+        var pool = hashSizeBytes switch {
+            28 => _pool224,
+            32 => _pool256,
+            48 => _pool384,
+            64 => _pool512,
+            _ => throw new ArgumentException("Hash size must be 28, 32, 48, or 64 bytes.", nameof(hashSizeBytes))
+        };
+        return HashAlgorithmPool.HashData(pool, source);
+    }
+
+    /// <summary>
+    /// Computes the LSH-512 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <paramref name="hashSizeBytes"/> bytes.</param>
+    /// <param name="hashSizeBytes">The desired output size in bytes (28, 32, 48, or 64).</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 28, 32, 48, or 64.</exception>
+    public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, int hashSizeBytes, out int bytesWritten)
+    {
+        var pool = hashSizeBytes switch {
+            28 => _pool224,
+            32 => _pool256,
+            48 => _pool384,
+            64 => _pool512,
+            _ => throw new ArgumentException("Hash size must be 28, 32, 48, or 64 bytes.", nameof(hashSizeBytes))
+        };
+        return HashAlgorithmPool.TryHashData(pool, source, destination, out bytesWritten);
+    }
+
+    /// <summary>
+    /// Computes the LSH-512 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="hashSizeBytes">The desired output size in bytes (28, 32, 48, or 64).</param>
+    /// <returns>A new byte array containing the LSH-512 hash.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 28, 32, 48, or 64.</exception>
+    public static byte[] HashData(in ReadOnlySequence<byte> source, int hashSizeBytes)
+    {
+        var pool = hashSizeBytes switch {
+            28 => _pool224,
+            32 => _pool256,
+            48 => _pool384,
+            64 => _pool512,
+            _ => throw new ArgumentException("Hash size must be 28, 32, 48, or 64 bytes.", nameof(hashSizeBytes))
+        };
+        return HashAlgorithmPool.HashData(pool, source);
+    }
 
     /// <inheritdoc/>
     public override void Initialize()

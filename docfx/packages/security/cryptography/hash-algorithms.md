@@ -37,6 +37,8 @@ The `ComputeHash(byte[])` method internally allocates a new `byte[]` of `HashSiz
 
 All usage examples below use the zero-allocation `TryComputeHash` API.
 
+> **Tip:** For single-call hashing without managing an instance lifetime, every algorithm also exposes static `HashData` and `TryHashData` methods backed by an internal object pool. See [Pooled Hash API](pooled-hash-api.md) for the full API surface, pooling design, and per-algorithm allocation savings.
+
 ---
 
 ## SHA-2 Family

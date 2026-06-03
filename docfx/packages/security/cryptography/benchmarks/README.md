@@ -85,7 +85,7 @@ This keeps the top-level pages short and comparable, while full benchmark tables
 - `aes-gcm-128.md`, `aes-gcm-192.md`, `aes-gcm-256.md`
 
 ### AES-CCM (AEAD)
-- `aes-ccm-128.md`, `aes-ccm-256.md`
+- `aes-ccm-128.md`, `aes-ccm-192.md`, `aes-ccm-256.md`
 
 ### ChaCha20 Family (Stream Cipher / AEAD)
 - `chacha20.md`, `chacha20-poly1305.md`, `xchacha20-poly1305.md`

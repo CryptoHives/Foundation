@@ -309,6 +309,112 @@ public class HmacTests
 
     #endregion
 
+    #region HMAC-SHA3-384 Tests
+
+    /// <summary>
+    /// Validate HMAC-SHA3-384 against BouncyCastle.
+    /// </summary>
+    [TestCase("")]
+    [TestCase("test")]
+    [TestCase("The quick brown fox jumps over the lazy dog")]
+    public void HmacSha3_384MatchesBouncyCastle(string message)
+    {
+        byte[] key = TestHelpers.FromHexString("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        byte[] input = Encoding.UTF8.GetBytes(message);
+
+        var bcHmac = new Org.BouncyCastle.Crypto.Macs.HMac(new Org.BouncyCastle.Crypto.Digests.Sha3Digest(384));
+        bcHmac.Init(new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key));
+        bcHmac.BlockUpdate(input, 0, input.Length);
+        byte[] bcResult = new byte[bcHmac.GetMacSize()];
+        bcHmac.DoFinal(bcResult, 0);
+
+        using var ours = HmacSha3_384.Create(key);
+        byte[] ourHash = ours.ComputeHash(input);
+
+        Assert.That(ourHash, Is.EqualTo(bcResult), $"HMAC-SHA3-384 mismatch for: \"{message}\"");
+    }
+
+    /// <summary>
+    /// Validate HMAC-SHA3-384 with various input sizes against BouncyCastle.
+    /// </summary>
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(103)]
+    [TestCase(104)]
+    [TestCase(105)]
+    [TestCase(1024)]
+    public void HmacSha3_384VariousInputSizesMatchBouncyCastle(int inputLength)
+    {
+        byte[] key = new byte[48];
+        byte[] input = GenerateTestInput(inputLength);
+
+        var bcHmac = new Org.BouncyCastle.Crypto.Macs.HMac(new Org.BouncyCastle.Crypto.Digests.Sha3Digest(384));
+        bcHmac.Init(new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key));
+        bcHmac.BlockUpdate(input, 0, input.Length);
+        byte[] bcResult = new byte[bcHmac.GetMacSize()];
+        bcHmac.DoFinal(bcResult, 0);
+
+        using var ours = HmacSha3_384.Create(key);
+        byte[] ourHash = ours.ComputeHash(input);
+
+        Assert.That(ourHash, Is.EqualTo(bcResult), $"HMAC-SHA3-384 mismatch for input length {inputLength}");
+    }
+
+    #endregion
+
+    #region HMAC-SHA3-512 Tests
+
+    /// <summary>
+    /// Validate HMAC-SHA3-512 against BouncyCastle.
+    /// </summary>
+    [TestCase("")]
+    [TestCase("test")]
+    [TestCase("The quick brown fox jumps over the lazy dog")]
+    public void HmacSha3_512MatchesBouncyCastle(string message)
+    {
+        byte[] key = TestHelpers.FromHexString("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        byte[] input = Encoding.UTF8.GetBytes(message);
+
+        var bcHmac = new Org.BouncyCastle.Crypto.Macs.HMac(new Org.BouncyCastle.Crypto.Digests.Sha3Digest(512));
+        bcHmac.Init(new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key));
+        bcHmac.BlockUpdate(input, 0, input.Length);
+        byte[] bcResult = new byte[bcHmac.GetMacSize()];
+        bcHmac.DoFinal(bcResult, 0);
+
+        using var ours = HmacSha3_512.Create(key);
+        byte[] ourHash = ours.ComputeHash(input);
+
+        Assert.That(ourHash, Is.EqualTo(bcResult), $"HMAC-SHA3-512 mismatch for: \"{message}\"");
+    }
+
+    /// <summary>
+    /// Validate HMAC-SHA3-512 with various input sizes against BouncyCastle.
+    /// </summary>
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(71)]
+    [TestCase(72)]
+    [TestCase(73)]
+    [TestCase(1024)]
+    public void HmacSha3_512VariousInputSizesMatchBouncyCastle(int inputLength)
+    {
+        byte[] key = new byte[64];
+        byte[] input = GenerateTestInput(inputLength);
+
+        var bcHmac = new Org.BouncyCastle.Crypto.Macs.HMac(new Org.BouncyCastle.Crypto.Digests.Sha3Digest(512));
+        bcHmac.Init(new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key));
+        bcHmac.BlockUpdate(input, 0, input.Length);
+        byte[] bcResult = new byte[bcHmac.GetMacSize()];
+        bcHmac.DoFinal(bcResult, 0);
+
+        using var ours = HmacSha3_512.Create(key);
+        byte[] ourHash = ours.ComputeHash(input);
+
+        Assert.That(ourHash, Is.EqualTo(bcResult), $"HMAC-SHA3-512 mismatch for input length {inputLength}");
+    }
+
+    #endregion
+
     #region Legacy HMAC Tests
 
     /// <summary>
@@ -445,8 +551,14 @@ public class HmacTests
         using var sha512 = HmacSha512.Create(key);
         Assert.That(sha512.AlgorithmName, Is.EqualTo("HMAC-SHA512"));
 
-        using var sha3 = HmacSha3_256.Create(key);
-        Assert.That(sha3.AlgorithmName, Is.EqualTo("HMAC-SHA3-256"));
+        using var sha3_256 = HmacSha3_256.Create(key);
+        Assert.That(sha3_256.AlgorithmName, Is.EqualTo("HMAC-SHA3-256"));
+
+        using var sha3_384 = HmacSha3_384.Create(key);
+        Assert.That(sha3_384.AlgorithmName, Is.EqualTo("HMAC-SHA3-384"));
+
+        using var sha3_512 = HmacSha3_512.Create(key);
+        Assert.That(sha3_512.AlgorithmName, Is.EqualTo("HMAC-SHA3-512"));
     }
 
     /// <summary>
@@ -465,6 +577,12 @@ public class HmacTests
 
         using var sha512 = HmacSha512.Create(key);
         Assert.That(sha512.MacSize, Is.EqualTo(64));
+
+        using var sha3_384 = HmacSha3_384.Create(key);
+        Assert.That(sha3_384.MacSize, Is.EqualTo(48));
+
+        using var sha3_512 = HmacSha3_512.Create(key);
+        Assert.That(sha3_512.MacSize, Is.EqualTo(64));
     }
 
     #endregion

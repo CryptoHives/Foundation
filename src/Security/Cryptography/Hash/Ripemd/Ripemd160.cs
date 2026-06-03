@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -116,6 +117,42 @@ public sealed class Ripemd160 : HashAlgorithm
     /// </summary>
     /// <returns>A new RIPEMD-160 hash algorithm instance.</returns>
     public static new Ripemd160 Create() => new();
+
+    /// <summary>
+    /// Computes the RIPEMD-160 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<Ripemd160>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the RIPEMD-160 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <returns>A new byte array containing the RIPEMD-160 hash.</returns>
+    public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<Ripemd160>.HashData(source);
+
+    /// <summary>
+    /// Computes the RIPEMD-160 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<Ripemd160>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the RIPEMD-160 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <returns>A new byte array containing the RIPEMD-160 hash.</returns>
+    public static byte[] HashData(in ReadOnlySequence<byte> source)
+        => HashAlgorithmPool<Ripemd160>.HashData(source);
 
     /// <inheritdoc/>
     public override void Initialize()

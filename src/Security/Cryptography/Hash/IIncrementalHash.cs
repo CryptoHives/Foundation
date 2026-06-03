@@ -32,7 +32,7 @@ using System.Buffers;
 /// <para>
 /// Higher-level consumers such as <see cref="HashAlgorithm"/> wrap implementations of this
 /// interface and expose the same computation through the more familiar
-/// <see cref="HashAlgorithm.AppendData"/> / <see cref="HashAlgorithm.TryGetHashAndReset"/>
+/// <see cref="HashAlgorithm.AppendData(System.ReadOnlySpan{byte})"/> / <see cref="HashAlgorithm.TryGetHashAndReset"/>
 /// API surface.
 /// </para>
 /// </remarks>
