@@ -188,7 +188,6 @@ public static class Pkcs12
                     pkcs8 = KeyEncoding.ImportEncryptedPkcs8PrivateKey(
                         encPkcs8Der, password, out _, out _);
                     // Re-export as clean PKCS#8
-                    var innerReader = new AsnReader(encPkcs8Der, AsnEncodingRules.DER);
                     // pkcs8 already contains the algorithm-specific private key DER;
                     // reconstruct full PKCS#8 from the decrypted content
                     KeyEncoding.ImportEncryptedPkcs8PrivateKey(
