@@ -74,6 +74,7 @@ BenchmarkRun*.log
 
 # .NET Core
 project.lock.json
+packages.lock.json
 project.fragment.lock.json
 artifacts/
 
@@ -435,3 +436,4 @@ docfx/api/
 
 # Ignore github Copilot local MCP data
 /.playwright-mcp
+

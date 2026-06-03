@@ -1,4 +1,4 @@
-﻿Contributions
+Contributions
 =============
 
 The Keepers are glad to accept patches and contributions to the project. There are just a few guidelines we ask you to follow.
