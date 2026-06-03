@@ -6,6 +6,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 
 /// <summary>
@@ -59,6 +60,42 @@ public sealed class SHA512_224 : Sha2HashAlgorithm<ulong>
     /// </summary>
     /// <returns>A new SHA-512/224 hash algorithm instance.</returns>
     public static new SHA512_224 Create() => new();
+
+    /// <summary>
+    /// Computes the SHA-512/224 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<SHA512_224>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the SHA-512/224 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <returns>A new byte array containing the SHA-512/224 hash.</returns>
+    public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<SHA512_224>.HashData(source);
+
+    /// <summary>
+    /// Computes the SHA-512/224 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<SHA512_224>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the SHA-512/224 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <returns>A new byte array containing the SHA-512/224 hash.</returns>
+    public static byte[] HashData(in ReadOnlySequence<byte> source)
+        => HashAlgorithmPool<SHA512_224>.HashData(source);
 
     /// <inheritdoc/>
     protected override void InitializeState()

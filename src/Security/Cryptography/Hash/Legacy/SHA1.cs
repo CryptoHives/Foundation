@@ -73,6 +73,28 @@ public sealed class SHA1 : HashAlgorithm
     public static new SHA1 Create() => new();
 #pragma warning restore CS0618
 
+    /// <summary>
+    /// Computes the SHA-1 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+#pragma warning disable CS0618 // Type or member is obsolete
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<SHA1>.TryHashData(source, destination, out bytesWritten);
+#pragma warning restore CS0618
+
+    /// <summary>
+    /// Computes the SHA-1 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <returns>A new byte array containing the SHA-1 hash.</returns>
+#pragma warning disable CS0618 // Type or member is obsolete
+    public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<SHA1>.HashData(source);
+#pragma warning restore CS0618
+
     /// <inheritdoc/>
     public override void Initialize()
     {

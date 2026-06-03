@@ -16,34 +16,16 @@
     <NoWarn>$(NoWarn);NUnit1028;AD0001;VSTHRD200;VSTHRD103;VSTHRD003;VSTHRD002</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="BenchmarkDotNet" />
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit.Analyzers">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="NUnit.Console" />
-    <PackageReference Include="NUnit3TestAdapter">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="coverlet.collector">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\AssemblyInfo.cs" Link="Properties\AssemblyInfo.cs" />
-    <Compile Include="..\Common\CancellationType.cs" Link="Async\Pooled\CancellationType.cs" />
-    <Compile Include="..\Common\Main.cs" />
-    <Compile Include="..\Common\Common.cs" />
+    <PackageReference Include="BenchmarkDotNet" />
+    <Compile Include="../Common/AssemblyInfo.cs" Link="Properties/AssemblyInfo.cs" />
+    <Compile Include="../Common/CancellationType.cs" Link="Async/Pooled/CancellationType.cs" />
+    <Compile Include="../Common/Main.cs" />
+    <Compile Include="../Common/Common.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -55,16 +37,17 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' != 'true'">
-    <ProjectReference Include="..\..\src\Threading\Threading.csproj" />
+    <ProjectReference Include="../../src/Threading/Threading.csproj" />
     <!-- Reference the analyzer project to run CHT* diagnostics during build -->
-    <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/Threading.Analyzers/Threading.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' == 'true'">
     <!-- The Threading NuGet package bundles the analyzer in analyzers/dotnet/cs -->
     <PackageReference Include="CryptoHives.Foundation.Threading$(_NuGetPackageSuffix)" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Properties\" />
+    <Folder Include="Properties/" />
   </ItemGroup>
 </Project>
