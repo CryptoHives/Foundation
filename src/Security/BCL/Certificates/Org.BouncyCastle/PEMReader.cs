@@ -27,7 +27,7 @@ public static class PEMReader
         ReadOnlySpan<char> password)
     {
         RSA? rsaPrivateKey = null;
-        Org.BouncyCastle.OpenSsl.PemReader pemReader;
+        Org.BouncyCastle.OpenSsl.PemReader? pemReader = null;
         using (var pemStreamReader = new StreamReader(new MemoryStream(pemDataBlob), Encoding.UTF8, true))
         {
             if (password.IsEmpty || password.IsWhiteSpace())
@@ -69,7 +69,7 @@ public static class PEMReader
             }
             finally
             {
-                pemReader.Reader.Dispose();
+                pemReader?.Dispose();
             }
         }
 
