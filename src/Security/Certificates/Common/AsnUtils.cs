@@ -213,7 +213,7 @@ internal static class AsnUtils
             _ = Oids.GetHashAlgorithmName(signatureAlgorithm);
 
             // Signature
-            byte[] signature = seqReader.ReadBitString(out int unusedBitCount);
+            _ = seqReader.ReadBitString(out int unusedBitCount);
             if (unusedBitCount != 0)
             {
                 throw new AsnContentException("Unexpected data in signature.");
