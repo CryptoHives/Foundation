@@ -28,9 +28,8 @@ public sealed class ShortNameMarkdownExporter : IExporter
         var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
 
         var fileName = $"{typeName}-report.md";
-        var filePath = Path.IsPathRooted(fileName)
-            ? fileName
-            : Path.Combine(summary.ResultsDirectoryPath, fileName);
+        var safeFileName = Path.GetFileName(fileName);
+        var filePath = Path.Combine(summary.ResultsDirectoryPath, safeFileName);
 
         using var logger = new StreamLogger(filePath);
 
