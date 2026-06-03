@@ -11,6 +11,7 @@ using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Linq;
 
 /// <summary>
 /// Supporting functions for X509 extensions.
@@ -126,12 +127,12 @@ public static class X509Extensions
 
             if (typeof(T) == typeof(X509PolicyConstraintsExtension))
             {
-                foreach (X509Extension ext in extensions)
+                X509Extension? ext = extensions.FirstOrDefault(
+                    e => e.Oid?.Value == X509PolicyConstraintsExtension.PolicyConstraintsOid);
+
+                if (ext is not null)
                 {
-                    if (ext.Oid?.Value == X509PolicyConstraintsExtension.PolicyConstraintsOid)
-                    {
-                        return (T)(object)new X509PolicyConstraintsExtension(ext, ext.Critical);
-                    }
+                    return (T)(object)new X509PolicyConstraintsExtension(ext, ext.Critical);
                 }
             }
 
