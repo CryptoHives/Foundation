@@ -1,4 +1,5 @@
 <Project>
+  
   <PropertyGroup>
     <Product>CryptoHives Open Source Initiative .NET Foundation Libraries</Product>
     <RepositoryUrl>https://github.com/CryptoHives/Foundation</RepositoryUrl>
@@ -36,16 +37,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
   </PropertyGroup>
   
-  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-  </PropertyGroup>
-
   <PropertyGroup>
     <PackageIcon>images/logo.jpg</PackageIcon>
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>

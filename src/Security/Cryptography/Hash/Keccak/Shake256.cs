@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 
 /// <summary>
 /// Computes a variable-length output using SHAKE256 (XOF).
@@ -91,5 +92,45 @@ public sealed class Shake256 : KeccakXofCore
     public static Shake256 Create(int outputBytes) => new(outputBytes);
 
     internal static Shake256 Create(SimdSupport simdSupport, int outputBytes = DefaultOutputBits / 8) => new(simdSupport, outputBytes);
+
+    /// <summary>
+    /// Computes the SHAKE256 hash of <paramref name="source"/> using the default output size
+    /// and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <c>64</c> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<Shake256>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the SHAKE256 hash of <paramref name="source"/> using the default output size
+    /// and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <returns>A new byte array containing the SHAKE256 hash.</returns>
+    public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<Shake256>.HashData(source);
+
+    /// <summary>
+    /// Computes the SHAKE256 hash of <paramref name="source"/> using the default output size
+    /// and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <c>64</c> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<Shake256>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the SHAKE256 hash of <paramref name="source"/> using the default output size
+    /// and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <returns>A new byte array containing the SHAKE256 hash.</returns>
+    public static byte[] HashData(in ReadOnlySequence<byte> source)
+        => HashAlgorithmPool<Shake256>.HashData(source);
 }
 

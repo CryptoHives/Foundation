@@ -183,6 +183,8 @@ public interface IMac : IDisposable
 | `HmacSha384` | SHA-384 | 48 bytes | 384 bits | ✅ Recommended |
 | `HmacSha512` | SHA-512 | 64 bytes | 512 bits | ✅ Recommended |
 | `HmacSha3_256` | SHA3-256 | 32 bytes | 256 bits | ✅ Cross-platform |
+| `HmacSha3_384` | SHA3-384 | 48 bytes | 384 bits | ✅ Cross-platform |
+| `HmacSha3_512` | SHA3-512 | 64 bytes | 512 bits | ✅ Cross-platform |
 | `HmacSha1` | SHA-1 | 20 bytes | 160 bits | ⚠️ Legacy |
 | `HmacMd5` | MD5 | 16 bytes | 128 bits | ⚠️ Legacy |
 
@@ -241,6 +243,26 @@ Unlike .NET's built-in `HMACSHA3_256` which requires Windows 11+ or OpenSSL 1.1.
 ```csharp
 using var hmac = HmacSha3_256.Create(key);
 byte[] mac = hmac.ComputeHash(message);
+```
+
+### HMAC-SHA3-384 (Cross-Platform)
+
+Unlike .NET's built-in `HMACSHA3_384` which requires Windows 11+ or OpenSSL 1.1.1+, the CryptoHives implementation works on all platforms:
+
+```csharp
+using var hmac = HmacSha3_384.Create(key);
+Span<byte> mac = stackalloc byte[HmacSha3_384.MacSizeBytes]; // 48 bytes
+hmac.TryGetHashAndReset(mac, out _);
+```
+
+### HMAC-SHA3-512 (Cross-Platform)
+
+Unlike .NET's built-in `HMACSHA3_512` which requires Windows 11+ or OpenSSL 1.1.1+, the CryptoHives implementation works on all platforms:
+
+```csharp
+using var hmac = HmacSha3_512.Create(key);
+Span<byte> mac = stackalloc byte[HmacSha3_512.MacSizeBytes]; // 64 bytes
+hmac.TryGetHashAndReset(mac, out _);
 ```
 
 ### Generic HMAC with Any Hash
@@ -608,9 +630,12 @@ blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 | Algorithm | Security Strength | Notes |
 |-----------|-------------------|-------|
 | HMAC-SHA-512 | 512 bits | Maximum HMAC security |
+| HMAC-SHA3-512 | 512 bits | Cross-platform SHA-3 HMAC, maximum output |
 | HMAC-SHA-256 | 256 bits | Most widely used, recommended |
+| HMAC-SHA-384 | 384 bits | Recommended |
 | KMAC256 | 256 bits | Highest security, NIST approved |
 | HMAC-SHA3-256 | 256 bits | Cross-platform SHA-3 HMAC |
+| HMAC-SHA3-384 | 384 bits | Cross-platform SHA-3 HMAC |
 | Poly1305 | 128 bits | Ultra-fast one-time authenticator |
 | AES-CMAC | 128 bits | Cipher-based, single-pass |
 | AES-GMAC | 128 bits | Galois field, nonce-required |
@@ -631,6 +656,8 @@ blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 | HMAC-SHA-256 | Moderate | General purpose, widest compatibility |
 | HMAC-SHA-512 | Moderate | Maximum security on 64-bit |
 | HMAC-SHA3-256 | Moderate | Cross-platform SHA-3 |
+| HMAC-SHA3-384 | Moderate | Cross-platform SHA-3 |
+| HMAC-SHA3-512 | Moderate | Cross-platform SHA-3, maximum output |
 | BLAKE2s keyed | Fast | 32-bit and embedded systems |
 | KMAC256 | Moderate | Maximum security |
 | KMAC128 | Moderate | NIST compliance |
