@@ -336,7 +336,7 @@ internal static class MlKemCore
         HashJ(z, ciphertext.Slice(0, p.CiphertextBytes), kBar);
 
         // If c == c': return K'; else return K̄ (implicit rejection)
-        bool equal = CryptoUtils.FixedTimeEquals(
+        bool equal = CryptographicOperations.FixedTimeEquals(
             ciphertext.Slice(0, p.CiphertextBytes),
             cPrime.AsSpan(0, p.CiphertextBytes));
 
