@@ -8,12 +8,9 @@ using CryptoHives.Foundation.Security.Certificates;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
-using System.Linq;
 using System.Numerics;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Linq;
 
 /// <summary>
 /// Supporting functions for X509 extensions.
@@ -107,31 +104,34 @@ public static class X509Extensions
 
             if (typeof(T) == typeof(X509CertificatePoliciesExtension))
             {
-                X509Extension? ext = extensions.FirstOrDefault(
-                    e => e.Oid?.Value == X509CertificatePoliciesExtension.CertificatePoliciesOid);
-
-                if (ext is not null)
+                foreach (X509Extension ext in extensions)
                 {
-                    return (T)(object)new X509CertificatePoliciesExtension(ext, ext.Critical);
+                    if (ext.Oid?.Value == X509CertificatePoliciesExtension.CertificatePoliciesOid)
+                    {
+                        return (T)(object)new X509CertificatePoliciesExtension(ext, ext.Critical);
+                    }
                 }
             }
 
             if (typeof(T) == typeof(X509NameConstraintsExtension))
             {
-                foreach (X509Extension ext in extensions.Where(ext => ext.Oid?.Value == X509NameConstraintsExtension.NameConstraintsOid))
+                foreach (X509Extension ext in extensions)
                 {
-                    return (T)(object)new X509NameConstraintsExtension(ext, ext.Critical);
+                    if (ext.Oid?.Value == X509NameConstraintsExtension.NameConstraintsOid)
+                    {
+                        return (T)(object)new X509NameConstraintsExtension(ext, ext.Critical);
+                    }
                 }
             }
 
             if (typeof(T) == typeof(X509PolicyConstraintsExtension))
             {
-                X509Extension? ext = extensions.FirstOrDefault(
-                    e => e.Oid?.Value == X509PolicyConstraintsExtension.PolicyConstraintsOid);
-
-                if (ext is not null)
+                foreach (X509Extension ext in extensions)
                 {
-                    return (T)(object)new X509PolicyConstraintsExtension(ext, ext.Critical);
+                    if (ext.Oid?.Value == X509PolicyConstraintsExtension.PolicyConstraintsOid)
+                    {
+                        return (T)(object)new X509PolicyConstraintsExtension(ext, ext.Critical);
+                    }
                 }
             }
 
@@ -288,6 +288,8 @@ public static class X509Extensions
     /// <param name="distributionPoints">The CRL distribution points</param>
     public static X509Extension BuildX509CRLDistributionPoints(IEnumerable<string> distributionPoints)
     {
+        if (distributionPoints == null) throw new ArgumentNullException(nameof(distributionPoints));
+        
         var context0 = new Asn1Tag(TagClass.ContextSpecific, 0, true);
         Asn1Tag distributionPointChoice = context0;
         Asn1Tag fullNameChoice = context0;
@@ -310,6 +312,7 @@ public static class X509Extensions
         writer.PopSequence(distributionPointChoice);
         writer.PopSequence();
         writer.PopSequence();
+
         return new X509Extension(Oids.CRLDistributionPoint, pooledWriter.Encode(), false);
     }
 
@@ -334,6 +337,7 @@ public static class X509Extensions
             extReader.ThrowIfNotEmpty();
             return new X509Extension(new Oid(extOid), data, critical);
         }
+
         return null;
     }
 
@@ -376,6 +380,8 @@ public static class X509Extensions
     /// <param name="issuerCaCertificate">The issuer CA certificate</param>
     public static X509Extension BuildAuthorityKeyIdentifier(X509Certificate2 issuerCaCertificate)
     {
+        if (issuerCaCertificate == null) throw new ArgumentNullException(nameof(issuerCaCertificate));
+
         // Find the SubjectKeyIdentifier extension
         X509SubjectKeyIdentifierExtension? ski = null;
         foreach (X509Extension ext in issuerCaCertificate.Extensions)

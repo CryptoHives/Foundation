@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CS1591 // self describing enum values, suppress warning
+#pragma warning disable CA1027 // mark enums with flag attribute
 
 namespace CryptoHives.Foundation.Security.Bcl.Certificates.X509Crl;
 
