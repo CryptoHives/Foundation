@@ -588,4 +588,64 @@ public class AsyncBarrierTests
 
         Assert.That(phaseCounts, Is.EqualTo(new[] { 1, 1, 1 }));
     }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithTimeoutCompletesWhenAllArrive()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        var task1 = barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(5)).AsTask();
+        var task2 = barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(5)).AsTask();
+
+        await Task.WhenAll(task1, task2).ConfigureAwait(false);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task SignalAndWaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithZeroTimeoutCompletesWhenLastParticipant()
+    {
+        var barrier = new AsyncBarrier(1);
+
+        await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+    }
+
+    [Test]
+    public void SignalAndWaitAsyncWithNegativeTimeoutThrows()
+    {
+        var barrier = new AsyncBarrier(2);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithInfiniteTimeoutBehavesLikeDefault()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        var task1 = barrier.SignalAndWaitAsync(Timeout.InfiniteTimeSpan).AsTask();
+        var task2 = barrier.SignalAndWaitAsync(Timeout.InfiniteTimeSpan).AsTask();
+
+        await Task.WhenAll(task1, task2).ConfigureAwait(false);
+    }
 }

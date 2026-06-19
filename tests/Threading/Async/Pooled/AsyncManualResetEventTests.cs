@@ -350,4 +350,72 @@ public class AsyncManualResetEventTests
         Assert.That(ev.IsSet, Is.False);
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
     }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutCompletesWhenSetBeforeTimeout()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: tpvts);
+
+        _ = Task.Run(async () => { await Task.Delay(50).ConfigureAwait(false); ev.Set(); });
+
+        await ev.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var ev = new AsyncManualResetEvent();
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await ev.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSet()
+    {
+        var ev = new AsyncManualResetEvent();
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutCompletesImmediatelyWhenSet()
+    {
+        var ev = new AsyncManualResetEvent(set: true);
+
+        await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.True);
+    }
+
+    [Test]
+    public void WaitAsyncWithNegativeTimeoutThrows()
+    {
+        var ev = new AsyncManualResetEvent();
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => ev.WaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WaitAsyncWithInfiniteTimeoutBehavesLikeWaitAsync()
+    {
+        var ev = new AsyncManualResetEvent();
+
+        ev.Set();
+
+        await ev.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.True);
+    }
 }

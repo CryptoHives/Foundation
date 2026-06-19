@@ -68,6 +68,15 @@ public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValu
     public abstract CancellationTokenRegistration CancellationTokenRegistration { get; set; }
 
     /// <summary>
+    /// Gets or sets the <see cref="CancellationTokenSource"/> used to enforce a timeout on the wait operation.
+    /// </summary>
+    /// <remarks>
+    /// Set to a non-<see langword="null"/> value when the waiter is created with a timeout.
+    /// The source is disposed automatically by <see cref="GetResult"/> and cleared by <see cref="TryReset"/>.
+    /// </remarks>
+    public abstract CancellationTokenSource? TimeoutCts { get; set; }
+
+    /// <summary>
     /// Signals the completion of an operation, setting the result to T.
     /// </summary>
     /// <remarks>

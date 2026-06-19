@@ -199,11 +199,61 @@ public sealed class AsyncAutoResetEvent : IResettable
             return default;
         }
 
-        return WaitAsyncImpl(cancellationToken);
+        return WaitAsyncImpl(null!, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asynchronously waits for a signal to be received, or until the specified timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// If the signal has already been received, the method returns a completed <see cref="ValueTask"/> immediately
+    /// without allocating any cancellation infrastructure. A <see cref="CancellationTokenSource"/> is allocated
+    /// only when the event is not already signalled and a finite positive timeout is requested; it is disposed
+    /// automatically when the returned <see cref="ValueTask"/> is awaited.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <returns>A <see cref="ValueTask"/> that completes when the signal is received.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when the timeout elapses before the event is signalled.
+    /// </exception>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public ValueTask WaitAsync(TimeSpan timeout)
+    {
+        // fast path without lock
+        if (Interlocked.Exchange(ref _signaled, 0) != 0)
+        {
+            return default;
+        }
+
+        if (timeout <= TimeSpan.Zero)
+        {
+            if (timeout == Timeout.InfiniteTimeSpan)
+            {
+                return WaitAsyncImpl(null!, default);
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new OperationCanceledException()));
+            }
+
+            throw new ArgumentOutOfRangeException(nameof(timeout));
+        }
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
+        var timeoutCts = new CancellationTokenSource(timeout);
+#pragma warning restore CA2000 // Dispose objects before losing scope
+
+        return WaitAsyncImpl(timeoutCts, timeoutCts.Token);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken)
+    private ValueTask WaitAsyncImpl(CancellationTokenSource timeoutCts, CancellationToken cancellationToken)
     {
         _spinLock.Enter();
         try
@@ -211,6 +261,7 @@ public sealed class AsyncAutoResetEvent : IResettable
             // due to race conditions, _signaled may have changed until the lock is taken
             if (Interlocked.Exchange(ref _signaled, 0) != 0)
             {
+                timeoutCts?.Dispose();
                 return default;
             }
 
@@ -224,6 +275,7 @@ public sealed class AsyncAutoResetEvent : IResettable
                 waiter = _pool.GetPooledWaiter(this);
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+            waiter.TimeoutCts = timeoutCts;
             waiter.CancellationToken = cancellationToken;
 
             if (cancellationToken.CanBeCanceled)

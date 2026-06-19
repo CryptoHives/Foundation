@@ -181,6 +181,86 @@ public sealed class AsyncCountdownEvent
     }
 
     /// <summary>
+    /// Asynchronously waits for the countdown to reach zero, or until the specified timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// If the countdown has already reached zero, the method returns a completed <see cref="ValueTask"/> immediately
+    /// without allocating any cancellation infrastructure. A <see cref="CancellationTokenSource"/> is allocated
+    /// only when the countdown is non-zero and a finite positive timeout is requested; it is disposed
+    /// automatically when the returned <see cref="ValueTask"/> is awaited.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <returns>A <see cref="ValueTask"/> that completes when the countdown reaches zero.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when the timeout elapses before the countdown reaches zero.
+    /// </exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public ValueTask WaitAsync(TimeSpan timeout)
+    {
+        if (timeout == Timeout.InfiniteTimeSpan)
+        {
+            return WaitAsync();
+        }
+
+        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        if (Volatile.Read(ref _currentCount) == 0)
+        {
+            return default;
+        }
+
+        if (timeout == TimeSpan.Zero)
+        {
+            return new ValueTask(Task.FromException(new OperationCanceledException()));
+        }
+
+        return WaitAsyncImplWithTimeout(timeout);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask WaitAsyncImplWithTimeout(TimeSpan timeout)
+    {
+        var timeoutCts = new CancellationTokenSource(timeout);
+        CancellationToken cancellationToken = timeoutCts.Token;
+
+        _spinLock.Enter();
+        try
+        {
+            if (_currentCount == 0)
+            {
+                timeoutCts.Dispose();
+                return default;
+            }
+
+            PooledManualResetValueTaskSource<bool> waiter;
+            waiter = _pool.GetPooledWaiter(this);
+            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+            waiter.CancellationToken = cancellationToken;
+            waiter.TimeoutCts = timeoutCts;
+
+#if NET6_0_OR_GREATER
+            waiter.CancellationTokenRegistration =
+                cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+            waiter.CancellationTokenRegistration =
+                cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+
+            _waiters.Enqueue(waiter);
+            return new ValueTask(waiter, waiter.Version);
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+    }
+
+    /// <summary>
     /// Decrements the countdown by one.
     /// </summary>
     /// <remarks>

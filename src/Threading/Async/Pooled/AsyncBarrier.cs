@@ -241,6 +241,111 @@ public sealed class AsyncBarrier
     }
 
     /// <summary>
+    /// Signals the barrier and waits for all participants to arrive, or until the specified timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// If this is the last participant, the barrier is released immediately without any timeout overhead.
+    /// A <see cref="CancellationTokenSource"/> is allocated only when this is not the last participant and
+    /// a finite positive timeout is requested; it is disposed automatically when the returned
+    /// <see cref="ValueTask"/> is awaited.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait for all participants. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <returns>A <see cref="ValueTask"/> that completes when all participants have arrived.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when the timeout elapses before all participants arrive.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">Thrown when more participants signal than expected.</exception>
+    /// <exception cref="BarrierPostPhaseException">Thrown when the post-phase action throws an exception.</exception>
+    public ValueTask SignalAndWaitAsync(TimeSpan timeout)
+    {
+        if (timeout == Timeout.InfiniteTimeSpan)
+        {
+            return SignalAndWaitAsync();
+        }
+
+        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        ManualResetValueTaskSource<bool>? toReleaseChain = null;
+        Exception? postPhaseException = null;
+
+        _spinLock.Enter();
+        try
+        {
+            if (_participantsRemaining <= 0)
+            {
+                throw new InvalidOperationException("The number of threads using the barrier exceeded the total number of registered participants.");
+            }
+
+            _participantsRemaining--;
+
+            if (_participantsRemaining > 0)
+            {
+                if (timeout == TimeSpan.Zero)
+                {
+                    _participantsRemaining++;
+                    return new ValueTask(Task.FromException(new OperationCanceledException()));
+                }
+
+                var timeoutCts = new CancellationTokenSource(timeout);
+                CancellationToken cancellationToken = timeoutCts.Token;
+
+                PooledManualResetValueTaskSource<bool> waiter;
+                waiter = _pool.GetPooledWaiter(this);
+                waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+                waiter.CancellationToken = cancellationToken;
+                waiter.TimeoutCts = timeoutCts;
+
+#if NET6_0_OR_GREATER
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+
+                _waiters.Enqueue(waiter);
+                return new ValueTask(waiter, waiter.Version);
+            }
+
+            // Last participant - execute post-phase action, then release all waiters and advance phase
+            if (_postPhaseAction is not null)
+            {
+                try
+                {
+                    _postPhaseAction(this);
+                }
+                catch (Exception ex)
+                {
+                    postPhaseException = new BarrierPostPhaseException(ex);
+                }
+            }
+
+            _participantsRemaining = _participantCount;
+            _currentPhase++;
+
+            toReleaseChain = _waiters.DetachAll(out _);
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
+        if (postPhaseException is not null)
+        {
+            WaiterQueue<bool>.SetChainException(toReleaseChain, postPhaseException);
+            return new ValueTask(Task.FromException(postPhaseException));
+        }
+
+        toReleaseChain?.SetChainResult(true);
+        return default;
+    }
+
+    /// <summary>
     /// Notifies the <see cref="AsyncBarrier"/> that there will be an additional participant.
     /// </summary>
     /// <returns>The phase number of the barrier when the participant is added.</returns>

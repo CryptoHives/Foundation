@@ -1,4 +1,4 @@
-﻿# AsyncManualResetEvent
+# AsyncManualResetEvent
 
 ## Overview
 
@@ -104,6 +104,45 @@ await t;  // OK - Task may be awaited multiple times
 ValueTask vt = _event.WaitAsync();
 await vt;
 await vt;  // Throws InvalidOperationException!
+```
+
+### WaitAsync (timeout)
+
+```csharp
+public ValueTask WaitAsync(TimeSpan timeout)
+```
+
+Asynchronously waits for the event to be set, or throws `OperationCanceledException` if the timeout elapses first.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `CancellationTokenSource`).
+
+**Returns**: A `ValueTask` that completes when the event is set.
+
+**Throws**:
+- `OperationCanceledException` — If the timeout elapses before the event is set.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes**:
+
+| Scenario | CancellationTokenSource allocated? |
+|---|---|
+| Event already signaled | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and not set | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+**Examples**:
+
+```csharp
+// Preferred: direct timeout await — no Task conversion
+await _event.WaitAsync(TimeSpan.FromSeconds(5));
+
+// Previously required — now unnecessary:
+// await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+
+// Infinite timeout delegates to WaitAsync() — no CTS allocation
+await _event.WaitAsync(Timeout.InfiniteTimeSpan);
 ```
 
 ### Set
@@ -304,6 +343,20 @@ await vt;  // Exception!
 Task t = _event.WaitAsync().AsTask();
 await t;
 await t;  // OK
+```
+
+### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+
+```csharp
+try
+{
+    await _event.WaitAsync(TimeSpan.FromSeconds(10));
+    ProcessData();
+}
+catch (OperationCanceledException)
+{
+    HandleTimeout();
+}
 ```
 
 ## Common Patterns

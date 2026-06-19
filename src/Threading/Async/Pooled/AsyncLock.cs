@@ -243,6 +243,92 @@ public sealed class AsyncLock : IResettable
     }
 
     /// <summary>
+    /// Asynchronously acquires the lock, or throws if the lock cannot be acquired before the timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// If the lock is immediately available, the method completes synchronously without allocating any
+    /// cancellation infrastructure. A <see cref="CancellationTokenSource"/> is allocated only when the
+    /// lock cannot be acquired immediately and a finite positive timeout is requested; it is disposed
+    /// automatically when the returned <see cref="ValueTask{Releaser}"/> is awaited.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <returns>
+    /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.
+    /// Dispose the returned releaser to release the lock.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when the timeout elapses before the lock can be acquired.
+    /// </exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public ValueTask<Releaser> LockAsync(TimeSpan timeout)
+    {
+        if (timeout == Timeout.InfiniteTimeSpan)
+        {
+            return LockAsync();
+        }
+
+        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        if (Interlocked.Exchange(ref _taken, 1) == 0)
+        {
+            return new ValueTask<Releaser>(new Releaser(this));
+        }
+
+        if (timeout == TimeSpan.Zero)
+        {
+            return new ValueTask<Releaser>(Task.FromException<Releaser>(new OperationCanceledException()));
+        }
+
+        return LockAsyncImplWithTimeout(timeout);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask<Releaser> LockAsyncImplWithTimeout(TimeSpan timeout)
+    {
+        var timeoutCts = new CancellationTokenSource(timeout);
+        CancellationToken cancellationToken = timeoutCts.Token;
+
+        _spinLock.Enter();
+        try
+        {
+            if (Interlocked.Exchange(ref _taken, 1) == 0)
+            {
+                timeoutCts.Dispose();
+                return new ValueTask<Releaser>(new Releaser(this));
+            }
+
+            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
+            {
+                waiter = _pool.GetPooledWaiter(this);
+                waiter.RunContinuationsAsynchronously = true;
+            }
+
+            waiter.CancellationToken = cancellationToken;
+            waiter.TimeoutCts = timeoutCts;
+
+#if NET6_0_OR_GREATER
+            waiter.CancellationTokenRegistration =
+                cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+            waiter.CancellationTokenRegistration =
+                cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+
+            _waiters.Enqueue(waiter);
+            return new ValueTask<Releaser>(waiter, waiter.Version);
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+    }
+
+    /// <summary>
     /// Whether the lock is currently held.
     /// </summary>
     public bool IsTaken => _taken != 0;

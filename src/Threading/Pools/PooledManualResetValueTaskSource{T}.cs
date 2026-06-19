@@ -25,6 +25,7 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     private ManualResetValueTaskSourceCore<T> _core;
     private CancellationTokenRegistration _cancellationTokenRegistration;
     private CancellationToken _cancellationToken;
+    private CancellationTokenSource? _timeoutCts;
     private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
     private object? _owner;
 
@@ -59,6 +60,13 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     }
 
     /// <inheritdoc/>
+    public override CancellationTokenSource? TimeoutCts
+    {
+        get => _timeoutCts;
+        set => _timeoutCts = value;
+    }
+
+    /// <inheritdoc/>
     public override bool RunContinuationsAsynchronously
     {
         get => _core.RunContinuationsAsynchronously;
@@ -84,6 +92,7 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     public override bool TryReset()
     {
         _ownerPool = null;
+        _timeoutCts = null;
         _core.Reset();
         _cancellationTokenRegistration = default;
         Next = null;
@@ -101,6 +110,7 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
         finally
         {
             _cancellationTokenRegistration.Dispose();
+            _timeoutCts?.Dispose();
             _ownerPool?.Return(this);
         }
     }

@@ -69,7 +69,48 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 **Throws**:
 - `OperationCanceledException` - If the operation is canceled via the cancellation token.
 
-### TryReset
+### LockAsync (timeout)
+
+```csharp
+public ValueTask<Releaser> LockAsync(TimeSpan timeout)
+```
+
+Asynchronously acquires the lock, or throws `OperationCanceledException` if the timeout elapses before the lock becomes available.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `LockAsync()` without allocating a `CancellationTokenSource`).
+
+**Returns**: A `ValueTask<Releaser>` that completes when the lock is acquired. Dispose the result to release the lock.
+
+**Throws**:
+- `OperationCanceledException` — If the timeout elapses before the lock can be acquired.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes**:
+
+| Scenario | CancellationTokenSource allocated? |
+|---|---|
+| Lock immediately available | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and locked | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+**Example**:
+
+```csharp
+try
+{
+    using (await _lock.LockAsync(TimeSpan.FromSeconds(2)))
+    {
+        await DoWorkAsync();
+    }
+}
+catch (OperationCanceledException)
+{
+    // Could not acquire lock within 2 seconds
+    HandleTimeout();
+}
+```
 
 ```csharp
 public bool TryReset()
@@ -201,6 +242,22 @@ Cancellation registrations allocate a small control structure. For hot-path code
 ### DO: Configure a larger pool under high contention
 
 If you expect many concurrent waiters, provide a custom object pool with a larger retention size so allocations are avoided when the pool can satisfy requests.
+
+### DO: Use `LockAsync(TimeSpan)` to bound wait time
+
+```csharp
+try
+{
+    using (await _lock.LockAsync(TimeSpan.FromSeconds(5)))
+    {
+        _data = await FetchAsync();
+    }
+}
+catch (OperationCanceledException)
+{
+    HandleTimeout();
+}
+```
 
 ### DON'T: Create new locks repeatedly
 

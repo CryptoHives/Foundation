@@ -430,6 +430,81 @@ public class AsyncLockTests
         Assert.That(ev.IsTaken, Is.False);
     }
 
+    [Test]
+    public async Task LockAsyncWithTimeoutCompletesWhenLockAvailableBeforeTimeout()
+    {
+        var customPool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: customPool);
+
+        using (await mutex.LockAsync().ConfigureAwait(false)) { }
+
+        using (await mutex.LockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken);
+        }
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
+        Assert.That(customPool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task LockAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var mutex = new AsyncLock();
+
+        using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await mutex.LockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task LockAsyncWithZeroTimeoutCompletesImmediatelyWhenUnlocked()
+    {
+        var mutex = new AsyncLock();
+
+        using (await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken);
+        }
+    }
+
+    [Test]
+    public async Task LockAsyncWithZeroTimeoutThrowsWhenLocked()
+    {
+        var mutex = new AsyncLock();
+
+        using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public void LockAsyncWithNegativeTimeoutThrows()
+    {
+        var mutex = new AsyncLock();
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => mutex.LockAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task LockAsyncWithInfiniteTimeoutBehavesLikeLockAsync()
+    {
+        var mutex = new AsyncLock();
+
+        using (await mutex.LockAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken);
+        }
+    }
+
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()
     {
         return new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);

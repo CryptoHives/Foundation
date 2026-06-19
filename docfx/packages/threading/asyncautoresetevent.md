@@ -1,4 +1,4 @@
-﻿# AsyncAutoResetEvent
+# AsyncAutoResetEvent
 
 ## Overview
 
@@ -22,6 +22,7 @@ public sealed class AsyncAutoResetEvent
 - **Local waiter optimization**: First queued waiter uses a pre-allocated local waiter to avoid allocations under low contention
 - **ValueTask-based API**: Low-allocation async operations
 - **Cancellation support**: Full `CancellationToken` support for queued waiters. Allocation free registration for .NET versions >= 6.0.
+- **Timeout support**: Direct `WaitAsync(TimeSpan)` overload — no `Task` conversion required. Allocates only one `CancellationTokenSource` per timed wait; disposed automatically on await.
 - **Thread-safe**: All operations are thread-safe
 - **FIFO queue**: Waiters are released in first-in-first-out order
 
@@ -107,6 +108,45 @@ await t;  // OK - Task may be awaited multiple times
 ValueTask vt = _event.WaitAsync();
 await vt;
 await vt;  // Throws InvalidOperationException!
+```
+
+### WaitAsync (timeout)
+
+```csharp
+public ValueTask WaitAsync(TimeSpan timeout)
+```
+
+Asynchronously waits for the event to be signaled, or throws `OperationCanceledException` if the timeout elapses first.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `CancellationTokenSource`).
+
+**Returns**: A `ValueTask` that completes when the event is signaled.
+
+**Throws**:
+- `OperationCanceledException` — If the timeout elapses before the event is signaled.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes**:
+
+| Scenario | CancellationTokenSource allocated? |
+|---|---|
+| Event already signaled | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and not signaled | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+**Examples**:
+
+```csharp
+// Preferred: direct timeout await — no Task conversion
+await _event.WaitAsync(TimeSpan.FromSeconds(5));
+
+// Previously required — now unnecessary:
+// await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+
+// Infinite timeout delegates to WaitAsync() — no CTS allocation
+await _event.WaitAsync(Timeout.InfiniteTimeSpan);
 ```
 
 ### Set
@@ -300,6 +340,26 @@ Storing the `Task` result of `AsTask()` before `Set()` forces an asynchronous co
 ValueTask vt = _event.WaitAsync();
 await vt;
 await vt; // throws InvalidOperationException
+```
+
+### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+
+Avoid the `AsTask().WaitAsync(timeout)` pattern — it forces a `Task` allocation and may cause the 10x–100x slowdown described above. Use the direct timeout overload instead:
+
+```csharp
+// Good: direct timeout, ValueTask stays allocation-light
+try
+{
+    await _event.WaitAsync(TimeSpan.FromSeconds(2));
+    ProcessSignal();
+}
+catch (OperationCanceledException)
+{
+    HandleTimeout();
+}
+
+// Bad: allocates Task, may degrade performance under RunContinuationAsynchronously=true
+await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
 ```
 
 ## Common Patterns

@@ -1263,5 +1263,107 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.False);
         Assert.That(rwLock.IsWriteLockHeld, Is.False);
     }
+
+    [Test]
+    public async Task ReaderLockAsyncWithTimeoutCompletesWhenLockAvailable()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        using (await rwLock.ReaderLockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+        {
+            Assert.That(rwLock.IsReadLockHeld);
+        }
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task ReaderLockAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        using var outerWriter = await rwLock.WriterLockAsync().ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+    }
+
+    [Test]
+    public void ReaderLockAsyncWithNegativeTimeoutThrows()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WriterLockAsyncWithTimeoutCompletesWhenLockAvailable()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        using (await rwLock.WriterLockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+        {
+            Assert.That(rwLock.IsWriteLockHeld);
+        }
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WriterLockAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        using var outerReader = await rwLock.ReaderLockAsync().ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+    }
+
+    [Test]
+    public void WriterLockAsyncWithNegativeTimeoutThrows()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task UpgradeableReaderLockAsyncWithTimeoutCompletesWhenLockAvailable()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        using (await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld);
+        }
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task UpgradeableReaderLockAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        using var outerUpgr = await rwLock.UpgradeableReaderLockAsync().ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+    }
+
+    [Test]
+    public void UpgradeableReaderLockAsyncWithNegativeTimeoutThrows()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
 }
 

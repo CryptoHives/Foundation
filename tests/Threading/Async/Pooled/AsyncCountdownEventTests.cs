@@ -269,4 +269,64 @@ public class AsyncCountdownEventTests
         countdown.RunContinuationAsynchronously = true;
         Assert.That(countdown.RunContinuationAsynchronously, Is.True);
     }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutCompletesWhenCountReachesZeroBeforeTimeout()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+        _ = Task.Run(async () => { await Task.Delay(50).ConfigureAwait(false); countdown.Signal(); });
+
+        await countdown.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+        Assert.That(countdown.CurrentCount, Is.EqualTo(0));
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await countdown.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutCompletesImmediatelyWhenAlreadyZero()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+        countdown.Signal();
+
+        await countdown.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutThrowsWhenCountIsNonZero()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await countdown.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public void WaitAsyncWithNegativeTimeoutThrows()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => countdown.WaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WaitAsyncWithInfiniteTimeoutBehavesLikeWaitAsync()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+        countdown.Signal();
+
+        await countdown.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
+    }
 }

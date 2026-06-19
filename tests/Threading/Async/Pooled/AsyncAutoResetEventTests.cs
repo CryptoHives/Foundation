@@ -546,5 +546,111 @@ public class AsyncAutoResetEventTests
         Assert.That(ev.IsSet, Is.False);
         Assert.That(ev.RunContinuationAsynchronously, Is.True);
     }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutCompletesWhenSignalledBeforeTimeout()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: tpvts);
+
+        _ = Task.Run(async () => { await Task.Delay(50).ConfigureAwait(false); ev.Set(); });
+
+        await ev.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await ev.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSignalled()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutCompletesImmediatelyWhenSignalled()
+    {
+        var ev = new AsyncAutoResetEvent(initialState: true);
+
+        await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.False);
+    }
+
+    [Test]
+    public void WaitAsyncWithNegativeTimeoutThrows()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+#pragma warning disable VSTHRD110 // Observe the awaitable result
+        Assert.Throws<ArgumentOutOfRangeException>(() => ev.WaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WaitAsyncWithInfiniteTimeoutBehavesLikeWaitAsync()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+        ev.Set();
+
+        await ev.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.False);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutPooledWaitersAreReturnedOnSignal()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: tpvts);
+
+        // Force use of pooled waiter by exhausting the local waiter with a first pending wait.
+        var waiter1 = ev.WaitAsync(TimeSpan.FromSeconds(5));
+        var waiter2 = ev.WaitAsync(TimeSpan.FromSeconds(5));
+
+        ev.Set();
+        ev.Set();
+
+        await waiter1.ConfigureAwait(false);
+        await waiter2.ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutPooledWaitersAreReturnedOnTimeout()
+    {
+        var tpvts = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: tpvts);
+
+        var waiter1 = ev.WaitAsync(TimeSpan.FromMilliseconds(200));
+        var waiter2 = ev.WaitAsync(TimeSpan.FromMilliseconds(200));
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter1.ConfigureAwait(false));
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+        Assert.That(tpvts.ActiveCount, Is.Zero);
+    }
 }
 

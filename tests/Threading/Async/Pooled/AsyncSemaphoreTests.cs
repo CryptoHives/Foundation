@@ -217,4 +217,70 @@ public class AsyncSemaphoreTests
         semaphore.RunContinuationAsynchronously = true;
         Assert.That(semaphore.RunContinuationAsynchronously, Is.True);
     }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutCompletesWhenPermitAvailableBeforeTimeout()
+    {
+        var customPool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: customPool);
+
+        _ = Task.Run(async () => { await Task.Delay(50).ConfigureAwait(false); semaphore.Release(); });
+
+        await semaphore.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+        Assert.That(semaphore.InternalWaiterInUse, Is.False);
+        Assert.That(customPool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var semaphore = new AsyncSemaphore(0);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await semaphore.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(semaphore.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutCompletesImmediatelyWhenPermitAvailable()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+        await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+
+        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutThrowsWhenNoPermit()
+    {
+        var semaphore = new AsyncSemaphore(0);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public void WaitAsyncWithNegativeTimeoutThrows()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => semaphore.WaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WaitAsyncWithInfiniteTimeoutBehavesLikeWaitAsync()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+        await semaphore.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
+
+        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+    }
 }
