@@ -22,12 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: pr
 
       - name: Checkout main branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: main
           path: main
@@ -35,7 +35,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 8.x
+          dotnet-version: 10.x
 
       - name: Install Microsoft.DotNet.ApiCompat.Tool
         run: dotnet tool install --global Microsoft.DotNet.ApiCompat.Tool
@@ -44,13 +44,13 @@ jobs:
         working-directory: main
         run: |
           dotnet restore "CryptoHives .NET Foundation.sln"
-          dotnet build "CryptoHives .NET Foundation.sln" --configuration Release --no-restore -p:TargetFramework=net8.0
+          dotnet build "CryptoHives .NET Foundation.sln" --configuration Release --no-restore
 
       - name: Build PR branch
         working-directory: pr
         run: |
           dotnet restore "CryptoHives .NET Foundation.sln"
-          dotnet build "CryptoHives .NET Foundation.sln" --configuration Release --no-restore -p:TargetFramework=net8.0
+          dotnet build "CryptoHives .NET Foundation.sln" --configuration Release --no-restore
 
       - name: Check API compatibility - Threading
         continue-on-error: true
@@ -58,8 +58,8 @@ jobs:
         run: |
           echo "## Threading API Compatibility" >> $GITHUB_STEP_SUMMARY
           if microsoft.dotnet.apicompat.tool \
-            --left-assembly main/src/Threading/bin/Release/net8.0/CryptoHives.Foundation.Threading.dll \
-            --right-assembly pr/src/Threading/bin/Release/net8.0/CryptoHives.Foundation.Threading.dll \
+            --left-assembly main/src/Threading/bin/Release/net10.0/CryptoHives.Foundation.Threading.dll \
+            --right-assembly pr/src/Threading/bin/Release/net10.0/CryptoHives.Foundation.Threading.dll \
             --enable-rule-cannot-change-parameter-name false; then
             echo "? No breaking changes detected" >> $GITHUB_STEP_SUMMARY
           else
@@ -72,8 +72,8 @@ jobs:
         run: |
           echo "## Memory API Compatibility" >> $GITHUB_STEP_SUMMARY
           if microsoft.dotnet.apicompat.tool \
-            --left-assembly main/src/Memory/bin/Release/net8.0/CryptoHives.Foundation.Memory.dll \
-            --right-assembly pr/src/Memory/bin/Release/net8.0/CryptoHives.Foundation.Memory.dll \
+            --left-assembly main/src/Memory/bin/Release/net10.0/CryptoHives.Foundation.Memory.dll \
+            --right-assembly pr/src/Memory/bin/Release/net10.0/CryptoHives.Foundation.Memory.dll \
             --enable-rule-cannot-change-parameter-name false; then
             echo "? No breaking changes detected" >> $GITHUB_STEP_SUMMARY
           else
