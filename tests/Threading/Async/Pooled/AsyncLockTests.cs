@@ -1,15 +1,13 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#pragma warning disable CHT001  // ValueTask awaited multiple times - intentionally testing cancellation behavior
-#pragma warning disable IDE1006 // 
+#pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing cancellation behavior
 
 namespace Threading.Tests.Async.Pooled;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
