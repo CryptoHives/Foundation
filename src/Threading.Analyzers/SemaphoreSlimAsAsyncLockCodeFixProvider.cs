@@ -148,7 +148,6 @@ public sealed class SemaphoreSlimAsAsyncLockCodeFixProvider : CodeFixProvider
         // Insert after the last existing using directive, or at the top of the file.
         if (compilationUnit.Usings.Count > 0)
         {
-            var lastUsing = compilationUnit.Usings.Last();
             var newUsings = compilationUnit.Usings.Add(newUsing);
             return compilationUnit.WithUsings(newUsings);
         }
