@@ -9,7 +9,6 @@
     <RootNamespace>CryptoHives.Foundation.Threading.Analyzers.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);NETSDK1005</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,7 +26,6 @@
 
   <ItemGroup>
     <Compile Include="../Common/AssemblyInfo.cs" Link="Properties/AssemblyInfo.cs" />
-    <ProjectReference Include="..\..\src\Threading.Analyzers\Threading.Analyzers.csproj" />
     <ProjectReference Include="../../src/Threading.Analyzers/Threading.Analyzers.csproj" />
   </ItemGroup>
 
