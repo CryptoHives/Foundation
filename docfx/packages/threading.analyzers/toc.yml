@@ -18,3 +18,5 @@
       href: CHT007.md
     - name: CHT008 - Not Consumed
       href: CHT008.md
+    - name: CHT009 - SemaphoreSlim as AsyncLock
+      href: CHT009.md
