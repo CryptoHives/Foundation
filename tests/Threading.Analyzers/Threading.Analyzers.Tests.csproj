@@ -9,6 +9,7 @@
     <RootNamespace>CryptoHives.Foundation.Threading.Analyzers.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);NETSDK1005</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
