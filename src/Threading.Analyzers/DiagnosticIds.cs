@@ -47,4 +47,9 @@ public static class DiagnosticIds
     /// ValueTask not awaited or converted to Task.
     /// </summary>
     public const string NotConsumed = "CHT008";
+
+    /// <summary>
+    /// <c>SemaphoreSlim(1, 1)</c> used as an async lock; replace with <c>AsyncLock</c>.
+    /// </summary>
+    public const string SemaphoreSlimAsAsyncLock = "CHT009";
 }
