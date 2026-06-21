@@ -8,7 +8,6 @@ namespace Threading.Tests.Async.Pooled;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -320,8 +319,11 @@ public class AsyncLockTests
             Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
         }
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -413,8 +415,11 @@ public class AsyncLockTests
         // Cancel after lock is released, should not throw
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -425,9 +430,12 @@ public class AsyncLockTests
         Assert.That(ev.IsTaken, Is.False);
 
         bool reset = ev.TryReset();
-        Assert.That(reset, Is.True);
 
-        Assert.That(ev.IsTaken, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(reset, Is.True);
+            Assert.That(ev.IsTaken, Is.False);
+        }
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()
