@@ -479,6 +479,10 @@ public class AsyncLockTests
         {
             Assert.That(mutex.IsTaken);
         }
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
     }
 
     [Test]
@@ -489,7 +493,11 @@ public class AsyncLockTests
         using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false));
+            _ = await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
     }
 
     [Test]
@@ -498,8 +506,12 @@ public class AsyncLockTests
         var mutex = new AsyncLock();
 
 #pragma warning disable VSTHRD110
+#pragma warning disable CA2012
         Assert.Throws<ArgumentOutOfRangeException>(() => mutex.LockAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore CA2012
 #pragma warning restore VSTHRD110
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
     }
 
     [Test]
@@ -511,6 +523,8 @@ public class AsyncLockTests
         {
             Assert.That(mutex.IsTaken);
         }
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()

@@ -99,7 +99,8 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     {
         _core.Reset();
         _cancellationTokenRegistration = default;
-        _timeoutCts = null;
+        CancellationTokenSource? timeoutCts = Interlocked.Exchange(ref _timeoutCts, null);
+        timeoutCts?.Dispose();
         Next = null;
         Prev = null;
         return Interlocked.Exchange(ref _inUse, 0) == 1;
@@ -115,7 +116,6 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
         finally
         {
             _cancellationTokenRegistration.Dispose();
-            _timeoutCts?.Dispose();
             TryReset();
         }
     }

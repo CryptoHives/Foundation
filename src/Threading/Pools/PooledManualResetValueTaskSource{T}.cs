@@ -92,9 +92,10 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     public override bool TryReset()
     {
         _ownerPool = null;
-        _timeoutCts = null;
         _core.Reset();
         _cancellationTokenRegistration = default;
+        CancellationTokenSource? timeoutCts = Interlocked.Exchange(ref _timeoutCts, null);
+        timeoutCts?.Dispose();
         Next = null;
         Prev = null;
         return true;
@@ -110,7 +111,6 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
         finally
         {
             _cancellationTokenRegistration.Dispose();
-            _timeoutCts?.Dispose();
             _ownerPool?.Return(this);
         }
     }
