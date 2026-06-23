@@ -495,8 +495,8 @@ public sealed class AsyncBarrier
             waiter.CancellationTokenRegistration =
                 waiter.CancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
 #else
-                waiter.CancellationTokenRegistration =
-                    waiter.CancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+            waiter.CancellationTokenRegistration =
+                waiter.CancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
 #endif
         }
         else
