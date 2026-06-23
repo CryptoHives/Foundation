@@ -1045,7 +1045,6 @@ public sealed class AsyncReaderWriterLock : IResettable
     private ValueTask<Releaser> UpgradeToWriterLockImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
         // no fast path because the upgrade always transitions from a contested state
-
         _spinLock.Enter();
         try
         {
@@ -1358,7 +1357,7 @@ public sealed class AsyncReaderWriterLock : IResettable
             return;
         }
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingReaders, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveReadersWaiter(waiter);
         toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
     }
 
@@ -1380,7 +1379,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingReaders, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveReadersWaiter(waiter);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
@@ -1394,8 +1393,27 @@ public sealed class AsyncReaderWriterLock : IResettable
             return;
         }
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingUpgradeableReaders, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradeableReadersWaiter(waiter);
         toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<Releaser>? RemoveReadersWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    {
+        _spinLock.Enter();
+        try
+        {
+            if (_waitingReaders.Remove(waiter))
+            {
+                return waiter;
+            }
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
+        return null;
     }
 
 #if NET6_0_OR_GREATER
@@ -1416,13 +1434,29 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingUpgradeableReaders, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradeableReadersWaiter(waiter);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
-    /// <summary>
-    /// Callback used with <see cref="Timer"/> to trigger timeout.
-    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<Releaser>? RemoveUpgradeableReadersWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    {
+        _spinLock.Enter();
+        try
+        {
+            if (_waitingUpgradeableReaders.Remove(waiter))
+            {
+                return waiter;
+            }
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
+        return null;
+    }
+
     private void WriterTimerCallback(object? state)
     {
         if (state is not ManualResetValueTaskSource<Releaser> waiter)
@@ -1430,7 +1464,7 @@ public sealed class AsyncReaderWriterLock : IResettable
             return;
         }
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingWriters, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWritersWaiter(waiter);
         toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
     }
 
@@ -1452,13 +1486,29 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingWriters, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWritersWaiter(waiter);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
-    /// <summary>
-    /// Callback used with <see cref="Timer"/> to trigger timeout.
-    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<Releaser>? RemoveWritersWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    {
+        _spinLock.Enter();
+        try
+        {
+            if (_waitingWriters.Remove(waiter))
+            {
+                return waiter;
+            }
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
+        return null;
+    }
+
     private void UpgradedWriterTimerCallback(object? state)
     {
         if (state is not ManualResetValueTaskSource<Releaser> waiter)
@@ -1466,7 +1516,7 @@ public sealed class AsyncReaderWriterLock : IResettable
             return;
         }
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingUpgradedWriters, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradedWritersWaiter(waiter);
         toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
     }
 
@@ -1488,20 +1538,17 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(_waitingUpgradedWriters, waiter);
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradedWritersWaiter(waiter);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
-    /// <summary>
-    /// O(1) removal from intrusive linked list.
-    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<Releaser>? RemoveWaiter(WaiterQueue<Releaser> waiterQueue, ManualResetValueTaskSource<Releaser> waiter)
+    private ManualResetValueTaskSource<Releaser>? RemoveUpgradedWritersWaiter(ManualResetValueTaskSource<Releaser> waiter)
     {
         _spinLock.Enter();
         try
         {
-            if (waiterQueue.Remove(waiter))
+            if (_waitingUpgradedWriters.Remove(waiter))
             {
                 return waiter;
             }
