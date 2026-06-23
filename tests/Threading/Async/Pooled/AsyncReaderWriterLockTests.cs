@@ -90,13 +90,19 @@ public class AsyncReaderWriterLockTests
 
         using (await lockTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsReadLockHeld, Is.True);
-            Assert.That(rwLock.IsWriteLockHeld, Is.False);
-            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.IsReadLockHeld, Is.True);
+                Assert.That(rwLock.IsWriteLockHeld, Is.False);
+                Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            }
         }
 
-        Assert.That(rwLock.IsReadLockHeld, Is.False);
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsReadLockHeld, Is.False);
+            Assert.That(rwLock.CurrentReaderCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -110,8 +116,11 @@ public class AsyncReaderWriterLockTests
 
         using (await lockTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsWriteLockHeld, Is.True);
-            Assert.That(rwLock.IsReadLockHeld, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.IsWriteLockHeld, Is.True);
+                Assert.That(rwLock.IsReadLockHeld, Is.False);
+            }
         }
 
         Assert.That(rwLock.IsWriteLockHeld, Is.False);
@@ -128,9 +137,12 @@ public class AsyncReaderWriterLockTests
 
         using (await lockTask.ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsWriteLockHeld, Is.False);
-            Assert.That(rwLock.IsReadLockHeld, Is.True);
-            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.IsWriteLockHeld, Is.False);
+                Assert.That(rwLock.IsReadLockHeld, Is.True);
+                Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            }
         }
 
         Assert.That(rwLock.IsWriteLockHeld, Is.False);
@@ -146,11 +158,14 @@ public class AsyncReaderWriterLockTests
         using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
         using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
         {
-            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(3));
-            Assert.That(rwLock.IsReadLockHeld, Is.True);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(3));
+                Assert.That(rwLock.IsReadLockHeld, Is.True);
+            }
         }
 
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
+        Assert.That(rwLock.CurrentReaderCount, Is.Zero);
     }
 
     [Test]
@@ -163,23 +178,35 @@ public class AsyncReaderWriterLockTests
         var lockTask2 = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
         var lockTask3 = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(3));
-        Assert.That(rwLock.IsReadLockHeld, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(3));
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
+        }
 
         lockTask1.Dispose();
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(2));
-        Assert.That(rwLock.IsReadLockHeld, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(2));
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
+        }
 
         lockTask2.Dispose();
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
-        Assert.That(rwLock.IsReadLockHeld, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            Assert.That(rwLock.IsReadLockHeld, Is.True);
+        }
 
         lockTask3.Dispose();
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
-        Assert.That(rwLock.IsReadLockHeld, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.CurrentReaderCount, Is.Zero);
+            Assert.That(rwLock.IsReadLockHeld, Is.False);
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        }
     }
 
     [Test]
@@ -193,8 +220,11 @@ public class AsyncReaderWriterLockTests
         using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
         {
             readerTask = rwLock.ReaderLockAsync(ct);
-            Assert.That(readerTask.IsCompleted, Is.False);
-            Assert.That(rwLock.WaitingReaderCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(readerTask.IsCompleted, Is.False);
+                Assert.That(rwLock.WaitingReaderCount, Is.EqualTo(1));
+            }
         }
 
         using (await readerTask.ConfigureAwait(false))
@@ -202,8 +232,11 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.IsReadLockHeld, Is.True);
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        }
     }
 
     [Test]
@@ -217,8 +250,11 @@ public class AsyncReaderWriterLockTests
         using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
         {
             upgradeableReaderTask = rwLock.UpgradeableReaderLockAsync(ct);
-            Assert.That(upgradeableReaderTask.IsCompleted, Is.False);
-            Assert.That(rwLock.WaitingUpgradeableReaderCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(upgradeableReaderTask.IsCompleted, Is.False);
+                Assert.That(rwLock.WaitingUpgradeableReaderCount, Is.EqualTo(1));
+            }
         }
 
         using (await upgradeableReaderTask.ConfigureAwait(false))
@@ -226,8 +262,11 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.IsReadLockHeld, Is.True);
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        }
     }
 
     [Test]
@@ -241,8 +280,11 @@ public class AsyncReaderWriterLockTests
         using (await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
         {
             upgradeableReaderTask = rwLock.UpgradeableReaderLockAsync(ct);
-            Assert.That(upgradeableReaderTask.IsCompleted, Is.False);
-            Assert.That(rwLock.WaitingUpgradeableReaderCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(upgradeableReaderTask.IsCompleted, Is.False);
+                Assert.That(rwLock.WaitingUpgradeableReaderCount, Is.EqualTo(1));
+            }
         }
 
         using (await upgradeableReaderTask.ConfigureAwait(false))
@@ -250,8 +292,11 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.IsReadLockHeld, Is.True);
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        }
     }
 
     [Test]
@@ -265,8 +310,11 @@ public class AsyncReaderWriterLockTests
         using (var readerReleaser = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
         {
             writerTask = rwLock.WriterLockAsync(ct);
-            Assert.That(writerTask.IsCompleted, Is.False);
-            Assert.That(rwLock.WaitingWriterCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(writerTask.IsCompleted, Is.False);
+                Assert.That(rwLock.WaitingWriterCount, Is.EqualTo(1));
+            }
         }
 
         using (await writerTask.ConfigureAwait(false))
@@ -274,8 +322,11 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.IsWriteLockHeld, Is.True);
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+        }
     }
 
     [Test]
@@ -310,12 +361,15 @@ public class AsyncReaderWriterLockTests
         await Task.Delay(100, ct).ConfigureAwait(false);
 
         var items = order.ToArray();
-        Assert.That(items[0], Is.EqualTo("writer"));
-        Assert.That(items[1], Is.EqualTo("reader"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(items[0], Is.EqualTo("writer"));
+            Assert.That(items[1], Is.EqualTo("reader"));
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -333,9 +387,12 @@ public class AsyncReaderWriterLockTests
             r2 = rwLock.ReaderLockAsync(ct);
             r3 = rwLock.ReaderLockAsync(ct);
 
-            Assert.That(r1.IsCompleted, Is.False);
-            Assert.That(r2.IsCompleted, Is.False);
-            Assert.That(r3.IsCompleted, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(r1.IsCompleted, Is.False);
+                Assert.That(r2.IsCompleted, Is.False);
+                Assert.That(r3.IsCompleted, Is.False);
+            }
         }
 
         using (await r3.ConfigureAwait(false))
@@ -345,11 +402,14 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(3));
         }
 
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.CurrentReaderCount, Is.Zero);
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -373,9 +433,12 @@ public class AsyncReaderWriterLockTests
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -399,9 +462,12 @@ public class AsyncReaderWriterLockTests
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -425,9 +491,12 @@ public class AsyncReaderWriterLockTests
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -452,9 +521,12 @@ public class AsyncReaderWriterLockTests
 #pragma warning restore CHT001 // ValueTask awaited multiple times
         }
 
-        Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
-        Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
+            Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -469,8 +541,11 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
             var readerTask = rwLock.ReaderLockAsync(cts.Token);
-            Assert.That(readerTask.IsCompleted, Is.True);
-            Assert.That(readerTask.IsCanceled, Is.True);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(readerTask.IsCompleted, Is.True);
+                Assert.That(readerTask.IsCanceled, Is.True);
+            }
         }
     }
 
@@ -486,8 +561,11 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
             var readerTask = rwLock.UpgradeableReaderLockAsync(cts.Token);
-            Assert.That(readerTask.IsCompleted, Is.True);
-            Assert.That(readerTask.IsCanceled, Is.True);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(readerTask.IsCompleted, Is.True);
+                Assert.That(readerTask.IsCanceled, Is.True);
+            }
         }
     }
 
@@ -503,8 +581,11 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
             var writerTask = rwLock.WriterLockAsync(cts.Token);
-            Assert.That(writerTask.IsCompleted, Is.True);
-            Assert.That(writerTask.IsCanceled, Is.True);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(writerTask.IsCompleted, Is.True);
+                Assert.That(writerTask.IsCanceled, Is.True);
+            }
         }
     }
 
@@ -529,10 +610,15 @@ public class AsyncReaderWriterLockTests
         var releaser1 = rwLock.ReaderLockAsync(ct).AsTask().GetAwaiter().GetResult();
         var releaser2 = rwLock.ReaderLockAsync(ct).AsTask().GetAwaiter().GetResult();
 
-        Assert.That(releaser1.Equals(releaser1), Is.True);
-        Assert.That(releaser1 == releaser2, Is.True);
-        Assert.That(releaser1 != releaser2, Is.False);
-        Assert.That(releaser1.GetHashCode(), Is.EqualTo(releaser2.GetHashCode()));
+        using (Assert.EnterMultipleScope())
+        {
+#pragma warning disable NUnit2010 // Use EqualConstraint for better assertion messages in case of failure
+            Assert.That(releaser1.Equals(releaser1), Is.True);
+            Assert.That(releaser1 == releaser2, Is.True);
+            Assert.That(releaser1 != releaser2, Is.False);
+            Assert.That(releaser1.GetHashCode(), Is.EqualTo(releaser2.GetHashCode()));
+#pragma warning restore NUnit2010 // Use EqualConstraint for better assertion messages in case of failure
+        }
 
         releaser1.Dispose();
         releaser2.Dispose();
@@ -553,19 +639,25 @@ public class AsyncReaderWriterLockTests
             {
                 // Upgrade should wait while the other reader is present
                 upgradeTask = upgr.UpgradeToWriterLockAsync(ct);
-                Assert.That(upgradeTask.IsCompleted, Is.False);
+                using (Assert.EnterMultipleScope())
+                {
+                    Assert.That(upgradeTask.IsCompleted, Is.False);
 
-                // Current state: upgradeable present + one regular reader => count == 2
-                Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
-                Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(2));
+                    // Current state: upgradeable present + one regular reader => count == 2
+                    Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
+                    Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(2));
+                }
 
                 // Release the regular reader and complete the upgrade
             }
 
             using (await upgradeTask.ConfigureAwait(false))
             {
-                Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.True);
-                Assert.That(rwLock.IsWriteLockHeld, Is.True);
+                using (Assert.EnterMultipleScope())
+                {
+                    Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.True);
+                    Assert.That(rwLock.IsWriteLockHeld, Is.True);
+                }
             }
 
             using (Assert.EnterMultipleScope())
@@ -576,7 +668,7 @@ public class AsyncReaderWriterLockTests
             }
         }
 
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
+        Assert.That(rwLock.CurrentReaderCount, Is.Zero);
     }
 
     [Test]
@@ -691,8 +783,11 @@ public class AsyncReaderWriterLockTests
 
         // clean up other reader and ensure state is consistent: only upgradeable reader remains
         otherReader.Dispose();
-        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
+            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+        }
     }
 
     [Test]
@@ -725,8 +820,11 @@ public class AsyncReaderWriterLockTests
         using (var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
         {
             var writer = upgr.UpgradeToWriterLockAsync(cts.Token);
-            Assert.That(writer.IsCompleted, Is.True);
-            Assert.That(writer.IsCanceled, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(writer.IsCompleted, Is.True);
+                Assert.That(writer.IsCanceled, Is.False);
+            }
             releaser = await writer.ConfigureAwait(false);
         }
         releaser.Dispose();
@@ -753,13 +851,20 @@ public class AsyncReaderWriterLockTests
         Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
-        Assert.That(rwLock.InternalUpgradedWriterWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.InternalUpgradedWriterWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
 
         // clean up other reader and ensure state is consistent: only upgradeable reader remains
         otherReader.Dispose();
-        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
+            Assert.That(rwLock.WaitingReaderCount, Is.Zero);
+            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+        }
     }
 
     [Test]
@@ -844,11 +949,14 @@ public class AsyncReaderWriterLockTests
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
+        using (Assert.EnterMultipleScope())
+        {
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
 
-        Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
-        Assert.That(pool.ActiveCount, Is.EqualTo(0));
+            Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -869,8 +977,11 @@ public class AsyncReaderWriterLockTests
 
         // Release upgraded writer and ensure final state has no upgradeable reader and no readers
         upgWriter.Dispose();
-        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            Assert.That(rwLock.CurrentReaderCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -900,8 +1011,11 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
 
         upg2.Dispose();
-        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            Assert.That(rwLock.CurrentReaderCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -937,8 +1051,11 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
 
         upg2.Dispose();
-        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
-        Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            Assert.That(rwLock.CurrentReaderCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -948,10 +1065,13 @@ public class AsyncReaderWriterLockTests
         var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
         using var r = await rw.ReaderLockAsync(ct).ConfigureAwait(false);
         object boxed = r;
-        Assert.That(r.Equals(boxed), Is.True);
+        Assert.That(r, Is.EqualTo(boxed));
         var copy = r;
-        Assert.That(copy.Equals(r), Is.True);
-        Assert.That(r.GetHashCode(), Is.EqualTo(copy.GetHashCode()));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(copy, Is.EqualTo(r));
+            Assert.That(r.GetHashCode(), Is.EqualTo(copy.GetHashCode()));
+        }
     }
 
     [Test]
@@ -1015,8 +1135,11 @@ public class AsyncReaderWriterLockTests
         var other = await rw.ReaderLockAsync(ct).ConfigureAwait(false);
 
         var attempt = upgr.UpgradeToWriterLockAsync(ct);
-        Assert.That(attempt.IsCompleted, Is.False);
-        Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(attempt.IsCompleted, Is.False);
+            Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
+        }
 
         other.Dispose();
         using (await attempt.ConfigureAwait(false)) { }
@@ -1081,8 +1204,11 @@ public class AsyncReaderWriterLockTests
         {
             var r1 = rw.ReaderLockAsync(ct);
             var r2 = rw.ReaderLockAsync(ct);
-            Assert.That(r1.IsCompleted, Is.False);
-            Assert.That(r2.IsCompleted, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(r1.IsCompleted, Is.False);
+                Assert.That(r2.IsCompleted, Is.False);
+            }
 
             // release writer at end of using - readers should be granted
             await Task.Delay(1, ct).ConfigureAwait(false);
@@ -1121,8 +1247,11 @@ public class AsyncReaderWriterLockTests
 
         // queue an upgraded writer which will wait due to additional reader
         var upgradeAttempt = upgr.UpgradeToWriterLockAsync(ct);
-        Assert.That(upgradeAttempt.IsCompleted, Is.False);
-        Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(upgradeAttempt.IsCompleted, Is.False);
+            Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
+        }
 
         // Now dispose the extra reader to allow the upgrade to proceed and exercise the CompareExchange path
         r.Dispose();
@@ -1191,22 +1320,28 @@ public class AsyncReaderWriterLockTests
     {
         var ev = new AsyncReaderWriterLock();
 
-        Assert.That(ev.CurrentReaderCount, Is.Zero);
-        Assert.That(ev.WaitingReaderCount, Is.Zero);
-        Assert.That(ev.WaitingWriterCount, Is.Zero);
-        Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
-        Assert.That(ev.WaitingUpgradedWriterCount, Is.Zero);
-        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.CurrentReaderCount, Is.Zero);
+            Assert.That(ev.WaitingReaderCount, Is.Zero);
+            Assert.That(ev.WaitingWriterCount, Is.Zero);
+            Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
+            Assert.That(ev.WaitingUpgradedWriterCount, Is.Zero);
+            Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        }
 
         bool reset = ev.TryReset();
-        Assert.That(reset, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(reset, Is.True);
 
-        Assert.That(ev.CurrentReaderCount, Is.Zero);
-        Assert.That(ev.WaitingReaderCount, Is.Zero);
-        Assert.That(ev.WaitingWriterCount, Is.Zero);
-        Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
-        Assert.That(ev.WaitingUpgradedWriterCount, Is.Zero);
-        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+            Assert.That(ev.CurrentReaderCount, Is.Zero);
+            Assert.That(ev.WaitingReaderCount, Is.Zero);
+            Assert.That(ev.WaitingWriterCount, Is.Zero);
+            Assert.That(ev.WaitingUpgradeableReaderCount, Is.Zero);
+            Assert.That(ev.WaitingUpgradedWriterCount, Is.Zero);
+            Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        }
     }
 
     [Test]
@@ -1255,13 +1390,19 @@ public class AsyncReaderWriterLockTests
         // This transitions status to UpgradedWriterWithoutReader.
         upgr.Dispose();
 
-        Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.True);
-        Assert.That(rwLock.IsWriteLockHeld, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.True);
+            Assert.That(rwLock.IsWriteLockHeld, Is.True);
+        }
 
         upgWriter.Dispose();
 
-        Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.False);
-        Assert.That(rwLock.IsWriteLockHeld, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.False);
+            Assert.That(rwLock.IsWriteLockHeld, Is.False);
+        }
     }
 
     [Test]

@@ -33,9 +33,12 @@ public class AsyncBarrierTests
     public void ParticipantCountIsCorrect()
     {
         var barrier = new AsyncBarrier(5);
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
+            Assert.That(barrier.CurrentPhase, Is.Zero);
+        }
     }
 
     [Test]
@@ -47,8 +50,11 @@ public class AsyncBarrierTests
         Assert.That(waiter.IsCompleted, Is.True);
         await waiter.ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+        }
     }
 
     [Test]
@@ -71,10 +77,12 @@ public class AsyncBarrierTests
         await barrier.SignalAndWaitAsync().ConfigureAwait(false);
 
         int result = await t1.ConfigureAwait(false);
-        Assert.That(result, Is.EqualTo(2));
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.EqualTo(2));
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -103,9 +111,12 @@ public class AsyncBarrierTests
         var barrier = new AsyncBarrier(2);
 
         long phase = barrier.AddParticipant();
-        Assert.That(phase, Is.EqualTo(0));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(phase, Is.Zero);
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        }
 
         await Task.WhenAll(
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false)),
@@ -113,9 +124,12 @@ public class AsyncBarrierTests
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false))
         ).ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        }
     }
 
     [Test]
@@ -132,17 +146,22 @@ public class AsyncBarrierTests
         var barrier = new AsyncBarrier(3, pool: customPool);
 
         barrier.RemoveParticipant();
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        }
 
         await Task.WhenAll(
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false)),
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false))
         ).ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -157,11 +176,13 @@ public class AsyncBarrierTests
         barrier.RemoveParticipant();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -190,9 +211,11 @@ public class AsyncBarrierTests
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await barrier.SignalAndWaitAsync(cts.Token).ConfigureAwait(false));
 
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -212,9 +235,11 @@ public class AsyncBarrierTests
             await waiter.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -237,13 +262,19 @@ public class AsyncBarrierTests
 
         // Add 2 more participants
         barrier.AddParticipants(2);
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
+        }
 
         // Remove 1 participant
         barrier.RemoveParticipant();
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(4));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(4));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(4));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(4));
+        }
     }
 
     [Test]
@@ -302,8 +333,11 @@ public class AsyncBarrierTests
         ValueTask waiter1 = barrier.SignalAndWaitAsync();
         ValueTask waiter2 = barrier.SignalAndWaitAsync();
 
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+            Assert.That(barrier.CurrentPhase, Is.Zero);
+        }
 
         // Remove the last remaining participant - should release waiters
         barrier.RemoveParticipant();
@@ -311,9 +345,12 @@ public class AsyncBarrierTests
         await waiter1.ConfigureAwait(false);
         await waiter2.ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        }
     }
 
     [Test]
@@ -327,8 +364,11 @@ public class AsyncBarrierTests
 
         // Add another participant - now need 2 more to release
         barrier.AddParticipant();
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        }
 
         // Signal twice more to release all
         ValueTask waiter2 = barrier.SignalAndWaitAsync();
@@ -360,7 +400,7 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(0));
+        Assert.That(barrier.CurrentPhase, Is.Zero);
 
         await Task.WhenAll(
             barrier.SignalAndWaitAsync().AsTask(),
@@ -390,7 +430,7 @@ public class AsyncBarrierTests
         var barrier = new AsyncBarrier(1);
 
         long phase0 = barrier.AddParticipant();
-        Assert.That(phase0, Is.EqualTo(0));
+        Assert.That(phase0, Is.Zero);
 
         // Complete phase 0
         await Task.WhenAll(
@@ -453,8 +493,11 @@ public class AsyncBarrierTests
         BarrierPostPhaseException? ex = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await barrier.SignalAndWaitAsync().ConfigureAwait(false));
 
-        Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
-        Assert.That(ex.InnerException!.Message, Is.EqualTo("Post-phase error"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(ex.InnerException!.Message, Is.EqualTo("Post-phase error"));
+        }
     }
 
     [Test]
@@ -483,14 +526,18 @@ public class AsyncBarrierTests
             await waiter2.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
-        Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
-        Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
-        Assert.That(ex3!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
+        using (Assert.EnterMultipleScope())
+        {
 
-        // Phase should still advance after exception
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
+            Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
+            Assert.That(ex3!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
 
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+            // Phase should still advance after exception
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -527,8 +574,11 @@ public class AsyncBarrierTests
         // Remove the last remaining participant - triggers post-phase action
         BarrierPostPhaseException? ex = Assert.Throws<BarrierPostPhaseException>(barrier.RemoveParticipant);
 
-        Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
-        Assert.That(ex.InnerException!.Message, Is.EqualTo("Remove participant error"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(ex.InnerException!.Message, Is.EqualTo("Remove participant error"));
+        }
     }
 
     [Test]
@@ -554,10 +604,12 @@ public class AsyncBarrierTests
             await waiter2.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
-        Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Remove error"));
-        Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Remove error"));
+            Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]

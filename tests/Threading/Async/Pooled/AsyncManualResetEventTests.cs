@@ -23,8 +23,11 @@ public class AsyncManualResetEventTests
     public void IsSetReflectsEventState()
     {
         var mre = new AsyncManualResetEvent(set: false);
-        Assert.That(mre.IsSet, Is.False);
-        Assert.That(mre.RunContinuationAsynchronously, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.IsSet, Is.False);
+            Assert.That(mre.RunContinuationAsynchronously, Is.True);
+        }
 
         mre.Set();
         Assert.That(mre.IsSet, Is.True);
@@ -68,8 +71,11 @@ public class AsyncManualResetEventTests
 
         await AsyncAssert.NeverCompletesAsync(task).ConfigureAwait(false);
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Theory]
@@ -102,8 +108,11 @@ public class AsyncManualResetEventTests
 
         ValueTask task = mre.WaitAsync();
 
-        Assert.That(task.IsCompleted, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(task.IsCompleted, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -115,8 +124,11 @@ public class AsyncManualResetEventTests
         Task t1 = mre.WaitAsync().AsTask();
         Task t2 = mre.WaitAsync().AsTask();
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        }
 
         mre.Set();
 
@@ -128,8 +140,11 @@ public class AsyncManualResetEventTests
             Assert.That(mre.IsSet, Is.True);
         }
 
-        Assert.That(mre.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -143,8 +158,11 @@ public class AsyncManualResetEventTests
 
         Task[] taskWaiters = Enumerable.Range(0, numberOfWaiters).Select(_ => mre.WaitAsync().AsTask()).ToArray();
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+        }
 
         foreach (Task t in taskWaiters)
         {
@@ -161,8 +179,11 @@ public class AsyncManualResetEventTests
             Assert.That(mre.IsSet, Is.True);
         }
 
-        Assert.That(mre.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -180,8 +201,11 @@ public class AsyncManualResetEventTests
         Task wait = mre.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -195,8 +219,11 @@ public class AsyncManualResetEventTests
         Task wait = mre.WaitAsync().AsTask();
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -216,8 +243,11 @@ public class AsyncManualResetEventTests
 
         await waiter.ConfigureAwait(false);
 
-        Assert.That(mre.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -234,9 +264,11 @@ public class AsyncManualResetEventTests
 
         await mre.WaitAsync().ConfigureAwait(false);
 
-        Assert.That(mre.IsSet, Is.True);
-
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.IsSet, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -252,8 +284,11 @@ public class AsyncManualResetEventTests
 
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -269,8 +304,11 @@ public class AsyncManualResetEventTests
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -286,8 +324,11 @@ public class AsyncManualResetEventTests
 
         await vt.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -301,23 +342,32 @@ public class AsyncManualResetEventTests
         var waiter2 = ev.WaitAsync(cts.Token);
         var waiter3 = ev.WaitAsync();
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(2));
+        }
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        }
 
         ev.Set();
 
         await waiter1.ConfigureAwait(false);
         await waiter3.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -345,10 +395,12 @@ public class AsyncManualResetEventTests
         Assert.That(ev.IsSet, Is.True);
 
         bool reset = ev.TryReset();
-        Assert.That(reset, Is.True);
-
-        Assert.That(ev.IsSet, Is.False);
-        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(reset, Is.True);
+            Assert.That(ev.IsSet, Is.False);
+            Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        }
     }
 
     [Test]
@@ -361,8 +413,11 @@ public class AsyncManualResetEventTests
 
         await ev.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]

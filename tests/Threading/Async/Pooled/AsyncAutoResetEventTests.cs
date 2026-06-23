@@ -23,8 +23,11 @@ public class AsyncAutoResetEventTests
     public async Task IsSetReflectsEventState()
     {
         var ev = new AsyncAutoResetEvent(initialState: false);
-        Assert.That(ev.IsSet, Is.False);
-        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.IsSet, Is.False);
+            Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        }
 
         ev.Set();
         Assert.That(ev.IsSet, Is.True);
@@ -82,18 +85,24 @@ public class AsyncAutoResetEventTests
         // Wait for continuation to complete
         await waiter.ConfigureAwait(false);
 
-        Assert.That(beforeContinuation, Is.EqualTo(0));
+        Assert.That(beforeContinuation, Is.Zero);
         if (runContinuationAsynchronously)
         {
-            // Continuation should not have run inline
-            Assert.That(afterContinuation, Is.EqualTo(1));
-            Assert.That(stage, Is.EqualTo(100));
+            using (Assert.EnterMultipleScope())
+            {
+                // Continuation should not have run inline
+                Assert.That(afterContinuation, Is.EqualTo(1));
+                Assert.That(stage, Is.EqualTo(100));
+            }
         }
         else
         {
-            // Continuation may have run inline
-            Assert.That(afterContinuation, Is.AnyOf(1, 100));
-            Assert.That(stage, Is.AnyOf(2, 100));
+            using (Assert.EnterMultipleScope())
+            {
+                // Continuation may have run inline
+                Assert.That(afterContinuation, Is.AnyOf(1, 100));
+                Assert.That(stage, Is.AnyOf(2, 100));
+            }
         }
     }
 
@@ -212,10 +221,13 @@ public class AsyncAutoResetEventTests
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
         ValueTask vt = ev.WaitAsync();
-        Assert.That(vt.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(vt.IsCompleted, Is.False);
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -225,14 +237,20 @@ public class AsyncAutoResetEventTests
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
         ValueTask vt = ev.WaitAsync();
-        Assert.That(vt.IsCompleted, Is.False);
-        Assert.That(ev.InternalWaiterInUse, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(vt.IsCompleted, Is.False);
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+        }
 
         ValueTask vt2 = ev.WaitAsync();
-        Assert.That(vt2.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(vt2.IsCompleted, Is.False);
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        }
     }
 
     [Test]
@@ -242,23 +260,35 @@ public class AsyncAutoResetEventTests
         var ev = new AsyncAutoResetEvent(pool: tpvts);
 
         ValueTask vt = ev.WaitAsync();
-        Assert.That(vt.IsCompleted, Is.False);
-        Assert.That(ev.InternalWaiterInUse, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(vt.IsCompleted, Is.False);
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+        }
 
         ValueTask vt2 = ev.WaitAsync();
-        Assert.That(vt2.IsCompleted, Is.False);
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(vt2.IsCompleted, Is.False);
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        }
 
         ev.Set();
         await vt.ConfigureAwait(false);
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        }
 
         ev.Set();
         await vt2.ConfigureAwait(false);
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -273,8 +303,11 @@ public class AsyncAutoResetEventTests
 
         await AsyncAssert.NeverCompletesAsync(t).ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -299,8 +332,11 @@ public class AsyncAutoResetEventTests
         ev.Set();
         await t.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -328,8 +364,11 @@ public class AsyncAutoResetEventTests
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(5000)]
@@ -359,8 +398,11 @@ public class AsyncAutoResetEventTests
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -380,8 +422,11 @@ public class AsyncAutoResetEventTests
             valueTasks[i] = ev.WaitAsync();
         }
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+        }
 
         for (int i = 0; i < numberOfWaiters; i++)
         {
@@ -393,8 +438,11 @@ public class AsyncAutoResetEventTests
             tasks[i] = ev.WaitAsync().AsTask();
         }
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters * 2 - 1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters * 2 - 1));
+        }
 
         ev.PulseAll();
 
@@ -426,8 +474,11 @@ public class AsyncAutoResetEventTests
         await vt.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -455,8 +506,11 @@ public class AsyncAutoResetEventTests
         await vt2.ConfigureAwait(false);
         await t.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Theory]
@@ -478,8 +532,11 @@ public class AsyncAutoResetEventTests
             Assert.ThrowsAsync<TaskCanceledException>(async () => await ev.WaitAsync(cts.Token).ConfigureAwait(false));
         }
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Theory]
@@ -506,8 +563,11 @@ public class AsyncAutoResetEventTests
             Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
         }
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Theory]
@@ -529,8 +589,11 @@ public class AsyncAutoResetEventTests
             await ev.WaitAsync(cts.Token).ConfigureAwait(false);
         }
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -541,10 +604,13 @@ public class AsyncAutoResetEventTests
         Assert.That(ev.IsSet, Is.False);
 
         bool reset = ev.TryReset();
-        Assert.That(reset, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(reset, Is.True);
 
-        Assert.That(ev.IsSet, Is.False);
-        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+            Assert.That(ev.IsSet, Is.False);
+            Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        }
     }
 
     [Test]
@@ -557,8 +623,11 @@ public class AsyncAutoResetEventTests
 
         await ev.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]
@@ -631,8 +700,11 @@ public class AsyncAutoResetEventTests
         await waiter1.ConfigureAwait(false);
         await waiter2.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]
@@ -649,8 +721,11 @@ public class AsyncAutoResetEventTests
 
         await Task.Delay(50).ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(tpvts.ActiveCount, Is.Zero);
+        }
     }
 }
 

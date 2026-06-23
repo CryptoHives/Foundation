@@ -23,7 +23,7 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     private ManualResetValueTaskSourceCore<T> _core;
     private CancellationToken _cancellationToken;
     private CancellationTokenRegistration _cancellationTokenRegistration;
-    private CancellationTokenSource? _timeoutCts;
+    private ITimer? _timeoutTimer;
     private int _inUse;
 
     /// <summary>
@@ -69,10 +69,10 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     }
 
     /// <inheritdoc/>
-    public override CancellationTokenSource? TimeoutCts
+    public override ITimer? TimeoutTimer
     {
-        get => _timeoutCts;
-        set => _timeoutCts = value;
+        get => _timeoutTimer;
+        set => _timeoutTimer = value;
     }
 
     /// <inheritdoc/>
@@ -99,8 +99,9 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     {
         _core.Reset();
         _cancellationTokenRegistration = default;
-        CancellationTokenSource? timeoutCts = Interlocked.Exchange(ref _timeoutCts, null);
-        timeoutCts?.Dispose();
+        ITimer? timer = Interlocked.Exchange(ref _timeoutTimer, null);
+        // TODO: Change(Infinite,Infinite) first to stop it, then Dispose
+        timer?.Dispose();   
         Next = null;
         Prev = null;
         return Interlocked.Exchange(ref _inUse, 0) == 1;

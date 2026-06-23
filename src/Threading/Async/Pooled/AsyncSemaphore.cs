@@ -136,50 +136,9 @@ public sealed class AsyncSemaphore
             // retry until race condition succeeds
         }
 
-        return WaitAsyncImpl(cancellationToken);
+        return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
     }
 
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken)
-    {
-        if (cancellationToken.IsCancellationRequested)
-        {
-            return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
-        }
-
-        _spinLock.Enter();
-        try
-        {
-            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
-            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            waiter.CancellationToken = cancellationToken;
-
-            if (cancellationToken.CanBeCanceled)
-            {
-#if NET6_0_OR_GREATER
-                waiter.CancellationTokenRegistration =
-                    cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-                waiter.CancellationTokenRegistration =
-                    cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-            }
-            else
-            {
-                Debug.Assert(waiter.CancellationTokenRegistration == default);
-            }
-
-            _waiters.Enqueue(waiter);
-            return new ValueTask(waiter, waiter.Version);
-        }
-        finally
-        {
-            _spinLock.Exit();
-        }
-    }
 
     /// <summary>
     /// Asynchronously waits to acquire a permit from the semaphore, or until the specified timeout elapses.
@@ -193,6 +152,7 @@ public sealed class AsyncSemaphore
     /// <param name="timeout">
     /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
     /// </param>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>A <see cref="ValueTask"/> that completes when a permit is acquired.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
@@ -201,11 +161,11 @@ public sealed class AsyncSemaphore
     /// Thrown when the timeout elapses before a permit becomes available.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    public ValueTask WaitAsync(TimeSpan timeout)
+    public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         if (timeout == Timeout.InfiniteTimeSpan)
         {
-            return WaitAsync();
+            return WaitAsync(cancellationToken);
         }
 
         if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -227,17 +187,19 @@ public sealed class AsyncSemaphore
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask(Task.FromException(new OperationCanceledException()));
+            return new ValueTask(Task.FromException(ManualResetValueTaskSource<bool>.OperationCanceled));
         }
 
-        return WaitAsyncImplWithTimeout(timeout);
+        return WaitAsyncImpl(timeout, cancellationToken);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImplWithTimeout(TimeSpan timeout)
+    private ValueTask WaitAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var timeoutCts = new CancellationTokenSource(timeout);
-        CancellationToken cancellationToken = timeoutCts.Token;
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
+        }
 
         _spinLock.Enter();
         try
@@ -253,7 +215,6 @@ public sealed class AsyncSemaphore
 
                 if (Interlocked.CompareExchange(ref _currentCount, observed - 1, observed) == observed)
                 {
-                    timeoutCts.Dispose();
                     return default;
                 }
             }
@@ -263,16 +224,29 @@ public sealed class AsyncSemaphore
                 waiter = _pool.GetPooledWaiter(this);
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            waiter.CancellationToken = cancellationToken;
-            waiter.TimeoutCts = timeoutCts;
 
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+            }
+
+            waiter.CancellationToken = cancellationToken;
+            if (cancellationToken.CanBeCanceled)
+            {
 #if NET6_0_OR_GREATER
-            waiter.CancellationTokenRegistration =
-                cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+                // Use UnsafeRegister on .NET 6+ for allocation free registration
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
 #else
-            waiter.CancellationTokenRegistration =
-                cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
 #endif
+            }
+            else
+            {
+                Debug.Assert(waiter.CancellationTokenRegistration == default);
+            }
 
             _waiters.Enqueue(waiter);
             return new ValueTask(waiter, waiter.Version);
@@ -331,6 +305,20 @@ public sealed class AsyncSemaphore
     }
 
     /// <summary>
+    /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// </summary>
+    private void TimerCallback(object? state)
+    {
+        if (state is not ManualResetValueTaskSource<bool> waiter)
+        {
+            return;
+        }
+
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+    }
+
+    /// <summary>
     /// Gets a value indicating whether the local waiter is currently in use.
     /// </summary>
     internal bool InternalWaiterInUse => _localWaiter.InUse;
@@ -353,15 +341,22 @@ public sealed class AsyncSemaphore
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
-        ManualResetValueTaskSource<bool>? toCancel = null;
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+    }
 
+    /// <summary>
+    /// O(1) removal from intrusive linked list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter)
+    {
         _spinLock.Enter();
         try
         {
             if (_waiters.Remove(waiter))
             {
-                toCancel = waiter;
+                return waiter;
             }
         }
         finally
@@ -369,8 +364,6 @@ public sealed class AsyncSemaphore
             _spinLock.Exit();
         }
 
-#pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-#pragma warning restore CA1508 // Avoid dead conditional code
+        return null;
     }
 }

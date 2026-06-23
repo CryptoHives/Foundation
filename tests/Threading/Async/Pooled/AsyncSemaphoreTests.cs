@@ -26,7 +26,7 @@ public class AsyncSemaphoreTests
     public void ConstructorWithZeroCountIsValid()
     {
         var semaphore = new AsyncSemaphore(0);
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
     }
 
     [Test]
@@ -42,7 +42,7 @@ public class AsyncSemaphoreTests
         Assert.That(semaphore.CurrentCount, Is.EqualTo(1));
 
         await semaphore.WaitAsync().ConfigureAwait(false);
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
     }
 
     [Test]
@@ -51,7 +51,7 @@ public class AsyncSemaphoreTests
         var semaphore = new AsyncSemaphore(1);
 
         await semaphore.WaitAsync().ConfigureAwait(false);
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
 
         semaphore.Release();
         Assert.That(semaphore.CurrentCount, Is.EqualTo(1));
@@ -76,8 +76,11 @@ public class AsyncSemaphoreTests
         semaphore.Release();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -93,9 +96,12 @@ public class AsyncSemaphoreTests
         await Task.Delay(50).ConfigureAwait(false);
         var t3 = semaphore.WaitAsync();
 
-        Assert.That(t1.IsCompleted, Is.False);
-        Assert.That(t2.IsCompleted, Is.False);
-        Assert.That(t3.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(t1.IsCompleted, Is.False);
+            Assert.That(t2.IsCompleted, Is.False);
+            Assert.That(t3.IsCompleted, Is.False);
+        }
 
         semaphore.Release(3);
 
@@ -106,10 +112,13 @@ public class AsyncSemaphoreTests
         await t3.ConfigureAwait(false);
         completed.Add(3);
 
-        Assert.That(completed.Count, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(completed, Has.Count.EqualTo(3));
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -122,9 +131,12 @@ public class AsyncSemaphoreTests
         var t2 = semaphore.WaitAsync();
         var t3 = semaphore.WaitAsync();
 
-        Assert.That(t1.IsCompleted, Is.False);
-        Assert.That(t2.IsCompleted, Is.False);
-        Assert.That(t3.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(t1.IsCompleted, Is.False);
+            Assert.That(t2.IsCompleted, Is.False);
+            Assert.That(t3.IsCompleted, Is.False);
+        }
 
         semaphore.Release(2);
 
@@ -136,8 +148,11 @@ public class AsyncSemaphoreTests
         semaphore.Release();
         await t3.ConfigureAwait(false);
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -152,8 +167,11 @@ public class AsyncSemaphoreTests
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await semaphore.WaitAsync(cts.Token).ConfigureAwait(false));
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -173,8 +191,11 @@ public class AsyncSemaphoreTests
             await waiter.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -201,8 +222,11 @@ public class AsyncSemaphoreTests
         await t1.ConfigureAwait(false);
         await t3.ConfigureAwait(false);
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -228,8 +252,11 @@ public class AsyncSemaphoreTests
 
         await semaphore.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]
@@ -252,7 +279,7 @@ public class AsyncSemaphoreTests
 
         await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
 
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
     }
 
     [Test]
@@ -281,6 +308,6 @@ public class AsyncSemaphoreTests
 
         await semaphore.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
 
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
     }
 }

@@ -13,7 +13,7 @@
       VSTHRD003: Avoid awaiting foreign Tasks; 
       VSTHRD002: Avoid problematic synchronous waits 
       -->
-    <NoWarn>$(NoWarn);NUnit1028;AD0001;VSTHRD200;VSTHRD103;VSTHRD003;VSTHRD002</NoWarn>
+    <NoWarn>$(NoWarn);NUnit1028;AD0001;VSTHRD200;VSTHRD103;VSTHRD003;VSTHRD002;IDE1006</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">

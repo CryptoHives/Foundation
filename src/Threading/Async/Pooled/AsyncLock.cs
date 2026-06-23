@@ -217,24 +217,7 @@ public sealed class AsyncLock : IResettable
 
             waiter.CancellationToken = cancellationToken;
 
-            // Use UnsafeRegister on .NET 6+ for performance
-            if (cancellationToken.CanBeCanceled)
-            {
-#if NET6_0_OR_GREATER
-                // Use UnsafeRegister on .NET 6+ for allocation free registration
-                waiter.CancellationTokenRegistration = cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-                waiter.CancellationTokenRegistration = cancellationToken.Register(
-                    CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-            }
-            else
-            {
-                Debug.Assert(waiter.CancellationTokenRegistration == default);
-            }
-
-            _waiters.Enqueue(waiter);
-            return new ValueTask<Releaser>(waiter, waiter.Version);
+            return QueueWaiter(waiter);
         }
         finally
         {
@@ -254,6 +237,7 @@ public sealed class AsyncLock : IResettable
     /// <param name="timeout">
     /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
     /// </param>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
     /// <returns>
     /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.
     /// Dispose the returned releaser to release the lock.
@@ -265,11 +249,11 @@ public sealed class AsyncLock : IResettable
     /// Thrown when the timeout elapses before the lock can be acquired.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    public ValueTask<Releaser> LockAsync(TimeSpan timeout)
+    public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         if (timeout == Timeout.InfiniteTimeSpan)
         {
-            return LockAsync();
+            return LockAsync(cancellationToken);
         }
 
         if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -284,21 +268,17 @@ public sealed class AsyncLock : IResettable
             return new ValueTask<Releaser>(Task.FromException<Releaser>(new OperationCanceledException()));
         }
 
-        return LockAsyncImplWithTimeout(timeout);
+        return LockAsyncImplWithTimeout(timeout, cancellationToken);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<Releaser> LockAsyncImplWithTimeout(TimeSpan timeout)
+    private ValueTask<Releaser> LockAsyncImplWithTimeout(TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var timeoutCts = new CancellationTokenSource(timeout);
-        CancellationToken cancellationToken = timeoutCts.Token;
-
         _spinLock.Enter();
         try
         {
             if (Interlocked.Exchange(ref _taken, 1) == 0)
             {
-                timeoutCts.Dispose();
                 return new ValueTask<Releaser>(new Releaser(this));
             }
 
@@ -309,18 +289,10 @@ public sealed class AsyncLock : IResettable
             }
 
             waiter.CancellationToken = cancellationToken;
-            waiter.TimeoutCts = timeoutCts;
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
 
-#if NET6_0_OR_GREATER
-            waiter.CancellationTokenRegistration =
-                cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-            waiter.CancellationTokenRegistration =
-                cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-
-            _waiters.Enqueue(waiter);
-            return new ValueTask<Releaser>(waiter, waiter.Version);
+            return QueueWaiter(waiter);
         }
         finally
         {
@@ -364,6 +336,20 @@ public sealed class AsyncLock : IResettable
         toRelease.SetResult(new Releaser(this));
     }
 
+    /// <summary>
+    /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// </summary>
+    private void TimerCallback(object? state)
+    {
+        if (state is not ManualResetValueTaskSource<Releaser> waiter)
+        {
+            return;
+        }
+
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+    }
+
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
         var waiter = (ManualResetValueTaskSource<Releaser>)state!;
@@ -382,14 +368,48 @@ public sealed class AsyncLock : IResettable
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
-        ManualResetValueTaskSource<Releaser>? toCancel = null;
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+    }
+
+    /// <summary>
+    /// Queue and register the waiter if it can be canceled.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ValueTask<Releaser> QueueWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    {
+        if (waiter.CancellationToken.CanBeCanceled)
+        {
+#if NET6_0_OR_GREATER
+            // Use UnsafeRegister on .NET 6+ for allocation free registration
+            waiter.CancellationTokenRegistration =
+                waiter.CancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+            waiter.CancellationTokenRegistration =
+                waiter.CancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+        }
+        else
+        {
+            Debug.Assert(waiter.CancellationTokenRegistration == default);
+        }
+
+        _waiters.Enqueue(waiter);
+        return new ValueTask<Releaser>(waiter, waiter.Version);
+    }
+
+    /// <summary>
+    /// O(1) removal from intrusive linked list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<Releaser>? RemoveWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    {
         _spinLock.Enter();
         try
         {
             if (_waiters.Remove(waiter))
             {
-                toCancel = waiter;
+                return waiter;
             }
         }
         finally
@@ -397,9 +417,6 @@ public sealed class AsyncLock : IResettable
             _spinLock.Exit();
         }
 
-
-#pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-#pragma warning restore CA1508 // Avoid dead conditional code
+        return null;
     }
 }

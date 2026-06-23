@@ -25,7 +25,7 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     private ManualResetValueTaskSourceCore<T> _core;
     private CancellationTokenRegistration _cancellationTokenRegistration;
     private CancellationToken _cancellationToken;
-    private CancellationTokenSource? _timeoutCts;
+    private ITimer? _timeoutTimer;
     private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
     private object? _owner;
 
@@ -60,10 +60,10 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     }
 
     /// <inheritdoc/>
-    public override CancellationTokenSource? TimeoutCts
+    public override ITimer? TimeoutTimer
     {
-        get => _timeoutCts;
-        set => _timeoutCts = value;
+        get => _timeoutTimer;
+        set => _timeoutTimer = value;
     }
 
     /// <inheritdoc/>
@@ -94,8 +94,8 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
         _ownerPool = null;
         _core.Reset();
         _cancellationTokenRegistration = default;
-        CancellationTokenSource? timeoutCts = Interlocked.Exchange(ref _timeoutCts, null);
-        timeoutCts?.Dispose();
+        ITimer? timer = Interlocked.Exchange(ref _timeoutTimer, null);
+        timer?.Dispose();   // Change(Infinite,Infinite) first to stop it, then Dispose
         Next = null;
         Prev = null;
         return true;

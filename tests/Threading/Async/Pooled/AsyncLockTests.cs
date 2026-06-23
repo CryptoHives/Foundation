@@ -23,9 +23,12 @@ public class AsyncLockTests
 
         Task<AsyncLock.Releaser> lockTask = mutex.LockAsync().AsTask();
 
-        Assert.That(lockTask.IsCompleted, Is.True);
-        Assert.That(lockTask.IsFaulted, Is.False);
-        Assert.That(lockTask.IsCanceled, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(lockTask.IsCompleted, Is.True);
+            Assert.That(lockTask.IsFaulted, Is.False);
+            Assert.That(lockTask.IsCanceled, Is.False);
+        }
     }
 
     [Test]
@@ -99,8 +102,11 @@ public class AsyncLockTests
         await task2.ConfigureAwait(false);
         await task3.ConfigureAwait(false);
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -111,9 +117,12 @@ public class AsyncLockTests
 
         Task<AsyncLock.Releaser> task = mutex.LockAsync(token).AsTask();
 
-        Assert.That(task.IsCompleted, Is.True);
-        Assert.That(task.IsCanceled, Is.False);
-        Assert.That(task.IsFaulted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(task.IsCompleted, Is.True);
+            Assert.That(task.IsCanceled, Is.False);
+            Assert.That(task.IsFaulted, Is.False);
+        }
     }
 
     [Test]
@@ -128,16 +137,22 @@ public class AsyncLockTests
         if (useAsTask)
         {
             Task<AsyncLock.Releaser> task = mutex.LockAsync(token).AsTask();
-            Assert.That(task.IsCompleted, Is.True);
-            Assert.That(task.IsCanceled, Is.True);
-            Assert.That(task.IsFaulted, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(task.IsCompleted, Is.True);
+                Assert.That(task.IsCanceled, Is.True);
+                Assert.That(task.IsFaulted, Is.False);
+            }
         }
         else
         {
             ValueTask<AsyncLock.Releaser> valueTask = mutex.LockAsync(token);
-            Assert.That(valueTask.IsCompleted, Is.True);
-            Assert.That(valueTask.IsCanceled, Is.True);
-            Assert.That(valueTask.IsFaulted, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(valueTask.IsCompleted, Is.True);
+                Assert.That(valueTask.IsCanceled, Is.True);
+                Assert.That(valueTask.IsFaulted, Is.False);
+            }
         }
 
         await lockTask.ConfigureAwait(false);
@@ -249,10 +264,12 @@ public class AsyncLockTests
             }
         }
 
-        Assert.That(al.IsTaken, Is.False);
-
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.IsTaken, Is.False);
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -276,8 +293,11 @@ public class AsyncLockTests
         await Task.WhenAll(t1, t2).ConfigureAwait(false);
         await Task.Delay(50).ConfigureAwait(false);
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -296,8 +316,11 @@ public class AsyncLockTests
             Assert.ThrowsAsync<TaskCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
         }
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -341,8 +364,11 @@ public class AsyncLockTests
             Assert.That(al.IsTaken);
         }
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -363,8 +389,11 @@ public class AsyncLockTests
         // Cancel after lock is released, should not throw
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(1000)]
@@ -383,8 +412,11 @@ public class AsyncLockTests
             Assert.ThrowsAsync<OperationCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
         }
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Theory]
@@ -451,8 +483,11 @@ public class AsyncLockTests
             Assert.That(mutex.IsTaken);
         }
 
-        Assert.That(mutex.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.InternalWaiterInUse, Is.False);
+            Assert.That(customPool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]
