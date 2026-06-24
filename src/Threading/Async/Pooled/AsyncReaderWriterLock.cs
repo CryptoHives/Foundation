@@ -1117,7 +1117,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         _spinLock.Enter();
         try
         {
-            Debug.Assert(_status >= (int)LockState.Reader, "Reader lock should be held.");
+            if (_status < (int)LockState.Reader) throw new ObjectDisposedException(nameof(AsyncReaderWriterLock), "Reader lock should be held.");
 
             // A reader or writer could steal the status here if we first transition to uncontested state.
             // Check first if there is a waiting writer or upgraded writer and directly transition to

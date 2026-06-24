@@ -113,7 +113,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourceCompletedCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
         source.SetResult(42);
 
@@ -138,7 +138,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourcePendingCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
 
         var vt = new ValueTask<int>(source, source.Version);
@@ -167,7 +167,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourceDoesNotThrowAfterPoolReturn()
     {
-        var pool = new TestObjectPool<string>();
+        using var pool = new TestObjectPool<string>();
         PooledManualResetValueTaskSource<string> source = pool.GetPooledWaiter(null);
 
         var vt = new ValueTask<string>(source, source.Version);
@@ -199,7 +199,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourceWithExceptionCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
 
         var vt = new ValueTask<int>(source, source.Version);
@@ -229,7 +229,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task OriginalPooledSourceThrowsOnMultipleAwaitWithoutPreserve()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
         source.SetResult(42);
 
@@ -248,7 +248,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledNonGenericSourceCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
         PooledManualResetValueTaskSource<bool> source = pool.GetPooledWaiter(null);
 
         // Create non-generic ValueTask from generic source

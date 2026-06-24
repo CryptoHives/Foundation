@@ -85,8 +85,8 @@ public class AsyncCountdownEventTests
     [Test]
     public async Task WaitAsyncCompletesWhenCountReachesZero()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(2, pool: pool);
 
         var waiter = countdown.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.False);
@@ -97,7 +97,7 @@ public class AsyncCountdownEventTests
         countdown.Signal();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -114,8 +114,8 @@ public class AsyncCountdownEventTests
     [Test]
     public async Task MultipleWaitersAreAllReleased()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(1, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(1, pool: pool);
 
         var t1 = countdown.WaitAsync();
         var t2 = countdown.WaitAsync();
@@ -134,7 +134,7 @@ public class AsyncCountdownEventTests
         await t2.ConfigureAwait(false);
         await t3.ConfigureAwait(false);
 
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -249,8 +249,8 @@ public class AsyncCountdownEventTests
     [Test]
     public async Task CancellationBeforeWaitThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -258,14 +258,14 @@ public class AsyncCountdownEventTests
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await countdown.WaitAsync(cts.Token).ConfigureAwait(false));
 
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task CancellationWhileWaitingThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         var waiter = countdown.WaitAsync(cts.Token);
@@ -278,7 +278,7 @@ public class AsyncCountdownEventTests
             await waiter.ConfigureAwait(false));
 #pragma warning restore CHT001 // ValueTask awaited multiple times
 
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]

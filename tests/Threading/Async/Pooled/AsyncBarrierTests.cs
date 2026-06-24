@@ -60,8 +60,8 @@ public class AsyncBarrierTests
     [Test]
     public async Task TwoParticipantsSynchronize()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
         int reached = 0;
 
         Task<int> t1 = Task.Run(async () => {
@@ -81,7 +81,7 @@ public class AsyncBarrierTests
         {
             Assert.That(result, Is.EqualTo(2));
             Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-            Assert.That(customPool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
@@ -142,8 +142,8 @@ public class AsyncBarrierTests
     [Test]
     public async Task RemoveParticipantDecreasesRemainingAndCount()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(3, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(3, pool: pool);
 
         barrier.RemoveParticipant();
         using (Assert.EnterMultipleScope())
@@ -160,15 +160,15 @@ public class AsyncBarrierTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-            Assert.That(customPool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
     [Test]
     public async Task RemoveParticipantReleasesWaitersWhenZeroRemaining()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
 
         ValueTask waiter = barrier.SignalAndWaitAsync();
         Assert.That(waiter.IsCompleted, Is.False);
@@ -181,7 +181,7 @@ public class AsyncBarrierTests
             Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
             Assert.That(barrier.ParticipantCount, Is.EqualTo(1));
             Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
-            Assert.That(customPool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
@@ -202,8 +202,8 @@ public class AsyncBarrierTests
     [Test]
     public async Task CancellationBeforeWaitThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -214,15 +214,15 @@ public class AsyncBarrierTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
-            Assert.That(customPool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
     [Test]
     public async Task CancellationWhileWaitingThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         ValueTask waiter = barrier.SignalAndWaitAsync(cts.Token);
@@ -238,7 +238,7 @@ public class AsyncBarrierTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
-            Assert.That(customPool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
@@ -503,13 +503,13 @@ public class AsyncBarrierTests
     [Test]
     public async Task PostPhaseActionExceptionPropagatedToAllWaiters()
     {
-        var customPool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
             if (b.CurrentPhase == 0)
             {
                 throw new InvalidOperationException("Phase 0 error");
             }
-        }, pool: customPool);
+        }, pool: pool);
 
         ValueTask waiter1 = barrier.SignalAndWaitAsync();
         ValueTask waiter2 = barrier.SignalAndWaitAsync();
@@ -536,7 +536,7 @@ public class AsyncBarrierTests
             // Phase should still advance after exception
             Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
 
-            Assert.That(customPool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
@@ -584,10 +584,10 @@ public class AsyncBarrierTests
     [Test]
     public async Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
     {
-        var customPool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
             throw new InvalidOperationException("Remove error");
-        }, pool: customPool);
+        }, pool: pool);
 
         // Two participants signal
         ValueTask waiter1 = barrier.SignalAndWaitAsync();
@@ -608,7 +608,7 @@ public class AsyncBarrierTests
         {
             Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Remove error"));
             Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
-            Assert.That(customPool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
