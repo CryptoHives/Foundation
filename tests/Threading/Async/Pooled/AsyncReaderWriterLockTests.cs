@@ -219,8 +219,6 @@ public class AsyncReaderWriterLockTests
         var rwLock = new AsyncReaderWriterLock(
             runContinuationAsynchronously: RunContinuationAsynchronously,
             pool: pool);
-        var startGate = new TaskCompletionSource<bool>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseGate = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
