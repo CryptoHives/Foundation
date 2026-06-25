@@ -365,7 +365,7 @@ public class AsyncLockTests
             Assert.That(al.IsTaken);
         }
 
-            Assert.That(al.InternalWaiterInUse, Is.False);
+        Assert.That(al.InternalWaiterInUse, Is.False);
     }
 
     [Test]
@@ -386,7 +386,7 @@ public class AsyncLockTests
         // Cancel after lock is released, should not throw
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            Assert.That(al.InternalWaiterInUse, Is.False);
+        Assert.That(al.InternalWaiterInUse, Is.False);
     }
 
     [Test, CancelAfter(1000)]
@@ -405,7 +405,7 @@ public class AsyncLockTests
             Assert.ThrowsAsync<OperationCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
         }
 
-            Assert.That(al.InternalWaiterInUse, Is.False);
+        Assert.That(al.InternalWaiterInUse, Is.False);
     }
 
     [Theory]
@@ -436,7 +436,7 @@ public class AsyncLockTests
         // Cancel after lock is released, should not throw
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            Assert.That(al.InternalWaiterInUse, Is.False);
+        Assert.That(al.InternalWaiterInUse, Is.False);
     }
 
     [Test]

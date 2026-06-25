@@ -10,7 +10,6 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -1513,19 +1512,6 @@ public class AsyncReaderWriterLockTests
     }
 
     [Test]
-    public void ReaderLockAsyncWithNegativeTimeoutThrows()
-    {
-        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(
-            runContinuationAsynchronously: RunContinuationAsynchronously,
-            pool: pool);
-
-#pragma warning disable VSTHRD110
-        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
-    }
-
-    [Test]
     public async Task WriterLockAsyncWithTimeoutCompletesWhenLockAvailable()
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
@@ -1555,57 +1541,205 @@ public class AsyncReaderWriterLockTests
         await Task.Delay(50).ConfigureAwait(false);
     }
 
-    [Test]
-    public void WriterLockAsyncWithNegativeTimeoutThrows()
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task UpgradeableReaderLockAsyncWithTimeoutCompletesWhenLockAvailable(CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
         var rwLock = new AsyncReaderWriterLock(
             runContinuationAsynchronously: RunContinuationAsynchronously,
             pool: pool);
 
-#pragma warning disable VSTHRD110
-        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
-    }
-
-    [Test]
-    public async Task UpgradeableReaderLockAsyncWithTimeoutCompletesWhenLockAvailable()
-    {
-        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(
-            runContinuationAsynchronously: RunContinuationAsynchronously,
-            pool: pool);
-
-        using (await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+        using (await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false))
         {
             Assert.That(rwLock.IsUpgradeableReadLockHeld);
         }
     }
 
     [Test, CancelAfter(CancelAfterMS)]
-    public async Task UpgradeableReaderLockAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    public async Task UpgradeableReaderLockAsyncWithTimeoutThrowsWhenTimeoutElapses(CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
         var rwLock = new AsyncReaderWriterLock(
             runContinuationAsynchronously: RunContinuationAsynchronously,
             pool: pool);
 
-        using var outerUpgr = await rwLock.UpgradeableReaderLockAsync().ConfigureAwait(false);
+        using var outerUpgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+            await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false));
 
-        await Task.Delay(50).ConfigureAwait(false);
+        await Task.Delay(50, ct).ConfigureAwait(false);
     }
 
-    [Test]
-    public void UpgradeableReaderLockAsyncWithNegativeTimeoutThrows()
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task LocksWithNegativeTimeoutThrows(CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock();
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
 #pragma warning disable VSTHRD110
-        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(-2)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(-2), ct));
+        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(-2), ct));
+        Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(-2), ct));
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false);
+        Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
+            await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(-2), ct).ConfigureAwait(false));
+        using var writerlock = await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false);
 #pragma warning restore VSTHRD110
+    }
+
+    [Test, CancelAfter(CancelAfterMS)]
+    [Repeat(50)]
+    public async Task LastReaderNextReaderRaceDoesNotAdmitWriterEarlyAsync(
+        CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+        int activeReaders = 0;
+        int maxObservedReadersInsideWriter = 0;
+
+        // Start concurrent readers.
+        using var churnCts = CancellationTokenSource
+            .CreateLinkedTokenSource(ct);
+        var concurrency = new Task[Environment.ProcessorCount];
+        for (int i = 0; i < concurrency.Length; i++)
+        {
+            concurrency[i] = Task.Run(async () => {
+                while (!churnCts.IsCancellationRequested)
+                {
+                    using AsyncReaderWriterLock.Releaser r =
+                        await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
+                    Interlocked.Increment(ref activeReaders);
+                    await Task.Yield();
+                    Interlocked.Decrement(ref activeReaders);
+                }
+            }, churnCts.Token);
+        }
+
+        // Force writer acquisitions and check race conditions.
+        for (int round = 0; round < 2000; round++)
+        {
+            using AsyncReaderWriterLock.Releaser w = await rwLock
+                .WriterLockAsync(ct).ConfigureAwait(false);
+            int observed = Volatile.Read(ref activeReaders);
+            if (observed > maxObservedReadersInsideWriter)
+            {
+                maxObservedReadersInsideWriter = observed;
+            }
+            Assert.That(observed, Is.Zero,
+                $"Writer #{round} observed {observed} active readers");
+            await Task.Yield();
+        }
+
+        await AsyncAssert.CancelAsync(churnCts).ConfigureAwait(false);
+        try
+        {
+            await Task.WhenAll(concurrency).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // expected on shutdown
+        }
+
+        Assert.That(maxObservedReadersInsideWriter, Is.Zero);
+    }
+
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task WriterCancellationDoesNotLeakAsTask(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using (AsyncReaderWriterLock.Releaser reader =
+            await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        {
+            using var writerCts = new CancellationTokenSource();
+            Task<AsyncReaderWriterLock.Releaser> writer =
+                rwLock.WriterLockAsync(writerCts.Token).AsTask();
+
+            // Ensure the writer has reached the drain wait.
+            await Task.Delay(50, ct).ConfigureAwait(false);
+            Assert.That(writer.IsCompleted, Is.False);
+
+            // Cancel the writer while draining.
+            await AsyncAssert.CancelAsync(writerCts).ConfigureAwait(false);
+            Assert.That(async () => await writer.ConfigureAwait(false),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        using var nextWriter =
+            await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
+    }
+
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task WriterCancellationDoesNotLeakPreserved(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using (AsyncReaderWriterLock.Releaser reader =
+            await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        {
+            using var writerCts = new CancellationTokenSource();
+            ValueTask<AsyncReaderWriterLock.Releaser> writer =
+                rwLock.WriterLockAsync(writerCts.Token).Preserve();
+
+            // Ensure the writer has reached the drain wait.
+            await Task.Delay(50, ct).ConfigureAwait(false);
+            Assert.That(writer.IsCompleted, Is.False);
+
+            // Cancel the writer while draining.
+            await AsyncAssert.CancelAsync(writerCts).ConfigureAwait(false);
+            Assert.That(async () => await writer.ConfigureAwait(false),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        using var nextWriter =
+            await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
+    }
+
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task ReaderWriterTimeOutWhenBlocked(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using AsyncReaderWriterLock.Releaser outer =
+            await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
+
+        using var innerCts = CancellationTokenSource
+            .CreateLinkedTokenSource(ct);
+        innerCts.CancelAfter(TimeSpan.FromMilliseconds(100));
+
+        Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await rwLock
+                .WriterLockAsync(innerCts.Token)
+                .ConfigureAwait(false));
+
+        Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await rwLock
+                .WriterLockAsync(TimeSpan.FromMilliseconds(100), ct)
+                .ConfigureAwait(false));
+
+        Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await rwLock
+                .ReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
+                .ConfigureAwait(false));
+
+        Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await rwLock
+                .UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
+                .ConfigureAwait(false));
     }
 }
 
