@@ -99,7 +99,7 @@ Asynchronously waits for the countdown to reach zero.
 ### WaitAsync (timeout)
 
 ```csharp
-public ValueTask WaitAsync(TimeSpan timeout)
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
 Asynchronously waits for the countdown to reach zero, or throws `OperationCanceledException` if the timeout elapses first.
@@ -115,7 +115,7 @@ Asynchronously waits for the countdown to reach zero, or throws `OperationCancel
 
 **Allocation notes**:
 
-| Scenario | CancellationTokenSource allocated? |
+| Scenario | TimeProvider allocated? |
 |---|---|
 | Count already zero | No |
 | `Timeout.InfiniteTimeSpan` | No |
@@ -224,7 +224,9 @@ The Nito.Async implementation can not be benchmarked due to its internal design 
 ```csharp
 var countdown = new AsyncCountdownEvent(workers.Length);
 foreach (var w in workers)
+{
     _ = Task.Run(async () => { await w.RunAsync(); countdown.Signal(); });
+}
 
 try
 {

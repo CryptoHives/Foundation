@@ -22,7 +22,7 @@ public sealed class AsyncAutoResetEvent
 - **Local waiter optimization**: First queued waiter uses a pre-allocated local waiter to avoid allocations under low contention
 - **ValueTask-based API**: Low-allocation async operations
 - **Cancellation support**: Full `CancellationToken` support for queued waiters. Allocation free registration for .NET versions >= 6.0.
-- **Timeout support**: Direct `WaitAsync(TimeSpan)` overload — no `Task` conversion required. Allocates only one `CancellationTokenSource` per timed wait; disposed automatically on await.
+- **Timeout support**: Direct `WaitAsync(TimeSpan)` overload — no `Task` conversion required. Allocates only one `TimeProvider` per contended timed wait; disposed automatically.
 - **Thread-safe**: All operations are thread-safe
 - **FIFO queue**: Waiters are released in first-in-first-out order
 
@@ -113,13 +113,13 @@ await vt;  // Throws InvalidOperationException!
 ### WaitAsync (timeout)
 
 ```csharp
-public ValueTask WaitAsync(TimeSpan timeout)
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
 Asynchronously waits for the event to be signaled, or throws `OperationCanceledException` if the timeout elapses first.
 
 **Parameters**:
-- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `CancellationTokenSource`).
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocation).
 
 **Returns**: A `ValueTask` that completes when the event is signaled.
 
@@ -129,7 +129,7 @@ Asynchronously waits for the event to be signaled, or throws `OperationCanceledE
 
 **Allocation notes**:
 
-| Scenario | CancellationTokenSource allocated? |
+| Scenario | TimeProvider allocated? |
 |---|---|
 | Event already signaled | No |
 | `Timeout.InfiniteTimeSpan` | No |
@@ -145,7 +145,7 @@ await _event.WaitAsync(TimeSpan.FromSeconds(5));
 // Previously required — now unnecessary:
 // await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
 
-// Infinite timeout delegates to WaitAsync() — no CTS allocation
+// Infinite timeout delegates to WaitAsync() — no timer allocation
 await _event.WaitAsync(Timeout.InfiniteTimeSpan);
 ```
 

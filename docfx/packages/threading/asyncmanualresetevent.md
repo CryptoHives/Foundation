@@ -109,13 +109,13 @@ await vt;  // Throws InvalidOperationException!
 ### WaitAsync (timeout)
 
 ```csharp
-public ValueTask WaitAsync(TimeSpan timeout)
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
 Asynchronously waits for the event to be set, or throws `OperationCanceledException` if the timeout elapses first.
 
 **Parameters**:
-- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `CancellationTokenSource`).
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `TimeProvider`).
 
 **Returns**: A `ValueTask` that completes when the event is set.
 
@@ -125,7 +125,7 @@ Asynchronously waits for the event to be set, or throws `OperationCanceledExcept
 
 **Allocation notes**:
 
-| Scenario | CancellationTokenSource allocated? |
+| Scenario | TimeProvider allocated? |
 |---|---|
 | Event already signaled | No |
 | `Timeout.InfiniteTimeSpan` | No |

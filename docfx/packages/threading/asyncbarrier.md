@@ -145,12 +145,12 @@ Signals the barrier and waits for all participants to arrive.
 ### SignalAndWaitAsync (timeout)
 
 ```csharp
-public ValueTask SignalAndWaitAsync(TimeSpan timeout)
+public ValueTask SignalAndWaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
 Signals the barrier and waits for all participants to arrive, or throws `OperationCanceledException` if the timeout elapses before all participants arrive.
 
-The last participant to arrive is never subject to the timeout — it releases all other waiters immediately. A `CancellationTokenSource` is allocated only for non-final participants with a finite positive timeout; it is disposed automatically when the returned `ValueTask` is awaited.
+The last participant to arrive is never subject to the timeout — it releases all other waiters immediately. A `TimeProvider` is allocated only for non-final participants with a finite positive timeout; it is disposed automatically when the returned `ValueTask` is awaited.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
@@ -165,7 +165,7 @@ The last participant to arrive is never subject to the timeout — it releases a
 
 **Allocation notes**:
 
-| Scenario | CancellationTokenSource allocated? |
+| Scenario | TimeProvider allocated? |
 |---|---|
 | Last (or only) participant | No |
 | `Timeout.InfiniteTimeSpan` | No |

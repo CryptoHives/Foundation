@@ -176,7 +176,7 @@ Asynchronously acquires a writer lock. Only one writer can hold the lock.
 ### WriterLockAsync (timeout)
 
 ```csharp
-public ValueTask<Releaser> WriterLockAsync(TimeSpan timeout)
+public ValueTask<Releaser> WriterLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
 Asynchronously acquires a writer lock, or throws `OperationCanceledException` if the timeout elapses first.
@@ -185,7 +185,7 @@ Asynchronously acquires a writer lock, or throws `OperationCanceledException` if
 
 **Allocation notes for all timeout overloads**:
 
-| Scenario | CancellationTokenSource allocated? |
+| Scenario | TimeProvider allocated? |
 |---|---|
 | Lock immediately available | No |
 | `Timeout.InfiniteTimeSpan` | No |

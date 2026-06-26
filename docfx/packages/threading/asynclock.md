@@ -72,13 +72,13 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 ### LockAsync (timeout)
 
 ```csharp
-public ValueTask<Releaser> LockAsync(TimeSpan timeout)
+public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
 Asynchronously acquires the lock, or throws `OperationCanceledException` if the timeout elapses before the lock becomes available.
 
 **Parameters**:
-- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `LockAsync()` without allocating a `CancellationTokenSource`).
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `LockAsync()` without allocating a `TimeProvider`).
 
 **Returns**: A `ValueTask<Releaser>` that completes when the lock is acquired. Dispose the result to release the lock.
 
@@ -88,7 +88,7 @@ Asynchronously acquires the lock, or throws `OperationCanceledException` if the 
 
 **Allocation notes**:
 
-| Scenario | CancellationTokenSource allocated? |
+| Scenario | TimeProvider allocated? |
 |---|---|
 | Lock immediately available | No |
 | `Timeout.InfiniteTimeSpan` | No |

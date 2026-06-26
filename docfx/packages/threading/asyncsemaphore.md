@@ -84,7 +84,7 @@ Asynchronously waits to acquire a permit from the semaphore.
 ### WaitAsync (timeout)
 
 ```csharp
-public ValueTask WaitAsync(TimeSpan timeout)
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
 Asynchronously waits to acquire a permit, or throws `OperationCanceledException` if the timeout elapses first.
@@ -100,7 +100,7 @@ Asynchronously waits to acquire a permit, or throws `OperationCanceledException`
 
 **Allocation notes**:
 
-| Scenario | CancellationTokenSource allocated? |
+| Scenario | TimeProvider allocated? |
 |---|---|
 | Permit immediately available | No |
 | `Timeout.InfiniteTimeSpan` | No |
