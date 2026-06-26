@@ -198,7 +198,9 @@ public sealed class AsyncBarrier
                 {
                     _postPhaseAction(this);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OutOfMemoryException
+                                           && ex is not StackOverflowException
+                                           && ex is not AccessViolationException)
                 {
                     postPhaseException = new BarrierPostPhaseException(ex);
                 }
