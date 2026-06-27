@@ -132,35 +132,7 @@ public sealed class AsyncCountdownEvent
             return default;
         }
 
-        return WaitAsyncImpl(cancellationToken);
-    }
-
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken)
-    {
-        _spinLock.Enter();
-        try
-        {
-            if (_currentCount == 0)
-            {
-                return default;
-            }
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
-            }
-
-            PooledManualResetValueTaskSource<bool> waiter = _pool.GetPooledWaiter(this);
-            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            waiter.CancellationToken = cancellationToken;
-
-            return QueueWaiter(waiter);
-        }
-        finally
-        {
-            _spinLock.Exit();
-        }
+        return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
     }
 
     /// <summary>
@@ -186,12 +158,7 @@ public sealed class AsyncCountdownEvent
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        if (timeout == Timeout.InfiniteTimeSpan)
-        {
-            return WaitAsync(cancellationToken);
-        }
-
-        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
         if (Volatile.Read(ref _currentCount) == 0)
         {
@@ -203,11 +170,11 @@ public sealed class AsyncCountdownEvent
             return new ValueTask(Task.FromException(new OperationCanceledException()));
         }
 
-        return WaitAsyncImplWithTimeout(timeout, cancellationToken);
+        return WaitAsyncImpl(timeout, cancellationToken);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImplWithTimeout(TimeSpan timeout, CancellationToken cancellationToken)
+    private ValueTask WaitAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
         _spinLock.Enter();
         try
@@ -217,14 +184,40 @@ public sealed class AsyncCountdownEvent
                 return default;
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
+            }
+
             PooledManualResetValueTaskSource<bool> waiter;
             waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
-            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
 
-            return QueueWaiter(waiter);
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+            }
+
+            if (cancellationToken.CanBeCanceled)
+            {
+#if NET6_0_OR_GREATER
+                // Use UnsafeRegister on .NET 6+ for allocation free registration
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+            }
+            else
+            {
+                Debug.Assert(waiter.CancellationTokenRegistration == default);
+            }
+
+            _waiters.Enqueue(waiter);
+            return new ValueTask(waiter, waiter.Version);
         }
         finally
         {
@@ -431,32 +424,6 @@ public sealed class AsyncCountdownEvent
 
         ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-    }
-
-    /// <summary>
-    /// Queue and register the waiter if it can be canceled.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask QueueWaiter(ManualResetValueTaskSource<bool> waiter)
-    {
-        if (waiter.CancellationToken.CanBeCanceled)
-        {
-#if NET6_0_OR_GREATER
-            // Use UnsafeRegister on .NET 6+ for allocation free registration
-            waiter.CancellationTokenRegistration =
-                waiter.CancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-            waiter.CancellationTokenRegistration =
-                waiter.CancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-        }
-        else
-        {
-            Debug.Assert(waiter.CancellationTokenRegistration == default);
-        }
-
-        _waiters.Enqueue(waiter);
-        return new ValueTask(waiter, waiter.Version);
     }
 
     /// <summary>

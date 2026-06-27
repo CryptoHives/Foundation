@@ -199,7 +199,7 @@ public sealed class AsyncAutoResetEvent : IResettable
             return default;
         }
 
-        return WaitAsyncImpl(cancellationToken);
+        return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
     }
 
     /// <summary>
@@ -235,7 +235,7 @@ public sealed class AsyncAutoResetEvent : IResettable
         {
             if (timeout == Timeout.InfiniteTimeSpan)
             {
-                return WaitAsyncImpl(cancellationToken);
+                return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
             }
 
             if (timeout == TimeSpan.Zero)
@@ -250,7 +250,7 @@ public sealed class AsyncAutoResetEvent : IResettable
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken = default)
+    private ValueTask WaitAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
         _spinLock.Enter();
         try
@@ -273,37 +273,30 @@ public sealed class AsyncAutoResetEvent : IResettable
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
-            return QueueWaiter(waiter);
-        }
-        finally
-        {
-            _spinLock.Exit();
-        }
-    }
-
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
-    {
-        _spinLock.Enter();
-        try
-        {
-            // due to race conditions, _signaled may have changed until the lock is taken
-            if (Interlocked.Exchange(ref _signaled, 0) != 0)
+            if (timeout != Timeout.InfiniteTimeSpan)
             {
-                return default;
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
+            if (cancellationToken.CanBeCanceled)
             {
-                waiter = _pool.GetPooledWaiter(this);
+#if NET6_0_OR_GREATER
+                // Use UnsafeRegister on .NET 6+ for allocation free registration
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
             }
-            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
+            else
+            {
+                Debug.Assert(waiter.CancellationTokenRegistration == default);
+            }
 
-            waiter.CancellationToken = cancellationToken;
-            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
-
-            return QueueWaiter(waiter);
+            _waiters.Enqueue(waiter);
+            return new ValueTask(waiter, waiter.Version);
         }
         finally
         {
@@ -413,32 +406,6 @@ public sealed class AsyncAutoResetEvent : IResettable
 #endif
         ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-    }
-
-    /// <summary>
-    /// Queue and register the waiter if it can be canceled.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask QueueWaiter(ManualResetValueTaskSource<bool> waiter)
-    {
-        if (waiter.CancellationToken.CanBeCanceled)
-        {
-#if NET6_0_OR_GREATER
-            // Use UnsafeRegister on .NET 6+ for allocation free registration
-            waiter.CancellationTokenRegistration =
-                waiter.CancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-            waiter.CancellationTokenRegistration =
-                waiter.CancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-        }
-        else
-        {
-            Debug.Assert(waiter.CancellationTokenRegistration == default);
-        }
-
-        _waiters.Enqueue(waiter);
-        return new ValueTask(waiter, waiter.Version);
     }
 
     /// <summary>

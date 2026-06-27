@@ -219,6 +219,11 @@ public sealed class AsyncSemaphore
                 }
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask(Task.FromCanceled(cancellationToken));
+            }
+
             if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);

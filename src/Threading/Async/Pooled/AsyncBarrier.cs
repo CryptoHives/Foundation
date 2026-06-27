@@ -199,8 +199,8 @@ public sealed class AsyncBarrier
                     _postPhaseAction(this);
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException
-                                           && ex is not StackOverflowException
-                                           && ex is not AccessViolationException)
+                    && ex is not StackOverflowException
+                    && ex is not AccessViolationException)
                 {
                     postPhaseException = new BarrierPostPhaseException(ex);
                 }
@@ -272,6 +272,12 @@ public sealed class AsyncBarrier
 
             if (_participantsRemaining > 0)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _participantsRemaining++;
+                    return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
+                }
+
                 if (timeout == TimeSpan.Zero)
                 {
                     _participantsRemaining++;

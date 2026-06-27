@@ -674,6 +674,11 @@ public sealed class AsyncReaderWriterLock : IResettable
                 }
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+            }
+
             if (!_localReaderWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -849,6 +854,11 @@ public sealed class AsyncReaderWriterLock : IResettable
                 }
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+            }
+
             if (!_localUpgradeableReaderWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -1003,6 +1013,11 @@ public sealed class AsyncReaderWriterLock : IResettable
             if (Interlocked.CompareExchange(ref _status, (int)LockState.Writer, (int)LockState.Uncontested) == (int)LockState.Uncontested)
             {
                 return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Writer));
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
             if (!_localWriterWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
