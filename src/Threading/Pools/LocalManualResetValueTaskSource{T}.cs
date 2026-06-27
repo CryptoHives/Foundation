@@ -100,7 +100,6 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
         _core.Reset();
         _cancellationTokenRegistration = default;
         ITimer? timer = Interlocked.Exchange(ref _timeoutTimer, null);
-        // TODO: Change(Infinite,Infinite) first to stop it, then Dispose
         timer?.Dispose();
         Next = null;
         Prev = null;

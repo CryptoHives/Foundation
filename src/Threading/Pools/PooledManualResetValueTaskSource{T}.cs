@@ -95,7 +95,7 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
         _core.Reset();
         _cancellationTokenRegistration = default;
         ITimer? timer = Interlocked.Exchange(ref _timeoutTimer, null);
-        timer?.Dispose();   // Change(Infinite,Infinite) first to stop it, then Dispose
+        timer?.Dispose();
         Next = null;
         Prev = null;
         return true;
