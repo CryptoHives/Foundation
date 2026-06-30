@@ -3,7 +3,8 @@
 
 namespace Threading.Tests.Pools;
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing misuse behavior
+// intentionally testing misuse behavior
+#pragma warning disable CHT001 // ValueTask awaited multiple times
 
 using CryptoHives.Foundation.Threading.Pools;
 using NUnit.Framework;
@@ -47,7 +48,9 @@ public class PooledManualResetValueTaskSourceTests
         }
 
         // calling with old version throws
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
@@ -87,7 +90,9 @@ public class PooledManualResetValueTaskSourceTests
         }
 
         // calling with old version throws
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");

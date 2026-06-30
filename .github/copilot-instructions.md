@@ -11,7 +11,7 @@ The CryptoHives Open Source Initiative develops secure high-performance .NET lib
 **Repository Characteristics:**
 - **Size:** Medium-scale codebase with less than 10 C# projects
 - **Language:** C# with .NET 8.0/10.0 target framework, legacy .NET Standard 2.0/2.1 and .NET Framework 4.6.2/4.8 support
-- **Architecture:** Modular design with projects for memory management, threading, and security
+- **Architecture:** Modular design with projects for memory management, threading, security and more
 - **Type:** High-performance security focused class libraries and console applications
 - **License:** MIT License
 

@@ -22,6 +22,9 @@ using System.Threading.Tasks.Sources;
 /// of <see cref="TaskCompletionSource{TResult}"/> and <see cref="Task"/>.
 /// </para>
 /// <para>
+/// <b>Optional timeout and cancellation token</b> parameters on <see cref="WaitAsync(TimeSpan, CancellationToken)"/>.
+/// </para>
+/// <para>
 /// <b>Important Usage Note:</b> Awaiting on <see cref="ValueTask"/> has its own caveats, as it
 /// is a struct that can only be awaited or converted with AsTask() ONE single time.
 /// Additional attempts to await after the first await or additional conversions to AsTask() will throw
@@ -32,6 +35,16 @@ using System.Threading.Tasks.Sources;
 /// controls how continuations are executed when a permit is released. When set to <see langword="true"/>
 /// (default), continuations are forced to queue to the thread pool, preventing the releasing thread from
 /// being blocked by continuation execution.
+/// </para>
+/// <para>
+/// <b>Allocation Behavior:</b> Immediate acquisitions are completely allocation-free using atomic 
+/// operations. When the semaphore is contended, waiting without a timeout is allocation-free on .NET 6.0+ 
+/// (using <c>UnsafeRegister</c> for cancellation), while older frameworks may allocate for cancellation 
+/// registration. Specifying a finite timeout allocates a timer that is automatically disposed when the 
+/// operation completes. Exception and task allocations occur only if a timeout actually elapses or 
+/// cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled 
+/// <see cref="IValueTaskSource{TResult}"/> instances are reused to minimize allocation pressure across 
+/// repeated lock operations.
 /// </para>
 /// <example>
 /// <code>
@@ -136,11 +149,65 @@ public sealed class AsyncSemaphore
             // retry until race condition succeeds
         }
 
-        return WaitAsyncImpl(cancellationToken);
+        return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
+    }
+
+
+    /// <summary>
+    /// Asynchronously waits to acquire a permit from the semaphore, or until the specified timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// If a permit is available, the method returns a completed <see cref="ValueTask"/> immediately
+    /// without allocating any cancellation infrastructure. A <see cref="CancellationTokenSource"/> is allocated
+    /// only when no permit is available and a finite positive timeout is requested; it is disposed
+    /// automatically when the returned <see cref="ValueTask"/> is awaited.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
+    /// <returns>A <see cref="ValueTask"/> that completes when a permit is acquired.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when the timeout elapses before a permit becomes available.
+    /// </exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        if (timeout == Timeout.InfiniteTimeSpan)
+        {
+            return WaitAsync(cancellationToken);
+        }
+
+        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        // fast path without lock
+        while (true)
+        {
+            int observed = Volatile.Read(ref _currentCount);
+            if (observed <= 0)
+            {
+                break;
+            }
+
+            if (Interlocked.CompareExchange(ref _currentCount, observed - 1, observed) == observed)
+            {
+                return default;
+            }
+        }
+
+        if (timeout == TimeSpan.Zero)
+        {
+            return new ValueTask(Task.FromException(ManualResetValueTaskSource<bool>.OperationCanceled));
+        }
+
+        return WaitAsyncImpl(timeout, cancellationToken);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask WaitAsyncImpl(CancellationToken cancellationToken)
+    private ValueTask WaitAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
@@ -150,16 +217,43 @@ public sealed class AsyncSemaphore
         _spinLock.Enter();
         try
         {
+            // due to race conditions, count may have changed until the lock is taken
+            while (true)
+            {
+                int observed = Volatile.Read(ref _currentCount);
+                if (observed <= 0)
+                {
+                    break;
+                }
+
+                if (Interlocked.CompareExchange(ref _currentCount, observed - 1, observed) == observed)
+                {
+                    return default;
+                }
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new ValueTask(Task.FromCanceled(cancellationToken));
+            }
+
             if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            waiter.CancellationToken = cancellationToken;
 
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+            }
+
+            waiter.CancellationToken = cancellationToken;
             if (cancellationToken.CanBeCanceled)
             {
 #if NET6_0_OR_GREATER
+                // Use UnsafeRegister on .NET 6+ for allocation free registration
                 waiter.CancellationTokenRegistration =
                     cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
 #else
@@ -229,6 +323,20 @@ public sealed class AsyncSemaphore
     }
 
     /// <summary>
+    /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// </summary>
+    private void TimerCallback(object? state)
+    {
+        if (state is not ManualResetValueTaskSource<bool> waiter)
+        {
+            return;
+        }
+
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+    }
+
+    /// <summary>
     /// Gets a value indicating whether the local waiter is currently in use.
     /// </summary>
     internal bool InternalWaiterInUse => _localWaiter.InUse;
@@ -251,15 +359,22 @@ public sealed class AsyncSemaphore
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
-        ManualResetValueTaskSource<bool>? toCancel = null;
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+    }
 
+    /// <summary>
+    /// O(1) removal from intrusive linked list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter)
+    {
         _spinLock.Enter();
         try
         {
             if (_waiters.Remove(waiter))
             {
-                toCancel = waiter;
+                return waiter;
             }
         }
         finally
@@ -267,8 +382,6 @@ public sealed class AsyncSemaphore
             _spinLock.Exit();
         }
 
-#pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-#pragma warning restore CA1508 // Avoid dead conditional code
+        return null;
     }
 }

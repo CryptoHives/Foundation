@@ -26,7 +26,7 @@ public class AsyncSemaphoreTests
     public void ConstructorWithZeroCountIsValid()
     {
         var semaphore = new AsyncSemaphore(0);
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
     }
 
     [Test]
@@ -42,7 +42,7 @@ public class AsyncSemaphoreTests
         Assert.That(semaphore.CurrentCount, Is.EqualTo(1));
 
         await semaphore.WaitAsync().ConfigureAwait(false);
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
     }
 
     [Test]
@@ -51,7 +51,7 @@ public class AsyncSemaphoreTests
         var semaphore = new AsyncSemaphore(1);
 
         await semaphore.WaitAsync().ConfigureAwait(false);
-        Assert.That(semaphore.CurrentCount, Is.EqualTo(0));
+        Assert.That(semaphore.CurrentCount, Is.Zero);
 
         semaphore.Release();
         Assert.That(semaphore.CurrentCount, Is.EqualTo(1));
@@ -67,8 +67,8 @@ public class AsyncSemaphoreTests
     [Test]
     public async Task WaitAsyncBlocksWhenCountIsZero()
     {
-        var customPool = new TestObjectPool<bool>();
-        var semaphore = new AsyncSemaphore(0, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: pool);
 
         var waiter = semaphore.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.False);
@@ -76,15 +76,18 @@ public class AsyncSemaphoreTests
         semaphore.Release();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task MultipleWaitersAreReleasedInOrder()
     {
-        var customPool = new TestObjectPool<bool>();
-        var semaphore = new AsyncSemaphore(0, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: pool);
         var completed = new System.Collections.Concurrent.ConcurrentBag<int>();
 
         var t1 = semaphore.WaitAsync();
@@ -93,9 +96,12 @@ public class AsyncSemaphoreTests
         await Task.Delay(50).ConfigureAwait(false);
         var t3 = semaphore.WaitAsync();
 
-        Assert.That(t1.IsCompleted, Is.False);
-        Assert.That(t2.IsCompleted, Is.False);
-        Assert.That(t3.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(t1.IsCompleted, Is.False);
+            Assert.That(t2.IsCompleted, Is.False);
+            Assert.That(t3.IsCompleted, Is.False);
+        }
 
         semaphore.Release(3);
 
@@ -106,25 +112,31 @@ public class AsyncSemaphoreTests
         await t3.ConfigureAwait(false);
         completed.Add(3);
 
-        Assert.That(completed.Count, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(completed, Has.Count.EqualTo(3));
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task ReleaseManyReleasesMultipleWaiters()
     {
-        var customPool = new TestObjectPool<bool>();
-        var semaphore = new AsyncSemaphore(0, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: pool);
 
         var t1 = semaphore.WaitAsync();
         var t2 = semaphore.WaitAsync();
         var t3 = semaphore.WaitAsync();
 
-        Assert.That(t1.IsCompleted, Is.False);
-        Assert.That(t2.IsCompleted, Is.False);
-        Assert.That(t3.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(t1.IsCompleted, Is.False);
+            Assert.That(t2.IsCompleted, Is.False);
+            Assert.That(t3.IsCompleted, Is.False);
+        }
 
         semaphore.Release(2);
 
@@ -136,15 +148,18 @@ public class AsyncSemaphoreTests
         semaphore.Release();
         await t3.ConfigureAwait(false);
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task CancellationBeforeWaitThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var semaphore = new AsyncSemaphore(0, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: pool);
         using var cts = new CancellationTokenSource();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -152,15 +167,18 @@ public class AsyncSemaphoreTests
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await semaphore.WaitAsync(cts.Token).ConfigureAwait(false));
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task CancellationWhileWaitingThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var semaphore = new AsyncSemaphore(0, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: pool);
         using var cts = new CancellationTokenSource();
 
         var waiter = semaphore.WaitAsync(cts.Token);
@@ -168,20 +186,23 @@ public class AsyncSemaphoreTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda/closure
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda/closure
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task CancelledMiddleWaiterDoesNotAffectOthers()
     {
-        var customPool = new TestObjectPool<bool>();
-        var semaphore = new AsyncSemaphore(0, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: pool);
         using var cts = new CancellationTokenSource();
 
         var t1 = semaphore.WaitAsync();
@@ -192,17 +213,20 @@ public class AsyncSemaphoreTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda/closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda/closure
 
         semaphore.Release(2);
 
         await t1.ConfigureAwait(false);
         await t3.ConfigureAwait(false);
 
-        Assert.That(semaphore.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -216,5 +240,74 @@ public class AsyncSemaphoreTests
 
         semaphore.RunContinuationAsynchronously = true;
         Assert.That(semaphore.RunContinuationAsynchronously, Is.True);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutCompletesWhenPermitAvailableBeforeTimeout()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var semaphore = new AsyncSemaphore(0, pool: pool);
+
+        _ = Task.Run(async () => { await Task.Delay(50).ConfigureAwait(false); semaphore.Release(); });
+
+        await semaphore.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var semaphore = new AsyncSemaphore(0);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await semaphore.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(semaphore.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutCompletesImmediatelyWhenPermitAvailable()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+        await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+
+        Assert.That(semaphore.CurrentCount, Is.Zero);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutThrowsWhenNoPermit()
+    {
+        var semaphore = new AsyncSemaphore(0);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public void WaitAsyncWithNegativeTimeoutThrows()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => semaphore.WaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WaitAsyncWithInfiniteTimeoutBehavesLikeWaitAsync()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+        await semaphore.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
+
+        Assert.That(semaphore.CurrentCount, Is.Zero);
     }
 }

@@ -1,4 +1,4 @@
-﻿# AsyncBarrier
+# AsyncBarrier
 
 A pooled, allocation-free async barrier that synchronizes multiple participants using ValueTask-based waiters.
 
@@ -142,6 +142,55 @@ Signals the barrier and waits for all participants to arrive.
 - `InvalidOperationException` - If more participants signal than the total number of registered participants.
 - `BarrierPostPhaseException` - If the post-phase action throws an exception.
 
+### SignalAndWaitAsync (timeout)
+
+```csharp
+public ValueTask SignalAndWaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+```
+
+Signals the barrier and waits for all participants to arrive, or throws `OperationCanceledException` if the timeout elapses before all participants arrive.
+
+The last participant to arrive is never subject to the timeout — it releases all other waiters immediately. A `TimeProvider` is allocated only for non-final participants with a finite positive timeout; it is disposed automatically when the returned `ValueTask` is awaited.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
+
+**Returns**: A `ValueTask` that completes when all participants have arrived.
+
+**Throws**:
+- `OperationCanceledException` — If the timeout elapses before all participants arrive.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+- `InvalidOperationException` — If more participants signal than registered.
+- `BarrierPostPhaseException` — If the post-phase action throws.
+
+**Allocation notes**:
+
+| Scenario | TimeProvider allocated? |
+|---|---|
+| Last (or only) participant | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and not last | No (immediate exception) |
+| Finite positive timeout, non-final | Yes — one instance, disposed on await |
+
+**Example**:
+
+```csharp
+try
+{
+    await _barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(10));
+    await DoPhase2WorkAsync();
+}
+catch (OperationCanceledException)
+{
+    // Not all participants arrived in time
+    HandleTimeout();
+}
+```
+
+### Allocation Behavior
+
+Immediate acquisitions are completely allocation-free using atomic operations. When the barrier is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated lock operations.
+
 ### AddParticipant / AddParticipants
 
 ```csharp
@@ -232,6 +281,22 @@ When a waiting participant is cancelled:
 - The participant's `ParticipantsRemaining` count is restored
 - Other participants continue waiting
 - The barrier remains in a consistent state
+
+## Best Practices
+
+### ✓ DO: Use `SignalAndWaitAsync(TimeSpan)` to guard against slow participants
+
+```csharp
+try
+{
+    await _barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(30));
+}
+catch (OperationCanceledException)
+{
+    // Phase did not complete in time; handle accordingly
+    HandleTimeout();
+}
+```
 
 ## Comparison with System.Threading.Barrier
 

@@ -7,6 +7,7 @@ namespace Threading.Tests.Pools;
 
 using CryptoHives.Foundation.Threading.Pools;
 using Microsoft.Extensions.ObjectPool;
+using NUnit.Framework;
 using System;
 using System.Threading;
 
@@ -15,7 +16,10 @@ using System.Threading;
 /// A counter tracks get object instances. Allows to check active objects in use.
 /// </summary>
 
-internal class TestObjectPool<T> : ObjectPool<PooledManualResetValueTaskSource<T>>, IGetPooledManualResetValueTaskSource<T> where T : notnull
+internal class TestObjectPool<T> :
+    ObjectPool<PooledManualResetValueTaskSource<T>>,
+    IDisposable,
+    IGetPooledManualResetValueTaskSource<T> where T : notnull
 {
     private readonly ObjectPool<PooledManualResetValueTaskSource<T>> _valueTaskSourcePool;
     private readonly TestPooledValueTaskSourceObjectPolicy<T> _valueTaskSourcePoolPolicy;
@@ -31,6 +35,12 @@ internal class TestObjectPool<T> : ObjectPool<PooledManualResetValueTaskSource<T
     /// Gets the active number of objects of the class that are in use.
     /// </summary>
     public int ActiveCount => _getCount - _valueTaskSourcePoolPolicy.ReturnedCount;
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        Assert.That(ActiveCount, Is.Zero);
+    }
 
     /// <inheritdoc/>
     /// <remarks>
