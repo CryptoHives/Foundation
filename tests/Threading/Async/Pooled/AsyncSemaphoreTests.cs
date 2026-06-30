@@ -186,10 +186,10 @@ public class AsyncSemaphoreTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda/closure
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda/closure
 
         using (Assert.EnterMultipleScope())
         {
@@ -213,9 +213,9 @@ public class AsyncSemaphoreTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda/closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda/closure
 
         semaphore.Release(2);
 

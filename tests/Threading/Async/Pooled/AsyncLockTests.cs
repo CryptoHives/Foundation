@@ -344,7 +344,9 @@ public class AsyncLockTests
             // Cancel after queuing
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
             Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);

@@ -273,10 +273,10 @@ public class AsyncCountdownEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         Assert.That(pool.ActiveCount, Is.Zero);
     }

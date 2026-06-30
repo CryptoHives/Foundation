@@ -138,4 +138,18 @@ public static class DiagnosticDescriptors
         description: "SemaphoreSlim(1, 1) is commonly used as an async-compatible exclusive lock, but CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock is purpose-built for this pattern: it uses pooled ValueTask sources to eliminate per-wait allocations and provides a deterministic Releaser struct that works with using declarations.",
         helpLinkUri: HelpLinkBase + "CHT009.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+
+    /// <summary>
+    /// CHT010: ValueTask captured in lambda/closure.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CapturedInClosure = new(
+        id: DiagnosticIds.CapturedInClosure,
+        title: "ValueTask captured in lambda or closure",
+        messageFormat: "ValueTask '{0}' is captured in a lambda/closure and may be consumed multiple times",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Capturing a ValueTask in a lambda or local function is potentially unsafe because the lambda might be invoked multiple times, or the ValueTask may be consumed by other code before the lambda executes. If you need to use the result multiple times, convert it to a Task using .AsTask() or use .Preserve() to safely capture it for multiple consumes.",
+        helpLinkUri: HelpLinkBase + "CHT010.html",
+        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 }

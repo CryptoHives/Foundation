@@ -230,10 +230,10 @@ public class AsyncBarrierTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
         {
@@ -518,13 +518,13 @@ public class AsyncBarrierTests
         BarrierPostPhaseException? ex3 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await barrier.SignalAndWaitAsync().ConfigureAwait(false));
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
         // Previous waiters should also receive the exception
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         BarrierPostPhaseException? ex1 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter1.ConfigureAwait(false));
         BarrierPostPhaseException? ex2 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter2.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
         {
@@ -596,13 +596,13 @@ public class AsyncBarrierTests
         // Remove the last remaining participant - triggers post-phase action
         Assert.Throws<BarrierPostPhaseException>(barrier.RemoveParticipant);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
         // Waiters should receive the exception
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         BarrierPostPhaseException? ex1 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter1.ConfigureAwait(false));
         BarrierPostPhaseException? ex2 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter2.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
         {

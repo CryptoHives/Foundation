@@ -269,7 +269,9 @@ public class AsyncManualResetEventTests
 
         ValueTask vt = ev.WaitAsync(cts.Token);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
         {
@@ -290,7 +292,9 @@ public class AsyncManualResetEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
         {
@@ -339,7 +343,9 @@ public class AsyncManualResetEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
         {

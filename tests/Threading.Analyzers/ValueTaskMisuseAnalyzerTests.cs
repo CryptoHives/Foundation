@@ -524,7 +524,7 @@ public class TestClass
         await lambda();
     }
 }";
-        var expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+        var expected = Diagnostic(DiagnosticDescriptors.CapturedInClosure)
             .WithLocation(0)
             .WithArguments("vt");
 
@@ -547,7 +547,7 @@ public class TestClass
         await lambda();
     }
 }";
-        var expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+        var expected = Diagnostic(DiagnosticDescriptors.CapturedInClosure)
             .WithLocation(0)
             .WithArguments("vt");
 
@@ -569,6 +569,28 @@ public class TestClass
         ValueTask vt = default;
         ValueTask preserved = vt.Preserve();
         Func<Task> lambda = async () => await preserved;
+        await lambda();
+        await lambda();
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CapturedAsTaskValueTaskInLambdaNoDiagnostic()
+    {
+        // If the converted ValueTask to Task is captured, it's safe to await in the lambda
+        var code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        Task task = vt.AsTask();
+        Func<Task> lambda = async () => await task;
         await lambda();
         await lambda();
     }

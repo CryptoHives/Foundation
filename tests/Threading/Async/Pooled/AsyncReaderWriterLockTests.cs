@@ -530,10 +530,10 @@ public class AsyncReaderWriterLockTests
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
             Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await readerTask.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
         using (Assert.EnterMultipleScope())
@@ -561,10 +561,10 @@ public class AsyncReaderWriterLockTests
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
             Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await readerTask.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
         using (Assert.EnterMultipleScope())
@@ -592,10 +592,10 @@ public class AsyncReaderWriterLockTests
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
             Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await writerTask.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
         using (Assert.EnterMultipleScope())
@@ -624,10 +624,10 @@ public class AsyncReaderWriterLockTests
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
             Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await writerTask.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
         using (Assert.EnterMultipleScope())
@@ -878,9 +878,9 @@ public class AsyncReaderWriterLockTests
 
         // cancel and ensure waiter cleaned up
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiting.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
     }
 
@@ -902,9 +902,9 @@ public class AsyncReaderWriterLockTests
 
         // cancel the upgrade attempt and ensure it is removed from waiter queue
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         Assert.That(rwLock.InternalUpgradedWriterWaiterInUse, Is.False);
 
@@ -980,9 +980,9 @@ public class AsyncReaderWriterLockTests
 
         // cancel the upgrade attempt and ensure it is removed from waiter queue
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
         {
@@ -1087,9 +1087,9 @@ public class AsyncReaderWriterLockTests
         // t1 should be granted and t2 should be canceled; ensure internal waiters cleared and pool drained
         using var upgr1 = await t1.ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         using (Assert.EnterMultipleScope())
         {
             Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
@@ -1241,9 +1241,9 @@ public class AsyncReaderWriterLockTests
 
         var vt = upgr.UpgradeToWriterLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
-#pragma warning disable CHT001
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
-#pragma warning restore CHT001
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
     }
 
     [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
@@ -1261,9 +1261,9 @@ public class AsyncReaderWriterLockTests
 
         var vt = rwLock.WriterLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
-#pragma warning disable CHT001
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
-#pragma warning restore CHT001
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
     }
 
     [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
@@ -1281,9 +1281,9 @@ public class AsyncReaderWriterLockTests
 
         var vt = rwLock.UpgradeableReaderLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
-#pragma warning disable CHT001
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
-#pragma warning restore CHT001
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
     }
 
     [Test]

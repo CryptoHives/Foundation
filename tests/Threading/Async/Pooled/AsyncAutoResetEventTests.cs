@@ -160,7 +160,9 @@ public class AsyncAutoResetEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         ev.Set();
         await waiter1.ConfigureAwait(false);
@@ -188,8 +190,10 @@ public class AsyncAutoResetEventTests
         await AsyncAssert.CancelAsync(cts1).ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts3).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter1.ConfigureAwait(false));
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter3.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         ev.Set();
         await waiter2.ConfigureAwait(false);
@@ -254,12 +258,16 @@ public class AsyncAutoResetEventTests
         cts.CancelAfter(TimeSpan.FromMilliseconds(500));
 
         // pooled waiter is canceled during wait, then returned to pool
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt2.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         Assert.That(ev.IsSet, Is.False);
 
         // internal waiter hits cancel and is returned to local 
         ev.Set();
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ev.InternalWaiterInUse, Is.False);
@@ -574,7 +582,9 @@ public class AsyncAutoResetEventTests
         {
             ValueTask vt = ev.WaitAsync(cts.Token);
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
             Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
         using (Assert.EnterMultipleScope())
@@ -730,8 +740,10 @@ public class AsyncAutoResetEventTests
         var waiter1 = ev.WaitAsync(TimeSpan.FromMilliseconds(200));
         var waiter2 = ev.WaitAsync(TimeSpan.FromMilliseconds(200));
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter1.ConfigureAwait(false));
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         await Task.Delay(50).ConfigureAwait(false);
 

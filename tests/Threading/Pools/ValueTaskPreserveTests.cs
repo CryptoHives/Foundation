@@ -183,7 +183,9 @@ public class ValueTaskPreserveTests
         string r2 = await preserved.ConfigureAwait(false);
         string r3 = await preserved.ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         using (Assert.EnterMultipleScope())
@@ -208,7 +210,9 @@ public class ValueTaskPreserveTests
         // Set exception
         source.SetException(new InvalidOperationException("Test exception"));
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         // should throw the same exception each time
@@ -240,7 +244,9 @@ public class ValueTaskPreserveTests
         Assert.That(result, Is.EqualTo(42));
 
         // second await throws because the source was consumed and returned to pool
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         Assert.That(pool.ActiveCount, Is.Zero);
     }
