@@ -44,3 +44,7 @@
       href: ../threading.analyzers/CHT007.md
     - name: CHT008 - Not Consumed
       href: ../threading.analyzers/CHT008.md
+    - name: CHT009 - SemaphoreSlim(1, 1) used as async lock
+      href: ../threading.analyzers/CHT009.md
+    - name: CHT010 - ValueTask captured in lambda/closure
+      href: ../threading.analyzers/CHT010.md
