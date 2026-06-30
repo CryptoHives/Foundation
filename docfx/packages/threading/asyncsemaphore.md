@@ -1,4 +1,4 @@
-﻿# AsyncSemaphore
+# AsyncSemaphore
 
 A pooled, allocation-free async semaphore that limits concurrent access using ValueTask-based waiters.
 
@@ -81,6 +81,58 @@ public ValueTask WaitAsync(CancellationToken cancellationToken = default)
 
 Asynchronously waits to acquire a permit from the semaphore.
 
+### WaitAsync (timeout)
+
+```csharp
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+```
+
+Asynchronously waits to acquire a permit, or throws `OperationCanceledException` if the timeout elapses first.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
+
+**Returns**: A `ValueTask` that completes when a permit is acquired.
+
+**Throws**:
+- `OperationCanceledException` — If the timeout elapses before a permit becomes available.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes**:
+
+| Scenario | TimeProvider allocated? |
+|---|---|
+| Permit immediately available | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and no permit | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+**Example**:
+
+```csharp
+try
+{
+    await _semaphore.WaitAsync(TimeSpan.FromSeconds(5));
+    try
+    {
+        await DoWorkAsync();
+    }
+    finally
+    {
+        _semaphore.Release();
+    }
+}
+catch (OperationCanceledException)
+{
+    // Permit was not available within 5 seconds
+    HandleTimeout();
+}
+```
+
+### Allocation Behavior
+
+Immediate acquisitions are completely allocation-free using atomic operations. When the semaphore is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated lock operations.
+
 ### Release
 
 ```csharp
@@ -140,7 +192,26 @@ Measures the performance of acquiring and releasing a single permit. In the curr
 | Allocation overhead | Minimal (pooled) | Higher (per wait) |
 | ValueTask support | Native | Via WaitAsync |
 | Cancellation | Full support | Full support |
+| Timeout support | Direct `WaitAsync(TimeSpan)` | Via `WaitAsync(int)` / CT |
 | Performance | Optimized | Standard |
+
+## Best Practices
+
+### ✓ DO: Use `WaitAsync(TimeSpan)` for timed acquisitions
+
+```csharp
+try
+{
+    await _semaphore.WaitAsync(TimeSpan.FromSeconds(2));
+    await DoWorkAsync();
+    _semaphore.Release();
+}
+catch (OperationCanceledException)
+{
+    // No permit available within the timeout
+    HandleTimeout();
+}
+```
 
 ## See Also
 

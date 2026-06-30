@@ -11,45 +11,50 @@ public static class DiagnosticIds
     /// <summary>
     /// ValueTask awaited multiple times.
     /// </summary>
-    public const string MultipleAwait = "CHT001";
-
+    public const string MultipleAwait = "CHT001"; 
+  
     /// <summary>
     /// ValueTask.GetAwaiter().GetResult() used (blocking).
-    /// </summary>
-    public const string BlockingGetResult = "CHT002";
-
+    /// </summary> 
+    public const string BlockingGetResult = "CHT002"; 
+  
     /// <summary>
-    /// ValueTask stored in field (potential double consumption).
-    /// </summary>
-    public const string StoredInField = "CHT003";
-
+    /// ValueTask stored in field (potential double consumption). 
+    /// </summary> 
+    public const string StoredInField = "CHT003"; 
+  
     /// <summary>
-    /// ValueTask.AsTask() called multiple times.
-    /// </summary>
-    public const string MultipleAsTask = "CHT004";
-
+    /// ValueTask.AsTask() called multiple times. 
+    /// </summary> 
+    public const string MultipleAsTask = "CHT004"; 
+  
     /// <summary>
-    /// ValueTask.Result accessed directly (blocking and potential misuse).
-    /// </summary>
-    public const string DirectResultAccess = "CHT005";
-
+    /// ValueTask.Result accessed directly (blocking and potential misuse). 
+    /// </summary> 
+    public const string DirectResultAccess = "CHT005"; 
+  
     /// <summary>
-    /// ValueTask passed to method that may consume it multiple times.
-    /// </summary>
-    public const string PassedToUnsafeMethod = "CHT006";
-
+    /// ValueTask passed to method that may consume it multiple times. 
+    /// </summary> 
+    public const string PassedToUnsafeMethod = "CHT006"; 
+  
     /// <summary>
-    /// ValueTask.AsTask() stored before signaling can cause performance issues.
-    /// </summary>
-    public const string AsTaskStoredBeforeSignal = "CHT007";
-
+    /// ValueTask.AsTask() stored before signaling can cause performance issues. 
+    /// </summary> 
+    public const string AsTaskStoredBeforeSignal = "CHT007"; 
+  
     /// <summary>
-    /// ValueTask not awaited or converted to Task.
-    /// </summary>
-    public const string NotConsumed = "CHT008";
-
+    /// ValueTask not awaited or converted to Task. 
+    /// </summary> 
+    public const string NotConsumed = "CHT008"; 
+  
     /// <summary>
-    /// <c>SemaphoreSlim(1, 1)</c> used as an async lock; replace with <c>AsyncLock</c>.
-    /// </summary>
-    public const string SemaphoreSlimAsAsyncLock = "CHT009";
+    /// <c>SemaphoreSlim(1, 1)</c> used as an async lock; replace with <c>AsyncLock</c>. 
+    /// </summary> 
+    public const string SemaphoreSlimAsAsyncLock = "CHT009"; 
+  
+    /// <summary> 
+    /// ValueTask captured in lambda/closure. 
+    /// </summary> 
+    public const string CapturedInClosure = "CHT010"; 
 }

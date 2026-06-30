@@ -32,9 +32,12 @@ public class AsyncCountdownEventTests
     public void InitialCountIsCorrect()
     {
         var countdown = new AsyncCountdownEvent(5);
-        Assert.That(countdown.CurrentCount, Is.EqualTo(5));
-        Assert.That(countdown.InitialCount, Is.EqualTo(5));
-        Assert.That(countdown.IsSet, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(countdown.CurrentCount, Is.EqualTo(5));
+            Assert.That(countdown.InitialCount, Is.EqualTo(5));
+            Assert.That(countdown.IsSet, Is.False);
+        }
     }
 
     [Test]
@@ -49,8 +52,11 @@ public class AsyncCountdownEventTests
         Assert.That(countdown.CurrentCount, Is.EqualTo(1));
 
         countdown.Signal();
-        Assert.That(countdown.CurrentCount, Is.EqualTo(0));
-        Assert.That(countdown.IsSet, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(countdown.CurrentCount, Is.Zero);
+            Assert.That(countdown.IsSet, Is.True);
+        }
     }
 
     [Test]
@@ -79,8 +85,8 @@ public class AsyncCountdownEventTests
     [Test]
     public async Task WaitAsyncCompletesWhenCountReachesZero()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(2, pool: pool);
 
         var waiter = countdown.WaitAsync();
         Assert.That(waiter.IsCompleted, Is.False);
@@ -91,7 +97,7 @@ public class AsyncCountdownEventTests
         countdown.Signal();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -108,16 +114,19 @@ public class AsyncCountdownEventTests
     [Test]
     public async Task MultipleWaitersAreAllReleased()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(1, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(1, pool: pool);
 
         var t1 = countdown.WaitAsync();
         var t2 = countdown.WaitAsync();
         var t3 = countdown.WaitAsync();
 
-        Assert.That(t1.IsCompleted, Is.False);
-        Assert.That(t2.IsCompleted, Is.False);
-        Assert.That(t3.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(t1.IsCompleted, Is.False);
+            Assert.That(t2.IsCompleted, Is.False);
+            Assert.That(t3.IsCompleted, Is.False);
+        }
 
         countdown.Signal();
 
@@ -125,7 +134,7 @@ public class AsyncCountdownEventTests
         await t2.ConfigureAwait(false);
         await t3.ConfigureAwait(false);
 
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -170,8 +179,11 @@ public class AsyncCountdownEventTests
     {
         var countdown = new AsyncCountdownEvent(2);
 
-        Assert.That(countdown.TryAddCount(), Is.True);
-        Assert.That(countdown.CurrentCount, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(countdown.TryAddCount(), Is.True);
+            Assert.That(countdown.CurrentCount, Is.EqualTo(3));
+        }
     }
 
     [Test]
@@ -180,16 +192,22 @@ public class AsyncCountdownEventTests
         var countdown = new AsyncCountdownEvent(1);
         countdown.Signal();
 
-        Assert.That(countdown.TryAddCount(), Is.False);
-        Assert.That(countdown.CurrentCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(countdown.TryAddCount(), Is.False);
+            Assert.That(countdown.CurrentCount, Is.Zero);
+        }
     }
 
     [Test]
     public void TryAddCountReturnsFalseForInvalidCount()
     {
         var countdown = new AsyncCountdownEvent(2);
-        Assert.That(countdown.TryAddCount(0), Is.False);
-        Assert.That(countdown.TryAddCount(-1), Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(countdown.TryAddCount(0), Is.False);
+            Assert.That(countdown.TryAddCount(-1), Is.False);
+        }
     }
 
     [Test]
@@ -204,8 +222,11 @@ public class AsyncCountdownEventTests
 
         countdown.Reset();
 
-        Assert.That(countdown.CurrentCount, Is.EqualTo(3));
-        Assert.That(countdown.IsSet, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(countdown.CurrentCount, Is.EqualTo(3));
+            Assert.That(countdown.IsSet, Is.False);
+        }
     }
 
     [Test]
@@ -218,15 +239,18 @@ public class AsyncCountdownEventTests
 
         countdown.Reset(5);
 
-        Assert.That(countdown.CurrentCount, Is.EqualTo(5));
-        Assert.That(countdown.InitialCount, Is.EqualTo(5));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(countdown.CurrentCount, Is.EqualTo(5));
+            Assert.That(countdown.InitialCount, Is.EqualTo(5));
+        }
     }
 
     [Test]
     public async Task CancellationBeforeWaitThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -234,14 +258,14 @@ public class AsyncCountdownEventTests
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await countdown.WaitAsync(cts.Token).ConfigureAwait(false));
 
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task CancellationWhileWaitingThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var countdown = new AsyncCountdownEvent(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var countdown = new AsyncCountdownEvent(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         var waiter = countdown.WaitAsync(cts.Token);
@@ -249,12 +273,12 @@ public class AsyncCountdownEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -268,5 +292,65 @@ public class AsyncCountdownEventTests
 
         countdown.RunContinuationAsynchronously = true;
         Assert.That(countdown.RunContinuationAsynchronously, Is.True);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutCompletesWhenCountReachesZeroBeforeTimeout()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+        _ = Task.Run(async () => { await Task.Delay(50).ConfigureAwait(false); countdown.Signal(); });
+
+        await countdown.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+        Assert.That(countdown.CurrentCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await countdown.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutCompletesImmediatelyWhenAlreadyZero()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+        countdown.Signal();
+
+        await countdown.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutThrowsWhenCountIsNonZero()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await countdown.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public void WaitAsyncWithNegativeTimeoutThrows()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => countdown.WaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WaitAsyncWithInfiniteTimeoutBehavesLikeWaitAsync()
+    {
+        var countdown = new AsyncCountdownEvent(1);
+        countdown.Signal();
+
+        await countdown.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
     }
 }

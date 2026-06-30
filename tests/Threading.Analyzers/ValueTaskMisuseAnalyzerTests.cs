@@ -524,7 +524,7 @@ public class TestClass
         await lambda();
     }
 }";
-        var expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+        var expected = Diagnostic(DiagnosticDescriptors.CapturedInClosure)
             .WithLocation(0)
             .WithArguments("vt");
 
@@ -547,7 +547,7 @@ public class TestClass
         await lambda();
     }
 }";
-        var expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+        var expected = Diagnostic(DiagnosticDescriptors.CapturedInClosure)
             .WithLocation(0)
             .WithArguments("vt");
 
@@ -569,6 +569,28 @@ public class TestClass
         ValueTask vt = default;
         ValueTask preserved = vt.Preserve();
         Func<Task> lambda = async () => await preserved;
+        await lambda();
+        await lambda();
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CapturedAsTaskValueTaskInLambdaNoDiagnostic()
+    {
+        // If the converted ValueTask to Task is captured, it's safe to await in the lambda
+        var code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        Task task = vt.AsTask();
+        Func<Task> lambda = async () => await task;
         await lambda();
         await lambda();
     }
@@ -606,6 +628,60 @@ public class TestClass
             .WithArguments("vt");
 
         await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ValueTaskMultipleAwaitPropertyAccessIsIgnored()
+    {
+        // This test verifies that access to the ValueTask properties is not detected as multiple await
+
+        // Pattern: Access on original ValueTask properties
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task OriginalPooledSourceThrowsOnMultipleAwaitWithoutPreserve()
+    {
+        ValueTask<int> vt = new ValueTask<int>(42);
+
+        bool IsCompleted = vt.IsCompleted;
+
+        // should not be flagged
+        int result = await vt;
+       
+    }
+}";
+
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ValueTaskMultipleAwaitedVariablesIsIgnored()
+    {
+        // This test verifies that access to the ValueTask properties is not detected as multiple await
+        // Pattern: Await on multiple ValueTasks
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task OriginalPooledSourceThrowsOnMultipleAwaitWithoutPreserve()
+    {
+        ValueTask<int> vt1 = new ValueTask<int>(42);
+        ValueTask<int> vt2 = new ValueTask<int>(42);
+        ValueTask<int> vt3 = new ValueTask<int>(42);
+
+        // should not be flagged
+        int result1 = await vt1;
+        int result2 = await vt2;
+        int result3 = await vt3;
+    }
+}";
+
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
 
     [Test]
