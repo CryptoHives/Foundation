@@ -43,7 +43,8 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         DiagnosticDescriptors.DirectResultAccess,
         DiagnosticDescriptors.PassedToUnsafeMethod,
         DiagnosticDescriptors.AsTaskStoredBeforeSignal,
-        DiagnosticDescriptors.NotConsumed);
+        DiagnosticDescriptors.NotConsumed,
+        DiagnosticDescriptors.CapturedInClosure);
 
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
@@ -695,7 +696,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
                 // This is a captured variable from outer scope - flag it as potential misuse
                 var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.MultipleAwait,
+                    DiagnosticDescriptors.CapturedInClosure,
                     identifier.GetLocation(),
                     identifier.Identifier.Text);
                 _context.ReportDiagnostic(diagnostic);

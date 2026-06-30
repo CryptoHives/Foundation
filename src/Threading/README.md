@@ -12,9 +12,54 @@ developed and maintained by **The Keepers of the CryptoHives**.
 
 High-performance, pooled async synchronization primitives for .NET — designed to eliminate `Task` and `TaskCompletionSource<T>` allocations on the hot path.
 
+## Classes
+
+### Synchronization Primitives
+
+Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
+
+| Class | Description | 
+|-------|-------------|
+| [AsyncLock](https://cryptohives.github.io/Foundation/packages/threading/asynclock.html) | Pooled async mutual exclusion lock
+| [AsyncAutoResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncautoresetevent.html) | Pooled async auto-reset event (one waiter per signal)
+| [AsyncManualResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncmanualresetevent.html) | Pooled async manual-reset event (all waiters per signal)
+| [AsyncSemaphore](https://cryptohives.github.io/Foundation/packages/threading/asyncsemaphore.html) | Pooled async semaphore with configurable permit count
+| [AsyncCountdownEvent](https://cryptohives.github.io/Foundation/packages/threading/asynccountdownevent.html) | Pooled async countdown event (signals when count reaches zero)
+| [AsyncBarrier](https://cryptohives.github.io/Foundation/packages/threading/asyncbarrier.html) | Pooled async barrier (synchronizes multiple participants)
+| [AsyncReaderWriterLock](https://cryptohives.github.io/Foundation/packages/threading/asyncreaderwriterlock.html) | Pooled async reader-writer lock (multiple readers or single writer)
+
 All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>` to minimize per-operation allocations in high-throughput scenarios.
 
+### Pooling Support Classes
+
+Namespace: `CryptoHives.Foundation.Threading.Pools`
+
+| Class | Description | Namespace |
+|-------|-------------|-----------|
+| `IGetPooledManualResetValueTaskSource<T>` | Interface to get pooled `IValueTaskSource<T>` implementations (providers return `PooledManualResetValueTaskSource<T>` instances)
+| `ManualResetValueTaskSource<T>` | Abstract base for pooled `IValueTaskSource<T>` implementations 
+| `PooledManualResetValueTaskSource<T>` | Pooled `IValueTaskSource<T>` implementation with automatic pool return 
+| `LocalManualResetValueTaskSource<T>` | Object-local `IValueTaskSource<T>` without pool integration 
+| `PooledValueTaskSourceObjectPolicy<T>` | Object pool policy for `PooledManualResetValueTaskSource<T>` 
+| `ValueTaskSourceObjectPool<T>` | Specialized provider that implements `IGetPooledManualResetValueTaskSource<T>` and returns pooled task sources
+| `ValueTaskSourceObjectPools` | Static helper with shared pool instances and constants
+
 > **Included:** This package automatically bundles [CryptoHives.Foundation.Threading.Analyzers](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) — Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time, applied transitively to all consumers.
+
+---
+
+## ✨ Key Features
+
+- **Pooled primitives** — synchronization objects backed by `Microsoft.Extensions.ObjectPool`
+- **`ValueTask`-based APIs** — minimal/no memory allocations with object pools
+- **`CancellationToken` support** — full cancellation across all primitives, allocation-free on modern .NET
+- **`ConfigureAwait` support** — works naturally with `.ConfigureAwait(false)` in library code
+- **Timeout support**: all lock acquisition methods support timeout parameters
+- **Configurable continuations** — control synchronous vs. asynchronous continuation scheduling
+- **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` for fine-grained control
+- **Drop-in replacement** — change namespace, keep the same `using`-based patterns
+- **Custom ObjectPools**: Supply your own object pools for fine-grained control
+- **Included analyzers** — ValueTask misuse caught at compile time
 
 ---
 
@@ -23,19 +68,6 @@ All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>` to minimi
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
 ```
-
----
-
-## ✨ Key Features
-
-- **Pooled primitives** — synchronization objects backed by `Microsoft.Extensions.ObjectPool`
-- **`ValueTask`-based APIs** — avoid `Task` allocations when operations complete synchronously
-- **`CancellationToken` support** — full cancellation across all primitives, allocation-free on modern .NET
-- **`ConfigureAwait` support** — works naturally with `.ConfigureAwait(false)` in library code
-- **Configurable continuations** — control synchronous vs. asynchronous continuation scheduling
-- **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` for fine-grained control
-- **Drop-in replacement** — change namespace, keep the same `using`-based patterns
-- **Included analyzers** — ValueTask misuse caught at compile time
 
 ---
 

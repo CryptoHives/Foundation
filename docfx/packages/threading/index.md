@@ -1,4 +1,4 @@
-﻿# CryptoHives.Foundation.Threading Package
+# CryptoHives.Foundation.Threading Package
 
 ## Overview
 
@@ -9,14 +9,15 @@ In recent years, the introduction of `ValueTask` and `IValueTaskSource` has enab
 This library is the result of the research done by the *Keepers of the CryptoHives* into building efficient, pooled async synchronization primitives that leverage these modern .NET features.
 By demand, more primitives might be added in the future.
 
-## Key Features
+## Core Guarantees
 
 - **Pooled Primitives**: Synchronization objects backed by object pools
 - **ValueTask-based**: Low-allocation async operations
-- **High Performance**: Optimized for concurrent access patterns
+- **High Performance**: Optimized for concurrent access patterns using interlocked state transitions
 - **Thread-safe**: All operations are thread-safe
 - **Ease of use**: Drop-in replacement to replace other popular libraries by changing the namespace
 - **Cancellation support**: Full `CancellationToken` support across all primitives
+- **Timeout support**: Optional timeout parameters on all lock acquisition methods
 - **Configurable continuations**: Control synchronous vs asynchronous continuation execution
 - **Custom ObjectPools**: Supply your own object pools for fine-grained control
 - **Included Analyzers**: Roslyn analyzers automatically detect common ValueTask misuse patterns
@@ -71,16 +72,22 @@ using CryptoHives.Foundation.Threading.Pools;
 
 ## ⚠️ Known Issues and Caveats
 
-1. Strictly only **await a ValueTask once**. An additional await or AsTask() may throw an `InvalidOperationException`.
-2. Strictly only **use AsTask() once**, and only if you have to. An additional await or AsTask() may throw an `InvalidOperationException`. Adds also a Task allocation on contention.
-3. **RunContinuationsAsynchronously** is by default enabled. In rare cases perf degradation may occur if the Task derived from a ValueTask is not immediately awaited (see benchmarks).
-4. **Pool Exhaustion**: In extreme high-throughput scenarios with many waiters, the pool may exhaust. Monitor and adjust usage patterns accordingly. Use a custom pool if necessary.
-5. Always await a ValueTask or AsTask() waiter primitive, or the `IValueTaskSource` is not returned to the pool.
-6. **AsTask() Performance Warning**: When `RunContinuationAsynchronously=true` (default), storing the result of `AsTask()` before signaling causes severe performance degradation (10x-100x slower). Always await `ValueTask` directly when possible.
+1. **Strictly only await a ValueTask once**. An additional await or AsTask() may throw an `InvalidOperationException`.
+2. **Strictly only use AsTask() once**, and only if you have to. An additional await or AsTask() may throw an `InvalidOperationException`. Adds also a Task allocation on contention.
+3. **Pool Exhaustion**: In extreme high-throughput scenarios with many waiters, the pool may exhaust. Monitor and adjust usage patterns accordingly. Use a custom pool if necessary.
+4. **Architecture-Specific Performance**: Performance characteristics vary significantly between Windows x64 and Apple Silicon (M4). 
+    - **Windows x64**: Exhibits superior performance at low concurrency (1–2 waiters) due to efficient ThreadPool inline task scheduling.
+    - **macOS M4**: Exhibits superior performance at high concurrency (100+ waiters) and on uncontended paths due to ARM64 JIT optimizations.
+    - **Recommendation**: For maximum throughput at all contention levels, prefer `AsValueTask()` where possible.
+5. **Always Await**: Always await a `ValueTask` or `Task` waiter primitive; otherwise, the underlying `IValueTaskSource` is not returned to the pool, causing a leak.
 
-## Benchmarks
+## Performance Characteristics
 
-Microbenchmarks and contention tests with a discussion of the performance characteristics are available to validate performance and allocation characteristics.
+- **Pooled Primitives**: Synchronization objects backed by object pools to minimize GC pressure.
+- **ValueTask-based**: Low-allocation async operations that avoid heap allocations on the fast path.
+- **Lock-Free Fast Paths**: Optimized for uncontended access using atomic operations.
+- **Scheduling**: 
+    - Uses `RunContinuationsAsynchronously` by default to prevent deadlocks.
 
 Please be aware that not all new replacement classes behave better than existing popular implementations in all scenarios; But most of the time they do.
 
@@ -229,6 +236,50 @@ public async Task WriteAsync(CancellationToken ct)
 }
 ```
 
+## Timeout Support
+
+All synchronization primitives support optional timeout parameters to prevent indefinite waiting. This enables non-blocking attempts and timeout-based retry logic:
+
+```csharp
+// Non-blocking attempt using TimeSpan.Zero
+try
+{
+    using (await _lock.LockAsync(TimeSpan.Zero))
+    {
+        await DoWorkAsync();
+    }
+}
+catch (OperationCanceledException)
+{
+    // Lock not immediately available
+}
+```
+
+```csharp
+// Timeout-based acquisition with retry
+private readonly AsyncLock _lock = new AsyncLock();
+
+public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetries, CancellationToken ct)
+{
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            using (await _lock.LockAsync(timeout, ct))
+            {
+                return await PerformWorkAsync();
+            }
+        }
+        catch (OperationCanceledException) when (i < maxRetries - 1)
+        {
+            // Timeout occurred, retry
+            continue;
+        }
+    }
+    return false; // All retries exhausted
+}
+```
+
 ## Benefits
 
 ### Reduced Allocations
@@ -264,7 +315,7 @@ public async Task WriteAsync(CancellationToken ct)
 3. **Do not reuse ValueTask**: Always await or AsTask() only once per ValueTask instance
 4. **Always Await ValueTask and Task**: If not awaited, resources are not returned to the pool
 5. **Avoid holding locks**: Keep critical sections as short as possible
-6. **Use cancellation**: Always pass CancellationToken for long waits
+6. **Use cancellation**: Always pass CancellationToken for long waits (remember, its almost free!)
 7. **ConfigureAwait(false)**: Use in library code to avoid context capture
 8. **Avoid AsTask() before signaling**: When `RunContinuationAsynchronously=true`, this causes severe performance degradation
 

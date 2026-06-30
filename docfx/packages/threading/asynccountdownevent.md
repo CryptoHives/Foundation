@@ -1,4 +1,4 @@
-﻿# AsyncCountdownEvent
+# AsyncCountdownEvent
 
 A pooled, allocation-free async countdown event that signals when a count reaches zero using ValueTask-based waiters.
 
@@ -96,6 +96,50 @@ public ValueTask WaitAsync(CancellationToken cancellationToken = default)
 
 Asynchronously waits for the countdown to reach zero.
 
+### WaitAsync (timeout)
+
+```csharp
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+```
+
+Asynchronously waits for the countdown to reach zero, or throws `OperationCanceledException` if the timeout elapses first.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
+
+**Returns**: A `ValueTask` that completes when the count reaches zero.
+
+**Throws**:
+- `OperationCanceledException` — If the timeout elapses before the count reaches zero.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes**:
+
+| Scenario | TimeProvider allocated? |
+|---|---|
+| Count already zero | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and count non-zero | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+**Example**:
+
+```csharp
+try
+{
+    await _countdown.WaitAsync(TimeSpan.FromSeconds(30));
+    ProcessResults();
+}
+catch (OperationCanceledException)
+{
+    HandleTimeout();
+}
+```
+
+### Allocation Behavior
+
+Immediate acquisitions are completely allocation-free using atomic operations. When the countdown is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated lock operations.
+
 ### Signal
 
 ```csharp
@@ -176,6 +220,27 @@ The Nito.Async implementation can not be benchmarked due to its internal design 
 - Fan-out/fan-in coordination patterns
 - Batch processing with parallel workers
 - Scenarios where the countdown is frequently reset and reused
+
+## Best Practices
+
+### ✓ DO: Use `WaitAsync(TimeSpan)` to bound fan-in waits
+
+```csharp
+var countdown = new AsyncCountdownEvent(workers.Length);
+foreach (var w in workers)
+{
+    _ = Task.Run(async () => { await w.RunAsync(); countdown.Signal(); });
+}
+
+try
+{
+    await countdown.WaitAsync(TimeSpan.FromMinutes(1));
+}
+catch (OperationCanceledException)
+{
+    HandleTimeout();
+}
+```
 
 ## See Also
 
