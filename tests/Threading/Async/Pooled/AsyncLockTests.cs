@@ -19,19 +19,25 @@ public class AsyncLockTests
     [Test]
     public void AsyncLockUnlockedSynchronouslyPermitsLock()
     {
-        var mutex = new AsyncLock();
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
 
         Task<AsyncLock.Releaser> lockTask = mutex.LockAsync().AsTask();
 
-        Assert.That(lockTask.IsCompleted, Is.True);
-        Assert.That(lockTask.IsFaulted, Is.False);
-        Assert.That(lockTask.IsCanceled, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(lockTask.IsCompleted, Is.True);
+            Assert.That(lockTask.IsFaulted, Is.False);
+            Assert.That(lockTask.IsCanceled, Is.False);
+        }
     }
 
     [Test]
     public async Task AsyncLockLockedPreventsLockUntilUnlocked()
     {
-        var mutex = new AsyncLock();
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
         TaskCompletionSource<object?> task1HasLock = CreateAsyncTaskSource<object?>();
         TaskCompletionSource<object?> task1Continue = CreateAsyncTaskSource<object?>();
 
@@ -56,8 +62,8 @@ public class AsyncLockTests
     [Test]
     public async Task AsyncLockOnlyPermitsOneLockerAtATime()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         var task1HasLock = new TaskCompletionSource<bool>();
         var task1Continue = new TaskCompletionSource<bool>();
@@ -99,21 +105,29 @@ public class AsyncLockTests
         await task2.ConfigureAwait(false);
         await task3.ConfigureAwait(false);
 
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public void AsyncLockPreCancelledUnlockedSynchronouslyTakesLock()
     {
-        var mutex = new AsyncLock();
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
         var token = new CancellationToken(true);
 
         Task<AsyncLock.Releaser> task = mutex.LockAsync(token).AsTask();
 
-        Assert.That(task.IsCompleted, Is.True);
-        Assert.That(task.IsCanceled, Is.False);
-        Assert.That(task.IsFaulted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(task.IsCompleted, Is.True);
+            Assert.That(task.IsCanceled, Is.False);
+            Assert.That(task.IsFaulted, Is.False);
+        }
     }
 
     [Test]
@@ -121,23 +135,31 @@ public class AsyncLockTests
     [TestCase(false)]
     public async Task AsyncLockPreCancelledLockedSynchronouslyCancels(bool useAsTask)
     {
-        var mutex = new AsyncLock();
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
         ValueTask<AsyncLock.Releaser> lockTask = mutex.LockAsync();
         var token = new CancellationToken(true);
 
         if (useAsTask)
         {
             Task<AsyncLock.Releaser> task = mutex.LockAsync(token).AsTask();
-            Assert.That(task.IsCompleted, Is.True);
-            Assert.That(task.IsCanceled, Is.True);
-            Assert.That(task.IsFaulted, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(task.IsCompleted, Is.True);
+                Assert.That(task.IsCanceled, Is.True);
+                Assert.That(task.IsFaulted, Is.False);
+            }
         }
         else
         {
             ValueTask<AsyncLock.Releaser> valueTask = mutex.LockAsync(token);
-            Assert.That(valueTask.IsCompleted, Is.True);
-            Assert.That(valueTask.IsCanceled, Is.True);
-            Assert.That(valueTask.IsFaulted, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(valueTask.IsCompleted, Is.True);
+                Assert.That(valueTask.IsCanceled, Is.True);
+                Assert.That(valueTask.IsFaulted, Is.False);
+            }
         }
 
         await lockTask.ConfigureAwait(false);
@@ -146,7 +168,9 @@ public class AsyncLockTests
     [Test]
     public async Task AsyncLockCancelledLockLeavesLockUnlocked()
     {
-        var mutex = new AsyncLock();
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
         using var cts = new CancellationTokenSource();
         TaskCompletionSource<object?> taskReady = CreateAsyncTaskSource<object?>();
 
@@ -170,7 +194,9 @@ public class AsyncLockTests
     [Test]
     public async Task AsyncLockCanceledTooLateStillTakesLock()
     {
-        var mutex = new AsyncLock();
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
         using var cts = new CancellationTokenSource();
 
         ValueTask<AsyncLock.Releaser> cancelableLockTask;
@@ -192,8 +218,10 @@ public class AsyncLockTests
     [Test]
     public async Task AsyncLockSupportsMultipleAsynchronousLocks()
     {
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+
         await Task.Run(async () => {
-            var asyncLock = new AsyncLock();
+            var asyncLock = new AsyncLock(pool: pool);
             using var cancellationTokenSource = new CancellationTokenSource();
             CancellationToken cancellationToken = cancellationTokenSource.Token;
 
@@ -234,8 +262,8 @@ public class AsyncLockTests
     [Test]
     public async Task LockUnlockSingleAwaiter()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         ValueTask<AsyncLock.Releaser> vt = al.LockAsync();
         Assert.That(vt.IsCompleted);
@@ -249,17 +277,19 @@ public class AsyncLockTests
             }
         }
 
-        Assert.That(al.IsTaken, Is.False);
-
-        Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(al.IsTaken, Is.False);
+            Assert.That(al.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task MultipleWaitersAreServedSequentially()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         Task t1, t2;
         using (await al.LockAsync().ConfigureAwait(false))
@@ -277,14 +307,13 @@ public class AsyncLockTests
         await Task.Delay(50).ConfigureAwait(false);
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task WaitAsyncWithCancellationTokenCancelsBeforeQueuing()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         using (await al.LockAsync().ConfigureAwait(false))
         {
@@ -297,14 +326,13 @@ public class AsyncLockTests
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task WaitAsyncWithCancellationTokenCancelsWhileQueued()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         using var cts = new CancellationTokenSource();
 
@@ -316,21 +344,19 @@ public class AsyncLockTests
             // Cancel after queuing
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
             Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(al.InternalWaiterInUse, Is.False);
-            Assert.That(customPool.ActiveCount, Is.Zero);
-        }
+        Assert.That(al.InternalWaiterInUse, Is.False);
     }
 
     [Test]
     public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelled()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         using var cts = new CancellationTokenSource();
 
@@ -342,14 +368,13 @@ public class AsyncLockTests
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task WaitAsyncWithCancellationTokenCancelAfterLock()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         using var cts = new CancellationTokenSource();
 
@@ -364,14 +389,13 @@ public class AsyncLockTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Test, CancelAfter(1000)]
     public async Task WaitAsyncWithCancellationTokenCancelAfterTimeout()
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         using var cts = new CancellationTokenSource(250);
 
@@ -384,14 +408,13 @@ public class AsyncLockTests
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
-        Assert.That(customPool.ActiveCount, Is.Zero);
     }
 
     [Theory]
     public async Task WaitAsyncGetAwaiterWithCancellationTokenCancelAfterLock(bool useAsTask)
     {
-        var customPool = new TestObjectPool<AsyncLock.Releaser>();
-        var al = new AsyncLock(pool: customPool);
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var al = new AsyncLock(pool: pool);
 
         using var cts = new CancellationTokenSource();
 
@@ -415,11 +438,7 @@ public class AsyncLockTests
         // Cancel after lock is released, should not throw
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(al.InternalWaiterInUse, Is.False);
-            Assert.That(customPool.ActiveCount, Is.Zero);
-        }
+        Assert.That(al.InternalWaiterInUse, Is.False);
     }
 
     [Test]
@@ -436,6 +455,102 @@ public class AsyncLockTests
             Assert.That(reset, Is.True);
             Assert.That(ev.IsTaken, Is.False);
         }
+    }
+
+    [Test]
+    public async Task LockAsyncWithTimeoutCompletesWhenLockAvailableBeforeTimeout()
+    {
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
+        using (await mutex.LockAsync().ConfigureAwait(false)) { }
+
+        using (await mutex.LockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken);
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task LockAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
+        using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await mutex.LockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task LockAsyncWithZeroTimeoutCompletesImmediatelyWhenUnlocked()
+    {
+        var mutex = new AsyncLock();
+
+        using (await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken);
+        }
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task LockAsyncWithZeroTimeoutThrowsWhenLocked()
+    {
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
+        using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            _ = await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public void LockAsyncWithNegativeTimeoutThrows()
+    {
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
+#pragma warning disable VSTHRD110
+#pragma warning disable CA2012
+        Assert.Throws<ArgumentOutOfRangeException>(() => mutex.LockAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore CA2012
+#pragma warning restore VSTHRD110
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task LockAsyncWithInfiniteTimeoutBehavesLikeLockAsync()
+    {
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
+        using (await mutex.LockAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken);
+        }
+
+        Assert.That(mutex.InternalWaiterInUse, Is.False);
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()

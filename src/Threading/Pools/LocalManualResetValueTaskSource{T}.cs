@@ -23,6 +23,7 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     private ManualResetValueTaskSourceCore<T> _core;
     private CancellationToken _cancellationToken;
     private CancellationTokenRegistration _cancellationTokenRegistration;
+    private ITimer? _timeoutTimer;
     private int _inUse;
 
     /// <summary>
@@ -68,6 +69,13 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     }
 
     /// <inheritdoc/>
+    public override ITimer? TimeoutTimer
+    {
+        get => _timeoutTimer;
+        set => _timeoutTimer = value;
+    }
+
+    /// <inheritdoc/>
     public override bool RunContinuationsAsynchronously
     {
         get => _core.RunContinuationsAsynchronously;
@@ -91,6 +99,8 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     {
         _core.Reset();
         _cancellationTokenRegistration = default;
+        ITimer? timer = Interlocked.Exchange(ref _timeoutTimer, null);
+        timer?.Dispose();
         Next = null;
         Prev = null;
         return Interlocked.Exchange(ref _inUse, 0) == 1;

@@ -113,7 +113,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourceCompletedCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
         source.SetResult(42);
 
@@ -138,7 +138,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourcePendingCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
 
         var vt = new ValueTask<int>(source, source.Version);
@@ -167,7 +167,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourceDoesNotThrowAfterPoolReturn()
     {
-        var pool = new TestObjectPool<string>();
+        using var pool = new TestObjectPool<string>();
         PooledManualResetValueTaskSource<string> source = pool.GetPooledWaiter(null);
 
         var vt = new ValueTask<string>(source, source.Version);
@@ -183,7 +183,9 @@ public class ValueTaskPreserveTests
         string r2 = await preserved.ConfigureAwait(false);
         string r3 = await preserved.ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         using (Assert.EnterMultipleScope())
@@ -199,7 +201,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledSourceWithExceptionCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
 
         var vt = new ValueTask<int>(source, source.Version);
@@ -208,7 +210,9 @@ public class ValueTaskPreserveTests
         // Set exception
         source.SetException(new InvalidOperationException("Test exception"));
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
 
         // should throw the same exception each time
@@ -229,7 +233,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task OriginalPooledSourceThrowsOnMultipleAwaitWithoutPreserve()
     {
-        var pool = new TestObjectPool<int>();
+        using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
         source.SetResult(42);
 
@@ -240,7 +244,9 @@ public class ValueTaskPreserveTests
         Assert.That(result, Is.EqualTo(42));
 
         // second await throws because the source was consumed and returned to pool
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         Assert.That(pool.ActiveCount, Is.Zero);
     }
@@ -248,7 +254,7 @@ public class ValueTaskPreserveTests
     [Test, CancelAfter(1000)]
     public async Task PreservePooledNonGenericSourceCanBeAwaitedMultipleTimes()
     {
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
         PooledManualResetValueTaskSource<bool> source = pool.GetPooledWaiter(null);
 
         // Create non-generic ValueTask from generic source

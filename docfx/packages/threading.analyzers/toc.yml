@@ -2,7 +2,7 @@
   href: index.md
 - name: Diagnostic Rules
   items:
-    - name: CHT001 - Multiple Await
+    - name: CHT001 - Multiple Await on ValueTask
       href: CHT001.md
     - name: CHT002 - Blocking GetResult
       href: CHT002.md
@@ -20,3 +20,5 @@
       href: CHT008.md
     - name: CHT009 - SemaphoreSlim as AsyncLock
       href: CHT009.md
+    - name: CHT010 - ValueTask capture in lambda/closure
+      href: CHT010.md

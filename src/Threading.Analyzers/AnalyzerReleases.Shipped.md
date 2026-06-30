@@ -1,4 +1,4 @@
-## Release 0.3
+## Release 0.6
 
 ### New Rules
 
@@ -12,3 +12,4 @@ CHT005 | Usage | Warning | ValueTask.Result accessed directly
 CHT006 | Usage | Warning | ValueTask passed to potentially unsafe method
 CHT007 | Usage | Info | AsTask() stored before signaling (performance)
 CHT008 | Usage | Warning | ValueTask not awaited or consumed
+CHT009 | Usage | Info | SemaphoreSlim(1, 1) used as async lock; replace with AsyncLock
