@@ -19,13 +19,6 @@
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
   </PropertyGroup>
 
-  <!-- override to tag Cryptography library as beta until API surface is finalized -->
-  <PropertyGroup Condition="'$(NBGV_PublicRelease)' == 'True' AND '$(NBGV_PrereleaseVersion)' != '-preview'">
-    <Version>$(NBGV_Version)-alpha</Version>
-    <VersionSuffix>$(NBGV_VersionRevision)-alpha</VersionSuffix>
-    <PackageVersion>$(NBGV_Version)-alpha</PackageVersion>
-  </PropertyGroup>  
-  
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <PackageId>$(PackageId).Debug</PackageId>
   </PropertyGroup>

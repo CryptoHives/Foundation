@@ -25,6 +25,9 @@ using System.Threading.Tasks.Sources;
 /// are signalled than with a native <see cref="TaskCompletionSource{Boolean}"/> implementation.
 /// </para>
 /// <para>
+/// <b>Optional timeout and cancellation token</b> parameters on <see cref="WaitAsync(TimeSpan, CancellationToken)"/>.
+/// </para>
+/// <para>
 /// <b>Important Usage Note:</b> Awaiting on <see cref="ValueTask"/> has its own caveats, as it 
 /// is a struct that can only be awaited or converted with AsTask() ONE single time.
 /// Additional attempts to await after the first await or additional conversions to AsTask() will throw 
@@ -38,6 +41,16 @@ using System.Threading.Tasks.Sources;
 /// may execute synchronously on the signaling thread, reducing context switching overhead but
 /// potentially increasing Set() call duration and could lead to deadlocks because the waiting code
 /// may be executed directly by the signaling thread.
+/// </para>
+/// <para>
+/// <b>Allocation Behavior:</b> Immediate acquisitions are completely allocation-free using atomic 
+/// operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ 
+/// (using <c>UnsafeRegister</c> for cancellation), while older frameworks may allocate for cancellation 
+/// registration. Specifying a finite timeout allocates a timer that is automatically disposed when the 
+/// operation completes. Exception and task allocations occur only if a timeout actually elapses or 
+/// cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled 
+/// <see cref="IValueTaskSource{T}"/> instances are reused to minimize allocation pressure across 
+/// repeated lock operations.
 /// </para>
 /// <para>
 /// <b>Performance Warning - AsTask() Usage:</b> When <see cref="RunContinuationAsynchronously"/>
@@ -194,6 +207,55 @@ public sealed class AsyncManualResetEvent : IResettable
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public ValueTask WaitAsync(CancellationToken cancellationToken = default)
     {
+        if (_signaled)
+        {
+            return default;
+        }
+
+        return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asynchronously waits for the event to be set, or until the specified timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// If the event is already signalled, the method returns a completed <see cref="ValueTask"/> immediately
+    /// without allocating any cancellation infrastructure. A <see cref="CancellationTokenSource"/> is allocated
+    /// only when the event is not already signalled and a finite positive timeout is requested; it is disposed
+    /// automatically when the returned <see cref="ValueTask"/> is awaited.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
+    /// <returns>A <see cref="ValueTask"/> that completes when the event is set.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when the timeout elapses before the event is set.
+    /// </exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        if (_signaled)
+        {
+            return default;
+        }
+
+        if (timeout == TimeSpan.Zero)
+        {
+            return new ValueTask(Task.FromException(new OperationCanceledException()));
+        }
+
+        return WaitAsyncImpl(timeout, cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private ValueTask WaitAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
+    {
         _spinLock.Enter();
         try
         {
@@ -213,6 +275,12 @@ public sealed class AsyncManualResetEvent : IResettable
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
+
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+            }
 
             if (cancellationToken.CanBeCanceled)
             {
@@ -292,6 +360,20 @@ public sealed class AsyncManualResetEvent : IResettable
     /// </summary>
     internal bool InternalWaiterInUse => _localWaiter.InUse;
 
+    /// <summary>
+    /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// </summary>
+    private void TimerCallback(object? state)
+    {
+        if (state is not ManualResetValueTaskSource<bool> waiter)
+        {
+            return;
+        }
+
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+    }
+
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
         var waiter = (ManualResetValueTaskSource<bool>)state!;
@@ -310,14 +392,22 @@ public sealed class AsyncManualResetEvent : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<bool>? toCancel = null;
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+    }
 
+    /// <summary>
+    /// O(1) removal from intrusive linked list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter)
+    {
         _spinLock.Enter();
         try
         {
             if (_waiters.Remove(waiter))
             {
-                toCancel = waiter;
+                return waiter;
             }
         }
         finally
@@ -325,8 +415,6 @@ public sealed class AsyncManualResetEvent : IResettable
             _spinLock.Exit();
         }
 
-#pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-#pragma warning restore CA1508 // Avoid dead conditional code
+        return null;
     }
 }

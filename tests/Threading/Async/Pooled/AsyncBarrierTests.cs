@@ -33,9 +33,12 @@ public class AsyncBarrierTests
     public void ParticipantCountIsCorrect()
     {
         var barrier = new AsyncBarrier(5);
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
+            Assert.That(barrier.CurrentPhase, Is.Zero);
+        }
     }
 
     [Test]
@@ -47,15 +50,18 @@ public class AsyncBarrierTests
         Assert.That(waiter.IsCompleted, Is.True);
         await waiter.ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+        }
     }
 
     [Test]
     public async Task TwoParticipantsSynchronize()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
         int reached = 0;
 
         Task<int> t1 = Task.Run(async () => {
@@ -71,10 +77,12 @@ public class AsyncBarrierTests
         await barrier.SignalAndWaitAsync().ConfigureAwait(false);
 
         int result = await t1.ConfigureAwait(false);
-        Assert.That(result, Is.EqualTo(2));
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.EqualTo(2));
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -103,9 +111,12 @@ public class AsyncBarrierTests
         var barrier = new AsyncBarrier(2);
 
         long phase = barrier.AddParticipant();
-        Assert.That(phase, Is.EqualTo(0));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(phase, Is.Zero);
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        }
 
         await Task.WhenAll(
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false)),
@@ -113,9 +124,12 @@ public class AsyncBarrierTests
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false))
         ).ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(3));
+        }
     }
 
     [Test]
@@ -128,28 +142,33 @@ public class AsyncBarrierTests
     [Test]
     public async Task RemoveParticipantDecreasesRemainingAndCount()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(3, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(3, pool: pool);
 
         barrier.RemoveParticipant();
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        }
 
         await Task.WhenAll(
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false)),
             Task.Run(async () => await barrier.SignalAndWaitAsync().ConfigureAwait(false))
         ).ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task RemoveParticipantReleasesWaitersWhenZeroRemaining()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
 
         ValueTask waiter = barrier.SignalAndWaitAsync();
         Assert.That(waiter.IsCompleted, Is.False);
@@ -157,11 +176,13 @@ public class AsyncBarrierTests
         barrier.RemoveParticipant();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -181,8 +202,8 @@ public class AsyncBarrierTests
     [Test]
     public async Task CancellationBeforeWaitThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -190,16 +211,18 @@ public class AsyncBarrierTests
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await barrier.SignalAndWaitAsync(cts.Token).ConfigureAwait(false));
 
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task CancellationWhileWaitingThrows()
     {
-        var customPool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(2, pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        var barrier = new AsyncBarrier(2, pool: pool);
         using var cts = new CancellationTokenSource();
 
         ValueTask waiter = barrier.SignalAndWaitAsync(cts.Token);
@@ -207,14 +230,16 @@ public class AsyncBarrierTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await waiter.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -237,13 +262,19 @@ public class AsyncBarrierTests
 
         // Add 2 more participants
         barrier.AddParticipants(2);
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(5));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(5));
+        }
 
         // Remove 1 participant
         barrier.RemoveParticipant();
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(4));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(4));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(4));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(4));
+        }
     }
 
     [Test]
@@ -302,8 +333,11 @@ public class AsyncBarrierTests
         ValueTask waiter1 = barrier.SignalAndWaitAsync();
         ValueTask waiter2 = barrier.SignalAndWaitAsync();
 
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(1));
+            Assert.That(barrier.CurrentPhase, Is.Zero);
+        }
 
         // Remove the last remaining participant - should release waiters
         barrier.RemoveParticipant();
@@ -311,9 +345,12 @@ public class AsyncBarrierTests
         await waiter1.ConfigureAwait(false);
         await waiter2.ConfigureAwait(false);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        }
     }
 
     [Test]
@@ -327,8 +364,11 @@ public class AsyncBarrierTests
 
         // Add another participant - now need 2 more to release
         barrier.AddParticipant();
-        Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
-        Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(3));
+            Assert.That(barrier.ParticipantsRemaining, Is.EqualTo(2));
+        }
 
         // Signal twice more to release all
         ValueTask waiter2 = barrier.SignalAndWaitAsync();
@@ -360,7 +400,7 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(0));
+        Assert.That(barrier.CurrentPhase, Is.Zero);
 
         await Task.WhenAll(
             barrier.SignalAndWaitAsync().AsTask(),
@@ -390,7 +430,7 @@ public class AsyncBarrierTests
         var barrier = new AsyncBarrier(1);
 
         long phase0 = barrier.AddParticipant();
-        Assert.That(phase0, Is.EqualTo(0));
+        Assert.That(phase0, Is.Zero);
 
         // Complete phase 0
         await Task.WhenAll(
@@ -453,20 +493,23 @@ public class AsyncBarrierTests
         BarrierPostPhaseException? ex = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await barrier.SignalAndWaitAsync().ConfigureAwait(false));
 
-        Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
-        Assert.That(ex.InnerException!.Message, Is.EqualTo("Post-phase error"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(ex.InnerException!.Message, Is.EqualTo("Post-phase error"));
+        }
     }
 
     [Test]
     public async Task PostPhaseActionExceptionPropagatedToAllWaiters()
     {
-        var customPool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
             if (b.CurrentPhase == 0)
             {
                 throw new InvalidOperationException("Phase 0 error");
             }
-        }, pool: customPool);
+        }, pool: pool);
 
         ValueTask waiter1 = barrier.SignalAndWaitAsync();
         ValueTask waiter2 = barrier.SignalAndWaitAsync();
@@ -475,22 +518,26 @@ public class AsyncBarrierTests
         BarrierPostPhaseException? ex3 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await barrier.SignalAndWaitAsync().ConfigureAwait(false));
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
         // Previous waiters should also receive the exception
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         BarrierPostPhaseException? ex1 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter1.ConfigureAwait(false));
         BarrierPostPhaseException? ex2 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter2.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
-        Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
-        Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
-        Assert.That(ex3!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
+        using (Assert.EnterMultipleScope())
+        {
 
-        // Phase should still advance after exception
-        Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
+            Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
+            Assert.That(ex3!.InnerException!.Message, Is.EqualTo("Phase 0 error"));
 
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+            // Phase should still advance after exception
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -527,17 +574,20 @@ public class AsyncBarrierTests
         // Remove the last remaining participant - triggers post-phase action
         BarrierPostPhaseException? ex = Assert.Throws<BarrierPostPhaseException>(barrier.RemoveParticipant);
 
-        Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
-        Assert.That(ex.InnerException!.Message, Is.EqualTo("Remove participant error"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(ex.InnerException!.Message, Is.EqualTo("Remove participant error"));
+        }
     }
 
     [Test]
     public async Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
     {
-        var customPool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
             throw new InvalidOperationException("Remove error");
-        }, pool: customPool);
+        }, pool: pool);
 
         // Two participants signal
         ValueTask waiter1 = barrier.SignalAndWaitAsync();
@@ -546,18 +596,20 @@ public class AsyncBarrierTests
         // Remove the last remaining participant - triggers post-phase action
         Assert.Throws<BarrierPostPhaseException>(barrier.RemoveParticipant);
 
-#pragma warning disable CHT001 // ValueTask awaited multiple times
         // Waiters should receive the exception
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         BarrierPostPhaseException? ex1 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter1.ConfigureAwait(false));
         BarrierPostPhaseException? ex2 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await waiter2.ConfigureAwait(false));
-#pragma warning restore CHT001 // ValueTask awaited multiple times
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
-        Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Remove error"));
-        Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
-
-        Assert.That(customPool.ActiveCount, Is.EqualTo(0));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex1!.InnerException!.Message, Is.EqualTo("Remove error"));
+            Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -587,5 +639,65 @@ public class AsyncBarrierTests
         }
 
         Assert.That(phaseCounts, Is.EqualTo(new[] { 1, 1, 1 }));
+    }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithTimeoutCompletesWhenAllArrive()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        var task1 = barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(5)).AsTask();
+        var task2 = barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(5)).AsTask();
+
+        await Task.WhenAll(task1, task2).ConfigureAwait(false);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task SignalAndWaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithZeroTimeoutCompletesWhenLastParticipant()
+    {
+        var barrier = new AsyncBarrier(1);
+
+        await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+    }
+
+    [Test]
+    public void SignalAndWaitAsyncWithNegativeTimeoutThrows()
+    {
+        var barrier = new AsyncBarrier(2);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task SignalAndWaitAsyncWithInfiniteTimeoutBehavesLikeDefault()
+    {
+        var barrier = new AsyncBarrier(2);
+
+        var task1 = barrier.SignalAndWaitAsync(Timeout.InfiniteTimeSpan).AsTask();
+        var task2 = barrier.SignalAndWaitAsync(Timeout.InfiniteTimeSpan).AsTask();
+
+        await Task.WhenAll(task1, task2).ConfigureAwait(false);
     }
 }

@@ -152,8 +152,11 @@ public class SpinLockTests
             }
         });
 
-        Assert.That(violations, Is.EqualTo(0), "Inconsistent pair observed: release reordered before stores");
-        Assert.That(sharedA, Is.EqualTo(sharedB));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(violations, Is.Zero, "Inconsistent pair observed: release reordered before stores");
+            Assert.That(sharedA, Is.EqualTo(sharedB));
+        }
         Assert.That(sharedA, Is.EqualTo((long)ThreadCount * IterationsPerThread));
     }
 
@@ -197,8 +200,11 @@ public class SpinLockTests
             }
         });
 
-        Assert.That(violations, Is.EqualTo(0), "Acquirer observed partially-written state from previous holder");
-        Assert.That(word0, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(violations, Is.Zero, "Acquirer observed partially-written state from previous holder");
+            Assert.That(word0, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+        }
     }
 
     /// <summary>
@@ -237,8 +243,11 @@ public class SpinLockTests
             }
         });
 
-        Assert.That(violations, Is.EqualTo(0), "Payload/sequence mismatch: release did not fence stores");
-        Assert.That(sequence, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(violations, Is.Zero, "Payload/sequence mismatch: release did not fence stores");
+            Assert.That(sequence, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+        }
     }
 
     /// <summary>
@@ -275,8 +284,11 @@ public class SpinLockTests
             }
         });
 
-        Assert.That(concurrencyViolations, Is.EqualTo(0), "Multiple threads entered the critical section simultaneously");
-        Assert.That(totalIterations, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(concurrencyViolations, Is.Zero, "Multiple threads entered the critical section simultaneously");
+            Assert.That(totalIterations, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+        }
     }
 
     /// <summary>
