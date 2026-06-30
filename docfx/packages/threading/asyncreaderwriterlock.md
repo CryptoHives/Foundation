@@ -7,6 +7,8 @@ A pooled, allocation-free async reader-writer lock that supports multiple concur
 `AsyncReaderWriterLock` is an async-compatible reader-writer lock. It allows multiple readers to enter the lock concurrently, but only one writer can hold the lock exclusively. Writers are prioritized over readers to prevent writer starvation. One upgradeable reader at a time can share access with multiple other readers. Once the
 upgradeable reader is upgraded to writer, it may have to wait until all readers release the lock. An upgradeable reader may release the lock while still upgraded writers are queued for write access.
 
+An additional internal state, `UpgradedWriterWithoutReader`, is used when an upgradeable reader releases the lock before all concurrent readers have released while an upgrade to writer is in progress. This ensures correct handling of waiting writers under this scenario.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │    ------------                                                             │
@@ -191,6 +193,10 @@ Asynchronously acquires a writer lock, or throws `OperationCanceledException` if
 | `Timeout.InfiniteTimeSpan` | No |
 | `TimeSpan.Zero` and contested | No (immediate exception) |
 | Finite positive timeout | Yes — one instance, disposed on await |
+
+### Allocation Behavior
+
+Immediate lock acquisitions via the fast path are completely allocation-free using atomic operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<Releaser>` instances are reused to minimize allocation pressure across repeated lock operations.
 
 **Example**:
 

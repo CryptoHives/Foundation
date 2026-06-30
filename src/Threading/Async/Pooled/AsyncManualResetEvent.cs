@@ -25,6 +25,9 @@ using System.Threading.Tasks.Sources;
 /// are signalled than with a native <see cref="TaskCompletionSource{Boolean}"/> implementation.
 /// </para>
 /// <para>
+/// <b>Optional timeout and cancellation token</b> parameters on <see cref="WaitAsync(TimeSpan, CancellationToken)"/>.
+/// </para>
+/// <para>
 /// <b>Important Usage Note:</b> Awaiting on <see cref="ValueTask"/> has its own caveats, as it 
 /// is a struct that can only be awaited or converted with AsTask() ONE single time.
 /// Additional attempts to await after the first await or additional conversions to AsTask() will throw 
@@ -38,6 +41,16 @@ using System.Threading.Tasks.Sources;
 /// may execute synchronously on the signaling thread, reducing context switching overhead but
 /// potentially increasing Set() call duration and could lead to deadlocks because the waiting code
 /// may be executed directly by the signaling thread.
+/// </para>
+/// <para>
+/// <b>Allocation Behavior:</b> Immediate acquisitions are completely allocation-free using atomic 
+/// operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ 
+/// (using <c>UnsafeRegister</c> for cancellation), while older frameworks may allocate for cancellation 
+/// registration. Specifying a finite timeout allocates a timer that is automatically disposed when the 
+/// operation completes. Exception and task allocations occur only if a timeout actually elapses or 
+/// cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled 
+/// <see cref="IValueTaskSource{T}"/> instances are reused to minimize allocation pressure across 
+/// repeated lock operations.
 /// </para>
 /// <para>
 /// <b>Performance Warning - AsTask() Usage:</b> When <see cref="RunContinuationAsynchronously"/>

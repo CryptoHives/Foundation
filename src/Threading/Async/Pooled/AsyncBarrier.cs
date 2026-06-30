@@ -33,6 +33,10 @@ using System.Threading.Tasks.Sources;
 /// receive a <see cref="BarrierPostPhaseException"/>.
 /// </para>
 /// <para>
+/// <b>Optional timeout and cancellation token</b> parameters on
+/// <see cref="SignalAndWaitAsync(TimeSpan, CancellationToken)"/>.
+/// </para>
+/// <para>
 /// <b>Important Usage Note:</b> Awaiting on <see cref="ValueTask"/> has its own caveats, as it
 /// is a struct that can only be awaited or converted with AsTask() ONE single time.
 /// Additional attempts to await after the first await or additional conversions to AsTask() will throw
@@ -42,6 +46,16 @@ using System.Threading.Tasks.Sources;
 /// <b>Continuation Scheduling:</b> The <see cref="RunContinuationAsynchronously"/> property
 /// controls how continuations are executed when all participants arrive. When set to <see langword="true"/>
 /// (default), continuations are forced to queue to the thread pool.
+/// </para>
+/// <para>
+/// <b>Allocation Behavior:</b> Immediate acquisitions are completely allocation-free using atomic 
+/// operations. When the barrier is contended, waiting without a timeout is allocation-free on .NET 6.0+ 
+/// (using <c>UnsafeRegister</c> for cancellation), while older frameworks may allocate for cancellation 
+/// registration. Specifying a finite timeout allocates a timer that is automatically disposed when the 
+/// operation completes. Exception and task allocations occur only if a timeout actually elapses or 
+/// cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled 
+/// <see cref="IValueTaskSource{TResult}"/> instances are reused to minimize allocation pressure across 
+/// repeated lock operations.
 /// </para>
 /// <example>
 /// <code>

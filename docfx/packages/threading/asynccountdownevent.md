@@ -136,6 +136,10 @@ catch (OperationCanceledException)
 }
 ```
 
+### Allocation Behavior
+
+Immediate acquisitions are completely allocation-free using atomic operations. When the countdown is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated lock operations.
+
 ### Signal
 
 ```csharp

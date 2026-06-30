@@ -12,12 +12,28 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 
 /// <summary>
 /// An allocation-free async-compatible exclusive lock implemented with pooled ValueTask sources.
 /// Note that this lock is <b>not</b> recursive!
 /// </summary>
 /// <remarks>
+/// /// <para>
+/// <b>Optional timeout and cancellation token</b> parameters on <see cref="LockAsync(TimeSpan, CancellationToken)"/>.
+/// </para>
+/// 
+/// <para>
+/// <b>Allocation Behavior:</b> Immediate acquisitions are completely allocation-free using atomic 
+/// operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ 
+/// (using <c>UnsafeRegister</c> for cancellation), while older frameworks may allocate for cancellation 
+/// registration. Specifying a finite timeout allocates a timer that is automatically disposed when the 
+/// operation completes. Exception and task allocations occur only if a timeout actually elapses or 
+/// cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled 
+/// <see cref="IValueTaskSource{Releaser}"/> instances are reused to minimize allocation pressure across 
+/// repeated lock operations.
+/// </para>
+/// 
 /// <example>
 /// <para>The vast majority of use cases are to just replace a <c>lock</c> statement. 
 /// That is, with the original code looking like this:</para>

@@ -16,7 +16,8 @@ using System.Threading.Tasks.Sources;
 
 /// <summary>
 /// An async reader-writer lock which uses a pooled approach to implement waiters
-/// for <see cref="ValueTask"/> to reduce memory allocations.
+/// for <see cref="ValueTask"/> to reduce memory allocations. Supports optional timeout
+/// and cancellation token parameters on all lock acquisition methods.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -59,6 +60,36 @@ using System.Threading.Tasks.Sources;
 /// controls how continuations are executed when the lock is released. When set to <see langword="true"/>
 /// (default), continuations are forced to queue to the thread pool.
 /// </para>
+/// <para>
+/// <b>Allocation Behavior:</b> Lock acquisition is optimized for minimal allocations:
+/// <list type="bullet">
+/// <item>
+///   <description>
+///   <b>Immediate acquisition (fast path):</b> Completely allocation-free using atomic operations.
+///   </description>
+/// </item>
+/// <item>
+///   <description>
+///   <b>Waiting with cancellation token:</b> Allocation-free on .NET 6.0+ when using cancellation tokens 
+///   (via <c>UnsafeRegister</c>). On older frameworks, a cancellation registration allocation may occur.
+///   </description>
+/// </item>
+/// <item>
+///   <description>
+///   <b>Waiting with timeout:</b> A timer is allocated when the lock cannot be acquired immediately 
+///   and a finite timeout is specified. The timer is automatically disposed when the operation completes.
+///   </description>
+/// </item>
+/// <item>
+///   <description>
+///   <b>On timeout or cancellation:</b> An exception and task wrapper are allocated only if the 
+///   wait is actually cancelled or times out. Successful acquisitions incur no additional allocations.
+///   </description>
+/// </item>
+/// </list>
+/// Pooled <see cref="IValueTaskSource{TResult}"/> instances are reused to minimize allocation pressure 
+/// for repeated lock operations.
+/// </para>
 /// <example>
 /// <code>
 /// private readonly AsyncReaderWriterLock _rwLock = new AsyncReaderWriterLock();
@@ -72,9 +103,9 @@ using System.Threading.Tasks.Sources;
 ///     }
 /// }
 ///
-/// public async Task WriteAsync(CancellationToken ct)
+/// public async Task WriteAsync(TimeSpan timeout, CancellationToken ct)
 /// {
-///     using (await _rwLock.WriterLockAsync(ct))
+///     using (await _rwLock.WriterLockAsync(timeout, ct))
 ///     {
 ///         // Exclusive access - no other readers or writers
 ///         await WriteDataAsync();

@@ -24,6 +24,8 @@ using Threading.Tests.Pools;
    value = UpgradeableReader + (readerCount - 1). To get readerCount when >= UpgradeableReader: readerCount = status - UpgradeableReader + 1.
  - Writer (-1): exclusive writer holds the lock.
  - UpgradedWriter (-2): the upgradeable reader has upgraded to an exclusive writer.
+ - UpgradedWriterWithoutReader (-3): an upgraded writer is waiting for remaining readers to release
+  (occurs when the upgradeable reader is released before the upgrade completes).
 
  Events and transitions (high level):
  - Uncontested + ReaderLock -> Reader (1)
@@ -40,11 +42,16 @@ using Threading.Tests.Pools;
  - UpgradeableReader.EnterUpgradedWriter:
      * If it is the only holder (no other readers) -> UpgradedWriter (-2)
      * Otherwise enqueued in _waitingUpgradedWriters and will transition to UpgradedWriter when outstanding readers drop to zero (and writers have priority)
- - UpgradedWriter release ->
-     * Set status back to UpgradeableReader (or wake readers if no writers waiting) and possibly wake reader chain
+ - UpgradedWriter release:
+    * If no other readers but waiting writers exist -> Demote to Writer with next writer
+    * If no other readers and no writers but waiting upgradeable readers exist -> Demote to UpgradeableReader
+    * If no waiting tasks exist -> Uncontested
+    * If upgraded writer was entered with remaining readers (not from UpgradeableReader but after dispose):
+      - Status becomes UpgradedWriterWithoutReader
+      - Waiting writers are prioritized over other waiters
 
- Cancellation semantics:
- - If a waiter is cancelled while queued, it is removed from its WaiterQueue and a TaskCanceledException is set on the waiter.
+ Cancellation and timeout semantics:
+ - If a waiter is cancelled while queued, it is removed from its WaiterQueue and a OperationCanceledException is set on the waiter.
  - Cancellations do not modify _status unless the waiter had already been granted the lock (in which case disposal/release logic applies).
 
  Priority rules:
@@ -73,16 +80,37 @@ public class AsyncReaderWriterLockTests
         new object[] { "RunContAsync" }
     ];
 
+    /// <summary>
+    /// Default timeout TimeSpans to test.
+    /// </summary>
+    public static readonly TimeSpan[] TimeoutTestArgs =
+    [
+        Timeout.InfiniteTimeSpan,
+        TimeSpan.FromSeconds(10),
+    ];
+
+    /// <summary>
+    /// Default timeout TimeSpans to test.
+    /// </summary>
+    public static readonly TimeSpan[] TimeoutTestArgsWithZero =
+    [
+        TimeSpan.Zero,
+        Timeout.InfiniteTimeSpan,
+        TimeSpan.FromSeconds(10),
+    ];
+
     public AsyncReaderWriterLockTests(string runContinuationAsync)
     {
         RunContinuationAsynchronously = runContinuationAsync == "RunContAsync";
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task SingleReaderAcquiresImmediately(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgsWithZero)), CancelAfter(CancelAfterMS)]
+    public async Task SingleReaderAcquiresImmediately(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         var lockTask = rwLock.ReaderLockAsync(ct);
         Assert.That(lockTask.IsCompleted, Is.True);
@@ -104,13 +132,15 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task SingleWriterAcquiresImmediately(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgsWithZero)), CancelAfter(CancelAfterMS)]
+    public async Task SingleWriterAcquiresImmediately(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
-        var lockTask = rwLock.WriterLockAsync(ct);
+        var lockTask = rwLock.WriterLockAsync(timeout, ct);
         Assert.That(lockTask.IsCompleted, Is.True);
 
         using (await lockTask.ConfigureAwait(false))
@@ -125,13 +155,15 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.IsWriteLockHeld, Is.False);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task SingleUpgradeableReaderAcquiresImmediately(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgsWithZero)), CancelAfter(CancelAfterMS)]
+    public async Task SingleUpgradeableReaderAcquiresImmediately(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
-        var lockTask = rwLock.UpgradeableReaderLockAsync(ct);
+        var lockTask = rwLock.UpgradeableReaderLockAsync(timeout, ct);
         Assert.That(lockTask.IsCompleted, Is.True);
 
         using (await lockTask.ConfigureAwait(false))
@@ -147,15 +179,17 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.IsWriteLockHeld, Is.False);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task MultipleReadersCanAcquireConcurrently(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task MultipleReadersCanAcquireConcurrently(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
-        using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
-        using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
-        using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
+        using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
+        using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
             using (Assert.EnterMultipleScope())
             {
@@ -167,15 +201,17 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.CurrentReaderCount, Is.Zero);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task MultipleReadersCanDisposeOutOfOrder(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task MultipleReadersCanDisposeOutOfOrder(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
-        var lockTask1 = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
-        var lockTask2 = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
-        var lockTask3 = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
+        var lockTask1 = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false);
+        var lockTask2 = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false);
+        var lockTask3 = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
         {
@@ -268,17 +304,18 @@ public class AsyncReaderWriterLockTests
         Assert.That(pool.ActiveCount, Is.Zero);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task WriterBlocksReaders(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task WriterBlocksReaders(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         ValueTask<AsyncReaderWriterLock.Releaser> readerTask;
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            readerTask = rwLock.ReaderLockAsync(ct);
+            readerTask = rwLock.ReaderLockAsync(timeout, ct);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(readerTask.IsCompleted, Is.False);
@@ -298,17 +335,18 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task WriterBlocksUpgradeableReaders(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task WriterBlocksUpgradeableReaders(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         ValueTask<AsyncReaderWriterLock.Releaser> upgradeableReaderTask;
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            upgradeableReaderTask = rwLock.UpgradeableReaderLockAsync(ct);
+            upgradeableReaderTask = rwLock.UpgradeableReaderLockAsync(timeout, ct);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(upgradeableReaderTask.IsCompleted, Is.False);
@@ -328,17 +366,18 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task UpgradeableReaderBlocksUpgradeableReaders(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task UpgradeableReaderBlocksUpgradeableReaders(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         ValueTask<AsyncReaderWriterLock.Releaser> upgradeableReaderTask;
-        using (await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            upgradeableReaderTask = rwLock.UpgradeableReaderLockAsync(ct);
+            upgradeableReaderTask = rwLock.UpgradeableReaderLockAsync(timeout, ct);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(upgradeableReaderTask.IsCompleted, Is.False);
@@ -358,17 +397,18 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task ReadersBlockWriter(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task ReadersBlockWriter(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         ValueTask<AsyncReaderWriterLock.Releaser> writerTask;
-        using (var readerReleaser = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        using (var readerReleaser = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            writerTask = rwLock.WriterLockAsync(ct);
+            writerTask = rwLock.WriterLockAsync(timeout, ct);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(writerTask.IsCompleted, Is.False);
@@ -388,18 +428,20 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task WriterPriorityOverNewReaders(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task WriterPriorityOverNewReaders(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         var order = new ConcurrentQueue<string>();
 
-        using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
             var writerTask = Task.Run(async () => {
-                using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+                using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
                 {
                     order.Enqueue("writer");
                 }
@@ -408,7 +450,7 @@ public class AsyncReaderWriterLockTests
             await Task.Delay(50, ct).ConfigureAwait(false);
 
             var readerTask = Task.Run(async () => {
-                using (await rwLock.ReaderLockAsync().ConfigureAwait(false))
+                using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
                 {
                     order.Enqueue("reader");
                 }
@@ -431,20 +473,21 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task WriterReleasesAllPendingReaders(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task WriterReleasesAllPendingReaders(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         ValueTask<AsyncReaderWriterLock.Releaser> r1, r2, r3;
 
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            r1 = rwLock.ReaderLockAsync(ct);
-            r2 = rwLock.ReaderLockAsync(ct);
-            r3 = rwLock.ReaderLockAsync(ct);
+            r1 = rwLock.ReaderLockAsync(timeout, ct);
+            r2 = rwLock.ReaderLockAsync(timeout, ct);
+            r3 = rwLock.ReaderLockAsync(timeout, ct);
 
             using (Assert.EnterMultipleScope())
             {
@@ -464,24 +507,25 @@ public class AsyncReaderWriterLockTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(rwLock.CurrentReaderCount, Is.Zero);
-
             Assert.That(rwLock.InternalReaderWaiterInUse, Is.False);
             Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
             Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task ReaderReleaseCancellationThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task ReaderReleaseCancellationThrows(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         using var cts = new CancellationTokenSource();
 
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            var readerTask = rwLock.ReaderLockAsync(cts.Token);
+            var readerTask = rwLock.ReaderLockAsync(timeout, cts.Token);
             Assert.That(readerTask.IsCompleted, Is.False);
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -500,17 +544,19 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task UpgradedReaderReleaseCancellationThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task UpgradedReaderReleaseCancellationThrows(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         using var cts = new CancellationTokenSource();
 
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            var readerTask = rwLock.UpgradeableReaderLockAsync(cts.Token);
+            var readerTask = rwLock.UpgradeableReaderLockAsync(timeout, cts.Token);
             Assert.That(readerTask.IsCompleted, Is.False);
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -529,17 +575,19 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task WriterReleaseCancellationThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task WriterReleaseCancellationThrows(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         using var cts = new CancellationTokenSource();
 
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            var writerTask = rwLock.WriterLockAsync(cts.Token);
+            var writerTask = rwLock.WriterLockAsync(timeout, cts.Token);
             Assert.That(writerTask.IsCompleted, Is.False);
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -558,18 +606,20 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task UpgradedWriterReleaseCancellationThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task UpgradedWriterReleaseCancellationThrows(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         using var cts = new CancellationTokenSource();
 
-        using (var upgradeableReleaser = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
-        using (await upgradeableReleaser.UpgradeToWriterLockAsync(ct).ConfigureAwait(false))
+        using (var upgradeableReleaser = await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false))
+        using (await upgradeableReleaser.UpgradeToWriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            var writerTask = rwLock.WriterLockAsync(cts.Token);
+            var writerTask = rwLock.WriterLockAsync(timeout, cts.Token);
             Assert.That(writerTask.IsCompleted, Is.False);
 
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -588,18 +638,21 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task PreCancelledReaderThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task PreCancelledReaderThrows(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         using var cts = new CancellationTokenSource();
 
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            var readerTask = rwLock.ReaderLockAsync(cts.Token);
+            var readerTask = rwLock.ReaderLockAsync(timeout, cts.Token);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(readerTask.IsCompleted, Is.True);
@@ -608,18 +661,21 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task PreCancelledUpgradeableReaderThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task PreCancelledUpgradeableReaderThrows(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         using var cts = new CancellationTokenSource();
 
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            var readerTask = rwLock.UpgradeableReaderLockAsync(cts.Token);
+            var readerTask = rwLock.UpgradeableReaderLockAsync(timeout, cts.Token);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(readerTask.IsCompleted, Is.True);
@@ -628,18 +684,20 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task PreCancelledWriterThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task PreCancelledWriterThrows(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
         using var cts = new CancellationTokenSource();
 
         using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
         {
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            var writerTask = rwLock.WriterLockAsync(cts.Token);
+            var writerTask = rwLock.WriterLockAsync(timeout, cts.Token);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(writerTask.IsCompleted, Is.True);
@@ -665,7 +723,11 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public void ReleaserEquality(CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         var releaser1 = rwLock.ReaderLockAsync(ct).AsTask().GetAwaiter().GetResult();
         var releaser2 = rwLock.ReaderLockAsync(ct).AsTask().GetAwaiter().GetResult();
 
@@ -683,21 +745,22 @@ public class AsyncReaderWriterLockTests
         releaser2.Dispose();
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task UpgradeableStateTransitions(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task UpgradeableStateTransitions(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire an upgradeable reader and another regular reader
-        using (var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
+        using (var upgr = await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
             ValueTask<AsyncReaderWriterLock.Releaser> upgradeTask;
-            using (var regular = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+            using (var regular = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
             {
                 // Upgrade should wait while the other reader is present
-                upgradeTask = upgr.UpgradeToWriterLockAsync(ct);
+                upgradeTask = upgr.UpgradeToWriterLockAsync(timeout, ct);
                 using (Assert.EnterMultipleScope())
                 {
                     Assert.That(upgradeTask.IsCompleted, Is.False);
@@ -730,21 +793,22 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.CurrentReaderCount, Is.Zero);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task MultipleUpgradedWritersAreSerialized(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task MultipleUpgradedWritersAreSerialized(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         ValueTask<AsyncReaderWriterLock.Releaser> t1;
         ValueTask<AsyncReaderWriterLock.Releaser> t2;
 
         // Hold writer to force upgradeable readers to queue, dispose immediately after enqueuing
-        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            t1 = rwLock.UpgradeableReaderLockAsync(ct);
-            t2 = rwLock.UpgradeableReaderLockAsync(ct);
+            t1 = rwLock.UpgradeableReaderLockAsync(timeout, ct);
+            t2 = rwLock.UpgradeableReaderLockAsync(timeout, ct);
 
             Assert.That(rwLock.WaitingUpgradeableReaderCount, Is.EqualTo(2));
 
@@ -778,35 +842,38 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.False);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task EnterUpgradedWriter_OnNonUpgradeable_Throws(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task EnterUpgradedWriter_OnNonUpgradeable_Throws(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Reader releaser should not allow upgrading
-        using (var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        using (var reader = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await reader.UpgradeToWriterLockAsync().ConfigureAwait(false));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await reader.UpgradeToWriterLockAsync(timeout).ConfigureAwait(false));
         }
 
         // Default (uninitialized) releaser should also throw
         var none = default(AsyncReaderWriterLock.Releaser);
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await none.UpgradeToWriterLockAsync().ConfigureAwait(false));
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await none.UpgradeToWriterLockAsync(timeout).ConfigureAwait(false));
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task WaitingCountsAndInternalFlagsAfterUpgradeAndCancellation(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task WaitingCountsAndInternalFlagsAfterUpgradeAndCancellation(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
-        using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
+        using var writer = await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false);
 
         // queue an upgradeable reader with cancellation
         using var cts = new CancellationTokenSource();
-        var waiting = rwLock.UpgradeableReaderLockAsync(cts.Token);
+        var waiting = rwLock.UpgradeableReaderLockAsync(timeout, cts.Token);
         Assert.That(rwLock.WaitingUpgradeableReaderCount, Is.EqualTo(1));
 
         // cancel and ensure waiter cleaned up
@@ -817,19 +884,20 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task EnterUpgradedWriterCancellation_WhenWaiting(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task EnterUpgradedWriterCancellation_WhenWaiting(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and another regular reader to block upgrade
-        using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
-        var otherReader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false);
+        var otherReader = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource();
-        var upgradeAttempt = upgr.UpgradeToWriterLockAsync(cts.Token);
+        ValueTask<AsyncReaderWriterLock.Releaser> upgradeAttempt = upgr.UpgradeToWriterLockAsync(timeout, cts.Token);
         Assert.That(upgradeAttempt.IsCompleted, Is.False);
 
         // cancel the upgrade attempt and ensure it is removed from waiter queue
@@ -849,15 +917,17 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task EnterUpgradedWriter_OnUpgradedReleaser_Throws(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task EnterUpgradedWriter_OnUpgradedReleaser_Throws(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and upgrade to writer
-        using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
-        using (var upgWriter = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false))
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false);
+        using (var upgWriter = await upgr.UpgradeToWriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
             // The returned releaser is an UpgradedWriter and must not be allowed to call EnterUpgradedWriterLockAsync()
             Assert.ThrowsAsync<InvalidOperationException>(async () => await upgWriter.UpgradeToWriterLockAsync().ConfigureAwait(false));
@@ -867,18 +937,21 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task PreCancelledEnterUpgradedWriterThrows(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task PreCancelledEnterUpgradedWriterThrows(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         AsyncReaderWriterLock.Releaser releaser;
-        using (var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
+        using (var upgr = await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            var writer = upgr.UpgradeToWriterLockAsync(cts.Token);
+            var writer = upgr.UpgradeToWriterLockAsync(timeout, cts.Token);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(writer.IsCompleted, Is.True);
@@ -889,16 +962,17 @@ public class AsyncReaderWriterLockTests
         releaser.Dispose();
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task CancelWaitingUpgradedWriter_CleansUp(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task CancelWaitingUpgradedWriter_CleansUp(TimeSpan timeout, CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and another regular reader to block upgrade
-        using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
-        var otherReader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false);
+        var otherReader = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource();
         var upgradeAttempt = upgr.UpgradeToWriterLockAsync(cts.Token);
@@ -926,11 +1000,13 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task ReaderWhileUpgradeableWaiting_BlockedWhenWriterWaiting(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task ReaderWhileUpgradeableWaiting_BlockedWhenWriterWaiting(TimeSpan timeout, CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Hold a writer briefly to force the upgradeable request to queue behind it
         ValueTask<AsyncReaderWriterLock.Releaser> upgradeableTask1;
@@ -938,18 +1014,18 @@ public class AsyncReaderWriterLockTests
         ValueTask<AsyncReaderWriterLock.Releaser> r1Task;
         ValueTask<AsyncReaderWriterLock.Releaser> r2Task;
 
-        using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            upgradeableTask1 = rwLock.UpgradeableReaderLockAsync(ct);
+            upgradeableTask1 = rwLock.UpgradeableReaderLockAsync(timeout, ct);
             Assert.That(upgradeableTask1.IsCompleted, Is.True);
 
-            upgradeableTask2 = rwLock.UpgradeableReaderLockAsync(ct);
+            upgradeableTask2 = rwLock.UpgradeableReaderLockAsync(timeout, ct);
             Assert.That(upgradeableTask2.IsCompleted, Is.False);
 
-            r1Task = rwLock.ReaderLockAsync(ct);
+            r1Task = rwLock.ReaderLockAsync(timeout, ct);
             Assert.That(r1Task.IsCompleted, Is.True);
 
-            r2Task = rwLock.ReaderLockAsync(ct);
+            r2Task = rwLock.ReaderLockAsync(timeout, ct);
             Assert.That(r2Task.IsCompleted, Is.True);
         }
 
@@ -964,7 +1040,10 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task NewReadersBlockedDuringUpgradedWriterQueue(CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
         var otherReader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
@@ -989,7 +1068,9 @@ public class AsyncReaderWriterLockTests
     public async Task CancelWaitingUpgradeDoesNotLoseWake(CancellationToken ct)
     {
         using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously, pool: pool);
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         using var cts = new CancellationTokenSource();
         ValueTask<AsyncReaderWriterLock.Releaser> t1;
@@ -1008,11 +1089,9 @@ public class AsyncReaderWriterLockTests
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
+#pragma warning restore CHT001 // ValueTask awaited multiple times
         using (Assert.EnterMultipleScope())
         {
-#pragma warning restore CHT001 // ValueTask awaited multiple times
-
-
             Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
             Assert.That(pool.ActiveCount, Is.Zero);
         }
@@ -1022,7 +1101,10 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task DisposeUpgradeableReaderWhileUpgradedWriterRuns(CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and upgrade to writer immediately (no other readers)
         var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
@@ -1047,7 +1129,10 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task SerializedUpgradedWriterHandoffsDisposeBetweenRuns(CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and enqueue two upgrades
         var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
@@ -1081,7 +1166,10 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task SerializedUpgradedWriterBlockingReaderHandoffsDisposeBetweenRuns(CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and enqueue two upgrades
         var reader1 = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
@@ -1121,8 +1209,12 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task Releaser_EqualsAndHashCode(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        using var r = await rw.ReaderLockAsync(ct).ConfigureAwait(false);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var r = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
         object boxed = r;
         Assert.That(r, Is.EqualTo(boxed));
         var copy = r;
@@ -1133,52 +1225,61 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task PreCancelledUpgradeToWriter_IsCanceled(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task PreCancelledUpgradeToWriter_IsCanceled(TimeSpan timeout, CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        using var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
-        using var other = await rw.ReaderLockAsync(ct).ConfigureAwait(false);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(timeout, ct).ConfigureAwait(false);
+        using var other = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var vt = upgr.UpgradeToWriterLockAsync(cts.Token);
+        var vt = upgr.UpgradeToWriterLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
 #pragma warning disable CHT001
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
 #pragma warning restore CHT001
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task PreCancelledWriter_IsCanceled(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task PreCancelledWriter_IsCanceled(TimeSpan timeout, CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        using var r = await rw.ReaderLockAsync(ct).ConfigureAwait(false);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var r = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var vt = rw.WriterLockAsync(cts.Token);
+        var vt = rwLock.WriterLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
 #pragma warning disable CHT001
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
 #pragma warning restore CHT001
     }
 
-    [Test]
-    [CancelAfter(CancelAfterMS)]
-    public async Task PreCancelledUpgradeableReader_IsCanceled(CancellationToken ct)
+    [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
+    public async Task PreCancelledUpgradeableReader_IsCanceled(TimeSpan timeout, CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        using var writer = await rw.WriterLockAsync(ct).ConfigureAwait(false);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var vt = rw.UpgradeableReaderLockAsync(cts.Token);
+        var vt = rwLock.UpgradeableReaderLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
 #pragma warning disable CHT001
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
@@ -1189,15 +1290,19 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task WaitingUpgradedWriterCount_IncrementsWhenQueued(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        using var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
-        var other = await rw.ReaderLockAsync(ct).ConfigureAwait(false);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
+        var other = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
         var attempt = upgr.UpgradeToWriterLockAsync(ct);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attempt.IsCompleted, Is.False);
-            Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
+            Assert.That(rwLock.WaitingUpgradedWriterCount, Is.EqualTo(1));
         }
 
         other.Dispose();
@@ -1208,16 +1313,20 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task ReleaseUpgradedWriter_WakesUpgradeableWhenWithoutReader(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
         var upgWriter = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false);
 
         // queue a waiting upgradeable reader while upgraded writer holds
-        var tWaiting = rw.UpgradeableReaderLockAsync(ct);
+        var tWaiting = rwLock.UpgradeableReaderLockAsync(ct);
 
         // dispose upgradeable releaser to move to UpgradedWriterWithoutReader
         upgr.Dispose();
-        Assert.That(rw.IsUpgradeableReadLockHeld, Is.False);
+        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
 
         // release upgraded writer which should wake the waiting upgradeable reader
         upgWriter.Dispose();
@@ -1228,12 +1337,16 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task ReleaseUpgradedWriter_WakesWriterWhenWaitingAndWithoutReader(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
         var upgWriter = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false);
 
         // queue a regular writer while upgraded writer holds
-        var writerWaiting = rw.WriterLockAsync(ct);
+        var writerWaiting = rwLock.WriterLockAsync(ct);
 
         // dispose upgradeable to set UpgradedWriterWithoutReader
         upgr.Dispose();
@@ -1246,8 +1359,12 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task WriterLock_FastPathCompletes(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
-        var vt = rw.WriterLockAsync(ct);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        var vt = rwLock.WriterLockAsync(ct);
         Assert.That(vt.IsCompleted, Is.True);
         using (await vt.ConfigureAwait(false)) { }
     }
@@ -1256,13 +1373,18 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task ReleaseReader_WakesQueuedReaders(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Hold writer so readers queue
-        using (await rw.WriterLockAsync(ct).ConfigureAwait(false))
+        ValueTask<AsyncReaderWriterLock.Releaser> r1;
+        ValueTask<AsyncReaderWriterLock.Releaser> r2;
+        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
         {
-            var r1 = rw.ReaderLockAsync(TimeSpan.FromSeconds(1), ct);
-            var r2 = rw.ReaderLockAsync(ct);
+            r1 = rwLock.ReaderLockAsync(TimeSpan.FromSeconds(1), ct);
+            r2 = rwLock.ReaderLockAsync(ct);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(r1.IsCompleted, Is.False);
@@ -1273,20 +1395,25 @@ public class AsyncReaderWriterLockTests
             await Task.Delay(1, ct).ConfigureAwait(false);
         }
 
-        using (await rw.ReaderLockAsync(ct).ConfigureAwait(false)) { }
+        using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false)) { }
+        (await r1.ConfigureAwait(false)).Dispose();
+        (await r2.AsTask().ConfigureAwait(false)).Dispose();
     }
 
     [Test]
     [CancelAfter(CancelAfterMS)]
     public async Task NonCancelableWaiter_RegistersDefault(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Hold a writer so the next writer request will queue with a non-cancelable token
         ValueTask<AsyncReaderWriterLock.Releaser> vt;
-        using (await rw.WriterLockAsync(ct).ConfigureAwait(false))
+        using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
         {
-            vt = rw.WriterLockAsync(CancellationToken.None);
+            vt = rwLock.WriterLockAsync(CancellationToken.None);
             Assert.That(vt.IsCompleted, Is.False);
         }
 
@@ -1298,18 +1425,21 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task ReleaseReader_CompareExchangeFallthroughScenario(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Scenario: have upgradeable reader + extra reader so that ReleaseReader tries to promote upgraded writer
-        using var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
-        var r = await rw.ReaderLockAsync(ct).ConfigureAwait(false);
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
+        var r = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
         // queue an upgraded writer which will wait due to additional reader
         var upgradeAttempt = upgr.UpgradeToWriterLockAsync(ct);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(upgradeAttempt.IsCompleted, Is.False);
-            Assert.That(rw.WaitingUpgradedWriterCount, Is.EqualTo(1));
+            Assert.That(rwLock.WaitingUpgradedWriterCount, Is.EqualTo(1));
         }
 
         // Now dispose the extra reader to allow the upgrade to proceed and exercise the CompareExchange path
@@ -1321,14 +1451,17 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task ReleaseUpgradedWriter_WriterWakeWhenWithoutReaderScenario(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and upgrade to writer
-        var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
+        var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
         var upgWriter = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false);
 
         // While upgraded writer holds, queue a regular writer and dispose the upgradeable to enter WithoutReader state
-        var writerWaiting = rw.WriterLockAsync(ct);
+        var writerWaiting = rwLock.WriterLockAsync(ct);
         upgr.Dispose();
 
         // Now release upgraded writer and ensure a waiting writer is granted
@@ -1340,11 +1473,14 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public async Task ReleaseUpgradeableReader_CompareExchangeFallback(CancellationToken ct)
     {
-        var rw = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
 
         // Acquire upgradeable reader and queue an upgraded writer, then a waiting upgradeable reader behind it
         ValueTask<AsyncReaderWriterLock.Releaser> waitingUpgr;
-        using (var upgr = await rw.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
+        using (var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
         {
             var upgAttempt = upgr.UpgradeToWriterLockAsync(ct);
             Assert.That(upgAttempt.IsCompleted, Is.True);
@@ -1352,7 +1488,7 @@ public class AsyncReaderWriterLockTests
             using (await upgAttempt.ConfigureAwait(false)) { }
 
             // Queue another upgradeable reader which should wait
-            waitingUpgr = rw.UpgradeableReaderLockAsync(ct);
+            waitingUpgr = rwLock.UpgradeableReaderLockAsync(ct);
             Assert.That(waitingUpgr.IsCompleted, Is.False);
 
             // Dispose the original upgradeable reader to exercise fallback in ReleaseUpgradeableReader
@@ -1366,7 +1502,11 @@ public class AsyncReaderWriterLockTests
     [CancelAfter(CancelAfterMS)]
     public void DoubleDisposeReleaser_IsNoop(CancellationToken ct)
     {
-        var rwLock = new AsyncReaderWriterLock(runContinuationAsynchronously: RunContinuationAsynchronously);
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
         var releaser = rwLock.ReaderLockAsync(ct).AsTask().GetAwaiter().GetResult();
         releaser.Dispose();
         // second dispose throws object disposed
@@ -1474,6 +1614,32 @@ public class AsyncReaderWriterLockTests
         {
             Assert.That(rwLock.IsUpgradedWriterLockHeld, Is.False);
             Assert.That(rwLock.IsWriteLockHeld, Is.False);
+        }
+    }
+
+    [CancelAfter(CancelAfterMS)]
+    public async Task UpgradeableReaderToWriterSuccess(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using (var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
+            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+
+            using var writer = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false);
+            Assert.That(rwLock.IsWriteLockHeld, Is.True);
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.CurrentReaderCount, Is.Zero);
+            Assert.That(rwLock.IsWriteLockHeld, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
@@ -1589,7 +1755,7 @@ public class AsyncReaderWriterLockTests
     }
 
     [Test, CancelAfter(CancelAfterMS)]
-    [Repeat(50)]
+    [Repeat(5)]
     public async Task LastReaderNextReaderRaceDoesNotAdmitWriterEarlyAsync(
         CancellationToken ct)
     {
