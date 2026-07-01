@@ -740,6 +740,7 @@ public class AsyncBarrierTests
         // (2-participant) phase and would queue forever with nothing left to complete it, so it
         // is bounded by a timeout and a resulting cancellation is an accepted outcome.
         var removeTask = Task.Run(() => barrier.RemoveParticipants(1));
+        bool cancellationObserved = false;
         var signalTask = Task.Run(async () => {
             try
             {
@@ -747,10 +748,13 @@ public class AsyncBarrierTests
             }
             catch (OperationCanceledException)
             {
+                // Expected in one race outcome: third signal may time out/cancel.
+                cancellationObserved = true;
             }
         });
 
         await Task.WhenAll(removeTask, signalTask).ConfigureAwait(false);
+        _ = cancellationObserved;
 
         await p1.ConfigureAwait(false);
         await p2.ConfigureAwait(false);
