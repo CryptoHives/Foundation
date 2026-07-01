@@ -11,8 +11,8 @@ public static class DiagnosticIds
     /// <summary>
     /// ValueTask awaited multiple times.
     /// </summary>
-    public const string MultipleAwait = "CHT001"; 
-  
+    public const string MultipleAwait = "CHT001";
+
     /// <summary>
     /// ValueTask.GetAwaiter().GetResult() used (blocking).
     /// </summary> 

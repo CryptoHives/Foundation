@@ -13,4 +13,4 @@ CHT006 | Usage | Warning | ValueTask passed to potentially unsafe method
 CHT007 | Usage | Info | AsTask() stored before signaling (performance)
 CHT008 | Usage | Warning | ValueTask not awaited or consumed
 CHT009 | Usage | Info | SemaphoreSlim(1, 1) used as async lock; replace with AsyncLock
-CHT010 | Usage | Error | ValueTask captured in lambda/closure
+CHT010 | Usage | Warning | ValueTask captured in lambda/closure
