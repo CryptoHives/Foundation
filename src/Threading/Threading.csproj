@@ -12,7 +12,7 @@
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Threading Async ValueTask</PackageTags>
+    <PackageTags>$(PackageTags) Threading Async ValueTask AsyncLock AsyncReaderWriterLock</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
   </PropertyGroup>
