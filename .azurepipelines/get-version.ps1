@@ -10,7 +10,7 @@
 try {
     # Try install tool
     # Note: Keep Version in sync with project settings
-    & dotnet @("tool", "install", "--tool-path", "./tools", "--version", "3.9.50", "--framework", "net80", "nbgv") 2>&1 
+    & dotnet @("tool", "install", "--tool-path", "./tools", "--version", "3.10.85", "--framework", "net80", "nbgv") 2>&1 
 
     $props = (& ./tools/nbgv  @("get-version", "-f", "json")) | ConvertFrom-Json
     if ($LastExitCode -ne 0) {

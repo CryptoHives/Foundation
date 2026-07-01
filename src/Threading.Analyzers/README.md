@@ -44,6 +44,7 @@ Or as a development-only dependency (no runtime reference):
 | [CHT007](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT007.html) | Info | `AsTask()` stored before signaling (performance degradation) |
 | [CHT008](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT008.html) | Warning | `ValueTask` not awaited or consumed |
 | [CHT009](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT009.html) | Info | `SemaphoreSlim(1, 1)` used as async lock; replace with `AsyncLock` |
+| [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Error | `ValueTask` captured in lambda/closure  |
 
 ---
 
@@ -130,7 +131,8 @@ The analyzer package includes code fixes for most diagnostics:
 | CHT005 | Convert to `await`; use `AsTask().Result` |
 | CHT007 | Await `ValueTask` directly |
 | CHT008 | Add `await`; explicitly discard with `_ =` |
-| CHT009 | Replace with `AsyncLock` |
+| CHT009 | Replace SemaphoreSlim(1,1) with `AsyncLock` |
+| CHT010 | Convert to `AsTask()` at declaration; use `Preserve()` |
 
 ---
 

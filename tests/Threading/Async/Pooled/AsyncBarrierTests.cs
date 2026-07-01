@@ -700,4 +700,70 @@ public class AsyncBarrierTests
 
         await Task.WhenAll(task1, task2).ConfigureAwait(false);
     }
+
+    [Test]
+    public void SignalAndWaitAsyncAfterAllParticipantsRemovedThrows()
+    {
+        var barrier = new AsyncBarrier(1);
+        barrier.RemoveParticipants(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<InvalidOperationException>(() => barrier.SignalAndWaitAsync());
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public void SignalAndWaitAsyncWithTimeoutAfterAllParticipantsRemovedThrows()
+    {
+        var barrier = new AsyncBarrier(1);
+        barrier.RemoveParticipants(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<InvalidOperationException>(() => barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(5)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    [Repeat(50)]
+    public async Task RemoveParticipants_RacingLastSignal_TriggersPhaseCompletionExactlyOnce()
+    {
+        int postPhaseActionCallCount = 0;
+        var barrier = new AsyncBarrier(3, _ => Interlocked.Increment(ref postPhaseActionCallCount));
+
+        ValueTask p1 = barrier.SignalAndWaitAsync();
+        ValueTask p2 = barrier.SignalAndWaitAsync();
+
+        // RemoveParticipants and the third SignalAndWaitAsync both independently drive
+        // _participantsRemaining to zero and can each trigger phase completion; only
+        // whichever one the spinlock admits first should actually fire the post-phase action.
+        // If RemoveParticipants wins, the third signal becomes a non-last signal for the new
+        // (2-participant) phase and would queue forever with nothing left to complete it, so it
+        // is bounded by a timeout and a resulting cancellation is an accepted outcome.
+        var removeTask = Task.Run(() => barrier.RemoveParticipants(1));
+        bool cancellationObserved = false;
+        var signalTask = Task.Run(async () => {
+            try
+            {
+                await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(300)).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected in one race outcome: third signal may time out/cancel.
+                cancellationObserved = true;
+            }
+        });
+
+        await Task.WhenAll(removeTask, signalTask).ConfigureAwait(false);
+        _ = cancellationObserved;
+
+        await p1.ConfigureAwait(false);
+        await p2.ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(postPhaseActionCallCount, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+            Assert.That(barrier.ParticipantsRemaining, Is.InRange(1, 2));
+        }
+    }
 }

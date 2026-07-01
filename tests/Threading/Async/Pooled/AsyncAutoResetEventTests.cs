@@ -638,6 +638,25 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
+    public async Task TryReset_FailsWhileWaitersQueued()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncAutoResetEvent(pool: pool);
+
+        var waiterTask = Task.Run(async () => await ev.WaitAsync().ConfigureAwait(false));
+
+        while (!ev.InternalWaiterInUse)
+        {
+            await Task.Delay(1).ConfigureAwait(false);
+        }
+
+        Assert.That(ev.TryReset(), Is.False);
+
+        ev.Set();
+        await waiterTask.ConfigureAwait(false);
+    }
+
+    [Test]
     public async Task WaitAsyncWithTimeoutCompletesWhenSignalledBeforeTimeout()
     {
         using var pool = new TestObjectPool<bool>();
@@ -751,6 +770,49 @@ public class AsyncAutoResetEventTests
         {
             Assert.That(ev.InternalWaiterInUse, Is.False);
             Assert.That(pool.ActiveCount, Is.Zero);
+        }
+    }
+
+    [Test]
+    [Repeat(50)]
+    public async Task Set_RacingWaiterCancellation_SignalNotLost()
+    {
+        var ev = new AsyncAutoResetEvent();
+        using var cts = new CancellationTokenSource();
+
+        var waitTask = ev.WaitAsync(cts.Token);
+
+        // Race Set() against the sole waiter's own cancellation: whichever wins the spinlock
+        // must not lose the signal - either the waiter consumes it, or it is preserved for
+        // a subsequent waiter.
+        var cancelTask = Task.Run(() => cts.Cancel());
+        var setTask = Task.Run(() => ev.Set());
+        await Task.WhenAll(cancelTask, setTask).ConfigureAwait(false);
+
+        bool signalConsumedByWaiter;
+        try
+        {
+            await waitTask.ConfigureAwait(false);
+            signalConsumedByWaiter = true;
+        }
+        catch (OperationCanceledException)
+        {
+            signalConsumedByWaiter = false;
+        }
+
+        if (signalConsumedByWaiter)
+        {
+            // The waiter got the signal; nothing should be left over for a new waiter.
+            Assert.That(ev.IsSet, Is.False);
+            var next = ev.WaitAsync();
+            Assert.That(next.IsCompleted, Is.False);
+        }
+        else
+        {
+            // The waiter was cancelled first; Set() must have preserved the signal rather
+            // than dropping it, so the next waiter observes it immediately.
+            Assert.That(ev.IsSet, Is.True);
+            await ev.WaitAsync().ConfigureAwait(false);
         }
     }
 }
