@@ -638,7 +638,7 @@ public class AsyncLockTests
             });
 
             // Give the waiter time to enqueue before asserting the reset is declined.
-            while (mutex.InternalWaiterInUse == false)
+            while (!mutex.InternalWaiterInUse)
             {
                 await Task.Delay(1).ConfigureAwait(false);
             }

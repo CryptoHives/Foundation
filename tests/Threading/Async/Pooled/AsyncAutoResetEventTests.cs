@@ -645,7 +645,7 @@ public class AsyncAutoResetEventTests
 
         var waiterTask = Task.Run(async () => await ev.WaitAsync().ConfigureAwait(false));
 
-        while (ev.InternalWaiterInUse == false)
+        while (!ev.InternalWaiterInUse)
         {
             await Task.Delay(1).ConfigureAwait(false);
         }
