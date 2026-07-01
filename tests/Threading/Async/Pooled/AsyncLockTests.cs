@@ -633,8 +633,7 @@ public class AsyncLockTests
         Task waiterTask;
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
-            waiterTask = Task.Run(async () =>
-            {
+            waiterTask = Task.Run(async () => {
                 using (await mutex.LockAsync().ConfigureAwait(false)) { }
             });
 

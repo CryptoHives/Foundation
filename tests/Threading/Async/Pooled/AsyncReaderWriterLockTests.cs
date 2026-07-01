@@ -2037,8 +2037,7 @@ public class AsyncReaderWriterLockTests
 
         // Release the reader at roughly the same time the writer's timeout elapses, so the
         // timer callback and ReleaseReaderLock race to claim/remove the same queued waiter.
-        var releaseTask = Task.Run(async () =>
-        {
+        var releaseTask = Task.Run(async () => {
             await Task.Delay(75, ct).ConfigureAwait(false);
             reader.Dispose();
         }, ct);
@@ -2078,8 +2077,7 @@ public class AsyncReaderWriterLockTests
 
         // Release the extra reader at roughly the same time the upgrade's timeout elapses, so the
         // timer callback and ReleaseReaderLock race to claim/remove the same queued upgraded-writer waiter.
-        var releaseTask = Task.Run(async () =>
-        {
+        var releaseTask = Task.Run(async () => {
             await Task.Delay(75, ct).ConfigureAwait(false);
             reader.Dispose();
         }, ct);

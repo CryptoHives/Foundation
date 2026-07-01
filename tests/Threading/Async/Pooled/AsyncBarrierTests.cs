@@ -740,8 +740,7 @@ public class AsyncBarrierTests
         // (2-participant) phase and would queue forever with nothing left to complete it, so it
         // is bounded by a timeout and a resulting cancellation is an accepted outcome.
         var removeTask = Task.Run(() => barrier.RemoveParticipants(1));
-        var signalTask = Task.Run(async () =>
-        {
+        var signalTask = Task.Run(async () => {
             try
             {
                 await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(300)).ConfigureAwait(false);
