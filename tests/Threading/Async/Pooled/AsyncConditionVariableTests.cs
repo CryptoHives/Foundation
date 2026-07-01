@@ -369,7 +369,7 @@ public class AsyncConditionVariableTests
             await waitReady.Task.ConfigureAwait(false);
 
             // Race: cancel and signal simultaneously
-            cts.Cancel();
+            await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
             cv.Signal();
 
             await waiter.ConfigureAwait(false);
