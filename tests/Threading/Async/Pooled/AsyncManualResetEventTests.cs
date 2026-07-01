@@ -400,6 +400,25 @@ public class AsyncManualResetEventTests
     }
 
     [Test]
+    public async Task TryReset_FailsWhileWaitersQueued()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(set: false, pool: pool);
+
+        var waiterTask = Task.Run(async () => await ev.WaitAsync().ConfigureAwait(false));
+
+        while (ev.InternalWaiterInUse == false)
+        {
+            await Task.Delay(1).ConfigureAwait(false);
+        }
+
+        Assert.That(ev.TryReset(), Is.False);
+
+        ev.Set();
+        await waiterTask.ConfigureAwait(false);
+    }
+
+    [Test]
     public async Task WaitAsyncWithTimeoutCompletesWhenSetBeforeTimeout()
     {
         using var pool = new TestObjectPool<bool>();
