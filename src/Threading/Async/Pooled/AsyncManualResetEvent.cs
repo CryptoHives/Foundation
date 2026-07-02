@@ -256,6 +256,9 @@ public sealed class AsyncManualResetEvent : IResettable
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private ValueTask WaitAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
+        ManualResetValueTaskSource<bool> waiter;
+        short version;
+
         _spinLock.Enter();
         try
         {
@@ -269,42 +272,44 @@ public sealed class AsyncManualResetEvent : IResettable
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<bool> waiter))
+            if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
+            version = waiter.Version;
+            _waiters.Enqueue(waiter);
+
             if (timeout != Timeout.InfiniteTimeSpan)
             {
                 waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
                     TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
             }
-
-            if (cancellationToken.CanBeCanceled)
-            {
-#if NET6_0_OR_GREATER
-                // Use UnsafeRegister on .NET 6+ for allocation free registration
-                waiter.CancellationTokenRegistration =
-                    cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-                waiter.CancellationTokenRegistration =
-                    cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-            }
-            else
-            {
-                Debug.Assert(waiter.CancellationTokenRegistration == default);
-            }
-
-            _waiters.Enqueue(waiter);
-            return new ValueTask(waiter, waiter.Version);
         }
         finally
         {
             _spinLock.Exit();
         }
+
+        if (cancellationToken.CanBeCanceled)
+        {
+#if NET6_0_OR_GREATER
+            // Use UnsafeRegister on .NET 6+ for allocation free registration
+            waiter.CancellationTokenRegistration =
+                cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+            waiter.CancellationTokenRegistration =
+                cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+        }
+        else
+        {
+            Debug.Assert(waiter.CancellationTokenRegistration == default);
+        }
+
+        return new ValueTask(waiter, version);
     }
 
     /// <summary>

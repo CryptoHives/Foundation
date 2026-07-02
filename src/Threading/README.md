@@ -59,7 +59,7 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 - **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` for fine-grained control
 - **Drop-in replacement** — change namespace, keep the same `using`-based patterns
 - **Custom ObjectPools**: Supply your own object pools for fine-grained control
-- **Included analyzers** — ValueTask misuse caught at compile time
+- **Optional analyzers** — ValueTask misuse caught at compile time, available in `Threading.Analyzers` package
 
 ---
 

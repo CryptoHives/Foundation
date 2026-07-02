@@ -176,69 +176,7 @@ public sealed class AsyncBarrier
     /// <exception cref="InvalidOperationException">Thrown when more participants signal than expected.</exception>
     /// <exception cref="BarrierPostPhaseException">Thrown when the post-phase action throws an exception.</exception>
     public ValueTask SignalAndWaitAsync(CancellationToken cancellationToken = default)
-    {
-        ManualResetValueTaskSource<bool>? toReleaseChain = null;
-        Exception? postPhaseException = null;
-
-        _spinLock.Enter();
-        try
-        {
-            if (_participantsRemaining <= 0)
-            {
-                throw new InvalidOperationException("The number of threads using the barrier exceeded the total number of registered participants.");
-            }
-
-            _participantsRemaining--;
-
-            if (_participantsRemaining > 0)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _participantsRemaining++;
-                    return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
-                }
-
-                PooledManualResetValueTaskSource<bool> waiter = _pool.GetPooledWaiter(this);
-                waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-                waiter.CancellationToken = cancellationToken;
-
-                return QueueWaiter(waiter);
-            }
-
-            // Last participant - execute post-phase action, then release all waiters and advance phase
-            if (_postPhaseAction is not null)
-            {
-                try
-                {
-                    _postPhaseAction(this);
-                }
-                catch (Exception ex) when (ex is not OutOfMemoryException
-                    && ex is not StackOverflowException
-                    && ex is not AccessViolationException)
-                {
-                    postPhaseException = new BarrierPostPhaseException(ex);
-                }
-            }
-
-            _participantsRemaining = _participantCount;
-            _currentPhase++;
-
-            toReleaseChain = _waiters.DetachAll(out _);
-        }
-        finally
-        {
-            _spinLock.Exit();
-        }
-
-        if (postPhaseException is not null)
-        {
-            WaiterQueue<bool>.SetChainException(toReleaseChain, postPhaseException);
-            return new ValueTask(Task.FromException(postPhaseException));
-        }
-
-        toReleaseChain?.SetChainResult(true);
-        return default;
-    }
+        => SignalAndWaitAsync(Timeout.InfiniteTimeSpan, cancellationToken);
 
     /// <summary>
     /// Signals the barrier and waits for all participants to arrive, or until the specified timeout elapses.
@@ -264,15 +202,11 @@ public sealed class AsyncBarrier
     /// <exception cref="BarrierPostPhaseException">Thrown when the post-phase action throws an exception.</exception>
     public ValueTask SignalAndWaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        if (timeout == Timeout.InfiniteTimeSpan)
-        {
-            return SignalAndWaitAsync(cancellationToken);
-        }
-
-        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
         ManualResetValueTaskSource<bool>? toReleaseChain = null;
         Exception? postPhaseException = null;
+        bool earlyExit = false;
 
         _spinLock.Enter();
         try
@@ -298,14 +232,39 @@ public sealed class AsyncBarrier
                     return new ValueTask(Task.FromException(new OperationCanceledException()));
                 }
 
-                PooledManualResetValueTaskSource<bool> waiter = _pool.GetPooledWaiter(this); ;
+                PooledManualResetValueTaskSource<bool> waiter = _pool.GetPooledWaiter(this);
                 waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-
                 waiter.CancellationToken = cancellationToken;
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
 
-                return QueueWaiter(waiter);
+                short version = waiter.Version;
+                _waiters.Enqueue(waiter);
+
+                if (timeout != Timeout.InfiniteTimeSpan)
+                {
+                    waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                        TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+                }
+
+                earlyExit = true;
+                _spinLock.Exit();
+
+                if (cancellationToken.CanBeCanceled)
+                {
+#if NET6_0_OR_GREATER
+                    // Use UnsafeRegister on .NET 6+ for allocation free registration
+                    waiter.CancellationTokenRegistration =
+                        cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+                    waiter.CancellationTokenRegistration =
+                        cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+                }
+                else
+                {
+                    Debug.Assert(waiter.CancellationTokenRegistration == default);
+                }
+
+                return new ValueTask(waiter, version);
             }
 
             // Last participant - execute post-phase action, then release all waiters and advance phase
@@ -315,7 +274,9 @@ public sealed class AsyncBarrier
                 {
                     _postPhaseAction(this);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OutOfMemoryException
+                    && ex is not StackOverflowException
+                    && ex is not AccessViolationException)
                 {
                     postPhaseException = new BarrierPostPhaseException(ex);
                 }
@@ -328,7 +289,10 @@ public sealed class AsyncBarrier
         }
         finally
         {
-            _spinLock.Exit();
+            if (!earlyExit)
+            {
+                _spinLock.Exit();
+            }
         }
 
         if (postPhaseException is not null)
@@ -502,32 +466,6 @@ public sealed class AsyncBarrier
 
         ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-    }
-
-    /// <summary>
-    /// Queue and register the waiter if it can be canceled.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ValueTask QueueWaiter(ManualResetValueTaskSource<bool> waiter)
-    {
-        if (waiter.CancellationToken.CanBeCanceled)
-        {
-#if NET6_0_OR_GREATER
-            // Use UnsafeRegister on .NET 6+ for allocation free registration
-            waiter.CancellationTokenRegistration =
-                waiter.CancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-            waiter.CancellationTokenRegistration =
-                waiter.CancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-        }
-        else
-        {
-            Debug.Assert(waiter.CancellationTokenRegistration == default);
-        }
-
-        _waiters.Enqueue(waiter);
-        return new ValueTask(waiter, waiter.Version);
     }
 
     /// <summary>
