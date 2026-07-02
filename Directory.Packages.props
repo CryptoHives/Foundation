@@ -32,7 +32,7 @@
     <PackageVersion Include="Microsoft.VisualStudio.Threading" Version="17.14.15" />
     <PackageVersion Include="NaCl.Core" Version="2.1.0" />
     <PackageVersion Include="NeoSmart.AsyncLock" Version="3.3.0-preview1" />
-    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.9.50" />
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.85" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="Nito.AsyncEx" Version="5.1.2" />
     <PackageVersion Include="Nuget.Packaging" Version="6.3.4" />
@@ -49,16 +49,14 @@
     <PackageVersion Include="System.Formats.Asn1" Version="10.0.9" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
-
   <!-- Activate with /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>  -->
   <PropertyGroup Condition="'$(UsePackedNuGetPackages)' == 'true' AND '$(Configuration)' == 'Debug'">
     <_NuGetPackageSuffix>.Debug</_NuGetPackageSuffix>
   </PropertyGroup>
-  
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' == 'true'">
     <PackageVersion Include="CryptoHives.Foundation.Memory$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
     <PackageVersion Include="CryptoHives.Foundation.Security.Cryptography$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
     <PackageVersion Include="CryptoHives.Foundation.Threading$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
+    <PackageVersion Include="CryptoHives.Foundation.Threading.Analyzers$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
   </ItemGroup>
-
 </Project>

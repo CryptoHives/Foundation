@@ -94,8 +94,8 @@ internal struct WaiterQueue<T>
     /// <returns><see langword="true"/> if the node was found and removed; otherwise, <see langword="false"/>.</returns>
     public bool Remove(ManualResetValueTaskSource<T> node)
     {
-        // Node is not in this queue if it has no links and is not the only element.
-        if (node.Next is null && node.Prev is null && !ReferenceEquals(_head, node))
+        // Node is not in this queue if it has no prev link and is not the head element.
+        if (node.Prev is null && !ReferenceEquals(_head, node))
         {
             return false;
         }
@@ -123,6 +123,8 @@ internal struct WaiterQueue<T>
         node.Next = null;
         node.Prev = null;
         _count--;
+
+        Debug.Assert(_count >= 0);
 
         return true;
     }
@@ -209,6 +211,8 @@ internal struct WaiterQueue<T>
         }
 
         _count -= count;
+
+        Debug.Assert(_count >= 0);
 
         return head;
     }

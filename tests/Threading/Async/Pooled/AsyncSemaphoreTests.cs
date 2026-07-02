@@ -310,4 +310,55 @@ public class AsyncSemaphoreTests
 
         Assert.That(semaphore.CurrentCount, Is.Zero);
     }
+
+    [Test]
+    [Repeat(50)]
+    public async Task Release_RacingWaiterCancellation_NoLostPermitOrCorruption()
+    {
+        var semaphore = new AsyncSemaphore(0);
+
+        const int waiterCount = 4;
+        var ctsList = new CancellationTokenSource[waiterCount];
+        var waitTasks = new ValueTask[waiterCount];
+        for (int i = 0; i < waiterCount; i++)
+        {
+            ctsList[i] = new CancellationTokenSource();
+            waitTasks[i] = semaphore.WaitAsync(ctsList[i].Token);
+        }
+
+        // Cancel one queued waiter concurrently with releasing exactly enough permits for all
+        // of them - racing Release's batch DetachUpTo against the cancellation callback's
+        // single-node removal of the same waiter.
+        var cancelTask = Task.Run(() => ctsList[1].Cancel());
+        var releaseTask = Task.Run(() => semaphore.Release(waiterCount));
+
+        await Task.WhenAll(cancelTask, releaseTask).ConfigureAwait(false);
+
+        int granted = 0;
+        int canceled = 0;
+        for (int i = 0; i < waiterCount; i++)
+        {
+            try
+            {
+                await waitTasks[i].ConfigureAwait(false);
+                granted++;
+            }
+            catch (OperationCanceledException)
+            {
+                canceled++;
+            }
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(granted + canceled, Is.EqualTo(waiterCount));
+            // Any permit not consumed by a cancelled waiter must be returned to the count, not lost.
+            Assert.That(semaphore.CurrentCount, Is.EqualTo(waiterCount - granted));
+        }
+
+        foreach (var cts in ctsList)
+        {
+            cts.Dispose();
+        }
+    }
 }

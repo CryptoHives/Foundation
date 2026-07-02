@@ -30,7 +30,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 
 ### 🔍 [Threading Analyzers (Standalone)](packages/threading.analyzers/index.md)
 
-Roslyn analyzers for `ValueTask` misuse detection. Already included in the Threading package — this standalone package is for projects that want analyzers without the Threading library.
+Roslyn analyzers for `ValueTask` misuse detection. This package is for projects that want threading analyzers for the Threading library.
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading.Analyzers

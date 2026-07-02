@@ -91,6 +91,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "src\Securit
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{A85A76EB-A8E6-4A3A-94A1-4BF987DD9341}"
 	ProjectSection(SolutionItems) = preProject
+		tests\customtest.bat = tests\customtest.bat
 		scripts\run-benchmarks.cmd = scripts\run-benchmarks.cmd
 		scripts\run-benchmarks.ps1 = scripts\run-benchmarks.ps1
 		scripts\run-codecoverage.cmd = scripts\run-codecoverage.cmd

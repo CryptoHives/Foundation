@@ -43,8 +43,8 @@
   </ItemGroup>
   
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' == 'true'">
-    <!-- The Threading NuGet package bundles the analyzer in analyzers/dotnet/cs -->
     <PackageReference Include="CryptoHives.Foundation.Threading$(_NuGetPackageSuffix)" />
+    <PackageReference Include="CryptoHives.Foundation.Threading.Analyzers$(_NuGetPackageSuffix)" />
   </ItemGroup>
 
   <ItemGroup>

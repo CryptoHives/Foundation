@@ -557,4 +557,96 @@ public class AsyncLockTests
     {
         return new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
     }
+
+    [Test]
+    public async Task ReleaserFromSameLockAreEqual()
+    {
+        var mutex = new AsyncLock();
+
+        AsyncLock.Releaser first;
+        using (first = await mutex.LockAsync().ConfigureAwait(false)) { }
+        AsyncLock.Releaser second;
+        using (second = await mutex.LockAsync().ConfigureAwait(false)) { }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(first.Equals(second), Is.True);
+            Assert.That(first.Equals((object)second), Is.True);
+            Assert.That(first == second, Is.True);
+            Assert.That(first != second, Is.False);
+            Assert.That(first.GetHashCode(), Is.EqualTo(second.GetHashCode()));
+        }
+    }
+
+    [Test]
+    public async Task ReleaserFromDifferentLocksAreNotEqual()
+    {
+        var mutexA = new AsyncLock();
+        var mutexB = new AsyncLock();
+
+        AsyncLock.Releaser releaserA;
+        using (releaserA = await mutexA.LockAsync().ConfigureAwait(false)) { }
+        AsyncLock.Releaser releaserB;
+        using (releaserB = await mutexB.LockAsync().ConfigureAwait(false)) { }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(releaserA.Equals(releaserB), Is.False);
+            Assert.That(releaserA.Equals((object)releaserB), Is.False);
+            Assert.That(releaserA == releaserB, Is.False);
+            Assert.That(releaserA != releaserB, Is.True);
+            Assert.That(releaserA.Equals("not a releaser"), Is.False);
+        }
+    }
+
+    [Test]
+    public void DefaultReleasersAreEqual()
+    {
+        var first = default(AsyncLock.Releaser);
+        var second = default(AsyncLock.Releaser);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(first.Equals(second), Is.True);
+            Assert.That(first.GetHashCode(), Is.EqualTo(second.GetHashCode()));
+            Assert.That(first.GetHashCode(), Is.Zero);
+        }
+    }
+
+    [Test]
+    public async Task TryReset_FailsWhileLockHeld()
+    {
+        var mutex = new AsyncLock();
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Assert.That(mutex.TryReset(), Is.False);
+        }
+    }
+
+    [Test]
+    public async Task TryReset_FailsWhileWaitersQueued()
+    {
+        using var pool = new TestObjectPool<AsyncLock.Releaser>();
+        var mutex = new AsyncLock(pool: pool);
+
+        Task waiterTask;
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            waiterTask = Task.Run(async () => {
+                using (await mutex.LockAsync().ConfigureAwait(false)) { }
+            });
+
+            // Give the waiter time to enqueue before asserting the reset is declined.
+            while (!mutex.InternalWaiterInUse)
+            {
+                await Task.Delay(1).ConfigureAwait(false);
+            }
+
+            Assert.That(mutex.TryReset(), Is.False);
+            // Outer lock releases here, unblocking the queued waiter.
+        }
+
+        await waiterTask.ConfigureAwait(false);
+    }
 }
