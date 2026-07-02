@@ -1,77 +1,77 @@
 ﻿| Description                                                    | Iterations | cancellationType | Mean          | Ratio | Allocated | 
 |--------------------------------------------------------------- |----------- |----------------- |--------------:|------:|----------:|
-| WaitThenSet · AsyncManualReset · RefImpl                       | 1          | None             |      16.47 ns |  0.81 |      96 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 1          | None             |      17.19 ns |  0.84 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 1          | None             |      17.54 ns |  0.86 |         - | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 1          | None             |      18.54 ns |  0.91 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 1          | None             |      20.44 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 1          | None             |      20.75 ns |  1.02 |         - | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 1          | None             |      26.62 ns |  1.30 |      96 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 1          | None             |      28.74 ns |  1.41 |      80 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 1          | None             |   1,291.26 ns | 63.19 |     230 B | 
+| WaitThenSet · AsyncManualReset · RefImpl                       | 1          | None             |      16.08 ns |  0.73 |      96 B | 
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 1          | None             |      18.34 ns |  0.84 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 1          | None             |      18.67 ns |  0.85 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 1          | None             |      19.92 ns |  0.91 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 1          | None             |      21.73 ns |  0.99 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 1          | None             |      21.89 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 1          | None             |      26.31 ns |  1.20 |      96 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 1          | None             |      29.55 ns |  1.35 |      80 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 1          | None             |   1,204.55 ns | 55.03 |     230 B | 
 |                                                                |            |                  |               |       |           | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 1          | NotCancelled     |      28.78 ns |  0.91 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 1          | NotCancelled     |      29.50 ns |  0.93 |         - | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 1          | NotCancelled     |      31.40 ns |  0.99 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 1          | NotCancelled     |      31.65 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 1          | NotCancelled     |      31.71 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 1          | NotCancelled     |      41.95 ns |  1.32 |      80 B | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 1          | NotCancelled     |   1,443.13 ns | 45.52 |     808 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 1          | NotCancelled     |   1,496.60 ns | 47.21 |     232 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 1          | NotCancelled     |      30.37 ns |  0.90 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 1          | NotCancelled     |      30.58 ns |  0.90 |         - | 
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 1          | NotCancelled     |      31.43 ns |  0.93 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 1          | NotCancelled     |      32.62 ns |  0.96 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 1          | NotCancelled     |      33.87 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 1          | NotCancelled     |      42.80 ns |  1.26 |      80 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 1          | NotCancelled     |   1,325.28 ns | 39.13 |     232 B | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 1          | NotCancelled     |   1,452.34 ns | 42.88 |     808 B | 
 |                                                                |            |                  |               |       |           | 
-| WaitThenSet · AsyncManualReset · RefImpl                       | 2          | None             |      20.27 ns |  0.44 |      96 B | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 2          | None             |      33.62 ns |  0.73 |         - | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 2          | None             |      34.65 ns |  0.76 |      96 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 2          | None             |      42.09 ns |  0.92 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 2          | None             |      43.47 ns |  0.95 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 2          | None             |      43.78 ns |  0.95 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 2          | None             |      45.88 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 2          | None             |      65.24 ns |  1.42 |     160 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 2          | None             |   1,777.86 ns | 38.76 |     343 B | 
+| WaitThenSet · AsyncManualReset · RefImpl                       | 2          | None             |      19.90 ns |  0.41 |      96 B | 
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 2          | None             |      33.50 ns |  0.70 |         - | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 2          | None             |      35.81 ns |  0.74 |      96 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 2          | None             |      43.49 ns |  0.90 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 2          | None             |      44.35 ns |  0.92 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 2          | None             |      47.93 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 2          | None             |      48.13 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 2          | None             |      69.25 ns |  1.44 |     160 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 2          | None             |   1,763.33 ns | 36.63 |     344 B | 
 |                                                                |            |                  |               |       |           | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 2          | NotCancelled     |      62.17 ns |  0.92 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 2          | NotCancelled     |      65.48 ns |  0.97 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 2          | NotCancelled     |      66.38 ns |  0.98 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 2          | NotCancelled     |      67.42 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 2          | NotCancelled     |      68.71 ns |  1.02 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 2          | NotCancelled     |     103.73 ns |  1.54 |     160 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 2          | NotCancelled     |   2,228.65 ns | 33.06 |     344 B | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 2          | NotCancelled     |   2,316.48 ns | 34.36 |    1488 B | 
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 2          | NotCancelled     |      62.40 ns |  0.89 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 2          | NotCancelled     |      65.74 ns |  0.94 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 2          | NotCancelled     |      67.26 ns |  0.96 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 2          | NotCancelled     |      69.91 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 2          | NotCancelled     |      69.96 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 2          | NotCancelled     |      93.97 ns |  1.34 |     160 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 2          | NotCancelled     |   1,964.14 ns | 28.10 |     344 B | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 2          | NotCancelled     |   2,319.97 ns | 33.19 |    1488 B | 
 |                                                                |            |                  |               |       |           | 
-| WaitThenSet · AsyncManualReset · RefImpl                       | 10         | None             |      58.16 ns |  0.23 |      96 B | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 10         | None             |     100.26 ns |  0.40 |      96 B | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 10         | None             |     159.08 ns |  0.64 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 10         | None             |     212.14 ns |  0.85 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 10         | None             |     217.21 ns |  0.87 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 10         | None             |     248.87 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 10         | None             |     250.88 ns |  1.01 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 10         | None             |     338.66 ns |  1.36 |     800 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 10         | None             |   6,269.22 ns | 25.19 |    1240 B | 
+| WaitThenSet · AsyncManualReset · RefImpl                       | 10         | None             |      55.53 ns |  0.22 |      96 B | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 10         | None             |      99.84 ns |  0.39 |      96 B | 
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 10         | None             |     156.80 ns |  0.61 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 10         | None             |     227.74 ns |  0.89 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 10         | None             |     231.36 ns |  0.90 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 10         | None             |     255.84 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 10         | None             |     262.19 ns |  1.02 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 10         | None             |     356.75 ns |  1.39 |     800 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 10         | None             |   6,341.92 ns | 24.79 |    1240 B | 
 |                                                                |            |                  |               |       |           | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 10         | NotCancelled     |     303.05 ns |  0.80 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 10         | NotCancelled     |     344.64 ns |  0.91 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 10         | NotCancelled     |     347.10 ns |  0.92 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 10         | NotCancelled     |     376.76 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 10         | NotCancelled     |     377.14 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 10         | NotCancelled     |     477.58 ns |  1.27 |     800 B | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 10         | NotCancelled     |   6,880.06 ns | 18.24 |    6464 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 10         | NotCancelled     |   7,417.03 ns | 19.67 |    1240 B | 
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 10         | NotCancelled     |     296.67 ns |  0.76 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 10         | NotCancelled     |     351.27 ns |  0.90 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 10         | NotCancelled     |     360.39 ns |  0.93 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 10         | NotCancelled     |     373.81 ns |  0.96 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 10         | NotCancelled     |     389.27 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 10         | NotCancelled     |     491.53 ns |  1.26 |     800 B | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 10         | NotCancelled     |   6,846.24 ns | 17.59 |    6464 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 10         | NotCancelled     |   7,199.71 ns | 18.50 |    1240 B | 
 |                                                                |            |                  |               |       |           | 
-| WaitThenSet · AsyncManualReset · RefImpl                       | 100        | None             |     460.79 ns |  0.19 |      96 B | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 100        | None             |     806.83 ns |  0.33 |      96 B | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 100        | None             |   1,457.80 ns |  0.60 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 100        | None             |   2,082.27 ns |  0.86 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 100        | None             |   2,088.38 ns |  0.86 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 100        | None             |   2,413.12 ns |  0.99 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 100        | None             |   2,428.53 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 100        | None             |   3,272.00 ns |  1.35 |    8000 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 100        | None             |  32,830.61 ns | 13.52 |   11320 B | 
+| WaitThenSet · AsyncManualReset · RefImpl                       | 100        | None             |     448.30 ns |  0.18 |      96 B | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 100        | None             |     795.99 ns |  0.31 |      96 B | 
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 100        | None             |   1,458.02 ns |  0.57 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 100        | None             |   2,208.46 ns |  0.87 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 100        | None             |   2,224.15 ns |  0.88 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 100        | None             |   2,487.38 ns |  0.98 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 100        | None             |   2,538.83 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 100        | None             |   3,414.98 ns |  1.35 |    8000 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 100        | None             |  31,582.21 ns | 12.44 |   11320 B | 
 |                                                                |            |                  |               |       |           | 
-| WaitThenSet · AsyncManualReset · ProtoPromise                  | 100        | NotCancelled     |   2,838.95 ns |  0.78 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 100        | NotCancelled     |   3,284.09 ns |  0.90 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 100        | NotCancelled     |   3,321.15 ns |  0.91 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 100        | NotCancelled     |   3,575.24 ns |  0.98 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 100        | NotCancelled     |   3,642.58 ns |  1.00 |         - | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 100        | NotCancelled     |   4,450.96 ns |  1.22 |    8000 B | 
-| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 100        | NotCancelled     | 103,311.74 ns | 28.36 |   11327 B | 
-| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 100        | NotCancelled     | 150,459.74 ns | 41.31 |   61615 B |
+| WaitThenSet · AsyncManualReset · ProtoPromise                  | 100        | NotCancelled     |   2,865.79 ns |  0.75 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask)          | 100        | NotCancelled     |   3,332.42 ns |  0.87 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsValueTask SyncCont) | 100        | NotCancelled     |   3,394.98 ns |  0.88 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (SyncCont)             | 100        | NotCancelled     |   3,711.24 ns |  0.97 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (ValueTask)            | 100        | NotCancelled     |   3,840.20 ns |  1.00 |         - | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask SyncCont)      | 100        | NotCancelled     |   4,742.03 ns |  1.23 |    8000 B | 
+| WaitThenSet · AsyncManualReset · Pooled (AsTask)               | 100        | NotCancelled     |  96,008.91 ns | 25.00 |   11326 B | 
+| WaitThenSet · AsyncManualReset · Nito.AsyncEx                  | 100        | NotCancelled     | 127,423.46 ns | 33.18 |   61615 B |
