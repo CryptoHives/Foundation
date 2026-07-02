@@ -11,7 +11,7 @@ developed and maintained by **The Keepers of the CryptoHives**.
 
 Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time — helping you avoid subtle bugs, undefined behavior, and performance pitfalls when working with `ValueTask` and pooled async primitives.
 
-> **Note:** These analyzers are automatically included in the [CryptoHives.Foundation.Threading](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) package. Install this package separately only if you need the analyzers without the Threading library.
+> **Note:** These analyzers are note anymore automatically included in the [CryptoHives.Foundation.Threading](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) package. Install this separately if you need the analyzers with the Threading library.
 
 ---
 
