@@ -97,6 +97,73 @@ public class KalynaTests
     }
 
     // ========================================================================
+    // Kalyna-512/256 (18 rounds)
+    // ========================================================================
+
+    /// <summary>
+    /// Verifies Kalyna-512 ECB round-trip with a 512-bit key.
+    /// </summary>
+    [Test]
+    public void RoundTripEcb512()
+    {
+        byte[] key = FromHex(
+            "000102030405060708090a0b0c0d0e0f" +
+            "101112131415161718191a1b1c1d1e1f" +
+            "202122232425262728292a2b2c2d2e2f" +
+            "303132333435363738393a3b3c3d3e3f");
+        byte[] plaintext = FromHex("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
+
+        using var enc = Kalyna512.Create();
+        enc.Mode = CipherMode.ECB;
+        enc.Padding = PaddingMode.None;
+        enc.Key = key;
+        enc.IV = new byte[32];
+        byte[] ciphertext = enc.Encrypt(plaintext);
+
+        using var dec = Kalyna512.Create();
+        dec.Mode = CipherMode.ECB;
+        dec.Padding = PaddingMode.None;
+        dec.Key = key;
+        dec.IV = new byte[32];
+        byte[] decrypted = dec.Decrypt(ciphertext);
+
+        Assert.That(decrypted, Is.EqualTo(plaintext));
+    }
+
+    /// <summary>
+    /// Verifies Kalyna-512 CBC round-trip with PKCS7 padding.
+    /// </summary>
+    [Test]
+    public void RoundTripCbc512()
+    {
+        byte[] key = FromHex(
+            "000102030405060708090a0b0c0d0e0f" +
+            "101112131415161718191a1b1c1d1e1f" +
+            "202122232425262728292a2b2c2d2e2f" +
+            "303132333435363738393a3b3c3d3e3f");
+        byte[] iv = FromHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
+        byte[] plaintext = FromHex(
+            "0123456789abcdeffedcba98765432100011223344556677fedcba9876543210" +
+            "8899aabbccddeeff0011223344556677");
+
+        using var enc = Kalyna512.Create();
+        enc.Mode = CipherMode.CBC;
+        enc.Padding = PaddingMode.PKCS7;
+        enc.Key = key;
+        enc.IV = iv;
+        byte[] ciphertext = enc.Encrypt(plaintext);
+
+        using var dec = Kalyna512.Create();
+        dec.Mode = CipherMode.CBC;
+        dec.Padding = PaddingMode.PKCS7;
+        dec.Key = key;
+        dec.IV = iv;
+        byte[] decrypted = dec.Decrypt(ciphertext);
+
+        Assert.That(decrypted, Is.EqualTo(plaintext));
+    }
+
+    // ========================================================================
     // CBC and CTR round-trips
     // ========================================================================
 
@@ -234,6 +301,34 @@ public class KalynaTests
     }
 
     /// <summary>
+    /// Cross-validates Kalyna-512 ECB with BouncyCastle Dstu7624Engine.
+    /// </summary>
+    [Test]
+    public void CrossValidateWithBouncyCastle512()
+    {
+        byte[] key = FromHex(
+            "000102030405060708090a0b0c0d0e0f" +
+            "101112131415161718191a1b1c1d1e1f" +
+            "202122232425262728292a2b2c2d2e2f" +
+            "303132333435363738393a3b3c3d3e3f");
+        byte[] plaintext = FromHex("404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f");
+
+        using var kalyna = Kalyna512.Create();
+        kalyna.Mode = CipherMode.ECB;
+        kalyna.Padding = PaddingMode.None;
+        kalyna.Key = key;
+        kalyna.IV = new byte[32];
+        byte[] managed = kalyna.Encrypt(plaintext);
+
+        var bcEngine = new Org.BouncyCastle.Crypto.Engines.Dstu7624Engine(256);
+        bcEngine.Init(true, new Org.BouncyCastle.Crypto.Parameters.KeyParameter(key));
+        byte[] bcOutput = new byte[32];
+        bcEngine.ProcessBlock(plaintext, 0, bcOutput, 0);
+
+        Assert.That(managed, Is.EqualTo(bcOutput), "Kalyna-512 output mismatch with BouncyCastle");
+    }
+
+    /// <summary>
     /// Cross-validates Kalyna-128/256 ECB decryption with BouncyCastle Dstu7624Engine.
     /// </summary>
     [Test]
@@ -364,11 +459,26 @@ public class KalynaTests
     }
 
     [Test]
+    public void AlgorithmNameIsKalyna512()
+    {
+        using var kalyna = Kalyna512.Create();
+        Assert.That(kalyna.AlgorithmName, Is.EqualTo("Kalyna-512"));
+    }
+
+    [Test]
     public void RejectsInvalidKeySize128()
     {
         using var kalyna = Kalyna128.Create();
         Assert.Throws<System.Security.Cryptography.CryptographicException>(
             () => kalyna.Key = new byte[24]);
+    }
+
+    [Test]
+    public void RejectsInvalidKeySize512()
+    {
+        using var kalyna = Kalyna512.Create();
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(
+            () => kalyna.Key = new byte[48]);
     }
 
     // ========================================================================
