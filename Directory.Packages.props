@@ -55,5 +55,6 @@
     <PackageVersion Include="CryptoHives.Foundation.Memory$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
     <PackageVersion Include="CryptoHives.Foundation.Security.Cryptography$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
     <PackageVersion Include="CryptoHives.Foundation.Threading$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
+    <PackageVersion Include="CryptoHives.Foundation.Threading.Analyzers$(_NuGetPackageSuffix)" Version="$(NuGetPackageVersion)" />
   </ItemGroup>
 </Project>
