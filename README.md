@@ -138,7 +138,9 @@ Designed to eliminate `Task` / `TaskCompletionSource<T>` allocations on the hot 
 - `AsyncBarrier` / `AsyncCountdownEvent`
 
 All primitives support `CancellationToken` and `ConfigureAwait(false)` without the need for extra allocations.
-Nuget package contains a C# analyzer to avoid common ValueTask usage mistakes. (Also available as standalone package)
+New in 0.6: Timeout support using `TimeProvider` (`ITimer` may be allocated on contention)
+
+A C# analyzer to avoid common ValueTask usage mistakes is available as standalone package.
 
 ⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, comparing pooled `ValueTask` vs. existing `Task`-based alternatives.
 
