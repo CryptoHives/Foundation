@@ -2,6 +2,17 @@
 
 This page collects BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` and organizes them by platform run. Each run is stored in its own platform folder so values from different hosts are never mixed.
 
+## Continuous Benchmark Trends
+
+Automated weekly CI benchmarks are tracked on [Bencher](https://bencher.dev/perf/cryptohives-foundation-project). Results for both `linux-x64` and `macos-arm64` testbeds are submitted on every scheduled run and on every `main` branch commit.
+
+| Testbed | Branch | Bencher Perf Dashboard |
+|---------|--------|------------------------|
+| Linux x64 | `main` | [View trends](https://bencher.dev/perf/cryptohives-foundation-project?testbeds[]=linux-x64) |
+| macOS ARM64 | `main` | [View trends](https://bencher.dev/perf/cryptohives-foundation-project?testbeds[]=macos-arm64) |
+
+The dashboard shows historical latency trends per benchmark across all recorded runs. Use the Bencher filters to drill into a specific algorithm family, data size, or platform combination. Regressions beyond the configured threshold automatically create a GitHub Check failure on the PR or workflow run that introduced the slowdown.
+
 ## Benchmark Categories
 
 ### [Hash Algorithm Benchmarks](benchmarks-hash.md)
