@@ -37,7 +37,7 @@ The Threading package provides high-performance async synchronization primitives
 
 **Key Features:**
 - All waiters implemented as `ValueTask`-based synchronization primitives with low memory allocation design
-- Built-in Roslyn analyzers to detect common `ValueTask` misuse patterns at compile time
+- Optional Roslyn analyzer package to detect common `ValueTask` misuse patterns at compile time
 - Full `CancellationToken` support in all Wait/Lock primitives 
 - Implementations use `IValueTaskSource<T>` based classes backed by `ObjectPool<T>` to avoid allocations by recycling waiter objects
 - Async mutual exclusion with `AsyncLock` and scoped locking via `IDisposable` pattern

@@ -385,6 +385,21 @@ public class WaiterQueueTests
     }
 
     [Test]
+    public void DetachUpToOnEmptyQueueReturnsNull()
+    {
+        var queue = new WaiterQueue<bool>();
+
+        var head = queue.DetachUpTo(5, out int count);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(head, Is.Null);
+            Assert.That(count, Is.Zero);
+            Assert.That(queue.Count, Is.Zero);
+        }
+    }
+
+    [Test]
     public void DetachFirstMoreThanAvailableDetachesAll()
     {
         var queue = new WaiterQueue<bool>();

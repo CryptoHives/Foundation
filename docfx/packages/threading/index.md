@@ -20,7 +20,7 @@ By demand, more primitives might be added in the future.
 - **Timeout support**: Optional timeout parameters on all lock acquisition methods
 - **Configurable continuations**: Control synchronous vs asynchronous continuation execution
 - **Custom ObjectPools**: Supply your own object pools for fine-grained control
-- **Included Analyzers**: Roslyn analyzers automatically detect common ValueTask misuse patterns
+- **Optional Analyzers**: Roslyn analyzers automatically detect common ValueTask misuse patterns
 
 ## Installation
 
@@ -28,7 +28,7 @@ By demand, more primitives might be added in the future.
 dotnet add package CryptoHives.Foundation.Threading
 ```
 
-> **Note:** This package includes [Threading Analyzers](../threading.analyzers/index.md) automatically. The analyzers are transitive, so any project that references a project using this package will also benefit from the ValueTask misuse detection at compile time.
+> **Note:** This package does not include [Threading Analyzers](../threading.analyzers/index.md) automatically.
 
 ## Namespaces
 
