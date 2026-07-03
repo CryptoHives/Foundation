@@ -226,20 +226,43 @@ internal abstract class BlockCipherTransform : ICipherTransform
             {
                 byte padValue = output[written - 1];
 
-                if (padValue < 1 || padValue > BlockSizeConst)
+                if (!IsPkcs7PaddingValid(output.Slice(written - BlockSizeConst, BlockSizeConst), padValue))
                     throw new CryptographicException("Invalid padding.");
-
-                for (int i = 0; i < padValue; i++)
-                {
-                    if (output[written - 1 - i] != padValue)
-                        throw new CryptographicException("Invalid padding.");
-                }
 
                 written -= padValue;
             }
         }
 
         return written;
+    }
+
+    /// <summary>
+    /// Validates PKCS#7 padding on a full block in constant time.
+    /// </summary>
+    /// <remarks>
+    /// Scans every byte of <paramref name="block"/> unconditionally (no early exit) and combines
+    /// the result with a single bitwise OR, so execution time does not depend on the position of
+    /// the first invalid pad byte. A data-dependent early exit here is the classical CBC
+    /// padding-oracle side channel (Vaudenay 2002; exploited in practice by POODLE/Lucky 13-style
+    /// attacks) - even without a distinguishable error message, the timing difference alone is
+    /// enough to decrypt ciphertext one byte at a time.
+    /// </remarks>
+    /// <param name="block">The last decrypted block (exactly <see cref="BlockSizeConst"/> bytes).</param>
+    /// <param name="padValue">The claimed pad length (<c>block[^1]</c>).</param>
+    /// <returns><see langword="true"/> if the padding is well-formed.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsPkcs7PaddingValid(ReadOnlySpan<byte> block, byte padValue)
+    {
+        int badLength = ((uint)(padValue - 1) > (uint)(BlockSizeConst - 1)) ? 1 : 0;
+
+        int mismatch = 0;
+        for (int i = 0; i < BlockSizeConst; i++)
+        {
+            byte expected = i < padValue ? padValue : block[BlockSizeConst - 1 - i];
+            mismatch |= expected ^ block[BlockSizeConst - 1 - i];
+        }
+
+        return badLength == 0 && mismatch == 0;
     }
 
     /// <inheritdoc/>
