@@ -1,7 +1,6 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+## CryptoHives Open Source Initiative 🐝
 
-An open, community-driven cryptography and performance library collection for the .NET ecosystem,
-developed and maintained by **The Keepers of the CryptoHives**.
+An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
@@ -10,14 +9,13 @@ developed and maintained by **The Keepers of the CryptoHives**.
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-Fully managed, OS-independent implementations of cryptographic hash, MAC, KDF, and cipher algorithms for .NET —
-written from NIST/RFC/ISO specifications and verified against official test vectors.
+Fully managed, OS-independent implementations of hash, MAC, KDF, and cipher algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
 
-No OS crypto dependency — deterministic results on every platform. Hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics is automatically enabled on supported hardware.
+No OS crypto dependency means deterministic results on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics are used automatically.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Security.Cryptography
@@ -25,19 +23,19 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- **OS-independent** — identical results on Windows, Linux, macOS, and any .NET-supported platform
+- **OS-independent** — identical results on Windows, Linux, macOS, and anywhere else .NET runs
 - **Standards-based** — implemented from NIST, RFC, and ISO specifications; validated against official test vectors
-- **Hardware-accelerated** — automatic AES-NI, AVX2, SSSE3 dispatch; scalar fallback always available
-- **Allocation-free hot paths** — `Span<byte>`-based APIs, `stackalloc`-friendly
-- **XOF streaming** — `IExtendableOutput` interface (`Absorb` / `Squeeze` / `Reset`) on all XOF algorithms
-- **`HashAlgorithm` compatible** — drop-in for any existing `System.Security.Cryptography.HashAlgorithm` consumer
-- **Comprehensive algorithm coverage** — SHA-2/3, Keccak, SHAKE, BLAKE2/3, Ascon, regional ciphers, and more
+- **Hardware-accelerated** — automatic AES-NI, AVX2, SSSE3 dispatch, with a scalar fallback always available
+- **Allocation-free hot paths** — `Span<byte>`-based APIs, friendly to `stackalloc`
+- **XOF streaming** — `IExtendableOutput` (`Absorb` / `Squeeze` / `Reset`) on all XOF algorithms
+- **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm`
+- **Broad algorithm coverage** — SHA-2/3, Keccak, SHAKE, BLAKE2/3, Ascon, regional ciphers, and more
 
 ---
 
-## 🔐 Supported Algorithms
+## Supported Algorithms
 
 | Family | Algorithms |
 |--------|-----------|
@@ -50,7 +48,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
 | Regional hash | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
-| Legacy | SHA-1, MD5 (backward compatibility only) |
+| Legacy | SHA-1, MD5 (kept for backward compatibility only) |
 | MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128/256, BLAKE2/3 keyed |
 | Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
 | Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
@@ -59,7 +57,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 
 ---
 
-## 🚀 Quick Examples
+## Quick Examples
 
 ### Allocation-Free Hash (`Blake3`)
 
@@ -130,7 +128,7 @@ cshake.Squeeze(derived);
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Resource | Link |
 |----------|------|
@@ -145,15 +143,14 @@ cshake.Squeeze(derived);
 
 ---
 
-## 🔐 Security Policy
+## Security Policy
 
-Standards-based implementations, validated against official test vectors. Threat-modeled by design — all public APIs assume hostile input.
+Every algorithm is implemented from its published specification and validated against official test vectors. Public APIs are designed assuming hostile input.
 
-If you discover a vulnerability, **please do not open a public issue.**
-Follow the guidelines on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md).
+If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## ⚖️ License
+## License
 
 MIT — © 2026 The Keepers of the CryptoHives

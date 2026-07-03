@@ -4,74 +4,74 @@ _layout: landing
 
 # CryptoHives .NET Foundation
 
-Welcome to the **CryptoHives .NET Foundation** documentation!
+Welcome to the **CryptoHives .NET Foundation** documentation.
 
 ## Overview
 
-The CryptoHives .NET Foundation provides libraries for .NET applications focusing on high performance memory management, threading primitives, and cryptographic algorithms.
+CryptoHives .NET Foundation is a set of libraries for .NET applications, covering high-performance memory management, async threading primitives, and cryptographic algorithms.
 
 ## Ecosystem
 
-The initiative currently includes:
-- [Threading](packages/threading/index.md) — high-performance async synchronization primitives optimized for no/low allocation and high throughput scenarios using ValueTask-based waiters and ObjectPool-backed resource management
-- [Memory](packages/memory/index.md) — pooled buffer management utilities leveraging ArrayPool<T> and modern .NET memory APIs to minimize GC pressure for transformation pipelines and cryptographic workloads which use ReadOnlySpan or IBufferWriter
-- [Cryptography](packages/security/cryptography/index.md) — OS independent implementations of .NET cryptography as a plug in replacement
+The initiative currently includes three packages:
+
+- [Threading](packages/threading/index.md) — async synchronization primitives built for low/no allocation and high throughput, using `ValueTask`-based waiters backed by pooled resources
+- [Memory](packages/memory/index.md) — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, for transformation pipelines and crypto workloads that work in terms of `ReadOnlySpan` or `IBufferWriter`
+- [Cryptography](packages/security/cryptography/index.md) — OS-independent reimplementations of `System.Security.Cryptography` algorithms, usable as drop-in replacements
 
 ## Available Packages
 
-### 💾 [Memory Package](packages/memory/index.md)
+### [Memory Package](packages/memory/index.md)
 
-The Memory package provides allocation-efficient buffer management utilities that leverage `ArrayPool<T>` and modern .NET memory APIs to minimize garbage collection pressure for transformation pipelines and cryptographic workloads.
+Buffer management utilities that lean on `ArrayPool<T>` and modern .NET memory APIs to keep GC pressure out of transformation pipelines and cryptographic workloads.
 
-**Key Features:**
-- `ArrayPoolMemoryStream` and `ArrayPoolBufferWriter<T>` classes backed by `ArrayPool<byte>.Shared`
-- Lifetime managed `ReadOnlySequence<byte>` support with pooled storage
-- `ReadOnlySequenceMemoryStream` to stream from `ReadOnlySequence<byte>`
-- `ObjectPool` backed resource management helpers, e.g. for `StringBuilder`
+**Key features:**
+- `ArrayPoolMemoryStream` and `ArrayPoolBufferWriter<T>`, both backed by `ArrayPool<byte>.Shared`
+- Lifetime-managed `ReadOnlySequence<byte>` support over pooled storage
+- `ReadOnlySequenceMemoryStream` for streaming from an existing `ReadOnlySequence<byte>`
+- `ObjectPool`-backed resource management helpers, e.g. for `StringBuilder`
 
-[Explore Memory Package](packages/memory/index.md)
+[Explore the Memory package →](packages/memory/index.md)
 
-### 🔄 [Threading Package](packages/threading/index.md)
+### [Threading Package](packages/threading/index.md)
 
-The Threading package provides high-performance async synchronization primitives optimized for low allocation and high throughput scenarios.
+Async synchronization primitives built for low allocation and high throughput.
 
-**Key Features:**
-- All waiters implemented as `ValueTask`-based synchronization primitives with low memory allocation design
-- Optional Roslyn analyzer package to detect common `ValueTask` misuse patterns at compile time
-- Full `CancellationToken` support in all Wait/Lock primitives 
-- Implementations use `IValueTaskSource<T>` based classes backed by `ObjectPool<T>` to avoid allocations by recycling waiter objects
-- Async mutual exclusion with `AsyncLock` and scoped locking via `IDisposable` pattern
-- `AsyncAutoResetEvent` and `AsyncManualResetEvent` complementing existing implementations which are `Task` based
-- Replacement for .NET barriers with `AsyncBarrier` supporting async waits
-- Pooled implementations of `AsyncReaderWriterLock`, `AsyncSemaphore` and `AsyncCountdownEvent` with async wait support
-- Fast path optimizations for uncontended scenarios
-- No allocation design for hot-path code and cancellation tokens (see [Benchmarks](packages/threading/benchmarks.md))
-- [Benchmarks](packages/threading/benchmarks.md) comparing performance against existing .NET synchronization primitives and various other popular implementations
+**Key features:**
+- All waiters are `ValueTask`-based synchronization primitives, designed around low memory allocation
+- An optional Roslyn analyzer package that catches common `ValueTask` misuse at compile time
+- Full `CancellationToken` support across every wait/lock primitive
+- `IValueTaskSource<T>`-based implementations backed by `ObjectPool<T>`, so waiter objects get recycled instead of allocated
+- `AsyncLock` for async mutual exclusion, with scoped locking via the `IDisposable` pattern
+- `AsyncAutoResetEvent` and `AsyncManualResetEvent`, complementing the existing `Task`-based equivalents
+- `AsyncBarrier` as an async-aware replacement for the .NET barrier
+- Pooled `AsyncReaderWriterLock`, `AsyncSemaphore`, and `AsyncCountdownEvent`, all with async wait support
+- Fast-path optimizations for the uncontended case
+- No-allocation design for hot-path code and cancellation tokens (see [Benchmarks](packages/threading/benchmarks.md))
 
-[Explore Threading Package](packages/threading/index.md)
+[Explore the Threading package →](packages/threading/index.md)
 
-### 🔐 [Security.Cryptography Package](packages/security/cryptography/index.md)
+### [Security.Cryptography Package](packages/security/cryptography/index.md)
 
-The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), cipher algorithms, and key derivation functions, all implemented as fully managed code without OS dependencies.
+Specification-based implementations of hash algorithms, MACs, ciphers, and key derivation functions, all fully managed and OS-independent.
 
-**Key Features:**
-- SHA-1, SHA-2, SHA-3 family implementations with full test vector validation
+**Key features:**
+- SHA-1, SHA-2, SHA-3 families, all validated against full test vectors
 - SHAKE and cSHAKE extendable-output functions (XOF) for variable-length output
-- TurboSHAKE and KangarooTwelve (KT128/KT256) high-performance XOFs
+- TurboSHAKE and KangarooTwelve (KT128/KT256), the high-performance XOFs
 - KMAC (Keccak Message Authentication Code) for authenticated hashing
 - Ascon lightweight hashing and AEAD (NIST SP 800-232) for constrained environments
-- BLAKE2b, BLAKE2s, and BLAKE3 high-performance hashing with keyed modes
-- Keccak-256, Keccak-384, Keccak-512 for Ethereum compatibility
-- International standards: SM3 (Chinese), Streebog/GOST (Russian), Kupyna/DSTU (Ukrainian), LSH/KS (Korean), Whirlpool (ISO)
-- Legacy algorithms: MD5, SHA-1, RIPEMD-160 (for compatibility only)
-- AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128 cipher implementations
+- BLAKE2b, BLAKE2s, and BLAKE3, with keyed modes
+- Keccak-256/384/512 for Ethereum compatibility
+- Regional standards: SM3 (China), Streebog/GOST (Russia), Kupyna/DSTU (Ukraine), LSH/KS (Korea), Whirlpool (ISO)
+- Legacy algorithms MD5, SHA-1, RIPEMD-160, kept for compatibility only
+- AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128 ciphers
 - Regional block ciphers: SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED
 - Key derivation: HKDF, KBKDF, Concat KDF, PBKDF2, BLAKE3 DeriveKey
 - MACs: HMAC, AES-CMAC, AES-GMAC, Poly1305, KMAC, BLAKE2/3 keyed
 - AES Key Wrap with Padding (RFC 3394/5649)
-- Cross-platform consistency without OS crypto API dependencies
+- Cross-platform consistency with no dependency on OS crypto APIs
 
-[Explore Security.Cryptography Package](packages/security/cryptography/index.md)
+[Explore the Security.Cryptography package →](packages/security/cryptography/index.md)
 
 ## Platform Support
 
@@ -83,9 +83,9 @@ The Cryptography package provides specification-based implementations of cryptog
 
 ## Resources
 
-- 🔐 [Cryptographic Specifications](packages/security/cryptography/specs/README.md)
-- 🐛 [Report Issues](https://github.com/CryptoHives/Foundation/issues)
-- 💬 [Security Policy](https://github.com/CryptoHives/.github/blob/main/SECURITY.md)
+- [Cryptographic Specifications](packages/security/cryptography/specs/README.md)
+- [Report Issues](https://github.com/CryptoHives/Foundation/issues)
+- [Security Policy](https://github.com/CryptoHives/.github/blob/main/SECURITY.md)
 
 ## License
 
@@ -96,4 +96,3 @@ This project is licensed under the MIT License. See the [LICENSE](https://github
 [Impressum (Legal Notice)](impressum.md)
 
 © 2026 The Keepers of the CryptoHives
-

@@ -172,26 +172,28 @@ public class CancellationRegistrationStressTests
         {
             // alternate the acquisition kind to cover the reader, writer and
             // upgradeable reader registration paths
-            Func<CancellationToken, Task> acquire = (i % 3) switch
-            {
+            Func<CancellationToken, Task> acquire = (i % 3) switch {
                 0 => async ct => {
                     using (await rwLock.ReaderLockAsync(ct).ConfigureAwait(false))
                     {
                         Assert.Fail("A writer holds the lock; the reader must not succeed.");
                     }
-                },
+                }
+                ,
                 1 => async ct => {
                     using (await rwLock.WriterLockAsync(ct).ConfigureAwait(false))
                     {
                         Assert.Fail("A writer holds the lock; the writer must not succeed.");
                     }
-                },
+                }
+                ,
                 _ => async ct => {
                     using (await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
                     {
                         Assert.Fail("A writer holds the lock; the upgradeable reader must not succeed.");
                     }
-                },
+                }
+                ,
             };
 
             await RaceCancellationAsync(i, acquire).ConfigureAwait(false);
