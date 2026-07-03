@@ -106,8 +106,11 @@ internal abstract class BlockCipherTransform : ICipherTransform
     protected abstract void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public virtual int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (input.Length < BlockSizeConst)
             throw new ArgumentException("Input must be at least one block.", nameof(input));
         if (output.Length < BlockSizeConst)
@@ -147,8 +150,11 @@ internal abstract class BlockCipherTransform : ICipherTransform
         => TransformBlock(inputBuffer.AsSpan(inputOffset, inputCount), outputBuffer.AsSpan(outputOffset));
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         int fullBlocks = input.Length / BlockSizeConst;
         int remainder = input.Length % BlockSizeConst;
         int written = 0;

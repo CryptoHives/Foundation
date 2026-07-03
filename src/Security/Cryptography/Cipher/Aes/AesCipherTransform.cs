@@ -184,8 +184,11 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     public bool CanReuseTransform => true;
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AesCipherTransform));
         if (input.Length < BlockSize)
             throw new ArgumentException("Input must be at least one block.", nameof(input));
         if (output.Length < BlockSize)
@@ -233,8 +236,11 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         => TransformBlock(inputBuffer.AsSpan(inputOffset, inputCount), outputBuffer.AsSpan(outputOffset));
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AesCipherTransform));
         int fullBlocks = input.Length / BlockSize;
         int remainder = input.Length % BlockSize;
         int written = 0;

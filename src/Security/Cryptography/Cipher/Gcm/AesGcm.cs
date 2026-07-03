@@ -90,11 +90,14 @@ public abstract class AesGcm : IAeadCipher
     public int TagSizeBytes => GcmCore.TagSizeBytes;
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Encrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
         Span<byte> ciphertext, Span<byte> tag,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (nonce.Length == 0)
             throw new ArgumentException("Nonce cannot be empty.", nameof(nonce));
         if (ciphertext.Length < plaintext.Length)
@@ -124,11 +127,14 @@ public abstract class AesGcm : IAeadCipher
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public bool Decrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
         ReadOnlySpan<byte> tag, Span<byte> plaintext,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (nonce.Length == 0)
             throw new ArgumentException("Nonce cannot be empty.", nameof(nonce));
         if (tag.Length != TagSizeBytes)

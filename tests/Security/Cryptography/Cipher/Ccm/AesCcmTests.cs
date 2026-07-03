@@ -263,6 +263,25 @@ public class AesCcmTests
         Assert.Throws<ArgumentException>(() => ccm.Encrypt(shortNonce, plaintext, ciphertext, tag));
     }
 
+    [Test]
+    public void AesCcm_DisposedInstance_Throws()
+    {
+        byte[] key = new byte[16];
+        byte[] nonce = new byte[12];
+        byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Test");
+
+        var ccm = AesCcm128.Create(key);
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] tag = new byte[16];
+        ccm.Encrypt(nonce, plaintext, ciphertext, tag);
+
+        ccm.Dispose();
+
+        byte[] decrypted = new byte[plaintext.Length];
+        Assert.Throws<ObjectDisposedException>(() => ccm.Encrypt(nonce, plaintext, ciphertext, tag));
+        Assert.Throws<ObjectDisposedException>(() => ccm.Decrypt(nonce, ciphertext, tag, decrypted));
+    }
+
     // ========================================================================
     // Helper Methods
     // ========================================================================

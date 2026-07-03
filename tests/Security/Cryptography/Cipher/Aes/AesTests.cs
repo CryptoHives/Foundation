@@ -365,6 +365,30 @@ public class AesTests
     }
 
     // ========================================================================
+    // Dispose Tests
+    // ========================================================================
+
+    [Test]
+    public void AesCipherTransform_DisposedInstance_Throws()
+    {
+        using var aes = Aes128.Create();
+        aes.Mode = CipherMode.ECB;
+        aes.Padding = PaddingMode.None;
+        aes.Key = new byte[16];
+        aes.IV = new byte[16];
+
+        var encryptor = aes.CreateEncryptor();
+        byte[] block = new byte[16];
+        byte[] output = new byte[16];
+        encryptor.TransformBlock(block, output);
+
+        encryptor.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformBlock(block, output));
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformFinalBlock(block, output));
+    }
+
+    // ========================================================================
     // Helper Methods
     // ========================================================================
 

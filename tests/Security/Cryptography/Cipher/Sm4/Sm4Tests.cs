@@ -219,6 +219,30 @@ public class Sm4Tests
             () => sm4.Key = new byte[32]);
     }
 
+    /// <summary>
+    /// Verifies that a disposed transform throws instead of silently transforming
+    /// with cleared (zeroed) round-key state.
+    /// </summary>
+    [Test]
+    public void BlockCipherTransform_DisposedInstance_Throws()
+    {
+        using var sm4 = Sm4.Create();
+        sm4.Mode = CipherMode.ECB;
+        sm4.Padding = PaddingMode.None;
+        sm4.Key = FromHex("0123456789ABCDEFFEDCBA9876543210");
+        sm4.IV = new byte[16];
+
+        var encryptor = sm4.CreateEncryptor();
+        byte[] block = new byte[16];
+        byte[] output = new byte[16];
+        encryptor.TransformBlock(block, output);
+
+        encryptor.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformBlock(block, output));
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformFinalBlock(block, output));
+    }
+
     private static byte[] FromHex(string hex)
     {
         byte[] bytes = new byte[hex.Length / 2];

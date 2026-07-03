@@ -286,6 +286,25 @@ public class AesGcmTests
         Assert.That(oversizedTag[20], Is.EqualTo(0xAB), "Bytes beyond TagSizeBytes must be left untouched.");
     }
 
+    [Test]
+    public void AesGcm_DisposedInstance_Throws()
+    {
+        byte[] key = new byte[16];
+        byte[] nonce = new byte[12];
+        byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Test");
+
+        var aesGcm = AesGcm128.Create(key);
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] tag = new byte[16];
+        aesGcm.Encrypt(nonce, plaintext, ciphertext, tag);
+
+        aesGcm.Dispose();
+
+        byte[] decrypted = new byte[plaintext.Length];
+        Assert.Throws<ObjectDisposedException>(() => aesGcm.Encrypt(nonce, plaintext, ciphertext, tag));
+        Assert.Throws<ObjectDisposedException>(() => aesGcm.Decrypt(nonce, ciphertext, tag, decrypted));
+    }
+
     // ========================================================================
     // AES-256-GCM Specific Tests
     // ========================================================================
