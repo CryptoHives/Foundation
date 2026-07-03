@@ -446,7 +446,7 @@ public sealed class AsyncBarrier
         }
 
         ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER

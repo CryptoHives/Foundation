@@ -15,7 +15,7 @@ The CryptoHives .NET Foundation provides libraries for .NET applications focusin
 The initiative currently includes:
 - [Threading](packages/threading/index.md) — high-performance async synchronization primitives optimized for no/low allocation and high throughput scenarios using ValueTask-based waiters and ObjectPool-backed resource management
 - [Memory](packages/memory/index.md) — pooled buffer management utilities leveraging ArrayPool<T> and modern .NET memory APIs to minimize GC pressure for transformation pipelines and cryptographic workloads which use ReadOnlySpan or IBufferWriter
-- [Cryptography](packages/security/cryptography/index.md) — OS independent implementation of all .NET cryptography as a plug in replacement
+- [Cryptography](packages/security/cryptography/index.md) — OS independent implementations of .NET cryptography as a plug in replacement
 
 ## Available Packages
 

@@ -78,7 +78,7 @@ Each package is designed for security, interoperability, and clarity — making 
 Each library targets a specific use case:
 - **Threading** — high-performance async synchronization primitives optimized for no/low allocation and high throughput scenarios using ValueTask-based waiters and ObjectPool-backed resource management
 - **Memory** — pooled buffer management utilities leveraging ArrayPool<T> and modern .NET memory APIs to minimize GC pressure for transformation pipelines and cryptographic workloads which use ReadOnlySpan or IBufferWriter
-- **Cryptography** — OS independent implementation of all .NET cryptography as a plug in replacement
+- **Cryptography** — OS independent implementations of .NET cryptography as a plug in replacement
 
 ---
 

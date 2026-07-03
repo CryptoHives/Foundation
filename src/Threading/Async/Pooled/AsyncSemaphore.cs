@@ -341,7 +341,7 @@ public sealed class AsyncSemaphore
         }
 
         ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
     /// <summary>

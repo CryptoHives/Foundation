@@ -54,7 +54,7 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 - **`ValueTask`-based APIs** — minimal/no memory allocations with object pools
 - **`CancellationToken` support** — full cancellation across all primitives, allocation-free on modern .NET
 - **`ConfigureAwait` support** — works naturally with `.ConfigureAwait(false)` in library code
-- **Timeout support**: all lock acquisition methods support timeout parameters
+- **Timeout support**: all lock acquisition methods support timeout parameters; a timed-out wait throws `TimeoutException`, a cancelled wait throws `OperationCanceledException`
 - **Configurable continuations** — control synchronous vs. asynchronous continuation scheduling
 - **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` for fine-grained control
 - **Drop-in replacement** — change namespace, keep the same `using`-based patterns

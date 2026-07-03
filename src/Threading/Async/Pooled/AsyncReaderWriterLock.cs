@@ -1104,7 +1104,7 @@ public sealed class AsyncReaderWriterLock : IResettable
 
             if (timeout == TimeSpan.Zero)
             {
-                return new ValueTask<Releaser>(Task.FromException<Releaser>(ManualResetValueTaskSource<Releaser>.OperationCanceled));
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (!_localUpgradedWriterWaiter.TryGetValueTaskSource(out waiter))
@@ -1403,7 +1403,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveReadersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER
@@ -1439,7 +1439,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradeableReadersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1510,7 +1510,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveWritersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER
@@ -1562,7 +1562,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradedWritersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER
