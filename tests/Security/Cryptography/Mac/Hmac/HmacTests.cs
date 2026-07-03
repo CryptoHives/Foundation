@@ -601,6 +601,43 @@ public class HmacTests
         Assert.Throws<ObjectDisposedException>(() => hmac.Finalize(new byte[32]));
     }
 
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Repeated <see cref="HmacCore.Update"/> calls must not allocate. Regression test for a bug
+    /// where every call copied the input span to a new heap array via ToArray() - both a hygiene
+    /// issue (secret intermediate values, e.g. PBKDF2's U_j, left uncleared on the heap) and a
+    /// performance issue (a fresh allocation per PBKDF2 iteration).
+    /// </summary>
+    [Test]
+    [NonParallelizable]
+    public void UpdateDoesNotAllocate()
+    {
+        byte[] key = new byte[32];
+        byte[] block = new byte[32];
+        using var hmac = HmacSha256.Create(key);
+
+        // Warm up: JIT, and let HmacSha256.Create's own allocations settle.
+        for (int i = 0; i < 5; i++)
+        {
+            hmac.Update(block);
+        }
+        hmac.Reset();
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 1000; i++)
+        {
+            hmac.Update(block);
+        }
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.That(after - before, Is.Zero, "HmacCore.Update allocated heap memory.");
+    }
+#endif
+
     #endregion
 
     #region Helper Methods
