@@ -118,8 +118,9 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> fullTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, fullTag);
 
-        // Copy tag to output (truncate if necessary)
-        fullTag.Slice(0, tag.Length).CopyTo(tag);
+        // Write the fixed-size tag; larger caller-supplied buffers are left
+        // untouched beyond TagSizeBytes (tag.Length >= TagSizeBytes is guaranteed above).
+        fullTag.CopyTo(tag);
     }
 
     /// <inheritdoc/>

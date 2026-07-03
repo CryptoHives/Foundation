@@ -264,6 +264,28 @@ public class AesGcmTests
         Assert.Throws<CryptographicException>(() => aesGcm.Decrypt(wrongNonce, ciphertextWithTag));
     }
 
+    [Test]
+    public void AesGcm_Encrypt_TagBufferLargerThanTagSize_WritesTagWithoutThrowing()
+    {
+        byte[] key = new byte[16];
+        byte[] nonce = new byte[12];
+        byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Secret message");
+
+        using var aesGcm = AesGcm128.Create(key);
+
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] expectedTag = new byte[16];
+        aesGcm.Encrypt(nonce, plaintext, ciphertext, expectedTag);
+
+        // Oversized tag buffer: only the first TagSizeBytes must be written, the rest untouched.
+        byte[] oversizedTag = new byte[32];
+        oversizedTag[20] = 0xAB;
+
+        Assert.DoesNotThrow(() => aesGcm.Encrypt(nonce, plaintext, ciphertext, oversizedTag));
+        Assert.That(oversizedTag.AsSpan(0, 16).ToArray(), Is.EqualTo(expectedTag));
+        Assert.That(oversizedTag[20], Is.EqualTo(0xAB), "Bytes beyond TagSizeBytes must be left untouched.");
+    }
+
     // ========================================================================
     // AES-256-GCM Specific Tests
     // ========================================================================
