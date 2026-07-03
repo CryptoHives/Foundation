@@ -68,8 +68,10 @@ public class HmacCore : IMac
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Update(ReadOnlySpan<byte> input)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(HmacCore));
         if (_finalized) throw new InvalidOperationException("Cannot update after finalization. Call Reset() first.");
 
         // Feed through the inner hash via TransformBlock
@@ -78,8 +80,10 @@ public class HmacCore : IMac
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Finalize(Span<byte> destination)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(HmacCore));
         if (destination.Length < _macSize) throw new ArgumentException("Destination buffer is too small.", nameof(destination));
         if (_finalized) throw new InvalidOperationException("Already finalized. Call Reset() first.");
 

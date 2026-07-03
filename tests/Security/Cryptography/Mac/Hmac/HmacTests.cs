@@ -585,6 +585,22 @@ public class HmacTests
         Assert.That(sha3_512.MacSize, Is.EqualTo(64));
     }
 
+    /// <summary>
+    /// A disposed instance throws instead of silently authenticating with disposed inner hashes.
+    /// </summary>
+    [Test]
+    public void DisposedInstanceThrows()
+    {
+        byte[] key = new byte[32];
+        var hmac = HmacSha256.Create(key);
+        hmac.ComputeHash(Encoding.UTF8.GetBytes("test"));
+
+        hmac.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => hmac.Update(Encoding.UTF8.GetBytes("test")));
+        Assert.Throws<ObjectDisposedException>(() => hmac.Finalize(new byte[32]));
+    }
+
     #endregion
 
     #region Helper Methods
