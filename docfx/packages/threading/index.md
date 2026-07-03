@@ -249,7 +249,7 @@ try
         await DoWorkAsync();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // Lock not immediately available
 }
@@ -270,7 +270,7 @@ public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetrie
                 return await PerformWorkAsync();
             }
         }
-        catch (OperationCanceledException) when (i < maxRetries - 1)
+        catch (TimeoutException) when (i < maxRetries - 1)
         {
             // Timeout occurred, retry
             continue;

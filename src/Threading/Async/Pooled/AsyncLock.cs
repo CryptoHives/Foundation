@@ -229,8 +229,11 @@ public sealed class AsyncLock : IResettable
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
-    /// <exception cref="OperationCanceledException">
+    /// <exception cref="TimeoutException">
     /// Thrown when the timeout elapses before the lock can be acquired.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -244,7 +247,7 @@ public sealed class AsyncLock : IResettable
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new OperationCanceledException()));
+            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
         }
 
         return LockAsyncImpl(timeout, cancellationToken);

@@ -87,7 +87,7 @@ Asynchronously waits to acquire a permit from the semaphore.
 public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously waits to acquire a permit, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously waits to acquire a permit, or throws `TimeoutException` if the timeout elapses first.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
@@ -95,7 +95,8 @@ Asynchronously waits to acquire a permit, or throws `OperationCanceledException`
 **Returns**: A `ValueTask` that completes when a permit is acquired.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before a permit becomes available.
+- `TimeoutException` — If the timeout elapses before a permit becomes available.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -122,7 +123,7 @@ try
         _semaphore.Release();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // Permit was not available within 5 seconds
     HandleTimeout();
@@ -206,7 +207,7 @@ try
     await DoWorkAsync();
     _semaphore.Release();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // No permit available within the timeout
     HandleTimeout();

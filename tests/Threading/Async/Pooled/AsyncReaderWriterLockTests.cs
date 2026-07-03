@@ -1727,7 +1727,7 @@ public class AsyncReaderWriterLockTests
 
         using var outerWriter = await rwLock.WriterLockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -1759,7 +1759,7 @@ public class AsyncReaderWriterLockTests
 
         using var outerReader = await rwLock.ReaderLockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -1789,7 +1789,7 @@ public class AsyncReaderWriterLockTests
 
         using var outerUpgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false));
 
         await Task.Delay(50, ct).ConfigureAwait(false);
@@ -1824,7 +1824,7 @@ public class AsyncReaderWriterLockTests
 
         using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.ReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -1838,7 +1838,7 @@ public class AsyncReaderWriterLockTests
 
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.WriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -1852,7 +1852,7 @@ public class AsyncReaderWriterLockTests
 
         using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.UpgradeableReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -1868,7 +1868,7 @@ public class AsyncReaderWriterLockTests
         using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -2008,17 +2008,17 @@ public class AsyncReaderWriterLockTests
                 .WriterLockAsync(innerCts.Token)
                 .ConfigureAwait(false));
 
-        Assert.ThrowsAsync<OperationCanceledException>(
+        Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .WriterLockAsync(TimeSpan.FromMilliseconds(100), ct)
                 .ConfigureAwait(false));
 
-        Assert.ThrowsAsync<OperationCanceledException>(
+        Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .ReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
                 .ConfigureAwait(false));
 
-        Assert.ThrowsAsync<OperationCanceledException>(
+        Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
                 .ConfigureAwait(false));
@@ -2047,7 +2047,7 @@ public class AsyncReaderWriterLockTests
         {
             writer = await rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(75), ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (TimeoutException)
         {
             // Timeout won the race - acceptable outcome.
         }
@@ -2087,7 +2087,7 @@ public class AsyncReaderWriterLockTests
         {
             upgWriter = await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(75), ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (TimeoutException)
         {
             // Timeout won the race - acceptable outcome.
         }

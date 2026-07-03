@@ -311,7 +311,7 @@ public class AsyncCountdownEventTests
     {
         var countdown = new AsyncCountdownEvent(1);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await countdown.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -331,7 +331,7 @@ public class AsyncCountdownEventTests
     {
         var countdown = new AsyncCountdownEvent(1);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await countdown.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
     }
 
