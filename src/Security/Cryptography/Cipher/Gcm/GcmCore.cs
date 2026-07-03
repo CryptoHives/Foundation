@@ -33,7 +33,7 @@ using ArmAes = System.Runtime.Intrinsics.Arm.Aes;
 /// </list>
 /// </para>
 /// </remarks>
-internal readonly struct GcmCore
+internal struct GcmCore
 {
     /// <summary>
     /// GCM block size in bytes (128 bits).
@@ -121,7 +121,7 @@ internal readonly struct GcmCore
     private readonly bool _usePclmulV256;
     private readonly bool _useArmAes;
     private readonly bool _useArmPmull;
-    private readonly Vector128<byte> _hClmul;
+    private Vector128<byte> _hClmul;
     private readonly Vector128<byte>[] _hPowers;
 #endif
 
@@ -189,6 +189,24 @@ internal readonly struct GcmCore
                 _usePipeline = _usePclmul || _usePclmulV256;
                 _hPowers = PrepareHPowers(_hClmul);
             }
+        }
+#endif
+    }
+
+    /// <summary>
+    /// Zeroes all key-derived material (round keys, hash subkey, and precomputed
+    /// GHASH tables) so it does not linger in memory after the owning cipher is disposed.
+    /// </summary>
+    public void Clear()
+    {
+        Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
+        Array.Clear(_h, 0, _h.Length);
+        Array.Clear(_shoupTable, 0, _shoupTable.Length);
+#if NET8_0_OR_GREATER
+        _hClmul = default;
+        if (_hPowers is not null)
+        {
+            Array.Clear(_hPowers, 0, _hPowers.Length);
         }
 #endif
     }

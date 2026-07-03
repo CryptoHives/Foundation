@@ -217,7 +217,7 @@ public abstract class AesGcm : IAeadCipher
         {
             if (disposing)
             {
-                _gcmCore = default;
+                _gcmCore.Clear();
             }
 
             _disposed = true;
