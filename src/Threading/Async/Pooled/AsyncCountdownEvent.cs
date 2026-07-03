@@ -218,7 +218,7 @@ public sealed class AsyncCountdownEvent
             if (timeout != Timeout.InfiniteTimeSpan)
             {
                 waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
             }
         }
         finally
@@ -412,17 +412,14 @@ public sealed class AsyncCountdownEvent
 
     /// <summary>
     /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
     /// </summary>
-    private void TimerCallback(object? state)
-    {
-        if (state is not ManualResetValueTaskSource<bool> waiter)
-        {
-            return;
-        }
-
-        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
-    }
+    private static readonly TimerCallback _timerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<bool>)state!;
+        var context = (AsyncCountdownEvent)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<bool>? toCancel = context.RemoveWaiter(timeoutState.Source, timeoutState.Version);
+        toCancel?.SetException(new TimeoutException());
+    };
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
@@ -442,7 +439,9 @@ public sealed class AsyncCountdownEvent
         }
 #endif
 
-        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter, waiter.Version);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
@@ -450,12 +449,15 @@ public sealed class AsyncCountdownEvent
     /// O(1) removal from intrusive linked list.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter)
+    private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter, short version)
     {
         _spinLock.Enter();
         try
         {
-            if (_waiters.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waiters.Remove(waiter))
             {
                 return waiter;
             }
