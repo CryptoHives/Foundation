@@ -1,7 +1,6 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+## CryptoHives Open Source Initiative 🐝
 
-An open, community-driven cryptography and performance library collection for the .NET ecosystem,
-developed and maintained by **The Keepers of the CryptoHives**.
+An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
@@ -10,7 +9,7 @@ developed and maintained by **The Keepers of the CryptoHives**.
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-High-performance, pooled async synchronization primitives for .NET — designed to eliminate `Task` and `TaskCompletionSource<T>` allocations on the hot path.
+Pooled async synchronization primitives for .NET, built to keep `Task` and `TaskCompletionSource<T>` allocations off the hot path.
 
 ## Classes
 
@@ -28,7 +27,7 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 | [AsyncBarrier](https://cryptohives.github.io/Foundation/packages/threading/asyncbarrier.html) | Pooled async barrier (synchronizes multiple participants)
 | [AsyncReaderWriterLock](https://cryptohives.github.io/Foundation/packages/threading/asyncreaderwriterlock.html) | Pooled async reader-writer lock (multiple readers or single writer)
 
-All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>` to minimize per-operation allocations in high-throughput scenarios.
+All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths.
 
 ### Pooling Support Classes
 
@@ -36,7 +35,7 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 
 | Class | Description | Namespace |
 |-------|-------------|-----------|
-| `IGetPooledManualResetValueTaskSource<T>` | Interface to get pooled `IValueTaskSource<T>` implementations (providers return `PooledManualResetValueTaskSource<T>` instances)
+| `IGetPooledManualResetValueTaskSource<T>` | Interface for obtaining pooled `IValueTaskSource<T>` implementations (providers return `PooledManualResetValueTaskSource<T>` instances)
 | `ManualResetValueTaskSource<T>` | Abstract base for pooled `IValueTaskSource<T>` implementations 
 | `PooledManualResetValueTaskSource<T>` | Pooled `IValueTaskSource<T>` implementation with automatic pool return 
 | `LocalManualResetValueTaskSource<T>` | Object-local `IValueTaskSource<T>` without pool integration 
@@ -44,26 +43,25 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 | `ValueTaskSourceObjectPool<T>` | Specialized provider that implements `IGetPooledManualResetValueTaskSource<T>` and returns pooled task sources
 | `ValueTaskSourceObjectPools` | Static helper with shared pool instances and constants
 
-> **Included:** This package automatically bundles [CryptoHives.Foundation.Threading.Analyzers](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) — Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time, applied transitively to all consumers.
+> **Note:** This package no longer bundles [CryptoHives.Foundation.Threading.Analyzers](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) automatically. Install it separately if you want the Roslyn analyzers alongside the Threading library.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **Pooled primitives** — synchronization objects backed by `Microsoft.Extensions.ObjectPool`
-- **`ValueTask`-based APIs** — minimal/no memory allocations with object pools
+- **`ValueTask`-based APIs** — minimal to no allocations thanks to object pooling
 - **`CancellationToken` support** — full cancellation across all primitives, allocation-free on modern .NET
 - **`ConfigureAwait` support** — works naturally with `.ConfigureAwait(false)` in library code
-- **Timeout support**: all lock acquisition methods support timeout parameters
-- **Configurable continuations** — control synchronous vs. asynchronous continuation scheduling
-- **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` for fine-grained control
-- **Drop-in replacement** — change namespace, keep the same `using`-based patterns
-- **Custom ObjectPools**: Supply your own object pools for fine-grained control
-- **Included analyzers** — ValueTask misuse caught at compile time
+- **Timeouts** — every lock acquisition method accepts a timeout; a timed-out wait throws `TimeoutException`, a cancelled one throws `OperationCanceledException`
+- **Configurable continuations** — control whether continuations run synchronously or asynchronously
+- **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` (or `ObjectPool<T>`) for fine-grained control
+- **Drop-in replacement** — swap the namespace, keep the same `using`-based patterns
+- **Optional analyzers** — ValueTask misuse caught at compile time via the separate `Threading.Analyzers` package
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
@@ -71,7 +69,7 @@ dotnet add package CryptoHives.Foundation.Threading
 
 ---
 
-## 🚀 Quick Examples
+## Quick Examples
 
 ### Mutual Exclusion — `AsyncLock`
 
@@ -182,17 +180,17 @@ var evt = new AsyncAutoResetEvent(
 
 ---
 
-## ⚠️ ValueTask Contract
+## ValueTask Contract
 
-1. **Await a `ValueTask` exactly once** — multiple `await` or `AsTask()` calls may throw `InvalidOperationException`.
-2. **Avoid `AsTask()` before signaling** — when `RunContinuationsAsynchronously=true` (the default), storing the result of `AsTask()` before the primitive is signaled causes severe performance degradation. Await the `ValueTask` directly wherever possible.
-3. **Always await or discard** — if a waiter is not consumed, the underlying `IValueTaskSource` is not returned to the pool.
+1. **Await a `ValueTask` exactly once.** A second `await` or `AsTask()` call may throw `InvalidOperationException`.
+2. **Avoid calling `AsTask()` before the primitive signals.** With `RunContinuationsAsynchronously=true` (the default), storing the result of `AsTask()` too early causes a severe performance hit. Await the `ValueTask` directly wherever you can.
+3. **Always await or discard a waiter.** If it's left unconsumed, the underlying `IValueTaskSource` never makes it back to the pool.
 
-The included **Threading.Analyzers** enforce these rules automatically at compile time.
+The bundled **Threading.Analyzers** package enforces these rules at compile time.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Resource | Link |
 |----------|------|
@@ -204,13 +202,12 @@ The included **Threading.Analyzers** enforce these rules automatically at compil
 
 ---
 
-## 🔐 Security Policy
+## Security Policy
 
-If you discover a vulnerability, **please do not open a public issue.**
-Follow the guidelines on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md).
+If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## ⚖️ License
+## License
 
 MIT — © 2026 The Keepers of the CryptoHives

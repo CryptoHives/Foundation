@@ -19,9 +19,20 @@ using System.Runtime.CompilerServices;
 /// <b>Implementation notes:</b>
 /// <list type="bullet">
 ///   <item><description>Uses T-tables for optimized encryption/decryption</description></item>
-///   <item><description>Constant-time S-box lookups to resist timing attacks</description></item>
 ///   <item><description>Supports 128-bit block size only (standard AES)</description></item>
 /// </list>
+/// </para>
+/// <para>
+/// <b>Timing side channel:</b> this is the scalar, table-based fallback used when neither
+/// AES-NI (x86) nor the ARMv8 Crypto Extension is available (<c>AesCoreAesNi</c> /
+/// <c>AesCoreArm</c>, selected via <c>SimdSupport</c>). The T-tables (<c>Te0</c>-<c>Te3</c>,
+/// <c>Td0</c>-<c>Td3</c>) and S-box are indexed by the AES intermediate state, which is derived
+/// from the plaintext/ciphertext and the round key - the classic table-lookup cache-timing
+/// vulnerability described in Bernstein's "Cache-timing attacks on AES" (2005). This
+/// implementation makes no attempt to mitigate it (no table prefetching, no bitslicing). Do not
+/// rely on this fallback for key material processed in a shared/adversarial execution
+/// environment (e.g. multi-tenant cloud hosts, co-resident untrusted processes); prefer hardware
+/// AES acceleration wherever it's available.
 /// </para>
 /// </remarks>
 internal static class AesCore

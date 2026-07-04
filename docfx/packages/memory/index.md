@@ -1,17 +1,6 @@
-﻿# CryptoHives.Foundation.Memory Package
+# CryptoHives.Foundation.Memory Package
 
-The Memory package provides high-performance, allocation-efficient buffer management utilities for .NET applications.
-
-## Overview
-
-This package contains classes that leverage `ArrayPool<T>` and modern .NET memory APIs to minimize allocations and reduce garbage collection pressure in high-throughput scenarios.
-
-## Key Features
-
-- **Pooled Memory Streams**: Memory streams backed by `ArrayPool<byte>.Shared`
-- **Zero-Copy APIs**: Support for `ReadOnlySequence<T>` and `Span<T>`
-- **Buffer Writers**: IBufferWriter implementations with pooled storage
-- **RAII Pattern**: Safe object pool resource management with `ObjectOwner<T>`
+Buffer management utilities for .NET, built on `ArrayPool<T>` and the modern .NET memory APIs to keep allocations and GC pressure out of high-throughput code.
 
 ## Installation
 
@@ -60,13 +49,13 @@ using var stream = new ArrayPoolMemoryStream();
 // Write data
 await stream.WriteAsync(data, cancellationToken);
 
-// Get zero-copy ReadOnlySequence
+// Get a zero-copy ReadOnlySequence
 ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
 
 // Process without copying
 ProcessSequence(sequence);
 
-// sequence memory is returned to pool after stream is disposed
+// The sequence's memory is returned to the pool once the stream is disposed
 ```
 
 ### ArrayPoolBufferWriter
@@ -74,7 +63,7 @@ ProcessSequence(sequence);
 ```csharp
 using var writer = new ArrayPoolBufferWriter<byte>();
 
-// Get span and write
+// Get a span and write into it
 Span<byte> span = writer.GetSpan(1024);
 int written = encoder.GetBytes(text, span);
 writer.Advance(written);
@@ -82,7 +71,7 @@ writer.Advance(written);
 // Get the complete sequence
 ReadOnlySequence<byte> result = writer.GetReadOnlySequence();
 
-// sequence memory is returned to pool after writer is disposed
+// Pooled chunks are returned once the writer is disposed
 ```
 
 ### ObjectOwner
@@ -95,45 +84,26 @@ MyClass obj = owner.Object;
 
 // Use obj...
 
-// Automatically returned to pool when owner is disposed
+// Automatically returned to the pool when owner is disposed
 ```
 
-## Benefits
+## Why Pooled Buffers
 
-### Reduced Allocations
-
-- Rents buffers from `ArrayPool<T>.Shared` instead of allocating new arrays
-- Reuses pooled segments to avoid allocation churn
-- No resize-copy operations during growth
-
-### Lower GC Pressure
-
-- Fewer short-lived objects
-- Avoids Large Object Heap (LOH) allocations
-- Better for high-throughput scenarios
-
-### Zero-Copy Access
-
-- `ReadOnlySequence<T>` exposes internal segments without copying
-- `Span<T>` based Read/Write APIs
-- Efficient data processing pipelines
-
-## Performance Characteristics
+Renting from `ArrayPool<T>.Shared` instead of allocating avoids resize-copy churn and keeps large buffers off the Large Object Heap, which matters once you're pushing enough throughput that allocations start showing up in GC pauses. `ReadOnlySequence<T>` then lets you hand that pooled data to a consumer without copying it at all.
 
 - **ArrayPoolMemoryStream**: O(1) segment append, no copy-on-grow
-- **ArrayPoolBufferWriter**: Exponential chunk growth with configurable limits
-- **ReadOnlySequenceMemoryStream**: Zero-copy wrapper with O(n) seeking
+- **ArrayPoolBufferWriter**: exponential chunk growth with configurable limits
+- **ReadOnlySequenceMemoryStream**: zero-copy wrapper with O(n) seeking
 
-## Best Practices
+## A Few Things to Watch For
 
-1. **Always dispose**: Use `using` statements to ensure buffers are returned
-2. **Don't hold references**: ReadOnlySequence is only valid until the next write or dispose
-3. **Size hints**: Provide size hints to minimize reallocations
-4. **Scope carefully**: Keep writer/stream lifetime as short as possible
+- Always wrap streams and writers in a `using` so pooled buffers actually get returned.
+- A `ReadOnlySequence<byte>` from these types is only valid until the next write or dispose — don't hold onto it past that point.
+- If you know roughly how much you'll write, pass a size hint; it cuts down on reallocations.
+- Keep writer/stream lifetimes short and scoped to the operation that needs them.
 
 ## See Also
 
-- [Memory Package Classes](arraypoolmemorystream.md)
 - [Threading Package](../threading/index.md)
 
 ---

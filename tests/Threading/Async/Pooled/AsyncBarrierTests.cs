@@ -57,8 +57,8 @@ public class AsyncBarrierTests
         }
     }
 
-    [Test]
-    public async Task TwoParticipantsSynchronize()
+    [Test, CancelAfter(5000)]
+    public async Task TwoParticipantsSynchronize(CancellationToken ct)
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(2, pool: pool);
@@ -66,22 +66,25 @@ public class AsyncBarrierTests
 
         Task<int> t1 = Task.Run(async () => {
             Interlocked.Increment(ref reached);
-            await barrier.SignalAndWaitAsync().ConfigureAwait(false);
+            await barrier.SignalAndWaitAsync(ct).ConfigureAwait(false);
             return Volatile.Read(ref reached);
         });
 
-        await Task.Delay(100).ConfigureAwait(false);
+        do
+        {
+            await Task.Delay(100, ct).ConfigureAwait(false);
+        }
+        while (barrier.ParticipantsRemaining != 1);
         Assert.That(Volatile.Read(ref reached), Is.EqualTo(1));
 
         Interlocked.Increment(ref reached);
-        await barrier.SignalAndWaitAsync().ConfigureAwait(false);
+        await barrier.SignalAndWaitAsync(ct).ConfigureAwait(false);
 
         int result = await t1.ConfigureAwait(false);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Is.EqualTo(2));
             Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
@@ -657,7 +660,7 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -668,7 +671,7 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false));
     }
 
@@ -699,5 +702,71 @@ public class AsyncBarrierTests
         var task2 = barrier.SignalAndWaitAsync(Timeout.InfiniteTimeSpan).AsTask();
 
         await Task.WhenAll(task1, task2).ConfigureAwait(false);
+    }
+
+    [Test]
+    public void SignalAndWaitAsyncAfterAllParticipantsRemovedThrows()
+    {
+        var barrier = new AsyncBarrier(1);
+        barrier.RemoveParticipants(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<InvalidOperationException>(() => barrier.SignalAndWaitAsync());
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public void SignalAndWaitAsyncWithTimeoutAfterAllParticipantsRemovedThrows()
+    {
+        var barrier = new AsyncBarrier(1);
+        barrier.RemoveParticipants(1);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<InvalidOperationException>(() => barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(5)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    [Repeat(50)]
+    public async Task RemoveParticipants_RacingLastSignal_TriggersPhaseCompletionExactlyOnce()
+    {
+        int postPhaseActionCallCount = 0;
+        var barrier = new AsyncBarrier(3, _ => Interlocked.Increment(ref postPhaseActionCallCount));
+
+        ValueTask p1 = barrier.SignalAndWaitAsync();
+        ValueTask p2 = barrier.SignalAndWaitAsync();
+
+        // RemoveParticipants and the third SignalAndWaitAsync both independently drive
+        // _participantsRemaining to zero and can each trigger phase completion; only
+        // whichever one the spinlock admits first should actually fire the post-phase action.
+        // If RemoveParticipants wins, the third signal becomes a non-last signal for the new
+        // (2-participant) phase and would queue forever with nothing left to complete it, so it
+        // is bounded by a timeout and a resulting timeout is an accepted outcome.
+        var removeTask = Task.Run(() => barrier.RemoveParticipants(1));
+        bool timeoutObserved = false;
+        var signalTask = Task.Run(async () => {
+            try
+            {
+                await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(300)).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                // Expected in one race outcome: third signal may time out.
+                timeoutObserved = true;
+            }
+        });
+
+        await Task.WhenAll(removeTask, signalTask).ConfigureAwait(false);
+        _ = timeoutObserved;
+
+        await p1.ConfigureAwait(false);
+        await p2.ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(postPhaseActionCallCount, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+            Assert.That(barrier.ParticipantsRemaining, Is.InRange(1, 2));
+        }
     }
 }

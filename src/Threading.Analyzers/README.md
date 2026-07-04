@@ -1,7 +1,6 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+## CryptoHives Open Source Initiative 🐝
 
-An open, community-driven cryptography and performance library collection for the .NET ecosystem,
-developed and maintained by **The Keepers of the CryptoHives**.
+An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
@@ -9,13 +8,13 @@ developed and maintained by **The Keepers of the CryptoHives**.
 
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers)
 
-Roslyn analyzers that detect common `ValueTask` misuse patterns at compile time — helping you avoid subtle bugs, undefined behavior, and performance pitfalls when working with `ValueTask` and pooled async primitives.
+Roslyn analyzers that catch common `ValueTask` misuse at compile time — the kind of subtle bugs, undefined behavior, and performance pitfalls that tend to show up when working with `ValueTask` and pooled async primitives.
 
-> **Note:** These analyzers are automatically included in the [CryptoHives.Foundation.Threading](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) package. Install this package separately only if you need the analyzers without the Threading library.
+> **Note:** These analyzers are no longer bundled automatically with the [CryptoHives.Foundation.Threading](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) package. Install this package separately if you want the analyzers alongside the Threading library.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading.Analyzers
@@ -31,7 +30,7 @@ Or as a development-only dependency (no runtime reference):
 
 ---
 
-## 🔍 Diagnostic Rules
+## Diagnostic Rules
 
 | ID | Severity | Description |
 |----|----------|-------------|
@@ -40,14 +39,15 @@ Or as a development-only dependency (no runtime reference):
 | [CHT003](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT003.html) | Warning | `ValueTask` stored in a field |
 | [CHT004](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT004.html) | Error | `ValueTask.AsTask()` called multiple times |
 | [CHT005](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT005.html) | Warning | `ValueTask.Result` accessed directly |
-| [CHT006](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT006.html) | Warning | `ValueTask` passed to potentially unsafe method |
-| [CHT007](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT007.html) | Info | `AsTask()` stored before signaling (performance degradation) |
+| [CHT006](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT006.html) | Warning | `ValueTask` passed to a potentially unsafe method |
+| [CHT007](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT007.html) | Info | `AsTask()` stored before signaling (causes a performance hit) |
 | [CHT008](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT008.html) | Warning | `ValueTask` not awaited or consumed |
-| [CHT009](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT009.html) | Info | `SemaphoreSlim(1, 1)` used as async lock; replace with `AsyncLock` |
+| [CHT009](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT009.html) | Info | `SemaphoreSlim(1, 1)` used as an async lock; consider `AsyncLock` instead |
+| [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Error | `ValueTask` captured in a lambda/closure |
 
 ---
 
-## ❌ Anti-Patterns Detected
+## Anti-Patterns Detected
 
 ```csharp
 // CHT001: Multiple await — Error
@@ -86,7 +86,7 @@ GetValueTask(); // Warning: result not awaited or discarded
 private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1); // Info: consider AsyncLock
 ```
 
-## ✅ Correct Patterns
+## Correct Patterns
 
 ```csharp
 // Single await — correct
@@ -117,24 +117,25 @@ _ = GetValueTask();
 
 ---
 
-## 🔧 Automatic Code Fixes
+## Automatic Code Fixes
 
-The analyzer package includes code fixes for most diagnostics:
+Most diagnostics come with a code fix:
 
 | Diagnostic | Available Fixes |
 |------------|-----------------|
 | CHT001 | Convert to `AsTask()` at declaration; use `Preserve()` |
 | CHT002 | Convert to `await`; use `AsTask()` before `GetAwaiter().GetResult()` |
 | CHT003 | Change field type to `Task` |
-| CHT004 | Store `AsTask()` result in variable |
+| CHT004 | Store `AsTask()` result in a variable |
 | CHT005 | Convert to `await`; use `AsTask().Result` |
-| CHT007 | Await `ValueTask` directly |
-| CHT008 | Add `await`; explicitly discard with `_ =` |
-| CHT009 | Replace with `AsyncLock` |
+| CHT007 | Await the `ValueTask` directly |
+| CHT008 | Add `await`; discard explicitly with `_ =` |
+| CHT009 | Replace `SemaphoreSlim(1,1)` with `AsyncLock` |
+| CHT010 | Convert to `AsTask()` at declaration; use `Preserve()` |
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Adjust rule severity in `.editorconfig`:
 
@@ -146,7 +147,7 @@ dotnet_diagnostic.CHT007.severity = warning
 dotnet_diagnostic.CHT003.severity = none
 ```
 
-Suppress inline when necessary:
+Or suppress inline when it's genuinely intentional:
 
 ```csharp
 #pragma warning disable CHT002
@@ -156,7 +157,7 @@ valueTask.GetAwaiter().GetResult(); // intentional blocking call
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Resource | Link |
 |----------|------|
@@ -166,13 +167,12 @@ valueTask.GetAwaiter().GetResult(); // intentional blocking call
 
 ---
 
-## 🔐 Security Policy
+## Security Policy
 
-If you discover a vulnerability, **please do not open a public issue.**
-Follow the guidelines on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md).
+If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## ⚖️ License
+## License
 
 MIT — © 2026 The Keepers of the CryptoHives
