@@ -102,7 +102,7 @@ Asynchronously waits for the countdown to reach zero.
 public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously waits for the countdown to reach zero, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously waits for the countdown to reach zero, or throws `TimeoutException` if the timeout elapses first.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
@@ -110,7 +110,8 @@ Asynchronously waits for the countdown to reach zero, or throws `OperationCancel
 **Returns**: A `ValueTask` that completes when the count reaches zero.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before the count reaches zero.
+- `TimeoutException` — If the timeout elapses before the count reaches zero.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -130,7 +131,7 @@ try
     await _countdown.WaitAsync(TimeSpan.FromSeconds(30));
     ProcessResults();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
@@ -236,7 +237,7 @@ try
 {
     await countdown.WaitAsync(TimeSpan.FromMinutes(1));
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }

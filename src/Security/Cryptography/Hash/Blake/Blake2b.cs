@@ -51,6 +51,7 @@ public sealed class Blake2b : HashAlgorithm
     // Blake2b core state
     private Blake2bState _core;
     private readonly byte[]? _key;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2b"/> class with default output size (64 bytes).
@@ -211,20 +212,26 @@ public sealed class Blake2b : HashAlgorithm
 #endif
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake2b));
         _core.Reset(_key);
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake2b));
         _core.Append(source);
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake2b));
         return _core.TryGetCurrentHash(destination, out bytesWritten);
     }
 
@@ -235,6 +242,7 @@ public sealed class Blake2b : HashAlgorithm
         {
             _core.Dispose();
             ClearBuffer(_key);
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

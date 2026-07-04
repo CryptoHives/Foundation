@@ -300,5 +300,21 @@ public class CmacTests
         Assert.That(hash1, Is.EqualTo(hash2));
     }
 
+    /// <summary>
+    /// A disposed instance throws instead of silently authenticating with cleared key material.
+    /// </summary>
+    [Test]
+    public void DisposedInstanceThrows()
+    {
+        byte[] key = new byte[16];
+        var cmac = AesCmac.Create(key);
+        cmac.ComputeHash(Encoding.UTF8.GetBytes("test"));
+
+        cmac.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => cmac.Update(Encoding.UTF8.GetBytes("test")));
+        Assert.Throws<ObjectDisposedException>(() => cmac.Finalize(new byte[16]));
+    }
+
     #endregion
 }

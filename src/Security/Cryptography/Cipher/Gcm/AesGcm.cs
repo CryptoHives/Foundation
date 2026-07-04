@@ -90,11 +90,14 @@ public abstract class AesGcm : IAeadCipher
     public int TagSizeBytes => GcmCore.TagSizeBytes;
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Encrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
         Span<byte> ciphertext, Span<byte> tag,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (nonce.Length == 0)
             throw new ArgumentException("Nonce cannot be empty.", nameof(nonce));
         if (ciphertext.Length < plaintext.Length)
@@ -118,16 +121,20 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> fullTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, fullTag);
 
-        // Copy tag to output (truncate if necessary)
-        fullTag.Slice(0, tag.Length).CopyTo(tag);
+        // Write the fixed-size tag; larger caller-supplied buffers are left
+        // untouched beyond TagSizeBytes (tag.Length >= TagSizeBytes is guaranteed above).
+        fullTag.CopyTo(tag);
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public bool Decrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
         ReadOnlySpan<byte> tag, Span<byte> plaintext,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (nonce.Length == 0)
             throw new ArgumentException("Nonce cannot be empty.", nameof(nonce));
         if (tag.Length != TagSizeBytes)
@@ -210,7 +217,7 @@ public abstract class AesGcm : IAeadCipher
         {
             if (disposing)
             {
-                _gcmCore = default;
+                _gcmCore.Clear();
             }
 
             _disposed = true;
