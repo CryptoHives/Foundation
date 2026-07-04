@@ -129,8 +129,10 @@ public sealed class AesCmac : IMac
     public static AesCmac Create(ReadOnlySpan<byte> key) => new(key);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Update(ReadOnlySpan<byte> input)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(AesCmac));
         if (_finalized) throw new InvalidOperationException("Cannot update after finalization. Call Reset() first.");
 
         int offset = 0;
@@ -175,8 +177,10 @@ public sealed class AesCmac : IMac
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Finalize(Span<byte> destination)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(AesCmac));
         if (destination.Length < BlockSize) throw new ArgumentException("Destination buffer is too small.", nameof(destination));
         if (_finalized) throw new InvalidOperationException("Already finalized. Call Reset() first.");
 

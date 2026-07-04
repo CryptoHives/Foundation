@@ -48,8 +48,8 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
 | Regional hash | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
-| Legacy | SHA-1, MD5 (kept for backward compatibility only) |
-| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128/256, BLAKE2/3 keyed |
+| Legacy | SHA-1, MD5, HMAC-SHA-1, HMAC-MD5 (backward compatibility only) |
+| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256/384/512, AES-CMAC, AES-GMAC, Poly1305, KMAC128/256, BLAKE2/3 keyed |
 | Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
 | Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED |
@@ -106,9 +106,13 @@ Span<byte> ciphertext = new byte[plaintext.Length];
 Span<byte> tag        = stackalloc byte[16];
 aesGcm.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
 
-// Decrypt — throws if tag verification fails
+// Decrypt — returns false (and clears `recovered`) if tag verification fails;
+// it does not throw. Always check the result before trusting the output.
 Span<byte> recovered = new byte[ciphertext.Length];
-aesGcm.Decrypt(nonce, ciphertext, tag, recovered, associatedData);
+if (!aesGcm.Decrypt(nonce, ciphertext, tag, recovered, associatedData))
+{
+    throw new CryptographicException("Authentication failed.");
+}
 ```
 
 ### cSHAKE — Domain-Separated XOF

@@ -79,7 +79,8 @@ public static class Pbkdf2
         if (output.IsEmpty) throw new ArgumentException("Output buffer must not be empty.", nameof(output));
         if (iterations < 1) throw new ArgumentOutOfRangeException(nameof(iterations), "Iteration count must be at least 1.");
 
-        using var prf = hmacFactory(password.ToArray());
+        byte[] passwordCopy = password.ToArray();
+        using var prf = hmacFactory(passwordCopy);
         int hLen = prf.MacSize;
 
         // RFC 8018 §5.2: DK = T_1 ‖ T_2 ‖ ... ‖ T_dkLen/hLen
@@ -127,6 +128,7 @@ public static class Pbkdf2
         {
             Array.Clear(u, 0, u.Length);
             Array.Clear(t, 0, t.Length);
+            Array.Clear(passwordCopy, 0, passwordCopy.Length);
         }
     }
 

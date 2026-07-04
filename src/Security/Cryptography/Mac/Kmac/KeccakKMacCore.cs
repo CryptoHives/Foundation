@@ -134,8 +134,10 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
     /// Finalizes the MAC computation and squeezes output bytes.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Squeeze(Span<byte> output)
     {
+        if (_disposed) throw new ObjectDisposedException(GetType().Name);
         if (!_finalized)
         {
             Span<byte> rightEncodedL = stackalloc byte[CShake128.EncodeBufferLength];

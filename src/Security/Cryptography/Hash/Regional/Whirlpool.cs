@@ -146,6 +146,7 @@ public sealed class Whirlpool : HashAlgorithm
     private readonly byte[] _buffer;
     private int _bufferLength;
     private ulong _totalBits;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Whirlpool"/> class.
@@ -207,8 +208,10 @@ public sealed class Whirlpool : HashAlgorithm
         => HashAlgorithmPool<Whirlpool>.HashData(source);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Whirlpool));
         Array.Clear(_hash, 0, _hash.Length);
         ClearBuffer(_buffer);
         _bufferLength = 0;
@@ -216,8 +219,10 @@ public sealed class Whirlpool : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Whirlpool));
         unchecked
         {
             _totalBits += (ulong)source.Length * 8;
@@ -252,8 +257,10 @@ public sealed class Whirlpool : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Whirlpool));
         if (destination.Length < HashSizeBytes)
         {
             bytesWritten = 0;
@@ -308,6 +315,7 @@ public sealed class Whirlpool : HashAlgorithm
         {
             Array.Clear(_hash, 0, _hash.Length);
             ClearBuffer(_buffer);
+            _disposed = true;
         }
         base.Dispose(disposing);
     }
