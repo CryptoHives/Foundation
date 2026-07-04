@@ -437,7 +437,7 @@ public class AsyncManualResetEventTests
         using var pool = new TestObjectPool<bool>();
         var ev = new AsyncManualResetEvent(pool: pool);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await ev.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -451,7 +451,7 @@ public class AsyncManualResetEventTests
         using var pool = new TestObjectPool<bool>();
         var ev = new AsyncManualResetEvent(pool: pool);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
     }
 

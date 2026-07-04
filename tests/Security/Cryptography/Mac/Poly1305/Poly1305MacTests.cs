@@ -396,4 +396,23 @@ public class Poly1305MacTests
     }
 
     #endregion
+
+    #region Dispose
+
+    /// <summary>
+    /// A disposed instance throws instead of silently authenticating with cleared state.
+    /// </summary>
+    [Test]
+    public void DisposedInstanceThrows()
+    {
+        var mac = Poly1305Mac.Create(new byte[32]);
+        mac.Update(Encoding.ASCII.GetBytes("test"));
+
+        mac.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => mac.Update(Encoding.ASCII.GetBytes("more")));
+        Assert.Throws<ObjectDisposedException>(() => mac.Finalize(new byte[16]));
+    }
+
+    #endregion
 }

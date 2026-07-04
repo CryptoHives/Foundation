@@ -2,19 +2,19 @@
 
 ## Overview
 
-The Cryptography package provides specification-based implementations of cryptographic hash algorithms, message authentication codes (MACs), and cipher algorithms for .NET applications. Core implementations are fully managed code with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics, ensuring consistent behavior across all platforms with automatic SIMD dispatch on supported hardware.
+The Cryptography package implements hash algorithms, message authentication codes, and ciphers for .NET. The core is fully managed code, with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics — dispatched automatically where the hardware supports it, with consistent behavior everywhere else.
 
 ## Key Features
 
-- **Specification-Based Implementations**: Written based on official specifications (NIST, RFC, ISO)
-- **No OS Dependencies**: Works identically on all platforms without calling OS crypto APIs
-- **Hardware Acceleration**: Optional AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics with automatic fallback
-- **Comprehensive Coverage**: SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and many more
-- **AEAD Support**: Authenticated encryption with AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128
-- **Key Management Support**: AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
-- **Variable Output**: XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
-- **Keyed Hashing**: Built-in MAC modes for BLAKE2, BLAKE3, and KMAC
-- **Standards Compliant**: Verified against NIST, RFC, and ISO test vectors
+- **Specification-based** — implemented from official NIST, RFC, and ISO specifications
+- **No OS dependencies** — behaves identically on every platform without calling OS crypto APIs
+- **Hardware acceleration** — optional AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics, with automatic fallback
+- **Broad coverage** — SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and more
+- **AEAD support** — AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128
+- **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
+- **Variable-length output** — XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
+- **Keyed hashing** — built-in MAC modes for BLAKE2, BLAKE3, and KMAC
+- **Standards compliant** — verified against NIST, RFC, and ISO test vectors
 
 ## Installation
 
@@ -22,8 +22,8 @@ The Cryptography package provides specification-based implementations of cryptog
 dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```
 
-> Performance optimizations including AES-NI, PCLMULQDQ, VPCLMULQDQ, and SIMD intrinsics are implemented
-> for AES-GCM, AES-CCM, AES-CBC, and ChaCha20 families on .NET 8+. VPCLMULQDQ requires .NET 10+.
+> Hardware-accelerated paths (AES-NI, PCLMULQDQ, VPCLMULQDQ, SIMD intrinsics) are implemented
+> for AES-GCM, AES-CCM, AES-CBC, and ChaCha20 on .NET 8+. VPCLMULQDQ requires .NET 10+.
 
 ## Namespaces
 
@@ -141,13 +141,11 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 ## Getting Started
 
-All CryptoHives algorithms inherit from `System.Security.Cryptography.HashAlgorithm` and support two ways of computing a hash.
+Every CryptoHives hash algorithm inherits from `System.Security.Cryptography.HashAlgorithm` and supports two ways of computing a hash.
 
 ### Zero-allocation approach (recommended)
 
-Use `TryComputeHash` with a stack-allocated or reusable buffer to avoid heap allocations entirely.
-This is the preferred approach for performance-critical code such as tight loops, network packet processing, or blockchain validation.
-CryptoHives provides a polyfill so this API works on every target framework, including .NET Framework 4.x.
+Use `TryComputeHash` with a stack-allocated or reusable buffer to skip heap allocation entirely — the right choice for tight loops, packet processing, or anything on a hot path. CryptoHives ships a polyfill so this API works on every target framework, including .NET Framework 4.x.
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -175,7 +173,7 @@ Span<byte> mac = stackalloc byte[64];
 kmac.TryComputeHash(message, mac, out _);
 ```
 
-> **Note:** The `ComputeHash(byte[])` method is also available for convenience but allocates a new `byte[]` on every call, which adds GC pressure in hot paths. Prefer `TryComputeHash` whenever possible.
+> **Note:** `ComputeHash(byte[])` is also available for convenience, but it allocates a new `byte[]` on every call. Prefer `TryComputeHash` on any hot path.
 
 ## More Examples
 
@@ -364,7 +362,7 @@ sha256.TryGetHashAndReset(hash, out _);
 
 ## Standards Compliance
 
-All implementations are verified against official test vectors:
+Every implementation is verified against its official test vectors:
 
 - **NIST FIPS 180-4**: SHA-1, SHA-2 family
 - **NIST FIPS 197**: AES (128/192/256)
@@ -396,7 +394,7 @@ See the [Cryptographic Specifications](specs/README.md) for detailed test vector
 
 ### Allocation-Free Operations
 
-All hash algorithms support `Span<T>`-based APIs for zero-allocation hashing:
+Every hash algorithm supports `Span<T>`-based APIs for zero-allocation hashing:
 
 ```csharp
 Span<byte> destination = stackalloc byte[32];
@@ -406,13 +404,13 @@ sha256.TryComputeHash(data, destination, out int bytesWritten);
 
 ### Recommended for High Throughput
 
-- **BLAKE3**: Designed for parallel processing, fastest on modern CPUs
-- **BLAKE2b**: Faster than SHA-256 on 64-bit systems
-- **BLAKE2s**: Faster than SHA-256 on 32-bit systems
+- **BLAKE3**: designed for parallel processing, fastest on modern CPUs
+- **BLAKE2b**: faster than SHA-256 on 64-bit systems
+- **BLAKE2s**: faster than SHA-256 on 32-bit systems
 
 ### Memory Usage
 
-All implementations use fixed-size internal buffers based on their block size. No dynamic allocations occur during hashing operations.
+Every implementation uses fixed-size internal buffers sized to its block size — no dynamic allocation happens during hashing.
 
 ## Comparison with System.Security.Cryptography
 
@@ -439,7 +437,7 @@ All implementations use fixed-size internal buffers based on their block size. N
 
 ## Thread Safety
 
-All hash algorithm instances are **not thread-safe**. Create separate instances for concurrent operations or use synchronization.
+Hash algorithm instances are **not thread-safe**. Create a separate instance per concurrent operation rather than sharing one across threads.
 
 ```csharp
 // Thread-safe pattern

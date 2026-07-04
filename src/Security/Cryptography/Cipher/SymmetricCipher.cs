@@ -35,6 +35,21 @@ using OS = System.Security.Cryptography;
 /// byte[] ciphertext = encryptor.TransformFinalBlock(plaintext, 0, plaintext.Length);
 /// </code>
 /// </para>
+/// <para>
+/// <b>Security warning - CBC + PKCS#7 is padding-oracle-prone:</b> the default
+/// <see cref="Mode"/>/<see cref="Padding"/> combination (<see cref="CipherMode.CBC"/> with
+/// <see cref="PaddingMode.PKCS7"/>) provides no authentication. Decrypting attacker-controlled
+/// ciphertext and revealing - through any observable channel, including response timing, error
+/// type, or response size - whether the padding was valid lets an attacker decrypt the
+/// ciphertext byte-by-byte (Vaudenay's padding-oracle attack; exploited in practice by
+/// POODLE and Lucky 13). The PKCS#7 check in this library is constant-time with respect to
+/// <i>where</i> the padding is invalid, but that alone does not make an application built on
+/// top of it padding-oracle-safe: a caller that returns a distinguishable error/status for
+/// padding failures reintroduces the oracle at the application layer. For new code, prefer an
+/// AEAD cipher (<see cref="AesGcm"/>, <see cref="ChaCha20Poly1305"/>) which authenticates the
+/// ciphertext before any padding or plaintext is exposed, or pair CBC with a MAC verified
+/// before decryption (encrypt-then-MAC).
+/// </para>
 /// </remarks>
 public abstract class SymmetricCipher : OS.SymmetricAlgorithm
 {

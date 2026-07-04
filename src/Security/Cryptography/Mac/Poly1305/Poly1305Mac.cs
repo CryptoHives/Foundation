@@ -122,8 +122,10 @@ public sealed class Poly1305Mac : IMac
     public static Poly1305Mac Create(ReadOnlySpan<byte> key) => new(key);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Update(ReadOnlySpan<byte> input)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Poly1305Mac));
         if (_finalized) throw new InvalidOperationException("Cannot update after finalization. Call Reset() first.");
 
         int offset = 0;
@@ -162,8 +164,10 @@ public sealed class Poly1305Mac : IMac
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Finalize(Span<byte> destination)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Poly1305Mac));
         if (destination.Length < TagSizeBytes) throw new ArgumentException("Destination buffer is too small.", nameof(destination));
         if (_finalized) throw new InvalidOperationException("Already finalized. Call Reset() first.");
 

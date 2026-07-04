@@ -158,6 +158,44 @@ public class Sm4Tests
     }
 
     /// <summary>
+    /// PKCS#7 padding must be rejected regardless of which byte in the pad is corrupted -
+    /// covers the constant-time padding check in the shared <c>BlockCipherTransform</c> base
+    /// (used by SM4, ARIA, Camellia, Kalyna, Kuznyechik, SEED). Uses a full block of
+    /// plaintext so PKCS#7 adds a full padding block; flipping a byte of the first
+    /// ciphertext block corrupts exactly the corresponding byte of the decrypted padding
+    /// block via CBC's XOR chaining, without touching the rest - the same ciphertext
+    /// malleability real padding-oracle attacks exploit.
+    /// </summary>
+    [Test]
+    [TestCase(0, Description = "First byte of the pad block corrupted")]
+    [TestCase(8, Description = "Middle byte of the pad block corrupted")]
+    [TestCase(15, Description = "Pad-length byte itself corrupted")]
+    public void Sm4CbcCorruptedPadding_AnyPosition_Throws(int corruptIndexInPadBlock)
+    {
+        byte[] key = FromHex("0123456789ABCDEFFEDCBA9876543210");
+        byte[] iv = FromHex("00112233445566778899AABBCCDDEEFF");
+        byte[] plaintext = new byte[16]; // exactly one block -> PKCS7 adds a full padding block
+
+        using var enc = Sm4.Create();
+        enc.Mode = CipherMode.CBC;
+        enc.Padding = PaddingMode.PKCS7;
+        enc.Key = key;
+        enc.IV = iv;
+        byte[] ciphertext = enc.Encrypt(plaintext);
+        Assert.That(ciphertext, Has.Length.EqualTo(32), "Expected two ciphertext blocks (data + full pad block).");
+
+        ciphertext[corruptIndexInPadBlock] ^= 0xFF;
+
+        using var dec = Sm4.Create();
+        dec.Mode = CipherMode.CBC;
+        dec.Padding = PaddingMode.PKCS7;
+        dec.Key = key;
+        dec.IV = iv;
+
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => dec.Decrypt(ciphertext));
+    }
+
+    /// <summary>
     /// Verifies CTR mode round-trip with non-block-aligned data.
     /// </summary>
     [Test]
@@ -217,6 +255,30 @@ public class Sm4Tests
         using var sm4 = Sm4.Create();
         Assert.Throws<System.Security.Cryptography.CryptographicException>(
             () => sm4.Key = new byte[32]);
+    }
+
+    /// <summary>
+    /// Verifies that a disposed transform throws instead of silently transforming
+    /// with cleared (zeroed) round-key state.
+    /// </summary>
+    [Test]
+    public void BlockCipherTransform_DisposedInstance_Throws()
+    {
+        using var sm4 = Sm4.Create();
+        sm4.Mode = CipherMode.ECB;
+        sm4.Padding = PaddingMode.None;
+        sm4.Key = FromHex("0123456789ABCDEFFEDCBA9876543210");
+        sm4.IV = new byte[16];
+
+        var encryptor = sm4.CreateEncryptor();
+        byte[] block = new byte[16];
+        byte[] output = new byte[16];
+        encryptor.TransformBlock(block, output);
+
+        encryptor.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformBlock(block, output));
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformFinalBlock(block, output));
     }
 
     private static byte[] FromHex(string hex)

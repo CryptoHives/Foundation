@@ -103,6 +103,7 @@ public abstract class AesCcm : IAeadCipher
     /// <param name="ciphertext">Output buffer for ciphertext (must be same size as plaintext).</param>
     /// <param name="tag">Output buffer for authentication tag (4-16 bytes, even).</param>
     /// <param name="associatedData">Additional authenticated data (optional).</param>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Encrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> plaintext,
@@ -110,6 +111,8 @@ public abstract class AesCcm : IAeadCipher
         Span<byte> tag,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (ciphertext.Length < plaintext.Length)
             throw new ArgumentException("Ciphertext buffer too small.", nameof(ciphertext));
 
@@ -130,6 +133,7 @@ public abstract class AesCcm : IAeadCipher
     /// <param name="plaintext">Output buffer for plaintext (must be same size as ciphertext).</param>
     /// <param name="associatedData">Additional authenticated data (optional).</param>
     /// <returns>True if authentication succeeded; otherwise false.</returns>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public bool Decrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
@@ -137,6 +141,8 @@ public abstract class AesCcm : IAeadCipher
         Span<byte> plaintext,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (plaintext.Length < ciphertext.Length)
             throw new ArgumentException("Plaintext buffer too small.", nameof(plaintext));
 

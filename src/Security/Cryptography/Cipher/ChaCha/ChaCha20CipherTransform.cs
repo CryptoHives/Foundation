@@ -82,8 +82,11 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     public bool CanReuseTransform => true;
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(ChaCha20CipherTransform));
         if (output.Length < input.Length)
             throw new ArgumentException("Output buffer too small.", nameof(output));
 

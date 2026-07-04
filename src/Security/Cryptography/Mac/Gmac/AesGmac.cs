@@ -111,8 +111,11 @@ public sealed class AesGmac : IDisposable
     /// <exception cref="ArgumentException">
     /// <paramref name="nonce"/> is not 12 bytes, or <paramref name="tag"/> is too small.
     /// </exception>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void ComputeTag(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> associatedData, Span<byte> tag)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AesGmac));
         if (tag.Length < TagSizeBytes)
             throw new ArgumentException($"Tag buffer must be at least {TagSizeBytes} bytes.", nameof(tag));
 

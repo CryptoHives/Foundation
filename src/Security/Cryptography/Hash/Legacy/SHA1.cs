@@ -46,6 +46,7 @@ public sealed class SHA1 : HashAlgorithm
     private readonly uint[] _w;
     private long _bytesProcessed;
     private int _bufferLength;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA1"/> class.
@@ -96,8 +97,11 @@ public sealed class SHA1 : HashAlgorithm
 #pragma warning restore CS0618
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SHA1));
+
         // SHA-1 initialization constants
         _state[0] = 0x67452301;
         _state[1] = 0xefcdab89;
@@ -111,8 +115,11 @@ public sealed class SHA1 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SHA1));
+
         int offset = 0;
 
         if (_bufferLength > 0)
@@ -145,8 +152,10 @@ public sealed class SHA1 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SHA1));
         if (destination.Length < HashSizeBytes)
         {
             bytesWritten = 0;
@@ -173,6 +182,7 @@ public sealed class SHA1 : HashAlgorithm
             ClearBuffer(_buffer);
             Array.Clear(_state, 0, _state.Length);
             Array.Clear(_w, 0, _w.Length);
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

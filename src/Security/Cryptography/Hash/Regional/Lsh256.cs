@@ -130,6 +130,7 @@ public sealed class Lsh256 : HashAlgorithm
     private readonly uint[] _submsgOR;
     private readonly byte[] _buffer;
     private int _bufferLength;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Lsh256"/> class with 256-bit output.
@@ -270,16 +271,20 @@ public sealed class Lsh256 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Lsh256));
         Array.Copy(_iv, 0, _cvL, 0, NumWords);
         Array.Copy(_iv, NumWords, _cvR, 0, NumWords);
         _bufferLength = 0;
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Lsh256));
         int offset = 0;
 
         if (_bufferLength > 0)
@@ -311,8 +316,10 @@ public sealed class Lsh256 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Lsh256));
         if (destination.Length < _hashSizeBytes)
         {
             bytesWritten = 0;
@@ -357,6 +364,7 @@ public sealed class Lsh256 : HashAlgorithm
             Array.Clear(_submsgOL, 0, _submsgOL.Length);
             Array.Clear(_submsgOR, 0, _submsgOR.Length);
             ClearBuffer(_buffer);
+            _disposed = true;
         }
 
         base.Dispose(disposing);

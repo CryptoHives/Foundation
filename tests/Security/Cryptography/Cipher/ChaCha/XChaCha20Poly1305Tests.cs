@@ -353,6 +353,25 @@ public class XChaCha20Poly1305Tests
         Assert.Throws<ArgumentException>(() => aead.Encrypt(shortNonce, plaintext));
     }
 
+    [Test]
+    public void XChaCha20Poly1305_DisposedInstance_Throws()
+    {
+        byte[] key = new byte[32];
+        byte[] nonce = new byte[24];
+        byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Test");
+
+        var aead = XChaCha20Poly1305.Create(key);
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] tag = new byte[16];
+        aead.Encrypt(nonce, plaintext, ciphertext, tag);
+
+        aead.Dispose();
+
+        byte[] decrypted = new byte[plaintext.Length];
+        Assert.Throws<ObjectDisposedException>(() => aead.Encrypt(nonce, plaintext, ciphertext, tag));
+        Assert.Throws<ObjectDisposedException>(() => aead.Decrypt(nonce, ciphertext, tag, decrypted));
+    }
+
     // ========================================================================
     // Helper Methods
     // ========================================================================
