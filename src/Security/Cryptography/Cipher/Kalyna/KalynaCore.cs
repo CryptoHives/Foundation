@@ -500,7 +500,8 @@ internal unsafe struct KalynaCore
             ulong* rk = pCore->_roundKeys;
             AddRoundKey(blockState, rk, 0);
 
-            for (int round = 0;;)
+            int round = 0;
+            while (true)
             {
                 SubBytes(blockState);
                 ShiftRows(blockState);
@@ -538,7 +539,7 @@ internal unsafe struct KalynaCore
             ulong* rk = pCore->_roundKeys;
             SubRoundKey(blockState, rk, _rounds);
 
-            for (int round = _rounds;;)
+            for (int round = _rounds; ;)
             {
                 MixColumnsInv(blockState);
                 InvShiftRows(blockState);
@@ -589,8 +590,7 @@ internal unsafe struct KalynaCore
     private static int ExpandKeyGeneric(ReadOnlySpan<byte> key, int blockWords, Span<ulong> roundKeys)
     {
         int keyWords = key.Length / 8;
-        int nr = key.Length switch
-        {
+        int nr = key.Length switch {
             32 => 14,
             64 => 18,
             _ => throw new ArgumentException("Key must be 32 or 64 bytes for the selected Kalyna block size.", nameof(key))
@@ -785,39 +785,39 @@ internal unsafe struct KalynaCore
         switch (blockWords)
         {
             case 2:
-            {
-                ulong x0 = src[0], x1 = src[1];
-                dst[0] = (x0 >> 56) | (x1 << 8);
-                dst[1] = (x1 >> 56) | (x0 << 8);
-                break;
-            }
+                {
+                    ulong x0 = src[0], x1 = src[1];
+                    dst[0] = (x0 >> 56) | (x1 << 8);
+                    dst[1] = (x1 >> 56) | (x0 << 8);
+                    break;
+                }
             case 4:
-            {
-                ulong x0 = src[0], x1 = src[1], x2 = src[2], x3 = src[3];
-                dst[0] = (x1 >> 24) | (x2 << 40);
-                dst[1] = (x2 >> 24) | (x3 << 40);
-                dst[2] = (x3 >> 24) | (x0 << 40);
-                dst[3] = (x0 >> 24) | (x1 << 40);
-                break;
-            }
+                {
+                    ulong x0 = src[0], x1 = src[1], x2 = src[2], x3 = src[3];
+                    dst[0] = (x1 >> 24) | (x2 << 40);
+                    dst[1] = (x2 >> 24) | (x3 << 40);
+                    dst[2] = (x3 >> 24) | (x0 << 40);
+                    dst[3] = (x0 >> 24) | (x1 << 40);
+                    break;
+                }
             case 8:
-            {
-                ulong x0 = src[0], x1 = src[1], x2 = src[2], x3 = src[3];
-                ulong x4 = src[4], x5 = src[5], x6 = src[6], x7 = src[7];
-                dst[0] = (x2 >> 24) | (x3 << 40);
-                dst[1] = (x3 >> 24) | (x4 << 40);
-                dst[2] = (x4 >> 24) | (x5 << 40);
-                dst[3] = (x5 >> 24) | (x6 << 40);
-                dst[4] = (x6 >> 24) | (x7 << 40);
-                dst[5] = (x7 >> 24) | (x0 << 40);
-                dst[6] = (x0 >> 24) | (x1 << 40);
-                dst[7] = (x1 >> 24) | (x2 << 40);
-                break;
-            }
+                {
+                    ulong x0 = src[0], x1 = src[1], x2 = src[2], x3 = src[3];
+                    ulong x4 = src[4], x5 = src[5], x6 = src[6], x7 = src[7];
+                    dst[0] = (x2 >> 24) | (x3 << 40);
+                    dst[1] = (x3 >> 24) | (x4 << 40);
+                    dst[2] = (x4 >> 24) | (x5 << 40);
+                    dst[3] = (x5 >> 24) | (x6 << 40);
+                    dst[4] = (x6 >> 24) | (x7 << 40);
+                    dst[5] = (x7 >> 24) | (x0 << 40);
+                    dst[6] = (x0 >> 24) | (x1 << 40);
+                    dst[7] = (x1 >> 24) | (x2 << 40);
+                    break;
+                }
             default:
-            {
-                throw new InvalidOperationException("Unsupported Kalyna block length.");
-            }
+                {
+                    throw new InvalidOperationException("Unsupported Kalyna block length.");
+                }
         }
     }
 
@@ -869,67 +869,67 @@ internal unsafe struct KalynaCore
         switch (state.Length)
         {
             case 2:
-            {
-                ulong c0 = state[0], c1 = state[1];
-                ulong d = (c0 ^ c1) & 0xFFFFFFFF00000000UL;
-                c0 ^= d;
-                c1 ^= d;
-                state[0] = c0;
-                state[1] = c1;
-                break;
-            }
+                {
+                    ulong c0 = state[0], c1 = state[1];
+                    ulong d = (c0 ^ c1) & 0xFFFFFFFF00000000UL;
+                    c0 ^= d;
+                    c1 ^= d;
+                    state[0] = c0;
+                    state[1] = c1;
+                    break;
+                }
             case 4:
-            {
-                ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
-                ulong d;
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong d;
 
-                d = (c0 ^ c2) & 0xFFFFFFFF00000000UL; c0 ^= d; c2 ^= d;
-                d = (c1 ^ c3) & 0x0000FFFFFFFF0000UL; c1 ^= d; c3 ^= d;
+                    d = (c0 ^ c2) & 0xFFFFFFFF00000000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x0000FFFFFFFF0000UL; c1 ^= d; c3 ^= d;
 
-                d = (c0 ^ c1) & 0xFFFF0000FFFF0000UL; c0 ^= d; c1 ^= d;
-                d = (c2 ^ c3) & 0xFFFF0000FFFF0000UL; c2 ^= d; c3 ^= d;
+                    d = (c0 ^ c1) & 0xFFFF0000FFFF0000UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFFFF0000FFFF0000UL; c2 ^= d; c3 ^= d;
 
-                state[0] = c0;
-                state[1] = c1;
-                state[2] = c2;
-                state[3] = c3;
-                break;
-            }
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    break;
+                }
             case 8:
-            {
-                ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
-                ulong c4 = state[4], c5 = state[5], c6 = state[6], c7 = state[7];
-                ulong d;
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong c4 = state[4], c5 = state[5], c6 = state[6], c7 = state[7];
+                    ulong d;
 
-                d = (c0 ^ c4) & 0xFFFFFFFF00000000UL; c0 ^= d; c4 ^= d;
-                d = (c1 ^ c5) & 0x00FFFFFFFF000000UL; c1 ^= d; c5 ^= d;
-                d = (c2 ^ c6) & 0x0000FFFFFFFF0000UL; c2 ^= d; c6 ^= d;
-                d = (c3 ^ c7) & 0x000000FFFFFFFF00UL; c3 ^= d; c7 ^= d;
+                    d = (c0 ^ c4) & 0xFFFFFFFF00000000UL; c0 ^= d; c4 ^= d;
+                    d = (c1 ^ c5) & 0x00FFFFFFFF000000UL; c1 ^= d; c5 ^= d;
+                    d = (c2 ^ c6) & 0x0000FFFFFFFF0000UL; c2 ^= d; c6 ^= d;
+                    d = (c3 ^ c7) & 0x000000FFFFFFFF00UL; c3 ^= d; c7 ^= d;
 
-                d = (c0 ^ c2) & 0xFFFF0000FFFF0000UL; c0 ^= d; c2 ^= d;
-                d = (c1 ^ c3) & 0x00FFFF0000FFFF00UL; c1 ^= d; c3 ^= d;
-                d = (c4 ^ c6) & 0xFFFF0000FFFF0000UL; c4 ^= d; c6 ^= d;
-                d = (c5 ^ c7) & 0x00FFFF0000FFFF00UL; c5 ^= d; c7 ^= d;
+                    d = (c0 ^ c2) & 0xFFFF0000FFFF0000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x00FFFF0000FFFF00UL; c1 ^= d; c3 ^= d;
+                    d = (c4 ^ c6) & 0xFFFF0000FFFF0000UL; c4 ^= d; c6 ^= d;
+                    d = (c5 ^ c7) & 0x00FFFF0000FFFF00UL; c5 ^= d; c7 ^= d;
 
-                d = (c0 ^ c1) & 0xFF00FF00FF00FF00UL; c0 ^= d; c1 ^= d;
-                d = (c2 ^ c3) & 0xFF00FF00FF00FF00UL; c2 ^= d; c3 ^= d;
-                d = (c4 ^ c5) & 0xFF00FF00FF00FF00UL; c4 ^= d; c5 ^= d;
-                d = (c6 ^ c7) & 0xFF00FF00FF00FF00UL; c6 ^= d; c7 ^= d;
+                    d = (c0 ^ c1) & 0xFF00FF00FF00FF00UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFF00FF00FF00FF00UL; c2 ^= d; c3 ^= d;
+                    d = (c4 ^ c5) & 0xFF00FF00FF00FF00UL; c4 ^= d; c5 ^= d;
+                    d = (c6 ^ c7) & 0xFF00FF00FF00FF00UL; c6 ^= d; c7 ^= d;
 
-                state[0] = c0;
-                state[1] = c1;
-                state[2] = c2;
-                state[3] = c3;
-                state[4] = c4;
-                state[5] = c5;
-                state[6] = c6;
-                state[7] = c7;
-                break;
-            }
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    state[4] = c4;
+                    state[5] = c5;
+                    state[6] = c6;
+                    state[7] = c7;
+                    break;
+                }
             default:
-            {
-                throw new InvalidOperationException("Unsupported Kalyna block length.");
-            }
+                {
+                    throw new InvalidOperationException("Unsupported Kalyna block length.");
+                }
         }
     }
 
@@ -938,67 +938,67 @@ internal unsafe struct KalynaCore
         switch (state.Length)
         {
             case 2:
-            {
-                ulong c0 = state[0], c1 = state[1];
-                ulong d = (c0 ^ c1) & 0xFFFFFFFF00000000UL;
-                c0 ^= d;
-                c1 ^= d;
-                state[0] = c0;
-                state[1] = c1;
-                break;
-            }
+                {
+                    ulong c0 = state[0], c1 = state[1];
+                    ulong d = (c0 ^ c1) & 0xFFFFFFFF00000000UL;
+                    c0 ^= d;
+                    c1 ^= d;
+                    state[0] = c0;
+                    state[1] = c1;
+                    break;
+                }
             case 4:
-            {
-                ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
-                ulong d;
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong d;
 
-                d = (c0 ^ c1) & 0xFFFF0000FFFF0000UL; c0 ^= d; c1 ^= d;
-                d = (c2 ^ c3) & 0xFFFF0000FFFF0000UL; c2 ^= d; c3 ^= d;
+                    d = (c0 ^ c1) & 0xFFFF0000FFFF0000UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFFFF0000FFFF0000UL; c2 ^= d; c3 ^= d;
 
-                d = (c0 ^ c2) & 0xFFFFFFFF00000000UL; c0 ^= d; c2 ^= d;
-                d = (c1 ^ c3) & 0x0000FFFFFFFF0000UL; c1 ^= d; c3 ^= d;
+                    d = (c0 ^ c2) & 0xFFFFFFFF00000000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x0000FFFFFFFF0000UL; c1 ^= d; c3 ^= d;
 
-                state[0] = c0;
-                state[1] = c1;
-                state[2] = c2;
-                state[3] = c3;
-                break;
-            }
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    break;
+                }
             case 8:
-            {
-                ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
-                ulong c4 = state[4], c5 = state[5], c6 = state[6], c7 = state[7];
-                ulong d;
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong c4 = state[4], c5 = state[5], c6 = state[6], c7 = state[7];
+                    ulong d;
 
-                d = (c0 ^ c1) & 0xFF00FF00FF00FF00UL; c0 ^= d; c1 ^= d;
-                d = (c2 ^ c3) & 0xFF00FF00FF00FF00UL; c2 ^= d; c3 ^= d;
-                d = (c4 ^ c5) & 0xFF00FF00FF00FF00UL; c4 ^= d; c5 ^= d;
-                d = (c6 ^ c7) & 0xFF00FF00FF00FF00UL; c6 ^= d; c7 ^= d;
+                    d = (c0 ^ c1) & 0xFF00FF00FF00FF00UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFF00FF00FF00FF00UL; c2 ^= d; c3 ^= d;
+                    d = (c4 ^ c5) & 0xFF00FF00FF00FF00UL; c4 ^= d; c5 ^= d;
+                    d = (c6 ^ c7) & 0xFF00FF00FF00FF00UL; c6 ^= d; c7 ^= d;
 
-                d = (c0 ^ c2) & 0xFFFF0000FFFF0000UL; c0 ^= d; c2 ^= d;
-                d = (c1 ^ c3) & 0x00FFFF0000FFFF00UL; c1 ^= d; c3 ^= d;
-                d = (c4 ^ c6) & 0xFFFF0000FFFF0000UL; c4 ^= d; c6 ^= d;
-                d = (c5 ^ c7) & 0x00FFFF0000FFFF00UL; c5 ^= d; c7 ^= d;
+                    d = (c0 ^ c2) & 0xFFFF0000FFFF0000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x00FFFF0000FFFF00UL; c1 ^= d; c3 ^= d;
+                    d = (c4 ^ c6) & 0xFFFF0000FFFF0000UL; c4 ^= d; c6 ^= d;
+                    d = (c5 ^ c7) & 0x00FFFF0000FFFF00UL; c5 ^= d; c7 ^= d;
 
-                d = (c0 ^ c4) & 0xFFFFFFFF00000000UL; c0 ^= d; c4 ^= d;
-                d = (c1 ^ c5) & 0x00FFFFFFFF000000UL; c1 ^= d; c5 ^= d;
-                d = (c2 ^ c6) & 0x0000FFFFFFFF0000UL; c2 ^= d; c6 ^= d;
-                d = (c3 ^ c7) & 0x000000FFFFFFFF00UL; c3 ^= d; c7 ^= d;
+                    d = (c0 ^ c4) & 0xFFFFFFFF00000000UL; c0 ^= d; c4 ^= d;
+                    d = (c1 ^ c5) & 0x00FFFFFFFF000000UL; c1 ^= d; c5 ^= d;
+                    d = (c2 ^ c6) & 0x0000FFFFFFFF0000UL; c2 ^= d; c6 ^= d;
+                    d = (c3 ^ c7) & 0x000000FFFFFFFF00UL; c3 ^= d; c7 ^= d;
 
-                state[0] = c0;
-                state[1] = c1;
-                state[2] = c2;
-                state[3] = c3;
-                state[4] = c4;
-                state[5] = c5;
-                state[6] = c6;
-                state[7] = c7;
-                break;
-            }
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    state[4] = c4;
+                    state[5] = c5;
+                    state[6] = c6;
+                    state[7] = c7;
+                    break;
+                }
             default:
-            {
-                throw new InvalidOperationException("Unsupported Kalyna block length.");
-            }
+                {
+                    throw new InvalidOperationException("Unsupported Kalyna block length.");
+                }
         }
     }
 
