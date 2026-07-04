@@ -286,8 +286,11 @@ public class AsyncReaderWriterLockTests
             }, ct);
         }
 
-        // Give all readers time to acquire.
-        await Task.Delay(200, ct).ConfigureAwait(false);
+        // Wait for all readers to actually acquire instead of assuming a fixed delay
+        while (Volatile.Read(ref holdingCount) < contention)
+        {
+            await Task.Delay(1, ct).ConfigureAwait(false);
+        }
         releaseGate.SetResult(true);
         await Task.WhenAll(readers).ConfigureAwait(false);
 
@@ -441,28 +444,37 @@ public class AsyncReaderWriterLockTests
 
         var order = new ConcurrentQueue<string>();
 
+        Task writerTask, readerTask;
         using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            var writerTask = Task.Run(async () => {
+            writerTask = Task.Run(async () => {
                 using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
                 {
                     order.Enqueue("writer");
                 }
             }, ct);
 
-            await Task.Delay(50, ct).ConfigureAwait(false);
+            // Wait for the writer to actually register as waiting before starting the reader
+            while (rwLock.WaitingWriterCount == 0)
+            {
+                await Task.Delay(10, ct).ConfigureAwait(false);
+            }
 
-            var readerTask = Task.Run(async () => {
+            readerTask = Task.Run(async () => {
                 using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
                 {
                     order.Enqueue("reader");
                 }
             }, ct);
 
-            await Task.Delay(50, ct).ConfigureAwait(false);
+            while (rwLock.WaitingReaderCount == 0)
+            {
+                await Task.Delay(10, ct).ConfigureAwait(false);
+            }
         }
 
-        await Task.Delay(100, ct).ConfigureAwait(false);
+        // Both must fully complete (acquire, enqueue, release) before the order is meaningful
+        await Task.WhenAll(writerTask, readerTask).ConfigureAwait(false);
 
         var items = order.ToArray();
         using (Assert.EnterMultipleScope())
