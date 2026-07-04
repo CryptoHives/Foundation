@@ -142,14 +142,12 @@ public class AsyncCountdownEventTests
     {
         var countdown = new AsyncCountdownEvent(2);
 
-        var t1 = Task.Run(async () => await countdown.SignalAndWaitAsync().ConfigureAwait(false));
-
-        await Task.Delay(100).ConfigureAwait(false);
+        ValueTask waitTask = countdown.SignalAndWaitAsync();
         Assert.That(countdown.CurrentCount, Is.EqualTo(1));
 
         countdown.Signal();
 
-        await t1.ConfigureAwait(false);
+        await waitTask.ConfigureAwait(false);
         Assert.That(countdown.IsSet, Is.True);
     }
 
