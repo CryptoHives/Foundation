@@ -19,7 +19,7 @@ using System.Threading.Tasks.Sources;
 /// Note that this lock is <b>not</b> recursive!
 /// </summary>
 /// <remarks>
-/// /// <para>
+/// <para>
 /// <b>Optional timeout and cancellation token</b> parameters on <see cref="LockAsync(TimeSpan, CancellationToken)"/>.
 /// </para>
 /// 
@@ -52,7 +52,7 @@ using System.Threading.Tasks.Sources;
 /// of a <c>lock</c>.</para>
 /// <para>So, we use the <c>async</c>-compatible <see cref="AsyncLock"/> instead:</para>
 /// <code>
-/// private readonly var _mutex = new AsyncLock();
+/// private var _mutex = new AsyncLock();
 /// public async Task DoStuffAsync()
 /// {
 ///     using (await _mutex.LockAsync())
@@ -84,8 +84,9 @@ public sealed class AsyncLock : IResettable
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _spinLock = new();
         _taken = 0;
-        _localWaiter = new(this);
-        _localWaiter.RunContinuationsAsynchronously = true;
+        _localWaiter = new(this) {
+            RunContinuationsAsynchronously = true
+        };
     }
 
     /// <inheritdoc/>

@@ -1,13 +1,12 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+## CryptoHives Open Source Initiative 🐝
 
-An open, community-driven cryptography and performance library collection for the .NET ecosystem.
+An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem.
 
-While .NET has become a powerful platform for building secure and high-performance applications for any use case on many platforms, there is a need to expose high performance patterns as simple-to-use libraries and to rethink how cryptography is relying on vastly different OS implementations with varying feature and performance characteristics.
-The goal of the CryptoHives Open Source Initiative is to provide a collection of packages for that matter.
+.NET is a solid platform for building secure, high-performance applications across almost any target, but two gaps keep showing up: high-performance patterns rarely get packaged as simple, drop-in libraries, and cryptography still leans heavily on whatever the underlying OS happens to provide, with all the inconsistency in features and performance that brings. CryptoHives exists to close both gaps, one package at a time.
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -72,64 +71,62 @@ Keccak class hierarchy (Security.Cryptography):
 ```
 
 ---
-The **CryptoHives Open Source Initiative** is a collection of modern, high-assurance libraries for .NET, developed and maintained by **The Keepers of the CryptoHives**. 
-Each package is designed for security, interoperability, and clarity — making it easy to build secure systems for high performance transformation pipelines and for cryptography workloads without sacrificing developer experience.
 
-Each library targets a specific use case:
-- **Threading** — high-performance async synchronization primitives optimized for no/low allocation and high throughput scenarios using ValueTask-based waiters and ObjectPool-backed resource management
-- **Memory** — pooled buffer management utilities leveraging ArrayPool<T> and modern .NET memory APIs to minimize GC pressure for transformation pipelines and cryptographic workloads which use ReadOnlySpan or IBufferWriter
-- **Cryptography** — OS independent implementation of all .NET cryptography as a plug in replacement
+The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and built around three packages, each aimed at a specific problem:
 
----
-
-## 📚 Documentation
-
-- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** - Comprehensive guides, API reference, and examples
-- 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
-- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
-- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+- **Threading** — async synchronization primitives built for low/no allocation and high throughput, using `ValueTask`-based waiters backed by pooled resources
+- **Memory** — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, meant to keep GC pressure out of transformation pipelines and crypto workloads that work in terms of `ReadOnlySpan` or `IBufferWriter`
+- **Security.Cryptography** — OS-independent reimplementations of algorithms already in `System.Security.Cryptography`, usable as drop-in replacements
 
 ---
 
-## 🧬 Features and Design Principles
+## Documentation
 
-### 🧱 Orthogonal Design
-- All development is done on free and open-source tools, e.g. .NET SDK, Visual Studio Community Edition, Visual Studio Code, GitHub, Azure DevOps, etc.
-- Each package is designed to be orthogonal and composable with other CryptoHives packages to avoid deep cross dependencies
-- Dependencies on other packages are kept to a minimum and shall only include widely adopted, well-maintained libraries, e.g. the Microsoft.Extensions
-- OS and hardware dependencies are avoided wherever possible to ensure deterministic behavior across all platforms and runtimes, specifically for security implementations
-- There is no intention to replace or shadow existing .NET class libraries; instead, CryptoHives packages are designed to complement and extend existing functionality
-
-### ⚡ High-Performance Primitives
-- All CryptoHives packages are designed for high performance and no operational allocations to optimize high performance transformation pipelines and cryptography workloads
-- Algorithms may use managed SIMD intrinsics with scalar fallback.
-- Package performance and memory usage are benchmarked against reference implementations
-
-### 🔐 Secure Development Policy
-- Standards-Based Cryptography – Implementations are written from official public specifications and standards (NIST, RFC, ISO)
-- All algorithms are verified against official test vectors from specification documents
-- Review process includes algorithm validation against reference implementations
-- Threat-Modeled by Design – All public APIs and network interfaces assume hostile input
-- Secure by Default & Validation – Minimal attack surface, explicit configuration, strict input checks, and resource bounds
-- Dependency & Supply-Chain Safety – Minimal, vetted dependencies; reproducible signed (planned) releases.
-- Automated Verification – Fuzzing (planned), static analysis, and safe error handling to prevent misuse and information leaks.
-- Development may use AI-assisted tooling; no guarantee of clean-room provenance is claimed
+- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** — guides, API reference, examples
+- [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
+- [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
+- [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
 
 ---
 
-## 🐝 Available CryptoHives
+## Design Principles
 
-### 🛠️ Buffer Pools (Memory)
+### Orthogonal by design
+- Everything is built with free and open-source tooling — the .NET SDK, Visual Studio Community, VS Code, GitHub, Azure DevOps.
+- Packages are meant to stand on their own; we try hard to avoid deep cross-dependencies between them.
+- Dependencies on anything outside CryptoHives are kept minimal and limited to widely adopted, well-maintained libraries (e.g. `Microsoft.Extensions.*`).
+- OS and hardware dependencies are avoided where possible, so behavior stays deterministic across platforms and runtimes — this matters especially for the crypto implementations.
+- None of this is meant to replace or compete with the existing .NET class library. It's meant to complement it.
+
+### Built for performance
+- Every package targets high throughput with no steady-state allocations, for both transformation pipelines and crypto workloads.
+- Where it helps, algorithms use managed SIMD intrinsics with a scalar fallback for platforms that don't support them.
+- Performance and memory usage are benchmarked against reference implementations, not just asserted.
+
+### Secure development policy
+- Implementations are written directly from public specifications (NIST, RFC, ISO) rather than ported from other codebases.
+- Every algorithm is checked against official test vectors from its specification.
+- Reviews include validation against independent reference implementations.
+- Public APIs and anything touching the network are treated as hostile-input surfaces by default.
+- Defaults favor a minimal attack surface: explicit configuration, strict input validation, bounded resource use.
+- Dependencies are kept minimal and vetted; reproducible, signed releases are on the roadmap.
+- Fuzzing is planned; static analysis and defensive error handling are already in place to limit misuse and information leaks.
+- Some development uses AI-assisted tooling — we're not claiming clean-room provenance for every line.
+
+---
+
+## Available CryptoHives
+
+### Buffer Pools (Memory)
 Pooled buffer management for transformation pipelines and high-frequency I/O:
 
-- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>` with `ReadOnlySequence` handoff support
-- `ReadOnlySequenceMemoryStream` — read from `ReadOnlySequence<byte>` as `MemoryStream` without copying
-- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays for e.g. `Utf8JsonWriter`
+- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
+- `ReadOnlySequenceMemoryStream` — reads a `ReadOnlySequence<byte>` as a `MemoryStream` without copying
+- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`
 - Ownership primitives for zero-copy handoff of pooled buffers
 
-### 🚀 Concurrency Tools (Threading)
-Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`.
-Designed to eliminate `Task` / `TaskCompletionSource<T>` allocations on the hot path.
+### Concurrency Tools (Threading)
+Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
 
 - `AsyncLock` — mutual exclusion
 - `AsyncSemaphore` — counting semaphore
@@ -137,16 +134,14 @@ Designed to eliminate `Task` / `TaskCompletionSource<T>` allocations on the hot 
 - `AsyncReaderWriterLock`
 - `AsyncBarrier` / `AsyncCountdownEvent`
 
-All primitives support `CancellationToken` and `ConfigureAwait(false)` without the need for extra allocations.
-New in 0.6: Timeout support using `TimeProvider` (`ITimer` may be allocated on contention)
+All primitives support `CancellationToken` and `ConfigureAwait(false)` without extra allocations. New in 0.6: timeout support via `TimeProvider` (an `ITimer` is only allocated once there's actual contention).
 
-A C# analyzer to avoid common ValueTask usage mistakes is available as standalone package.
+A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a standalone package.
 
-⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, comparing pooled `ValueTask` vs. existing `Task`-based alternatives.
+⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, pooled `ValueTask` vs. existing `Task`-based alternatives.
 
-### 🔐 Managed Code Cryptography (Security.Cryptography)
-Fully managed implementations of cryptographic hash algorithms, MACs, and cipher algorithms, written from NIST/RFC/ISO specifications and verified against official test vectors.
-No OS crypto dependency — deterministic results on every platform. Hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics is automatically enabled on supported hardware, in some cases even outperforming OS implementations.
+### Managed Code Cryptography (Security.Cryptography)
+Fully managed hash, MAC, and cipher implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in automatically — in some cases outperforming the OS-provided implementation.
 
 **Algorithms:**
 
@@ -165,19 +160,19 @@ No OS crypto dependency — deterministic results on every platform. Hardware ac
 | Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
 | Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256), SEED |
 | Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
-| Legacy | SHA-1, MD5 (backward compatibility only) |
+| Legacy | SHA-1, MD5 (kept for backward compatibility only) |
 
 All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
 
-**⏱️ Cryptography Benchmarks**
+**Benchmarks**
 
-Measured with BenchmarkDotNet across various payloads, comparing managed vs. reference vs. OS implementations.
+Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions.
 - [Hash algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html)
 - [Cipher algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html)
 
 ---
 
-### 📦 Nuget Packages
+### NuGet Packages
 
 | Package | Description | NuGet | Documentation |
 |----------|--------------|--------|---------------|
@@ -185,9 +180,9 @@ Measured with BenchmarkDotNet across various payloads, comparing managed vs. ref
 | `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
 | `Security.Cryptography` | Hash, MAC & cipher algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
 
-All packages are published under the `CryptoHives.Foundation` prefix and namespace — see the Nuget [CryptoHives](https://www.nuget.org/packages?q=CryptoHives) for details.
+All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
 
-### 🩺 CryptoHives Health
+### Build Status
 
 [![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
@@ -196,15 +191,15 @@ All packages are published under the `CryptoHives.Foundation` prefix and namespa
 
 ---
 
-## 🧩 Installation
+## Installation
 
-Install via NuGet CLI:
+Via the NuGet CLI:
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
 ```
 
-Or using the Visual Studio Package Manager:
+Or from the Visual Studio Package Manager:
 
 ```powershell
 Install-Package CryptoHives.Foundation.Threading
@@ -212,9 +207,7 @@ Install-Package CryptoHives.Foundation.Threading
 
 ---
 
-## 🧠 Usage Examples
-
----
+## Usage Examples
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -232,12 +225,10 @@ Span<byte> output = stackalloc byte[128];
 shake.Squeeze(output);
 ```
 
----
-
 ```csharp
 using CryptoHives.Foundation.Threading.Async.Pooled;
 
-// Allocation-free async lock, even with cancellation token
+// Allocation-free async lock, even with a cancellation token
 private readonly AsyncLock _lock = new();
 
 public async Task DoWorkAsync(CancellationToken ct)
@@ -249,62 +240,52 @@ public async Task DoWorkAsync(CancellationToken ct)
 
 ---
 
-## 🔐 Security Policy
+## Security Policy
 
-Security is our top priority.
-
-If you discover a vulnerability, **please do not open a public issue.**  
-Instead, please follow the guidelines on the [CryptoHives Open Source Initiative Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md).
+Security comes first here. If you find a vulnerability, please don't open a public issue — follow the process described on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## 🔏 Nuget Package Assembly Code Signing
+## NuGet Package Signing
 
-Assemblies in our Nuget packages are currently not code signed. Once there is sufficient demand and funding available, the Keepers plan to implement code signing for all released packages.
-
----
-
-## 📝 No-Nonsense Matters
-
-This project is released under the MIT License because open collaboration matters.  
-However, the Keepers are well aware that MIT-licensed code often gets copied, repackaged, or commercialized without giving credit.  
-
-If you use this code, please do so responsibly:
-- Give visible credit to the **CryptoHives Open Source Initiative** or **The Keepers of the CryptoHives** and refer to the original source.
-- Contribute improvements back and report issues.
-
-Open source thrives on respect, not just permissive licenses.
+Packages aren't code-signed yet. The Keepers plan to add signing once there's enough demand (and funding) to justify it.
 
 ---
 
-## ⚖️ License
+## A Note on Licensing
 
-Each component of the CryptoHives Open Source Initiative is licensed under a SPDX-compatible MIT license.  
-By default, packages use the following license tags:
+This project is MIT-licensed because we believe in open collaboration. That said, we're aware MIT code gets copied, repackaged, and resold without credit fairly often — if you use this code, we'd appreciate it if you didn't do that:
+
+- Give visible credit to the **CryptoHives Open Source Initiative** / **The Keepers of the CryptoHives** and link back to the source.
+- Send improvements back upstream and report issues rather than silently forking.
+
+None of that is legally required under MIT — it's just what makes open source worth doing.
+
+---
+
+## License
+
+Every component is licensed under MIT. Source files carry the following SPDX header by default:
 
 ```csharp
 // SPDX-FileCopyrightText: <year> The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 ```
 
-Some inherited components may use alternative MIT license headers, according to their origin and specific requirements those headers are retained.
+A few inherited components use their original MIT-style headers instead, kept as-is for provenance.
 
 ---
 
-## 🐝 About The Keepers of the CryptoHives
+## About The Keepers of the CryptoHives
 
-The **CryptoHives Open Source Initiative** project is maintained by **The Keepers of the CryptoHives** —  
-a collective of developers dedicated to advancing open, verifiable, and high-performance cryptography in .NET.
+The CryptoHives Open Source Initiative is maintained by **The Keepers of the CryptoHives**, a loose collective of developers working on open, verifiable, high-performance cryptography for .NET.
 
 ---
 
-## 🧩 Contributing
+## Contributing
 
-Contributions, issue reports, and pull requests are welcome!
-
-Please see the [Contributing Guide](https://github.com/CryptoHives/.github/blob/main/CONTRIBUTING.md) before submitting code.
+Issues and pull requests are welcome. Please read the [Contributing Guide](https://github.com/CryptoHives/.github/blob/main/CONTRIBUTING.md) before sending a PR.
 
 ---
 
 © 2026 The Keepers of the CryptoHives
-
