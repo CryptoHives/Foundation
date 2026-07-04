@@ -74,8 +74,11 @@ public class AsyncAutoResetEventTests
             Interlocked.Exchange(ref stage, 100);
         });
 
-        // Give the waiter time to start waiting
-        await Task.Delay(100).ConfigureAwait(false);
+        // Wait for the waiter to actually register instead of assuming a fixed delay
+        while (!ev.InternalWaiterInUse)
+        {
+            await Task.Delay(1).ConfigureAwait(false);
+        }
 
         int beforeContinuation = Interlocked.Exchange(ref stage, 1);
         ev.Set();
