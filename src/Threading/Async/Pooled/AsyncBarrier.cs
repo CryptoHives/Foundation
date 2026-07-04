@@ -195,8 +195,11 @@ public sealed class AsyncBarrier
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
-    /// <exception cref="OperationCanceledException">
+    /// <exception cref="TimeoutException">
     /// Thrown when the timeout elapses before all participants arrive.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before all participants arrive.
     /// </exception>
     /// <exception cref="InvalidOperationException">Thrown when more participants signal than expected.</exception>
     /// <exception cref="BarrierPostPhaseException">Thrown when the post-phase action throws an exception.</exception>
@@ -229,7 +232,7 @@ public sealed class AsyncBarrier
                 if (timeout == TimeSpan.Zero)
                 {
                     _participantsRemaining++;
-                    return new ValueTask(Task.FromException(new OperationCanceledException()));
+                    return new ValueTask(Task.FromException(new TimeoutException()));
                 }
 
                 PooledManualResetValueTaskSource<bool> waiter = _pool.GetPooledWaiter(this);
@@ -443,7 +446,7 @@ public sealed class AsyncBarrier
         }
 
         ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER

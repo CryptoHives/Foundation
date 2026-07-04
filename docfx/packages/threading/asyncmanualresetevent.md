@@ -112,7 +112,7 @@ await vt;  // Throws InvalidOperationException!
 public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously waits for the event to be set, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously waits for the event to be set, or throws `TimeoutException` if the timeout elapses first.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `TimeProvider`).
@@ -120,7 +120,8 @@ Asynchronously waits for the event to be set, or throws `OperationCanceledExcept
 **Returns**: A `ValueTask` that completes when the event is set.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before the event is set.
+- `TimeoutException` — If the timeout elapses before the event is set.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -357,7 +358,7 @@ try
     await _event.WaitAsync(TimeSpan.FromSeconds(10));
     ProcessData();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }

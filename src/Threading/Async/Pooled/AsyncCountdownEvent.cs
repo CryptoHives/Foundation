@@ -165,8 +165,11 @@ public sealed class AsyncCountdownEvent
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
-    /// <exception cref="OperationCanceledException">
+    /// <exception cref="TimeoutException">
     /// Thrown when the timeout elapses before the countdown reaches zero.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the countdown reaches zero.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -180,7 +183,7 @@ public sealed class AsyncCountdownEvent
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask(Task.FromException(new OperationCanceledException()));
+            return new ValueTask(Task.FromException(new TimeoutException()));
         }
 
         return WaitAsyncImpl(timeout, cancellationToken);
@@ -418,7 +421,7 @@ public sealed class AsyncCountdownEvent
         }
 
         ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER
