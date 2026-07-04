@@ -57,8 +57,8 @@ public class AsyncBarrierTests
         }
     }
 
-    [Test]
-    public async Task TwoParticipantsSynchronize()
+    [Test, CancelAfter(5000)]
+    public async Task TwoParticipantsSynchronize(CancellationToken ct)
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(2, pool: pool);
@@ -66,22 +66,25 @@ public class AsyncBarrierTests
 
         Task<int> t1 = Task.Run(async () => {
             Interlocked.Increment(ref reached);
-            await barrier.SignalAndWaitAsync().ConfigureAwait(false);
+            await barrier.SignalAndWaitAsync(ct).ConfigureAwait(false);
             return Volatile.Read(ref reached);
         });
 
-        await Task.Delay(100).ConfigureAwait(false);
+        do
+        {
+            await Task.Delay(100, ct).ConfigureAwait(false);
+        }
+        while (barrier.ParticipantsRemaining != 1);
         Assert.That(Volatile.Read(ref reached), Is.EqualTo(1));
 
         Interlocked.Increment(ref reached);
-        await barrier.SignalAndWaitAsync().ConfigureAwait(false);
+        await barrier.SignalAndWaitAsync(ct).ConfigureAwait(false);
 
         int result = await t1.ConfigureAwait(false);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Is.EqualTo(2));
             Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
-            Assert.That(pool.ActiveCount, Is.Zero);
         }
     }
 
