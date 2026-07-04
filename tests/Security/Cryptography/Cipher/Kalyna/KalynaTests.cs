@@ -163,6 +163,48 @@ public class KalynaTests
         Assert.That(decrypted, Is.EqualTo(plaintext));
     }
 
+    /// <summary>
+    /// PKCS#7 padding must be rejected regardless of which byte in the pad is corrupted -
+    /// covers the constant-time padding check in the shared <c>BlockCipherTransform</c> base
+    /// at Kalyna-512's 32-byte block size (the other covering test, in Sm4Tests, only
+    /// exercises the common 16-byte block size). Uses a full block of plaintext so PKCS#7
+    /// adds a full 32-byte padding block; flipping a byte of the first ciphertext block
+    /// corrupts exactly the corresponding byte of the decrypted padding block via CBC's
+    /// XOR chaining, without touching the rest.
+    /// </summary>
+    [Test]
+    [TestCase(0, Description = "First byte of the pad block corrupted")]
+    [TestCase(16, Description = "Middle byte of the pad block corrupted")]
+    [TestCase(31, Description = "Pad-length byte itself corrupted")]
+    public void Kalyna512CbcCorruptedPadding_AnyPosition_Throws(int corruptIndexInPadBlock)
+    {
+        byte[] key = FromHex(
+            "000102030405060708090a0b0c0d0e0f" +
+            "101112131415161718191a1b1c1d1e1f" +
+            "202122232425262728292a2b2c2d2e2f" +
+            "303132333435363738393a3b3c3d3e3f");
+        byte[] iv = FromHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
+        byte[] plaintext = new byte[32]; // exactly one block -> PKCS7 adds a full padding block
+
+        using var enc = Kalyna512.Create();
+        enc.Mode = CipherMode.CBC;
+        enc.Padding = PaddingMode.PKCS7;
+        enc.Key = key;
+        enc.IV = iv;
+        byte[] ciphertext = enc.Encrypt(plaintext);
+        Assert.That(ciphertext, Has.Length.EqualTo(64), "Expected two ciphertext blocks (data + full pad block).");
+
+        ciphertext[corruptIndexInPadBlock] ^= 0xFF;
+
+        using var dec = Kalyna512.Create();
+        dec.Mode = CipherMode.CBC;
+        dec.Padding = PaddingMode.PKCS7;
+        dec.Key = key;
+        dec.IV = iv;
+
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => dec.Decrypt(ciphertext));
+    }
+
     // ========================================================================
     // CBC and CTR round-trips
     // ========================================================================

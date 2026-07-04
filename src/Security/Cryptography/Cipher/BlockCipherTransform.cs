@@ -232,7 +232,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
             {
                 byte padValue = output[written - 1];
 
-                if (!IsPkcs7PaddingValid(output.Slice(written - _blockSize, _blockSize), padValue))
+                if (!IsPkcs7PaddingValid(output.Slice(written - _blockSize, _blockSize), padValue, _blockSize))
                     throw new CryptographicException("Invalid padding.");
 
                 written -= padValue;
@@ -253,19 +253,20 @@ internal abstract class BlockCipherTransform : ICipherTransform
     /// attacks) - even without a distinguishable error message, the timing difference alone is
     /// enough to decrypt ciphertext one byte at a time.
     /// </remarks>
-    /// <param name="block">The last decrypted block (exactly <see cref="BlockSizeConst"/> bytes).</param>
+    /// <param name="block">The last decrypted block (exactly <paramref name="blockSize"/> bytes).</param>
     /// <param name="padValue">The claimed pad length (<c>block[^1]</c>).</param>
+    /// <param name="blockSize">The cipher's block size in bytes.</param>
     /// <returns><see langword="true"/> if the padding is well-formed.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsPkcs7PaddingValid(ReadOnlySpan<byte> block, byte padValue)
+    private static bool IsPkcs7PaddingValid(ReadOnlySpan<byte> block, byte padValue, int blockSize)
     {
-        int badLength = ((uint)(padValue - 1) > (uint)(BlockSizeConst - 1)) ? 1 : 0;
+        int badLength = ((uint)(padValue - 1) > (uint)(blockSize - 1)) ? 1 : 0;
 
         int mismatch = 0;
-        for (int i = 0; i < BlockSizeConst; i++)
+        for (int i = 0; i < blockSize; i++)
         {
-            byte expected = i < padValue ? padValue : block[BlockSizeConst - 1 - i];
-            mismatch |= expected ^ block[BlockSizeConst - 1 - i];
+            byte expected = i < padValue ? padValue : block[blockSize - 1 - i];
+            mismatch |= expected ^ block[blockSize - 1 - i];
         }
 
         return badLength == 0 && mismatch == 0;
