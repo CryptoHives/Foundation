@@ -28,6 +28,8 @@ Or add to your project file:
 | [CHT006](CHT006.md) | Warning | ValueTask passed to potentially unsafe method |
 | [CHT007](CHT007.md) | Info | AsTask() stored before signaling (performance) |
 | [CHT008](CHT008.md) | Warning | ValueTask not awaited or consumed |
+| [CHT009](CHT009.md) | Info | `SemaphoreSlim(1, 1)` used as async lock; replace with `AsyncLock` |
+| [CHT010](CHT010.md) | Error | ValueTask captured in lambda/closure |
 
 ## Quick Reference
 
@@ -65,6 +67,9 @@ await t;
 
 // CHT008: Not consumed (Warning)
 GetValueTask(); // Warning: result not awaited
+
+// CHT009: SemaphoreSlim(1,1) as async lock (Info)
+private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1); // Info: consider AsyncLock
 ```
 
 ### ✅ Correct Patterns
@@ -111,6 +116,8 @@ The analyzer package includes automatic code fixes for most diagnostics:
 | CHT005 | Convert to await, Use AsTask().Result |
 | CHT007 | Await ValueTask directly |
 | CHT008 | Add await, Explicitly discard with _ = |
+| CHT009 | Replace with AsyncLock |
+| CHT010 | Convert to AsTask() at declaration, Use Preserve() |
 
 ## The Preserve() Method
 

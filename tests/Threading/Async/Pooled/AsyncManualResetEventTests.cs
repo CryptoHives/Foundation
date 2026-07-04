@@ -10,7 +10,6 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Threading.Tests.Pools;
@@ -23,8 +22,11 @@ public class AsyncManualResetEventTests
     public void IsSetReflectsEventState()
     {
         var mre = new AsyncManualResetEvent(set: false);
-        Assert.That(mre.IsSet, Is.False);
-        Assert.That(mre.RunContinuationAsynchronously, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.IsSet, Is.False);
+            Assert.That(mre.RunContinuationAsynchronously, Is.True);
+        }
 
         mre.Set();
         Assert.That(mre.IsSet, Is.True);
@@ -52,31 +54,34 @@ public class AsyncManualResetEventTests
     [Test]
     public void ConstructorWithCustomPool()
     {
-        var customPool = new TestObjectPool<bool>();
-        _ = new AsyncManualResetEvent(pool: customPool);
+        using var pool = new TestObjectPool<bool>();
+        _ = new AsyncManualResetEvent(pool: pool);
 
-        Assert.That(customPool.ActiveCount, Is.Zero);
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task WaitAsyncUnsetNeverCompletes()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(pool: pool);
 
         Task task = mre.WaitAsync().AsTask();
 
         await AsyncAssert.NeverCompletesAsync(task).ConfigureAwait(false);
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Theory]
     public void WaitAsyncAfterSetCompletesSynchronously(bool useAsTask)
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(pool: pool);
 
         mre.Set();
 
@@ -91,32 +96,38 @@ public class AsyncManualResetEventTests
             Assert.That(task.IsCompleted, Is.True);
         }
 
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public void WaitAsyncWithInitialStateSetCompletesSynchronously()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(set: true, pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(set: true, pool: pool);
 
         ValueTask task = mre.WaitAsync();
 
-        Assert.That(task.IsCompleted, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(task.IsCompleted, Is.True);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task MultipleWaitersCompleteAfterSet()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(pool: pool);
 
         Task t1 = mre.WaitAsync().AsTask();
         Task t2 = mre.WaitAsync().AsTask();
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+        }
 
         mre.Set();
 
@@ -128,8 +139,11 @@ public class AsyncManualResetEventTests
             Assert.That(mre.IsSet, Is.True);
         }
 
-        Assert.That(mre.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
@@ -138,13 +152,16 @@ public class AsyncManualResetEventTests
     [TestCase(10)]
     public async Task MultipleWaitersAllComplete(int numberOfWaiters)
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(pool: pool);
 
         Task[] taskWaiters = Enumerable.Range(0, numberOfWaiters).Select(_ => mre.WaitAsync().AsTask()).ToArray();
 
-        Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.True);
+            Assert.That(pool.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+        }
 
         foreach (Task t in taskWaiters)
         {
@@ -161,15 +178,18 @@ public class AsyncManualResetEventTests
             Assert.That(mre.IsSet, Is.True);
         }
 
-        Assert.That(mre.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task ResetUnsetsEvent()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(set: true, pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(set: true, pool: pool);
 
         Assert.That(mre.IsSet, Is.True);
 
@@ -181,14 +201,13 @@ public class AsyncManualResetEventTests
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
 
         Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task ResetWhenAlreadyResetDoesNothing()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(set: false, pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(set: false, pool: pool);
 
         mre.Reset();
 
@@ -196,14 +215,13 @@ public class AsyncManualResetEventTests
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
 
         Assert.That(mre.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task SetAfterResetReleasesNewWaiters()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(set: true, pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(set: true, pool: pool);
 
         await mre.WaitAsync().ConfigureAwait(false);
 
@@ -216,15 +234,18 @@ public class AsyncManualResetEventTests
 
         await waiter.ConfigureAwait(false);
 
-        Assert.That(mre.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task MultipleSetCallsOnlySignalOnce()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var mre = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var mre = new AsyncManualResetEvent(pool: pool);
 
         mre.Set();
         mre.Set();
@@ -235,49 +256,59 @@ public class AsyncManualResetEventTests
         await mre.WaitAsync().ConfigureAwait(false);
 
         Assert.That(mre.IsSet, Is.True);
-
-        Assert.That(tpvts.ActiveCount, Is.Zero);
     }
 
     [Test]
     public async Task WaitAsyncWithCancellationTokenCancelsBeforeQueuing()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
         using var cts = new CancellationTokenSource();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
         ValueTask vt = ev.WaitAsync(cts.Token);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task WaitAsyncWithCancellationTokenCancelsWhileQueued()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncManualResetEvent(set: false, pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(set: false, pool: pool);
+
         using var cts = new CancellationTokenSource();
 
         ValueTask vt = ev.WaitAsync(cts.Token);
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task WaitAsyncWithCancellationTokenSucceedsIfNotCancelled()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
+
         using var cts = new CancellationTokenSource();
 
         ValueTask vt = ev.WaitAsync(cts.Token);
@@ -286,45 +317,59 @@ public class AsyncManualResetEventTests
 
         await vt.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task CancellationOfMiddleWaiterInQueue()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
 
         var waiter1 = ev.WaitAsync();
         using var cts = new CancellationTokenSource();
         var waiter2 = ev.WaitAsync(cts.Token);
         var waiter3 = ev.WaitAsync();
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(pool.ActiveCount, Is.EqualTo(2));
+        }
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
+#pragma warning disable CHT010 // ValueTask captured in lambda or closure
         Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
+#pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
-        Assert.That(ev.InternalWaiterInUse, Is.True);
-        Assert.That(tpvts.ActiveCount, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.True);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+        }
 
         ev.Set();
 
         await waiter1.ConfigureAwait(false);
         await waiter3.ConfigureAwait(false);
 
-        Assert.That(ev.InternalWaiterInUse, Is.False);
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.InternalWaiterInUse, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test]
     public async Task CancellationAfterSetButBeforeAwaitDoesNotThrow()
     {
-        var tpvts = new TestObjectPool<bool>();
-        var ev = new AsyncManualResetEvent(pool: tpvts);
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
         using var cts = new CancellationTokenSource();
 
         var waiter = ev.WaitAsync(cts.Token);
@@ -334,20 +379,114 @@ public class AsyncManualResetEventTests
 
         await waiter.ConfigureAwait(false);
 
-        Assert.That(tpvts.ActiveCount, Is.Zero);
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
     public void TryReset_SucceedsWhenNotInUse()
     {
-        var ev = new AsyncManualResetEvent(set: true);
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(set: true, pool: pool);
 
         Assert.That(ev.IsSet, Is.True);
 
         bool reset = ev.TryReset();
-        Assert.That(reset, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(reset, Is.True);
+            Assert.That(ev.IsSet, Is.False);
+            Assert.That(ev.RunContinuationAsynchronously, Is.True);
+        }
+    }
 
-        Assert.That(ev.IsSet, Is.False);
-        Assert.That(ev.RunContinuationAsynchronously, Is.True);
+    [Test]
+    public async Task TryReset_FailsWhileWaitersQueued()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(set: false, pool: pool);
+
+        var waiterTask = Task.Run(async () => await ev.WaitAsync().ConfigureAwait(false));
+
+        while (!ev.InternalWaiterInUse)
+        {
+            await Task.Delay(1).ConfigureAwait(false);
+        }
+
+        Assert.That(ev.TryReset(), Is.False);
+
+        ev.Set();
+        await waiterTask.ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithTimeoutCompletesWhenSetBeforeTimeout()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
+
+        _ = Task.Run(async () => { await Task.Delay(50).ConfigureAwait(false); ev.Set(); });
+
+        await ev.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncWithTimeoutThrowsWhenTimeoutElapses()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
+
+        Assert.ThrowsAsync<TimeoutException>(async () =>
+            await ev.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+
+        await Task.Delay(50).ConfigureAwait(false);
+
+        Assert.That(ev.InternalWaiterInUse, Is.False);
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSet()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
+
+        Assert.ThrowsAsync<TimeoutException>(async () =>
+            await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+    }
+
+    [Test]
+    public async Task WaitAsyncWithZeroTimeoutCompletesImmediatelyWhenSet()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(set: true, pool: pool);
+
+        await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.True);
+    }
+
+    [Test]
+    public void WaitAsyncWithNegativeTimeoutThrows()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
+
+#pragma warning disable VSTHRD110
+        Assert.Throws<ArgumentOutOfRangeException>(() => ev.WaitAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test]
+    public async Task WaitAsyncWithInfiniteTimeoutBehavesLikeWaitAsync()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var ev = new AsyncManualResetEvent(pool: pool);
+
+        ev.Set();
+
+        await ev.WaitAsync(Timeout.InfiniteTimeSpan).ConfigureAwait(false);
+
+        Assert.That(ev.IsSet, Is.True);
     }
 }

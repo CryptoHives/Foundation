@@ -1,4 +1,4 @@
-﻿# AsyncManualResetEvent
+# AsyncManualResetEvent
 
 ## Overview
 
@@ -105,6 +105,50 @@ ValueTask vt = _event.WaitAsync();
 await vt;
 await vt;  // Throws InvalidOperationException!
 ```
+
+### WaitAsync (timeout)
+
+```csharp
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+```
+
+Asynchronously waits for the event to be set, or throws `TimeoutException` if the timeout elapses first.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `TimeProvider`).
+
+**Returns**: A `ValueTask` that completes when the event is set.
+
+**Throws**:
+- `TimeoutException` — If the timeout elapses before the event is set.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes**:
+
+| Scenario | TimeProvider allocated? |
+|---|---|
+| Event already signaled | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and not set | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+**Examples**:
+
+```csharp
+// Preferred: direct timeout await — no Task conversion
+await _event.WaitAsync(TimeSpan.FromSeconds(5));
+
+// Previously required — now unnecessary:
+// await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+
+// Infinite timeout delegates to WaitAsync() — no CTS allocation
+await _event.WaitAsync(Timeout.InfiniteTimeSpan);
+```
+
+### Allocation Behavior
+
+Immediate waits are completely allocation-free using atomic operations. When the event is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated operations.
 
 ### Set
 
@@ -304,6 +348,20 @@ await vt;  // Exception!
 Task t = _event.WaitAsync().AsTask();
 await t;
 await t;  // OK
+```
+
+### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+
+```csharp
+try
+{
+    await _event.WaitAsync(TimeSpan.FromSeconds(10));
+    ProcessData();
+}
+catch (TimeoutException)
+{
+    HandleTimeout();
+}
 ```
 
 ## Common Patterns

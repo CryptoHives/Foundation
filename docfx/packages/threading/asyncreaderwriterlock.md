@@ -7,6 +7,8 @@ A pooled, allocation-free async reader-writer lock that supports multiple concur
 `AsyncReaderWriterLock` is an async-compatible reader-writer lock. It allows multiple readers to enter the lock concurrently, but only one writer can hold the lock exclusively. Writers are prioritized over readers to prevent writer starvation. One upgradeable reader at a time can share access with multiple other readers. Once the
 upgradeable reader is upgraded to writer, it may have to wait until all readers release the lock. An upgradeable reader may release the lock while still upgraded writers are queued for write access.
 
+An additional internal state, `UpgradedWriterWithoutReader`, is used when an upgradeable reader releases the lock before all concurrent readers have released while an upgrade to writer is in progress. This ensures correct handling of waiting writers under this scenario.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │    ------------                                                             │
@@ -137,6 +139,16 @@ public ValueTask<Releaser> ReaderLockAsync(CancellationToken cancellationToken =
 
 Asynchronously acquires a reader lock. Multiple readers can hold the lock concurrently.
 
+### ReaderLockAsync (timeout)
+
+```csharp
+public ValueTask<Releaser> ReaderLockAsync(TimeSpan timeout)
+```
+
+Asynchronously acquires a reader lock, or throws `TimeoutException` if the timeout elapses first.
+
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+
 ### UpgradeableReaderLockAsync
 
 ```csharp
@@ -145,6 +157,16 @@ public ValueTask<Releaser> UpgradeableReaderLockAsync(CancellationToken cancella
 
 Asynchronously acquires an upgradeable reader lock. One upgradeable reader can coexist with other readers and may later be promoted to a writer lock.
 
+### UpgradeableReaderLockAsync (timeout)
+
+```csharp
+public ValueTask<Releaser> UpgradeableReaderLockAsync(TimeSpan timeout)
+```
+
+Asynchronously acquires an upgradeable reader lock, or throws `TimeoutException` if the timeout elapses first.
+
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+
 ### WriterLockAsync
 
 ```csharp
@@ -152,6 +174,45 @@ public ValueTask<Releaser> WriterLockAsync(CancellationToken cancellationToken =
 ```
 
 Asynchronously acquires a writer lock. Only one writer can hold the lock.
+
+### WriterLockAsync (timeout)
+
+```csharp
+public ValueTask<Releaser> WriterLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+```
+
+Asynchronously acquires a writer lock, or throws `TimeoutException` if the timeout elapses first.
+
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes for all timeout overloads**:
+
+| Scenario | TimeProvider allocated? |
+|---|---|
+| Lock immediately available | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and contested | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+### Allocation Behavior
+
+Immediate lock acquisitions via the fast path are completely allocation-free using atomic operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<Releaser>` instances are reused to minimize allocation pressure across repeated lock operations.
+
+**Example**:
+
+```csharp
+try
+{
+    using (await _rwLock.ReaderLockAsync(TimeSpan.FromSeconds(5)))
+    {
+        return await ReadDataAsync();
+    }
+}
+catch (TimeoutException)
+{
+    HandleTimeout();
+}
+```
 
 ## Releaser
 
@@ -233,6 +294,24 @@ Measures the performance of acquiring an upgradeable reader lock, holding additi
 - Read-heavy workloads with occasional writes
 - Cache implementations with read/write patterns
 - Document or configuration stores
+
+## Best Practices
+
+### ✓ DO: Use timeout overloads to bound lock-wait time
+
+```csharp
+try
+{
+    using (await _rwLock.WriterLockAsync(TimeSpan.FromSeconds(5)))
+    {
+        await SaveDataAsync();
+    }
+}
+catch (TimeoutException)
+{
+    HandleTimeout();
+}
+```
 
 **Design Trade-offs:**
 

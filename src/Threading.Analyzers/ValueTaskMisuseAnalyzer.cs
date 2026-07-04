@@ -43,7 +43,8 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         DiagnosticDescriptors.DirectResultAccess,
         DiagnosticDescriptors.PassedToUnsafeMethod,
         DiagnosticDescriptors.AsTaskStoredBeforeSignal,
-        DiagnosticDescriptors.NotConsumed);
+        DiagnosticDescriptors.NotConsumed,
+        DiagnosticDescriptors.CapturedInClosure);
 
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
@@ -556,8 +557,12 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     if (IsValueTaskType(typeInfo.Type))
                     {
                         // Don't warn if the ValueTask was preserved (safe to call GetResult on preserved ValueTask)
-                        // This includes both stored preserved variables and inline Preserve() calls
-                        if (!IsPreservedVariable(getAwaiterAccess.Expression) && !IsPreserveCall(getAwaiterAccess.Expression))
+                        // This includes both stored preserved variables and inline Preserve() calls.
+                        // Also safe when the call is guarded by an IsCompletedSuccessfully/IsCompleted check
+                        // on the same variable (the task is already done so GetResult() cannot block).
+                        if (!IsPreservedVariable(getAwaiterAccess.Expression) &&
+                            !IsPreserveCall(getAwaiterAccess.Expression) &&
+                            !IsGuardedByCompletionCheck(invocation, getAwaiterAccess.Expression))
                         {
                             var diagnostic = Diagnostic.Create(
                                 DiagnosticDescriptors.BlockingGetResult,
@@ -646,11 +651,17 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                 TypeInfo typeInfo = _semanticModel.GetTypeInfo(memberAccess.Expression, _context.CancellationToken);
                 if (IsValueTaskType(typeInfo.Type))
                 {
-                    var diagnostic = Diagnostic.Create(
-                        DiagnosticDescriptors.DirectResultAccess,
-                        memberAccess.GetLocation(),
-                        GetExpressionName(memberAccess.Expression));
-                    _context.ReportDiagnostic(diagnostic);
+                    // Safe when the access is in the completing branch of a guard:
+                    //   if (vt.IsCompletedSuccessfully) { _ = vt.Result; }
+                    //   vt.IsCompletedSuccessfully ? vt.Result : fallback
+                    if (!IsGuardedByCompletionCheck(memberAccess, memberAccess.Expression))
+                    {
+                        var diagnostic = Diagnostic.Create(
+                            DiagnosticDescriptors.DirectResultAccess,
+                            memberAccess.GetLocation(),
+                            GetExpressionName(memberAccess.Expression));
+                        _context.ReportDiagnostic(diagnostic);
+                    }
 
                     TrackUsageFromExpression(memberAccess.Expression);
                 }
@@ -695,7 +706,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
                 // This is a captured variable from outer scope - flag it as potential misuse
                 var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.MultipleAwait,
+                    DiagnosticDescriptors.CapturedInClosure,
                     identifier.GetLocation(),
                     identifier.Identifier.Text);
                 _context.ReportDiagnostic(diagnostic);
@@ -767,6 +778,84 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     return _preservedVariables.Contains(symbolInfo.Symbol);
                 }
             }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true when <paramref name="startNode"/> is textually enclosed in a guarded branch
+        /// that guarantees the ValueTask identified by <paramref name="valueTaskExpression"/> is already
+        /// complete.  Two guard shapes are recognised:
+        /// <list type="bullet">
+        ///   <item><c>if (vt.IsCompletedSuccessfully) { /* startNode here */ }</c> – then-branch of an if</item>
+        ///   <item><c>vt.IsCompletedSuccessfully ? /* startNode here */ : …</c> – WhenTrue of a ternary</item>
+        /// </list>
+        /// The else/WhenFalse branches are never considered guarded.
+        /// </summary>
+        private bool IsGuardedByCompletionCheck(SyntaxNode startNode, ExpressionSyntax valueTaskExpression)
+        {
+            if (valueTaskExpression is not IdentifierNameSyntax identifier)
+            {
+                return false;
+            }
+
+            SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(identifier, _context.CancellationToken);
+            if (symbolInfo.Symbol is null)
+            {
+                return false;
+            }
+
+            SyntaxNode? child = startNode;
+            SyntaxNode? node = startNode.Parent;
+            while (node is not null)
+            {
+                // if (vt.IsCompletedSuccessfully) { … } — only the then-branch (Statement), not else
+                if (node is IfStatementSyntax ifStatement &&
+                    child == ifStatement.Statement &&
+                    IsCompletionPropertyCheck(ifStatement.Condition, symbolInfo.Symbol))
+                {
+                    return true;
+                }
+
+                // vt.IsCompletedSuccessfully ? … : … — only the WhenTrue branch, not WhenFalse
+                if (node is ConditionalExpressionSyntax conditional &&
+                    child == conditional.WhenTrue &&
+                    IsCompletionPropertyCheck(conditional.Condition, symbolInfo.Symbol))
+                {
+                    return true;
+                }
+
+                // Do not cross method/lambda/local-function boundaries
+                if (node is MethodDeclarationSyntax or LocalFunctionStatementSyntax or
+                    ParenthesizedLambdaExpressionSyntax or SimpleLambdaExpressionSyntax)
+                {
+                    break;
+                }
+
+                child = node;
+                node = node.Parent;
+            }
+
+            return false;
+        }
+
+        private bool IsCompletionPropertyCheck(ExpressionSyntax condition, ISymbol valueTaskSymbol)
+        {
+            // Unwrap parentheses
+            while (condition is ParenthesizedExpressionSyntax p)
+            {
+                condition = p.Expression;
+            }
+
+            if (condition is MemberAccessExpressionSyntax memberAccess)
+            {
+                string propName = memberAccess.Name.Identifier.Text;
+                if (propName is "IsCompletedSuccessfully" or "IsCompleted")
+                {
+                    SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(memberAccess.Expression, _context.CancellationToken);
+                    return SymbolEqualityComparer.Default.Equals(symbolInfo.Symbol, valueTaskSymbol);
+                }
+            }
+
             return false;
         }
 

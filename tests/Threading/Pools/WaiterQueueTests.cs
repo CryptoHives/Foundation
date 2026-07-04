@@ -21,7 +21,7 @@ public class WaiterQueueTests
     public void EnqueueIncreasesCount()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         queue.Enqueue(pool.GetPooledWaiter(null));
         Assert.That(queue.Count, Is.EqualTo(1));
@@ -31,13 +31,17 @@ public class WaiterQueueTests
 
         queue.Enqueue(pool.GetPooledWaiter(null));
         Assert.That(queue.Count, Is.EqualTo(3));
+
+        pool.Return((queue.Dequeue() as PooledManualResetValueTaskSource<bool>)!);
+        pool.Return((queue.Dequeue() as PooledManualResetValueTaskSource<bool>)!);
+        pool.Return((queue.Dequeue() as PooledManualResetValueTaskSource<bool>)!);
     }
 
     [Test]
     public void DequeueReturnsInFifoOrder()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         var second = pool.GetPooledWaiter(null);
@@ -54,30 +58,37 @@ public class WaiterQueueTests
             Assert.That(queue.Dequeue(), Is.SameAs(third));
             Assert.That(queue.Count, Is.Zero);
         }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
     }
 
     [Test]
     public void DequeueClearsNodeLinks()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var node = pool.GetPooledWaiter(null);
         queue.Enqueue(node);
-        queue.Dequeue();
+        var queuedWaiter = queue.Dequeue() as PooledManualResetValueTaskSource<bool>;
 
         using (Assert.EnterMultipleScope())
         {
+            Assert.That(queuedWaiter, Is.Not.Null);
             Assert.That(node.Next, Is.Null);
             Assert.That(node.Prev, Is.Null);
         }
+
+        pool.Return(queuedWaiter);
     }
 
     [Test]
     public void RemoveOnlyElement()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var node = pool.GetPooledWaiter(null);
         queue.Enqueue(node);
@@ -91,13 +102,15 @@ public class WaiterQueueTests
             Assert.That(node.Next, Is.Null);
             Assert.That(node.Prev, Is.Null);
         }
+
+        pool.Return(node);
     }
 
     [Test]
     public void RemoveHead()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         var second = pool.GetPooledWaiter(null);
@@ -116,13 +129,21 @@ public class WaiterQueueTests
             Assert.That(queue.Dequeue(), Is.SameAs(second));
             Assert.That(queue.Dequeue(), Is.SameAs(third));
         }
+
+        pool.Return(first);
+
+        queue.Remove(second);
+        pool.Return(second);
+
+        queue.Remove(third);
+        pool.Return(third);
     }
 
     [Test]
     public void RemoveTail()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         var second = pool.GetPooledWaiter(null);
@@ -141,13 +162,17 @@ public class WaiterQueueTests
             Assert.That(queue.Dequeue(), Is.SameAs(first));
             Assert.That(queue.Dequeue(), Is.SameAs(second));
         }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
     }
 
     [Test]
     public void RemoveMiddle()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         var second = pool.GetPooledWaiter(null);
@@ -166,13 +191,17 @@ public class WaiterQueueTests
             Assert.That(queue.Dequeue(), Is.SameAs(first));
             Assert.That(queue.Dequeue(), Is.SameAs(third));
         }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
     }
 
     [Test]
     public void RemoveNodeNotInQueueReturnsFalse()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var inQueue = pool.GetPooledWaiter(null);
         var notInQueue = pool.GetPooledWaiter(null);
@@ -186,24 +215,29 @@ public class WaiterQueueTests
             Assert.That(removed, Is.False);
             Assert.That(queue.Count, Is.EqualTo(1));
         }
+
+        pool.Return(inQueue);
+        pool.Return(notInQueue);
     }
 
     [Test]
     public void RemoveFromEmptyQueueReturnsFalse()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
         var node = pool.GetPooledWaiter(null);
 
         bool removed = queue.Remove(node);
         Assert.That(removed, Is.False);
+
+        pool.Return(node);
     }
 
     [Test]
     public void DoubleRemoveReturnsFalseOnSecondCall()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var node = pool.GetPooledWaiter(null);
         queue.Enqueue(node);
@@ -217,13 +251,15 @@ public class WaiterQueueTests
             Assert.That(second, Is.False);
             Assert.That(queue.Count, Is.Zero);
         }
+
+        pool.Return(node);
     }
 
     [Test]
     public void DetachAllReturnsChainAndClearsQueue()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         var second = pool.GetPooledWaiter(null);
@@ -244,13 +280,17 @@ public class WaiterQueueTests
             Assert.That(head.Next!.Next, Is.SameAs(third));
             Assert.That(head.Next.Next!.Next, Is.Null);
         }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
     }
 
     [Test]
     public void DetachAllClearsPrevLinks()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         var second = pool.GetPooledWaiter(null);
@@ -265,6 +305,9 @@ public class WaiterQueueTests
             Assert.That(first.Prev, Is.Null);
             Assert.That(second.Prev, Is.Null);
         }
+
+        pool.Return(first);
+        pool.Return(second);
     }
 
     [Test]
@@ -285,7 +328,7 @@ public class WaiterQueueTests
     public void EnqueueAfterDetachAllWorksCorrectly()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         queue.Enqueue(first);
@@ -301,35 +344,58 @@ public class WaiterQueueTests
             Assert.That(queue.Count, Is.EqualTo(1));
             Assert.That(queue.Dequeue(), Is.SameAs(second));
         }
+
+        pool.Return(first);
+        pool.Return(second);
     }
 
     [Test]
     public void DetachFirstReturnsSubset()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
-        var a = pool.GetPooledWaiter(null);
-        var b = pool.GetPooledWaiter(null);
-        var c = pool.GetPooledWaiter(null);
-        var d = pool.GetPooledWaiter(null);
+        var first = pool.GetPooledWaiter(null);
+        var second = pool.GetPooledWaiter(null);
+        var third = pool.GetPooledWaiter(null);
+        var fourth = pool.GetPooledWaiter(null);
 
-        queue.Enqueue(a);
-        queue.Enqueue(b);
-        queue.Enqueue(c);
-        queue.Enqueue(d);
+        queue.Enqueue(first);
+        queue.Enqueue(second);
+        queue.Enqueue(third);
+        queue.Enqueue(fourth);
 
         var head = queue.DetachUpTo(2, out int count);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(count, Is.EqualTo(2));
-            Assert.That(head, Is.SameAs(a));
-            Assert.That(head!.Next, Is.SameAs(b));
+            Assert.That(head, Is.SameAs(first));
+            Assert.That(head!.Next, Is.SameAs(second));
             Assert.That(head.Next!.Next, Is.Null);
             Assert.That(queue.Count, Is.EqualTo(2));
-            Assert.That(queue.Dequeue(), Is.SameAs(c));
-            Assert.That(queue.Dequeue(), Is.SameAs(d));
+            Assert.That(queue.Dequeue(), Is.SameAs(third));
+            Assert.That(queue.Dequeue(), Is.SameAs(fourth));
+        }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
+        pool.Return(fourth);
+    }
+
+    [Test]
+    public void DetachUpToOnEmptyQueueReturnsNull()
+    {
+        var queue = new WaiterQueue<bool>();
+
+        var head = queue.DetachUpTo(5, out int count);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(head, Is.Null);
+            Assert.That(count, Is.Zero);
+            Assert.That(queue.Count, Is.Zero);
         }
     }
 
@@ -337,31 +403,34 @@ public class WaiterQueueTests
     public void DetachFirstMoreThanAvailableDetachesAll()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
-        var a = pool.GetPooledWaiter(null);
-        var b = pool.GetPooledWaiter(null);
+        var first = pool.GetPooledWaiter(null);
+        var second = pool.GetPooledWaiter(null);
 
-        queue.Enqueue(a);
-        queue.Enqueue(b);
+        queue.Enqueue(first);
+        queue.Enqueue(second);
 
         var head = queue.DetachUpTo(5, out int count);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(count, Is.EqualTo(2));
-            Assert.That(head, Is.SameAs(a));
-            Assert.That(head!.Next, Is.SameAs(b));
+            Assert.That(head, Is.SameAs(first));
+            Assert.That(head!.Next, Is.SameAs(second));
             Assert.That(head.Next!.Next, Is.Null);
             Assert.That(queue.Count, Is.Zero);
         }
+
+        pool.Return(first);
+        pool.Return(second);
     }
 
     [Test]
     public void EnqueueAfterRemoveAllWorksCorrectly()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
         var first = pool.GetPooledWaiter(null);
         queue.Enqueue(first);
@@ -375,94 +444,110 @@ public class WaiterQueueTests
             Assert.That(queue.Count, Is.EqualTo(1));
             Assert.That(queue.Dequeue(), Is.SameAs(second));
         }
+
+        pool.Return(first);
+        pool.Return(second);
     }
 
     [Test]
     public void InterleavedEnqueueDequeueRemove()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
-        var a = pool.GetPooledWaiter(null);
-        var b = pool.GetPooledWaiter(null);
-        var c = pool.GetPooledWaiter(null);
-        var d = pool.GetPooledWaiter(null);
+        var first = pool.GetPooledWaiter(null);
+        var second = pool.GetPooledWaiter(null);
+        var third = pool.GetPooledWaiter(null);
+        var fourth = pool.GetPooledWaiter(null);
 
-        queue.Enqueue(a);
-        queue.Enqueue(b);
-        queue.Enqueue(c);
+        queue.Enqueue(first);
+        queue.Enqueue(second);
+        queue.Enqueue(third);
 
         // Remove middle
-        queue.Remove(b);
+        queue.Remove(second);
         Assert.That(queue.Count, Is.EqualTo(2));
 
         // Dequeue head
         var dequeued = queue.Dequeue();
-        Assert.That(dequeued, Is.SameAs(a));
+        Assert.That(dequeued, Is.SameAs(first));
 
         // Enqueue new
-        queue.Enqueue(d);
+        queue.Enqueue(fourth);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(queue.Count, Is.EqualTo(2));
-            Assert.That(queue.Dequeue(), Is.SameAs(c));
-            Assert.That(queue.Dequeue(), Is.SameAs(d));
+            Assert.That(queue.Dequeue(), Is.SameAs(third));
+            Assert.That(queue.Dequeue(), Is.SameAs(fourth));
             Assert.That(queue.Count, Is.Zero);
         }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
+        pool.Return(fourth);
     }
 
     [Test]
     public void RemoveAllNodesOneByOneInForwardOrder()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
-        var a = pool.GetPooledWaiter(null);
-        var b = pool.GetPooledWaiter(null);
-        var c = pool.GetPooledWaiter(null);
+        var first = pool.GetPooledWaiter(null);
+        var second = pool.GetPooledWaiter(null);
+        var third = pool.GetPooledWaiter(null);
 
-        queue.Enqueue(a);
-        queue.Enqueue(b);
-        queue.Enqueue(c);
+        queue.Enqueue(first);
+        queue.Enqueue(second);
+        queue.Enqueue(third);
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(queue.Remove(a), Is.True);
+            Assert.That(queue.Remove(first), Is.True);
             Assert.That(queue.Count, Is.EqualTo(2));
 
-            Assert.That(queue.Remove(b), Is.True);
+            Assert.That(queue.Remove(second), Is.True);
             Assert.That(queue.Count, Is.EqualTo(1));
 
-            Assert.That(queue.Remove(c), Is.True);
+            Assert.That(queue.Remove(third), Is.True);
             Assert.That(queue.Count, Is.Zero);
         }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
     }
 
     [Test]
     public void RemoveAllNodesOneByOneInReverseOrder()
     {
         var queue = new WaiterQueue<bool>();
-        var pool = new TestObjectPool<bool>();
+        using var pool = new TestObjectPool<bool>();
 
-        var a = pool.GetPooledWaiter(null);
-        var b = pool.GetPooledWaiter(null);
-        var c = pool.GetPooledWaiter(null);
+        var first = pool.GetPooledWaiter(null);
+        var second = pool.GetPooledWaiter(null);
+        var third = pool.GetPooledWaiter(null);
 
-        queue.Enqueue(a);
-        queue.Enqueue(b);
-        queue.Enqueue(c);
+        queue.Enqueue(first);
+        queue.Enqueue(second);
+        queue.Enqueue(third);
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(queue.Remove(c), Is.True);
+            Assert.That(queue.Remove(third), Is.True);
             Assert.That(queue.Count, Is.EqualTo(2));
 
-            Assert.That(queue.Remove(b), Is.True);
+            Assert.That(queue.Remove(second), Is.True);
             Assert.That(queue.Count, Is.EqualTo(1));
 
-            Assert.That(queue.Remove(a), Is.True);
+            Assert.That(queue.Remove(first), Is.True);
             Assert.That(queue.Count, Is.Zero);
         }
+
+        pool.Return(first);
+        pool.Return(second);
+        pool.Return(third);
     }
 }

@@ -25,6 +25,7 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     private ManualResetValueTaskSourceCore<T> _core;
     private CancellationTokenRegistration _cancellationTokenRegistration;
     private CancellationToken _cancellationToken;
+    private ITimer? _timeoutTimer;
     private ObjectPool<PooledManualResetValueTaskSource<T>>? _ownerPool;
     private object? _owner;
 
@@ -59,6 +60,13 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
     }
 
     /// <inheritdoc/>
+    public override ITimer? TimeoutTimer
+    {
+        get => _timeoutTimer;
+        set => _timeoutTimer = value;
+    }
+
+    /// <inheritdoc/>
     public override bool RunContinuationsAsynchronously
     {
         get => _core.RunContinuationsAsynchronously;
@@ -86,6 +94,8 @@ public sealed class PooledManualResetValueTaskSource<T> : ManualResetValueTaskSo
         _ownerPool = null;
         _core.Reset();
         _cancellationTokenRegistration = default;
+        ITimer? timer = Interlocked.Exchange(ref _timeoutTimer, null);
+        timer?.Dispose();
         Next = null;
         Prev = null;
         return true;

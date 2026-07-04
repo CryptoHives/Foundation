@@ -1,1 +1,6 @@
-; No unshipped rules yet
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------
+
+

@@ -12,12 +12,28 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 
 /// <summary>
 /// An allocation-free async-compatible exclusive lock implemented with pooled ValueTask sources.
 /// Note that this lock is <b>not</b> recursive!
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>Optional timeout and cancellation token</b> parameters on <see cref="LockAsync(TimeSpan, CancellationToken)"/>.
+/// </para>
+/// 
+/// <para>
+/// <b>Allocation Behavior:</b> Immediate acquisitions are completely allocation-free using atomic 
+/// operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ 
+/// (using <c>UnsafeRegister</c> for cancellation), while older frameworks may allocate for cancellation 
+/// registration. Specifying a finite timeout allocates a timer that is automatically disposed when the 
+/// operation completes. Exception and task allocations occur only if a timeout actually elapses or 
+/// cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled 
+/// <see cref="IValueTaskSource{Releaser}"/> instances are reused to minimize allocation pressure across 
+/// repeated lock operations.
+/// </para>
+/// 
 /// <example>
 /// <para>The vast majority of use cases are to just replace a <c>lock</c> statement. 
 /// That is, with the original code looking like this:</para>
@@ -36,7 +52,7 @@ using System.Threading.Tasks;
 /// of a <c>lock</c>.</para>
 /// <para>So, we use the <c>async</c>-compatible <see cref="AsyncLock"/> instead:</para>
 /// <code>
-/// private readonly var _mutex = new AsyncLock();
+/// private var _mutex = new AsyncLock();
 /// public async Task DoStuffAsync()
 /// {
 ///     using (await _mutex.LockAsync())
@@ -68,8 +84,9 @@ public sealed class AsyncLock : IResettable
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _spinLock = new();
         _taken = 0;
-        _localWaiter = new(this);
-        _localWaiter.RunContinuationsAsynchronously = true;
+        _localWaiter = new(this) {
+            RunContinuationsAsynchronously = true
+        };
     }
 
     /// <inheritdoc/>
@@ -190,12 +207,59 @@ public sealed class AsyncLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this));
         }
 
-        return LockAsyncImpl(cancellationToken);
+        return LockAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asynchronously acquires the lock, or throws if the lock cannot be acquired before the timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// If the lock is immediately available, the method completes synchronously without allocating any
+    /// cancellation infrastructure. A <see cref="CancellationTokenSource"/> is allocated only when the
+    /// lock cannot be acquired immediately and a finite positive timeout is requested; it is disposed
+    /// automatically when the returned <see cref="ValueTask{Releaser}"/> is awaited.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
+    /// <returns>
+    /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired.
+    /// Dispose the returned releaser to release the lock.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="TimeoutException">
+    /// Thrown when the timeout elapses before the lock can be acquired. 
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
+    /// </exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        if (Interlocked.Exchange(ref _taken, 1) == 0)
+        {
+            return new ValueTask<Releaser>(new Releaser(this));
+        }
+
+        if (timeout == TimeSpan.Zero)
+        {
+            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+        }
+
+        return LockAsyncImpl(timeout, cancellationToken);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<Releaser> LockAsyncImpl(CancellationToken cancellationToken)
+    private ValueTask<Releaser> LockAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
+        ManualResetValueTaskSource<Releaser> waiter;
+        short version;
+
         _spinLock.Enter();
         try
         {
@@ -209,7 +273,7 @@ public sealed class AsyncLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<Releaser> waiter))
+            if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
                 waiter.RunContinuationsAsynchronously = true;
@@ -217,29 +281,37 @@ public sealed class AsyncLock : IResettable
 
             waiter.CancellationToken = cancellationToken;
 
-            // Use UnsafeRegister on .NET 6+ for performance
-            if (cancellationToken.CanBeCanceled)
-            {
-#if NET6_0_OR_GREATER
-                // Use UnsafeRegister on .NET 6+ for allocation free registration
-                waiter.CancellationTokenRegistration = cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-                waiter.CancellationTokenRegistration = cancellationToken.Register(
-                    CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-            }
-            else
-            {
-                Debug.Assert(waiter.CancellationTokenRegistration == default);
-            }
-
+            version = waiter.Version;
             _waiters.Enqueue(waiter);
-            return new ValueTask<Releaser>(waiter, waiter.Version);
+
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    _timerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
+            }
         }
         finally
         {
             _spinLock.Exit();
         }
+
+        if (cancellationToken.CanBeCanceled)
+        {
+#if NET6_0_OR_GREATER
+            // Use UnsafeRegister on .NET 6+ for allocation free registration
+            waiter.CancellationTokenRegistration =
+                cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+            waiter.CancellationTokenRegistration =
+                cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+        }
+        else
+        {
+            Debug.Assert(waiter.CancellationTokenRegistration == default);
+        }
+
+        return new ValueTask<Releaser>(waiter, version);
     }
 
     /// <summary>
@@ -278,6 +350,17 @@ public sealed class AsyncLock : IResettable
         toRelease.SetResult(new Releaser(this));
     }
 
+    /// <summary>
+    /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
+    /// </summary>
+    private static readonly TimerCallback _timerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<Releaser>)state!;
+        var context = (AsyncLock)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<Releaser>? toCancel = context.RemoveWaiter(timeoutState.Source, timeoutState.Version);
+        toCancel?.SetException(new TimeoutException());
+    };
+
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
         var waiter = (ManualResetValueTaskSource<Releaser>)state!;
@@ -296,14 +379,27 @@ public sealed class AsyncLock : IResettable
         }
 #endif
 
-        // O(1) removal from intrusive linked list.
-        ManualResetValueTaskSource<Releaser>? toCancel = null;
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(waiter, waiter.Version);
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+    }
+
+    /// <summary>
+    /// O(1) removal from intrusive linked list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<Releaser>? RemoveWaiter(ManualResetValueTaskSource<Releaser> waiter, short version)
+    {
         _spinLock.Enter();
         try
         {
-            if (_waiters.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waiters.Remove(waiter))
             {
-                toCancel = waiter;
+                return waiter;
             }
         }
         finally
@@ -311,9 +407,6 @@ public sealed class AsyncLock : IResettable
             _spinLock.Exit();
         }
 
-
-#pragma warning disable CA1508 // Avoid dead conditional code
-        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
-#pragma warning restore CA1508 // Avoid dead conditional code
+        return null;
     }
 }

@@ -1,4 +1,4 @@
-﻿# AsyncAutoResetEvent
+# AsyncAutoResetEvent
 
 ## Overview
 
@@ -22,6 +22,7 @@ public sealed class AsyncAutoResetEvent
 - **Local waiter optimization**: First queued waiter uses a pre-allocated local waiter to avoid allocations under low contention
 - **ValueTask-based API**: Low-allocation async operations
 - **Cancellation support**: Full `CancellationToken` support for queued waiters. Allocation free registration for .NET versions >= 6.0.
+- **Timeout support**: Direct `WaitAsync(TimeSpan)` overload — no `Task` conversion required. Allocates only one `TimeProvider` per contended timed wait; disposed automatically.
 - **Thread-safe**: All operations are thread-safe
 - **FIFO queue**: Waiters are released in first-in-first-out order
 
@@ -109,6 +110,50 @@ await vt;
 await vt;  // Throws InvalidOperationException!
 ```
 
+### WaitAsync (timeout)
+
+```csharp
+public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+```
+
+Asynchronously waits for the event to be signaled, or throws `TimeoutException` if the timeout elapses first.
+
+**Parameters**:
+- `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocation).
+
+**Returns**: A `ValueTask` that completes when the event is signaled.
+
+**Throws**:
+- `TimeoutException` — If the timeout elapses before the event is signaled.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
+- `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
+
+**Allocation notes**:
+
+| Scenario | TimeProvider allocated? |
+|---|---|
+| Event already signaled | No |
+| `Timeout.InfiniteTimeSpan` | No |
+| `TimeSpan.Zero` and not signaled | No (immediate exception) |
+| Finite positive timeout | Yes — one instance, disposed on await |
+
+**Examples**:
+
+```csharp
+// Preferred: direct timeout await — no Task conversion
+await _event.WaitAsync(TimeSpan.FromSeconds(5));
+
+// Previously required — now unnecessary:
+// await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+
+// Infinite timeout delegates to WaitAsync() — no timer allocation
+await _event.WaitAsync(Timeout.InfiniteTimeSpan);
+```
+
+### Allocation Behavior
+
+Immediate waits are completely allocation-free using atomic operations. When the event is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated operations.
+
 ### Set
 
 ```csharp
@@ -188,7 +233,6 @@ The benchmarks compare various `AsyncAutoResetEvent` implementations:
 - NitoAsyncAutoResetEvent: The implementation from Nito.AsyncEx library
 - AutoResetEvent: The .NET built-in `AutoResetEvent` which lacks the async API
 
-
 ### Set Operation Benchmark
 
 Measures the performance of signaling the event when no waiters are queued. There is no contention and no allocation cost in all implementations.
@@ -208,7 +252,7 @@ Measures the pattern where a waiter is queued before the event is signaled (asyn
 Each iteration level is also measured with a default and a cancellable token to show the overhead of cancellation support.
 Due to the different behavior of the pooled implementations with AsTask(), ValueTask and the RunContinuationAsynchronously flag, these variations are measured separately.
 The RefImpl and Nito implementations do not have the RunContinuationAsynchronously option and always complete asynchronously.
-ProtoPromise is now included as an additional low-allocation competitor and is often the fastest published implementation for the wait-then-set pattern. The caveat of the ProtoPromise library is the custom implementation of Promises as replacement for ValueTask and the custom cancelation tokens. The RefImpl implementation is also sometimes the fastest despite a memory allocation per waiter for a TaskCompletionSource. Also it does not support cancellation tokens and is out of contest for cancellable waits.
+ProtoPromise is now included as an additional low-allocation competitor and is often the fastest published implementation for the wait-then-set pattern. The caveat of the ProtoPromise library is the custom implementation of Promises as replacement for ValueTask and the custom cancellation tokens. The RefImpl implementation is also sometimes the fastest despite a memory allocation per waiter for a TaskCompletionSource. Also it does not support cancellation tokens and is out of contest for cancellable waits.
 The Nito.AsyncEx implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
 The pooled implementation starts to allocate memory only when the pool is exhausted (high contention), when the ValueTask is converted to Task by AsTask() or when cancellable tokens are used in legacy .NET versions prior to .NET 6 (due to registration overhead).
 
@@ -300,6 +344,26 @@ Storing the `Task` result of `AsTask()` before `Set()` forces an asynchronous co
 ValueTask vt = _event.WaitAsync();
 await vt;
 await vt; // throws InvalidOperationException
+```
+
+### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+
+Avoid the `AsTask().WaitAsync(timeout)` pattern — it forces a `Task` allocation and may cause the 10x–100x slowdown described above. Use the direct timeout overload instead:
+
+```csharp
+// Good: direct timeout, ValueTask stays allocation-light
+try
+{
+    await _event.WaitAsync(TimeSpan.FromSeconds(2));
+    ProcessSignal();
+}
+catch (TimeoutException)
+{
+    HandleTimeout();
+}
+
+// Bad: allocates Task, may degrade performance under RunContinuationAsynchronously=true
+await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
 ```
 
 ## Common Patterns

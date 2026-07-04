@@ -646,13 +646,18 @@ byte[] ciphertext = kuz.Encrypt(plaintext);
 ```csharp
 public sealed class Kalyna128 : BlockCipherTransform
 public sealed class Kalyna256 : BlockCipherTransform
+public sealed class Kalyna512 : BlockCipherTransform
 ```
 
 **Properties:**
-- Key Sizes: 128 or 256 bits
-- Block Size: 128 bits
-- Rounds: 10 (128-bit key), 14 (256-bit key)
+- Key Sizes: 128, 256, or 512 bits
+- Block Size: 128 bits (Kalyna-128/Kalyna-256), 256 bits (Kalyna-512)
+- Rounds: 10 (128-bit key), 14 (256-bit key), 18 (512-bit key)
 - Standard: DSTU 7624:2014
+
+**Kalyna-512 note:**
+- Uses a 256-bit block with a 512-bit key
+- Matches the widest Kalyna configuration in the standard
 
 **Security:**
 - ✅ Ukrainian national standard

@@ -264,6 +264,78 @@ public class AesGcmTests
         Assert.Throws<CryptographicException>(() => aesGcm.Decrypt(wrongNonce, ciphertextWithTag));
     }
 
+    [Test]
+    public void AesGcm_Encrypt_TagBufferLargerThanTagSize_WritesTagWithoutThrowing()
+    {
+        byte[] key = new byte[16];
+        byte[] nonce = new byte[12];
+        byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Secret message");
+
+        using var aesGcm = AesGcm128.Create(key);
+
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] expectedTag = new byte[16];
+        aesGcm.Encrypt(nonce, plaintext, ciphertext, expectedTag);
+
+        // Oversized tag buffer: only the first TagSizeBytes must be written, the rest untouched.
+        byte[] oversizedTag = new byte[32];
+        oversizedTag[20] = 0xAB;
+
+        Assert.DoesNotThrow(() => aesGcm.Encrypt(nonce, plaintext, ciphertext, oversizedTag));
+        Assert.That(oversizedTag.AsSpan(0, 16).ToArray(), Is.EqualTo(expectedTag));
+        Assert.That(oversizedTag[20], Is.EqualTo(0xAB), "Bytes beyond TagSizeBytes must be left untouched.");
+    }
+
+    [Test]
+    public void AesGcm_DisposedInstance_Throws()
+    {
+        byte[] key = new byte[16];
+        byte[] nonce = new byte[12];
+        byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Test");
+
+        var aesGcm = AesGcm128.Create(key);
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] tag = new byte[16];
+        aesGcm.Encrypt(nonce, plaintext, ciphertext, tag);
+
+        aesGcm.Dispose();
+
+        byte[] decrypted = new byte[plaintext.Length];
+        Assert.Throws<ObjectDisposedException>(() => aesGcm.Encrypt(nonce, plaintext, ciphertext, tag));
+        Assert.Throws<ObjectDisposedException>(() => aesGcm.Decrypt(nonce, ciphertext, tag, decrypted));
+    }
+
+    /// <summary>
+    /// Verifies that Dispose zeroes the round keys and GHASH subkey material inside
+    /// the internal GcmCore rather than just dropping the reference and leaving the
+    /// key-derived bytes to linger in memory until GC.
+    /// </summary>
+    [Test]
+#if NET8_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Test-only reflection over a known concrete type.")]
+#endif
+    public void AesGcm_Dispose_ZeroesKeyMaterial()
+    {
+        byte[] key = System.Text.Encoding.UTF8.GetBytes("0123456789ABCDEF");
+        var aesGcm = AesGcm128.Create(key);
+
+        var gcmCoreField = typeof(CryptoHives.Foundation.Security.Cryptography.Cipher.AesGcm).GetField("_gcmCore",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+
+        aesGcm.Dispose();
+
+        object gcmCore = gcmCoreField.GetValue(aesGcm)!;
+        Type gcmCoreType = gcmCore.GetType();
+
+        byte[] encRoundKeysBytes = ToByteArray(GetFieldValue<uint[]>(gcmCore, gcmCoreType, "_encRoundKeys"));
+        byte[] hashSubkey = GetFieldValue<byte[]>(gcmCore, gcmCoreType, "_h");
+        ulong[] shoupTable = GetFieldValue<ulong[]>(gcmCore, gcmCoreType, "_shoupTable");
+
+        Assert.That(encRoundKeysBytes, Is.All.EqualTo((byte)0), "Round keys were not zeroed on Dispose.");
+        Assert.That(hashSubkey, Is.All.EqualTo((byte)0), "GHASH subkey H was not zeroed on Dispose.");
+        Assert.That(shoupTable, Is.All.EqualTo(0UL), "Precomputed Shoup table was not zeroed on Dispose.");
+    }
+
     // ========================================================================
     // AES-256-GCM Specific Tests
     // ========================================================================
@@ -309,6 +381,22 @@ public class AesGcmTests
         {
             bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
         }
+        return bytes;
+    }
+
+#if NET8_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Test-only reflection over a known concrete type.")]
+#endif
+    private static T GetFieldValue<T>(object instance, Type type, string fieldName)
+    {
+        var field = type.GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        return (T)field.GetValue(instance)!;
+    }
+
+    private static byte[] ToByteArray(uint[] words)
+    {
+        byte[] bytes = new byte[words.Length * sizeof(uint)];
+        Buffer.BlockCopy(words, 0, bytes, 0, bytes.Length);
         return bytes;
     }
 }

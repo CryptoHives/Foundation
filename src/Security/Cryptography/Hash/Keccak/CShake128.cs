@@ -172,8 +172,10 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
     /// Squeezes output bytes from the XOF state.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Squeeze(Span<byte> output)
     {
+        if (_disposed) throw new ObjectDisposedException(GetType().Name);
         if (!_finalized)
         {
             _buffer[RateBytes - 1] = 0x00;

@@ -1,25 +1,22 @@
-﻿# CryptoHives.Foundation.Threading Package
+# CryptoHives.Foundation.Threading Package
 
 ## Overview
 
-The Threading package provides high-performance, pooled async synchronization primitives for .NET applications with high throughput workloads, where many small memory allocations matter. All synchronization primitives leverage `ValueTask` and pooled `IValueTaskSource` for efficient async operations. They are not meant to replace but to complement existing popular async libraries.
+The Threading package provides pooled, `ValueTask`-based async synchronization primitives for .NET applications where high-throughput workloads make per-waiter allocations matter. They're meant to complement the existing async synchronization libraries for .NET, not replace them.
 
-There are already a number of popular async synchronization libraries available for .NET, but many of these incur significant memory allocations under high contention due to per-waiter `Task` and `TaskCompletionSource` allocations or cancellation handling.
-In recent years, the introduction of `ValueTask` and `IValueTaskSource` has enabled the creation of low-allocation async primitives that can be pooled and reused to minimize allocations in high-throughput scenarios.
-This library is the result of the research done by the *Keepers of the CryptoHives* into building efficient, pooled async synchronization primitives that leverage these modern .NET features.
-By demand, more primitives might be added in the future.
+Most popular async synchronization libraries allocate a `Task` and/or `TaskCompletionSource` per waiter, and cancellation handling often adds more. `ValueTask` and `IValueTaskSource`, introduced a few years ago, make it possible to build low-allocation primitives that can be pooled and reused instead. This library is what came out of the Keepers of the CryptoHives digging into that approach. More primitives may get added as the need comes up.
 
-## Key Features
+## Core Guarantees
 
-- **Pooled Primitives**: Synchronization objects backed by object pools
-- **ValueTask-based**: Low-allocation async operations
-- **High Performance**: Optimized for concurrent access patterns
-- **Thread-safe**: All operations are thread-safe
-- **Ease of use**: Drop-in replacement to replace other popular libraries by changing the namespace
-- **Cancellation support**: Full `CancellationToken` support across all primitives
-- **Configurable continuations**: Control synchronous vs asynchronous continuation execution
-- **Custom ObjectPools**: Supply your own object pools for fine-grained control
-- **Included Analyzers**: Roslyn analyzers automatically detect common ValueTask misuse patterns
+- **Pooled primitives** — synchronization objects backed by object pools
+- **`ValueTask`-based** — low-allocation async operations
+- **Thread-safe** — every operation is safe under concurrent access, using interlocked state transitions
+- **Drop-in replacement** — swap the namespace to migrate from other popular libraries
+- **Cancellation support** — full `CancellationToken` support across all primitives
+- **Timeout support** — optional timeout parameters on every lock acquisition method
+- **Configurable continuations** — control synchronous vs. asynchronous continuation execution
+- **Custom object pools** — supply your own for fine-grained control
+- **Optional analyzers** — Roslyn analyzers that catch common `ValueTask` misuse at compile time
 
 ## Installation
 
@@ -27,7 +24,7 @@ By demand, more primitives might be added in the future.
 dotnet add package CryptoHives.Foundation.Threading
 ```
 
-> **Note:** This package includes [Threading Analyzers](../threading.analyzers/index.md) automatically. The analyzers are transitive, so any project that references a project using this package will also benefit from the ValueTask misuse detection at compile time.
+> **Note:** This package does not include [Threading Analyzers](../threading.analyzers/index.md) automatically.
 
 ## Namespaces
 
@@ -69,29 +66,23 @@ using CryptoHives.Foundation.Threading.Pools;
 | `ValueTaskSourceObjectPool<T>` | Specialized provider that implements `IGetPooledManualResetValueTaskSource<T>` and returns pooled task sources | `CryptoHives.Foundation.Threading.Pools` |
 | `ValueTaskSourceObjectPools` | Static helper with shared pool instances and constants | `CryptoHives.Foundation.Threading.Pools` |
 
-## ⚠️ Known Issues and Caveats
+## Known Issues and Caveats
 
-1. Strictly only **await a ValueTask once**. An additional await or AsTask() may throw an `InvalidOperationException`.
-2. Strictly only **use AsTask() once**, and only if you have to. An additional await or AsTask() may throw an `InvalidOperationException`. Adds also a Task allocation on contention.
-3. **RunContinuationsAsynchronously** is by default enabled. In rare cases perf degradation may occur if the Task derived from a ValueTask is not immediately awaited (see benchmarks).
-4. **Pool Exhaustion**: In extreme high-throughput scenarios with many waiters, the pool may exhaust. Monitor and adjust usage patterns accordingly. Use a custom pool if necessary.
-5. Always await a ValueTask or AsTask() waiter primitive, or the `IValueTaskSource` is not returned to the pool.
-6. **AsTask() Performance Warning**: When `RunContinuationAsynchronously=true` (default), storing the result of `AsTask()` before signaling causes severe performance degradation (10x-100x slower). Always await `ValueTask` directly when possible.
+1. **Await a `ValueTask` exactly once.** A second `await` or `AsTask()` call may throw `InvalidOperationException`.
+2. **Use `AsTask()` at most once, and only when you actually need a `Task`.** Beyond the same `InvalidOperationException` risk, it also adds a `Task` allocation under contention.
+3. **Pool exhaustion.** Under extreme concurrency with many waiters, the pool can run dry. Watch usage patterns and adjust, or supply a custom pool if needed.
+4. **Always await.** If a `ValueTask` or `Task` waiter isn't awaited, its underlying `IValueTaskSource` never makes it back to the pool — that's a leak.
 
-## Benchmarks
+## Performance Characteristics
 
-Microbenchmarks and contention tests with a discussion of the performance characteristics are available to validate performance and allocation characteristics.
+- Synchronization objects are backed by object pools to keep GC pressure down.
+- `ValueTask`-based operations avoid heap allocation on the fast path.
+- Uncontended access uses lock-free atomic operations.
+- Continuations run via `RunContinuationsAsynchronously` by default, to avoid deadlocks.
 
-Please be aware that not all new replacement classes behave better than existing popular implementations in all scenarios; But most of the time they do.
+Not every primitive here beats its popular-library equivalent in every scenario — most of the time it does, but there are exceptions. `AsyncManualResetEvent`, for instance, pays for one `IValueTaskSource` per waiter because a single `ValueTask` can't be awaited by more than one caller. A `Task`-based implementation can let every waiter share the same underlying `Task`/`TaskCompletionSource` instead.
 
-For example the `AsyncManualResetEvent` implementation has an overhead of a `IValueTaskSource` per waiter, because `ValueTask` cannot be awaited by multiple instances. In contrast to a Task-based implementation all waiters can share the same wake-up Task and `TaskCompletionSource`.
-
-See the Benchmarks overview:
-
-- [Benchmarks Overview](benchmarks.md)
-
-Run reports are stored under:
-- `tests/Threading/BenchmarkDotNet.Artifacts/results/`
+See the [Benchmarks overview](benchmarks.md) for numbers. Raw run reports live under `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
 
 ## Quick Examples
 
@@ -229,29 +220,51 @@ public async Task WriteAsync(CancellationToken ct)
 }
 ```
 
-## Benefits
+## Timeout Support
 
-### Reduced Allocations
+Every synchronization primitive accepts an optional timeout, so you can attempt a non-blocking acquire or build timeout-based retry logic instead of waiting indefinitely:
 
-- Reuses `IValueTaskSource` instances from object pools
-- ValueTask-based APIs avoid Task allocations when operations complete synchronously
-- Best case: zero allocation overhead for async state machines
-- On latest .NET versions cancellation token registration is allocation free
+```csharp
+// Non-blocking attempt using TimeSpan.Zero
+try
+{
+    using (await _lock.LockAsync(TimeSpan.Zero))
+    {
+        await DoWorkAsync();
+    }
+}
+catch (TimeoutException)
+{
+    // Lock not immediately available
+}
+```
 
-### High Throughput
+```csharp
+// Timeout-based acquisition with retry
+private readonly AsyncLock _lock = new AsyncLock();
 
-- Optimized for high-contention scenarios
-- Lock-free operations where possible
-- Configurable continuation scheduling
+public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetries, CancellationToken ct)
+{
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            using (await _lock.LockAsync(timeout, ct))
+            {
+                return await PerformWorkAsync();
+            }
+        }
+        catch (TimeoutException) when (i < maxRetries - 1)
+        {
+            // Timeout occurred, retry
+            continue;
+        }
+    }
+    return false; // All retries exhausted
+}
+```
 
-### Compatibility
-
-- Drop in replacement of existing libraries by changing namespace
-- Works with async/await patterns
-- Cancellation token support
-- ConfigureAwait support
-
-## Performance Characteristics
+## Performance Characteristics by Primitive
 
 - **AsyncLock**: O(1) acquire when uncontended, FIFO queue for waiters
 - **AsyncAutoResetEvent**: O(1) Set/Wait, FIFO queue for single waiter release
@@ -259,14 +272,14 @@ public async Task WriteAsync(CancellationToken ct)
 
 ## Best Practices
 
-1. **Determine benefits**: Are pooled primitives and ValueTask beneficial for your workload?
-2. **Reuse instances**: Create synchronization primitives once and reuse them
-3. **Do not reuse ValueTask**: Always await or AsTask() only once per ValueTask instance
-4. **Always Await ValueTask and Task**: If not awaited, resources are not returned to the pool
-5. **Avoid holding locks**: Keep critical sections as short as possible
-6. **Use cancellation**: Always pass CancellationToken for long waits
-7. **ConfigureAwait(false)**: Use in library code to avoid context capture
-8. **Avoid AsTask() before signaling**: When `RunContinuationAsynchronously=true`, this causes severe performance degradation
+1. Confirm pooled primitives and `ValueTask` actually help your workload before switching — they shine under high throughput, less so at low concurrency (see the architecture caveats above).
+2. Create synchronization primitives once and reuse them rather than constructing per call.
+3. Await or call `AsTask()` on each `ValueTask` exactly once — never both, never twice.
+4. Always await a `ValueTask`/`Task` waiter; otherwise its resources never return to the pool.
+5. Keep critical sections short — don't hold a lock across unrelated work.
+6. Pass a `CancellationToken` for any wait that could be long — the check is nearly free.
+7. Use `ConfigureAwait(false)` in library code to avoid capturing the sync context.
+8. Don't call `AsTask()` before the primitive signals when `RunContinuationAsynchronously=true` — it causes a severe performance hit.
 
 ## Common Patterns
 
@@ -334,7 +347,7 @@ public async Task<T> RateLimitedOperationAsync<T>(Func<Task<T>> operation, Cance
 
 ## Advanced: Custom Pooling
 
-You can provide a custom provider that implements `IGetPooledManualResetValueTaskSource<T>` for fine-grained control over pool behavior. The built-in `ValueTaskSourceObjectPool<T>` implements this interface and can be used directly.
+You can supply your own provider implementing `IGetPooledManualResetValueTaskSource<T>` for fine-grained control over pool behavior. The built-in `ValueTaskSourceObjectPool<T>` already implements this interface and can be used directly.
 
 ```csharp
 using CryptoHives.Foundation.Threading.Pools;
@@ -353,30 +366,30 @@ var evt = new AsyncAutoResetEvent(
 
 ## ValueTaskSource Details
 
-The `ManualResetValueTaskSource<T>` abstract base class provides:
-- `Version` property for versioning support
-- `RunContinuationsAsynchronously` property to control continuation scheduling
+`ManualResetValueTaskSource<T>` (abstract base) provides:
+- `Version` for versioning support
+- `RunContinuationsAsynchronously` to control continuation scheduling
 - `CancellationToken` and `CancellationTokenRegistration` for cancellation support
-- `SetResult()` and `SetException()` for completion
+- `SetResult()` / `SetException()` for completion
 - `TryReset()` for pool reuse
 
-The `PooledManualResetValueTaskSource<T>` sealed implementation:
-- Automatically returns to pool after `GetResult()` is called
+`PooledManualResetValueTaskSource<T>` (sealed implementation):
+- Returns to the pool automatically after `GetResult()` is called
 - Integrates with `IResettable` for pool compatibility
-- Manages cancellation token registration lifecycle
+- Manages the cancellation token registration lifecycle
 
 ## See Also
 
-- [Threading Analyzers](../threading.analyzers/index.md) - Roslyn analyzers for detecting ValueTask misuse
+- [Threading Analyzers](../threading.analyzers/index.md) — Roslyn analyzers for detecting ValueTask misuse
 - [Memory Package](../memory/index.md)
-- [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
-- [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
-- [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
-- [AsyncLock](asynclock.md) - Async mutual exclusion lock
-- [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
-- [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
-- [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
-- [Benchmarks](benchmarks.md) - Benchmark description
+- [AsyncAutoResetEvent](asyncautoresetevent.md)
+- [AsyncManualResetEvent](asyncmanualresetevent.md)
+- [AsyncReaderWriterLock](asyncreaderwriterlock.md)
+- [AsyncLock](asynclock.md)
+- [AsyncCountdownEvent](asynccountdownevent.md)
+- [AsyncBarrier](asyncbarrier.md)
+- [AsyncSemaphore](asyncsemaphore.md)
+- [Benchmarks](benchmarks.md)
 
 ---
 
