@@ -657,7 +657,7 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -668,7 +668,7 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false));
     }
 
@@ -738,23 +738,23 @@ public class AsyncBarrierTests
         // whichever one the spinlock admits first should actually fire the post-phase action.
         // If RemoveParticipants wins, the third signal becomes a non-last signal for the new
         // (2-participant) phase and would queue forever with nothing left to complete it, so it
-        // is bounded by a timeout and a resulting cancellation is an accepted outcome.
+        // is bounded by a timeout and a resulting timeout is an accepted outcome.
         var removeTask = Task.Run(() => barrier.RemoveParticipants(1));
-        bool cancellationObserved = false;
+        bool timeoutObserved = false;
         var signalTask = Task.Run(async () => {
             try
             {
                 await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(300)).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (TimeoutException)
             {
-                // Expected in one race outcome: third signal may time out/cancel.
-                cancellationObserved = true;
+                // Expected in one race outcome: third signal may time out.
+                timeoutObserved = true;
             }
         });
 
         await Task.WhenAll(removeTask, signalTask).ConfigureAwait(false);
-        _ = cancellationObserved;
+        _ = timeoutObserved;
 
         await p1.ConfigureAwait(false);
         await p2.ConfigureAwait(false);

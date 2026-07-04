@@ -145,9 +145,9 @@ Asynchronously acquires a reader lock. Multiple readers can hold the lock concur
 public ValueTask<Releaser> ReaderLockAsync(TimeSpan timeout)
 ```
 
-Asynchronously acquires a reader lock, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously acquires a reader lock, or throws `TimeoutException` if the timeout elapses first.
 
-**Throws**: `OperationCanceledException` if the timeout elapses, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 
 ### UpgradeableReaderLockAsync
 
@@ -163,9 +163,9 @@ Asynchronously acquires an upgradeable reader lock. One upgradeable reader can c
 public ValueTask<Releaser> UpgradeableReaderLockAsync(TimeSpan timeout)
 ```
 
-Asynchronously acquires an upgradeable reader lock, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously acquires an upgradeable reader lock, or throws `TimeoutException` if the timeout elapses first.
 
-**Throws**: `OperationCanceledException` if the timeout elapses, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 
 ### WriterLockAsync
 
@@ -181,9 +181,9 @@ Asynchronously acquires a writer lock. Only one writer can hold the lock.
 public ValueTask<Releaser> WriterLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously acquires a writer lock, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously acquires a writer lock, or throws `TimeoutException` if the timeout elapses first.
 
-**Throws**: `OperationCanceledException` if the timeout elapses, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes for all timeout overloads**:
 
@@ -208,7 +208,7 @@ try
         return await ReadDataAsync();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
@@ -307,7 +307,7 @@ try
         await SaveDataAsync();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }

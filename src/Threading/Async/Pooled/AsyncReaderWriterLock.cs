@@ -321,6 +321,12 @@ public sealed class AsyncReaderWriterLock : IResettable
         /// </param>
         /// <param name="cancellationToken">A cancellation token that can be used to cancel the attempt to upgrade to the write lock.</param>
         /// <exception cref="InvalidOperationException">Thrown if the current instance is not in the upgradeable reader state.</exception>
+        /// <exception cref="TimeoutException">
+        /// Thrown when the timeout elapses before the lock can be upgraded.
+        /// </exception>
+        /// <exception cref="OperationCanceledException">
+        /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be upgraded.
+        /// </exception>
         public ValueTask<Releaser> UpgradeToWriterLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
         {
             if (_owner is null)
@@ -663,8 +669,11 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
-    /// <exception cref="OperationCanceledException">
+    /// <exception cref="TimeoutException">
     /// Thrown when the timeout elapses before the lock can be acquired.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> ReaderLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -683,7 +692,7 @@ public sealed class AsyncReaderWriterLock : IResettable
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(ManualResetValueTaskSource<Releaser>.OperationCanceled));
+            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
         }
 
         return ReaderLockAsyncImplWithTimeout(timeout, cancellationToken);
@@ -854,8 +863,11 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
-    /// <exception cref="OperationCanceledException">
+    /// <exception cref="TimeoutException">
     /// Thrown when the timeout elapses before the lock can be acquired.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> UpgradeableReaderLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -874,7 +886,7 @@ public sealed class AsyncReaderWriterLock : IResettable
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(ManualResetValueTaskSource<Releaser>.OperationCanceled));
+            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
         }
 
         return UpgradeableReaderLockAsyncImplWithTimeout(timeout, cancellationToken);
@@ -981,8 +993,11 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
-    /// <exception cref="OperationCanceledException">
+    /// <exception cref="TimeoutException">
     /// Thrown when the timeout elapses before the lock can be acquired.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> WriterLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -996,7 +1011,7 @@ public sealed class AsyncReaderWriterLock : IResettable
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(ManualResetValueTaskSource<Releaser>.OperationCanceled));
+            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
         }
 
         return WriterLockAsyncImpl(timeout, cancellationToken);
@@ -1089,7 +1104,7 @@ public sealed class AsyncReaderWriterLock : IResettable
 
             if (timeout == TimeSpan.Zero)
             {
-                return new ValueTask<Releaser>(Task.FromException<Releaser>(ManualResetValueTaskSource<Releaser>.OperationCanceled));
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (!_localUpgradedWriterWaiter.TryGetValueTaskSource(out waiter))
@@ -1388,7 +1403,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveReadersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER
@@ -1424,7 +1439,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradeableReadersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1495,7 +1510,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveWritersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER
@@ -1547,7 +1562,7 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradedWritersWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
+        toCancel?.SetException(new TimeoutException());
     }
 
 #if NET6_0_OR_GREATER

@@ -485,7 +485,7 @@ public class AsyncLockTests
 
         using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await mutex.LockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -516,7 +516,7 @@ public class AsyncLockTests
 
         using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             _ = await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);

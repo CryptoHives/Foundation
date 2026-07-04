@@ -264,7 +264,7 @@ public class AsyncSemaphoreTests
     {
         var semaphore = new AsyncSemaphore(0);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await semaphore.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -287,7 +287,7 @@ public class AsyncSemaphoreTests
     {
         var semaphore = new AsyncSemaphore(0);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
     }
 

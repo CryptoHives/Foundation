@@ -148,7 +148,7 @@ Signals the barrier and waits for all participants to arrive.
 public ValueTask SignalAndWaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Signals the barrier and waits for all participants to arrive, or throws `OperationCanceledException` if the timeout elapses before all participants arrive.
+Signals the barrier and waits for all participants to arrive, or throws `TimeoutException` if the timeout elapses before all participants arrive.
 
 The last participant to arrive is never subject to the timeout — it releases all other waiters immediately. A `TimeProvider` is allocated only for non-final participants with a finite positive timeout; it is disposed automatically when the returned `ValueTask` is awaited.
 
@@ -158,7 +158,8 @@ The last participant to arrive is never subject to the timeout — it releases a
 **Returns**: A `ValueTask` that completes when all participants have arrived.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before all participants arrive.
+- `TimeoutException` — If the timeout elapses before all participants arrive.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 - `InvalidOperationException` — If more participants signal than registered.
 - `BarrierPostPhaseException` — If the post-phase action throws.
@@ -180,7 +181,7 @@ try
     await _barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(10));
     await DoPhase2WorkAsync();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // Not all participants arrived in time
     HandleTimeout();
@@ -291,7 +292,7 @@ try
 {
     await _barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(30));
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // Phase did not complete in time; handle accordingly
     HandleTimeout();

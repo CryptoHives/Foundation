@@ -75,7 +75,7 @@ Asynchronously acquires the lock. Returns a disposable that releases the lock wh
 public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously acquires the lock, or throws `OperationCanceledException` if the timeout elapses before the lock becomes available.
+Asynchronously acquires the lock, or throws `TimeoutException` if the timeout elapses before the lock becomes available.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `LockAsync()` without allocating a `TimeProvider`).
@@ -83,7 +83,8 @@ Asynchronously acquires the lock, or throws `OperationCanceledException` if the 
 **Returns**: A `ValueTask<Releaser>` that completes when the lock is acquired. Dispose the result to release the lock.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before the lock can be acquired.
+- `TimeoutException` — If the timeout elapses before the lock can be acquired.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -105,7 +106,7 @@ try
         await DoWorkAsync();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // Could not acquire lock within 2 seconds
     HandleTimeout();
@@ -257,7 +258,7 @@ try
         _data = await FetchAsync();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
