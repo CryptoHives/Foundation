@@ -233,7 +233,7 @@ public sealed class AsyncAutoResetEvent : IResettable
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
     /// <exception cref="TimeoutException">
-    /// Thrown when the timeout elapses before the event is signalled.
+    /// Thrown when the timeout elapses before the event is signalled. 
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Thrown when <paramref name="cancellationToken"/> is cancelled before the event is signalled.

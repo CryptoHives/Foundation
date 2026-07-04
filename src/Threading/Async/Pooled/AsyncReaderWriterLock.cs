@@ -994,7 +994,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
     /// <exception cref="TimeoutException">
-    /// Thrown when the timeout elapses before the lock can be acquired.
+    /// Thrown when the timeout elapses before the lock can be acquired. 
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
