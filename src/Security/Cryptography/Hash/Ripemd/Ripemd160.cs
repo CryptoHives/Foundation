@@ -95,6 +95,7 @@ public sealed class Ripemd160 : HashAlgorithm
     private readonly byte[] _buffer;
     private int _bufferLength;
     private ulong _totalLength;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Ripemd160"/> class.
@@ -155,8 +156,10 @@ public sealed class Ripemd160 : HashAlgorithm
         => HashAlgorithmPool<Ripemd160>.HashData(source);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Ripemd160));
         _h0 = H0;
         _h1 = H1;
         _h2 = H2;
@@ -168,8 +171,10 @@ public sealed class Ripemd160 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Ripemd160));
         _totalLength += (ulong)source.Length;
         int offset = 0;
 
@@ -239,6 +244,7 @@ public sealed class Ripemd160 : HashAlgorithm
         {
             ClearBuffer(_buffer);
             _h0 = _h1 = _h2 = _h3 = _h4 = 0;
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

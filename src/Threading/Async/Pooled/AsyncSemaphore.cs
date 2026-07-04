@@ -170,8 +170,11 @@ public sealed class AsyncSemaphore
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
-    /// <exception cref="OperationCanceledException">
+    /// <exception cref="TimeoutException">
     /// Thrown when the timeout elapses before a permit becomes available.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before a permit becomes available.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -200,7 +203,7 @@ public sealed class AsyncSemaphore
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask(Task.FromException(ManualResetValueTaskSource<bool>.OperationCanceled));
+            return new ValueTask(Task.FromException(new TimeoutException()));
         }
 
         return WaitAsyncImpl(timeout, cancellationToken);
@@ -253,7 +256,7 @@ public sealed class AsyncSemaphore
             if (timeout != Timeout.InfiniteTimeSpan)
             {
                 waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
             }
         }
         finally
@@ -329,17 +332,14 @@ public sealed class AsyncSemaphore
 
     /// <summary>
     /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
     /// </summary>
-    private void TimerCallback(object? state)
-    {
-        if (state is not ManualResetValueTaskSource<bool> waiter)
-        {
-            return;
-        }
-
-        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
-    }
+    private static readonly TimerCallback _timerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<bool>)state!;
+        var context = (AsyncSemaphore)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<bool>? toCancel = context.RemoveWaiter(timeoutState.Source, timeoutState.Version);
+        toCancel?.SetException(new TimeoutException());
+    };
 
     /// <summary>
     /// Gets a value indicating whether the local waiter is currently in use.
@@ -364,7 +364,9 @@ public sealed class AsyncSemaphore
         }
 #endif
 
-        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter);
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<bool>? toCancel = RemoveWaiter(waiter, waiter.Version);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
@@ -372,12 +374,15 @@ public sealed class AsyncSemaphore
     /// O(1) removal from intrusive linked list.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter)
+    private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter, short version)
     {
         _spinLock.Enter();
         try
         {
-            if (_waiters.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waiters.Remove(waiter))
             {
                 return waiter;
             }

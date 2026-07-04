@@ -302,6 +302,48 @@ public class AesTests
         Assert.That(decrypted, Is.EqualTo(plaintext));
     }
 
+    /// <summary>
+    /// PKCS#7 padding must be rejected regardless of which byte in the pad is corrupted,
+    /// covering the constant-time rewrite of <c>IsPkcs7PaddingValid</c> - a naive
+    /// early-exit implementation would still throw in every case here, but with a timing
+    /// signature that differs by corruption position (the classical padding-oracle side
+    /// channel this rewrite closes).
+    /// </summary>
+    /// <remarks>
+    /// Uses a full 16-byte plaintext block so PKCS#7 adds a full padding block (all bytes
+    /// = 0x10). In CBC, P_2[i] = D(C_2)[i] XOR C_1[i], so flipping a single byte of the
+    /// first ciphertext block corrupts exactly the corresponding byte of the decrypted
+    /// padding block, leaving the rest - including the pad-length byte at index 15 for
+    /// non-final positions - untouched. This is the same ciphertext malleability real
+    /// padding-oracle attacks exploit.
+    /// </remarks>
+    [Test]
+    [TestCase(0, Description = "First byte of the pad block corrupted")]
+    [TestCase(7, Description = "Middle byte of the pad block corrupted")]
+    [TestCase(14, Description = "Second-to-last byte of the pad block corrupted")]
+    [TestCase(15, Description = "Pad-length byte itself corrupted")]
+    public void Aes_Decrypt_CorruptedPadding_AnyPosition_Throws(int corruptIndexInPadBlock)
+    {
+        byte[] plaintext = new byte[16]; // exactly one block -> PKCS7 adds a full padding block
+        byte[] key = new byte[16];
+        byte[] iv = new byte[16];
+
+        using var aes = CreateAes(16);
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        aes.Key = key;
+        aes.IV = iv;
+
+        byte[] ciphertext = aes.Encrypt(plaintext);
+        Assert.That(ciphertext, Has.Length.EqualTo(32), "Expected two ciphertext blocks (data + full pad block).");
+
+        // Flip a bit in C_1 to corrupt exactly one byte of the decrypted padding block.
+        ciphertext[corruptIndexInPadBlock] ^= 0xFF;
+
+        aes.IV = iv;
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => aes.Decrypt(ciphertext));
+    }
+
     // ========================================================================
     // Multi-block Tests
     // ========================================================================
@@ -362,6 +404,30 @@ public class AesTests
         Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
             aes.Key = new byte[16]; // Wrong size for AES-256
         });
+    }
+
+    // ========================================================================
+    // Dispose Tests
+    // ========================================================================
+
+    [Test]
+    public void AesCipherTransform_DisposedInstance_Throws()
+    {
+        using var aes = Aes128.Create();
+        aes.Mode = CipherMode.ECB;
+        aes.Padding = PaddingMode.None;
+        aes.Key = new byte[16];
+        aes.IV = new byte[16];
+
+        var encryptor = aes.CreateEncryptor();
+        byte[] block = new byte[16];
+        byte[] output = new byte[16];
+        encryptor.TransformBlock(block, output);
+
+        encryptor.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformBlock(block, output));
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformFinalBlock(block, output));
     }
 
     // ========================================================================

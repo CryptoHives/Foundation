@@ -184,8 +184,11 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     public bool CanReuseTransform => true;
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AesCipherTransform));
         if (input.Length < BlockSize)
             throw new ArgumentException("Input must be at least one block.", nameof(input));
         if (output.Length < BlockSize)
@@ -233,8 +236,11 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         => TransformBlock(inputBuffer.AsSpan(inputOffset, inputCount), outputBuffer.AsSpan(outputOffset));
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AesCipherTransform));
         int fullBlocks = input.Length / BlockSize;
         int remainder = input.Length % BlockSize;
         int written = 0;
@@ -322,21 +328,11 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
             else if (_padding != PaddingMode.None && written > 0)
             {
                 // Validate and remove PKCS#7 padding
-                int lastBlockStart = written - BlockSize;
                 byte padValue = output[written - 1];
 
-                if (padValue < 1 || padValue > BlockSize)
+                if (!IsPkcs7PaddingValid(output.Slice(written - BlockSize, BlockSize), padValue))
                 {
                     throw new CryptographicException("Invalid padding.");
-                }
-
-                // Validate all padding bytes
-                for (int i = 0; i < padValue; i++)
-                {
-                    if (output[written - 1 - i] != padValue)
-                    {
-                        throw new CryptographicException("Invalid padding.");
-                    }
                 }
 
                 written -= padValue;
@@ -344,6 +340,36 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         }
 
         return written;
+    }
+
+    /// <summary>
+    /// Validates PKCS#7 padding on a full block in constant time.
+    /// </summary>
+    /// <remarks>
+    /// Scans every byte of <paramref name="block"/> unconditionally (no early exit) and combines
+    /// the result with a single bitwise OR, so execution time does not depend on the position of
+    /// the first invalid pad byte. A data-dependent early exit here is the classical CBC
+    /// padding-oracle side channel (Vaudenay 2002; exploited in practice by POODLE/Lucky 13-style
+    /// attacks) - even without a distinguishable error message, the timing difference alone is
+    /// enough to decrypt ciphertext one byte at a time.
+    /// </remarks>
+    /// <param name="block">The last decrypted block (exactly <see cref="BlockSize"/> bytes).</param>
+    /// <param name="padValue">The claimed pad length (<c>block[^1]</c>).</param>
+    /// <returns><see langword="true"/> if the padding is well-formed.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsPkcs7PaddingValid(ReadOnlySpan<byte> block, byte padValue)
+    {
+        int blockSize = BlockSize;
+        int badLength = ((uint)(padValue - 1) > (uint)(blockSize - 1)) ? 1 : 0;
+
+        int mismatch = 0;
+        for (int i = 0; i < blockSize; i++)
+        {
+            byte expected = i < padValue ? padValue : block[blockSize - 1 - i];
+            mismatch |= expected ^ block[blockSize - 1 - i];
+        }
+
+        return badLength == 0 && mismatch == 0;
     }
 
     /// <inheritdoc/>

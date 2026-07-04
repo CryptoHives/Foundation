@@ -23,11 +23,6 @@ using System.Threading.Tasks.Sources;
 public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
     /// <summary>
-    /// Shared operation cancelled exception.
-    /// </summary>
-    internal static OperationCanceledException OperationCanceled = new("The operation timed out.");
-
-    /// <summary>
     /// Link to the next node in the intrusive <see cref="WaiterQueue{T}"/>.
     /// </summary>
     internal ManualResetValueTaskSource<T>? Next { get; set; }
@@ -77,7 +72,7 @@ public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValu
     /// </summary>
     /// <remarks>
     /// Set to a non-<see langword="null"/> value when the waiter is created with a timeout.
-    /// The source is disposed automatically by <see cref="GetResult"/> and cleared by <see cref="TryReset"/>.
+    /// The timer is disposed and cleared by <see cref="TryReset"/> when the waiter is recycled.
     /// </remarks>
     public abstract ITimer? TimeoutTimer { get; set; }
 

@@ -33,7 +33,7 @@ using ArmAes = System.Runtime.Intrinsics.Arm.Aes;
 /// </list>
 /// </para>
 /// </remarks>
-internal readonly struct GcmCore
+internal struct GcmCore
 {
     /// <summary>
     /// GCM block size in bytes (128 bits).
@@ -121,7 +121,7 @@ internal readonly struct GcmCore
     private readonly bool _usePclmulV256;
     private readonly bool _useArmAes;
     private readonly bool _useArmPmull;
-    private readonly Vector128<byte> _hClmul;
+    private Vector128<byte> _hClmul;
     private readonly Vector128<byte>[] _hPowers;
 #endif
 
@@ -189,6 +189,24 @@ internal readonly struct GcmCore
                 _usePipeline = _usePclmul || _usePclmulV256;
                 _hPowers = PrepareHPowers(_hClmul);
             }
+        }
+#endif
+    }
+
+    /// <summary>
+    /// Zeroes all key-derived material (round keys, hash subkey, and precomputed
+    /// GHASH tables) so it does not linger in memory after the owning cipher is disposed.
+    /// </summary>
+    public void Clear()
+    {
+        Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
+        Array.Clear(_h, 0, _h.Length);
+        Array.Clear(_shoupTable, 0, _shoupTable.Length);
+#if NET8_0_OR_GREATER
+        _hClmul = default;
+        if (_hPowers is not null)
+        {
+            Array.Clear(_hPowers, 0, _hPowers.Length);
         }
 #endif
     }
@@ -631,8 +649,14 @@ internal readonly struct GcmCore
     /// Multiplies two elements in GF(2^128).
     /// </summary>
     /// <param name="x">First operand (16 bytes).</param>
-    /// <param name="y">Second operand (16 bytes).</param>
+    /// <param name="y">Second operand (16 bytes) - callers pass the secret hash subkey H here.</param>
     /// <param name="result">Result buffer (16 bytes, can be same as x).</param>
+    /// <remarks>
+    /// Branch-free by construction: every conditional XOR is done via an all-ones/all-zeros
+    /// mask rather than an <c>if</c>, so execution time does not depend on the bits of
+    /// <paramref name="y"/> (the secret H in every current caller). See <see cref="GfMulUlong"/>
+    /// for the ulong-native equivalent used on the hot GHASH path.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void GfMul(ReadOnlySpan<byte> x, ReadOnlySpan<byte> y, Span<byte> result)
     {
@@ -644,41 +668,29 @@ internal readonly struct GcmCore
 
         ulong z0 = 0, z1 = 0;
 
-        // Multiply using the "left-to-right" method
+        // Multiply using the "left-to-right" method. Conditional XORs use a constant-time
+        // mask (0 or all-ones) instead of a branch, since y may be secret (see remarks).
         for (int i = 0; i < 64; i++)
         {
-            // If bit i of y0 is set, XOR x into z
-            if (((y0 >> (63 - i)) & 1) == 1)
-            {
-                z0 ^= x0;
-                z1 ^= x1;
-            }
+            ulong mask = 0UL - ((y0 >> (63 - i)) & 1);
+            z0 ^= x0 & mask;
+            z1 ^= x1 & mask;
 
             // Reduce x by the polynomial if needed, then shift right
-            bool lsb = (x1 & 1) == 1;
+            ulong lsbMask = 0UL - (x1 & 1);
             x1 = (x1 >> 1) | (x0 << 63);
-            x0 >>= 1;
-            if (lsb)
-            {
-                x0 ^= R;
-            }
+            x0 = (x0 >> 1) ^ (R & lsbMask);
         }
 
         for (int i = 0; i < 64; i++)
         {
-            if (((y1 >> (63 - i)) & 1) == 1)
-            {
-                z0 ^= x0;
-                z1 ^= x1;
-            }
+            ulong mask = 0UL - ((y1 >> (63 - i)) & 1);
+            z0 ^= x0 & mask;
+            z1 ^= x1 & mask;
 
-            bool lsb = (x1 & 1) == 1;
+            ulong lsbMask = 0UL - (x1 & 1);
             x1 = (x1 >> 1) | (x0 << 63);
-            x0 >>= 1;
-            if (lsb)
-            {
-                x0 ^= R;
-            }
+            x0 = (x0 >> 1) ^ (R & lsbMask);
         }
 
         BinaryPrimitives.WriteUInt64BigEndian(result.Slice(0), z0);
@@ -690,7 +702,10 @@ internal readonly struct GcmCore
     /// </summary>
     /// <remarks>
     /// This avoids repeated byte-to-ulong conversions when H is already stored as ulongs.
-    /// The algorithm is identical to <see cref="GfMul"/>.
+    /// The algorithm is identical to <see cref="GfMul"/>. Branch-free by construction: every
+    /// conditional XOR is done via an all-ones/all-zeros mask rather than an <c>if</c>, so
+    /// execution time does not depend on the secret bits of H. This is the scalar fallback
+    /// used when no CLMUL/PMULL hardware acceleration is available.
     /// </remarks>
     /// <param name="h0">High 64 bits of H.</param>
     /// <param name="h1">Low 64 bits of H.</param>
@@ -704,30 +719,24 @@ internal readonly struct GcmCore
 
         for (int i = 0; i < 64; i++)
         {
-            if (((h0 >> (63 - i)) & 1) == 1)
-            {
-                z0 ^= x0;
-                z1 ^= x1;
-            }
+            ulong mask = 0UL - ((h0 >> (63 - i)) & 1);
+            z0 ^= x0 & mask;
+            z1 ^= x1 & mask;
 
-            bool lsb = (x1 & 1) == 1;
+            ulong lsbMask = 0UL - (x1 & 1);
             x1 = (x1 >> 1) | (x0 << 63);
-            x0 >>= 1;
-            if (lsb) x0 ^= R;
+            x0 = (x0 >> 1) ^ (R & lsbMask);
         }
 
         for (int i = 0; i < 64; i++)
         {
-            if (((h1 >> (63 - i)) & 1) == 1)
-            {
-                z0 ^= x0;
-                z1 ^= x1;
-            }
+            ulong mask = 0UL - ((h1 >> (63 - i)) & 1);
+            z0 ^= x0 & mask;
+            z1 ^= x1 & mask;
 
-            bool lsb = (x1 & 1) == 1;
+            ulong lsbMask = 0UL - (x1 & 1);
             x1 = (x1 >> 1) | (x0 << 63);
-            x0 >>= 1;
-            if (lsb) x0 ^= R;
+            x0 = (x0 >> 1) ^ (R & lsbMask);
         }
 
         y0 = z0;
@@ -750,6 +759,18 @@ internal readonly struct GcmCore
     ///   <item><description>Apply reduction from <see cref="ReductionTable"/></description></item>
     ///   <item><description>XOR with <c>M[nibble]</c> from the Shoup table</description></item>
     /// </list>
+    /// </para>
+    /// <para>
+    /// <b>Timing side channel:</b> unlike <see cref="GfMulUlong"/>, this method is <i>not</i>
+    /// constant-time. <c>table</c> is precomputed from the secret hash subkey H, and both the
+    /// <c>table[2 * nibble]</c> lookups and the <see cref="ReductionTable"/> lookups are indexed
+    /// by data derived from the running GHASH accumulator, which is itself entangled with H after
+    /// the first block. On CPUs without dedicated carry-less multiplication (PCLMULQDQ / PMULL),
+    /// this creates a cache-timing channel comparable to classic AES T-table attacks, and could in
+    /// principle let a co-resident attacker recover information about H (enabling GCM tag forgery
+    /// for that key) given enough timing samples. Prefer running on hardware with CLMUL/PMULL
+    /// support (see <see cref="SimdSupport"/>) wherever GCM operations are exposed to a
+    /// potentially adversarial, shared execution environment (e.g. multi-tenant cloud hosts).
     /// </para>
     /// </remarks>
     /// <param name="table">The precomputed Shoup table (32 ulongs = 16 pairs).</param>

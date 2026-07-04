@@ -1,7 +1,6 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+## CryptoHives Open Source Initiative 🐝
 
-An open, community-driven cryptography and performance library collection for the .NET ecosystem,
-developed and maintained by **The Keepers of the CryptoHives**.
+An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
@@ -10,11 +9,11 @@ developed and maintained by **The Keepers of the CryptoHives**.
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-Pooled buffer management utilities for .NET — designed to minimize allocations and reduce GC pressure in high-throughput transformation pipelines and cryptographic workloads.
+Pooled buffer management for .NET, built to keep allocations and GC pressure out of high-throughput transformation pipelines and crypto workloads.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Memory
@@ -22,17 +21,17 @@ dotnet add package CryptoHives.Foundation.Memory
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- **Pooled memory streams** — `MemoryStream` replacement backed by `ArrayPool<byte>.Shared`; no resize-copy, no LOH pressure
-- **Zero-copy handoff** — expose written data as `ReadOnlySequence<byte>` without any copying
-- **`IBufferWriter<T>` support** — `ArrayPoolBufferWriter<T>` works directly with `Utf8JsonWriter`, `PipeWriter`, and any `IBufferWriter` consumer
+- **Pooled memory streams** — a `MemoryStream` replacement backed by `ArrayPool<byte>.Shared`; no resize-copy, no LOH pressure
+- **Zero-copy handoff** — expose written data as a `ReadOnlySequence<byte>` without copying anything
+- **`IBufferWriter<T>` support** — `ArrayPoolBufferWriter<T>` works directly with `Utf8JsonWriter`, `PipeWriter`, or any other `IBufferWriter` consumer
 - **Read-only sequence streaming** — wrap an existing `ReadOnlySequence<byte>` as a `Stream` without copying
-- **RAII ownership** — `ObjectOwner<T>` safely returns pooled objects when disposed
+- **RAII ownership** — `ObjectOwner<T>` returns pooled objects automatically on dispose
 
 ---
 
-## 🚀 Quick Examples
+## Quick Examples
 
 ### Pooled Memory Stream
 
@@ -49,7 +48,7 @@ await stream.WriteAsync(payloadBytes, ct).ConfigureAwait(false);
 ReadOnlySequence<byte> sequence = stream.GetReadOnlySequence();
 await SendAsync(sequence, ct).ConfigureAwait(false);
 
-// Pooled buffers are returned when stream is disposed
+// Pooled buffers are returned when the stream is disposed
 ```
 
 ### Buffer Writer (e.g. with `Utf8JsonWriter`)
@@ -96,12 +95,12 @@ MyExpensiveObject obj = owner.Object;
 
 // Use obj...
 
-// Automatically returned to pool when owner is disposed — even on exception
+// Automatically returned to the pool when owner is disposed — even on exception
 ```
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Resource | Link |
 |----------|------|
@@ -111,13 +110,12 @@ MyExpensiveObject obj = owner.Object;
 
 ---
 
-## 🔐 Security Policy
+## Security Policy
 
-If you discover a vulnerability, **please do not open a public issue.**
-Follow the guidelines on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md).
+If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## ⚖️ License
+## License
 
 MIT — © 2026 The Keepers of the CryptoHives

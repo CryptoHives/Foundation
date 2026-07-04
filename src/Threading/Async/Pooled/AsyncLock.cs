@@ -19,7 +19,7 @@ using System.Threading.Tasks.Sources;
 /// Note that this lock is <b>not</b> recursive!
 /// </summary>
 /// <remarks>
-/// /// <para>
+/// <para>
 /// <b>Optional timeout and cancellation token</b> parameters on <see cref="LockAsync(TimeSpan, CancellationToken)"/>.
 /// </para>
 /// 
@@ -52,7 +52,7 @@ using System.Threading.Tasks.Sources;
 /// of a <c>lock</c>.</para>
 /// <para>So, we use the <c>async</c>-compatible <see cref="AsyncLock"/> instead:</para>
 /// <code>
-/// private readonly var _mutex = new AsyncLock();
+/// private var _mutex = new AsyncLock();
 /// public async Task DoStuffAsync()
 /// {
 ///     using (await _mutex.LockAsync())
@@ -84,8 +84,9 @@ public sealed class AsyncLock : IResettable
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _spinLock = new();
         _taken = 0;
-        _localWaiter = new(this);
-        _localWaiter.RunContinuationsAsynchronously = true;
+        _localWaiter = new(this) {
+            RunContinuationsAsynchronously = true
+        };
     }
 
     /// <inheritdoc/>
@@ -229,8 +230,11 @@ public sealed class AsyncLock : IResettable
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
+    /// <exception cref="TimeoutException">
+    /// Thrown when the timeout elapses before the lock can be acquired. 
+    /// </exception>
     /// <exception cref="OperationCanceledException">
-    /// Thrown when the timeout elapses before the lock can be acquired.
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -244,7 +248,7 @@ public sealed class AsyncLock : IResettable
 
         if (timeout == TimeSpan.Zero)
         {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new OperationCanceledException()));
+            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
         }
 
         return LockAsyncImpl(timeout, cancellationToken);
@@ -283,7 +287,7 @@ public sealed class AsyncLock : IResettable
             if (timeout != Timeout.InfiniteTimeSpan)
             {
                 waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    TimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+                    _timerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
             }
         }
         finally
@@ -348,17 +352,14 @@ public sealed class AsyncLock : IResettable
 
     /// <summary>
     /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
     /// </summary>
-    private void TimerCallback(object? state)
-    {
-        if (state is not ManualResetValueTaskSource<Releaser> waiter)
-        {
-            return;
-        }
-
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(waiter);
-        toCancel?.SetException(ManualResetValueTaskSource<bool>.OperationCanceled);
-    }
+    private static readonly TimerCallback _timerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<Releaser>)state!;
+        var context = (AsyncLock)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<Releaser>? toCancel = context.RemoveWaiter(timeoutState.Source, timeoutState.Version);
+        toCancel?.SetException(new TimeoutException());
+    };
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
@@ -378,7 +379,9 @@ public sealed class AsyncLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(waiter);
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(waiter, waiter.Version);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
@@ -386,12 +389,15 @@ public sealed class AsyncLock : IResettable
     /// O(1) removal from intrusive linked list.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<Releaser>? RemoveWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    private ManualResetValueTaskSource<Releaser>? RemoveWaiter(ManualResetValueTaskSource<Releaser> waiter, short version)
     {
         _spinLock.Enter();
         try
         {
-            if (_waiters.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waiters.Remove(waiter))
             {
                 return waiter;
             }

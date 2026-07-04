@@ -84,6 +84,7 @@ public sealed class MD5 : HashAlgorithm
     private readonly byte[] _buffer;
     private int _bufferLength;
     private ulong _totalLength;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MD5"/> class.
@@ -154,8 +155,10 @@ public sealed class MD5 : HashAlgorithm
 #pragma warning restore CS0618
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(MD5));
         _a = A0;
         _b = B0;
         _c = C0;
@@ -166,8 +169,10 @@ public sealed class MD5 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(MD5));
         _totalLength += (ulong)source.Length;
         int offset = 0;
 
@@ -237,6 +242,7 @@ public sealed class MD5 : HashAlgorithm
         {
             ClearBuffer(_buffer);
             _a = _b = _c = _d = 0;
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

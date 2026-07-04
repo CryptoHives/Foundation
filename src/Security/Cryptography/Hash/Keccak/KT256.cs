@@ -66,6 +66,7 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     private byte[] _buffer;
     private int _bufferLength;
     private bool _finalized;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="KT256"/> class with default output size.
@@ -195,8 +196,11 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
         => HashAlgorithmPool<KT256>.HashData(source);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(KT256));
+
         _bufferLength = 0;
         _finalized = false;
     }
@@ -214,8 +218,10 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(KT256));
         if (_finalized)
         {
             throw new InvalidOperationException("Cannot add data after finalization.");
@@ -244,8 +250,10 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     /// Squeezes output bytes from the KT256 state.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Squeeze(Span<byte> output)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(KT256));
         if (!_finalized)
         {
             FinalizeInternal(output);
@@ -417,6 +425,8 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
                 ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
                 _buffer = null!;
             }
+
+            _disposed = true;
         }
         base.Dispose(disposing);
     }
