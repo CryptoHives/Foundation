@@ -112,7 +112,7 @@ public class AsyncReaderWriterLockTests
             runContinuationAsynchronously: RunContinuationAsynchronously,
             pool: pool);
 
-        var lockTask = rwLock.ReaderLockAsync(ct);
+        var lockTask = rwLock.ReaderLockAsync(timeout, ct);
         Assert.That(lockTask.IsCompleted, Is.True);
 
         using (await lockTask.ConfigureAwait(false))
@@ -298,10 +298,13 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
         }
 
-        Assert.That(peakHolding, Is.EqualTo(contention),
-            $"All {contention} readers should have held the lock simultaneously.");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(peakHolding, Is.EqualTo(contention),
+                    $"All {contention} readers should have held the lock simultaneously.");
 
-        Assert.That(pool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
@@ -706,8 +709,8 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test, CancelAfter(CancelAfterMS)]
-    public void RunContinuationAsynchronouslyPropertyWorks(CancellationToken ct)
+    [Test]
+    public void RunContinuationAsynchronouslyPropertyWorks()
     {
         var rwLock = new AsyncReaderWriterLock();
         Assert.That(rwLock.RunContinuationAsynchronously, Is.True);
@@ -1687,12 +1690,18 @@ public class AsyncReaderWriterLockTests
 
         using (var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
-            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
+                Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            }
 
             using var writer = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false);
-            Assert.That(rwLock.IsWriteLockHeld, Is.True);
-            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.IsWriteLockHeld, Is.True);
+                Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            }
         }
 
         using (Assert.EnterMultipleScope())

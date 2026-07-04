@@ -588,68 +588,7 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Reader));
         }
 
-        return ReaderLockAsyncImpl(cancellationToken);
-    }
-
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<Releaser> ReaderLockAsyncImpl(CancellationToken cancellationToken)
-    {
-        ManualResetValueTaskSource<Releaser> waiter;
-        short version;
-
-        _spinLock.Enter();
-        try
-        {
-            if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
-            {
-                int status = Interlocked.CompareExchange(ref _status, (int)LockState.Reader, (int)LockState.Uncontested);
-                if (status is >= ((int)LockState.Uncontested) and < MaxReaderCount or
-                    >= ((int)LockState.UpgradeableReader) and < ((int)LockState.UpgradeableReader + MaxReaderCount))
-                {
-                    if (status > (int)LockState.Uncontested)
-                    {
-                        Interlocked.Increment(ref _status);
-                    }
-                    return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Reader));
-                }
-            }
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
-            }
-
-            if (!_localReaderWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
-            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            waiter.CancellationToken = cancellationToken;
-
-            version = waiter.Version;
-            _waitingReaders.Enqueue(waiter);
-        }
-        finally
-        {
-            _spinLock.Exit();
-        }
-
-        if (cancellationToken.CanBeCanceled)
-        {
-#if NET6_0_OR_GREATER
-            waiter.CancellationTokenRegistration =
-                cancellationToken.UnsafeRegister(_readerCancellationCallbackAction, waiter);
-#else
-            waiter.CancellationTokenRegistration =
-                cancellationToken.Register(ReaderCancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-        }
-        else
-        {
-            Debug.Assert(waiter.CancellationTokenRegistration == default);
-        }
-
-        return new ValueTask<Releaser>(waiter, version);
+        return ReaderLockAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
     }
 
     /// <summary>
@@ -678,12 +617,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> ReaderLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        if (timeout == Timeout.InfiniteTimeSpan)
-        {
-            return ReaderLockAsync(cancellationToken);
-        }
-
-        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
         if (Interlocked.CompareExchange(ref _status, (int)LockState.Reader, (int)LockState.Uncontested) == (int)LockState.Uncontested)
         {
@@ -695,11 +629,11 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
         }
 
-        return ReaderLockAsyncImplWithTimeout(timeout, cancellationToken);
+        return ReaderLockAsyncImpl(timeout, cancellationToken);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<Releaser> ReaderLockAsyncImplWithTimeout(TimeSpan timeout, CancellationToken cancellationToken)
+    private ValueTask<Releaser> ReaderLockAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
         ManualResetValueTaskSource<Releaser> waiter;
         short version;
@@ -733,11 +667,15 @@ public sealed class AsyncReaderWriterLock : IResettable
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
-            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                ReaderTimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
 
             version = waiter.Version;
             _waitingReaders.Enqueue(waiter);
+
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    _readerTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
+            }
         }
         finally
         {
@@ -783,67 +721,7 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.UpgradeableReader));
         }
 
-        return UpgradeableReaderLockAsyncImpl(cancellationToken);
-    }
-
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<Releaser> UpgradeableReaderLockAsyncImpl(CancellationToken cancellationToken)
-    {
-        ManualResetValueTaskSource<Releaser> waiter;
-        short version;
-
-        _spinLock.Enter();
-        try
-        {
-            if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
-            {
-                int status = Interlocked.CompareExchange(ref _status, (int)LockState.UpgradeableReader, (int)LockState.Uncontested);
-                if (status is >= ((int)LockState.Uncontested) and < MaxReaderCount)
-                {
-                    if (status > (int)LockState.Uncontested)
-                    {
-                        Interlocked.Add(ref _status, (int)LockState.UpgradeableReader);
-                    }
-                    return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.UpgradeableReader));
-                }
-            }
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
-            }
-
-            if (!_localUpgradeableReaderWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
-            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
-            waiter.CancellationToken = cancellationToken;
-
-            version = waiter.Version;
-            _waitingUpgradeableReaders.Enqueue(waiter);
-        }
-        finally
-        {
-            _spinLock.Exit();
-        }
-
-        if (cancellationToken.CanBeCanceled)
-        {
-#if NET6_0_OR_GREATER
-            waiter.CancellationTokenRegistration =
-                cancellationToken.UnsafeRegister(_upgradeableReaderCancellationCallbackAction, waiter);
-#else
-            waiter.CancellationTokenRegistration =
-                cancellationToken.Register(UpgradeableReaderCancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-        }
-        else
-        {
-            Debug.Assert(waiter.CancellationTokenRegistration == default);
-        }
-
-        return new ValueTask<Releaser>(waiter, version);
+        return UpgradeableReaderLockAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
     }
 
     /// <summary>
@@ -872,12 +750,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> UpgradeableReaderLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        if (timeout == Timeout.InfiniteTimeSpan)
-        {
-            return UpgradeableReaderLockAsync(cancellationToken);
-        }
-
-        if (timeout < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
         if (Interlocked.CompareExchange(ref _status, (int)LockState.UpgradeableReader, (int)LockState.Uncontested) == (int)LockState.Uncontested)
         {
@@ -889,11 +762,11 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
         }
 
-        return UpgradeableReaderLockAsyncImplWithTimeout(timeout, cancellationToken);
+        return UpgradeableReaderLockAsyncImpl(timeout, cancellationToken);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<Releaser> UpgradeableReaderLockAsyncImplWithTimeout(TimeSpan timeout, CancellationToken cancellationToken)
+    private ValueTask<Releaser> UpgradeableReaderLockAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
         ManualResetValueTaskSource<Releaser> waiter;
         short version;
@@ -926,11 +799,15 @@ public sealed class AsyncReaderWriterLock : IResettable
             }
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
-            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                UpgradeableReaderTimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
 
             version = waiter.Version;
             _waitingUpgradeableReaders.Enqueue(waiter);
+
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    _upgradeableReaderTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
+            }
         }
         finally
         {
@@ -994,7 +871,7 @@ public sealed class AsyncReaderWriterLock : IResettable
     /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
     /// </exception>
     /// <exception cref="TimeoutException">
-    /// Thrown when the timeout elapses before the lock can be acquired.
+    /// Thrown when the timeout elapses before the lock can be acquired. 
     /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
@@ -1049,7 +926,7 @@ public sealed class AsyncReaderWriterLock : IResettable
             if (timeout != Timeout.InfiniteTimeSpan)
             {
                 waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    WriterTimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+                    _writerTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
             }
         }
         finally
@@ -1120,7 +997,7 @@ public sealed class AsyncReaderWriterLock : IResettable
             if (timeout != Timeout.InfiniteTimeSpan)
             {
                 waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    UpgradedWriterTimerCallback, waiter, timeout, Timeout.InfiniteTimeSpan);
+                    _upgradedWriterTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
             }
         }
         finally
@@ -1394,17 +1271,14 @@ public sealed class AsyncReaderWriterLock : IResettable
 
     /// <summary>
     /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
     /// </summary>
-    private void ReaderTimerCallback(object? state)
-    {
-        if (state is not ManualResetValueTaskSource<Releaser> waiter)
-        {
-            return;
-        }
-
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveReadersWaiter(waiter);
+    private static readonly TimerCallback _readerTimerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<Releaser>)state!;
+        var context = (AsyncReaderWriterLock)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<Releaser>? toCancel = context.RemoveReadersWaiter(timeoutState.Source, timeoutState.Version);
         toCancel?.SetException(new TimeoutException());
-    }
+    };
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _readerCancellationCallbackAction = static (state, ct) => {
@@ -1424,31 +1298,33 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveReadersWaiter(waiter);
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveReadersWaiter(waiter, waiter.Version);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
     /// <summary>
     /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
     /// </summary>
-    private void UpgradeableReaderTimerCallback(object? state)
-    {
-        if (state is not ManualResetValueTaskSource<Releaser> waiter)
-        {
-            return;
-        }
-
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradeableReadersWaiter(waiter);
+    private static readonly TimerCallback _upgradeableReaderTimerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<Releaser>)state!;
+        var context = (AsyncReaderWriterLock)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<Releaser>? toCancel = context.RemoveUpgradeableReadersWaiter(timeoutState.Source, timeoutState.Version);
         toCancel?.SetException(new TimeoutException());
-    }
+    };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<Releaser>? RemoveReadersWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    private ManualResetValueTaskSource<Releaser>? RemoveReadersWaiter(ManualResetValueTaskSource<Releaser> waiter, short version)
     {
         _spinLock.Enter();
         try
         {
-            if (_waitingReaders.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waitingReaders.Remove(waiter))
             {
                 return waiter;
             }
@@ -1479,17 +1355,22 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradeableReadersWaiter(waiter);
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradeableReadersWaiter(waiter, waiter.Version);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<Releaser>? RemoveUpgradeableReadersWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    private ManualResetValueTaskSource<Releaser>? RemoveUpgradeableReadersWaiter(ManualResetValueTaskSource<Releaser> waiter, short version)
     {
         _spinLock.Enter();
         try
         {
-            if (_waitingUpgradeableReaders.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waitingUpgradeableReaders.Remove(waiter))
             {
                 return waiter;
             }
@@ -1502,16 +1383,16 @@ public sealed class AsyncReaderWriterLock : IResettable
         return null;
     }
 
-    private void WriterTimerCallback(object? state)
-    {
-        if (state is not ManualResetValueTaskSource<Releaser> waiter)
-        {
-            return;
-        }
-
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWritersWaiter(waiter);
+    /// <summary>
+    /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
+    /// </summary>
+    private static readonly TimerCallback _writerTimerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<Releaser>)state!;
+        var context = (AsyncReaderWriterLock)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<Releaser>? toCancel = context.RemoveWritersWaiter(timeoutState.Source, timeoutState.Version);
         toCancel?.SetException(new TimeoutException());
-    }
+    };
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _writerCancellationCallbackAction = static (state, ct) => {
@@ -1531,17 +1412,22 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWritersWaiter(waiter);
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveWritersWaiter(waiter, waiter.Version);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<Releaser>? RemoveWritersWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    private ManualResetValueTaskSource<Releaser>? RemoveWritersWaiter(ManualResetValueTaskSource<Releaser> waiter, short version)
     {
         _spinLock.Enter();
         try
         {
-            if (_waitingWriters.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waitingWriters.Remove(waiter))
             {
                 return waiter;
             }
@@ -1554,16 +1440,16 @@ public sealed class AsyncReaderWriterLock : IResettable
         return null;
     }
 
-    private void UpgradedWriterTimerCallback(object? state)
-    {
-        if (state is not ManualResetValueTaskSource<Releaser> waiter)
-        {
-            return;
-        }
-
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradedWritersWaiter(waiter);
+    /// <summary>
+    /// Callback used with <see cref="Timer"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
+    /// </summary>
+    private static readonly TimerCallback _upgradedWriterTimerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<Releaser>)state!;
+        var context = (AsyncReaderWriterLock)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<Releaser>? toCancel = context.RemoveUpgradedWritersWaiter(timeoutState.Source, timeoutState.Version);
         toCancel?.SetException(new TimeoutException());
-    }
+    };
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _upgradedWriterCancellationCallbackAction = static (state, ct) => {
@@ -1583,17 +1469,22 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 #endif
 
-        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradedWritersWaiter(waiter);
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<Releaser>? toCancel = RemoveUpgradedWritersWaiter(waiter, waiter.Version);
         toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private ManualResetValueTaskSource<Releaser>? RemoveUpgradedWritersWaiter(ManualResetValueTaskSource<Releaser> waiter)
+    private ManualResetValueTaskSource<Releaser>? RemoveUpgradedWritersWaiter(ManualResetValueTaskSource<Releaser> waiter, short version)
     {
         _spinLock.Enter();
         try
         {
-            if (_waitingUpgradedWriters.Remove(waiter))
+            // A stale timer callback must not touch a recycled waiter: the version
+            // changes when the waiter is reset for reuse, and re-enqueueing requires
+            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            if (waiter.Version == version && _waitingUpgradedWriters.Remove(waiter))
             {
                 return waiter;
             }

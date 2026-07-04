@@ -141,7 +141,7 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 ## Getting Started
 
-Every CryptoHives algorithm inherits from `System.Security.Cryptography.HashAlgorithm` and supports two ways of computing a hash.
+Every CryptoHives hash algorithm inherits from `System.Security.Cryptography.HashAlgorithm` and supports two ways of computing a hash.
 
 ### Zero-allocation approach (recommended)
 
