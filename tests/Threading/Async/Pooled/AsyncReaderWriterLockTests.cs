@@ -112,7 +112,7 @@ public class AsyncReaderWriterLockTests
             runContinuationAsynchronously: RunContinuationAsynchronously,
             pool: pool);
 
-        var lockTask = rwLock.ReaderLockAsync(ct);
+        var lockTask = rwLock.ReaderLockAsync(timeout, ct);
         Assert.That(lockTask.IsCompleted, Is.True);
 
         using (await lockTask.ConfigureAwait(false))
@@ -286,8 +286,11 @@ public class AsyncReaderWriterLockTests
             }, ct);
         }
 
-        // Give all readers time to acquire.
-        await Task.Delay(200, ct).ConfigureAwait(false);
+        // Wait for all readers to actually acquire instead of assuming a fixed delay
+        while (Volatile.Read(ref holdingCount) < contention)
+        {
+            await Task.Delay(1, ct).ConfigureAwait(false);
+        }
         releaseGate.SetResult(true);
         await Task.WhenAll(readers).ConfigureAwait(false);
 
@@ -298,10 +301,13 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.InternalWriterWaiterInUse, Is.False);
         }
 
-        Assert.That(peakHolding, Is.EqualTo(contention),
-            $"All {contention} readers should have held the lock simultaneously.");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(peakHolding, Is.EqualTo(contention),
+                    $"All {contention} readers should have held the lock simultaneously.");
 
-        Assert.That(pool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
@@ -438,28 +444,37 @@ public class AsyncReaderWriterLockTests
 
         var order = new ConcurrentQueue<string>();
 
+        Task writerTask, readerTask;
         using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            var writerTask = Task.Run(async () => {
+            writerTask = Task.Run(async () => {
                 using (await rwLock.WriterLockAsync(timeout, ct).ConfigureAwait(false))
                 {
                     order.Enqueue("writer");
                 }
             }, ct);
 
-            await Task.Delay(50, ct).ConfigureAwait(false);
+            // Wait for the writer to actually register as waiting before starting the reader
+            while (rwLock.WaitingWriterCount == 0)
+            {
+                await Task.Delay(10, ct).ConfigureAwait(false);
+            }
 
-            var readerTask = Task.Run(async () => {
+            readerTask = Task.Run(async () => {
                 using (await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
                 {
                     order.Enqueue("reader");
                 }
             }, ct);
 
-            await Task.Delay(50, ct).ConfigureAwait(false);
+            while (rwLock.WaitingReaderCount == 0)
+            {
+                await Task.Delay(10, ct).ConfigureAwait(false);
+            }
         }
 
-        await Task.Delay(100, ct).ConfigureAwait(false);
+        // Both must fully complete (acquire, enqueue, release) before the order is meaningful
+        await Task.WhenAll(writerTask, readerTask).ConfigureAwait(false);
 
         var items = order.ToArray();
         using (Assert.EnterMultipleScope())
@@ -706,8 +721,8 @@ public class AsyncReaderWriterLockTests
         }
     }
 
-    [Test, CancelAfter(CancelAfterMS)]
-    public void RunContinuationAsynchronouslyPropertyWorks(CancellationToken ct)
+    [Test]
+    public void RunContinuationAsynchronouslyPropertyWorks()
     {
         var rwLock = new AsyncReaderWriterLock();
         Assert.That(rwLock.RunContinuationAsynchronously, Is.True);
@@ -1687,12 +1702,18 @@ public class AsyncReaderWriterLockTests
 
         using (var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false))
         {
-            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
-            Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
+                Assert.That(rwLock.CurrentReaderCount, Is.EqualTo(1));
+            }
 
             using var writer = await upgr.UpgradeToWriterLockAsync(ct).ConfigureAwait(false);
-            Assert.That(rwLock.IsWriteLockHeld, Is.True);
-            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(rwLock.IsWriteLockHeld, Is.True);
+                Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            }
         }
 
         using (Assert.EnterMultipleScope())
@@ -1727,7 +1748,7 @@ public class AsyncReaderWriterLockTests
 
         using var outerWriter = await rwLock.WriterLockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -1759,7 +1780,7 @@ public class AsyncReaderWriterLockTests
 
         using var outerReader = await rwLock.ReaderLockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -1789,7 +1810,7 @@ public class AsyncReaderWriterLockTests
 
         using var outerUpgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false));
 
         await Task.Delay(50, ct).ConfigureAwait(false);
@@ -1824,7 +1845,7 @@ public class AsyncReaderWriterLockTests
 
         using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.ReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -1838,7 +1859,7 @@ public class AsyncReaderWriterLockTests
 
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.WriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -1852,7 +1873,7 @@ public class AsyncReaderWriterLockTests
 
         using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await rwLock.UpgradeableReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -1868,7 +1889,7 @@ public class AsyncReaderWriterLockTests
         using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
@@ -2008,17 +2029,17 @@ public class AsyncReaderWriterLockTests
                 .WriterLockAsync(innerCts.Token)
                 .ConfigureAwait(false));
 
-        Assert.ThrowsAsync<OperationCanceledException>(
+        Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .WriterLockAsync(TimeSpan.FromMilliseconds(100), ct)
                 .ConfigureAwait(false));
 
-        Assert.ThrowsAsync<OperationCanceledException>(
+        Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .ReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
                 .ConfigureAwait(false));
 
-        Assert.ThrowsAsync<OperationCanceledException>(
+        Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
                 .ConfigureAwait(false));
@@ -2047,7 +2068,7 @@ public class AsyncReaderWriterLockTests
         {
             writer = await rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(75), ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (TimeoutException)
         {
             // Timeout won the race - acceptable outcome.
         }
@@ -2087,7 +2108,7 @@ public class AsyncReaderWriterLockTests
         {
             upgWriter = await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(75), ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (TimeoutException)
         {
             // Timeout won the race - acceptable outcome.
         }

@@ -124,7 +124,7 @@ All lock waiters link into `WaiterQueue<T>` without heap allocation per waiter; 
 
 ### `CryptoHives.Foundation.Threading.Analyzers`
 
-Roslyn analyzer + code-fix provider that ships bundled inside the `Threading` NuGet package (transitive via `analyzers/dotnet/cs`).
+Roslyn analyzer + code-fix provider for the `Threading` NuGet package. Needs to be added separately.
 
 Diagnostics:
 | ID | Severity | Description |

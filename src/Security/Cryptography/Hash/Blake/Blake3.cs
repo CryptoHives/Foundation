@@ -74,6 +74,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     // Blake3 core state
     private Blake3State _core;
     private readonly Blake3Mode _mode;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class with default output size (32 bytes).
@@ -241,8 +242,10 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
 #endif
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
         _core.Reset(_mode == Blake3Mode.KeyedHash);
     }
 
@@ -263,20 +266,26 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// Finalizes the hash and squeezes output of the specified length.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Squeeze(Span<byte> output)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
         _core.Squeeze(output);
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
         _core.Append(source);
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
         return _core.TryGetCurrentHash(destination, out bytesWritten);
     }
 
@@ -286,6 +295,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
         if (disposing)
         {
             _core.Dispose();
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

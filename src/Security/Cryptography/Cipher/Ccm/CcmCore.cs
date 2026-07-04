@@ -23,7 +23,7 @@ using System.Runtime.Intrinsics;
 /// <list type="bullet">
 ///   <item><description>Defined for 128-bit block ciphers only (AES)</description></item>
 ///   <item><description>Authenticate-then-encrypt construction</description></item>
-///   <item><description>Variable tag length (4-16 bytes)</description></item>
+///   <item><description>Variable tag length (4-16 bytes, even values)</description></item>
 ///   <item><description>Variable nonce length (7-13 bytes)</description></item>
 /// </list>
 /// </para>

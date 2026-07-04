@@ -196,6 +196,7 @@ public sealed class Kupyna : HashAlgorithm
     private readonly byte[] _buffer;
     private int _bufferLength;
     private ulong _inputBlocks;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Kupyna"/> class with 512-bit output.
@@ -348,8 +349,10 @@ public sealed class Kupyna : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Kupyna));
         Array.Clear(_state, 0, _state.Length);
         _state[0] = (ulong)_blockSize;
 
@@ -358,8 +361,10 @@ public sealed class Kupyna : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Kupyna));
         int offset = 0;
 
         if (_bufferLength > 0)
@@ -393,8 +398,10 @@ public sealed class Kupyna : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Kupyna));
         if (destination.Length < _hashSizeBytes)
         {
             bytesWritten = 0;
@@ -462,6 +469,7 @@ public sealed class Kupyna : HashAlgorithm
             Array.Clear(_tempState2, 0, _tempState2.Length);
             Array.Clear(_scratch, 0, _scratch.Length);
             ClearBuffer(_buffer);
+            _disposed = true;
         }
         base.Dispose(disposing);
     }
