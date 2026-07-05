@@ -286,6 +286,25 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 ---
 
+## Digital Signature Algorithms
+
+### FIPS 204 (Module-Lattice-Based Digital Signature Algorithm)
+
+| Algorithm | Security Category | Status | Class |
+|-----------|-------------------|--------|-------|
+| ML-DSA-44 | 2 | ✅ Implemented | `MlDsa44`, `MlDsa` |
+| ML-DSA-65 | 3 | ✅ Implemented | `MlDsa65`, `MlDsa` |
+| ML-DSA-87 | 5 | ✅ Implemented | `MlDsa87`, `MlDsa` |
+| HashML-DSA (pre-hash) | - | ⬜ Not implemented | - |
+
+> **Note:** Validated against official NIST ACVP vectors (key generation, deterministic
+> and hedged signing with byte-exact signatures, and verification including modified
+> commitment/z/hint/message rejections) and cross-checked against BouncyCastle and
+> .NET 10 `System.Security.Cryptography.MLDsa`. The `MlDsa` key-holding class mirrors
+> the .NET 10 API shape on all target frameworks.
+
+---
+
 ## Sources
 
 ### NIST (National Institute of Standards and Technology)
@@ -437,6 +456,14 @@ The official FIPS 203 specification and ACVP test vectors are available from NIS
 - [NIST FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) - Module-Lattice-Based Key-Encapsulation Mechanism Standard
 - [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - ML-KEM-keyGen-FIPS203 and ML-KEM-encapDecap-FIPS203
 
+### ML-DSA (FIPS 204)
+
+The official FIPS 204 specification and ACVP test vectors are available from NIST:
+- **[NIST-FIPS-204.md](NIST-FIPS-204.md)** - Local reference with algorithm details
+- **[ML-DSA-vectors.md](ML-DSA-vectors.md)** - Test vector documentation (NIST ACVP)
+- [NIST FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) - Module-Lattice-Based Digital Signature Standard
+- [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - ML-DSA-keyGen/sigGen/sigVer-FIPS204
+
 ## File Organization
 
 ```
@@ -472,7 +499,9 @@ specs/
 ├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
 ├── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
 ├── NIST-FIPS-203.md       # NIST FIPS 203 - ML-KEM reference
-└── ML-KEM-vectors.md      # ML-KEM test vectors (NIST ACVP)
+├── ML-KEM-vectors.md      # ML-KEM test vectors (NIST ACVP)
+├── NIST-FIPS-204.md       # NIST FIPS 204 - ML-DSA reference
+└── ML-DSA-vectors.md      # ML-DSA test vectors (NIST ACVP)
 ```
 
 ## Usage

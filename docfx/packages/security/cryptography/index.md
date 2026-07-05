@@ -13,6 +13,7 @@ The Cryptography package implements hash algorithms, message authentication code
 - **AEAD support** — AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128
 - **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
 - **Post-quantum KEM** — ML-KEM-512/768/1024 (FIPS 203) on every target framework, mirroring the .NET 10 `MLKem` API
+- **Post-quantum signatures** — ML-DSA-44/65/87 (FIPS 204) on every target framework, mirroring the .NET 10 `MLDsa` API
 - **Variable-length output** — XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
 - **Keyed hashing** — built-in MAC modes for BLAKE2, BLAKE3, and KMAC
 - **Standards compliant** — verified against NIST, RFC, and ISO test vectors
@@ -56,6 +57,12 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Kem;
+```
+
+### Digital Signature Algorithms
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
 ```
 
 ## Implemented Algorithms
@@ -117,6 +124,14 @@ using CryptoHives.Foundation.Security.Cryptography.Kem;
 | ML-KEM-512 | FIPS 203 | 1 (~AES-128) | [Details](kem-algorithms.md#ml-kem-fips-203) |
 | ML-KEM-768 | FIPS 203 | 3 (~AES-192) | [Details](kem-algorithms.md#ml-kem-fips-203) |
 | ML-KEM-1024 | FIPS 203 | 5 (~AES-256) | [Details](kem-algorithms.md#ml-kem-fips-203) |
+
+### Digital Signatures (Post-Quantum)
+
+| Algorithm | Standard | Security Category | Documentation |
+|-----------|----------|-------------------|---------------|
+| ML-DSA-44 | FIPS 204 | 2 | [Details](signature-algorithms.md#ml-dsa-fips-204) |
+| ML-DSA-65 | FIPS 204 | 3 | [Details](signature-algorithms.md#ml-dsa-fips-204) |
+| ML-DSA-87 | FIPS 204 | 5 | [Details](signature-algorithms.md#ml-dsa-fips-204) |
 
 ### Cipher Algorithms (Block/Stream)
 
@@ -383,6 +398,7 @@ Every implementation is verified against its official test vectors:
 - **NIST FIPS 197**: AES (128/192/256)
 - **NIST FIPS 202**: SHA-3, SHAKE
 - **NIST FIPS 203**: ML-KEM-512/768/1024 (NIST ACVP vectors, BouncyCastle and .NET 10 interop)
+- **NIST FIPS 204**: ML-DSA-44/65/87 (NIST ACVP vectors, BouncyCastle and .NET 10 interop)
 - **NIST SP 800-38B**: AES-CMAC
 - **NIST SP 800-38D**: AES-GCM
 - **NIST SP 800-108r1**: KBKDF Counter Mode
@@ -449,6 +465,7 @@ Every implementation uses fixed-size internal buffers sized to its block size �
 | ChaCha20 stream cipher | Yes (managed + SSSE3/AVX2) | No |
 | HKDF | Yes (all TFMs, pluggable HMAC) | .NET Core 3.0+ only |
 | ML-KEM (FIPS 203) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
+| ML-DSA (FIPS 204) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
 | XOF (SHAKE/cSHAKE/TurboSHAKE/BLAKE3) | Yes (Absorb/Squeeze API) | SHAKE only (.NET 9+) |
 | SM3/Streebog/Kupyna/LSH/Whirlpool | Yes | No |
 
@@ -472,6 +489,7 @@ public bool ComputeHashThreadSafe(ReadOnlySpan<byte> data, Span<byte> destinatio
 - [MAC Algorithms Reference](mac-algorithms.md)
 - [KDF Algorithms Reference](kdf-algorithms.md)
 - [KEM Algorithms Reference](kem-algorithms.md)
+- [Signature Algorithms Reference](signature-algorithms.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
 - [Hash Benchmarks](benchmarks-hash.md)
 - [Cipher Benchmarks](benchmarks-cipher.md)

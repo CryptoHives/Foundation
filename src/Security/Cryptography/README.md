@@ -9,7 +9,7 @@ An open, community-driven collection of cryptography and performance libraries f
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-Fully managed, OS-independent implementations of hash, MAC, KDF, cipher, and post-quantum KEM algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
+Fully managed, OS-independent implementations of hash, MAC, KDF, cipher, and post-quantum KEM and signature algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
 
 No OS crypto dependency means deterministic results on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics are used automatically.
 
@@ -55,6 +55,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
 | Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
+| Post-quantum signatures | ML-DSA-44, ML-DSA-65, ML-DSA-87 (FIPS 204) |
 
 ---
 
@@ -140,6 +141,26 @@ receiver.Decapsulate(ciphertext, receiverSecret);
 Keys are validated on import per FIPS 203 §7.2/§7.3, decapsulation uses constant-time
 implicit rejection, and all three parameter sets are verified against the official
 NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
+
+### Post-Quantum Signatures (`ML-DSA`)
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
+
+// The API mirrors System.Security.Cryptography.MLDsa from .NET 10,
+// but runs fully managed on every target framework down to net462.
+using var signer = MlDsa.GenerateKey(MlDsaAlgorithm.MlDsa65);
+byte[] publicKey = signer.ExportPublicKey();
+byte[] signature = signer.SignData(message);
+
+// Verifier:
+using var verifier = MlDsa.ImportPublicKey(MlDsaAlgorithm.MlDsa65, publicKey);
+bool valid = verifier.VerifyData(message, signature);
+```
+
+Hedged signing per FIPS 204 with optional context strings and deterministic variant;
+all three parameter sets are verified against the official NIST ACVP test vectors
+(byte-exact signatures) plus BouncyCastle and .NET 10 `MLDsa` interop tests.
 
 ### cSHAKE — Domain-Separated XOF
 
