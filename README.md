@@ -2,37 +2,15 @@
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem.
 
-.NET is a solid platform for building secure, high-performance applications across almost any target, but two gaps keep showing up: high-performance patterns rarely get packaged as simple, drop-in libraries, and cryptography still leans heavily on whatever the underlying OS happens to provide, with all the inconsistency in features and performance that brings. CryptoHives exists to close both gaps, one package at a time.
+.NET is a solid platform for building secure, high-performance applications across almost any target, but two gaps keep showing up: high-performance patterns rarely get packaged as simple, drop-in libraries, and cryptography still leans heavily on whatever the underlying OS happens to provide, with all the inconsistency in features and performance that brings. 
 
----
+CryptoHives exist to close both gaps, one package at a time.
 
-The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and is currently built around three packages, each aimed at a specific problem:
+The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and is currently addressing three areas:
 
 - **Threading** — async synchronization primitives built for low/no allocation and high throughput, using `ValueTask`-based waiters backed by pooled resources
-- **Memory** — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, meant to keep GC pressure out of transformation pipelines and crypto workloads that work in terms of `ReadOnlySpan` or `IBufferWriter`
-- **Security.Cryptography** — OS-independent implementations for a wide range of cryptographic algorithms, usable as drop-in replacement for `System.Security.Cryptography`
-
----
-
-### 📦 Nuget Packages
-
-| Package | Description | NuGet | Documentation |
-|----------|--------------|--------|---------------|
-| `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
-| `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `Threading.Analyzers` | Analyzer for pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `Security.Cryptography` | Cryptographic algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
-
-All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
-
----
-
-### 🩺 CryptoHives Health
-
-[![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
-[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
-[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
+- **Memory** — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, meant to keep GC pressure out of transformation pipelines and crypto workloads
+- **Cryptography** — OS-independent implementations for a wide range of cryptographic algorithms, usable as drop-in replacement for `System.Security.Cryptography`
 
 ---
 
@@ -46,6 +24,24 @@ All packages are published under the `CryptoHives.Foundation` prefix and namespa
 ---
 
 ## 🐝 Available CryptoHives
+
+### 📦 Nuget Packages
+
+| Package | Description | NuGet | Documentation |
+|----------|--------------|--------|---------------|
+| `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
+| `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `Threading.Analyzers` | Analyzer for pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `Security.Cryptography` | Cryptographic algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
+
+All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
+
+### 🩺 Health
+
+[![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
+[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
+[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
 
 ### 🛠️ Buffer Pools (Memory)
 Pooled buffer management for transformation pipelines and high-frequency I/O:
@@ -255,7 +251,7 @@ Security comes first here. If you find a vulnerability, please don't open a publ
 
 ---
 
-## NuGet Package Signing
+## 🔏 NuGet Package Code Signing
 
 Packages aren't code-signed yet. The Keepers plan to add signing once there's enough demand (and funding) to justify it.
 
