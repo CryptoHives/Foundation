@@ -295,7 +295,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | ML-DSA-44 | 2 | ✅ Implemented | `MlDsa44`, `MlDsa` |
 | ML-DSA-65 | 3 | ✅ Implemented | `MlDsa65`, `MlDsa` |
 | ML-DSA-87 | 5 | ✅ Implemented | `MlDsa87`, `MlDsa` |
-| HashML-DSA (pre-hash) | - | ⬜ Not implemented | - |
+| HashML-DSA (pre-hash) | - | ✅ Implemented | `MlDsa.SignPreHash`/`VerifyPreHash` |
 
 > **Note:** Validated against official NIST ACVP vectors (key generation, deterministic
 > and hedged signing with byte-exact signatures, and verification including modified
@@ -310,7 +310,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | SLH-DSA-{SHA2,SHAKE}-128{s,f} | 1 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
 | SLH-DSA-{SHA2,SHAKE}-192{s,f} | 3 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
 | SLH-DSA-{SHA2,SHAKE}-256{s,f} | 5 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
-| HashSLH-DSA (pre-hash) | - | ⬜ Not implemented | - |
+| HashSLH-DSA (pre-hash) | - | ✅ Implemented | `SlhDsa.SignPreHash`/`VerifyPreHash` |
 
 > **Note:** Validated against official NIST ACVP vectors (key generation for all 12
 > parameter sets, deterministic and hedged signing with byte-exact signatures, and

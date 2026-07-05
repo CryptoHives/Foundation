@@ -191,6 +191,74 @@ public sealed class SlhDsa : IDisposable
     }
 
     /// <summary>
+    /// Signs a pre-computed message digest using HashSLH-DSA (FIPS 205 §10.2).
+    /// </summary>
+    /// <remarks>
+    /// The caller computes PH(M) with an approved hash or XOF and passes the digest with
+    /// its OID; the signature binds the pre-hash function via M′ = 0x01 ‖ |ctx| ‖ ctx ‖
+    /// OID ‖ PH(M). Pre-hash signatures are distinct from pure SLH-DSA signatures over the
+    /// same message.
+    /// </remarks>
+    /// <param name="hash">The pre-computed digest PH(M).</param>
+    /// <param name="hashAlgorithmOid">The dotted-decimal OID of the pre-hash function, e.g. <c>2.16.840.1.101.3.4.2.1</c> for SHA-256.</param>
+    /// <param name="context">The optional context string (at most 255 bytes).</param>
+    /// <returns>The signature.</returns>
+    /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="hashAlgorithmOid"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no secret key.</exception>
+    public byte[] SignPreHash(ReadOnlySpan<byte> hash, string hashAlgorithmOid, ReadOnlySpan<byte> context = default)
+    {
+        ThrowIfDisposed();
+        if (_secretKey is null)
+            throw new OS.CryptographicException("The instance holds only a public key and cannot sign.");
+        if (context.Length > SlhDsaParams.MaxContextBytes)
+            throw new ArgumentException($"Context must be at most {SlhDsaParams.MaxContextBytes} bytes.", nameof(context));
+        PreHash.ValidateHash(hashAlgorithmOid, hash.Length);
+
+        Span<byte> prefix = stackalloc byte[PreHash.MaxPrefixBytes];
+        int prefixLength = PreHash.BuildPrefix(context, hashAlgorithmOid, prefix);
+
+        Span<byte> optRand = stackalloc byte[32];
+        Span<byte> rand = optRand.Slice(0, Algorithm.Parameters.N);
+        MlDsaCore.GenerateRandomSeed(rand);
+
+        byte[] signature = new byte[Algorithm.SignatureSizeInBytes];
+        SlhDsaCore.Sign(Algorithm.Parameters, _secretKey, prefix.Slice(0, prefixLength), hash, rand, signature);
+        CryptographicOperations.ZeroMemory(optRand);
+        return signature;
+    }
+
+    /// <summary>
+    /// Verifies a HashSLH-DSA signature over a pre-computed message digest (FIPS 205 §10.2).
+    /// </summary>
+    /// <param name="hash">The pre-computed digest PH(M).</param>
+    /// <param name="signature">The signature to verify.</param>
+    /// <param name="hashAlgorithmOid">The dotted-decimal OID of the pre-hash function used when signing.</param>
+    /// <param name="context">The context string used when signing (at most 255 bytes).</param>
+    /// <returns>True when the signature is valid; false for invalid signatures, including malformed lengths.</returns>
+    /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="hashAlgorithmOid"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public bool VerifyPreHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature, string hashAlgorithmOid, ReadOnlySpan<byte> context = default)
+    {
+        ThrowIfDisposed();
+        if (context.Length > SlhDsaParams.MaxContextBytes)
+            throw new ArgumentException($"Context must be at most {SlhDsaParams.MaxContextBytes} bytes.", nameof(context));
+        PreHash.ValidateHash(hashAlgorithmOid, hash.Length);
+
+        if (signature.Length != Algorithm.SignatureSizeInBytes)
+        {
+            return false;
+        }
+
+        Span<byte> prefix = stackalloc byte[PreHash.MaxPrefixBytes];
+        int prefixLength = PreHash.BuildPrefix(context, hashAlgorithmOid, prefix);
+
+        return SlhDsaCore.Verify(Algorithm.Parameters, _publicKey, prefix.Slice(0, prefixLength), hash, signature);
+    }
+
+    /// <summary>
     /// Exports the public key (PK.seed ‖ PK.root).
     /// </summary>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>

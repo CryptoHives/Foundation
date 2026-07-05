@@ -114,6 +114,7 @@ Self-contained managed implementations of cryptographic algorithms — no OS/har
 - `MlDsaCore` — FIPS 204 KeyGen/Sign/Verify (rejection loop, hedged + deterministic); `Ntt` (q = 8380417, int-based, runtime-computed zeta table)/`Poly`/`PolyVec`/`Sampling`/`Encode` are the ML-DSA-specific math layer — independent of the ML-KEM layer by design
 - Conformance: NIST ACVP vectors in `MlDsaAcvpTests.cs` (keyGen, sigGen deterministic + hedged with injected rnd, sigVer incl. modified commitment/z/hint/message); interop vs BouncyCastle and .NET 10 `MLDsa` in `MlDsaInteropTests.cs`
 - SLH-DSA (FIPS 205) in `Dsa/SlhDsa/`: key-holding `SlhDsa` + `SlhDsaAlgorithm` (12 sets, no per-set IDsa wrappers); `SlhDsaHash` abstracts the SHAKE256 vs SHA-2 instantiations (compressed ADRS, MGF1, HMAC, SHA-512 split for cat 3/5); `Wots`/`XmssTree`/`Hypertree`/`Fors` are pure hash plumbing over the existing SHA-2/SHAKE cores. The 's' sets sign slowly by design — tests default to 'f' sets, full matrix is `[Explicit]`. ACVP + BC + .NET 10 playbook as for ML-KEM/ML-DSA
+- Pre-hash variants (HashML-DSA §5.4 / HashSLH-DSA §10.2): `SignPreHash`/`VerifyPreHash` on `MlDsa` and `SlhDsa` (caller supplies PH(M) + dotted OID; `PreHash.cs` holds the 12-OID table, DER encoder, and 0x01-prefix builder). ACVP preHash vectors in `MlDsaPreHashAcvpTests.cs`/`SlhDsaPreHashAcvpTests.cs`; BC `HashMLDsaSigner`/`HashSlhDsaSigner` + .NET 10 `SignPreHash` interop in `PreHashApiTests.cs`
 
 ### `CryptoHives.Foundation.Threading`
 

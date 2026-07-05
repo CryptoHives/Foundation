@@ -165,6 +165,8 @@ all three parameter sets are verified against the official NIST ACVP test vector
 SLH-DSA (FIPS 205) completes the NIST PQC trio for conservative, hash-based signing —
 all 12 parameter sets via `SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f)` with the
 same API shape; prefer the `f` (fast) sets unless minimal signature size is critical.
+Both schemes also offer the pre-hash variants (HashML-DSA/HashSLH-DSA) via
+`SignPreHash`/`VerifyPreHash` for digest-only signing workflows.
 
 ### cSHAKE — Domain-Separated XOF
 

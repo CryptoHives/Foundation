@@ -179,6 +179,29 @@ Same three-way playbook as ML-KEM/ML-DSA (see [SLH-DSA Test Vectors](specs/SLH-D
 
 ---
 
+## Pre-Hash Variants (HashML-DSA / HashSLH-DSA)
+
+Both schemes support the FIPS pre-hash variants (FIPS 204 §5.4, FIPS 205 §10.2), where the caller hashes the message once with an approved hash or XOF and signs the digest. This suits large messages, streaming, and CMS/X.509 workflows where only the digest reaches the signer. The signature binds the pre-hash function via its DER-encoded OID inside M′ = 0x01 ‖ |ctx| ‖ ctx ‖ OID ‖ PH(M), so pre-hash and pure signatures over the same message are never interchangeable.
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+// Caller computes PH(M) once — here SHA-512 (OID 2.16.840.1.101.3.4.2.3).
+using var sha512 = SHA512.Create();
+Span<byte> digest = stackalloc byte[64];
+sha512.TryComputeHash(largeMessage, digest, out _);
+
+using var signer = MlDsa.GenerateKey(MlDsaAlgorithm.MlDsa65);
+byte[] signature = signer.SignPreHash(digest, "2.16.840.1.101.3.4.2.3");
+
+bool valid = signer.VerifyPreHash(digest, signature, "2.16.840.1.101.3.4.2.3");
+```
+
+`SlhDsa.SignPreHash`/`VerifyPreHash` work identically. All twelve approved pre-hash functions are accepted (SHA-2 family incl. SHA-512/224 and SHA-512/256, SHA-3 family, SHAKE128/256); the digest length is validated against the OID. Choose a pre-hash function that meets the parameter set's security category — e.g. SHA-512 for ML-DSA-65/87. The API shape mirrors .NET 10's `SignPreHash`/`VerifyPreHash`.
+
+---
+
 ## Security Properties
 
 - **Hedged signing by default** — each signature mixes fresh randomness into ρ″ per FIPS 204 Algorithm 2.
@@ -219,7 +242,7 @@ The implementation is validated on every target framework by three independent m
 |-----------|----------|--------|
 | ML-DSA-44/65/87 (pure) | FIPS 204 | ✅ Implemented |
 | SLH-DSA, all 12 parameter sets (pure) | FIPS 205 | ✅ Implemented |
-| HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | 🔲 Planned |
+| HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | ✅ Implemented |
 | Ed25519 | RFC 8032 | 🔲 Under review |
 | PKCS#8 / SPKI key formats | RFC 5208 / RFC 5280 | 🔲 Planned with X.509 support |
 
