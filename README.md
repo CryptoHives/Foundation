@@ -6,8 +6,6 @@ An open, community-driven collection of cryptography and performance libraries f
 
 ---
 
-## 🐝 Available CryptoHives
-
 The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and is currently built around three packages, each aimed at a specific problem:
 
 - **Threading** — async synchronization primitives built for low/no allocation and high throughput, using `ValueTask`-based waiters backed by pooled resources
