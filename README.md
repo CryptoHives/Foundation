@@ -1,4 +1,4 @@
-## CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem.
 
@@ -6,7 +6,7 @@ An open, community-driven collection of cryptography and performance libraries f
 
 ---
 
-## Architecture Overview
+## 🏗️ Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -80,30 +80,50 @@ The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the
 
 ---
 
-## Documentation
+### 📦 Nuget Packages
 
-- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** — guides, API reference, examples
-- [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
-- [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
-- [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+| Package | Description | NuGet | Documentation |
+|----------|--------------|--------|---------------|
+| `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
+| `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `Threading.Analyzers` | Analyzer for pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `Security.Cryptography` | Hash, MAC & cipher algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
+
+All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
+
+### 🩺 CryptoHives Health
+
+[![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
+[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
+[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
 
 ---
 
-## Design Principles
+## 📚 Documentation
 
-### Orthogonal by design
+- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** — guides, API reference, examples
+- 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
+- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
+- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+
+---
+
+## 🧬 Design Principles
+
+### 🧱 Orthogonal by design
 - Everything is built with free and open-source tooling — the .NET SDK, Visual Studio Community, VS Code, GitHub, Azure DevOps.
 - Packages are meant to stand on their own; we try hard to avoid deep cross-dependencies between them.
 - Dependencies on anything outside CryptoHives are kept minimal and limited to widely adopted, well-maintained libraries (e.g. `Microsoft.Extensions.*`).
 - OS and hardware dependencies are avoided where possible, so behavior stays deterministic across platforms and runtimes — this matters especially for the crypto implementations.
 - None of this is meant to replace or compete with the existing .NET class library. It's meant to complement it.
 
-### Built for performance
+### ⚡ Built for performance
 - Every package targets high throughput with no steady-state allocations, for both transformation pipelines and crypto workloads.
 - Where it helps, algorithms use managed SIMD intrinsics with a scalar fallback for platforms that don't support them.
 - Performance and memory usage are benchmarked against reference implementations, not just asserted.
 
-### Secure development policy
+### 🔐 Secure development policy
 - Implementations are written directly from public specifications (NIST, RFC, ISO) rather than ported from other codebases.
 - Every algorithm is checked against official test vectors from its specification.
 - Reviews include validation against independent reference implementations.
@@ -115,9 +135,9 @@ The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the
 
 ---
 
-## Available CryptoHives
+## 🐝 Available CryptoHives
 
-### Buffer Pools (Memory)
+### 🛠️ Buffer Pools (Memory)
 Pooled buffer management for transformation pipelines and high-frequency I/O:
 
 - `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
@@ -125,7 +145,7 @@ Pooled buffer management for transformation pipelines and high-frequency I/O:
 - `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`
 - Ownership primitives for zero-copy handoff of pooled buffers
 
-### Concurrency Tools (Threading)
+### 🚀 Concurrency Tools (Threading)
 Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
 
 - `AsyncLock` — mutual exclusion
@@ -140,7 +160,7 @@ A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a stan
 
 ⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, pooled `ValueTask` vs. existing `Task`-based alternatives.
 
-### Managed Code Cryptography (Security.Cryptography)
+### 🔐 Managed Code Cryptography (Security.Cryptography)
 Fully managed hash, MAC, and cipher implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in automatically — in some cases outperforming the OS-provided implementation.
 
 **Algorithms:**
@@ -164,7 +184,7 @@ Fully managed hash, MAC, and cipher implementations, written from NIST/RFC/ISO s
 
 All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
 
-**Benchmarks**
+**⏱️ Benchmarks**
 
 Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions.
 - [Hash algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html)
@@ -172,26 +192,7 @@ Measured with BenchmarkDotNet across a range of payload sizes, comparing our man
 
 ---
 
-### NuGet Packages
-
-| Package | Description | NuGet | Documentation |
-|----------|--------------|--------|---------------|
-| `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
-| `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `Security.Cryptography` | Hash, MAC & cipher algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
-
-All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
-
-### Build Status
-
-[![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
-[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
-[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
-
----
-
-## Installation
+## 🧩 Installation
 
 Via the NuGet CLI:
 
@@ -207,7 +208,9 @@ Install-Package CryptoHives.Foundation.Threading
 
 ---
 
-## Usage Examples
+## 🧠 Usage Examples
+
+---
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -225,6 +228,8 @@ Span<byte> output = stackalloc byte[128];
 shake.Squeeze(output);
 ```
 
+---
+
 ```csharp
 using CryptoHives.Foundation.Threading.Async.Pooled;
 
@@ -240,7 +245,7 @@ public async Task DoWorkAsync(CancellationToken ct)
 
 ---
 
-## Security Policy
+## 🔐 Security Policy
 
 Security comes first here. If you find a vulnerability, please don't open a public issue — follow the process described on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
@@ -252,7 +257,7 @@ Packages aren't code-signed yet. The Keepers plan to add signing once there's en
 
 ---
 
-## A Note on Licensing
+## 📝 No-Nonsense License Matters
 
 This project is MIT-licensed because we believe in open collaboration. That said, we're aware MIT code gets copied, repackaged, and resold without credit fairly often — if you use this code, we'd appreciate it if you didn't do that:
 
@@ -263,7 +268,7 @@ None of that is legally required under MIT — it's just what makes open source 
 
 ---
 
-## License
+## ⚖️ License
 
 Every component is licensed under MIT. Source files carry the following SPDX header by default:
 
@@ -276,13 +281,13 @@ A few inherited components use their original MIT-style headers instead, kept as
 
 ---
 
-## About The Keepers of the CryptoHives
+## 🐝 About The Keepers of the CryptoHives
 
 The CryptoHives Open Source Initiative is maintained by **The Keepers of the CryptoHives**, a loose collective of developers working on open, verifiable, high-performance cryptography for .NET.
 
 ---
 
-## Contributing
+## 🧩 Contributing
 
 Issues and pull requests are welcome. Please read the [Contributing Guide](https://github.com/CryptoHives/.github/blob/main/CONTRIBUTING.md) before sending a PR.
 
