@@ -6,6 +6,69 @@ An open, community-driven collection of cryptography and performance libraries f
 
 ---
 
+The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and built around three packages, each aimed at a specific problem:
+
+- **Threading** — async synchronization primitives built for low/no allocation and high throughput, using `ValueTask`-based waiters backed by pooled resources
+- **Memory** — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, meant to keep GC pressure out of transformation pipelines and crypto workloads that work in terms of `ReadOnlySpan` or `IBufferWriter`
+- **Security.Cryptography** — OS-independent reimplementations of algorithms already in `System.Security.Cryptography`, usable as drop-in replacements
+
+---
+
+### 📦 Nuget Packages
+
+| Package | Description | NuGet | Documentation |
+|----------|--------------|--------|---------------|
+| `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
+| `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `Threading.Analyzers` | Analyzer for pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
+| `Security.Cryptography` | Hash, MAC & cipher algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
+
+All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
+
+---
+
+### 🩺 CryptoHives Health
+
+[![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
+[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
+[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
+
+---
+
+## 📚 Documentation
+
+- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** — guides, API reference, examples
+- 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
+- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
+- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+
+---
+
+## 🧬 Design Principles
+
+### 🧱 Orthogonal by design
+- Everything is built with free and open-source tooling — the .NET SDK, Visual Studio Community, VS Code, GitHub, Azure DevOps.
+- Packages are meant to stand on their own; we try hard to avoid deep cross-dependencies between them.
+- Dependencies on anything outside CryptoHives are kept minimal and limited to widely adopted, well-maintained libraries (e.g. `Microsoft.Extensions.*`).
+- OS and hardware dependencies are avoided where possible, so behavior stays deterministic across platforms and runtimes — this matters especially for the crypto implementations.
+- None of this is meant to replace or compete with the existing .NET class library. It's meant to complement it.
+
+### ⚡ Built for performance
+- Every package targets high throughput with no steady-state allocations, for both transformation pipelines and crypto workloads.
+- Where it helps, algorithms use managed SIMD intrinsics with a scalar fallback for platforms that don't support them.
+- Performance and memory usage are benchmarked against reference implementations, not just asserted.
+
+### 🔐 Secure development policy
+- Implementations are written directly from public specifications (NIST, RFC, ISO) rather than ported from other codebases.
+- Every algorithm is checked against official test vectors from its specification.
+- Reviews include validation against independent reference implementations.
+- Public APIs and anything touching the network are treated as hostile-input surfaces by default.
+- Defaults favor a minimal attack surface: explicit configuration, strict input validation, bounded resource use.
+- Dependencies are kept minimal and vetted; reproducible, signed releases are on the roadmap.
+- Fuzzing is planned; static analysis and defensive error handling are already in place to limit misuse and information leaks.
+- Some development uses AI-assisted tooling — we're not claiming clean-room provenance for every line.
+
 ## 🏗️ Architecture Overview
 
 ```
@@ -69,69 +132,6 @@ Keccak class hierarchy (Security.Cryptography):
 
   IncrementalParallelHash  (streaming wrapper, buffers input until Squeeze)
 ```
-
----
-
-The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and built around three packages, each aimed at a specific problem:
-
-- **Threading** — async synchronization primitives built for low/no allocation and high throughput, using `ValueTask`-based waiters backed by pooled resources
-- **Memory** — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, meant to keep GC pressure out of transformation pipelines and crypto workloads that work in terms of `ReadOnlySpan` or `IBufferWriter`
-- **Security.Cryptography** — OS-independent reimplementations of algorithms already in `System.Security.Cryptography`, usable as drop-in replacements
-
----
-
-### 📦 Nuget Packages
-
-| Package | Description | NuGet | Documentation |
-|----------|--------------|--------|---------------|
-| `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
-| `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `Threading.Analyzers` | Analyzer for pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `Security.Cryptography` | Hash, MAC & cipher algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
-
-All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
-
-### 🩺 CryptoHives Health
-
-[![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
-[![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
-[![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
-
----
-
-## 📚 Documentation
-
-- 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** — guides, API reference, examples
-- 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
-- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
-- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
-
----
-
-## 🧬 Design Principles
-
-### 🧱 Orthogonal by design
-- Everything is built with free and open-source tooling — the .NET SDK, Visual Studio Community, VS Code, GitHub, Azure DevOps.
-- Packages are meant to stand on their own; we try hard to avoid deep cross-dependencies between them.
-- Dependencies on anything outside CryptoHives are kept minimal and limited to widely adopted, well-maintained libraries (e.g. `Microsoft.Extensions.*`).
-- OS and hardware dependencies are avoided where possible, so behavior stays deterministic across platforms and runtimes — this matters especially for the crypto implementations.
-- None of this is meant to replace or compete with the existing .NET class library. It's meant to complement it.
-
-### ⚡ Built for performance
-- Every package targets high throughput with no steady-state allocations, for both transformation pipelines and crypto workloads.
-- Where it helps, algorithms use managed SIMD intrinsics with a scalar fallback for platforms that don't support them.
-- Performance and memory usage are benchmarked against reference implementations, not just asserted.
-
-### 🔐 Secure development policy
-- Implementations are written directly from public specifications (NIST, RFC, ISO) rather than ported from other codebases.
-- Every algorithm is checked against official test vectors from its specification.
-- Reviews include validation against independent reference implementations.
-- Public APIs and anything touching the network are treated as hostile-input surfaces by default.
-- Defaults favor a minimal attack surface: explicit configuration, strict input validation, bounded resource use.
-- Dependencies are kept minimal and vetted; reproducible, signed releases are on the roadmap.
-- Fuzzing is planned; static analysis and defensive error handling are already in place to limit misuse and information leaks.
-- Some development uses AI-assisted tooling — we're not claiming clean-room provenance for every line.
 
 ---
 
