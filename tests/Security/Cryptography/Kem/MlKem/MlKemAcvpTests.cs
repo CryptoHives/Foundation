@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Kem.MlKem;
@@ -219,8 +219,7 @@ public class MlKemAcvpTests
         }
     }
 
-    private static IKem CreateKem(string parameterSet) => parameterSet switch
-    {
+    private static IKem CreateKem(string parameterSet) => parameterSet switch {
         "ML-KEM-512" => MlKem512.Create(),
         "ML-KEM-768" => MlKem768.Create(),
         "ML-KEM-1024" => MlKem1024.Create(),

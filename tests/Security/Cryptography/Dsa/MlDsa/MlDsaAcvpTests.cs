@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa.MlDsa;
@@ -155,24 +155,21 @@ public class MlDsaAcvpTests
         Assert.That(valid, Is.EqualTo(expectedValid), $"{parameterSet} tcId {tcId} ({reason}): verification result mismatch.");
     }
 
-    private static IDsa CreateDsa(string parameterSet) => parameterSet switch
-    {
+    private static IDsa CreateDsa(string parameterSet) => parameterSet switch {
         "ML-DSA-44" => MlDsa44.Create(),
         "ML-DSA-65" => MlDsa65.Create(),
         "ML-DSA-87" => MlDsa87.Create(),
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    private static MlDsaAlgorithm AlgorithmFor(string parameterSet) => parameterSet switch
-    {
+    private static MlDsaAlgorithm AlgorithmFor(string parameterSet) => parameterSet switch {
         "ML-DSA-44" => MlDsaAlgorithm.MlDsa44,
         "ML-DSA-65" => MlDsaAlgorithm.MlDsa65,
         "ML-DSA-87" => MlDsaAlgorithm.MlDsa87,
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    private static MlDsaParams ParamsFor(string parameterSet) => parameterSet switch
-    {
+    private static MlDsaParams ParamsFor(string parameterSet) => parameterSet switch {
         "ML-DSA-44" => MlDsaParams.MlDsa44,
         "ML-DSA-65" => MlDsaParams.MlDsa65,
         "ML-DSA-87" => MlDsaParams.MlDsa87,

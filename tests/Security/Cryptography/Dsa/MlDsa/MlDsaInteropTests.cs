@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa.MlDsa;
@@ -219,8 +219,7 @@ public class MlDsaInteropTests
 #pragma warning restore SYSLIB5006
 #endif
 
-    private static MLDsaParameters BcParameters(string name) => name switch
-    {
+    private static MLDsaParameters BcParameters(string name) => name switch {
         "ML-DSA-44" => MLDsaParameters.ml_dsa_44,
         "ML-DSA-65" => MLDsaParameters.ml_dsa_65,
         "ML-DSA-87" => MLDsaParameters.ml_dsa_87,

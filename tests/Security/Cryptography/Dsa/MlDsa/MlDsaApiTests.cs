@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa.MlDsa;
@@ -130,8 +130,7 @@ public class MlDsaApiTests
     [Test]
     public void AlgorithmDescriptors_ReportFips204Sizes()
     {
-        Assert.Multiple(() =>
-        {
+        Assert.Multiple(() => {
             Assert.That(MlDsaAlgorithm.MlDsa44.PublicKeySizeInBytes, Is.EqualTo(1312));
             Assert.That(MlDsaAlgorithm.MlDsa44.SecretKeySizeInBytes, Is.EqualTo(2560));
             Assert.That(MlDsaAlgorithm.MlDsa44.SignatureSizeInBytes, Is.EqualTo(2420));
