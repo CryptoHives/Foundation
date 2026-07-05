@@ -166,7 +166,9 @@ Keccak class hierarchy (Security.Cryptography):
 
 ---
 
-## 🧬 Design Principles
+## 🧬 Development Policy
+
+Development may use AI-assisted tooling; no guarantee of clean-room provenance is claimed.
 
 ### 🧱 Orthogonal by design
 - Everything is built with free and open-source tooling — the .NET SDK, Visual Studio Community, VS Code, GitHub, Azure DevOps.
