@@ -50,6 +50,8 @@
           href: specs/NIST-FIPS-203.md
         - name: FIPS 204 (ML-DSA)
           href: specs/NIST-FIPS-204.md
+        - name: FIPS 205 (SLH-DSA)
+          href: specs/NIST-FIPS-205.md
     - name: Test Vectors
       items:
         - name: SHA-1 (Legacy)
@@ -100,3 +102,5 @@
           href: specs/ML-KEM-vectors.md
         - name: ML-DSA (FIPS 204)
           href: specs/ML-DSA-vectors.md
+        - name: SLH-DSA (FIPS 205)
+          href: specs/SLH-DSA-vectors.md

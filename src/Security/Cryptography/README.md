@@ -55,7 +55,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
 | Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
-| Post-quantum signatures | ML-DSA-44, ML-DSA-65, ML-DSA-87 (FIPS 204) |
+| Post-quantum signatures | ML-DSA-44/65/87 (FIPS 204); SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} (FIPS 205) |
 
 ---
 
@@ -161,6 +161,10 @@ bool valid = verifier.VerifyData(message, signature);
 Hedged signing per FIPS 204 with optional context strings and deterministic variant;
 all three parameter sets are verified against the official NIST ACVP test vectors
 (byte-exact signatures) plus BouncyCastle and .NET 10 `MLDsa` interop tests.
+
+SLH-DSA (FIPS 205) completes the NIST PQC trio for conservative, hash-based signing —
+all 12 parameter sets via `SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f)` with the
+same API shape; prefer the `f` (fast) sets unless minimal signature size is critical.
 
 ### cSHAKE — Domain-Separated XOF
 
