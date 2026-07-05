@@ -120,7 +120,7 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 | ARIA | Korea | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aria-korea) |
 | Camellia | Japan | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#camellia-japan) |
 | Kuznyechik | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kuznyechik-russia) |
-| Kalyna | Ukraine | 128/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kalyna-ukraine) |
+| Kalyna | Ukraine | 128/256/512 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kalyna-ukraine) |
 | SEED | Korea | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#seed-korea) |
 
 ### Cipher Algorithms (AEAD)
