@@ -103,6 +103,7 @@ The following tables show the per-instance memory footprint (internal state + bu
 | Kuznyechik (ECB/CBC/CTR) | 320 B | 16 B | 8 KB | byte[10×16] round keys + IV + feedback; LS/IL tables |
 | Kalyna-128 (ECB/CBC/CTR) | 320 B | 16 B | 5 KB | ulong[22] round keys + IV + feedback; 4 S-boxes + MDS |
 | Kalyna-256 (ECB/CBC/CTR) | 400 B | 16 B | 5 KB | ulong[30] round keys (shared S-boxes/MDS) |
+| Kalyna-512 (ECB/CBC/CTR) | ~816 B | 32 B | 5 KB | ulong[76] round keys + IV + feedback; 4 S-boxes + MDS |
 | SEED (ECB/CBC/CTR) | 192 B | 16 B | 4 KB | uint[32] round keys + IV + feedback; 4 SS-boxes |
 
 ### Message Authentication Codes (MAC)

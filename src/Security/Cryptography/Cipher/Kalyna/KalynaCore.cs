@@ -10,11 +10,12 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 /// <summary>
-/// Core Kalyna (DSTU 7624:2014) block cipher operations for 128-bit block size.
+/// Core Kalyna (DSTU 7624:2014) block cipher operations.
 /// </summary>
 /// <remarks>
 /// Kalyna is the Ukrainian national standard block cipher. This implementation
-/// supports 128-bit blocks with 128-bit or 256-bit keys (10 or 14 rounds).
+/// supports 128-bit blocks with 128-bit or 256-bit keys (10 or 14 rounds) and
+/// 256-bit blocks with 256-bit or 512-bit keys (14 or 18 rounds).
 /// State is stored as a pair of 64-bit words in little-endian byte order,
 /// matching the DSTU 7624:2014 specification.
 /// </remarks>
@@ -22,11 +23,14 @@ using System.Runtime.InteropServices;
 internal unsafe struct KalynaCore
 {
     public const int BlockSizeBytes = 16;
+    private const int MaxRoundKeyWords = 152;
 
     private const int NumWords = 2;
 
-    private fixed ulong _roundKeys[30]; // MaxRoundKeyCount: 15 round keys × 2 ulongs (up to 14 rounds)
+    private fixed ulong _roundKeys[MaxRoundKeyWords];
     private int _rounds;
+    private int _blockWords;
+    private int _keyWords;
 
     // S-boxes from DSTU 7624:2014
     private static ReadOnlySpan<byte> S0 =>
@@ -194,34 +198,65 @@ internal unsafe struct KalynaCore
     /// <summary>
     /// Creates and initializes a new <see cref="KalynaCore"/> with expanded round keys.
     /// </summary>
-    /// <param name="key">The cipher key (16 or 32 bytes for 128-bit block).</param>
+    /// <param name="key">The cipher key.</param>
+    /// <param name="blockSizeBytes">The block size in bytes.</param>
     /// <returns>An initialized <see cref="KalynaCore"/> ready for use.</returns>
     /// <exception cref="ArgumentException">Thrown when the key length is invalid.</exception>
-    internal static KalynaCore Create(ReadOnlySpan<byte> key)
+    internal static KalynaCore Create(ReadOnlySpan<byte> key, int blockSizeBytes)
     {
-        Span<byte> rkBytes = stackalloc byte[15 * 16];
-        int nr = ExpandKey(key, rkBytes);
+        int blockWords = blockSizeBytes / 8;
+        int keyWords = key.Length / 8;
 
         KalynaCore core = default;
+        core._blockWords = blockWords;
+        core._keyWords = keyWords;
+
+        int nr;
+        if (blockWords == 2)
+        {
+            Span<byte> rkBytes = stackalloc byte[15 * 16];
+            nr = ExpandKey(key, rkBytes);
+
+            core._rounds = nr;
+
+            KalynaCore* pCore128 = &core;
+            ulong* rk128 = pCore128->_roundKeys;
+            for (int i = 0; i <= nr; i++)
+            {
+                rk128[i * 2] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16));
+                rk128[i * 2 + 1] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16 + 8));
+            }
+
+            return core;
+        }
+
+        Span<ulong> roundKeyWords = stackalloc ulong[MaxRoundKeyWords];
+        nr = ExpandKeyGeneric(key, blockWords, roundKeyWords);
         core._rounds = nr;
 
-        KalynaCore* pCore = &core;
-        ulong* rk = pCore->_roundKeys;
-        for (int i = 0; i <= nr; i++)
+        KalynaCore* pCoreGeneric = &core;
+        ulong* rkGeneric = pCoreGeneric->_roundKeys;
+        int roundKeyWordsCount = (nr + 1) * blockWords;
+        for (int i = 0; i < roundKeyWordsCount; i++)
         {
-            rk[i * 2] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16));
-            rk[i * 2 + 1] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16 + 8));
+            rkGeneric[i] = roundKeyWords[i];
         }
 
         return core;
     }
 
     /// <summary>
-    /// Encrypts a single 16-byte block using Kalyna.
+    /// Encrypts a single Kalyna block.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_blockWords != 2)
+        {
+            EncryptBlockGeneric(input, output);
+            return;
+        }
+
         ulong w0 = BinaryPrimitives.ReadUInt64LittleEndian(input);
         ulong w1 = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(8));
         EncryptBlock(ref w0, ref w1);
@@ -309,11 +344,17 @@ internal unsafe struct KalynaCore
     }
 
     /// <summary>
-    /// Decrypts a single 16-byte block using Kalyna.
+    /// Decrypts a single Kalyna block.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_blockWords != 2)
+        {
+            DecryptBlockGeneric(input, output);
+            return;
+        }
+
         ulong w0 = BinaryPrimitives.ReadUInt64LittleEndian(input);
         ulong w1 = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(8));
         DecryptBlock(ref w0, ref w1);
@@ -444,6 +485,83 @@ internal unsafe struct KalynaCore
         }
     }
 
+    private void EncryptBlockGeneric(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        Span<ulong> state = stackalloc ulong[MaxRoundKeyWords / 19];
+        Span<ulong> blockState = state.Slice(0, _blockWords);
+
+        for (int i = 0; i < _blockWords; i++)
+        {
+            blockState[i] = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(i * 8));
+        }
+
+        fixed (KalynaCore* pCore = &this)
+        {
+            ulong* rk = pCore->_roundKeys;
+            AddRoundKey(blockState, rk, 0);
+
+            int round = 0;
+            while (true)
+            {
+                SubBytes(blockState);
+                ShiftRows(blockState);
+                MixColumns(blockState);
+
+                if (++round == _rounds)
+                {
+                    break;
+                }
+
+                XorRoundKey(blockState, rk, round);
+            }
+
+            AddRoundKey(blockState, rk, _rounds);
+        }
+
+        for (int i = 0; i < _blockWords; i++)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(i * 8), blockState[i]);
+        }
+    }
+
+    private void DecryptBlockGeneric(ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        Span<ulong> state = stackalloc ulong[MaxRoundKeyWords / 19];
+        Span<ulong> blockState = state.Slice(0, _blockWords);
+
+        for (int i = 0; i < _blockWords; i++)
+        {
+            blockState[i] = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(i * 8));
+        }
+
+        fixed (KalynaCore* pCore = &this)
+        {
+            ulong* rk = pCore->_roundKeys;
+            SubRoundKey(blockState, rk, _rounds);
+
+            for (int round = _rounds; ;)
+            {
+                MixColumnsInv(blockState);
+                InvShiftRows(blockState);
+                InvSubBytes(blockState);
+
+                if (--round == 0)
+                {
+                    break;
+                }
+
+                XorRoundKey(blockState, rk, round);
+            }
+
+            SubRoundKey(blockState, rk, 0);
+        }
+
+        for (int i = 0; i < _blockWords; i++)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(i * 8), blockState[i]);
+        }
+    }
+
     private static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> roundKeys)
     {
         int nr = key.Length switch {
@@ -467,6 +585,536 @@ internal unsafe struct KalynaCore
         }
 
         return nr;
+    }
+
+    private static int ExpandKeyGeneric(ReadOnlySpan<byte> key, int blockWords, Span<ulong> roundKeys)
+    {
+        int keyWords = key.Length / 8;
+        int nr = key.Length switch {
+            32 => 14,
+            64 => 18,
+            _ => throw new ArgumentException("Key must be 32 or 64 bytes for the selected Kalyna block size.", nameof(key))
+        };
+
+        if (blockWords != 4 && blockWords != 8)
+            throw new ArgumentException("Block size must be 256 or 512 bits for the Kalyna-512 family.", nameof(blockWords));
+
+        if (keyWords != blockWords && keyWords != blockWords * 2)
+            throw new ArgumentException("Unsupported key length for the selected Kalyna block size.", nameof(key));
+
+        Span<ulong> workingKey = stackalloc ulong[keyWords];
+        for (int i = 0; i < keyWords; i++)
+        {
+            workingKey[i] = BinaryPrimitives.ReadUInt64LittleEndian(key.Slice(i * 8));
+        }
+
+        Span<ulong> tempKeys = stackalloc ulong[8];
+        WorkingKeyExpandKt(workingKey, blockWords, keyWords, tempKeys);
+        WorkingKeyExpandEven(workingKey, blockWords, keyWords, tempKeys, roundKeys, nr);
+        WorkingKeyExpandOdd(roundKeys, blockWords, nr);
+
+        return nr;
+    }
+
+    private static void WorkingKeyExpandKt(ReadOnlySpan<ulong> workingKey, int blockWords, int keyWords, Span<ulong> tempKeys)
+    {
+        Span<ulong> state = stackalloc ulong[8];
+        state.Clear();
+        Span<ulong> k0 = stackalloc ulong[8];
+        Span<ulong> k1 = stackalloc ulong[8];
+        Span<ulong> blockState = state.Slice(0, blockWords);
+
+        state[0] = (ulong)(blockWords + keyWords + 1);
+
+        if (keyWords == blockWords)
+        {
+            workingKey.Slice(0, blockWords).CopyTo(k0);
+            workingKey.Slice(0, blockWords).CopyTo(k1);
+        }
+        else
+        {
+            workingKey.Slice(0, blockWords).CopyTo(k0);
+            workingKey.Slice(blockWords, blockWords).CopyTo(k1);
+        }
+
+        for (int i = 0; i < blockWords; i++)
+        {
+            blockState[i] += k0[i];
+        }
+
+        SubBytes(blockState);
+        ShiftRows(blockState);
+        MixColumns(blockState);
+
+        for (int i = 0; i < blockWords; i++)
+        {
+            blockState[i] ^= k1[i];
+        }
+
+        SubBytes(blockState);
+        ShiftRows(blockState);
+        MixColumns(blockState);
+
+        for (int i = 0; i < blockWords; i++)
+        {
+            blockState[i] += k0[i];
+        }
+
+        SubBytes(blockState);
+        ShiftRows(blockState);
+        MixColumns(blockState);
+
+        blockState.CopyTo(tempKeys);
+    }
+
+    private static void WorkingKeyExpandEven(ReadOnlySpan<ulong> workingKey, int blockWords, int keyWords, ReadOnlySpan<ulong> tempKey, Span<ulong> roundKeys, int nr)
+    {
+        Span<ulong> state = stackalloc ulong[8];
+        Span<ulong> tmpRoundKey = stackalloc ulong[8];
+        Span<ulong> initialData = stackalloc ulong[8];
+        workingKey.CopyTo(initialData);
+
+        ulong tmv = 0x0001000100010001UL;
+        int round = 0;
+
+        while (true)
+        {
+            for (int i = 0; i < blockWords; i++)
+            {
+                tmpRoundKey[i] = tempKey[i] + tmv;
+            }
+
+            for (int i = 0; i < blockWords; i++)
+            {
+                state[i] = initialData[i] + tmpRoundKey[i];
+            }
+
+            SubBytes(state.Slice(0, blockWords));
+            ShiftRows(state.Slice(0, blockWords));
+            MixColumns(state.Slice(0, blockWords));
+
+            for (int i = 0; i < blockWords; i++)
+            {
+                state[i] ^= tmpRoundKey[i];
+            }
+
+            SubBytes(state.Slice(0, blockWords));
+            ShiftRows(state.Slice(0, blockWords));
+            MixColumns(state.Slice(0, blockWords));
+
+            for (int i = 0; i < blockWords; i++)
+            {
+                state[i] += tmpRoundKey[i];
+            }
+
+            state.Slice(0, blockWords).CopyTo(roundKeys.Slice(round * blockWords, blockWords));
+
+            if (round == nr)
+            {
+                break;
+            }
+
+            if (keyWords != blockWords)
+            {
+                round += 2;
+                tmv <<= 1;
+
+                for (int i = 0; i < blockWords; i++)
+                {
+                    tmpRoundKey[i] = tempKey[i] + tmv;
+                }
+
+                for (int i = 0; i < blockWords; i++)
+                {
+                    state[i] = initialData[blockWords + i] + tmpRoundKey[i];
+                }
+
+                SubBytes(state.Slice(0, blockWords));
+                ShiftRows(state.Slice(0, blockWords));
+                MixColumns(state.Slice(0, blockWords));
+
+                for (int i = 0; i < blockWords; i++)
+                {
+                    state[i] ^= tmpRoundKey[i];
+                }
+
+                SubBytes(state.Slice(0, blockWords));
+                ShiftRows(state.Slice(0, blockWords));
+                MixColumns(state.Slice(0, blockWords));
+
+                for (int i = 0; i < blockWords; i++)
+                {
+                    state[i] += tmpRoundKey[i];
+                }
+
+                state.Slice(0, blockWords).CopyTo(roundKeys.Slice(round * blockWords, blockWords));
+
+                if (round == nr)
+                {
+                    break;
+                }
+            }
+
+            round += 2;
+            tmv <<= 1;
+            RotateLeftWords(initialData.Slice(0, keyWords));
+        }
+    }
+
+    private static void WorkingKeyExpandOdd(Span<ulong> roundKeys, int blockWords, int nr)
+    {
+        for (int roundIndex = 1; roundIndex < nr; roundIndex += 2)
+        {
+            RotateRoundKey(roundKeys.Slice((roundIndex - 1) * blockWords, blockWords), roundKeys.Slice(roundIndex * blockWords, blockWords), blockWords);
+        }
+    }
+
+    private static void RotateLeftWords(Span<ulong> words)
+    {
+        ulong temp = words[0];
+        for (int i = 1; i < words.Length; i++)
+        {
+            words[i - 1] = words[i];
+        }
+
+        words[^1] = temp;
+    }
+
+    private static void RotateRoundKey(ReadOnlySpan<ulong> src, Span<ulong> dst, int blockWords)
+    {
+        switch (blockWords)
+        {
+            case 2:
+                {
+                    ulong x0 = src[0], x1 = src[1];
+                    dst[0] = (x0 >> 56) | (x1 << 8);
+                    dst[1] = (x1 >> 56) | (x0 << 8);
+                    break;
+                }
+            case 4:
+                {
+                    ulong x0 = src[0], x1 = src[1], x2 = src[2], x3 = src[3];
+                    dst[0] = (x1 >> 24) | (x2 << 40);
+                    dst[1] = (x2 >> 24) | (x3 << 40);
+                    dst[2] = (x3 >> 24) | (x0 << 40);
+                    dst[3] = (x0 >> 24) | (x1 << 40);
+                    break;
+                }
+            case 8:
+                {
+                    ulong x0 = src[0], x1 = src[1], x2 = src[2], x3 = src[3];
+                    ulong x4 = src[4], x5 = src[5], x6 = src[6], x7 = src[7];
+                    dst[0] = (x2 >> 24) | (x3 << 40);
+                    dst[1] = (x3 >> 24) | (x4 << 40);
+                    dst[2] = (x4 >> 24) | (x5 << 40);
+                    dst[3] = (x5 >> 24) | (x6 << 40);
+                    dst[4] = (x6 >> 24) | (x7 << 40);
+                    dst[5] = (x7 >> 24) | (x0 << 40);
+                    dst[6] = (x0 >> 24) | (x1 << 40);
+                    dst[7] = (x1 >> 24) | (x2 << 40);
+                    break;
+                }
+            default:
+                {
+                    throw new InvalidOperationException("Unsupported Kalyna block length.");
+                }
+        }
+    }
+
+    private void AddRoundKey(Span<ulong> state, ulong* roundKeys, int round)
+    {
+        int offset = round * _blockWords;
+        for (int i = 0; i < _blockWords; i++)
+        {
+            state[i] += roundKeys[offset + i];
+        }
+    }
+
+    private void SubRoundKey(Span<ulong> state, ulong* roundKeys, int round)
+    {
+        int offset = round * _blockWords;
+        for (int i = 0; i < _blockWords; i++)
+        {
+            state[i] -= roundKeys[offset + i];
+        }
+    }
+
+    private void XorRoundKey(Span<ulong> state, ulong* roundKeys, int round)
+    {
+        int offset = round * _blockWords;
+        for (int i = 0; i < _blockWords; i++)
+        {
+            state[i] ^= roundKeys[offset + i];
+        }
+    }
+
+    private static void SubBytes(Span<ulong> state)
+    {
+        for (int i = 0; i < state.Length; i++)
+        {
+            state[i] = SubstituteWord(state[i]);
+        }
+    }
+
+    private static void InvSubBytes(Span<ulong> state)
+    {
+        for (int i = 0; i < state.Length; i++)
+        {
+            state[i] = InverseSubstituteWord(state[i]);
+        }
+    }
+
+    private static void ShiftRows(Span<ulong> state)
+    {
+        switch (state.Length)
+        {
+            case 2:
+                {
+                    ulong c0 = state[0], c1 = state[1];
+                    ulong d = (c0 ^ c1) & 0xFFFFFFFF00000000UL;
+                    c0 ^= d;
+                    c1 ^= d;
+                    state[0] = c0;
+                    state[1] = c1;
+                    break;
+                }
+            case 4:
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong d;
+
+                    d = (c0 ^ c2) & 0xFFFFFFFF00000000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x0000FFFFFFFF0000UL; c1 ^= d; c3 ^= d;
+
+                    d = (c0 ^ c1) & 0xFFFF0000FFFF0000UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFFFF0000FFFF0000UL; c2 ^= d; c3 ^= d;
+
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    break;
+                }
+            case 8:
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong c4 = state[4], c5 = state[5], c6 = state[6], c7 = state[7];
+                    ulong d;
+
+                    d = (c0 ^ c4) & 0xFFFFFFFF00000000UL; c0 ^= d; c4 ^= d;
+                    d = (c1 ^ c5) & 0x00FFFFFFFF000000UL; c1 ^= d; c5 ^= d;
+                    d = (c2 ^ c6) & 0x0000FFFFFFFF0000UL; c2 ^= d; c6 ^= d;
+                    d = (c3 ^ c7) & 0x000000FFFFFFFF00UL; c3 ^= d; c7 ^= d;
+
+                    d = (c0 ^ c2) & 0xFFFF0000FFFF0000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x00FFFF0000FFFF00UL; c1 ^= d; c3 ^= d;
+                    d = (c4 ^ c6) & 0xFFFF0000FFFF0000UL; c4 ^= d; c6 ^= d;
+                    d = (c5 ^ c7) & 0x00FFFF0000FFFF00UL; c5 ^= d; c7 ^= d;
+
+                    d = (c0 ^ c1) & 0xFF00FF00FF00FF00UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFF00FF00FF00FF00UL; c2 ^= d; c3 ^= d;
+                    d = (c4 ^ c5) & 0xFF00FF00FF00FF00UL; c4 ^= d; c5 ^= d;
+                    d = (c6 ^ c7) & 0xFF00FF00FF00FF00UL; c6 ^= d; c7 ^= d;
+
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    state[4] = c4;
+                    state[5] = c5;
+                    state[6] = c6;
+                    state[7] = c7;
+                    break;
+                }
+            default:
+                {
+                    throw new InvalidOperationException("Unsupported Kalyna block length.");
+                }
+        }
+    }
+
+    private static void InvShiftRows(Span<ulong> state)
+    {
+        switch (state.Length)
+        {
+            case 2:
+                {
+                    ulong c0 = state[0], c1 = state[1];
+                    ulong d = (c0 ^ c1) & 0xFFFFFFFF00000000UL;
+                    c0 ^= d;
+                    c1 ^= d;
+                    state[0] = c0;
+                    state[1] = c1;
+                    break;
+                }
+            case 4:
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong d;
+
+                    d = (c0 ^ c1) & 0xFFFF0000FFFF0000UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFFFF0000FFFF0000UL; c2 ^= d; c3 ^= d;
+
+                    d = (c0 ^ c2) & 0xFFFFFFFF00000000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x0000FFFFFFFF0000UL; c1 ^= d; c3 ^= d;
+
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    break;
+                }
+            case 8:
+                {
+                    ulong c0 = state[0], c1 = state[1], c2 = state[2], c3 = state[3];
+                    ulong c4 = state[4], c5 = state[5], c6 = state[6], c7 = state[7];
+                    ulong d;
+
+                    d = (c0 ^ c1) & 0xFF00FF00FF00FF00UL; c0 ^= d; c1 ^= d;
+                    d = (c2 ^ c3) & 0xFF00FF00FF00FF00UL; c2 ^= d; c3 ^= d;
+                    d = (c4 ^ c5) & 0xFF00FF00FF00FF00UL; c4 ^= d; c5 ^= d;
+                    d = (c6 ^ c7) & 0xFF00FF00FF00FF00UL; c6 ^= d; c7 ^= d;
+
+                    d = (c0 ^ c2) & 0xFFFF0000FFFF0000UL; c0 ^= d; c2 ^= d;
+                    d = (c1 ^ c3) & 0x00FFFF0000FFFF00UL; c1 ^= d; c3 ^= d;
+                    d = (c4 ^ c6) & 0xFFFF0000FFFF0000UL; c4 ^= d; c6 ^= d;
+                    d = (c5 ^ c7) & 0x00FFFF0000FFFF00UL; c5 ^= d; c7 ^= d;
+
+                    d = (c0 ^ c4) & 0xFFFFFFFF00000000UL; c0 ^= d; c4 ^= d;
+                    d = (c1 ^ c5) & 0x00FFFFFFFF000000UL; c1 ^= d; c5 ^= d;
+                    d = (c2 ^ c6) & 0x0000FFFFFFFF0000UL; c2 ^= d; c6 ^= d;
+                    d = (c3 ^ c7) & 0x000000FFFFFFFF00UL; c3 ^= d; c7 ^= d;
+
+                    state[0] = c0;
+                    state[1] = c1;
+                    state[2] = c2;
+                    state[3] = c3;
+                    state[4] = c4;
+                    state[5] = c5;
+                    state[6] = c6;
+                    state[7] = c7;
+                    break;
+                }
+            default:
+                {
+                    throw new InvalidOperationException("Unsupported Kalyna block length.");
+                }
+        }
+    }
+
+    private static void MixColumns(Span<ulong> state)
+    {
+        for (int i = 0; i < state.Length; i++)
+        {
+            state[i] = MixColumn(state[i]);
+        }
+    }
+
+    private static void MixColumnsInv(Span<ulong> state)
+    {
+        for (int i = 0; i < state.Length; i++)
+        {
+            state[i] = MixColumnInv(state[i]);
+        }
+    }
+
+    private static ulong SubstituteWord(ulong value)
+    {
+        int lo = (int)value;
+        int hi = (int)(value >> 32);
+
+        byte t0 = S0[lo & 0xFF];
+        byte t1 = S1[(lo >> 8) & 0xFF];
+        byte t2 = S2[(lo >> 16) & 0xFF];
+        byte t3 = S3[(lo >> 24) & 0xFF];
+        lo = t0 | (t1 << 8) | (t2 << 16) | (t3 << 24);
+
+        byte t4 = S0[hi & 0xFF];
+        byte t5 = S1[(hi >> 8) & 0xFF];
+        byte t6 = S2[(hi >> 16) & 0xFF];
+        byte t7 = S3[(hi >> 24) & 0xFF];
+        hi = t4 | (t5 << 8) | (t6 << 16) | (t7 << 24);
+
+        return (uint)lo | ((ulong)(uint)hi << 32);
+    }
+
+    private static ulong InverseSubstituteWord(ulong value)
+    {
+        int lo = (int)value;
+        int hi = (int)(value >> 32);
+
+        byte t0 = IS0[lo & 0xFF];
+        byte t1 = IS1[(lo >> 8) & 0xFF];
+        byte t2 = IS2[(lo >> 16) & 0xFF];
+        byte t3 = IS3[(lo >> 24) & 0xFF];
+        lo = t0 | (t1 << 8) | (t2 << 16) | (t3 << 24);
+
+        byte t4 = IS0[hi & 0xFF];
+        byte t5 = IS1[(hi >> 8) & 0xFF];
+        byte t6 = IS2[(hi >> 16) & 0xFF];
+        byte t7 = IS3[(hi >> 24) & 0xFF];
+        hi = t4 | (t5 << 8) | (t6 << 16) | (t7 << 24);
+
+        return (uint)lo | ((ulong)(uint)hi << 32);
+    }
+
+    private static ulong MixColumn(ulong value)
+    {
+        ulong x1 = MulX(value);
+        ulong u = Rotate(8, value) ^ value;
+        u ^= Rotate(16, u);
+        u ^= Rotate(48, value);
+
+        ulong v = MulX2(u ^ value ^ x1);
+        return u ^ Rotate(32, v) ^ Rotate(40, x1) ^ Rotate(48, x1);
+    }
+
+    private static ulong MixColumnInv(ulong value)
+    {
+        ulong u0 = value;
+        u0 ^= Rotate(8, u0);
+        u0 ^= Rotate(32, u0);
+        u0 ^= Rotate(48, value);
+
+        ulong t = u0 ^ value;
+
+        ulong c48 = Rotate(48, value);
+        ulong c56 = Rotate(56, value);
+
+        ulong u7 = t ^ c56;
+        ulong u6 = Rotate(56, t);
+        u6 ^= MulX(u7);
+        ulong u5 = Rotate(16, t) ^ value;
+        u5 ^= Rotate(40, MulX(u6) ^ value);
+        ulong u4 = t ^ c48;
+        u4 ^= MulX(u5);
+        ulong u3 = Rotate(16, u0);
+        u3 ^= MulX(u4);
+        ulong u2 = t ^ Rotate(24, value) ^ c48 ^ c56;
+        u2 ^= MulX(u3);
+        ulong u1 = Rotate(32, t) ^ value ^ c56;
+        u1 ^= MulX(u2);
+        u0 ^= MulX(Rotate(40, u1));
+
+        return u0;
+    }
+
+    private static ulong MulX(ulong value)
+    {
+        return ((value & 0x7F7F7F7F7F7F7F7FUL) << 1)
+             ^ (((value & 0x8080808080808080UL) >> 7) * 0x1DUL);
+    }
+
+    private static ulong MulX2(ulong value)
+    {
+        return ((value & 0x3F3F3F3F3F3F3F3FUL) << 2)
+             ^ (((value & 0x8080808080808080UL) >> 6) * 0x1DUL)
+             ^ (((value & 0x4040404040404040UL) >> 6) * 0x1DUL);
+    }
+
+    private static ulong Rotate(int n, ulong value)
+    {
+        return (value >> n) | (value << (64 - n));
     }
 
     private static void SubBytes(Span<byte> state)
@@ -581,9 +1229,11 @@ internal unsafe struct KalynaCore
     }
 
     // Key expansion: compute intermediate key Kt
+    [SkipLocalsInit]
     private static void KeyExpandKt(ReadOnlySpan<byte> key, Span<byte> kt)
     {
         Span<byte> state = stackalloc byte[16];
+        state.Clear();
 
         // Initialize state with block size indicator
         int keyLen = key.Length;
@@ -619,9 +1269,11 @@ internal unsafe struct KalynaCore
     }
 
     // Key expansion for 128-bit key
+    [SkipLocalsInit]
     private static void KeyExpandEvenOdd128(ReadOnlySpan<byte> key, ReadOnlySpan<byte> kt, Span<byte> roundKeys, int nr)
     {
         Span<byte> state = stackalloc byte[16];
+        state.Clear();
         Span<byte> tmpRK = stackalloc byte[16];
         Span<byte> initialData = stackalloc byte[16];
 
@@ -682,9 +1334,11 @@ internal unsafe struct KalynaCore
     }
 
     // Key expansion for 256-bit key with 128-bit block
+    [SkipLocalsInit]
     private static void KeyExpandEvenOdd256(ReadOnlySpan<byte> key, ReadOnlySpan<byte> kt, Span<byte> roundKeys, int nr)
     {
         Span<byte> state = stackalloc byte[16];
+        state.Clear();
         Span<byte> tmpRK = stackalloc byte[16];
         Span<byte> initialData = stackalloc byte[32];
 
