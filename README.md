@@ -45,30 +45,6 @@ All packages are published under the `CryptoHives.Foundation` prefix and namespa
 
 ---
 
-## 🧬 Design Principles
-
-### 🧱 Orthogonal by design
-- Everything is built with free and open-source tooling — the .NET SDK, Visual Studio Community, VS Code, GitHub, Azure DevOps.
-- Packages are meant to stand on their own; we try hard to avoid deep cross-dependencies between them.
-- Dependencies on anything outside CryptoHives are kept minimal and limited to widely adopted, well-maintained libraries (e.g. `Microsoft.Extensions.*`).
-- OS and hardware dependencies are avoided where possible, so behavior stays deterministic across platforms and runtimes — this matters especially for the crypto implementations.
-- None of this is meant to replace or compete with the existing .NET class library. It's meant to complement it.
-
-### ⚡ Built for performance
-- Every package targets high throughput with no steady-state allocations, for both transformation pipelines and crypto workloads.
-- Where it helps, algorithms use managed SIMD intrinsics with a scalar fallback for platforms that don't support them.
-- Performance and memory usage are benchmarked against reference implementations, not just asserted.
-
-### 🔐 Secure development policy
-- Implementations are written directly from public specifications (NIST, RFC, ISO) rather than ported from other codebases.
-- Every algorithm is checked against official test vectors from its specification.
-- Reviews include validation against independent reference implementations.
-- Public APIs and anything touching the network are treated as hostile-input surfaces by default.
-- Defaults favor a minimal attack surface: explicit configuration, strict input validation, bounded resource use.
-- Dependencies are kept minimal and vetted; reproducible, signed releases are on the roadmap.
-- Fuzzing is planned; static analysis and defensive error handling are already in place to limit misuse and information leaks.
-- Some development uses AI-assisted tooling — we're not claiming clean-room provenance for every line.
-
 ## 🏗️ Architecture Overview
 
 ```
@@ -189,6 +165,32 @@ All XOF algorithms implement `IExtendableOutput` for streaming variable-length o
 Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions.
 - [Hash algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html)
 - [Cipher algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html)
+
+---
+
+## 🧬 Design Principles
+
+### 🧱 Orthogonal by design
+- Everything is built with free and open-source tooling — the .NET SDK, Visual Studio Community, VS Code, GitHub, Azure DevOps.
+- Packages are meant to stand on their own; we try hard to avoid deep cross-dependencies between them.
+- Dependencies on anything outside CryptoHives are kept minimal and limited to widely adopted, well-maintained libraries (e.g. `Microsoft.Extensions.*`).
+- OS and hardware dependencies are avoided where possible, so behavior stays deterministic across platforms and runtimes — this matters especially for the crypto implementations.
+- None of this is meant to replace or compete with the existing .NET class library. It's meant to complement it.
+
+### ⚡ Built for performance
+- Every package targets high throughput with no steady-state allocations, for both transformation pipelines and crypto workloads.
+- Where it helps, algorithms use managed SIMD intrinsics with a scalar fallback for platforms that don't support them.
+- Performance and memory usage are benchmarked against reference implementations, not just asserted.
+
+### 🔐 Secure development policy
+- Implementations are written directly from public specifications (NIST, RFC, ISO) rather than ported from other codebases.
+- Every algorithm is checked against official test vectors from its specification.
+- Reviews include validation against independent reference implementations.
+- Public APIs and anything touching the network are treated as hostile-input surfaces by default.
+- Defaults favor a minimal attack surface: explicit configuration, strict input validation, bounded resource use.
+- Dependencies are kept minimal and vetted; reproducible, signed releases are on the roadmap.
+- Fuzzing is planned; static analysis and defensive error handling are already in place to limit misuse and information leaks.
+- Some development uses AI-assisted tooling — we're not claiming clean-room provenance for every line.
 
 ---
 
