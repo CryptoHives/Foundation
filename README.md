@@ -6,11 +6,13 @@ An open, community-driven collection of cryptography and performance libraries f
 
 ---
 
-The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and built around three packages, each aimed at a specific problem:
+## 🐝 Available CryptoHives
+
+The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the CryptoHives** and is currently built around three packages, each aimed at a specific problem:
 
 - **Threading** — async synchronization primitives built for low/no allocation and high throughput, using `ValueTask`-based waiters backed by pooled resources
 - **Memory** — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, meant to keep GC pressure out of transformation pipelines and crypto workloads that work in terms of `ReadOnlySpan` or `IBufferWriter`
-- **Security.Cryptography** — OS-independent reimplementations of algorithms already in `System.Security.Cryptography`, usable as drop-in replacements
+- **Security.Cryptography** — OS-independent implementations for a wide range of cryptographic algorithms, usable as drop-in replacement for `System.Security.Cryptography`
 
 ---
 
@@ -21,7 +23,7 @@ The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the
 | `Memory` | Pooled buffers and streams | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) | [Docs](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
 | `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
 | `Threading.Analyzers` | Analyzer for pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| `Security.Cryptography` | Hash, MAC & cipher algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
+| `Security.Cryptography` | Cryptographic algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
 
 All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
 
@@ -42,6 +44,65 @@ All packages are published under the `CryptoHives.Foundation` prefix and namespa
 - 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
 - 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
 - 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+
+---
+
+## 🐝 Available CryptoHives
+
+### 🛠️ Buffer Pools (Memory)
+Pooled buffer management for transformation pipelines and high-frequency I/O:
+
+- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
+- `ReadOnlySequenceMemoryStream` — reads a `ReadOnlySequence<byte>` as a `MemoryStream` without copying
+- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`
+- Ownership primitives for zero-copy handoff of pooled buffers
+
+### 🚀 Concurrency Tools (Threading)
+Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
+
+- `AsyncLock` — mutual exclusion
+- `AsyncSemaphore` — counting semaphore
+- `AsyncAutoResetEvent` / `AsyncManualResetEvent`
+- `AsyncReaderWriterLock`
+- `AsyncBarrier` / `AsyncCountdownEvent`
+
+All primitives support `CancellationToken` and `ConfigureAwait(false)` without extra allocations. New in 0.6: timeout support via `TimeProvider` (an `ITimer` is only allocated once there's actual contention).
+
+A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a standalone package.
+
+⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, pooled `ValueTask` vs. existing `Task`-based alternatives.
+
+### 🔐 Managed Code Cryptography (Security.Cryptography)
+Fully managed hash, MAC, and cipher implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. 
+No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in 
+automatically — in some cases outperforming the OS-provided implementation.
+
+**Algorithms:**
+
+| Family | Algorithms |
+|--------|-----------|
+| SHA-2 | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256 |
+| SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 |
+| Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) |
+| SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
+| ParallelHash (SP 800-185) | ParallelHash128, ParallelHash256 |
+| TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
+| BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
+| Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
+| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
+| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
+| Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
+| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256/512), SEED |
+| Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
+| Legacy | SHA-1, MD5 (kept for backward compatibility only) |
+
+All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
+
+**⏱️ Benchmarks**
+
+Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions.
+- [Hash algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html)
+- [Cipher algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html)
 
 ---
 
@@ -108,63 +169,6 @@ Keccak class hierarchy (Security.Cryptography):
 
   IncrementalParallelHash  (streaming wrapper, buffers input until Squeeze)
 ```
-
----
-
-## 🐝 Available CryptoHives
-
-### 🛠️ Buffer Pools (Memory)
-Pooled buffer management for transformation pipelines and high-frequency I/O:
-
-- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
-- `ReadOnlySequenceMemoryStream` — reads a `ReadOnlySequence<byte>` as a `MemoryStream` without copying
-- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`
-- Ownership primitives for zero-copy handoff of pooled buffers
-
-### 🚀 Concurrency Tools (Threading)
-Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
-
-- `AsyncLock` — mutual exclusion
-- `AsyncSemaphore` — counting semaphore
-- `AsyncAutoResetEvent` / `AsyncManualResetEvent`
-- `AsyncReaderWriterLock`
-- `AsyncBarrier` / `AsyncCountdownEvent`
-
-All primitives support `CancellationToken` and `ConfigureAwait(false)` without extra allocations. New in 0.6: timeout support via `TimeProvider` (an `ITimer` is only allocated once there's actual contention).
-
-A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a standalone package.
-
-⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, pooled `ValueTask` vs. existing `Task`-based alternatives.
-
-### 🔐 Managed Code Cryptography (Security.Cryptography)
-Fully managed hash, MAC, and cipher implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in automatically — in some cases outperforming the OS-provided implementation.
-
-**Algorithms:**
-
-| Family | Algorithms |
-|--------|-----------|
-| SHA-2 | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256 |
-| SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 |
-| Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) |
-| SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
-| ParallelHash (SP 800-185) | ParallelHash128, ParallelHash256 |
-| TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
-| BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
-| Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
-| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
-| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
-| Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
-| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256/512), SEED |
-| Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
-| Legacy | SHA-1, MD5 (kept for backward compatibility only) |
-
-All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
-
-**⏱️ Benchmarks**
-
-Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions.
-- [Hash algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html)
-- [Cipher algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html)
 
 ---
 
@@ -261,7 +265,7 @@ Packages aren't code-signed yet. The Keepers plan to add signing once there's en
 
 ## 📝 No-Nonsense License Matters
 
-This project is MIT-licensed because we believe in open collaboration. That said, we're aware MIT code gets copied, repackaged, and resold without credit fairly often — if you use this code, we'd appreciate it if you didn't do that:
+This project is MIT-licensed because we believe in open collaboration. That said, we're aware MIT code gets sometimes copied, repackaged, and resold without credit — if you use this code, we'd appreciate it if you didn't do that:
 
 - Give visible credit to the **CryptoHives Open Source Initiative** / **The Keepers of the CryptoHives** and link back to the source.
 - Send improvements back upstream and report issues rather than silently forking.
