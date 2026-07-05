@@ -97,6 +97,11 @@ internal static class MlKemCore
         // dkPKE = ByteEncode₁₂(ŝ)
         PolyVec.Normalize(s);
         PolyVec.ToBytes(s, dkPke.Slice(0, p.PolyVecEncodedBytes));
+
+        CryptographicOperations.ZeroMemory(gInput);
+        CryptographicOperations.ZeroMemory(gOutput);
+        Zero(s);
+        Zero(e);
     }
 
     /// <summary>
@@ -172,6 +177,11 @@ internal static class MlKemCore
         Poly.Normalize(v);
         Compress.CompressPoly(v, p.Dv);
         Encode.ByteEncodeD(v, p.Dv, ciphertext.Slice(p.PolyVecCompressedBytes, p.PolyCompressedBytes));
+
+        Zero(rv);
+        Zero(e1);
+        Zero(e2);
+        Zero(msgPoly);
     }
 
     /// <summary>
@@ -216,6 +226,10 @@ internal static class MlKemCore
         Poly.Reduce(v);
         Poly.Normalize(v);
         Poly.ToMessage(v, msg);
+
+        Zero(sHat);
+        Zero(w);
+        Zero(v);
     }
 
     // ========================================================================
@@ -252,6 +266,84 @@ internal static class MlKemCore
         offset += 32;
 
         z.CopyTo(dk.Slice(offset, 32));
+
+        PairwiseConsistencyTest(p, ek, dk);
+    }
+
+    /// <summary>
+    /// Verifies a freshly generated key pair by running one encapsulation/decapsulation
+    /// round-trip, as expected by FIPS 140-3 for key generation.
+    /// </summary>
+    /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
+    private static void PairwiseConsistencyTest(MlKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> dk)
+    {
+        Span<byte> m = stackalloc byte[MlKemParams.EncapsSeedBytes];
+        GenerateRandomSeed(m);
+
+        byte[] ct = new byte[p.CiphertextBytes];
+        Span<byte> ss1 = stackalloc byte[MlKemParams.SharedSecretBytes];
+        Span<byte> ss2 = stackalloc byte[MlKemParams.SharedSecretBytes];
+
+        Encaps(p, ek, m, ct, ss1);
+        Decaps(p, dk, ct, ss2);
+
+        bool consistent = CryptographicOperations.FixedTimeEquals(ss1, ss2);
+
+        CryptographicOperations.ZeroMemory(m);
+        CryptographicOperations.ZeroMemory(ss1);
+        CryptographicOperations.ZeroMemory(ss2);
+
+        if (!consistent)
+        {
+            throw new OS.CryptographicException("ML-KEM key generation failed the pairwise consistency test.");
+        }
+    }
+
+    /// <summary>
+    /// Performs the FIPS 203 §7.2 encapsulation key check (modulus check).
+    /// </summary>
+    /// <remarks>
+    /// Every 12-bit coefficient of ByteDecode₁₂(ek) must be less than q, i.e. the key
+    /// must round-trip through ByteDecode₁₂ ∘ ByteEncode₁₂ unchanged.
+    /// </remarks>
+    /// <param name="p">The ML-KEM parameter set.</param>
+    /// <param name="ek">The encapsulation key (must already be length-checked).</param>
+    /// <returns>True if the key passes the modulus check.</returns>
+    public static bool IsValidEncapsulationKey(MlKemParams p, ReadOnlySpan<byte> ek)
+    {
+        ReadOnlySpan<byte> encoded = ek.Slice(0, p.PolyVecEncodedBytes);
+        for (int i = 0; i < encoded.Length; i += 3)
+        {
+            int b1 = encoded[i + 1];
+            int c0 = (encoded[i] | (b1 << 8)) & 0xFFF;
+            int c1 = ((b1 >> 4) | (encoded[i + 2] << 4)) & 0xFFF;
+            if (c0 >= MlKemParams.Q || c1 >= MlKemParams.Q)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Performs the FIPS 203 §7.3 decapsulation key hash check.
+    /// </summary>
+    /// <remarks>
+    /// The hash H(ekPKE) stored in the decapsulation key must match a freshly
+    /// computed hash of the embedded encapsulation key.
+    /// </remarks>
+    /// <param name="p">The ML-KEM parameter set.</param>
+    /// <param name="dk">The decapsulation key (must already be length-checked).</param>
+    /// <returns>True if the key passes the hash check.</returns>
+    public static bool IsValidDecapsulationKey(MlKemParams p, ReadOnlySpan<byte> dk)
+    {
+        ReadOnlySpan<byte> ekPke = dk.Slice(p.PolyVecEncodedBytes, p.EncapsulationKeyBytes);
+        ReadOnlySpan<byte> h = dk.Slice(p.PolyVecEncodedBytes + p.EncapsulationKeyBytes, 32);
+
+        Span<byte> computed = stackalloc byte[32];
+        HashH(ekPke, computed);
+        return CryptographicOperations.FixedTimeEquals(computed, h);
     }
 
     /// <summary>
@@ -287,6 +379,9 @@ internal static class MlKemCore
 
         // Return K
         K.CopyTo(sharedSecret);
+
+        CryptographicOperations.ZeroMemory(gInput);
+        CryptographicOperations.ZeroMemory(gOutput);
     }
 
     /// <summary>
@@ -335,13 +430,21 @@ internal static class MlKemCore
         Span<byte> kBar = stackalloc byte[32];
         HashJ(z, ciphertext.Slice(0, p.CiphertextBytes), kBar);
 
-        // If c == c': return K'; else return K̄ (implicit rejection)
-        bool equal = CryptographicOperations.FixedTimeEquals(
+        // If c == c': return K'; else return K̄ (implicit rejection).
+        // The comparison result stays an integer mask end-to-end; converting to bool
+        // would reintroduce a secret-dependent branch.
+        int mask = CryptographicOperations.FixedTimeEqualsMask(
             ciphertext.Slice(0, p.CiphertextBytes),
             cPrime.AsSpan(0, p.CiphertextBytes));
 
-        // Constant-time select: K = equal ? K' : K̄
-        ConstantTimeSelect(sharedSecret, kPrime, kBar, equal);
+        // Constant-time select: K = mask all-ones ? K' : K̄
+        ConstantTimeSelect(sharedSecret, kPrime, kBar, mask);
+
+        CryptographicOperations.ZeroMemory(mPrime);
+        CryptographicOperations.ZeroMemory(gInput);
+        CryptographicOperations.ZeroMemory(gOutput);
+        CryptographicOperations.ZeroMemory(kBar);
+        CryptographicOperations.ZeroMemory(cPrime);
     }
 
     // ========================================================================
@@ -402,6 +505,7 @@ internal static class MlKemCore
         byte[] prfOutput = new byte[prfBytes];
         Prf(seed, nonce, prfOutput);
         Cbd.Sample(prfOutput, eta, coeffs);
+        CryptographicOperations.ZeroMemory(prfOutput);
     }
 
     /// <summary>
@@ -429,15 +533,19 @@ internal static class MlKemCore
     }
 
     /// <summary>
-    /// Constant-time conditional select: output = condition ? a : b.
+    /// Constant-time conditional select: output = mask all-ones ? a : b.
     /// </summary>
+    /// <param name="output">The destination buffer.</param>
+    /// <param name="a">Value selected when <paramref name="mask"/> is -1.</param>
+    /// <param name="b">Value selected when <paramref name="mask"/> is 0.</param>
+    /// <param name="mask">-1 (all bits set) or 0, e.g. from <see cref="CryptographicOperations.FixedTimeEqualsMask"/>.</param>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    private static void ConstantTimeSelect(Span<byte> output, ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, bool condition)
+    private static void ConstantTimeSelect(Span<byte> output, ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, int mask)
     {
-        byte mask = (byte)(condition ? 0xFF : 0x00);
+        byte m = unchecked((byte)mask);
         for (int i = 0; i < output.Length; i++)
         {
-            output[i] = (byte)((a[i] & mask) | (b[i] & ~mask));
+            output[i] = (byte)((a[i] & m) | (b[i] & ~m));
         }
     }
 
@@ -454,6 +562,28 @@ internal static class MlKemCore
         using var rng = OS.RandomNumberGenerator.Create();
         rng.GetBytes(buf);
         buf.AsSpan().CopyTo(output);
+        CryptographicOperations.ZeroMemory(buf);
 #endif
+    }
+
+    /// <summary>
+    /// Clears a secret polynomial in a way that's not subject to compiler optimizations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    internal static void Zero(short[] poly)
+    {
+        Array.Clear(poly, 0, poly.Length);
+    }
+
+    /// <summary>
+    /// Clears a secret polynomial vector in a way that's not subject to compiler optimizations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    internal static void Zero(short[][] vec)
+    {
+        for (int i = 0; i < vec.Length; i++)
+        {
+            Array.Clear(vec[i], 0, vec[i].Length);
+        }
     }
 }

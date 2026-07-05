@@ -146,6 +146,9 @@ public sealed class MlKem512 : IKem
         if (sharedSecret.Length < SharedSecretSizeBytesConst)
             throw new ArgumentException($"Shared secret buffer must be at least {SharedSecretSizeBytesConst} bytes.", nameof(sharedSecret));
 
+        if (!MlKemCore.IsValidEncapsulationKey(Params, encapsulationKey))
+            throw new ArgumentException("Encapsulation key failed the FIPS 203 §7.2 modulus check.", nameof(encapsulationKey));
+
         Span<byte> m = stackalloc byte[MlKemParams.EncapsSeedBytes];
         MlKemCore.GenerateRandomSeed(m);
         MlKemCore.Encaps(Params, encapsulationKey, m, ciphertext, sharedSecret);
@@ -164,6 +167,9 @@ public sealed class MlKem512 : IKem
         if (sharedSecret.Length < SharedSecretSizeBytesConst)
             throw new ArgumentException($"Shared secret buffer must be at least {SharedSecretSizeBytesConst} bytes.", nameof(sharedSecret));
 
+        if (!MlKemCore.IsValidEncapsulationKey(Params, encapsulationKey))
+            throw new ArgumentException("Encapsulation key failed the FIPS 203 §7.2 modulus check.", nameof(encapsulationKey));
+
         MlKemCore.Encaps(Params, encapsulationKey, seed, ciphertext, sharedSecret);
     }
 
@@ -177,6 +183,9 @@ public sealed class MlKem512 : IKem
             throw new ArgumentException($"Ciphertext must be exactly {CiphertextSizeBytesConst} bytes.", nameof(ciphertext));
         if (sharedSecret.Length < SharedSecretSizeBytesConst)
             throw new ArgumentException($"Shared secret buffer must be at least {SharedSecretSizeBytesConst} bytes.", nameof(sharedSecret));
+
+        if (!MlKemCore.IsValidDecapsulationKey(Params, decapsulationKey))
+            throw new ArgumentException("Decapsulation key failed the FIPS 203 §7.3 hash check.", nameof(decapsulationKey));
 
         MlKemCore.Decaps(Params, decapsulationKey, ciphertext, sharedSecret);
     }

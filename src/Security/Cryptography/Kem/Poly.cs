@@ -155,6 +155,7 @@ internal static class Poly
         Array.Copy(coeffs, temp, MlKemParams.N);
         Compress.CompressPoly(temp, 1);
         Encode.ByteEncode1(temp, msg);
+        MlKemCore.Zero(temp);
     }
 
     /// <summary>
