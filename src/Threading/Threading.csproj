@@ -77,6 +77,11 @@
     <Compile Include="../Security/Cryptography/shared/MethodImplOptionsEx.cs" Link="shared/MethodImplOptionsEx.cs" />
   </ItemGroup>
 
+  <!-- LLM/agent usage + porting guide, shipped at the package root -->
+  <ItemGroup>
+    <None Include="PORTING.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
   <Target Name="GetPackagingOutputs" />
 
 </Project>
