@@ -1,0 +1,7 @@
+# Keep blank issues enabled so questions / other topics can still be filed
+# (GitHub Discussions is not enabled on this repository).
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/CryptoHives/Foundation/blob/main/SECURITY.md
+    about: Please report vulnerabilities privately following our security policy — do not open a public issue.
