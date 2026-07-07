@@ -6,7 +6,13 @@
 
 name: Dependency Review
 
-on: [pull_request]
+# Only run when the dependency graph can actually change (manifests / lock files).
+on:
+  pull_request:
+    paths:
+    - '**/*.csproj'
+    - '**/Directory.Packages.props'
+    - '**/packages.lock.json'
 
 permissions:
   contents: read

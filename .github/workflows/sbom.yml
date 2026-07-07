@@ -6,9 +6,9 @@
 
 name: Generate SBOM
 
+# The SBOM is only attached to releases, so regenerate it on release (and on demand).
+# Building it on every push to main produced an SBOM that was never uploaded.
 on:
-  push:
-    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
