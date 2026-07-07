@@ -6,7 +6,7 @@
 # specialized teams here as the project grows.
 
 # Default owner for everything in the repo
-*                           @CryptoHives/maintainers
+*                           @cryptohivekeeper
 
 # Packages
 /src/Security/Cryptography/  @CryptoHives/maintainers
@@ -15,7 +15,7 @@
 /src/Memory/                @CryptoHives/maintainers
 
 # CI, build, and repo configuration
-/.github/                   @CryptoHives/maintainers
-/.azurepipelines/           @CryptoHives/maintainers
-/*.props                    @CryptoHives/maintainers
-/*.targets                  @CryptoHives/maintainers
+/.github/                   @cryptohivekeeper
+/.azurepipelines/           @cryptohivekeeper
+/*.props                    @cryptohivekeeper
+/*.targets                  @cryptohivekeeper
