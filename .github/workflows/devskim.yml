@@ -8,8 +8,12 @@ name: DevSkim
 on:
   push:
     branches: [ "main" ]
+    paths:
+    - '**.cs'
   pull_request:
     branches: [ "main" ]
+    paths:
+    - '**.cs'
   schedule:
     - cron: '17 22 * * 2'
 

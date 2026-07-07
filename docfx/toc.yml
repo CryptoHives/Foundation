@@ -2,6 +2,8 @@
   href: index.md
 - name: Getting Started
   href: getting-started.md
+- name: Porting Guide
+  href: porting-to-cryptohives.md
 - name: Packages
   items:
     - name: Memory

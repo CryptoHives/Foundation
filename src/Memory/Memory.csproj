@@ -65,6 +65,11 @@
     <None Include="../../docfx/packages/memory/*.yml" Link="docfx/%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <!-- LLM/agent usage + porting guide, shipped at the package root -->
+  <ItemGroup>
+    <None Include="PORTING.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
   <Target Name="GetPackagingOutputs" />
 
 </Project>
