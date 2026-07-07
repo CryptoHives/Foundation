@@ -2,11 +2,15 @@
 
 name: DocFX Deployment
 
-# Trigger the action on push to main
+# Trigger on push to main, but only when documentation or the API-doc sources change.
+# (API reference is generated from src/**; other churn does not affect the site.)
 on:
   push:
     branches:
       - main
+    paths:
+      - 'docfx/**'
+      - 'src/**'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
