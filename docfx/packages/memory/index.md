@@ -25,6 +25,15 @@ using CryptoHives.Foundation.Memory.Pools;
 | [ArrayPoolBufferWriter&lt;T&gt;](arraypoolbufferwriter.md) | IBufferWriter implementation with pooled chunks | [Details](arraypoolbufferwriter.md) |
 | [ReadOnlySequenceMemoryStream](readonlysequencememorystream.md) | Stream wrapper for ReadOnlySequence | [Details](readonlysequencememorystream.md) |
 
+### Segment Ownership
+
+| Class | Description | Documentation |
+|-------|-------------|---------------|
+| [ISegmentOwner&lt;T&gt;](isegmentowner.md) | Ownership interface for an `ArraySegment<T>` | [Details](isegmentowner.md) |
+| [PooledSegment&lt;T&gt;](pooledsegment.md) | Rents from `ArrayPool<T>.Shared`; returns on dispose | [Details](pooledsegment.md) |
+| [AllocatedSegment&lt;T&gt;](allocatedsegment.md) | Wraps a GC-managed `T[]`; no pool return | [Details](allocatedsegment.md) |
+| [EmptySegment&lt;T&gt;](emptysegment.md) | Zero-allocation null-object sentinel | [Details](emptysegment.md) |
+
 ### Object Pool Utilities
 
 | Class | Description | Documentation |
@@ -87,6 +96,25 @@ MyClass obj = owner.Object;
 // Automatically returned to the pool when owner is disposed
 ```
 
+### Segment Ownership
+
+```csharp
+using CryptoHives.Foundation.Memory.Buffers;
+
+// Pool-backed buffer — returned to ArrayPool on dispose
+using ISegmentOwner<byte> pooled = PooledSegment<byte>.Rent(256);
+Span<byte> span = pooled.Segment.AsSpan();
+// fill span ...
+
+// Wrap an existing array with no pool lifecycle
+byte[] existing = new byte[256];
+using ISegmentOwner<byte> alloc = AllocatedSegment<byte>.Create(existing);
+
+// Empty sentinel — avoids null checks
+ISegmentOwner<byte> none = EmptySegment<byte>.Instance;
+if (none.Segment.Count == 0) { /* nothing to process */ }
+```
+
 ## Why Pooled Buffers
 
 Renting from `ArrayPool<T>.Shared` instead of allocating avoids resize-copy churn and keeps large buffers off the Large Object Heap, which matters once you're pushing enough throughput that allocations start showing up in GC pauses. `ReadOnlySequence<T>` then lets you hand that pooled data to a consumer without copying it at all.
@@ -109,3 +137,5 @@ Renting from `ArrayPool<T>.Shared` instead of allocating avoids resize-copy chur
 ---
 
 © 2026 The Keepers of the CryptoHives
+
+

@@ -228,6 +228,77 @@ Critical rules:
 - Whatever you got from `PooledObject` must not be used after the `using` scope ends (it has
   been returned to the pool).
 
+### 3.5 `ISegmentOwner<T>` — segment ownership primitives
+
+`using CryptoHives.Foundation.Memory.Buffers;`
+
+`ISegmentOwner<T>` is the `ArraySegment<T>` counterpart to the BCL's `IMemoryOwner<T>`.
+Use it when code passes a fixed-size, directly-addressable buffer and the caller needs to
+control whether the backing memory comes from a pool, the GC heap, or is simply empty.
+
+#### Replacement table
+
+| Existing pattern | Replace with |
+|---|---|
+| `ArrayPool<T>.Shared.Rent(n)` + manual `Return` | `PooledSegment<T>.Rent(n)` |
+| `new T[n]` handed across an ownership boundary | `AllocatedSegment<T>.Create(buffer)` |
+| `null` or zero-length array as "no data" sentinel | `EmptySegment<T>.Instance` |
+| `IMemoryOwner<T>` where `ArraySegment<T>` is preferred | `ISegmentOwner<T>` |
+
+#### Choosing the right implementation
+
+| Class | Memory source | When to use |
+|---|---|---|
+| `PooledSegment<T>` | `ArrayPool<T>.Shared` | Hot-path, short-lived, fixed-size buffers where you want pool reuse. |
+| `AllocatedSegment<T>` | `new T[]` (GC heap) | You already have an array and just need a uniform ownership wrapper. |
+| `EmptySegment<T>` | `Array.Empty<T>()` singleton | Default/uninitialized state; avoids `null` checks in consumers. |
+
+#### Patterns
+
+```csharp
+using CryptoHives.Foundation.Memory.Buffers;
+
+// PooledSegment<T> — pool-backed, Segment.Count == minimumLength
+using ISegmentOwner<byte> seg = PooledSegment<byte>.Rent(256);
+Span<byte> span = seg.Segment.AsSpan();
+FillData(span);
+// narrow the view without reallocating (returns false if out-of-range):
+if (seg.TrySetSegment(offset: 16, length: 64))
+    Send(seg.Segment.AsSpan());
+// rented array is returned to ArrayPool on dispose
+
+// AllocatedSegment<T> — wraps an existing GC-managed array, no pool
+byte[] raw = new byte[256];
+using ISegmentOwner<byte> alloc = AllocatedSegment<byte>.Create(raw);
+Process(alloc.Segment.AsSpan());
+// only the wrapper is cleared on Dispose; the array itself is unchanged
+
+// EmptySegment<T> — null-object sentinel
+ISegmentOwner<byte> none = EmptySegment<byte>.Instance;
+
+void Process(ISegmentOwner<byte> owner)
+{
+    if (owner.Segment.Count == 0) return;   // handles EmptySegment cleanly
+    Span<byte> data = owner.Segment.AsSpan();
+    // …
+}
+```
+
+#### Critical rules
+
+- **`PooledSegment<T>` must be `using`-scoped** — the rented array is returned to
+  `ArrayPool<T>.Shared` on dispose. Never let one escape its scope or use the segment after
+  disposal (`Segment.Array` becomes `null`).
+- **`TrySetSegment` does not resize.** It only repositions the view within the existing
+  backing array. It returns `false` when `offset + length > array.Length`; the segment is
+  unchanged. Never use it as a grow/resize operation.
+- **`EmptySegment<T>.Instance` is a permanent singleton.** Calling `Dispose` on it is a
+  no-op by design; treat it as an immutable sentinel value, not as a resource to manage.
+- **Indexer `this[int i]` is offset-aware.** `owner[i]` accesses `Segment.Array[i + Segment.Offset]`.
+  After `TrySetSegment(offset, length)`, index 0 is element `offset` in the original array.
+- For sensitive data, prefer `PooledSegment<T>` (which clears the array on return in DEBUG
+  builds) or ensure you zero the span manually before disposing.
+
 ---
 
 ## 4. Hashing (`CryptoHives.Foundation.Security.Cryptography`)
@@ -325,9 +396,11 @@ Verification checklist:
 - [ ] All existing tests pass. For hashing, add/keep a test asserting the new digest equals
       a known-answer vector or the pre-port output for representative inputs.
 - [ ] No `ValueTask` stored in a field, awaited twice, `.Result`-ed, or `WhenAll`-ed.
-- [ ] Every `ArrayPoolBufferWriter<T>`, `ArrayPoolMemoryStream`, and `ObjectOwner<T>` is in
-      a `using` scope; no pooled buffer or `ReadOnlySequence` escapes it.
+- [ ] Every `ArrayPoolBufferWriter<T>`, `ArrayPoolMemoryStream`, `PooledSegment<T>`, and
+      `ObjectOwner<T>` is in a `using` scope; no pooled buffer or `ReadOnlySequence` escapes it.
 - [ ] No `AsyncLock` used re-entrantly.
+- [ ] No code uses a `PooledSegment<T>` segment or its backing array after `Dispose`.
+- [ ] `TrySetSegment` return value is checked; it is not used as a resize/grow operation.
 
 ## 6. Report
 
