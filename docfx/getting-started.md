@@ -36,6 +36,13 @@ Roslyn analyzers for `ValueTask` misuse. Install this alongside the Threading pa
 dotnet add package CryptoHives.Foundation.Threading.Analyzers
 ```
 
+## Porting existing code
+
+Moving an existing project onto these packages — replacing BCL async primitives, buffer/pool
+code, and hashing? See the [Porting Guide](porting-to-cryptohives.md), a step-by-step
+playbook (also usable directly by AI coding agents). Each package additionally ships a
+`PORTING.md` at its NuGet package root.
+
 ## Support
 
 - [GitHub Issues](https://github.com/CryptoHives/Foundation/issues)
