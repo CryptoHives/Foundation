@@ -49,7 +49,10 @@ Pooled buffer management for transformation pipelines and high-frequency I/O:
 - `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
 - `ReadOnlySequenceMemoryStream` — reads a `ReadOnlySequence<byte>` as a `MemoryStream` without copying
 - `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`
-- Ownership primitives for zero-copy handoff of pooled buffers
+- `ISegmentOwner<T>` — ownership contract for `ArraySegment<T>` with three built-in strategies:
+  - `PooledSegment<T>` — rents from `ArrayPool<T>.Shared`, returns on dispose
+  - `AllocatedSegment<T>` — wraps a GC-managed `T[]`, no pool lifecycle
+  - `EmptySegment<T>` — zero-allocation null-object sentinel
 
 ### 🚀 Concurrency Tools (Threading)
 Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
@@ -120,10 +123,10 @@ Measured with BenchmarkDotNet across a range of payload sizes, comparing our man
 │    BufferWriter<T> │   │ AsyncManualResetEvent │   │  TurboSHAKE · KT128/256    │
 │ ReadOnlySequence-  │   │ AsyncReaderWriterLock │   │  ParallelHash (SP 800-185) │
 │    MemoryStream    │   │ AsyncBarrier          │   │  KMAC128 · KMAC256         │
-│ Ownership          │   │ AsyncCountdownEvent   │   │  Keccak · BLAKE2 · BLAKE3  │
-│    Primitives      │   │                       │   │  Ascon · Regional · Legacy │
-│                    │   │ IValueTaskSource<T>   │   │                            │
-│                    │   │    backed by          │   │ MAC                        │
+│ ISegmentOwner<T>   │   │ AsyncCountdownEvent   │   │  Keccak · BLAKE2 · BLAKE3  │
+│  PooledSegment     │   │                       │   │  Ascon · Regional · Legacy │
+│  AllocatedSegment  │   │ IValueTaskSource<T>   │   │                            │
+│  EmptySegment      │   │    backed by          │   │ MAC                        │
 │                    │   │   ObjectPool<T>       │   │  HMAC · KMAC               │
 │                    │   │                       │   │  AES-CMAC · AES-GMAC       │
 │                    │   │                       │   │  Poly1305 · BLAKE2/3       │
@@ -296,3 +299,4 @@ Issues and pull requests are welcome. Please read the [Contributing Guide](https
 ---
 
 © 2026 The Keepers of the CryptoHives
+
