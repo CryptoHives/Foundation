@@ -99,7 +99,7 @@ MyExpensiveObject obj = owner.Object;
 // Automatically returned to the pool when owner is disposed — even on exception
 ```
 
-### segment ownership
+### Segment Ownership
 
 ```csharp
 using CryptoHives.Foundation.Memory.Buffers;

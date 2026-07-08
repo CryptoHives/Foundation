@@ -1,4 +1,4 @@
-﻿# CryptoHives.Foundation.Memory Package
+# CryptoHives.Foundation.Memory Package
 
 Buffer management utilities for .NET, built on `ArrayPool<T>` and the modern .NET memory APIs to keep allocations and GC pressure out of high-throughput code.
 
@@ -25,7 +25,7 @@ using CryptoHives.Foundation.Memory.Pools;
 | [ArrayPoolBufferWriter&lt;T&gt;](arraypoolbufferwriter.md) | IBufferWriter implementation with pooled chunks | [Details](arraypoolbufferwriter.md) |
 | [ReadOnlySequenceMemoryStream](readonlysequencememorystream.md) | Stream wrapper for ReadOnlySequence | [Details](readonlysequencememorystream.md) |
 
-### segment Ownership
+### Segment Ownership
 
 | Class | Description | Documentation |
 |-------|-------------|---------------|
@@ -96,7 +96,7 @@ MyClass obj = owner.Object;
 // Automatically returned to the pool when owner is disposed
 ```
 
-### segment Ownership
+### Segment Ownership
 
 ```csharp
 using CryptoHives.Foundation.Memory.Buffers;

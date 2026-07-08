@@ -95,8 +95,7 @@ public class SegmentOwnerTests
     public void EmptyPayloadDisposeMultipleTimesDoesNotThrow()
     {
         ISegmentOwner<byte> payload = EmptySegment<byte>.Instance;
-        Assert.DoesNotThrow(() =>
-        {
+        Assert.DoesNotThrow(() => {
             payload.Dispose();
             payload.Dispose();
             payload.Dispose();
@@ -284,8 +283,7 @@ public class SegmentOwnerTests
     public void ArrayPoolPayloadDisposeMultipleTimesDoesNotThrow()
     {
         ISegmentOwner<byte> payload = PooledSegment<byte>.Rent(64);
-        Assert.DoesNotThrow(() =>
-        {
+        Assert.DoesNotThrow(() => {
             payload.Dispose();
             payload.Dispose();
         });
@@ -463,8 +461,7 @@ public class SegmentOwnerTests
     public void AllocatedPayloadDisposeMultipleTimesDoesNotThrow()
     {
         ISegmentOwner<byte> payload = AllocatedSegment<byte>.Create(new byte[8]);
-        Assert.DoesNotThrow(() =>
-        {
+        Assert.DoesNotThrow(() => {
             payload.Dispose();
             payload.Dispose();
         });
