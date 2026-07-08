@@ -4,13 +4,27 @@
 
 pr: none
 
+# NOTE: Azure Pipelines lets a project's pipeline settings UI override this trigger entirely
+# ("... > Triggers > Override the YAML trigger from here"). If this pipeline doesn't seem to
+# react to the changes below, check that setting first - the YAML below is otherwise ignored.
 trigger:
+  batch: 'true'
   branches:
     include:
     - main
   paths:
     include:
+    # Package sources and per-package docs/PORTING.md (packed into the .nupkg, see PackagePath).
     - 'src/'
+    # Anything that affects the built/packed output but lives outside src/.
+    - 'Directory.Build.props'
+    - 'Directory.Packages.props'
+    - 'common.props'
+    - 'targets.props'
+    - 'version.props'
+    - 'azure-pipelines-nuget.yml'
+    - '.azurepipelines/nuget.yml'
+    - '.azurepipelines/set-version.ps1'
 
 parameters:
 - name: debugbuild
