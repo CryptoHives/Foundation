@@ -28,6 +28,7 @@ dotnet add package CryptoHives.Foundation.Memory
 - **`IBufferWriter<T>` support** — `ArrayPoolBufferWriter<T>` works directly with `Utf8JsonWriter`, `PipeWriter`, or any other `IBufferWriter` consumer
 - **Read-only sequence streaming** — wrap an existing `ReadOnlySequence<byte>` as a `Stream` without copying
 - **RAII ownership** — `ObjectOwner<T>` returns pooled objects automatically on dispose
+- **Segment ownership primitives** — `ISegmentOwner<T>` unifies three strategies: `PooledSegment<T>` rents from `ArrayPool<T>`, `AllocatedSegment<T>` wraps GC-managed arrays, and `EmptySegment<T>` is a zero-allocation null-object sentinel
 
 ---
 
@@ -98,6 +99,31 @@ MyExpensiveObject obj = owner.Object;
 // Automatically returned to the pool when owner is disposed — even on exception
 ```
 
+### segment ownership
+
+```csharp
+using CryptoHives.Foundation.Memory.Buffers;
+
+// Pool-backed: rented from ArrayPool<byte>, returned on dispose
+using ISegmentOwner<byte> pooled = PooledSegment<byte>.Rent(256);
+Span<byte> span = pooled.Segment.AsSpan();
+FillData(span);
+
+// Slice the view without copying
+if (pooled.TrySetSegment(offset: 16, length: 64))
+{
+    Span<byte> payload = pooled.Segment.AsSpan();
+    SendPayload(payload);
+}
+
+// GC-managed: wrap an existing array, no pool lifecycle needed
+byte[] buffer = new byte[256];
+using ISegmentOwner<byte> alloc = AllocatedSegment<byte>.Create(buffer);
+
+// Empty sentinel: null-object that avoids null checks
+ISegmentOwner<byte> none = EmptySegment<byte>.Instance;
+```
+
 ---
 
 ## Documentation
@@ -119,3 +145,4 @@ If you discover a vulnerability, please don't open a public issue — follow the
 ## License
 
 MIT — © 2026 The Keepers of the CryptoHives
+
