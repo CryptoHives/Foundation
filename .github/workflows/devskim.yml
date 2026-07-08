@@ -8,10 +8,18 @@ name: DevSkim
 on:
   push:
     branches: [ "main" ]
+    paths:
+    - '**.cs'
   pull_request:
     branches: [ "main" ]
+    paths:
+    - '**.cs'
   schedule:
     - cron: '17 22 * * 2'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
