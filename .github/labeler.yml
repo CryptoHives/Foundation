@@ -1,0 +1,33 @@
+# Configuration for actions/labeler — auto-applies labels to PRs based on changed files.
+# https://github.com/actions/labeler
+
+memory:
+  - changed-files:
+    - any-glob-to-any-file: 'src/Memory/**'
+
+threading:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/Threading/**'
+      - 'src/Threading.Analyzers/**'
+
+cryptography:
+  - changed-files:
+    - any-glob-to-any-file: 'src/Security/Cryptography/**'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docfx/**'
+      - '**/*.md'
+
+actions:
+  - changed-files:
+    - any-glob-to-any-file: '.github/workflows/**'
+
+nuget:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.csproj'
+      - 'Directory.Packages.props'
+      - 'Directory.Build.props'
