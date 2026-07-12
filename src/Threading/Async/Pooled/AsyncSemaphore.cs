@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
@@ -68,7 +68,6 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncSemaphore
 {
-    private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private WaiterQueue<bool> _waiters;
     private Internal.SpinLock _spinLock;
@@ -93,7 +92,6 @@ public sealed class AsyncSemaphore
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _spinLock = new();
         _waiters = new();
-        _localWaiter = new(this);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
 
@@ -243,10 +241,7 @@ public sealed class AsyncSemaphore
                 return new ValueTask(Task.FromCanceled(cancellationToken));
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
+            waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
@@ -342,9 +337,9 @@ public sealed class AsyncSemaphore
     };
 
     /// <summary>
-    /// Gets a value indicating whether the local waiter is currently in use.
+    /// Gets a value indicating whether any waiter is currently queued (test hook).
     /// </summary>
-    internal bool InternalWaiterInUse => _localWaiter.InUse;
+    internal bool InternalWaiterInUse => _waiters.Count != 0;
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {

@@ -1,21 +1,21 @@
 ﻿| Description                               | Mean       | Ratio | Allocated | 
 |------------------------------------------ |-----------:|------:|----------:|
-| Lock · Increment · System                 |  0.0010 ns | 0.000 |         - | 
-| Lock · Interlocked.Add · System           |  0.1764 ns | 0.021 |         - | 
-| Lock · Interlocked.Inc · System           |  0.1925 ns | 0.023 |         - | 
-| Lock · Interlocked.Exchange · System      |  0.5166 ns | 0.062 |         - | 
-| Lock · Interlocked.CmpX · System          |  0.8476 ns | 0.102 |         - | 
-| Lock · Lock · System                      |  3.0566 ns | 0.368 |         - | 
-| Lock · Lock.EnterScope · System           |  3.1459 ns | 0.379 |         - | 
-| SpinLock · SpinLock · CryptoHives         |  3.2782 ns | 0.395 |         - | 
-| Lock · lock() · System                    |  4.0113 ns | 0.483 |         - | 
-| LockAsync · AsyncLock · ProtoPromise      |  7.0620 ns | 0.851 |         - | 
-| LockAsync · AsyncLock · Pooled            |  8.3011 ns | 1.000 |         - | 
-| LockAsync · AsyncSemaphore · VS.Threading | 15.7214 ns | 1.894 |         - | 
-| LockAsync · SemaphoreSlim · System        | 16.4273 ns | 1.979 |         - | 
-| LockAsync · AsyncLock · RefImpl           | 17.8237 ns | 2.147 |         - | 
-| LockAsync · AsyncLock · NonKeyed          | 19.4962 ns | 2.349 |         - | 
-| LockAsync · AsyncLock · Nito.AsyncEx      | 37.5934 ns | 4.529 |     320 B | 
-| SpinWait · SpinOnce · System              | 41.3498 ns | 4.981 |         - | 
-| SpinLock · SpinLock · System              | 44.9287 ns | 5.412 |         - | 
-| LockAsync · AsyncLock · NeoSmart          | 55.3936 ns | 6.673 |     208 B |
+| Lock · Increment · System                 |  0.0045 ns | 0.001 |         - | 
+| Lock · Interlocked.Add · System           |  0.1903 ns | 0.029 |         - | 
+| Lock · Interlocked.Inc · System           |  0.1909 ns | 0.030 |         - | 
+| Lock · Interlocked.Exchange · System      |  0.5103 ns | 0.079 |         - | 
+| Lock · Interlocked.CmpX · System          |  0.8490 ns | 0.131 |         - | 
+| Lock · Lock · System                      |  3.1395 ns | 0.486 |         - | 
+| Lock · Lock.EnterScope · System           |  3.1440 ns | 0.487 |         - | 
+| SpinLock · SpinLock · CryptoHives         |  3.3041 ns | 0.512 |         - | 
+| Lock · lock() · System                    |  4.0182 ns | 0.622 |         - | 
+| LockAsync · AsyncLock · Pooled            |  6.4579 ns | 1.000 |         - | 
+| LockAsync · AsyncLock · ProtoPromise      |  7.3175 ns | 1.133 |         - | 
+| LockAsync · AsyncSemaphore · VS.Threading | 16.1519 ns | 2.501 |         - | 
+| LockAsync · SemaphoreSlim · System        | 16.5987 ns | 2.570 |         - | 
+| LockAsync · AsyncLock · RefImpl           | 17.8179 ns | 2.759 |         - | 
+| LockAsync · AsyncLock · NonKeyed          | 19.5094 ns | 3.021 |         - | 
+| LockAsync · AsyncLock · Nito.AsyncEx      | 38.5159 ns | 5.964 |     320 B | 
+| SpinWait · SpinOnce · System              | 41.7213 ns | 6.461 |         - | 
+| SpinLock · SpinLock · System              | 45.2280 ns | 7.004 |         - | 
+| LockAsync · AsyncLock · NeoSmart          | 57.1795 ns | 8.855 |     208 B |

@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
@@ -73,8 +73,14 @@ public class AsyncManualResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(mre.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
         }
+
+        // complete the pending waiter so it is returned to the pool
+        mre.Set();
+        await task.ConfigureAwait(false);
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Theory]
@@ -126,7 +132,7 @@ public class AsyncManualResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(mre.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+            Assert.That(pool.ActiveCount, Is.EqualTo(2));
         }
 
         mre.Set();
@@ -160,7 +166,7 @@ public class AsyncManualResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(mre.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+            Assert.That(pool.ActiveCount, Is.EqualTo(numberOfWaiters));
         }
 
         foreach (Task t in taskWaiters)
@@ -201,6 +207,10 @@ public class AsyncManualResetEventTests
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
 
         Assert.That(mre.InternalWaiterInUse, Is.True);
+
+        // complete the pending waiter so it is returned to the pool
+        mre.Set();
+        await wait.ConfigureAwait(false);
     }
 
     [Test]
@@ -215,6 +225,10 @@ public class AsyncManualResetEventTests
         await AsyncAssert.NeverCompletesAsync(wait).ConfigureAwait(false);
 
         Assert.That(mre.InternalWaiterInUse, Is.True);
+
+        // complete the pending waiter so it is returned to the pool
+        mre.Set();
+        await wait.ConfigureAwait(false);
     }
 
     [Test]
@@ -338,7 +352,7 @@ public class AsyncManualResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(2));
+            Assert.That(pool.ActiveCount, Is.EqualTo(3));
         }
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -350,7 +364,7 @@ public class AsyncManualResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+            Assert.That(pool.ActiveCount, Is.EqualTo(2));
         }
 
         ev.Set();

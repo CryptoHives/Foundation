@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
@@ -219,7 +219,7 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
-    public void WaitAsyncUnsetReturnsNonCompletedValueTask()
+    public async Task WaitAsyncUnsetReturnsNonCompletedValueTask()
     {
         using var pool = new TestObjectPool<bool>();
         var ev = new AsyncAutoResetEvent(pool: pool);
@@ -230,8 +230,14 @@ public class AsyncAutoResetEventTests
             Assert.That(vt.IsCompleted, Is.False);
 
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
         }
+
+        // complete the pending waiter so it is returned to the pool
+        ev.Set();
+        await vt.ConfigureAwait(false);
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -254,7 +260,7 @@ public class AsyncAutoResetEventTests
         {
             Assert.That(vt2.IsCompleted, Is.False);
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+            Assert.That(pool.ActiveCount, Is.EqualTo(2));
         }
 
         // cancel
@@ -296,14 +302,15 @@ public class AsyncAutoResetEventTests
         {
             Assert.That(vt2.IsCompleted, Is.False);
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(1));
+            Assert.That(pool.ActiveCount, Is.EqualTo(2));
         }
 
         ev.Set();
         await vt.ConfigureAwait(false);
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(ev.InternalWaiterInUse, Is.False);
+            // the second waiter is still queued
+            Assert.That(ev.InternalWaiterInUse, Is.True);
             Assert.That(pool.ActiveCount, Is.EqualTo(1));
         }
 
@@ -331,8 +338,14 @@ public class AsyncAutoResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.EqualTo(1));
         }
+
+        // complete the pending waiter so it is returned to the pool
+        ev.Set();
+        await t.ConfigureAwait(false);
+
+        Assert.That(pool.ActiveCount, Is.Zero);
     }
 
     [Test]
@@ -450,7 +463,7 @@ public class AsyncAutoResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(numberOfWaiters - 1));
+            Assert.That(pool.ActiveCount, Is.EqualTo(numberOfWaiters));
         }
 
         for (int i = 0; i < numberOfWaiters; i++)
@@ -466,7 +479,7 @@ public class AsyncAutoResetEventTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ev.InternalWaiterInUse, Is.True);
-            Assert.That(pool.ActiveCount, Is.EqualTo(numberOfWaiters * 2 - 1));
+            Assert.That(pool.ActiveCount, Is.EqualTo(numberOfWaiters * 2));
         }
 
         ev.PulseAll();

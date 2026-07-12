@@ -38,9 +38,11 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 | `IGetPooledManualResetValueTaskSource<T>` | Interface for obtaining pooled `IValueTaskSource<T>` implementations (providers return `PooledManualResetValueTaskSource<T>` instances)
 | `ManualResetValueTaskSource<T>` | Abstract base for pooled `IValueTaskSource<T>` implementations 
 | `PooledManualResetValueTaskSource<T>` | Pooled `IValueTaskSource<T>` implementation with automatic pool return 
-| `LocalManualResetValueTaskSource<T>` | Object-local `IValueTaskSource<T>` without pool integration 
 | `PooledValueTaskSourceObjectPolicy<T>` | Object pool policy for `PooledManualResetValueTaskSource<T>` 
-| `ValueTaskSourceObjectPool<T>` | Specialized provider that implements `IGetPooledManualResetValueTaskSource<T>` and returns pooled task sources
+| `ValueTaskSourceObjectPool<T>` | Specialized provider that implements `IGetPooledManualResetValueTaskSource<T>` and returns pooled task sources (backed by `DefaultObjectPool<T>`)
+| `LifoValueTaskSourceObjectPool<T>` | LIFO variant with a lock-free fast item slot and an intrusive free list; used by the shared default pools
+| `ThreadLocalObjectPool<TItem>` | Policy-based `ObjectPool<TItem>` with a per-thread cache in front of `DefaultObjectPool`-style shared tiers; drop-in alternative to `DefaultObjectPool<TItem>`
+| `ThreadLocalValueTaskSourceObjectPool<T>` | Thread-local caching variant of `ValueTaskSourceObjectPool<T>` for thread-affine rent/return patterns
 | `ValueTaskSourceObjectPools` | Static helper with shared pool instances and constants
 
 > **Note:** This package no longer bundles [CryptoHives.Foundation.Threading.Analyzers](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) automatically. Install it separately if you want the Roslyn analyzers alongside the Threading library.
@@ -170,12 +172,20 @@ public async Task WriteAsync(Data data, CancellationToken ct)
 using CryptoHives.Foundation.Threading.Pools;
 
 var policy = new PooledValueTaskSourceObjectPolicy<bool>();
-var pool   = new ValueTaskSourceObjectPool<bool>(policy, maximumRetained: 64);
+
+// DefaultObjectPool-backed pool ...
+var pool = new ValueTaskSourceObjectPool<bool>(policy, maximumRetained: 64);
+
+// ... or the LIFO pool (default for the shared pools) ...
+var lifoPool = new LifoValueTaskSourceObjectPool<bool>(policy, maximumRetained: 64);
+
+// ... or the thread-local caching pool, optimized for rent/return on the same thread
+var tlsPool = new ThreadLocalValueTaskSourceObjectPool<bool>(policy, maximumRetained: 64);
 
 var evt = new AsyncAutoResetEvent(
     initialState: false,
     runContinuationAsynchronously: true,
-    pool: pool);
+    pool: lifoPool);
 ```
 
 ---

@@ -11,27 +11,22 @@ using CryptoHives.Foundation.Threading.Async.Pooled;
 public static class ValueTaskSourceObjectPools
 {
     /// <summary>
-    /// The default size for a queue used in a event.
-    /// </summary>
-    public const int DefaultEventQueueSize = 8;
-
-    /// <summary>
     /// The default maximum number of retained object pool items.
     /// </summary>
     public const int DefaultMaxRetainedItems = 128;
 
     /// <summary>
-    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="bool"/>.
+    /// Holds the shared <see cref="LifoValueTaskSourceObjectPool{T}"/> object pool for <see cref="bool"/>.
     /// </summary>
-    public static readonly ValueTaskSourceObjectPool<bool> ValueTaskSourcePoolBoolean = new(new PooledValueTaskSourceObjectPolicy<bool>(), DefaultMaxRetainedItems);
+    public static readonly LifoValueTaskSourceObjectPool<bool> ValueTaskSourcePoolBoolean = new(new PooledValueTaskSourceObjectPolicy<bool>(), DefaultMaxRetainedItems);
 
     /// <summary>
-    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncLock.Releaser"/>.
+    /// Holds the shared <see cref="LifoValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncLock.Releaser"/>.
     /// </summary>
-    public static readonly ValueTaskSourceObjectPool<AsyncLock.Releaser> ValueTaskSourcePoolAsyncLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncLock.Releaser>(), DefaultMaxRetainedItems);
+    public static readonly LifoValueTaskSourceObjectPool<AsyncLock.Releaser> ValueTaskSourcePoolAsyncLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncLock.Releaser>(), DefaultMaxRetainedItems);
 
     /// <summary>
-    /// Holds the shared <see cref="ValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncReaderWriterLock.Releaser"/>.
+    /// Holds the shared <see cref="LifoValueTaskSourceObjectPool{T}"/> object pool for <see cref="AsyncReaderWriterLock.Releaser"/>.
     /// </summary>
-    public static readonly ValueTaskSourceObjectPool<AsyncReaderWriterLock.Releaser> ValueTaskSourcePoolAsyncReaderWriterLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncReaderWriterLock.Releaser>(), DefaultMaxRetainedItems);
+    public static readonly LifoValueTaskSourceObjectPool<AsyncReaderWriterLock.Releaser> ValueTaskSourcePoolAsyncReaderWriterLockReleaser = new(new PooledValueTaskSourceObjectPolicy<AsyncReaderWriterLock.Releaser>(), DefaultMaxRetainedItems);
 }

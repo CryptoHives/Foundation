@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -176,16 +176,9 @@ public sealed class AsyncReaderWriterLock : IResettable
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
 
     private WaiterQueue<Releaser> _waitingWriters;
-    private readonly LocalManualResetValueTaskSource<Releaser> _localWriterWaiter;
-
     private WaiterQueue<Releaser> _waitingReaders;
-    private readonly LocalManualResetValueTaskSource<Releaser> _localReaderWaiter;
-
     private WaiterQueue<Releaser> _waitingUpgradeableReaders;
-    private readonly LocalManualResetValueTaskSource<Releaser> _localUpgradeableReaderWaiter;
-
     private WaiterQueue<Releaser> _waitingUpgradedWriters;
-    private readonly LocalManualResetValueTaskSource<Releaser> _localUpgradedWriterWaiter;
 
     private Internal.SpinLock _spinLock;
     private volatile int _status;
@@ -384,16 +377,9 @@ public sealed class AsyncReaderWriterLock : IResettable
         _spinLock = new();
 
         _waitingWriters = new();
-        _localWriterWaiter = new(this);
-
         _waitingReaders = new();
-        _localReaderWaiter = new(this);
-
         _waitingUpgradeableReaders = new();
-        _localUpgradeableReaderWaiter = new(this);
-
         _waitingUpgradedWriters = new();
-        _localUpgradedWriterWaiter = new(this);
 
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncReaderWriterLockReleaser;
 
@@ -424,10 +410,6 @@ public sealed class AsyncReaderWriterLock : IResettable
             }
 
             _runContinuationAsynchronously = true;
-            _localWriterWaiter.TryReset();
-            _localReaderWaiter.TryReset();
-            _localUpgradeableReaderWaiter.TryReset();
-            _localUpgradedWriterWaiter.TryReset();
             return true;
         }
         finally
@@ -661,10 +643,7 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
-            if (!_localReaderWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
+            waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
@@ -793,10 +772,7 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
-            if (!_localUpgradeableReaderWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
+            waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
@@ -913,10 +889,7 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
-            if (!_localWriterWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
+            waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
@@ -984,10 +957,7 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
-            if (!_localUpgradedWriterWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
+            waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
@@ -1023,13 +993,13 @@ public sealed class AsyncReaderWriterLock : IResettable
         return new ValueTask<Releaser>(waiter, version);
     }
 
-    internal bool InternalReaderWaiterInUse => _localReaderWaiter.InUse;
+    internal bool InternalReaderWaiterInUse => _waitingReaders.Count != 0;
 
-    internal bool InternalUpgradeableReaderWaiterInUse => _localUpgradeableReaderWaiter.InUse;
+    internal bool InternalUpgradeableReaderWaiterInUse => _waitingUpgradeableReaders.Count != 0;
 
-    internal bool InternalUpgradedWriterWaiterInUse => _localUpgradedWriterWaiter.InUse;
+    internal bool InternalUpgradedWriterWaiterInUse => _waitingUpgradedWriters.Count != 0;
 
-    internal bool InternalWriterWaiterInUse => _localWriterWaiter.InUse;
+    internal bool InternalWriterWaiterInUse => _waitingWriters.Count != 0;
 
     private void ReleaseReaderLock()
     {

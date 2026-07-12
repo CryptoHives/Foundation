@@ -1,49 +1,49 @@
 ﻿| Description                               | Iterations | cancellationType | Mean          | Ratio | Allocated | 
 |------------------------------------------ |----------- |----------------- |--------------:|------:|----------:|
-| ReaderLock · RWLockSlim · System          | 0          | None             |      6.774 ns |  0.40 |         - | 
-| ReaderLock · AsyncRWLock · Pooled         | 0          | None             |     17.075 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 0          | None             |     18.400 ns |  1.08 |         - | 
-| ReaderLock · AsyncRWLock · RefImpl        | 0          | None             |     18.917 ns |  1.11 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 0          | None             |     40.428 ns |  2.37 |     320 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 0          | None             |    224.937 ns | 13.17 |     208 B | 
+| ReaderLock · RWLockSlim · System          | 0          | None             |      6.776 ns |  0.43 |         - | 
+| ReaderLock · AsyncRWLock · Pooled         | 0          | None             |     15.792 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Proto.Promises | 0          | None             |     18.095 ns |  1.15 |         - | 
+| ReaderLock · AsyncRWLock · RefImpl        | 0          | None             |     18.708 ns |  1.18 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 0          | None             |     40.187 ns |  2.54 |     320 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 0          | None             |    224.333 ns | 14.21 |     208 B | 
 |                                           |            |                  |               |       |           | 
-| ReaderLock · AsyncRWLock · Pooled         | 0          | NotCancelled     |     16.943 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 0          | NotCancelled     |     18.193 ns |  1.07 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 0          | NotCancelled     |     39.961 ns |  2.36 |     320 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 0          | NotCancelled     |    224.973 ns | 13.28 |     208 B | 
+| ReaderLock · AsyncRWLock · Pooled         | 0          | NotCancelled     |     15.912 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Proto.Promises | 0          | NotCancelled     |     18.079 ns |  1.14 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 0          | NotCancelled     |     40.637 ns |  2.55 |     320 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 0          | NotCancelled     |    225.241 ns | 14.16 |     208 B | 
 |                                           |            |                  |               |       |           | 
-| ReaderLock · RWLockSlim · System          | 1          | None             |     12.461 ns |  0.36 |         - | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 1          | None             |     28.467 ns |  0.82 |         - | 
-| ReaderLock · AsyncRWLock · Pooled         | 1          | None             |     34.709 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · RefImpl        | 1          | None             |     34.977 ns |  1.01 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 1          | None             |     84.985 ns |  2.45 |     640 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 1          | None             |    518.755 ns | 14.95 |     416 B | 
+| ReaderLock · RWLockSlim · System          | 1          | None             |     12.777 ns |  0.36 |         - | 
+| ReaderLock · AsyncRWLock · Proto.Promises | 1          | None             |     28.390 ns |  0.79 |         - | 
+| ReaderLock · AsyncRWLock · RefImpl        | 1          | None             |     34.031 ns |  0.95 |         - | 
+| ReaderLock · AsyncRWLock · Pooled         | 1          | None             |     35.716 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 1          | None             |     82.918 ns |  2.32 |     640 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 1          | None             |    532.492 ns | 14.91 |     416 B | 
 |                                           |            |                  |               |       |           | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 1          | NotCancelled     |     28.772 ns |  0.84 |         - | 
-| ReaderLock · AsyncRWLock · Pooled         | 1          | NotCancelled     |     34.054 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 1          | NotCancelled     |     81.086 ns |  2.38 |     640 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 1          | NotCancelled     |    518.476 ns | 15.23 |     416 B | 
+| ReaderLock · AsyncRWLock · Proto.Promises | 1          | NotCancelled     |     28.406 ns |  0.76 |         - | 
+| ReaderLock · AsyncRWLock · Pooled         | 1          | NotCancelled     |     37.165 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 1          | NotCancelled     |     81.648 ns |  2.20 |     640 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 1          | NotCancelled     |    520.631 ns | 14.01 |     416 B | 
 |                                           |            |                  |               |       |           | 
-| ReaderLock · RWLockSlim · System          | 10         | None             |     61.761 ns |  0.31 |         - | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 10         | None             |    142.806 ns |  0.72 |         - | 
-| ReaderLock · AsyncRWLock · RefImpl        | 10         | None             |    144.870 ns |  0.74 |         - | 
-| ReaderLock · AsyncRWLock · Pooled         | 10         | None             |    197.022 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 10         | None             |    481.419 ns |  2.44 |    3520 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 10         | None             |  3,703.521 ns | 18.80 |    2288 B | 
+| ReaderLock · RWLockSlim · System          | 10         | None             |     61.652 ns |  0.31 |         - | 
+| ReaderLock · AsyncRWLock · Proto.Promises | 10         | None             |    140.880 ns |  0.72 |         - | 
+| ReaderLock · AsyncRWLock · RefImpl        | 10         | None             |    142.346 ns |  0.72 |         - | 
+| ReaderLock · AsyncRWLock · Pooled         | 10         | None             |    196.585 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 10         | None             |    453.748 ns |  2.31 |    3520 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 10         | None             |  3,630.727 ns | 18.47 |    2288 B | 
 |                                           |            |                  |               |       |           | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 10         | NotCancelled     |    147.119 ns |  0.74 |         - | 
-| ReaderLock · AsyncRWLock · Pooled         | 10         | NotCancelled     |    197.696 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 10         | NotCancelled     |    473.137 ns |  2.39 |    3520 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 10         | NotCancelled     |  3,614.872 ns | 18.29 |    2288 B | 
+| ReaderLock · AsyncRWLock · Proto.Promises | 10         | NotCancelled     |    144.637 ns |  0.72 |         - | 
+| ReaderLock · AsyncRWLock · Pooled         | 10         | NotCancelled     |    200.182 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 10         | NotCancelled     |    455.557 ns |  2.28 |    3520 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 10         | NotCancelled     |  3,647.471 ns | 18.23 |    2288 B | 
 |                                           |            |                  |               |       |           | 
-| ReaderLock · RWLockSlim · System          | 100        | None             |    559.414 ns |  0.33 |         - | 
-| ReaderLock · AsyncRWLock · RefImpl        | 100        | None             |  1,220.891 ns |  0.72 |         - | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 100        | None             |  1,236.741 ns |  0.73 |         - | 
-| ReaderLock · AsyncRWLock · Pooled         | 100        | None             |  1,700.744 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 100        | None             |  4,495.417 ns |  2.64 |   32320 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 100        | None             | 87,591.125 ns | 51.50 |   21008 B | 
+| ReaderLock · RWLockSlim · System          | 100        | None             |    569.459 ns |  0.33 |         - | 
+| ReaderLock · AsyncRWLock · Proto.Promises | 100        | None             |  1,221.558 ns |  0.70 |         - | 
+| ReaderLock · AsyncRWLock · RefImpl        | 100        | None             |  1,248.272 ns |  0.72 |         - | 
+| ReaderLock · AsyncRWLock · Pooled         | 100        | None             |  1,739.552 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 100        | None             |  4,365.760 ns |  2.51 |   32320 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 100        | None             | 85,980.826 ns | 49.52 |   21008 B | 
 |                                           |            |                  |               |       |           | 
-| ReaderLock · AsyncRWLock · Proto.Promises | 100        | NotCancelled     |  1,256.133 ns |  0.74 |         - | 
-| ReaderLock · AsyncRWLock · Pooled         | 100        | NotCancelled     |  1,698.319 ns |  1.00 |         - | 
-| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 100        | NotCancelled     |  4,403.054 ns |  2.59 |   32320 B | 
-| ReaderLock · AsyncRWLock · VS.Threading   | 100        | NotCancelled     | 86,857.592 ns | 51.14 |   21008 B |
+| ReaderLock · AsyncRWLock · Proto.Promises | 100        | NotCancelled     |  1,243.124 ns |  0.74 |         - | 
+| ReaderLock · AsyncRWLock · Pooled         | 100        | NotCancelled     |  1,685.894 ns |  1.00 |         - | 
+| ReaderLock · AsyncRWLock · Nito.AsyncEx   | 100        | NotCancelled     |  4,402.503 ns |  2.61 |   32320 B | 
+| ReaderLock · AsyncRWLock · VS.Threading   | 100        | NotCancelled     | 89,799.755 ns | 53.27 |   21008 B |

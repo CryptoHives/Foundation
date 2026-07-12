@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -68,7 +68,6 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncLock : IResettable
 {
-    private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
     private Internal.SpinLock _spinLock;
     private WaiterQueue<Releaser> _waiters;
@@ -84,9 +83,6 @@ public sealed class AsyncLock : IResettable
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _spinLock = new();
         _taken = 0;
-        _localWaiter = new(this) {
-            RunContinuationsAsynchronously = true
-        };
     }
 
     /// <inheritdoc/>
@@ -108,8 +104,6 @@ public sealed class AsyncLock : IResettable
                 return false;
             }
 
-            _localWaiter.TryReset();
-            _localWaiter.RunContinuationsAsynchronously = true;
             return true;
         }
         finally
@@ -273,12 +267,8 @@ public sealed class AsyncLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-                waiter.RunContinuationsAsynchronously = true;
-            }
-
+            waiter = _pool.GetPooledWaiter(this);
+            waiter.RunContinuationsAsynchronously = true;
             waiter.CancellationToken = cancellationToken;
 
             version = waiter.Version;
@@ -320,9 +310,9 @@ public sealed class AsyncLock : IResettable
     public bool IsTaken => _taken != 0;
 
     /// <summary>
-    /// Gets a value indicating whether the local waiter is currently in use.
+    /// Gets a value indicating whether any waiter is currently queued (test hook).
     /// </summary>
-    internal bool InternalWaiterInUse => _localWaiter.InUse;
+    internal bool InternalWaiterInUse => _waiters.Count != 0;
 
     /// <summary>
     /// Releases the lock. If any waiters are queued, the next waiter acquires the lock.

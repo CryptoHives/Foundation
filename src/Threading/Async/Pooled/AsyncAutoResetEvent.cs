@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
@@ -86,7 +86,6 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncAutoResetEvent : IResettable
 {
-    private readonly LocalManualResetValueTaskSource<bool> _localWaiter;
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private Internal.SpinLock _spinLock;
     private WaiterQueue<bool> _waiters;
@@ -105,7 +104,6 @@ public sealed class AsyncAutoResetEvent : IResettable
         _runContinuationAsynchronously = runContinuationAsynchronously;
         _spinLock = new();
         _waiters = new();
-        _localWaiter = new(this);
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
 
@@ -128,7 +126,6 @@ public sealed class AsyncAutoResetEvent : IResettable
             }
 
             _ = Interlocked.Exchange(ref _signaled, 0);
-            _localWaiter.TryReset();
             return true;
         }
         finally
@@ -285,10 +282,7 @@ public sealed class AsyncAutoResetEvent : IResettable
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
-            if (!_localWaiter.TryGetValueTaskSource(out waiter))
-            {
-                waiter = _pool.GetPooledWaiter(this);
-            }
+            waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
@@ -356,9 +350,9 @@ public sealed class AsyncAutoResetEvent : IResettable
     }
 
     /// <summary>
-    /// Gets a value indicating whether the local waiter is currently in use.
+    /// Gets a value indicating whether any waiter is currently queued (test hook).
     /// </summary>
-    internal bool InternalWaiterInUse => _localWaiter.InUse;
+    internal bool InternalWaiterInUse => _waiters.Count != 0;
 
     /// <summary>
     /// Reset the signaled state for test purposes.
