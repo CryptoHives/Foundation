@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable VSTHRD012 // Provide JoinableTaskFactory where allowed
-#if mist
+
 namespace Threading.Tests.Async.Pooled;
 
 using BenchmarkDotNet.Attributes;
@@ -167,4 +167,4 @@ public class AsyncReaderWriterLockContentionBenchmark : AsyncReaderWriterLockBas
         (await _rwlockVSThreadingAdditionalHandles![1].ConfigureAwait(false)).Dispose();
     }
 }
-#endif
+
