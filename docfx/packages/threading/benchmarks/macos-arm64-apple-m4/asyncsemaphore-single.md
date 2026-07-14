@@ -1,7 +1,7 @@
 ﻿| Description                                 | Mean      | Ratio | Allocated | 
 |-------------------------------------------- |----------:|------:|----------:|
-| WaitRelease · AsyncSemaphore · ProtoPromise |  4.826 ns |  0.77 |         - | 
-| WaitRelease · AsyncSemaphore · Pooled       |  6.236 ns |  1.00 |         - | 
-| WaitRelease · AsyncSemaphore · Nito.AsyncEx | 11.658 ns |  1.87 |         - | 
-| WaitRelease · SemaphoreSlim · System        | 11.848 ns |  1.90 |         - | 
-| WaitRelease · AsyncSemaphore · RefImpl      | 12.085 ns |  1.94 |         - |
+| WaitRelease · AsyncSemaphore · ProtoPromise |  4.777 ns |  0.77 |         - | 
+| WaitRelease · AsyncSemaphore · Pooled       |  6.203 ns |  1.00 |         - | 
+| WaitRelease · AsyncSemaphore · RefImpl      | 11.378 ns |  1.83 |         - | 
+| WaitRelease · AsyncSemaphore · Nito.AsyncEx | 11.417 ns |  1.84 |         - | 
+| WaitRelease · SemaphoreSlim · System        | 12.665 ns |  2.04 |         - |
