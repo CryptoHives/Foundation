@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Pools;
@@ -83,16 +83,24 @@ public sealed class LocalManualResetValueTaskSource<T> : ManualResetValueTaskSou
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// When continuations run synchronously, the inline completion depth is guarded
+    /// against unbounded recursion; overly deep chains fall back to the thread pool.
+    /// </remarks>
     public override void SetResult(T result)
-        => _core.SetResult(result);
+        => Internal.InlineContinuations.SetResult(ref _core, result);
 
     /// <inheritdoc/>
     public override void SetChainResult(T result)
         => WaiterQueue<T>.SetChainResult(this, result);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// When continuations run synchronously, the inline completion depth is guarded
+    /// against unbounded recursion; overly deep chains fall back to the thread pool.
+    /// </remarks>
     public override void SetException(Exception ex)
-        => _core.SetException(ex);
+        => Internal.InlineContinuations.SetException(ref _core, ex);
 
     /// <inheritdoc/>
     public override bool TryReset()

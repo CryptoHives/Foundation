@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing cancellation behavior
@@ -648,5 +648,109 @@ public class AsyncLockTests
         }
 
         await waiterTask.ConfigureAwait(false);
+    }
+
+    [Test]
+    public void RunContinuationAsynchronouslyDefaultsToTrue()
+    {
+        var mutex = new AsyncLock();
+        Assert.That(mutex.RunContinuationAsynchronously, Is.True);
+
+        var syncMutex = new AsyncLock(runContinuationAsynchronously: false);
+        Assert.That(syncMutex.RunContinuationAsynchronously, Is.False);
+
+        syncMutex.RunContinuationAsynchronously = true;
+        Assert.That(syncMutex.RunContinuationAsynchronously, Is.True);
+    }
+
+    [Test]
+    public void TryResetRestoresAsynchronousContinuations()
+    {
+        var mutex = new AsyncLock(runContinuationAsynchronously: false);
+
+        Assert.That(mutex.TryReset(), Is.True);
+        Assert.That(mutex.RunContinuationAsynchronously, Is.True);
+    }
+
+    [Theory, CancelAfter(3000)]
+    public async Task RunContinuationAsynchronouslyExecutesCorrectly(bool runContinuationAsynchronously)
+    {
+        var mutex = new AsyncLock(runContinuationAsynchronously: runContinuationAsynchronously);
+        int stage = 0;
+
+        Task waiterTask;
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            waiterTask = Task.Run(async () => {
+                using (await mutex.LockAsync().ConfigureAwait(false))
+                {
+                    await Task.Delay(100).ConfigureAwait(false);
+                    Interlocked.Exchange(ref stage, 100);
+                }
+            });
+
+            // Wait for the waiter to actually enqueue instead of assuming a fixed delay
+            while (!mutex.InternalWaiterInUse)
+            {
+                await Task.Delay(1).ConfigureAwait(false);
+            }
+
+            _ = Interlocked.Exchange(ref stage, 1);
+            // Outer lock releases here; with sync continuations the waiter's code
+            // may run inline inside Dispose().
+        }
+
+        int afterRelease = Interlocked.Exchange(ref stage, 2);
+
+        await waiterTask.ConfigureAwait(false);
+
+        if (runContinuationAsynchronously)
+        {
+            using (Assert.EnterMultipleScope())
+            {
+                // Continuation must not have run inline within the release
+                Assert.That(afterRelease, Is.EqualTo(1));
+                Assert.That(stage, Is.EqualTo(100));
+            }
+        }
+        else
+        {
+            using (Assert.EnterMultipleScope())
+            {
+                // Continuation may have run inline within the release
+                Assert.That(afterRelease, Is.AnyOf(1, 100));
+                Assert.That(stage, Is.AnyOf(2, 100));
+            }
+        }
+    }
+
+    [Test, CancelAfter(30000)]
+    public async Task SyncContinuationsDeepHandoffChainDoesNotOverflowStack()
+    {
+        // A long chain of waiters released with synchronous continuations nests one stack
+        // frame per handoff; the inline completion depth guard must cut the recursion by
+        // falling back to the thread pool instead of overflowing the stack.
+        const int ChainLength = 10_000;
+
+        var mutex = new AsyncLock(runContinuationAsynchronously: false);
+        var tasks = new Task[ChainLength];
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            for (int i = 0; i < ChainLength; i++)
+            {
+                tasks[i] = ChainLinkAsync(mutex);
+            }
+            // Releasing here starts the handoff cascade.
+        }
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        Assert.That(mutex.IsTaken, Is.False);
+
+        static async Task ChainLinkAsync(AsyncLock mutex)
+        {
+            using (await mutex.LockAsync().ConfigureAwait(false)) { }
+        }
     }
 }

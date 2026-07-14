@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -73,20 +73,21 @@ public sealed class AsyncLock : IResettable
     private Internal.SpinLock _spinLock;
     private WaiterQueue<Releaser> _waiters;
     private volatile int _taken;
+    private bool _runContinuationAsynchronously;
 
     /// <summary>
     /// Constructs a new AsyncLock instance with optional custom pool and custom default queue size.
     /// </summary>
+    /// <param name="runContinuationAsynchronously">Indicates if continuations are forced to run asynchronously.</param>
     /// <param name="pool">Custom pool for this instance.</param>
-    public AsyncLock(IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
+    public AsyncLock(bool runContinuationAsynchronously = true, IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
     {
         _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolAsyncLockReleaser;
         _spinLock = new();
         _taken = 0;
-        _localWaiter = new(this) {
-            RunContinuationsAsynchronously = true
-        };
+        _runContinuationAsynchronously = runContinuationAsynchronously;
+        _localWaiter = new(this);
     }
 
     /// <inheritdoc/>
@@ -108,8 +109,8 @@ public sealed class AsyncLock : IResettable
                 return false;
             }
 
+            _runContinuationAsynchronously = true;
             _localWaiter.TryReset();
-            _localWaiter.RunContinuationsAsynchronously = true;
             return true;
         }
         finally
@@ -276,9 +277,9 @@ public sealed class AsyncLock : IResettable
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
-                waiter.RunContinuationsAsynchronously = true;
             }
 
+            waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
             version = waiter.Version;
@@ -312,6 +313,35 @@ public sealed class AsyncLock : IResettable
         }
 
         return new ValueTask<Releaser>(waiter, version);
+    }
+
+    /// <summary>
+    /// Gets or sets whether to force continuations to run asynchronously.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When <see langword="true"/> (default), the continuation of a released waiter is queued to
+    /// the thread pool, preventing the releasing thread from being blocked by the next lock
+    /// holder's code. When <see langword="false"/>, the next lock holder's continuation may
+    /// execute synchronously on the releasing thread inside the releaser's <c>Dispose()</c>,
+    /// reducing context switching overhead at the cost of a longer release call.
+    /// </para>
+    /// <para>
+    /// <b>Deadlock Warning:</b> With synchronous continuations the code after
+    /// <c>await LockAsync()</c> may run on the releasing thread while it still holds
+    /// other locks or resources. Only enable this when the code inside the lock is
+    /// short and does not block.
+    /// </para>
+    /// <para>
+    /// Inline completion depth is bounded: chains of synchronous handoffs deeper than
+    /// an internal threshold automatically fall back to the thread pool, so long release
+    /// cascades cannot overflow the stack.
+    /// </para>
+    /// </remarks>
+    public bool RunContinuationAsynchronously
+    {
+        get => _runContinuationAsynchronously;
+        set => _runContinuationAsynchronously = value;
     }
 
     /// <summary>

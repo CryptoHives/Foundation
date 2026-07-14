@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -152,6 +152,51 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     [BenchmarkCategory("Multiple", "Pooled (ValueTask)")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockPooledMultipleAsync(CancellationType cancellationType)
+    {
+        using (await _lockPooled.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _lockHandle![i] = _lockPooled.LockAsync(cancellationType.CancellationToken);
+            }
+        }
+
+        foreach (ValueTask<AsyncLock.Releaser> handle in _lockHandle!)
+        {
+            using (await handle.ConfigureAwait(false)) { }
+        }
+    }
+
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockPooledContSyncMultipleTestAsync(CancellationType cancellationType)
+    {
+        PooledContSyncGlobalSetup();
+        return LockUnlockPooledContSyncMultipleAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockPooledContSyncMultipleAsync))]
+    public void PooledContSyncGlobalSetup()
+    {
+        base.GlobalSetup();
+        _lockPooled.RunContinuationAsynchronously = false;
+        _lockHandle = new ValueTask<AsyncLock.Releaser>[Iterations];
+    }
+
+    /// <summary>
+    /// Benchmark for pooled async lock with synchronous handoff (RunContinuationAsynchronously=false).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The released waiter's continuation runs inline on the releasing thread instead of being
+    /// queued to the thread pool, eliminating one context switch per lock handoff.
+    /// Deep handoff chains are bounded by the internal inline completion depth guard.
+    /// </para>
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "Pooled (SyncCont)")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockPooledContSyncMultipleAsync(CancellationType cancellationType)
     {
         using (await _lockPooled.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
         {

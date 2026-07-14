@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -97,6 +97,37 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
     [BenchmarkCategory("WaitAndSignal", "Pooled")]
     public async Task WaitAndSignalPooledAsync()
     {
+        _countdownPooled.Reset();
+        ValueTask valueTask = _countdownPooled.WaitAsync(_cancellationToken);
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            _countdownPooled.Signal();
+        }
+        await valueTask.ConfigureAwait(false);
+    }
+
+    [GlobalSetup(Target = nameof(WaitAndSignalPooledContSyncAsync))]
+    public void PooledContSyncGlobalSetup()
+    {
+        GlobalSetup();
+        _countdownPooled.RunContinuationAsynchronously = false;
+    }
+
+    /// <summary>
+    /// Benchmark for pooled async countdown event (wait-then-signal pattern) with
+    /// synchronous continuations (RunContinuationAsynchronously=false).
+    /// </summary>
+    /// <remarks>
+    /// The waiter's continuation runs inline on the signaling thread instead of being
+    /// queued to the thread pool, eliminating one context switch per wake.
+    /// </remarks>
+    [Test]
+    [Repeat(10)]
+    [Benchmark]
+    [BenchmarkCategory("WaitAndSignal", "Pooled (SyncCont)")]
+    public async Task WaitAndSignalPooledContSyncAsync()
+    {
+        _countdownPooled.RunContinuationAsynchronously = false;
         _countdownPooled.Reset();
         ValueTask valueTask = _countdownPooled.WaitAsync(_cancellationToken);
         for (int i = 0; i < ParticipantCount; i++)
