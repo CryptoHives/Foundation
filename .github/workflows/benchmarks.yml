@@ -1,4 +1,4 @@
-﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 name: Benchmarks
@@ -42,7 +42,7 @@ jobs:
           - { category: Threading, os-label: Linux x64,   runs-on: ubuntu-latest, testbed: linux-x64,   project: 'tests/Threading/Threading.Tests.csproj',                 default-filter: '*',                   filter-kind: threading }
           - { category: Threading, os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Threading/Threading.Tests.csproj',                 default-filter: '*',                   filter-kind: threading }
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
