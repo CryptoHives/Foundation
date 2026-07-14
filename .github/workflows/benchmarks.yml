@@ -1,0 +1,102 @@
+﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+name: Benchmarks
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Weekly Monday 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      cryptography-filter:
+        description: 'BenchmarkDotNet filter for both Hash and Cipher jobs (e.g. *AesGcm* or *SHA256*; leave empty for per-category defaults)'
+        default: ''
+        required: false
+      threading-filter:
+        description: 'BenchmarkDotNet filter for Threading benchmarks (leave empty to run all)'
+        default: ''
+        required: false
+      quick-test:
+        description: 'Dry-run mode: each benchmark executes once with no warmup (fast end-to-end smoke test)'
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  checks: write
+
+jobs:
+  # Each matrix cell runs one benchmark category on one platform, merges BDN JSON
+  # output into a single combined.json, and submits it to Bencher for tracking.
+  bench:
+    name: ${{ matrix.category }} (${{ matrix.os-label }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { category: Hash,      os-label: Linux x64,   runs-on: ubuntu-latest, testbed: linux-x64,   project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Hash*',   filter-kind: cryptography }
+          - { category: Hash,      os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Hash*',   filter-kind: cryptography }
+          - { category: Cipher,    os-label: Linux x64,   runs-on: ubuntu-latest, testbed: linux-x64,   project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Cipher*', filter-kind: cryptography }
+          - { category: Cipher,    os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Security/Cryptography/Cryptography.Tests.csproj', default-filter: '*Benchmarks.Cipher*', filter-kind: cryptography }
+          - { category: Threading, os-label: Linux x64,   runs-on: ubuntu-latest, testbed: linux-x64,   project: 'tests/Threading/Threading.Tests.csproj',                 default-filter: '*',                   filter-kind: threading }
+          - { category: Threading, os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Threading/Threading.Tests.csproj',                 default-filter: '*',                   filter-kind: threading }
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build ${{ matrix.project }} -c Release -f net10.0 /p:CustomTestTarget=net10.0
+
+      - name: Run benchmarks
+        run: |
+          if [[ "${{ matrix.filter-kind }}" == "cryptography" ]]; then
+            FILTER="${{ github.event.inputs.cryptography-filter }}"
+          else
+            FILTER="${{ github.event.inputs.threading-filter }}"
+          fi
+          FILTER="${FILTER:-${{ matrix.default-filter }}}"
+          JOB_ARGS=""
+          [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
+          dotnet run -c Release -f net10.0 --no-build \
+            --project ${{ matrix.project }} -- \
+            --filter "$FILTER" $JOB_ARGS \
+            --artifacts ./BenchmarkResults
+
+      - name: Merge results
+        id: merge
+        run: |
+          if ls BenchmarkResults/results/*.json 2>/dev/null | grep -q .; then
+            jq -s '{
+              Title: "${{ matrix.category }} Benchmarks (${{ matrix.os-label }})",
+              HostEnvironmentInfo: (.[0].HostEnvironmentInfo // {}),
+              Benchmarks: ([.[].Benchmarks] | flatten)
+            }' BenchmarkResults/results/*.json > combined.json
+            echo "has_results=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_results=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: bencherdev/bencher@main
+        if: steps.merge.outputs.has_results == 'true'
+
+      - name: Track with Bencher
+        if: steps.merge.outputs.has_results == 'true'
+        run: |
+          bencher run \
+            --project cryptohives-foundation-project \
+            --token '${{ secrets.BENCHER_API_TOKEN }}' \
+            --branch '${{ github.ref_name }}' \
+            --testbed ${{ matrix.testbed }} \
+            --threshold-measure latency \
+            --threshold-test t_test \
+            --threshold-max-sample-size 64 \
+            --threshold-upper-boundary 0.99 \
+            --thresholds-reset \
+            --adapter c_sharp_dot_net \
+            --github-actions '${{ secrets.GITHUB_TOKEN }}' \
+            --file combined.json
