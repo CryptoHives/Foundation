@@ -5,6 +5,7 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Reports;
+using BenchmarkDotNet.Exporters.Json;
 using BenchmarkDotNet.Running;
 using System.Globalization;
 using System.IO;
@@ -45,7 +46,8 @@ static class Program
     // Main Method
     public static void Main(string[] args)
     {
-        // Create config without default exporters - benchmarks provide their own via [Config] attribute
+        // Create config without default exporters - benchmarks provide their own via [Config] attribute.
+        // JsonExporter.Full is added globally so Bencher CI can consume the JSON output.
         IConfig config = ManualConfig.CreateEmpty()
             // Need this option because of reference to nunit.framework
             .WithOptions(ConfigOptions.DisableOptimizationsValidator)
@@ -57,6 +59,7 @@ static class Program
             .AddLogger(DefaultConfig.Instance.GetLoggers().ToArray())
             .AddAnalyser(DefaultConfig.Instance.GetAnalysers().ToArray())
             .AddValidator(DefaultConfig.Instance.GetValidators().ToArray())
+            .AddExporter(JsonExporter.Full)
         ;
         BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
     }
