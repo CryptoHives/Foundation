@@ -1,10 +1,10 @@
-## CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
-## CryptoHives.Foundation.Security.Cryptography
+## 🔐 CryptoHives.Foundation.Security.Cryptography
 
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
@@ -15,7 +15,7 @@ No OS crypto dependency means deterministic results on every platform. Where the
 
 ---
 
-## Installation
+## 📥 Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Security.Cryptography
@@ -23,7 +23,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 
 ---
 
-## Key Features
+## ✨ Key Features
 
 - **OS-independent** — identical results on Windows, Linux, macOS, and anywhere else .NET runs
 - **Standards-based** — implemented from NIST, RFC, and ISO specifications; validated against official test vectors
@@ -35,7 +35,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 
 ---
 
-## Supported Algorithms
+## 🧬 Supported Algorithms
 
 | Family | Algorithms |
 |--------|-----------|
@@ -58,7 +58,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 
 ---
 
-## Quick Examples
+## 💡 Quick Examples
 
 ### Allocation-Free Hash (`Blake3`)
 
@@ -158,7 +158,7 @@ cshake.Squeeze(derived);
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 | Resource | Link |
 |----------|------|
@@ -173,7 +173,7 @@ cshake.Squeeze(derived);
 
 ---
 
-## Security Policy
+## 🚨 Security Policy
 
 Every algorithm is implemented from its published specification and validated against official test vectors. Public APIs are designed assuming hostile input.
 
@@ -181,6 +181,6 @@ If you discover a vulnerability, please don't open a public issue — follow the
 
 ---
 
-## License
+## ⚖️ License
 
 MIT — © 2026 The Keepers of the CryptoHives
