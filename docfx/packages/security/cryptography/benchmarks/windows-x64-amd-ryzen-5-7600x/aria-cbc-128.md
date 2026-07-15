@@ -1,25 +1,25 @@
-﻿| Description                                 | TestDataSize | Mean         | Error     | StdDev    | Allocated |
-|-------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128B         |     1.422 μs | 0.0086 μs | 0.0080 μs |         - |
-| Decrypt · ARIA-128-CBC (BouncyCastle)       | 128B         |     2.444 μs | 0.0101 μs | 0.0094 μs |    1288 B |
-|                                             |              |              |           |           |           |
-| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128B         |     1.421 μs | 0.0075 μs | 0.0070 μs |         - |
-| Encrypt · ARIA-128-CBC (BouncyCastle)       | 128B         |     2.341 μs | 0.0131 μs | 0.0122 μs |    1288 B |
-|                                             |              |              |           |           |           |
-| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 1KB          |    10.154 μs | 0.0579 μs | 0.0513 μs |         - |
-| Decrypt · ARIA-128-CBC (BouncyCastle)       | 1KB          |    15.058 μs | 0.0889 μs | 0.0831 μs |    3528 B |
-|                                             |              |              |           |           |           |
-| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 1KB          |    10.184 μs | 0.0564 μs | 0.0500 μs |         - |
-| Encrypt · ARIA-128-CBC (BouncyCastle)       | 1KB          |    15.249 μs | 0.0883 μs | 0.0782 μs |    3528 B |
-|                                             |              |              |           |           |           |
-| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 8KB          |    79.852 μs | 0.4395 μs | 0.3896 μs |         - |
-| Decrypt · ARIA-128-CBC (BouncyCastle)       | 8KB          |   115.970 μs | 0.2453 μs | 0.2049 μs |   21448 B |
-|                                             |              |              |           |           |           |
-| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 8KB          |    80.031 μs | 0.2939 μs | 0.2605 μs |         - |
-| Encrypt · ARIA-128-CBC (BouncyCastle)       | 8KB          |   117.629 μs | 0.5000 μs | 0.3904 μs |   21448 B |
-|                                             |              |              |           |           |           |
-| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128KB        | 1,276.930 μs | 7.1693 μs | 6.3554 μs |         - |
-| Decrypt · ARIA-128-CBC (BouncyCastle)       | 128KB        | 1,850.668 μs | 6.4922 μs | 6.0728 μs |  328648 B |
-|                                             |              |              |           |           |           |
-| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128KB        | 1,282.683 μs | 9.6670 μs | 8.5695 μs |         - |
-| Encrypt · ARIA-128-CBC (BouncyCastle)       | 128KB        | 1,873.519 μs | 5.8244 μs | 5.4482 μs |  328648 B |
+﻿| Description                                 | TestDataSize | Mean         | Error     | StdDev    | Median       | Allocated |
+|-------------------------------------------- |------------- |-------------:|----------:|----------:|-------------:|----------:|
+| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128B         |     1.480 μs | 0.0050 μs | 0.0044 μs |     1.480 μs |         - |
+| Decrypt · ARIA-128-CBC (BouncyCastle)       | 128B         |     2.587 μs | 0.0038 μs | 0.0034 μs |     2.587 μs |    1288 B |
+|                                             |              |              |           |           |              |           |
+| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128B         |     1.503 μs | 0.0158 μs | 0.0280 μs |     1.489 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle)       | 128B         |     2.395 μs | 0.0049 μs | 0.0046 μs |     2.396 μs |    1288 B |
+|                                             |              |              |           |           |              |           |
+| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 1KB          |    10.607 μs | 0.0172 μs | 0.0144 μs |    10.605 μs |         - |
+| Decrypt · ARIA-128-CBC (BouncyCastle)       | 1KB          |    15.412 μs | 0.0470 μs | 0.0440 μs |    15.405 μs |    3528 B |
+|                                             |              |              |           |           |              |           |
+| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 1KB          |    10.656 μs | 0.0220 μs | 0.0206 μs |    10.656 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle)       | 1KB          |    15.449 μs | 0.0170 μs | 0.0142 μs |    15.447 μs |    3528 B |
+|                                             |              |              |           |           |              |           |
+| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 8KB          |    83.686 μs | 0.1391 μs | 0.1233 μs |    83.671 μs |         - |
+| Decrypt · ARIA-128-CBC (BouncyCastle)       | 8KB          |   118.785 μs | 0.1506 μs | 0.1257 μs |   118.777 μs |   21448 B |
+|                                             |              |              |           |           |              |           |
+| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 8KB          |    83.098 μs | 0.0940 μs | 0.0734 μs |    83.093 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle)       | 8KB          |   122.575 μs | 0.3250 μs | 0.2881 μs |   122.520 μs |   21448 B |
+|                                             |              |              |           |           |              |           |
+| Decrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128KB        | 1,335.802 μs | 2.8293 μs | 2.5081 μs | 1,335.501 μs |         - |
+| Decrypt · ARIA-128-CBC (BouncyCastle)       | 128KB        | 1,894.525 μs | 1.7955 μs | 1.5917 μs | 1,894.395 μs |  328648 B |
+|                                             |              |              |           |           |              |           |
+| Encrypt · ARIA-128-CBC (CryptoHives-Scalar) | 128KB        | 1,327.938 μs | 2.1681 μs | 2.0281 μs | 1,327.733 μs |         - |
+| Encrypt · ARIA-128-CBC (BouncyCastle)       | 128KB        | 1,914.929 μs | 2.1421 μs | 1.7888 μs | 1,915.559 μs |  328648 B |

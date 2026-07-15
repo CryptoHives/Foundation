@@ -1,25 +1,25 @@
 ﻿| Description                                        | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |--------------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 128B         |     2.377 μs | 0.0042 μs | 0.0037 μs |         - |
-| TryComputeHash · Streebog-256 · OpenGost           | 128B         |     3.467 μs | 0.0319 μs | 0.0283 μs |     408 B |
-| TryComputeHash · Streebog-256 · BouncyCastle       | 128B         |     4.329 μs | 0.0325 μs | 0.0288 μs |         - |
+| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 128B         |     2.502 μs | 0.0061 μs | 0.0051 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost           | 128B         |     3.542 μs | 0.0096 μs | 0.0081 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle       | 128B         |     4.390 μs | 0.0182 μs | 0.0152 μs |         - |
 |                                                    |              |              |           |           |           |
-| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 137B         |     2.410 μs | 0.0062 μs | 0.0055 μs |         - |
-| TryComputeHash · Streebog-256 · OpenGost           | 137B         |     3.474 μs | 0.0428 μs | 0.0400 μs |     408 B |
-| TryComputeHash · Streebog-256 · BouncyCastle       | 137B         |     4.289 μs | 0.0175 μs | 0.0164 μs |         - |
+| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 137B         |     2.491 μs | 0.0025 μs | 0.0022 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost           | 137B         |     3.543 μs | 0.0059 μs | 0.0050 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle       | 137B         |     4.400 μs | 0.0120 μs | 0.0113 μs |         - |
 |                                                    |              |              |           |           |           |
-| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 1KB          |     9.155 μs | 0.0312 μs | 0.0292 μs |         - |
-| TryComputeHash · Streebog-256 · OpenGost           | 1KB          |    12.800 μs | 0.0952 μs | 0.0890 μs |     408 B |
-| TryComputeHash · Streebog-256 · BouncyCastle       | 1KB          |    16.386 μs | 0.0905 μs | 0.0847 μs |         - |
+| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 1KB          |     9.409 μs | 0.0217 μs | 0.0170 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost           | 1KB          |    13.122 μs | 0.0704 μs | 0.0658 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle       | 1KB          |    16.714 μs | 0.0604 μs | 0.0565 μs |         - |
 |                                                    |              |              |           |           |           |
-| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 1025B        |     9.154 μs | 0.0201 μs | 0.0167 μs |         - |
-| TryComputeHash · Streebog-256 · OpenGost           | 1025B        |    12.823 μs | 0.0670 μs | 0.0594 μs |     408 B |
-| TryComputeHash · Streebog-256 · BouncyCastle       | 1025B        |    16.240 μs | 0.0796 μs | 0.0706 μs |         - |
+| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 1025B        |     9.529 μs | 0.0245 μs | 0.0205 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost           | 1025B        |    13.038 μs | 0.0312 μs | 0.0243 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle       | 1025B        |    16.693 μs | 0.0607 μs | 0.0538 μs |         - |
 |                                                    |              |              |           |           |           |
-| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 8KB          |    62.222 μs | 0.2465 μs | 0.2058 μs |         - |
-| TryComputeHash · Streebog-256 · OpenGost           | 8KB          |    87.600 μs | 0.6162 μs | 0.5764 μs |     408 B |
-| TryComputeHash · Streebog-256 · BouncyCastle       | 8KB          |   114.729 μs | 0.6431 μs | 0.5701 μs |         - |
+| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 8KB          |    64.699 μs | 0.2760 μs | 0.2582 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost           | 8KB          |    89.830 μs | 0.3487 μs | 0.2912 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle       | 8KB          |   116.900 μs | 0.1225 μs | 0.1086 μs |         - |
 |                                                    |              |              |           |           |           |
-| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 128KB        |   997.488 μs | 3.9279 μs | 3.4820 μs |         - |
-| TryComputeHash · Streebog-256 · OpenGost           | 128KB        | 1,371.904 μs | 6.9799 μs | 5.8285 μs |     408 B |
-| TryComputeHash · Streebog-256 · BouncyCastle       | 128KB        | 1,754.677 μs | 9.3372 μs | 8.2771 μs |         - |
+| TryComputeHash · Streebog-256 · CryptoHives-Scalar | 128KB        | 1,014.976 μs | 1.8029 μs | 1.4076 μs |         - |
+| TryComputeHash · Streebog-256 · OpenGost           | 128KB        | 1,409.612 μs | 4.6834 μs | 4.1517 μs |     408 B |
+| TryComputeHash · Streebog-256 · BouncyCastle       | 128KB        | 1,810.280 μs | 7.3854 μs | 6.5470 μs |         - |
