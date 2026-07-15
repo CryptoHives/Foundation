@@ -60,4 +60,33 @@ internal static class CryptographicOperations
 
         return result == 0;
     }
+
+    /// <summary>
+    /// Compares two byte spans in constant time and returns an all-ones or all-zeros mask.
+    /// </summary>
+    /// <param name="left">First span to compare.</param>
+    /// <param name="right">Second span to compare. Must have the same length as <paramref name="left"/>.</param>
+    /// <returns>-1 (all bits set) if the spans are equal, 0 otherwise.</returns>
+    /// <remarks>
+    /// Unlike <see cref="FixedTimeEquals"/>, the result is a branchless mask suitable for
+    /// constant-time selection without converting to <see cref="bool"/>, which would
+    /// reintroduce a secret-dependent branch.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    public static int FixedTimeEqualsMask(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+    {
+        if (left.Length != right.Length)
+        {
+            return 0;
+        }
+
+        int result = 0;
+        for (int i = 0; i < left.Length; i++)
+        {
+            result |= left[i] ^ right[i];
+        }
+
+        // result is 0..255; (result - 1) >> 31 arithmetic-shifts to -1 when result == 0, else 0.
+        return (result - 1) >> 31;
+    }
 }
