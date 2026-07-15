@@ -59,4 +59,8 @@
     <None Include="../../docfx/packages/threading.analyzers/*.yml" Link="docfx/%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="README.md" Visible="true" />
+  </ItemGroup>
+
 </Project>

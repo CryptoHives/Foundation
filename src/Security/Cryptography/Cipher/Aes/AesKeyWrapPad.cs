@@ -52,17 +52,17 @@ using System.Security.Cryptography;
 /// </list>
 /// </para>
 /// </remarks>
-public sealed unsafe class AesKeyWrapPad : IDisposable
+public unsafe class AesKeyWrapPad : IDisposable
 {
     /// <summary>
     /// Default Initial Value for RFC 3394 AES Key Wrap.
     /// </summary>
-    private const ulong DefaultIv = 0xA6A6A6A6_A6A6A6A6UL;
+    private const ulong DefaultIV = 0xA6A6A6A6_A6A6A6A6UL;
 
     /// <summary>
     /// Alternative Initial Value prefix for RFC 5649 AES Key Wrap with Padding.
     /// </summary>
-    private const uint AivPrefix = 0xA65959A6U;
+    private const uint AIVPrefix = 0xA65959A6U;
 
     /// <summary>
     /// AES block size in bytes.
@@ -176,7 +176,7 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
 
         // Build AIV: A65959A6 || MLI (big-endian)
         Span<byte> aiv = stackalloc byte[SemiblockSize];
-        BinaryPrimitives.WriteUInt32BigEndian(aiv, AivPrefix);
+        BinaryPrimitives.WriteUInt32BigEndian(aiv, AIVPrefix);
         BinaryPrimitives.WriteUInt32BigEndian(aiv.Slice(4), (uint)mli);
 
         if (paddedLen == SemiblockSize)
@@ -268,7 +268,7 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
 
         // Set default IV
         Span<byte> iv = stackalloc byte[SemiblockSize];
-        BinaryPrimitives.WriteUInt64BigEndian(iv, DefaultIv);
+        BinaryPrimitives.WriteUInt64BigEndian(iv, DefaultIV);
 
         // Copy plaintext into R[1..n]
         keyToWrap.CopyTo(output.AsSpan(SemiblockSize));
@@ -304,7 +304,7 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
 
         // Verify default IV
         ulong recovered = BinaryPrimitives.ReadUInt64BigEndian(a);
-        if (recovered != DefaultIv)
+        if (recovered != DefaultIV)
             throw new CryptographicException("AES Key Wrap integrity check failed.");
 
         return buffer.AsSpan(SemiblockSize, n * SemiblockSize).ToArray();
@@ -397,7 +397,7 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
     {
         // Check AIV prefix
         uint prefix = BinaryPrimitives.ReadUInt32BigEndian(a);
-        if (prefix != AivPrefix)
+        if (prefix != AIVPrefix)
             throw new CryptographicException("AES Key Wrap with Padding integrity check failed.");
 
         // Check MLI range: n*8 - 7 <= m <= n*8
@@ -468,15 +468,28 @@ public sealed unsafe class AesKeyWrapPad : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases resources used by this instance.
+    /// </summary>
+    /// <param name="disposing">True if called from <see cref="Dispose()"/>, false if from finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
         if (_disposed) return;
         _disposed = true;
 
-        // Securely clear the round keys
-        fixed (uint* encP = _buffers.EncKeys)
-        fixed (uint* decP = _buffers.DecKeys)
+        if (disposing)
         {
-            new Span<uint>(encP, MaxRoundKeyWords).Clear();
-            new Span<uint>(decP, MaxRoundKeyWords).Clear();
+            // Securely clear the round keys
+            fixed (uint* encP = _buffers.EncKeys)
+            fixed (uint* decP = _buffers.DecKeys)
+            {
+                new Span<uint>(encP, MaxRoundKeyWords).Clear();
+                new Span<uint>(decP, MaxRoundKeyWords).Clear();
+            }
         }
     }
 }

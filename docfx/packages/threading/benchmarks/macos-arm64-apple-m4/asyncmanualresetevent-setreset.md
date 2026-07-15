@@ -1,8 +1,8 @@
-﻿| Description                                | Mean       | Ratio | Allocated | 
-|------------------------------------------- |-----------:|------:|----------:|
-| SetReset · AsyncManualReset · ProtoPromise |   1.009 ns |  0.62 |         - | 
-| SetReset · AsyncManualReset · Pooled       |   1.616 ns |  1.00 |         - | 
-| SetReset · ManualResetEventSlim · System   |   6.662 ns |  4.12 |         - | 
-| SetReset · AsyncManualReset · RefImpl      |   9.369 ns |  5.80 |      96 B | 
-| SetReset · AsyncManualReset · Nito.AsyncEx |  15.199 ns |  9.40 |      96 B | 
-| SetReset · ManualResetEvent · System       | 108.067 ns | 66.87 |         - |
+﻿| Description                                | Mean        | Ratio | Allocated | 
+|------------------------------------------- |------------:|------:|----------:|
+| SetReset · AsyncManualReset · ProtoPromise |   0.9164 ns |  0.60 |         - | 
+| SetReset · AsyncManualReset · Pooled       |   1.5384 ns |  1.00 |         - | 
+| SetReset · ManualResetEventSlim · System   |   6.8272 ns |  4.44 |         - | 
+| SetReset · AsyncManualReset · RefImpl      |   9.2011 ns |  5.98 |      96 B | 
+| SetReset · AsyncManualReset · Nito.AsyncEx |  14.8942 ns |  9.68 |      96 B | 
+| SetReset · ManualResetEvent · System       | 112.0806 ns | 72.86 |         - |
