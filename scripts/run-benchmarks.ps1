@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # run-benchmarks.ps1
@@ -7,6 +7,7 @@
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher  (runs SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED)
+#        .\scripts\run-benchmarks.ps1 -Project Threading -Runtimes "net10.0 net11.0" 
 
 [CmdletBinding()]
 param(
@@ -73,7 +74,7 @@ param(
     [ValidateSet("net10.0", "net8.0", "net48")]
     [string]$Framework = "net10.0",
 
-    [Parameter(HelpMessage = "Comma-separated list of runtimes to benchmark (e.g., 'net10.0', 'net10.0,net8.0')")]
+    [Parameter(HelpMessage = "Space-separated list of runtimes to benchmark (e.g., 'net10.0', 'net10.0 net11.0')")]
     [string]$Runtimes = "net10.0",
 
     [Parameter(HelpMessage = "Build configuration")]
@@ -119,7 +120,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
     Write-Host "   - Filter — one or more string globs applied to full benchmark name — \"*\"  "
     Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
-    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\") — \"net10.0\"  "
+    Write-Host "   - Runtimes — space-separated list (e.g. \"net10.0 net11.0\") — \"net10.0\"  "
     Write-Host "   - Configuration — Release | Debug — Release  "
     Write-Host "   - Verbosity — q | m | n | d | diag — n  "
     Write-Host "   - List — switch (show benchmarks) — off  "
@@ -136,7 +137,6 @@ if ($PSBoundParameters.Count -gt 0 -and -not $Project) {
     Write-Host "ERROR: -Project is required when any options are supplied. Use -Help or run without arguments to see supported parameters." -ForegroundColor Red
     exit 1
 }
-
 
 # Individual algorithm to benchmark category mapping
 $AlgorithmBenchmarkMap = @{
