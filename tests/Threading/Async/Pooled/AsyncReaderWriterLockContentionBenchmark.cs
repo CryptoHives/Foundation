@@ -1,7 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CHT003 // ValueTask stored in field
 #pragma warning disable VSTHRD012 // Provide JoinableTaskFactory where allowed
+#pragma warning disable CA2012 // Use ValueTasks correctly
 
 namespace Threading.Tests.Async.Pooled;
 
@@ -117,12 +119,12 @@ public class AsyncReaderWriterLockContentionBenchmark : AsyncReaderWriterLockBas
             _rwLockPooledWriterHandle = _rwLockPooled.WriterLockAsync();
         }
 
+        using (await _rwLockPooledWriterHandle.ConfigureAwait(false)) { }
+        using (await _rwLockPooledUpgradeableHandle.ConfigureAwait(false)) { }
         for (int i = 0; i < Iterations; i++)
         {
-            (await _rwLockPooledReaderHandles![i].ConfigureAwait(false)).Dispose();
+            using (await _rwLockPooledReaderHandles![i].ConfigureAwait(false)) { }
         }
-        (await _rwLockPooledUpgradeableHandle.ConfigureAwait(false)).Dispose();
-        (await _rwLockPooledWriterHandle.ConfigureAwait(false)).Dispose();
     }
 
     // ─── VS.Threading ──────────────────────────────────────────────────────────
@@ -161,10 +163,10 @@ public class AsyncReaderWriterLockContentionBenchmark : AsyncReaderWriterLockBas
 
         for (int i = 0; i < Iterations; i++)
         {
-            (await _rwlockVSThreadingReaderHandles![i].ConfigureAwait(false)).Dispose();
+            using (await _rwlockVSThreadingReaderHandles![i].ConfigureAwait(false)) { }
         }
-        (await _rwlockVSThreadingAdditionalHandles![0].ConfigureAwait(false)).Dispose();
-        (await _rwlockVSThreadingAdditionalHandles![1].ConfigureAwait(false)).Dispose();
+        using (await _rwlockVSThreadingAdditionalHandles![0].ConfigureAwait(false)) { }
+        using (await _rwlockVSThreadingAdditionalHandles![1].ConfigureAwait(false)) { }
     }
 }
 
