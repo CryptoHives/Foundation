@@ -1,10 +1,10 @@
-## CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
-## CryptoHives.Foundation.Threading.Analyzers
+## 🔍 CryptoHives.Foundation.Threading.Analyzers
 
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers)
 
@@ -14,7 +14,7 @@ Roslyn analyzers that catch common `ValueTask` misuse at compile time — the ki
 
 ---
 
-## Installation
+## 📥 Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading.Analyzers
@@ -30,7 +30,7 @@ Or as a development-only dependency (no runtime reference):
 
 ---
 
-## Diagnostic Rules
+## 📋 Diagnostic Rules
 
 | ID | Severity | Description |
 |----|----------|-------------|
@@ -47,7 +47,7 @@ Or as a development-only dependency (no runtime reference):
 
 ---
 
-## Anti-Patterns Detected
+## ⚠️ Anti-Patterns Detected
 
 ```csharp
 // CHT001: Multiple await — Error
@@ -86,7 +86,7 @@ GetValueTask(); // Warning: result not awaited or discarded
 private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1); // Info: consider AsyncLock
 ```
 
-## Correct Patterns
+## ✅ Correct Patterns
 
 ```csharp
 // Single await — correct
@@ -117,7 +117,7 @@ _ = GetValueTask();
 
 ---
 
-## Automatic Code Fixes
+## 🔧 Automatic Code Fixes
 
 Most diagnostics come with a code fix:
 
@@ -135,7 +135,7 @@ Most diagnostics come with a code fix:
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
 Adjust rule severity in `.editorconfig`:
 
@@ -157,7 +157,7 @@ valueTask.GetAwaiter().GetResult(); // intentional blocking call
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 | Resource | Link |
 |----------|------|
@@ -167,12 +167,12 @@ valueTask.GetAwaiter().GetResult(); // intentional blocking call
 
 ---
 
-## Security Policy
+## 🚨 Security Policy
 
 If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## License
+## ⚖️ License
 
 MIT — © 2026 The Keepers of the CryptoHives
