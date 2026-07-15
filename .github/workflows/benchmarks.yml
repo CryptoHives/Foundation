@@ -9,11 +9,27 @@ on:
   workflow_dispatch:
     inputs:
       cryptography-filter:
-        description: 'BenchmarkDotNet filter for both Hash and Cipher jobs (e.g. *AesGcm* or *SHA256*; leave empty for per-category defaults)'
+        description: 'Shared fallback filter for Hash and Cipher jobs. Specific hash-filter or cipher-filter takes priority when set.'
+        default: ''
+        required: false
+      hash-filter:
+        description: 'BenchmarkDotNet filter for Hash jobs only (e.g. *SHA256*; leave empty for default)'
+        default: ''
+        required: false
+      cipher-filter:
+        description: 'BenchmarkDotNet filter for Cipher jobs only (e.g. *AesGcm*; leave empty for default)'
         default: ''
         required: false
       threading-filter:
         description: 'BenchmarkDotNet filter for Threading benchmarks (leave empty to run all)'
+        default: ''
+        required: false
+      benchmark-ref:
+        description: 'Git ref to benchmark (commit SHA, tag, or branch). Leave empty to benchmark the triggering revision.'
+        default: ''
+        required: false
+      bencher-branch:
+        description: 'Optional Bencher branch label override (useful when benchmarking an older commit).'
         default: ''
         required: false
       quick-test:
@@ -43,6 +59,20 @@ jobs:
           - { category: Threading, os-label: macOS ARM64, runs-on: macos-latest,  testbed: macos-arm64, project: 'tests/Threading/Threading.Tests.csproj',                 default-filter: '*',                   filter-kind: threading }
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.benchmark-ref || github.sha }}
+
+      - name: Resolve benchmark target
+        id: target
+        shell: bash
+        run: |
+          TARGET_SHA="$(git rev-parse HEAD)"
+          TARGET_DATE="$(git show -s --format=%cI HEAD)"
+          echo "sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          echo "date=$TARGET_DATE" >> "$GITHUB_OUTPUT"
+          echo "Benchmark target SHA: $TARGET_SHA"
+          echo "Benchmark target date: $TARGET_DATE"
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -53,19 +83,58 @@ jobs:
         run: dotnet build ${{ matrix.project }} -c Release -f net10.0 /p:CustomTestTarget=net10.0
 
       - name: Run benchmarks
+        id: runbench
+        shell: bash
         run: |
           if [[ "${{ matrix.filter-kind }}" == "cryptography" ]]; then
-            FILTER="${{ github.event.inputs.cryptography-filter }}"
+            if [[ "${{ matrix.category }}" == "Hash" ]]; then
+              FILTER="${{ github.event.inputs.hash-filter }}"
+            else
+              FILTER="${{ github.event.inputs.cipher-filter }}"
+            fi
+            FILTER="${FILTER:-${{ github.event.inputs.cryptography-filter }}}"
           else
             FILTER="${{ github.event.inputs.threading-filter }}"
           fi
           FILTER="${FILTER:-${{ matrix.default-filter }}}"
+
+          echo "Category: ${{ matrix.category }}"
+          echo "Filter kind: ${{ matrix.filter-kind }}"
+          echo "Effective filter: $FILTER"
+
+          LIST_OUTPUT="$(dotnet run -c Release -f net10.0 --no-build --project ${{ matrix.project }} -- --list flat --filter "$FILTER")"
+          echo "$LIST_OUTPUT"
+          MATCHED_COUNT="$(echo "$LIST_OUTPUT" | grep -Ec '^[[:alnum:]_.]+\.[[:alnum:]_]+$' || true)"
+          echo "Matched benchmarks: $MATCHED_COUNT"
+          echo "effective_filter=$FILTER" >> "$GITHUB_OUTPUT"
+          echo "matched_count=$MATCHED_COUNT" >> "$GITHUB_OUTPUT"
+          if [[ "$MATCHED_COUNT" == "0" ]]; then
+            echo "No benchmarks matched effective filter '$FILTER' for category '${{ matrix.category }}'." >&2
+            exit 1
+          fi
+
           JOB_ARGS=""
           [[ "${{ inputs.quick-test }}" == "true" ]] && JOB_ARGS="--job Dry"
           dotnet run -c Release -f net10.0 --no-build \
             --project ${{ matrix.project }} -- \
             --filter "$FILTER" $JOB_ARGS \
             --artifacts ./BenchmarkResults
+
+      - name: Write step summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Benchmark run summary"
+            echo ""
+            echo "- Category: ${{ matrix.category }}"
+            echo "- OS label: ${{ matrix.os-label }}"
+            echo "- Project: ${{ matrix.project }}"
+            echo "- Effective filter: ${{ steps.runbench.outputs.effective_filter }}"
+            echo "- Matched benchmarks: ${{ steps.runbench.outputs.matched_count }}"
+            echo "- Target SHA: ${{ steps.target.outputs.sha }}"
+            echo "- Target date: ${{ steps.target.outputs.date }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Merge results
         id: merge
@@ -86,11 +155,21 @@ jobs:
 
       - name: Track with Bencher
         if: steps.merge.outputs.has_results == 'true'
+        shell: bash
         run: |
+          BENCHER_BRANCH="${{ github.event.inputs.bencher-branch }}"
+          if [[ -z "$BENCHER_BRANCH" ]]; then
+            if [[ -n "${{ github.event.inputs.benchmark-ref }}" ]]; then
+              BENCHER_BRANCH="historical/${{ github.event.inputs.benchmark-ref }}"
+            else
+              BENCHER_BRANCH="${{ github.ref_name }}"
+            fi
+          fi
+
           bencher run \
             --project cryptohives-foundation-project \
             --token '${{ secrets.BENCHER_API_TOKEN }}' \
-            --branch '${{ github.ref_name }}' \
+            --branch "$BENCHER_BRANCH" \
             --testbed ${{ matrix.testbed }} \
             --threshold-measure latency \
             --threshold-test t_test \
