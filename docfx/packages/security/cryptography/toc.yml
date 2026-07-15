@@ -8,6 +8,8 @@
   href: mac-algorithms.md
 - name: KDF Algorithms
   href: kdf-algorithms.md
+- name: KEM Algorithms
+  href: kem-algorithms.md
 - name: XOF Mode
   href: xof-mode.md
 - name: Pooled Hash API
@@ -42,6 +44,8 @@
           href: specs/NIST-SP-800-38B.md
         - name: SP 800-232 (Ascon)
           href: specs/NIST-SP-800-232.md
+        - name: FIPS 203 (ML-KEM)
+          href: specs/NIST-FIPS-203.md
     - name: Test Vectors
       items:
         - name: SHA-1 (Legacy)
@@ -88,3 +92,5 @@
           href: specs/ChaCha20-vectors.md
         - name: XChaCha20-Poly1305
           href: specs/XChaCha20-vectors.md
+        - name: ML-KEM (FIPS 203)
+          href: specs/ML-KEM-vectors.md
