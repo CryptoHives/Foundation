@@ -8,6 +8,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 
 /// <summary>
@@ -79,6 +80,38 @@ public sealed class MD5 : HashAlgorithm
         0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
         0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
     ];
+
+    /// <summary>
+    /// Precomputed message-word index for each round (replaces the per-round
+    /// branch + modulo that would otherwise run 64 times per block).
+    /// </summary>
+    private static readonly int[] G = BuildMessageWordIndices();
+
+    private static int[] BuildMessageWordIndices()
+    {
+        var g = new int[64];
+        for (int i = 0; i < 16; i++)
+        {
+            g[i] = i;
+        }
+
+        for (int i = 16; i < 32; i++)
+        {
+            g[i] = (5 * i + 1) % 16;
+        }
+
+        for (int i = 32; i < 48; i++)
+        {
+            g[i] = (3 * i + 5) % 16;
+        }
+
+        for (int i = 48; i < 64; i++)
+        {
+            g[i] = (7 * i) % 16;
+        }
+
+        return g;
+    }
 
     private uint _a, _b, _c, _d;
     private readonly byte[] _buffer;
@@ -159,6 +192,7 @@ public sealed class MD5 : HashAlgorithm
     public override void Initialize()
     {
         if (_disposed) throw new ObjectDisposedException(nameof(MD5));
+
         _a = A0;
         _b = B0;
         _c = C0;
@@ -172,7 +206,11 @@ public sealed class MD5 : HashAlgorithm
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(MD5));
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(MD5));
+        }
+
         _totalLength += (ulong)source.Length;
         int offset = 0;
 
@@ -263,36 +301,52 @@ public sealed class MD5 : HashAlgorithm
             uint c = _c;
             uint d = _d;
 
-            for (int i = 0; i < 64; i++)
+#if NET8_0_OR_GREATER
+            ref int gPtr = ref MemoryMarshal.GetArrayDataReference(G);
+            ref uint kPtr = ref MemoryMarshal.GetArrayDataReference(K);
+#else
+            ref int gPtr = ref MemoryMarshal.GetReference(G.AsSpan());
+            ref uint kPtr = ref MemoryMarshal.GetReference(K.AsSpan());
+#endif
+            ref uint mPtr = ref MemoryMarshal.GetReference(m);
+
+            for (int i = 0; i < 16; i++)
             {
-                uint f;
-                int g;
-
-                if (i < 16)
-                {
-                    f = (b & c) | (~b & d);
-                    g = i;
-                }
-                else if (i < 32)
-                {
-                    f = (d & b) | (~d & c);
-                    g = (5 * i + 1) % 16;
-                }
-                else if (i < 48)
-                {
-                    f = b ^ c ^ d;
-                    g = (3 * i + 5) % 16;
-                }
-                else
-                {
-                    f = c ^ (b | ~d);
-                    g = (7 * i) % 16;
-                }
-
+                uint f = (b & c) | (~b & d);
                 uint temp = d;
                 d = c;
                 c = b;
-                b = b + BitOperations.RotateLeft(a + f + K[i] + m[g], S[i]);
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
+                a = temp;
+            }
+
+            for (int i = 16; i < 32; i++)
+            {
+                uint f = (d & b) | (~d & c);
+                uint temp = d;
+                d = c;
+                c = b;
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
+                a = temp;
+            }
+
+            for (int i = 32; i < 48; i++)
+            {
+                uint f = b ^ c ^ d;
+                uint temp = d;
+                d = c;
+                c = b;
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
+                a = temp;
+            }
+
+            for (int i = 48; i < 64; i++)
+            {
+                uint f = c ^ (b | ~d);
+                uint temp = d;
+                d = c;
+                c = b;
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
                 a = temp;
             }
 

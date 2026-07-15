@@ -44,7 +44,7 @@ All packages are published under the `CryptoHives.Foundation` prefix and namespa
 [![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
 
-### 🛠️ Buffer Pools (Memory)
+### 🧠 Buffer Pools (Memory)
 Pooled buffer management for transformation pipelines and high-frequency I/O:
 
 - `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
@@ -55,7 +55,7 @@ Pooled buffer management for transformation pipelines and high-frequency I/O:
   - `AllocatedSegment<T>` — wraps a GC-managed `T[]`, no pool lifecycle
   - `EmptySegment<T>` — zero-allocation null-object sentinel
 
-### 🚀 Concurrency Tools (Threading)
+### 🧵 Concurrency Tools (Threading)
 Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
 
 - `AsyncLock` — mutual exclusion
@@ -188,7 +188,7 @@ Development may use AI-assisted tooling; no guarantee of clean-room provenance i
 - Where it helps, algorithms use managed SIMD intrinsics with a scalar fallback for platforms that don't support them.
 - Performance and memory usage are benchmarked against reference implementations, not just asserted.
 
-### 🔐 Secure development policy
+### 🛡️ Secure development policy
 - Implementations are written directly from public specifications (NIST, RFC, ISO) rather than ported from other codebases.
 - Every algorithm is checked against official test vectors from its specification.
 - Reviews include validation against independent reference implementations.
@@ -196,11 +196,16 @@ Development may use AI-assisted tooling; no guarantee of clean-room provenance i
 - Defaults favor a minimal attack surface: explicit configuration, strict input validation, bounded resource use.
 - Dependencies are kept minimal and vetted; reproducible, signed releases are on the roadmap.
 - Fuzzing is planned; static analysis and defensive error handling are already in place to limit misuse and information leaks.
-- Some development uses AI-assisted tooling — we're not claiming clean-room provenance for every line.
+
+### 🤖 AI Usage in This Project
+AI coding assistants (such as Claude and GitHub Copilot) are used in this project as productivity tools — for drafting boilerplate, tests, and documentation, and for reviewing code. 
+Every AI-assisted contribution is reviewed, understood, and validated by a human maintainer before being merged; no code is accepted that the maintainers cannot fully explain and stand behind. 
+Given the security-sensitive nature of this library, all cryptographic logic is verified against the relevant specifications and test vectors regardless of how it was authored. 
+Contributors are welcome to use AI tools under the same principle: you are responsible for the correctness, licensing, and quality of what you submit, and purely machine-generated PRs without human understanding will be rejected.
 
 ---
 
-## 🧩 Installation
+## 📥 Installation
 
 Via the NuGet CLI:
 
@@ -216,7 +221,7 @@ Install-Package CryptoHives.Foundation.Threading
 
 ---
 
-## 🧠 Usage Examples
+## 💡 Usage Examples
 
 ---
 
@@ -268,9 +273,9 @@ string pem = cert.Certificate.ExportPem();
 
 ---
 
-## 🔐 Security Policy
+## 🚨 Security Policy
 
-Security comes first here. If you find a vulnerability, please don't open a public issue — follow the process described on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
+Security comes first here. If you find a vulnerability, please don't open a public issue
 
 ---
 
@@ -310,7 +315,7 @@ The CryptoHives Open Source Initiative is maintained by **The Keepers of the Cry
 
 ---
 
-## 🧩 Contributing
+## 🤝 Contributing
 
 Issues and pull requests are welcome. Please read the [Contributing Guide](https://github.com/CryptoHives/.github/blob/main/CONTRIBUTING.md) before sending a PR.
 
