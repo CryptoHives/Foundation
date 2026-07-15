@@ -30,10 +30,6 @@ See [benchmarks/README.md](benchmarks/README.md) for details.
 | `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Open Threading Results](benchmarks/macos-arm64-apple-m4/threading.md) |
 | `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Open Threading Results](benchmarks/windows-x64-amd-ryzen-5-7600x/threading.md) |
 
-### Continuous Benchmark Trends
-
-CI benchmark results are tracked on [Bencher](https://bencher.dev/perf/cryptohives-foundation-project). Use the testbed and benchmark filters to compare threading primitive latencies across `linux-x64` and `macos-arm64` over time. Regression alerts are raised automatically when a run exceeds the configured threshold.
-
 ### Included benchmark suites
 
 Benchmarking contention is tricky and not all possible scenarios can be covered.
