@@ -33,6 +33,7 @@ The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the
 | `Threading` | Pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
 | `Threading.Analyzers` | Analyzer for pooled async synchronization | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.Analyzers.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) | [Docs](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
 | `Security.Cryptography` | Cryptographic algorithms | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) | [Docs](https://cryptohives.github.io/Foundation/packages/security/cryptography/index.html) |
+| `Security.Certificates` | Certificate management and validation utilities | [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Certificates.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Certificates) |
 
 All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
 
@@ -92,6 +93,8 @@ automatically — in some cases outperforming the OS-provided implementation.
 | Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256/512), SEED |
 | Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5 (kept for backward compatibility only) |
+| Asymmetric | RSA (PKCS#1/PSS/OAEP), ECDSA, ECDH, Ed25519, Ed448, X25519, X448 |
+| X.509 PKI | Certificate builder, CSR (PKCS#10), CRL, chain validation, profiles |
 
 All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
 
@@ -251,6 +254,21 @@ public async Task DoWorkAsync(CancellationToken ct)
     using await _lock.LockAsync(ct).ConfigureAwait(false);
     // critical section
 }
+```
+
+---
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Asymmetric.X509;
+
+// Create a self-signed TLS server certificate with ECDSA P-256
+var cert = CertificateProfiles.CreateTlsServer(
+    "CN=myserver.example.com",
+    curveName: "P-256",
+    dnsNames: ["myserver.example.com", "localhost"]);
+
+// Export as PEM
+string pem = cert.Certificate.ExportPem();
 ```
 
 ---
