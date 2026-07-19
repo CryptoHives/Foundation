@@ -61,7 +61,7 @@ updates:
       - "actions"
     directory: "./"
     schedule:
-      interval: "can"
+      interval: "daily"
     groups:
       actions:
         applies-to: version-updates
