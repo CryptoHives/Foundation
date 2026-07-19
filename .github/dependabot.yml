@@ -6,26 +6,62 @@
 version: 2
 updates:
   - package-ecosystem: "nuget"
-    directory: "/" 
+    directory: "/"
     schedule:
       interval: "daily"
-    registries: "*"
     open-pull-requests-limit: 10
     labels: 
       - "nuget"
     groups:
+      crypto-reference:
+        applies-to: version-updates
+        patterns:
+        - "BouncyCastle.Cryptography"
+        - "HashifyNET"
+        - "NaCl.Core"
+        - "Blake3"
+        - "Blake3.Native"
+        - "Blake3.Managed"
+        - "Konscious.Security.Cryptography.Blake2"
+        - "SauceControl.Blake2Fast"
+        - "OpenGost.Security.Cryptography"
+      async-reference:
+        applies-to: version-updates
+        patterns:
+        - "AsyncKeyedLock"
+        - "NeoSmart.AsyncLock"
+        - "Nito.AsyncEx"
+        - "ProtoPromise"
+      test-infra:
+        applies-to: version-updates
+        patterns:
+        - "NUnit"
+        - "NUnit.Analyzers"
+        - "NUnit.Console"
+        - "NUnit3TestAdapter"
+        - "Microsoft.NET.Test.Sdk"
+        - "coverlet.collector"
+        - "SharpFuzz"
+      build-tooling:
+        applies-to: version-updates
+        patterns:
+        - "Nerdbank.GitVersioning"
+        - "Microsoft.Sbom.Targets"
+        - "Microsoft.SourceLink.*"
+        - "DotNetProjectFile.Analyzers"
       microsoft:
         applies-to: version-updates
         patterns:
         - "Microsoft.*"
         - "System.*"
-
+        - "Nuget.*"
+        
   - package-ecosystem: github-actions
     labels:
       - "actions"
     directory: "./"
     schedule:
-      interval: "daily"
+      interval: "can"
     groups:
       actions:
         applies-to: version-updates
