@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// BenchmarkDotNet configuration for hash benchmarks.
@@ -33,11 +34,14 @@ public class HashConfig : ManualConfig
         // Disable default exporters
         WithOptions(ConfigOptions.DisableLogFile);
 
-        AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
-            maxDepth: 3,
-            printSource: true,
-            exportGithubMarkdown: true,
-            exportCombinedDisassemblyReport: true)));
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
+                maxDepth: 3,
+                printSource: true,
+                exportGithubMarkdown: true,
+                exportCombinedDisassemblyReport: true)));
+        }
 
         Orderer = new CategoryThenDataSizeOrderer();
         AddColumn(new DescriptionColumn());
