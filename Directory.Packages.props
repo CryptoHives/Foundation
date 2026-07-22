@@ -6,7 +6,9 @@
   <ItemGroup>
     <PackageVersion Include="AsyncKeyedLock" Version="8.0.2" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageVersion Include="Blake3" Version="2.2.1" />
+    <PackageVersion Include="Blake3.Native" Version="3.0.2" />
+    <PackageVersion Include="Blake3" Version="3.0.2" />
+    <PackageVersion Include="Blake3.Managed" Version="1.2.1" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="DotNetProjectFile.Analyzers" Version="1.14.0" />

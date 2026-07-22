@@ -48,7 +48,11 @@ public static class HashAlgorithmRegistry
         /// <summary>Konscious.Security.Cryptography implementation.</summary>
         Konscious,
         /// <summary>SauceControl.Blake2Fast implementation.</summary>
-        Blake2Fast
+        Blake2Fast,
+        /// <summary>Blake3 managed (xoofx/Blake3.NET, "Blake3" package) implementation.</summary>
+        Blake3Managed,
+        /// <summary>Blake3.Managed (Dissimilis/Blake3.Managed package) implementation.</summary>
+        Blake3Dissimilis
     }
 
     /// <summary>
@@ -509,6 +513,14 @@ public static class HashAlgorithmRegistry
 #if BLAKE3_NATIVE
         list.Add(new("BLAKE3", "Blake3Native", 256,
             () => new Blake3NativeAdapter(32), Source.Native));
+#endif
+#if BLAKE3_MANAGED
+        list.Add(new("BLAKE3", "Blake3Managed", 256,
+            () => new Blake3ManagedAdapter(32), Source.Blake3Managed));
+#endif
+#if BLAKE3_DISSIMILIS
+        list.Add(new("BLAKE3", "Blake3Dissimilis", 256,
+            () => new Blake3DissimilisAdapter(32), Source.Blake3Dissimilis));
 #endif
     }
 

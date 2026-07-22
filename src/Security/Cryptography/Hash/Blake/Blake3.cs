@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
+using CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -163,8 +164,23 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="DefaultHashSizeBytes"/> bytes.</param>
     /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
     /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    /// <remarks>
+    /// Uses the dedicated one-shot path (see <see cref="TryHashOneShot"/>) instead of
+    /// the generic streaming pool, so the entire call — including small inputs — skips
+    /// the incremental chunk-buffer bookkeeping.
+    /// </remarks>
     public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
-        => HashAlgorithmPool<Blake3>.TryHashData(source, destination, out bytesWritten);
+    {
+        Blake3 hasher = HashAlgorithmPool<Blake3>.Shared.Get();
+        try
+        {
+            return hasher.TryHashOneShot(source, destination, out bytesWritten);
+        }
+        finally
+        {
+            HashAlgorithmPool<Blake3>.Shared.Return(hasher);
+        }
+    }
 
     /// <summary>
     /// Computes the BLAKE3 hash of <paramref name="source"/> using the default output size (32 bytes)
@@ -172,8 +188,25 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="source">The input data to hash.</param>
     /// <returns>A new byte array containing the BLAKE3 hash.</returns>
+    /// <remarks>
+    /// Uses the dedicated one-shot path (see <see cref="TryHashOneShot"/>) instead of
+    /// the generic streaming pool, so the entire call — including small inputs — skips
+    /// the incremental chunk-buffer bookkeeping.
+    /// </remarks>
     public static byte[] HashData(ReadOnlySpan<byte> source)
-        => HashAlgorithmPool<Blake3>.HashData(source);
+    {
+        Blake3 hasher = HashAlgorithmPool<Blake3>.Shared.Get();
+        try
+        {
+            byte[] result = new byte[DefaultHashSizeBytes];
+            hasher.TryHashOneShot(source, result, out _);
+            return result;
+        }
+        finally
+        {
+            HashAlgorithmPool<Blake3>.Shared.Return(hasher);
+        }
+    }
 
     /// <summary>
     /// Computes the BLAKE3 hash of <paramref name="source"/> using the default output size (32 bytes)
@@ -250,6 +283,32 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A keyed (or future derive-key) instance carries caller-supplied secret material in its
+    /// state, so it must never be recycled into a shared pool for an unrelated caller: this
+    /// returns <see langword="false"/> for any non-<see cref="Blake3Mode.Hash"/> mode, which
+    /// makes the pool's policy <c>Dispose()</c> the instance instead — zeroing the key —
+    /// rather than resetting and returning it.
+    /// </remarks>
+    public override bool TryReset()
+    {
+        if (_mode != Blake3Mode.Hash)
+        {
+            // We can only cache non-keyed Blake3 instances. Erase the key the
+            // instant TryReset is called — Reset(keyedMode: false) runs
+            // InitializeHash(), which unconditionally overwrites _keyWords (not
+            // just _cv) with the BLAKE3 IV — regardless of what the caller's
+            // pool does with the false return below. The standard pool policy
+            // also calls Dispose() on a false return, which zeroes everything
+            // again, but this doesn't rely on that happening.
+            _core.Reset(false);
+            return false;
+        }
+
+        return base.TryReset();
+    }
+
+    /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
     {
         if (_core.Squeezed) throw new InvalidOperationException("Cannot add data after finalization.");
@@ -271,6 +330,36 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
         _core.Squeeze(output);
+    }
+
+    /// <summary>
+    /// Computes the BLAKE3 hash of <paramref name="source"/> in a single call using
+    /// this instance's SIMD tier, without incremental-hashing bookkeeping.
+    /// </summary>
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <c>HashSize</c>/8 bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Unlike <c>TryComputeHash(ReadOnlySpan{byte}, Span{byte}, out int)</c>,
+    /// which always routes through the streaming <c>HashCore</c>/<c>TryHashFinal</c>
+    /// pair, this calls a dedicated one-shot path directly — see
+    /// <see cref="Blake3State.TryHashOneShot"/> for what it skips.
+    /// </para>
+    /// <para>
+    /// The instance must be freshly constructed or freshly <see cref="Initialize"/>d;
+    /// calling this after <see cref="Absorb"/> or any streaming write produces
+    /// incorrect results.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
+        bool result = _core.TryHashOneShot(source, destination, out bytesWritten);
+        Initialize();
+        return result;
     }
 
     /// <inheritdoc/>

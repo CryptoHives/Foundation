@@ -244,6 +244,6 @@ internal sealed class Blake3NativeXofAdapter : CH.Hash.IExtendableOutput, IDispo
     public void Reset() => _hasher.Reset();
 
     /// <inheritdoc/>
-    public void Dispose() => _hasher.Reset();
+    public void Dispose() => _hasher.Dispose();
 }
 #endif

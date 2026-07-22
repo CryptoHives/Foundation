@@ -17,39 +17,71 @@ using System.Runtime.Intrinsics.Arm;
 internal unsafe partial struct Blake3State
 {
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void CompressBlockNeon(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
+    private static void CompressBlocksNeon(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
         var row0 = AdvSimd.LoadVector128(cv);
         var row1 = AdvSimd.LoadVector128(cv + 4);
-        var row2 = IVLow;
+        var row2Seed = IVLow;
         var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
+        var row3Seed = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags & ~FlagChunkStart);
 
-        uint* m = (uint*)block;
-        GRoundsNeon(m, ref row0, ref row1, ref row2, ref row3);
+        while (blocks-- > 0)
+        {
+            var row2 = row2Seed;
 
-        AdvSimd.Store(cv, row0 ^ row2);
-        AdvSimd.Store(cv + 4, row1 ^ row3);
+            uint* m = (uint*)block;
+            GRoundsNeon(m, ref row0, ref row1, ref row2, ref row3);
+
+            row0 ^= row2;
+            row1 ^= row3;
+
+            block += blockLen;
+            flags &= ~FlagChunkStart;
+            
+            row3 = row3Seed;
+        }
+
+        AdvSimd.Store(cv, row0);
+        AdvSimd.Store(cv + 4, row1);
     }
 
+    /// <summary>
+    /// Squeezes one or more independent, consecutive output blocks directly into
+    /// <paramref name="dst"/> in one call — <paramref name="blocks"/> = 1
+    /// serves the single-block callers (initial priming, look-ahead), since
+    /// <c>_rootCv</c> is loaded once regardless of the batch size.
+    /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void SqueezeRootBlockNeon(ulong counter, Span<byte> destination)
+    private void SqueezeRootBlocksNeon(Blake3State* core, ulong startCounter, int blocks, byte* dst)
     {
-        fixed (Blake3State* core = &this)
+        uint* m = core->_rootBlock;
+        // _rootCv is invariant across every block in the batch — load once
+        // and reuse both as the row0/row1 seed and the final-xor operand,
+        // instead of reloading it from memory on every iteration.
+        var cvLow = AdvSimd.LoadVector128(core->_rootCv);
+        var cvHigh = AdvSimd.LoadVector128(core->_rootCv + 4);
+        uint blockLen = _rootBlockLen;
+        uint flags = _rootFlags;
+
+        // Raw pointer stores instead of Span.Slice/CopyTo: the caller always
+        // sizes destination to exactly blocks * BlockSizeBytes, but that
+        // guarantee isn't visible across the call boundary, so Slice would
+        // otherwise re-check bounds on every store of every block.
+        for (int i = 0; i < blocks; i++)
         {
-            uint* rootCv = core->_rootCv;
-            uint* m = core->_rootBlock;
-            var row0 = AdvSimd.LoadVector128(rootCv);
-            var row1 = AdvSimd.LoadVector128(rootCv + 4);
+            ulong counter = startCounter + (ulong)i;
+            var row0 = cvLow;
+            var row1 = cvHigh;
             var row2 = IVLow;
-            var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), _rootBlockLen, _rootFlags);
+            var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
 
             GRoundsNeon(m, ref row0, ref row1, ref row2, ref row3);
 
-            // Full 16-word output (ARM64 is always little-endian)
-            (row0 ^ row2).AsByte().CopyTo(destination);
-            (row1 ^ row3).AsByte().CopyTo(destination.Slice(16));
-            (row2 ^ AdvSimd.LoadVector128(rootCv)).AsByte().CopyTo(destination.Slice(32));
-            (row3 ^ AdvSimd.LoadVector128(rootCv + 4)).AsByte().CopyTo(destination.Slice(48));
+            byte* blockDest = dst + i * BlockSizeBytes;
+            AdvSimd.Store(blockDest, (row0 ^ row2).AsByte());
+            AdvSimd.Store(blockDest + 16, (row1 ^ row3).AsByte());
+            AdvSimd.Store(blockDest + 32, (row2 ^ cvLow).AsByte());
+            AdvSimd.Store(blockDest + 48, (row3 ^ cvHigh).AsByte());
         }
     }
 

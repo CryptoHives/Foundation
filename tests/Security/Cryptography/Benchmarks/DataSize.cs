@@ -69,6 +69,47 @@ public class DataSize : IFormattable
     /// <summary>All sizes including edge cases.</summary>
     public static readonly DataSize[] AllSizes = [B128, B137, K1, B1025, K8, K128];
 
+    /// <summary>4 bytes - minimal input.</summary>
+    public static readonly DataSize B4 = new("4B", 4);
+
+    /// <summary>100 bytes - sub-block input.</summary>
+    public static readonly DataSize B100 = new("100B", 100);
+
+    /// <summary>1000 bytes - just below the BLAKE3 chunk size (1024).</summary>
+    public static readonly DataSize B1000 = new("1000B", 1000);
+
+    /// <summary>4 KB - one half BLAKE3 8-chunk batch (8192).</summary>
+    public static readonly DataSize K4 = new("4KB", 4096);
+
+    /// <summary>10000 bytes - one BLAKE3 8-chunk batch (8192) + partial chunks.</summary>
+    public static readonly DataSize B10000 = new("10000B", 10000);
+
+    /// <summary>64 KB - exactly 8 BLAKE3 8-chunk batches.</summary>
+    public static readonly DataSize K64 = new("64KB", 65536);
+
+    /// <summary>100000 bytes - 12 BLAKE3 batches + partial chunks.</summary>
+    public static readonly DataSize B100000 = new("100000B", 100000);
+
+    /// <summary>256 KB - exactly 32 BLAKE3 8-chunk batches.</summary>
+    public static readonly DataSize K256 = new("256KB", 262144);
+
+    /// <summary>512 KB - exactly 64 BLAKE3 8-chunk batches.</summary>
+    public static readonly DataSize K512 = new("512KB", 524288);
+
+    /// <summary>1 MB (decimal, 1000000 bytes) - large non-aligned input.</summary>
+    public static readonly DataSize M1 = new("1MB", 1000000);
+
+    /// <summary>10 MB (decimal, 10000000 bytes) - sustained throughput, exceeds L2 cache.</summary>
+    public static readonly DataSize M10 = new("10MB", 10000000);
+
+    /// <summary>
+    /// Sizes for BLAKE3 benchmarks: extends <see cref="AllSizes"/> with sizes on and around
+    /// the 8 KB SIMD chunk-batch boundary, since the batching fast path makes BLAKE3
+    /// throughput sensitive to sizes other algorithms are indifferent to.
+    /// </summary>
+    public static readonly DataSize[] Blake3Sizes =
+        [B4, B100, B128, B137, B1000, K1, B1025, K4, K8, B10000, K64, B100000, K128, K256, K512, M1, M10];
+
     /// <summary>Edge case sizes only.</summary>
     public static readonly DataSize[] EdgeCases = [B137, B1025];
 
