@@ -310,14 +310,10 @@ internal unsafe partial struct Blake3State
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
         Vector128<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
-        cv0 = Vector128.Create(key[0]);
-        cv1 = Vector128.Create(key[1]);
-        cv2 = Vector128.Create(key[2]);
-        cv3 = Vector128.Create(key[3]);
-        cv4 = Vector128.Create(key[4]);
-        cv5 = Vector128.Create(key[5]);
-        cv6 = Vector128.Create(key[6]);
-        cv7 = Vector128.Create(key[7]);
+        cv0 = Vector128.Create(key[0]); cv1 = Vector128.Create(key[1]);
+        cv2 = Vector128.Create(key[2]); cv3 = Vector128.Create(key[3]);
+        cv4 = Vector128.Create(key[4]); cv5 = Vector128.Create(key[5]);
+        cv6 = Vector128.Create(key[6]); cv7 = Vector128.Create(key[7]);
 
         var m = stackalloc Vector128<uint>[16];
         for (int blockIdx = 0; blockIdx < 16; blockIdx++)
@@ -363,18 +359,18 @@ internal unsafe partial struct Blake3State
             cv7 = v7 ^ v15;
         }
 
-        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4
-        // network, reusing the message buffer as scratch, then store each
-        // chunk's 8-word CV contiguously.
-        m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
-        Transpose4x4Neon(m);
-        m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
-        Transpose4x4Neon(m + 4);
-        for (int chunkIdx = 0; chunkIdx < ChunksPerNeonBatch; chunkIdx++)
-        {
-            AdvSimd.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
-            AdvSimd.Store(outCvs + chunkIdx * 8 + 4, m[4 + chunkIdx]);
-        }
+        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network
+        Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
+        AdvSimd.Store(outCvs, cv0);
+        AdvSimd.Store(outCvs + 4, cv4);
+        AdvSimd.Store(outCvs + 8, cv1);
+        AdvSimd.Store(outCvs + 12, cv5);
+
+        Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
+        AdvSimd.Store(outCvs + 16, cv2);
+        AdvSimd.Store(outCvs + 20, cv6);
+        AdvSimd.Store(outCvs + 24, cv3);
+        AdvSimd.Store(outCvs + 28, cv7);
     }
 
     /// <summary>
@@ -405,14 +401,10 @@ internal unsafe partial struct Blake3State
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
         Vector128<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
-        cv0 = Vector128.Create(key[0]);
-        cv1 = Vector128.Create(key[1]);
-        cv2 = Vector128.Create(key[2]);
-        cv3 = Vector128.Create(key[3]);
-        cv4 = Vector128.Create(key[4]);
-        cv5 = Vector128.Create(key[5]);
-        cv6 = Vector128.Create(key[6]);
-        cv7 = Vector128.Create(key[7]);
+        cv0 = Vector128.Create(key[0]); cv1 = Vector128.Create(key[1]);
+        cv2 = Vector128.Create(key[2]); cv3 = Vector128.Create(key[3]);
+        cv4 = Vector128.Create(key[4]); cv5 = Vector128.Create(key[5]);
+        cv6 = Vector128.Create(key[6]); cv7 = Vector128.Create(key[7]);
 
         var m = stackalloc Vector128<uint>[16];
         for (int blockIdx = 0; blockIdx < 16; blockIdx++)
@@ -455,15 +447,14 @@ internal unsafe partial struct Blake3State
             cv7 = v7 ^ v15;
         }
 
-        m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
-        Transpose4x4Neon(m);
-        m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
-        Transpose4x4Neon(m + 4);
-        for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
-        {
-            AdvSimd.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
-            AdvSimd.Store(outCvs + chunkIdx * 8 + 4, m[4 + chunkIdx]);
-        }
+        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network
+        Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
+        AdvSimd.Store(outCvs, cv0); AdvSimd.Store(outCvs + 4, cv4);
+        AdvSimd.Store(outCvs + 8, cv1); AdvSimd.Store(outCvs + 12, cv5);
+
+        Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
+        AdvSimd.Store(outCvs + 16, cv2); AdvSimd.Store(outCvs + 20, cv6);
+        AdvSimd.Store(outCvs + 24, cv3); AdvSimd.Store(outCvs + 28, cv7);
     }
 
     /// <summary>
@@ -482,7 +473,8 @@ internal unsafe partial struct Blake3State
         uint flags = _rootFlags;
 
         var counterLow = Vector128.Create(
-            (uint)(startCounter + 0), (uint)(startCounter + 1), (uint)(startCounter + 2), (uint)(startCounter + 3));
+            (uint)(startCounter + 0), (uint)(startCounter + 1),
+            (uint)(startCounter + 2), (uint)(startCounter + 3));
         var counterHigh = Vector128.Create(
             (uint)((startCounter + 0) >> 32), (uint)((startCounter + 1) >> 32),
             (uint)((startCounter + 2) >> 32), (uint)((startCounter + 3) >> 32));
@@ -514,35 +506,38 @@ internal unsafe partial struct Blake3State
             ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
             m);
 
-        // Full 16-word output per block: halves[0..7] = v[i]^v[i+8] (the same
-        // fold a chunk CV uses), halves[8..15] = v[i+8]^rootCv[i] (the extra
-        // fold only a full squeeze output needs).
-        var halves = stackalloc Vector128<uint>[16];
-        halves[0] = v0 ^ v8; halves[8] = v8 ^ cv0;
-        halves[1] = v1 ^ v9; halves[9] = v9 ^ cv1;
-        halves[2] = v2 ^ v10; halves[10] = v10 ^ cv2;
-        halves[3] = v3 ^ v11; halves[11] = v11 ^ cv3;
-        halves[4] = v4 ^ v12; halves[12] = v12 ^ cv4;
-        halves[5] = v5 ^ v13; halves[13] = v13 ^ cv5;
-        halves[6] = v6 ^ v14; halves[14] = v14 ^ cv6;
-        halves[7] = v7 ^ v15; halves[15] = v15 ^ cv7;
+        v0 = v0 ^ v8; v1 = v1 ^ v9; v2 = v2 ^ v10; v3 = v3 ^ v11;
+        v4 = v4 ^ v12; v5 = v5 ^ v13; v6 = v6 ^ v14; v7 = v7 ^ v15;
+        v8 = v8 ^ cv0; v9 = v9 ^ cv1; v10 = v10 ^ cv2; v11 = v11 ^ cv3;
+        v12 = v12 ^ cv4; v13 = v13 ^ cv5; v14 = v14 ^ cv6; v15 = v15 ^ cv7;
 
-        Transpose4x4Neon(halves);
-        Transpose4x4Neon(halves + 4);
-        Transpose4x4Neon(halves + 8);
-        Transpose4x4Neon(halves + 12);
+        Transpose4x4Neon(ref v0, ref v1, ref v2, ref v3);
+        Transpose4x4Neon(ref v3, ref v4, ref v5, ref v6);
+        Transpose4x4Neon(ref v7, ref v8, ref v9, ref v10);
+        Transpose4x4Neon(ref v11, ref v12, ref v13, ref v14);
 
-        // Raw pointer stores instead of Span.Slice/CopyTo: the caller always
-        // sizes destination to exactly ChunksPerNeonBatch * BlockSizeBytes, but
-        // that guarantee isn't visible across the call boundary, so Slice would
-        // otherwise re-check bounds on every one of these stores.
-        for (int j = 0; j < ChunksPerNeonBatch; j++)
-        {
-            AdvSimd.Store((uint*)(dst + j * BlockSizeBytes), halves[j]);
-            AdvSimd.Store((uint*)(dst + j * BlockSizeBytes + 16), halves[4 + j]);
-            AdvSimd.Store((uint*)(dst + j * BlockSizeBytes + 32), halves[8 + j]);
-            AdvSimd.Store((uint*)(dst + j * BlockSizeBytes + 48), halves[12 + j]);
-        }
+        AdvSimd.Store((uint*)(dst), v0);
+        AdvSimd.Store((uint*)(dst + 16), v4);
+        AdvSimd.Store((uint*)(dst + 32), v8);
+        AdvSimd.Store((uint*)(dst + 48), v12);
+
+        dst += BlockSizeBytes;
+        AdvSimd.Store((uint*)(dst), v1);
+        AdvSimd.Store((uint*)(dst + 16), v5);
+        AdvSimd.Store((uint*)(dst + 32), v9);
+        AdvSimd.Store((uint*)(dst + 48), v13);
+
+        dst += BlockSizeBytes;
+        AdvSimd.Store((uint*)(dst), v2);
+        AdvSimd.Store((uint*)(dst + 16), v6);
+        AdvSimd.Store((uint*)(dst + 32), v10);
+        AdvSimd.Store((uint*)(dst + 48), v14);
+
+        dst += BlockSizeBytes;
+        AdvSimd.Store((uint*)(dst), v3);
+        AdvSimd.Store((uint*)(dst + 16), v7);
+        AdvSimd.Store((uint*)(dst + 32), v11);
+        AdvSimd.Store((uint*)(dst + 48), v15);
     }
 
     /// <summary>
@@ -564,21 +559,15 @@ internal unsafe partial struct Blake3State
     private static void CompressParents4Neon(uint* childCvs, uint* key, uint* outCvs, uint baseFlags)
     {
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
-        var iv0 = Vector128.Create(IV0);
-        var iv1 = Vector128.Create(IV1);
-        var iv2 = Vector128.Create(IV2);
-        var iv3 = Vector128.Create(IV3);
+        var iv0 = Vector128.Create(IV0); var iv1 = Vector128.Create(IV1);
+        var iv2 = Vector128.Create(IV2); var iv3 = Vector128.Create(IV3);
         var flagsVec = Vector128.Create(baseFlags | FlagParent);
 
         Vector128<uint> v0, v1, v2, v3, v4, v5, v6, v7;
-        v0 = Vector128.Create(key[0]);
-        v1 = Vector128.Create(key[1]);
-        v2 = Vector128.Create(key[2]);
-        v3 = Vector128.Create(key[3]);
-        v4 = Vector128.Create(key[4]);
-        v5 = Vector128.Create(key[5]);
-        v6 = Vector128.Create(key[6]);
-        v7 = Vector128.Create(key[7]);
+        v0 = Vector128.Create(key[0]); v1 = Vector128.Create(key[1]);
+        v2 = Vector128.Create(key[2]); v3 = Vector128.Create(key[3]);
+        v4 = Vector128.Create(key[4]); v5 = Vector128.Create(key[5]);
+        v6 = Vector128.Create(key[6]); v7 = Vector128.Create(key[7]);
 
         var m = stackalloc Vector128<uint>[16];
         for (int j = 0; j < ChunksPerNeonBatch; j++)
@@ -605,22 +594,18 @@ internal unsafe partial struct Blake3State
             ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
             m);
 
-        m[0] = v0 ^ v8;
-        m[1] = v1 ^ v9;
-        m[2] = v2 ^ v10;
-        m[3] = v3 ^ v11;
-        m[4] = v4 ^ v12;
-        m[5] = v5 ^ v13;
-        m[6] = v6 ^ v14;
-        m[7] = v7 ^ v15;
+        v0 = v0 ^ v8; v1 = v1 ^ v9;
+        v2 = v2 ^ v10; v3 = v3 ^ v11;
+        v4 = v4 ^ v12; v5 = v5 ^ v13;
+        v6 = v6 ^ v14; v7 = v7 ^ v15;
 
-        Transpose4x4Neon(m);
-        Transpose4x4Neon(m + 4);
-        for (int parentIdx = 0; parentIdx < ChunksPerNeonBatch; parentIdx++)
-        {
-            AdvSimd.Store(outCvs + parentIdx * 8, m[parentIdx]);
-            AdvSimd.Store(outCvs + parentIdx * 8 + 4, m[4 + parentIdx]);
-        }
+        Transpose4x4Neon(ref v0, ref v1, ref v2, ref v3);
+        Transpose4x4Neon(ref v4, ref v5, ref v6, ref v7);
+
+        AdvSimd.Store(outCvs, v0); AdvSimd.Store(outCvs + 4, v4);
+        AdvSimd.Store(outCvs + 8, v1); AdvSimd.Store(outCvs + 12, v5);
+        AdvSimd.Store(outCvs + 16, v2); AdvSimd.Store(outCvs + 20, v6);
+        AdvSimd.Store(outCvs + 24, v3); AdvSimd.Store(outCvs + 28, v7);
     }
 
     /// <summary>
@@ -737,6 +722,36 @@ internal unsafe partial struct Blake3State
         GRoundNeon(ref v1, ref v6, ref v11, ref v12, m2, m12);
         GRoundNeon(ref v2, ref v7, ref v8, ref v13, m3, m4);
         GRoundNeon(ref v3, ref v4, ref v9, ref v14, m7, m13);
+    }
+
+    /// <summary>
+    /// In-place 4×4 transpose of 32-bit words: on input <c>vecs[j]</c> holds
+    /// 4 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
+    /// word <c>w</c> of all 4 chunks (lane <c>j</c> = chunk <c>j</c>).
+    /// </summary>
+    /// <remarks>
+    /// NEON's <c>zip1</c>/<c>zip2</c> (exposed as <c>ZipLow</c>/<c>ZipHigh</c>) interleave
+    /// the low/high halves of two same-width vectors — bit-for-bit identical to
+    /// SSE's <c>unpacklo</c>/<c>unpackhi</c> at the same element width. That equivalence
+    /// makes this the direct NEON translation of the classic 4×4 SSE transpose
+    /// (<c>_MM_TRANSPOSE4_PS</c>): interleave at 32-bit width, then again at 64-bit
+    /// width (reinterpreting the intermediates as <see cref="Vector128{UInt64}"/>)
+    /// to complete the transpose in two passes.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void Transpose4x4Neon(ref Vector128<uint> v0, ref Vector128<uint> v1, ref Vector128<uint> v2, ref Vector128<uint> v3)
+    {
+        // Interleave 32-bit words of row pairs.
+        var ab01 = AdvSimd.Arm64.ZipLow(v0, v1);    // a0,b0,a1,b1
+        var ab23 = AdvSimd.Arm64.ZipHigh(v0, v1);   // a2,b2,a3,b3
+        var cd01 = AdvSimd.Arm64.ZipLow(v2, v3);    // c0,d0,c1,d1
+        var cd23 = AdvSimd.Arm64.ZipHigh(v2, v3);   // c2,d2,c3,d3
+
+        // Interleave 64-bit halves to complete the transpose.
+        v0 = AdvSimd.Arm64.ZipLow(ab01.AsUInt64(), cd01.AsUInt64()).AsUInt32();    // a0,b0,c0,d0
+        v1 = AdvSimd.Arm64.ZipHigh(ab01.AsUInt64(), cd01.AsUInt64()).AsUInt32();   // a1,b1,c1,d1
+        v2 = AdvSimd.Arm64.ZipLow(ab23.AsUInt64(), cd23.AsUInt64()).AsUInt32();    // a2,b2,c2,d2
+        v3 = AdvSimd.Arm64.ZipHigh(ab23.AsUInt64(), cd23.AsUInt64()).AsUInt32();   // a3,b3,c3,d3
     }
 
     /// <summary>
