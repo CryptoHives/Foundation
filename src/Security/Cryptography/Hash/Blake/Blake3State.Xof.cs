@@ -322,7 +322,23 @@ internal unsafe partial struct Blake3State
         }
         else if ((_simdSupport & SimdSupport.Neon) != 0)
         {
-            SqueezeRootBlocksNeon(core, startCounter, blocks, dst);
+            int offset = 0;
+            int fullGroups = blocks / ChunksPerNeonBatch;
+            for (int g = 0; g < fullGroups; g++)
+            {
+                SqueezeRootBlocks4Neon(
+                    core,
+                    startCounter + (ulong)(g * ChunksPerNeonBatch),
+                    dst + offset);
+                offset += ChunksPerNeonBatch * BlockSizeBytes;
+            }
+
+            int remaining = blocks - fullGroups * ChunksPerNeonBatch;
+            if (remaining > 0)
+            {
+                SqueezeRootBlocksNeon(
+                    core, startCounter + (ulong)(fullGroups * ChunksPerNeonBatch), remaining, dst + offset);
+            }
         }
         else
 #endif

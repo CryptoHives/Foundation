@@ -656,6 +656,129 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                 offset += fullChunks * ChunkSizeBytes;
             }
+
+            // NEON 4-chunk batches: primary chunk-parallel path on ARM hardware,
+            // one register width down from the AVX2 8-chunk batches above (NEON's
+            // Vector128<uint> holds 4 lanes instead of AVX2's 8) — same subtree-group
+            // amortization strategy, just at 4-chunk width.
+            if (_chunkBufferLength == 0 && (_simdSupport & SimdSupport.Neon) != 0 &&
+                length - offset >= NeonBatchSizeBytes)
+            {
+                // Sized for a full 64-chunk subtree group (2 KB); the 4-batch
+                // loop below reuses the first 4 CV slots.
+                uint* batchCvs = stackalloc uint[ChunksPerSubtreeGroup * KeySizeWords];
+
+                // 64-chunk subtree groups: sixteen kernel batches accumulate 64
+                // CVs reduced in one pass — see the AVX2 group loop above for
+                // the rationale, applied at 4-chunk width.
+                while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                       length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                {
+                    for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerNeonBatch; b++)
+                    {
+                        CompressChunks4Neon(
+                            srcPtr + offset + b * NeonBatchSizeBytes,
+                            core->_keyWords,
+                            batchCvs + b * ChunksPerNeonBatch * KeySizeWords,
+                            _chunkCounter + (ulong)(b * ChunksPerNeonBatch),
+                            _baseFlags);
+                    }
+
+                    ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+                    Unsafe.CopyBlock(
+                        core->_cvStackBuf + _cvStackDepth * 8,
+                        batchCvs,
+                        KeySizeWords * (uint)sizeof(uint));
+                    AddSubtreeToTree(core, 6);
+                    _chunkCounter += ChunksPerSubtreeGroup;
+                    offset += ChunksPerSubtreeGroup * ChunkSizeBytes;
+                }
+
+                while (length - offset >= NeonBatchSizeBytes)
+                {
+                    CompressChunks4Neon(srcPtr + offset, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+
+                    bool drainsRemainingInput = offset + NeonBatchSizeBytes == source.Length;
+
+                    if (!drainsRemainingInput && (_chunkCounter & (ChunksPerNeonBatch - 1)) == 0)
+                    {
+                        // Aligned complete 4-chunk subtree that isn't the
+                        // message tail — same wide reduction as the AVX2
+                        // loop above, one level lower.
+                        ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
+                        Unsafe.CopyBlock(
+                            core->_cvStackBuf + _cvStackDepth * 8,
+                            batchCvs,
+                            KeySizeWords * (uint)sizeof(uint));
+                        AddSubtreeToTree(core, 2);
+                        _chunkCounter += ChunksPerNeonBatch;
+                    }
+                    else
+                    {
+                        int chunksToCommit = drainsRemainingInput ? ChunksPerNeonBatch - 1 : ChunksPerNeonBatch;
+
+                        for (int i = 0; i < chunksToCommit; i++)
+                        {
+                            Unsafe.CopyBlock(
+                                core->_cvStackBuf + _cvStackDepth * 8,
+                                batchCvs + i * KeySizeWords,
+                                KeySizeWords * (uint)sizeof(uint));
+                            AddChunkToTree(core);
+                            _chunkCounter++;
+                        }
+
+                        if (drainsRemainingInput)
+                        {
+                            Unsafe.CopyBlock(
+                                core->_pendingCv,
+                                batchCvs + (ChunksPerNeonBatch - 1) * KeySizeWords,
+                                KeySizeWords * (uint)sizeof(uint));
+                            _hasPendingCv = true;
+                        }
+                    }
+
+                    offset += NeonBatchSizeBytes;
+                }
+            }
+
+            // NEON partial batch: 2..3 full chunks compressed in one pass by
+            // the 4-way kernel with surplus lanes duplicating real chunks —
+            // mirrors the AVX2 partial-batch handling above, one register
+            // width down (2..7 there vs 2..3 here).
+            if (_chunkBufferLength == 0 && (_simdSupport & SimdSupport.Neon) != 0 &&
+                length - offset >= 2 * ChunkSizeBytes)
+            {
+                // The batch loop above consumed all >= 4 KB spans, so at most
+                // 3 full chunks (3,071 bytes) remain.
+                int fullChunks = (source.Length - offset) / ChunkSizeBytes;
+                bool drainsRemainingInput = offset + fullChunks * ChunkSizeBytes == source.Length;
+
+                uint* partialCvs = stackalloc uint[(ChunksPerNeonBatch - 1) * KeySizeWords];
+                CompressChunksPartialNeon(
+                    srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
+
+                int chunksToCommit = drainsRemainingInput ? fullChunks - 1 : fullChunks;
+                for (int i = 0; i < chunksToCommit; i++)
+                {
+                    Unsafe.CopyBlock(
+                        core->_cvStackBuf + _cvStackDepth * 8,
+                        partialCvs + i * KeySizeWords,
+                        KeySizeWords * (uint)sizeof(uint));
+                    AddChunkToTree(core);
+                    _chunkCounter++;
+                }
+
+                if (drainsRemainingInput)
+                {
+                    Unsafe.CopyBlock(
+                        core->_pendingCv,
+                        partialCvs + (fullChunks - 1) * KeySizeWords,
+                        KeySizeWords * (uint)sizeof(uint));
+                    _hasPendingCv = true;
+                }
+
+                offset += fullChunks * ChunkSizeBytes;
+            }
 #endif
 
             while (offset < source.Length)
