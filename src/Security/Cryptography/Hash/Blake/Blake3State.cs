@@ -507,6 +507,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                         batchCvs + (ChunksPerAvx512Batch - 1) * KeySizeWords,
                                         KeySizeWords * (uint)sizeof(uint));
                                     _hasPendingCv = true;
+
+                                    // Draining means offset would become exactly
+                                    // length — every remaining check below (this
+                                    // tier's own partial batch, AVX2, NEON, the
+                                    // scalar loop) is guaranteed a no-op at that
+                                    // point, so skip straight to it.
+                                    return;
                                 }
                             }
 
@@ -613,6 +620,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                         batchCvs + (ChunksPerAvx2Batch - 1) * KeySizeWords,
                                         KeySizeWords * (uint)sizeof(uint));
                                     _hasPendingCv = true;
+
+                                    // Draining means offset would become exactly
+                                    // length — the remaining checks below (this
+                                    // tier's own partial batch, NEON, the scalar
+                                    // loop) are guaranteed no-ops at that point.
+                                    return;
                                 }
                             }
 
@@ -722,6 +735,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                         batchCvs + (ChunksPerNeonBatch - 1) * KeySizeWords,
                                         KeySizeWords * (uint)sizeof(uint));
                                     _hasPendingCv = true;
+
+                                    // Draining means offset would become exactly
+                                    // length — the scalar loop below is guaranteed
+                                    // a no-op at that point.
+                                    return;
                                 }
                             }
 
