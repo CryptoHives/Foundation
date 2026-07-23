@@ -229,6 +229,113 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
+    /// Compresses <paramref name="chunkCount"/> (2..4) independent, full
+    /// (1024-byte) chunks with a genuine 4-lane kernel, for the low end of the
+    /// partial-batch range where <see cref="CompressChunksPartialAvx2"/>'s
+    /// 8-lane kernel wastes the most register pressure and transpose work on
+    /// unused lanes. Lane <c>j</c> reads chunk <c>j</c> mod
+    /// <paramref name="chunkCount"/> (same surplus-lane-duplication strategy
+    /// as the 8-lane kernel), so no memory outside the
+    /// <paramref name="chunkCount"/>*1024 input bytes is touched; surplus
+    /// lanes' outputs are wrong and must be ignored.
+    /// </summary>
+    /// <remarks>
+    /// Reuses <see cref="GRound128"/> and the SSSE3-tier rotate helpers
+    /// directly: the G-function is a pure elementwise operation (add/xor/
+    /// rotate), so it is correct regardless of what each lane represents —
+    /// here, one word broadcast across 4 independent chunks, rather than the
+    /// SSSE3 path's 4 state words of a single chunk. Only the data layout
+    /// (via <see cref="Transpose4x4"/>) differs from the SSSE3 usage; the
+    /// round schedule mirrors <see cref="CompressVector256"/>'s exactly.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressChunksPartial4Avx2(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
+    {
+        int* laneOffsets = stackalloc int[4];
+        for (int j = 0; j < 4; j++)
+        {
+            laneOffsets[j] = (j % chunkCount) * ChunkSizeBytes;
+        }
+
+        var counterLow = Vector128.Create(
+            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3));
+        var counterHigh = Vector128.Create(
+            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
+            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32));
+        var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
+
+        Vector128<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
+        cv0 = Vector128.Create(key[0]);
+        cv1 = Vector128.Create(key[1]);
+        cv2 = Vector128.Create(key[2]);
+        cv3 = Vector128.Create(key[3]);
+        cv4 = Vector128.Create(key[4]);
+        cv5 = Vector128.Create(key[5]);
+        cv6 = Vector128.Create(key[6]);
+        cv7 = Vector128.Create(key[7]);
+
+        var m = stackalloc Vector128<uint>[16];
+        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        {
+            byte* blockBase = source + blockIdx * BlockSizeBytes;
+
+            for (int j = 0; j < 4; j++)
+            {
+                m[j] = Sse2.LoadVector128((uint*)(blockBase + laneOffsets[j]));
+                m[j + 4] = Sse2.LoadVector128((uint*)(blockBase + laneOffsets[j] + 16));
+                m[j + 8] = Sse2.LoadVector128((uint*)(blockBase + laneOffsets[j] + 32));
+                m[j + 12] = Sse2.LoadVector128((uint*)(blockBase + laneOffsets[j] + 48));
+            }
+
+            Transpose4x4(m);
+            Transpose4x4(m + 4);
+            Transpose4x4(m + 8);
+            Transpose4x4(m + 12);
+
+            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
+
+            var v0 = cv0; var v1 = cv1; var v2 = cv2; var v3 = cv3;
+            var v4 = cv4; var v5 = cv5; var v6 = cv6; var v7 = cv7;
+            var v8 = Vector128.Create(IV0); var v9 = Vector128.Create(IV1);
+            var v10 = Vector128.Create(IV2); var v11 = Vector128.Create(IV3);
+            var v12 = counterLow;
+            var v13 = counterHigh;
+            var v14 = blockLenVec;
+            var v15 = Vector128.Create(flags);
+
+            CompressVector128ChunkParallel(
+                ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+                ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+                m);
+
+            cv0 = Sse2.Xor(v0, v8);
+            cv1 = Sse2.Xor(v1, v9);
+            cv2 = Sse2.Xor(v2, v10);
+            cv3 = Sse2.Xor(v3, v11);
+            cv4 = Sse2.Xor(v4, v12);
+            cv5 = Sse2.Xor(v5, v13);
+            cv6 = Sse2.Xor(v6, v14);
+            cv7 = Sse2.Xor(v7, v15);
+        }
+
+        // Un-transpose the CVs (word-major -> chunk-major); transpose is its
+        // own inverse for a square arrangement, so the same function that
+        // converted the message loads to word-major restores chunk-major
+        // here, in two 4-word halves (cv0-3, cv4-7) instead of the 8-lane
+        // kernel's single 8-word transpose.
+        m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
+        Transpose4x4(m);
+        m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
+        Transpose4x4(m + 4);
+        for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
+        {
+            Sse2.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
+            Sse2.Store(outCvs + chunkIdx * 8 + 4, m[4 + chunkIdx]);
+        }
+    }
+
+    /// <summary>
     /// Squeezes 8 independent, consecutive output blocks (counters
     /// <paramref name="startCounter"/>..+7) into <paramref name="dst"/>
     /// (512 bytes) in one call, reusing the same transpose kernel as chunk
@@ -609,5 +716,120 @@ internal unsafe partial struct Blake3State
     private static Vector256<uint> RotateRight7(Vector256<uint> value) => Avx512F.VL.IsSupported
         ? Avx512F.VL.RotateRight(value, 7)
         : Avx2.Or(Avx2.ShiftRightLogical(value, 7), Avx2.ShiftLeftLogical(value, 25));
+
+    // Mirrors CompressVector256 exactly (same message schedule, same
+    // G-function groupings) at half the lane width, reusing GRound128 and
+    // the SSSE3-tier rotate helpers from Blake3State.Ssse3.cs — the
+    // G-function is a pure elementwise add/xor/rotate, so it is correct
+    // regardless of what each lane represents (there: 4 state words of one
+    // chunk; here: one word broadcast across 4 independent chunks).
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void CompressVector128ChunkParallel(
+        ref Vector128<uint> v0, ref Vector128<uint> v1, ref Vector128<uint> v2, ref Vector128<uint> v3,
+        ref Vector128<uint> v4, ref Vector128<uint> v5, ref Vector128<uint> v6, ref Vector128<uint> v7,
+        ref Vector128<uint> v8, ref Vector128<uint> v9, ref Vector128<uint> v10, ref Vector128<uint> v11,
+        ref Vector128<uint> v12, ref Vector128<uint> v13, ref Vector128<uint> v14, ref Vector128<uint> v15,
+        Vector128<uint>* m)
+    {
+        var m0 = m[0]; var m1 = m[1]; var m2 = m[2]; var m3 = m[3];
+        var m4 = m[4]; var m5 = m[5]; var m6 = m[6]; var m7 = m[7];
+        var m8 = m[8]; var m9 = m[9]; var m10 = m[10]; var m11 = m[11];
+        var m12 = m[12]; var m13 = m[13]; var m14 = m[14]; var m15 = m[15];
+
+        // Round 1
+        GRound128(ref v0, ref v4, ref v8, ref v12, m0, m1);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m2, m3);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m4, m5);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m6, m7);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m8, m9);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m10, m11);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m12, m13);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m14, m15);
+
+        // Round 2
+        GRound128(ref v0, ref v4, ref v8, ref v12, m2, m6);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m3, m10);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m7, m0);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m4, m13);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m1, m11);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m12, m5);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m9, m14);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m15, m8);
+
+        // Round 3
+        GRound128(ref v0, ref v4, ref v8, ref v12, m3, m4);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m10, m12);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m13, m2);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m7, m14);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m6, m5);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m9, m0);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m11, m15);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m8, m1);
+
+        // Round 4
+        GRound128(ref v0, ref v4, ref v8, ref v12, m10, m7);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m12, m9);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m14, m3);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m13, m15);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m4, m0);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m11, m2);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m5, m8);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m1, m6);
+
+        // Round 5
+        GRound128(ref v0, ref v4, ref v8, ref v12, m12, m13);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m9, m11);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m15, m10);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m14, m8);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m7, m2);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m5, m3);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m0, m1);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m6, m4);
+
+        // Round 6
+        GRound128(ref v0, ref v4, ref v8, ref v12, m9, m14);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m11, m5);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m8, m12);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m15, m1);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m13, m3);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m0, m10);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m2, m6);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m4, m7);
+
+        // Round 7
+        GRound128(ref v0, ref v4, ref v8, ref v12, m11, m15);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m5, m0);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m1, m9);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m8, m6);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m14, m10);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m2, m12);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m3, m4);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m7, m13);
+    }
+
+    /// <summary>
+    /// In-place 4x4 transpose of 32-bit words: on input <c>vecs[j]</c> holds
+    /// 4 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
+    /// word <c>w</c> of all 4 chunks (lane <c>j</c> = chunk <c>j</c>). Same
+    /// self-inverse structure as <see cref="Transpose8x8"/>, at half the width.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void Transpose4x4(Vector128<uint>* vecs)
+    {
+        var v0 = vecs[0];
+        var v1 = vecs[1];
+        var v2 = vecs[2];
+        var v3 = vecs[3];
+
+        var t0 = Sse2.UnpackLow(v0, v1);
+        var t1 = Sse2.UnpackHigh(v0, v1);
+        var t2 = Sse2.UnpackLow(v2, v3);
+        var t3 = Sse2.UnpackHigh(v2, v3);
+
+        vecs[0] = Sse2.UnpackLow(t0.AsUInt64(), t2.AsUInt64()).AsUInt32();
+        vecs[1] = Sse2.UnpackHigh(t0.AsUInt64(), t2.AsUInt64()).AsUInt32();
+        vecs[2] = Sse2.UnpackLow(t1.AsUInt64(), t3.AsUInt64()).AsUInt32();
+        vecs[3] = Sse2.UnpackHigh(t1.AsUInt64(), t3.AsUInt64()).AsUInt32();
+    }
 }
 #endif

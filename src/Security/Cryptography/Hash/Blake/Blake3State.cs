@@ -631,8 +631,20 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 bool drainsRemainingInput = offset + fullChunks * ChunkSizeBytes == source.Length;
 
                 uint* partialCvs = stackalloc uint[(ChunksPerAvx2Batch - 1) * KeySizeWords];
-                CompressChunksPartialAvx2(
-                    srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
+                if (fullChunks <= 4)
+                {
+                    // Below 5 real chunks, a genuine 4-lane kernel beats the
+                    // 8-lane kernel: the 8-lane kernel's register spill and
+                    // transpose cost are fixed regardless of how many of its
+                    // 8 lanes are real (see CompressChunksPartial4Avx2 remarks).
+                    CompressChunksPartial4Avx2(
+                        srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
+                }
+                else
+                {
+                    CompressChunksPartialAvx2(
+                        srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
+                }
 
                 int chunksToCommit = drainsRemainingInput ? fullChunks - 1 : fullChunks;
                 for (int i = 0; i < chunksToCommit; i++)
