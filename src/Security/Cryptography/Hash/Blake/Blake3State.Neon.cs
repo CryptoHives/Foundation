@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
@@ -334,7 +334,7 @@ internal unsafe partial struct Blake3State
                     m[g * 4 + j] = AdvSimd.LoadVector128((uint*)(blockBase + j * ChunkSizeBytes + g * 16));
                 }
 
-                Transpose4x4(m + g * 4);
+                Transpose4x4Neon(m + g * 4);
             }
 
             uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
@@ -367,9 +367,9 @@ internal unsafe partial struct Blake3State
         // network, reusing the message buffer as scratch, then store each
         // chunk's 8-word CV contiguously.
         m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
-        Transpose4x4(m);
+        Transpose4x4Neon(m);
         m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
-        Transpose4x4(m + 4);
+        Transpose4x4Neon(m + 4);
         for (int chunkIdx = 0; chunkIdx < ChunksPerNeonBatch; chunkIdx++)
         {
             AdvSimd.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
@@ -426,7 +426,7 @@ internal unsafe partial struct Blake3State
                     m[g * 4 + j] = AdvSimd.LoadVector128((uint*)(blockBase + laneOffsets[j] + g * 16));
                 }
 
-                Transpose4x4(m + g * 4);
+                Transpose4x4Neon(m + g * 4);
             }
 
             uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
@@ -456,9 +456,9 @@ internal unsafe partial struct Blake3State
         }
 
         m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
-        Transpose4x4(m);
+        Transpose4x4Neon(m);
         m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
-        Transpose4x4(m + 4);
+        Transpose4x4Neon(m + 4);
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
             AdvSimd.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
@@ -527,10 +527,10 @@ internal unsafe partial struct Blake3State
         halves[6] = v6 ^ v14; halves[14] = v14 ^ cv6;
         halves[7] = v7 ^ v15; halves[15] = v15 ^ cv7;
 
-        Transpose4x4(halves);
-        Transpose4x4(halves + 4);
-        Transpose4x4(halves + 8);
-        Transpose4x4(halves + 12);
+        Transpose4x4Neon(halves);
+        Transpose4x4Neon(halves + 4);
+        Transpose4x4Neon(halves + 8);
+        Transpose4x4Neon(halves + 12);
 
         // Raw pointer stores instead of Span.Slice/CopyTo: the caller always
         // sizes destination to exactly ChunksPerNeonBatch * BlockSizeBytes, but
@@ -589,10 +589,10 @@ internal unsafe partial struct Blake3State
             m[j + 12] = AdvSimd.LoadVector128(childCvs + j * 16 + 12);
         }
 
-        Transpose4x4(m);
-        Transpose4x4(m + 4);
-        Transpose4x4(m + 8);
-        Transpose4x4(m + 12);
+        Transpose4x4Neon(m);
+        Transpose4x4Neon(m + 4);
+        Transpose4x4Neon(m + 8);
+        Transpose4x4Neon(m + 12);
 
         var v8 = iv0; var v9 = iv1; var v10 = iv2; var v11 = iv3;
         var v12 = Vector128<uint>.Zero;   // parent counter is always 0
@@ -614,8 +614,8 @@ internal unsafe partial struct Blake3State
         m[6] = v6 ^ v14;
         m[7] = v7 ^ v15;
 
-        Transpose4x4(m);
-        Transpose4x4(m + 4);
+        Transpose4x4Neon(m);
+        Transpose4x4Neon(m + 4);
         for (int parentIdx = 0; parentIdx < ChunksPerNeonBatch; parentIdx++)
         {
             AdvSimd.Store(outCvs + parentIdx * 8, m[parentIdx]);
@@ -754,7 +754,7 @@ internal unsafe partial struct Blake3State
     /// to complete the transpose in two passes.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void Transpose4x4(Vector128<uint>* vecs)
+    private static void Transpose4x4Neon(Vector128<uint>* vecs)
     {
         var v0 = vecs[0];
         var v1 = vecs[1];
