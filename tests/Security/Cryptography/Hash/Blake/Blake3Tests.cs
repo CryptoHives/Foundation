@@ -219,6 +219,89 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// Cross-validates the NEON 4-chunk-parallel batching path (<c>CompressChunks4Neon</c>)
+    /// against the scalar reference implementation across sizes chosen to land on and
+    /// around 4-chunk (4096-byte) batch boundaries — one register width down from the
+    /// AVX2 8-chunk cases above, since NEON's 128-bit vectors hold 4 lanes instead of 8.
+    /// </summary>
+    /// <param name="inputLength">The length of the input.</param>
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(4)]
+    [TestCase(100)]
+    [TestCase(1000)]
+    [TestCase(2048)]      // 2 full chunks, none committable by the partial batch (no byte follows)
+    [TestCase(2049)]      // smallest partial batch: 2 committable chunks + 1 byte
+    [TestCase(3072)]      // 3 committable chunks (largest NEON partial batch)
+    [TestCase(3073)]
+    [TestCase(4096)]      // exactly 1 batch
+    [TestCase(4097)]      // 1 batch + 1 byte
+    [TestCase(5120)]      // 1 batch + 1 full chunk
+    [TestCase(8192)]      // exactly 2 batches
+    [TestCase(8193)]      // 2 batches + 1 byte
+    [TestCase(12288)]     // exactly 3 batches
+    [TestCase(12289)]
+    [TestCase(16384)]     // exactly 4 batches: one full subtree-group step below 64
+    [TestCase(65536)]     // exactly 16 batches: one full 64-chunk subtree group
+    [TestCase(65536 + 37)]
+    [TestCase(131072)]    // exactly 2 subtree groups
+    [TestCase(1000000)]
+    [TestCase(10000000)]
+    public void NeonBatchingMatchesScalarReference(int inputLength)
+    {
+        if ((Blake3.SimdSupport & CH.SimdSupport.Neon) == 0)
+        {
+            Assert.Ignore("NEON not supported on this platform.");
+        }
+
+        byte[] input = GenerateTestInput(inputLength);
+
+        using var scalar = Blake3.Create(
+            CH.SimdSupport.None, 32);
+        using var neon = Blake3.Create(
+            CH.SimdSupport.Neon, 32);
+
+        byte[] expected = scalar.ComputeHash(input);
+        byte[] actual = neon.ComputeHash(input);
+
+        Assert.That(actual, Is.EqualTo(expected), $"NEON batching mismatch at {inputLength} bytes");
+    }
+
+    /// <summary>
+    /// Same as <see cref="NeonBatchingMatchesScalarReference"/> but exercises the
+    /// streaming (multi-call) <c>Append</c> path with small, chunk-boundary-crossing
+    /// writes, to make sure the batching fast path composes correctly with buffered state.
+    /// </summary>
+    [TestCase(8193, 97)]
+    [TestCase(12288, 1024)]
+    [TestCase(100000, 4001)]
+    [TestCase(100000, 6144)]   // 4KB batch + 1 chunk per write: later batches start at unaligned chunk counters
+    [TestCase(6144, 3072)]     // 1st write = 3-chunk NEON partial batch that exactly drains (pending-CV holdback)
+    public void NeonBatchingMatchesScalarReferenceStreaming(int inputLength, int writeSize)
+    {
+        if ((Blake3.SimdSupport & CH.SimdSupport.Neon) == 0)
+        {
+            Assert.Ignore("NEON not supported on this platform.");
+        }
+
+        byte[] input = GenerateTestInput(inputLength);
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        using var neon = Blake3.Create(CH.SimdSupport.Neon, 32);
+
+        for (int offset = 0; offset < input.Length; offset += writeSize)
+        {
+            int len = Math.Min(writeSize, input.Length - offset);
+            scalar.TransformBlock(input, offset, len, null, 0);
+            neon.TransformBlock(input, offset, len, null, 0);
+        }
+        scalar.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        neon.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+
+        Assert.That(neon.Hash, Is.EqualTo(scalar.Hash), $"NEON streaming mismatch at {inputLength} bytes / {writeSize}-byte writes");
+    }
+
+    /// <summary>
     /// Cross-validates the AVX-512 16-chunk batching path (<c>CompressChunks16Avx512</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 16-chunk (16384-byte) batch boundaries, plus AVX2-boundary sizes to cover
@@ -418,6 +501,7 @@ public class Blake3Tests
             CH.SimdSupport.Ssse3,
             CH.SimdSupport.Avx2,
             CH.SimdSupport.Avx512F,
+            CH.SimdSupport.Neon,
         })
         {
             if (tier != CH.SimdSupport.None && (Blake3.SimdSupport & tier) == 0)
@@ -573,7 +657,7 @@ public class Blake3Tests
         byte[] expected = scalar.ComputeHash(input);
 
         Span<byte> actual = stackalloc byte[32];
-        foreach (var flag in new[] { CH.SimdSupport.None, CH.SimdSupport.Ssse3, CH.SimdSupport.Avx2, CH.SimdSupport.Avx512F })
+        foreach (var flag in new[] { CH.SimdSupport.None, CH.SimdSupport.Ssse3, CH.SimdSupport.Avx2, CH.SimdSupport.Avx512F, CH.SimdSupport.Neon })
         {
             if (flag != CH.SimdSupport.None && (Blake3.SimdSupport & flag) == 0)
             {

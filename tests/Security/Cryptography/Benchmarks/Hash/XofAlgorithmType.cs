@@ -235,6 +235,10 @@ public sealed class XofAlgorithmType : IFormattable
         {
             yield return new("BLAKE3", "BLAKE3 (CryptoHives-AVX512F)", () => CH.Hash.Blake3.Create(SimdSupport.Avx512F, 32));
         }
+        if ((CH.Hash.Blake3.SimdSupport & SimdSupport.Neon) != 0)
+        {
+            yield return new("BLAKE3", "BLAKE3 (CryptoHives-Neon)", () => CH.Hash.Blake3.Create(SimdSupport.Neon, 32));
+        }
         yield return new("BLAKE3", "BLAKE3 (BouncyCastle)", () => new BouncyCastleIXofAdapter(new Org.BouncyCastle.Crypto.Digests.Blake3Digest(256)));
 #if BLAKE3_NATIVE
         yield return new("BLAKE3", "BLAKE3 (Blake3Native)", () => new Blake3NativeXofAdapter());

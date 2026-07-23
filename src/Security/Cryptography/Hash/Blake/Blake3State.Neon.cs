@@ -359,14 +359,16 @@ internal unsafe partial struct Blake3State
             cv7 = v7 ^ v15;
         }
 
-        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network
+        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network —
+        // both groups must be transposed before any store, since chunk0's/chunk1's
+        // second CV half (cv4/cv5) only becomes chunk-major after the second call.
         Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
+        Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
+
         AdvSimd.Store(outCvs, cv0);
         AdvSimd.Store(outCvs + 4, cv4);
         AdvSimd.Store(outCvs + 8, cv1);
         AdvSimd.Store(outCvs + 12, cv5);
-
-        Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
         AdvSimd.Store(outCvs + 16, cv2);
         AdvSimd.Store(outCvs + 20, cv6);
         AdvSimd.Store(outCvs + 24, cv3);
@@ -447,14 +449,21 @@ internal unsafe partial struct Blake3State
             cv7 = v7 ^ v15;
         }
 
-        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network
+        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network —
+        // both groups must be transposed before any store (see CompressChunks4Neon).
+        // Only chunkCount (2 or 3) chunks are valid/requested here; the caller's
+        // outCvs buffer is sized for at most 3 chunks (see remarks above), so the
+        // 4th chunk's slot (which the surplus lanes would otherwise produce) is
+        // never written.
         Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
+        Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
+
         AdvSimd.Store(outCvs, cv0); AdvSimd.Store(outCvs + 4, cv4);
         AdvSimd.Store(outCvs + 8, cv1); AdvSimd.Store(outCvs + 12, cv5);
-
-        Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
-        AdvSimd.Store(outCvs + 16, cv2); AdvSimd.Store(outCvs + 20, cv6);
-        AdvSimd.Store(outCvs + 24, cv3); AdvSimd.Store(outCvs + 28, cv7);
+        if (chunkCount > 2)
+        {
+            AdvSimd.Store(outCvs + 16, cv2); AdvSimd.Store(outCvs + 20, cv6);
+        }
     }
 
     /// <summary>
@@ -512,9 +521,9 @@ internal unsafe partial struct Blake3State
         v12 = v12 ^ cv4; v13 = v13 ^ cv5; v14 = v14 ^ cv6; v15 = v15 ^ cv7;
 
         Transpose4x4Neon(ref v0, ref v1, ref v2, ref v3);
-        Transpose4x4Neon(ref v3, ref v4, ref v5, ref v6);
-        Transpose4x4Neon(ref v7, ref v8, ref v9, ref v10);
-        Transpose4x4Neon(ref v11, ref v12, ref v13, ref v14);
+        Transpose4x4Neon(ref v4, ref v5, ref v6, ref v7);
+        Transpose4x4Neon(ref v8, ref v9, ref v10, ref v11);
+        Transpose4x4Neon(ref v12, ref v13, ref v14, ref v15);
 
         AdvSimd.Store((uint*)(dst), v0);
         AdvSimd.Store((uint*)(dst + 16), v4);
