@@ -57,6 +57,12 @@ public class DataSize : IFormattable
     /// <summary>1025 bytes - edge case: BLAKE3 chunk boundary (1024) + 1 byte.</summary>
     public static readonly DataSize B1025 = new("1025B", 1025);
 
+    /// <summary>2 KB - multiple blocks.</summary>
+    public static readonly DataSize K2 = new("2KB", 2048);
+
+    /// <summary>2 KB - multiple blocks.</summary>
+    public static readonly DataSize K6 = new("6KB", 6144);
+
     /// <summary>8 KB - throughput testing.</summary>
     public static readonly DataSize K8 = new("8KB", 8192);
 
@@ -108,7 +114,7 @@ public class DataSize : IFormattable
     /// throughput sensitive to sizes other algorithms are indifferent to.
     /// </summary>
     public static readonly DataSize[] Blake3Sizes =
-        [B4, B100, B128, B137, B1000, K1, B1025, K4, K8, B10000, K64, B100000, K128, K256, K512, M1, M10];
+        [B4, B100, B128, B137, B1000, K1, K2, B1025, K4, K6, K8, B10000, K64, B100000, K128, K256, K512, M1, M10];
 
     /// <summary>Edge case sizes only.</summary>
     public static readonly DataSize[] EdgeCases = [B137, B1025];
