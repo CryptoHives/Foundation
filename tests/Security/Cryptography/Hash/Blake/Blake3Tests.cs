@@ -128,7 +128,7 @@ public class Blake3Tests
     }
 
     /// <summary>
-    /// Cross-validates the AVX2 chunk-parallel batching path (<c>CompressChunks8Avx2</c>)
+    /// Cross-validates the AVX2 chunk-parallel batching path (<c>CompressChunksPartialAvx2</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 8-chunk (8192-byte) batch boundaries, since none of the official test
     /// vectors above exceed one batch.
@@ -219,6 +219,43 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// Cross-validates that a tiny first write (leaving a small partial chunk
+    /// buffered) followed by one large second write still matches the scalar
+    /// reference — the large write's remainder, once the buffered chunk is
+    /// finalized, must re-enter the batched SIMD paths (see the
+    /// <c>RestartBatching</c> goto in <c>Append</c>) rather than falling back
+    /// to per-chunk scalar processing for the rest of the call.
+    /// </summary>
+    [TestCase(1, 100000)]
+    [TestCase(3, 250000)]
+    [TestCase(1023, 50000)]
+    [TestCase(1, 16385)]
+    public void SmallThenLargeAppendReentersBatching(int firstWriteSize, int totalLength)
+    {
+        if ((Blake3.SimdSupport & CH.SimdSupport.Avx2) == 0)
+        {
+            Assert.Ignore("AVX2 not supported on this platform.");
+        }
+
+        byte[] input = GenerateTestInput(totalLength);
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        using var avx2 = Blake3.Create(CH.SimdSupport.Avx2, 32);
+
+        scalar.TransformBlock(input, 0, firstWriteSize, null, 0);
+        avx2.TransformBlock(input, 0, firstWriteSize, null, 0);
+
+        scalar.TransformBlock(input, firstWriteSize, totalLength - firstWriteSize, null, 0);
+        avx2.TransformBlock(input, firstWriteSize, totalLength - firstWriteSize, null, 0);
+
+        scalar.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        avx2.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+
+        Assert.That(avx2.Hash, Is.EqualTo(scalar.Hash),
+            $"Small-then-large append mismatch: {firstWriteSize}-byte write then {totalLength - firstWriteSize}-byte write");
+    }
+
+    /// <summary>
     /// Cross-validates the NEON 4-chunk-parallel batching path (<c>CompressChunks4Neon</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 4-chunk (4096-byte) batch boundaries — one register width down from the
@@ -302,7 +339,7 @@ public class Blake3Tests
     }
 
     /// <summary>
-    /// Cross-validates the AVX-512 16-chunk batching path (<c>CompressChunks16Avx512</c>)
+    /// Cross-validates the AVX-512 16-chunk batching path (<c>CompressChunksPartialAvx512</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 16-chunk (16384-byte) batch boundaries, plus AVX2-boundary sizes to cover
     /// the AVX-512 → AVX2 tail handoff.

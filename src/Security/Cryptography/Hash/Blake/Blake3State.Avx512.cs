@@ -35,107 +35,25 @@ internal unsafe partial struct Blake3State
     internal const int Avx512BatchSizeBytes = ChunksPerAvx512Batch * ChunkSizeBytes;
 
     /// <summary>
-    /// Compresses 16 independent, full (1024-byte) chunks starting at
-    /// <paramref name="source"/> in parallel, writing each chunk's 8-word
-    /// chaining value contiguously into <paramref name="outCvs"/> (128 words total).
-    /// </summary>
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void CompressChunks16Avx512(byte* source, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
-    {
-        // Scratch layout: 16 message vectors, 8 chaining values, counter
-        // low/high. Unlike the AVX2 kernel, the chaining values and counters
-        // deliberately live in memory rather than named locals: 16 state
-        // vectors plus ~18 loop-invariant values exceed the 32 ZMM registers,
-        // and force-inlining the compression made the register allocator spill
-        // ZMMs throughout the rounds. Keeping the per-block compression
-        // out-of-line (see CompressVector512) bounds its pressure to the 16
-        // state words plus temporaries.
-        var scratch = stackalloc Vector512<uint>[26];
-        Vector512<uint>* m = scratch;
-        Vector512<uint>* cv = scratch + 16;
-        Vector512<uint>* counters = scratch + 24;
-
-        counters[0] = Vector512.Create(
-            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3),
-            (uint)(baseCounter + 4), (uint)(baseCounter + 5), (uint)(baseCounter + 6), (uint)(baseCounter + 7),
-            (uint)(baseCounter + 8), (uint)(baseCounter + 9), (uint)(baseCounter + 10), (uint)(baseCounter + 11),
-            (uint)(baseCounter + 12), (uint)(baseCounter + 13), (uint)(baseCounter + 14), (uint)(baseCounter + 15));
-        counters[1] = Vector512.Create(
-            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32), (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32),
-            (uint)((baseCounter + 4) >> 32), (uint)((baseCounter + 5) >> 32), (uint)((baseCounter + 6) >> 32), (uint)((baseCounter + 7) >> 32),
-            (uint)((baseCounter + 8) >> 32), (uint)((baseCounter + 9) >> 32), (uint)((baseCounter + 10) >> 32), (uint)((baseCounter + 11) >> 32),
-            (uint)((baseCounter + 12) >> 32), (uint)((baseCounter + 13) >> 32), (uint)((baseCounter + 14) >> 32), (uint)((baseCounter + 15) >> 32));
-
-        for (int i = 0; i < 8; i++)
-        {
-            cv[i] = Vector512.Create(key[i]);
-        }
-
-        uint middleFlags = baseFlags;
-        uint startFlags = baseFlags | FlagChunkStart;
-        uint endFlags = baseFlags | FlagChunkEnd;
-
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
-        {
-            byte* blockBase = source + blockIdx * BlockSizeBytes;
-
-            // A 512-bit vector holds a chunk's entire 64-byte block, so one
-            // load per chunk followed by a single 16×16 transpose puts word w
-            // of all 16 chunks into m[w] (lane j = chunk j).
-            for (int j = 0; j < ChunksPerAvx512Batch; j++)
-            {
-                m[j] = Avx512F.LoadVector512((uint*)(blockBase + j * ChunkSizeBytes));
-            }
-
-            Transpose16x16(m);
-
-            uint flags = blockIdx == 0 ? startFlags : (blockIdx == 15 ? endFlags : middleFlags);
-            CompressVector512(cv, m, counters, flags);
-        }
-
-        // Un-transpose the CVs (word-major → chunk-major), reusing the message
-        // buffer as scratch. After transposing rows 0–7 (rows 8–15 are don't-care),
-        // the low 256 bits of row j hold chunk j's 8-word CV.
-        for (int i = 0; i < 8; i++)
-        {
-            m[i] = cv[i];
-        }
-
-        Transpose16x16(m);
-        for (int chunkIdx = 0; chunkIdx < ChunksPerAvx512Batch; chunkIdx++)
-        {
-            Avx.Store(outCvs + chunkIdx * 8, m[chunkIdx].GetLower());
-        }
-    }
-
-    /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (9..15) independent, full
-    /// (1024-byte) chunks with the 16-way kernel by pointing the surplus lanes
-    /// back at the real chunks (lane <c>j</c> reads chunk <c>j</c> mod
-    /// <paramref name="chunkCount"/>, so no memory outside the
-    /// <paramref name="chunkCount"/>·1024 input bytes is touched); the surplus
-    /// lanes' outputs are wrong (their counters don't match the duplicated
-    /// data) and must be ignored. Only <paramref name="chunkCount"/> chaining
-    /// values in <paramref name="outCvs"/> are valid.
+    /// Compresses <paramref name="chunkCount"/> (9..16) independent, full
+    /// (1024-byte) chunks with the 16-way kernel by ignoring the surplus lanes
+    /// (lane <c>j</c> is only loaded, and its output only stored, when
+    /// <c>j &lt; chunkCount</c>) — the single kernel used both for the exact
+    /// 16-chunk batch loop (<paramref name="chunkCount"/> == 16) and the 9-15
+    /// chunk tail case. Only <paramref name="chunkCount"/> chaining values in
+    /// <paramref name="outCvs"/> are valid.
     /// </summary>
     /// <remarks>
-    /// Mirrors <see cref="CompressChunksPartialAvx2"/> one level wider.
-    /// Without this, a 9-15 chunk tail on AVX-512F hardware falls through to
-    /// one full AVX2 8-chunk batch plus a separate AVX2 partial-batch call for
-    /// the remainder — two 8-wide kernel calls (two transposes, two reduction
-    /// passes) instead of the one 16-wide call here.
+    /// Mirrors <see cref="CompressChunksPartialAvx2"/> one level wider. Without
+    /// the 9-15 case, that chunk-count tail on AVX-512F hardware would fall
+    /// through to one full AVX2 8-chunk batch plus a separate AVX2
+    /// partial-batch call for the remainder — two 8-wide kernel calls (two
+    /// transposes, two reduction passes) instead of the one 16-wide call here.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx512(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        int* laneOffsets = stackalloc int[ChunksPerAvx512Batch];
-        for (int j = 0; j < ChunksPerAvx512Batch; j++)
-        {
-            laneOffsets[j] = (j % chunkCount) * ChunkSizeBytes;
-        }
-
         var scratch = stackalloc Vector512<uint>[26];
         Vector512<uint>* m = scratch;
         Vector512<uint>* cv = scratch + 16;
@@ -165,9 +83,9 @@ internal unsafe partial struct Blake3State
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
-            for (int j = 0; j < ChunksPerAvx512Batch; j++)
+            for (int j = 0; j < chunkCount; j++)
             {
-                m[j] = Avx512F.LoadVector512((uint*)(blockBase + laneOffsets[j]));
+                m[j] = Avx512F.LoadVector512((uint*)(blockBase + j * ChunkSizeBytes));
             }
 
             Transpose16x16(m);
