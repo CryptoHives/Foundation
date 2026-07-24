@@ -3,9 +3,9 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
+using CryptoHives.Foundation.Security.Cryptography;
 using System;
 using System.Buffers;
-using CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
