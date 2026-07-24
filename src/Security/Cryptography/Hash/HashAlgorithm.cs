@@ -321,15 +321,22 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// Resets this instance to its initial state so it can be returned to an object pool for reuse.
     /// </summary>
     /// <returns>
-    /// <see langword="true"/> always — all CryptoHives hash algorithms fully support reset via
-    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/>.
+    /// <see langword="true"/> if the instance was reset and may be returned to the pool;
+    /// <see langword="false"/> if it must instead be disposed and discarded (see remarks).
     /// </returns>
     /// <remarks>
+    /// <para>
     /// This method implements <see cref="IResettable"/> from
     /// <c>Microsoft.Extensions.ObjectPool</c>, enabling any CryptoHives hash algorithm to be
     /// used with <c>DefaultObjectPool&lt;T&gt;</c> without a custom policy.
+    /// </para>
+    /// <para>
+    /// Overridden by algorithms that can carry caller-supplied secret material (e.g. a keyed
+    /// BLAKE3 instance): those return <see langword="false"/> so the pool's policy disposes
+    /// the instance — erasing the secret — instead of recycling it for an unrelated caller.
+    /// </para>
     /// </remarks>
-    public bool TryReset()
+    public virtual bool TryReset()
     {
         Initialize();
         return true;

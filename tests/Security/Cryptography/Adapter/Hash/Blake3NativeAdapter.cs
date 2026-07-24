@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Adapter.Hash;
 #if BLAKE3_NATIVE
 
 using System;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 using Blake3Native = Blake3;
 
 /// <summary>
@@ -23,7 +24,7 @@ using Blake3Native = Blake3;
 /// performance, making it an excellent reference for correctness testing.
 /// </para>
 /// </remarks>
-internal sealed class Blake3NativeAdapter : CryptoHives.Foundation.Security.Cryptography.Hash.HashAlgorithm
+internal sealed class Blake3NativeAdapter : CH.Hash.HashAlgorithm, IOneShotHash
 {
     private readonly int _outputBytes;
     private Blake3Native.Hasher _hasher;
@@ -54,6 +55,24 @@ internal sealed class Blake3NativeAdapter : CryptoHives.Foundation.Security.Cryp
     public override void Initialize() => _hasher.Reset();
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Uses the library's static one-shot <c>Hasher.Hash(input, output)</c>, which is
+    /// faster than the streaming Update/Finalize path (see <see cref="IOneShotHash"/>).
+    /// </remarks>
+    bool IOneShotHash.TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        Blake3Native.Hasher.Hash(source, destination[.._outputBytes]);
+        bytesWritten = _outputBytes;
+        return true;
+    }
+
+    /// <inheritdoc/>
     protected override void HashCore(ReadOnlySpan<byte> source) => _hasher.Update(source);
 
     /// <inheritdoc/>
@@ -69,7 +88,7 @@ internal sealed class Blake3NativeAdapter : CryptoHives.Foundation.Security.Cryp
     {
         if (disposing)
         {
-            _hasher.Reset();
+            _hasher.Dispose();
         }
         base.Dispose(disposing);
     }

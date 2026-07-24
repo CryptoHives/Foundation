@@ -5,6 +5,7 @@ namespace Cryptography.Tests.Benchmarks.Hash;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
@@ -15,6 +16,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// BenchmarkDotNet configuration for hash benchmarks.
@@ -31,6 +33,15 @@ public class HashConfig : ManualConfig
     {
         // Disable default exporters
         WithOptions(ConfigOptions.DisableLogFile);
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
+                maxDepth: 3,
+                printSource: true,
+                exportGithubMarkdown: true,
+                exportCombinedDisassemblyReport: true)));
+        }
 
         Orderer = new CategoryThenDataSizeOrderer();
         AddColumn(new DescriptionColumn());
@@ -90,7 +101,11 @@ public class HashConfig : ManualConfig
                 name.EndsWith("(DotNet)", StringComparison.InvariantCultureIgnoreCase))
                 return "OS Native";
             if (name.EndsWith("(Blake3Native)", StringComparison.InvariantCultureIgnoreCase))
-                return "Blake3Native";
+                return "Blake3.NET-Native";
+            if (name.EndsWith("(Blake3Managed)", StringComparison.InvariantCultureIgnoreCase))
+                return "Blake3.NET-Managed";
+            if (name.EndsWith("(Blake3Dissimilis)", StringComparison.InvariantCultureIgnoreCase))
+                return "Blake3.Managed";
             if (name.EndsWith("(CryptoHives-Arm64)", StringComparison.InvariantCultureIgnoreCase))
                 return "CryptoHives-Arm64";
             if (name.EndsWith("(CryptoHives-Neon)", StringComparison.InvariantCultureIgnoreCase))

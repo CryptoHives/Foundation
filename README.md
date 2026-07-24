@@ -257,7 +257,7 @@ public async Task DoWorkAsync(CancellationToken ct)
 
 ## 🚨 Security Policy
 
-Security comes first here. If you find a vulnerability, please don't open a public issue
+Security comes first here. If you find a vulnerability, please don't open a public issue — follow the process described on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
