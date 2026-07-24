@@ -416,7 +416,7 @@ internal unsafe partial struct Blake3State
     /// writes CV slots [g·8, g·8+8) while reading child slots [g·16, g·16+16),
     /// which never overlap for g ≥ 1, and g = 0 loads everything before storing.
     /// </remarks>
-    private void ReduceChunkCvsToSubtreeCv(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+    private void ReduceChunkCvsToSubtreeCvAvx2(uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
         // Full-width levels: every 8-parent group is fully populated.
         while (chunkCount >= 16)

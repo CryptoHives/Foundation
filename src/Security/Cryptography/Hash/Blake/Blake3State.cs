@@ -257,7 +257,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <summary>
     /// Computes the BLAKE3 hash of <paramref name="source"/> in a single call,
     /// without the incremental-hashing bookkeeping that streaming
-    /// <see cref="Append"/> + <see cref="TryGetCurrentHash"/> pay to support
+    /// <see cref="Append(ReadOnlySpan{byte})"/> + <see cref="TryGetCurrentHash"/> pay to support
     /// resuming across multiple calls.
     /// </summary>
     /// <remarks>
@@ -266,7 +266,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// instance). For inputs of at most one chunk, this compresses directly from
     /// <paramref name="source"/> with no <c>_chunkBuffer</c> copy at all — the
     /// dominant fixed cost of the streaming path at small sizes. Larger inputs
-    /// reuse the existing batched <see cref="Append"/>/<see cref="TryGetCurrentHash"/>
+    /// reuse the existing batched <see cref="Append(ReadOnlySpan{byte})"/>/<see cref="TryGetCurrentHash"/>
     /// machinery, which already amortizes any bookkeeping over many chunks.
     /// </remarks>
     public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
@@ -341,7 +341,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         foreach (var segment in input)
         {
-            Append(segment.Span);
+            Append(MemoryMarshal.AsBytes(segment.Span));
         }
     }
 
@@ -425,25 +425,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerAvx512Batch; b++)
-                            {
-                                CompressChunksPartialAvx512(
-                                    srcPtr + offset + b * Avx512BatchSizeBytes,
-                                    ChunksPerAvx512Batch,
-                                    core->_keyWords,
-                                    batchCvs + b * ChunksPerAvx512Batch * KeySizeWords,
-                                    _chunkCounter + (ulong)(b * ChunksPerAvx512Batch),
-                                    _baseFlags);
-                            }
-
-                            ReduceChunkCvsToSubtreeCv(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-                            Unsafe.CopyBlock(
-                                core->_cvStackBuf + _cvStackDepth * 8,
-                                batchCvs,
-                                KeySizeWords * (uint)sizeof(uint));
-                            AddSubtreeToTree(core, 6);
-                            _chunkCounter += ChunksPerSubtreeGroup;
-                            offset += ChunksPerSubtreeGroup * ChunkSizeBytes;
+                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx512Batch,
+                                Avx512BatchSizeBytes, batchCvs, &CompressChunksPartialAvx512);
                         }
 
                         while (length - offset >= Avx512BatchSizeBytes)
@@ -459,12 +442,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 // with wide parent compressions and push one tree
                                 // node instead of 16 per-chunk commits with serial
                                 // single-lane merges.
-                                ReduceChunkCvsToSubtreeCv(batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
-                                Unsafe.CopyBlock(
-                                    core->_cvStackBuf + _cvStackDepth * 8,
-                                    batchCvs,
-                                    KeySizeWords * (uint)sizeof(uint));
-                                AddSubtreeToTree(core, 4);
+                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, 4);
                                 _chunkCounter += ChunksPerAvx512Batch;
                             }
                             else
@@ -478,41 +457,20 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                     // them wide; only the last 7 commit serially. The
                                     // in-place reduction never writes past the first
                                     // 8 CV slots, so CVs 8..15 stay intact.
-                                    ReduceChunkCvsToSubtreeCv(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                    Unsafe.CopyBlock(
-                                        core->_cvStackBuf + _cvStackDepth * 8,
-                                        batchCvs,
-                                        KeySizeWords * (uint)sizeof(uint));
-                                    AddSubtreeToTree(core, 3);
+                                    ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                    PushSubtreeCv(core, batchCvs, 3);
                                     _chunkCounter += ChunksPerAvx2Batch;
                                     firstChunk = ChunksPerAvx2Batch;
                                 }
 
                                 int chunksToCommit = drainsRemainingInput ? ChunksPerAvx512Batch - 1 : ChunksPerAvx512Batch;
 
-                                for (int i = firstChunk; i < chunksToCommit; i++)
+                                // Draining means offset would become exactly length —
+                                // every remaining check below (this tier's own partial
+                                // batch, AVX2, NEON, the scalar loop) is guaranteed a
+                                // no-op at that point, so skip straight to it.
+                                if (CommitBatchChunks(core, batchCvs, firstChunk, chunksToCommit, drainsRemainingInput))
                                 {
-                                    Unsafe.CopyBlock(
-                                        core->_cvStackBuf + _cvStackDepth * 8,
-                                        batchCvs + i * KeySizeWords,
-                                        KeySizeWords * (uint)sizeof(uint));
-                                    AddChunkToTree(core);
-                                    _chunkCounter++;
-                                }
-
-                                if (drainsRemainingInput)
-                                {
-                                    Unsafe.CopyBlock(
-                                        core->_pendingCv,
-                                        batchCvs + (ChunksPerAvx512Batch - 1) * KeySizeWords,
-                                        KeySizeWords * (uint)sizeof(uint));
-                                    _hasPendingCv = true;
-
-                                    // Draining means offset would become exactly
-                                    // length — every remaining check below (this
-                                    // tier's own partial batch, AVX2, NEON, the
-                                    // scalar loop) is guaranteed a no-op at that
-                                    // point, so skip straight to it.
                                     return;
                                 }
                             }
@@ -553,25 +511,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerAvx2Batch; b++)
-                            {
-                                CompressChunksPartialAvx2(
-                                    srcPtr + offset + b * Avx2BatchSizeBytes,
-                                    ChunksPerAvx2Batch,
-                                    core->_keyWords,
-                                    batchCvs + b * ChunksPerAvx2Batch * KeySizeWords,
-                                    _chunkCounter + (ulong)(b * ChunksPerAvx2Batch),
-                                    _baseFlags);
-                            }
-
-                            ReduceChunkCvsToSubtreeCv(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-                            Unsafe.CopyBlock(
-                                core->_cvStackBuf + _cvStackDepth * 8,
-                                batchCvs,
-                                KeySizeWords * (uint)sizeof(uint));
-                            AddSubtreeToTree(core, 6);
-                            _chunkCounter += ChunksPerSubtreeGroup;
-                            offset += ChunksPerSubtreeGroup * ChunkSizeBytes;
+                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx2Batch,
+                                Avx2BatchSizeBytes, batchCvs, &CompressChunksPartialAvx2);
                         }
 
                         while (length - offset >= Avx2BatchSizeBytes)
@@ -591,40 +532,20 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 // Aligned complete 8-chunk subtree that isn't the
                                 // message tail — same wide reduction as the AVX-512
                                 // loop above, one level lower.
-                                ReduceChunkCvsToSubtreeCv(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                Unsafe.CopyBlock(
-                                    core->_cvStackBuf + _cvStackDepth * 8,
-                                    batchCvs,
-                                    KeySizeWords * (uint)sizeof(uint));
-                                AddSubtreeToTree(core, 3);
+                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, 3);
                                 _chunkCounter += ChunksPerAvx2Batch;
                             }
                             else
                             {
                                 int chunksToCommit = drainsRemainingInput ? ChunksPerAvx2Batch - 1 : ChunksPerAvx2Batch;
 
-                                for (int i = 0; i < chunksToCommit; i++)
+                                // Draining means offset would become exactly length —
+                                // the remaining checks below (this tier's own partial
+                                // batch, NEON, the scalar loop) are guaranteed no-ops
+                                // at that point, so skip straight to it.
+                                if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
                                 {
-                                    Unsafe.CopyBlock(
-                                        core->_cvStackBuf + _cvStackDepth * 8,
-                                        batchCvs + i * KeySizeWords,
-                                        KeySizeWords * (uint)sizeof(uint));
-                                    AddChunkToTree(core);
-                                    _chunkCounter++;
-                                }
-
-                                if (drainsRemainingInput)
-                                {
-                                    Unsafe.CopyBlock(
-                                        core->_pendingCv,
-                                        batchCvs + (ChunksPerAvx2Batch - 1) * KeySizeWords,
-                                        KeySizeWords * (uint)sizeof(uint));
-                                    _hasPendingCv = true;
-
-                                    // Draining means offset would become exactly
-                                    // length — the remaining checks below (this
-                                    // tier's own partial batch, NEON, the scalar
-                                    // loop) are guaranteed no-ops at that point.
                                     return;
                                 }
                             }
@@ -675,29 +596,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerNeonBatch; b++)
-                            {
-                                CompressChunks4Neon(
-                                    srcPtr + offset + b * NeonBatchSizeBytes,
-                                    core->_keyWords,
-                                    batchCvs + b * ChunksPerNeonBatch * KeySizeWords,
-                                    _chunkCounter + (ulong)(b * ChunksPerNeonBatch),
-                                    _baseFlags);
-                            }
-
-                            ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-                            Unsafe.CopyBlock(
-                                core->_cvStackBuf + _cvStackDepth * 8,
-                                batchCvs,
-                                KeySizeWords * (uint)sizeof(uint));
-                            AddSubtreeToTree(core, 6);
-                            _chunkCounter += ChunksPerSubtreeGroup;
-                            offset += ChunksPerSubtreeGroup * ChunkSizeBytes;
+                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerNeonBatch,
+                                NeonBatchSizeBytes, batchCvs, &CompressChunksPartialNeon);
                         }
 
                         while (length - offset >= NeonBatchSizeBytes)
                         {
-                            CompressChunks4Neon(srcPtr + offset, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                            CompressChunksPartialNeon(srcPtr + offset, ChunksPerNeonBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + NeonBatchSizeBytes == length;
 
@@ -707,38 +612,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 // message tail — same wide reduction as the AVX2
                                 // loop above, one level lower.
                                 ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
-                                Unsafe.CopyBlock(
-                                    core->_cvStackBuf + _cvStackDepth * 8,
-                                    batchCvs,
-                                    KeySizeWords * (uint)sizeof(uint));
-                                AddSubtreeToTree(core, 2);
+                                PushSubtreeCv(core, batchCvs, 2);
                                 _chunkCounter += ChunksPerNeonBatch;
                             }
                             else
                             {
                                 int chunksToCommit = drainsRemainingInput ? ChunksPerNeonBatch - 1 : ChunksPerNeonBatch;
 
-                                for (int i = 0; i < chunksToCommit; i++)
+                                // Draining means offset would become exactly length —
+                                // the scalar loop below is guaranteed a no-op at that
+                                // point, so skip straight to it.
+                                if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
                                 {
-                                    Unsafe.CopyBlock(
-                                        core->_cvStackBuf + _cvStackDepth * 8,
-                                        batchCvs + i * KeySizeWords,
-                                        KeySizeWords * (uint)sizeof(uint));
-                                    AddChunkToTree(core);
-                                    _chunkCounter++;
-                                }
-
-                                if (drainsRemainingInput)
-                                {
-                                    Unsafe.CopyBlock(
-                                        core->_pendingCv,
-                                        batchCvs + (ChunksPerNeonBatch - 1) * KeySizeWords,
-                                        KeySizeWords * (uint)sizeof(uint));
-                                    _hasPendingCv = true;
-
-                                    // Draining means offset would become exactly
-                                    // length — the scalar loop below is guaranteed
-                                    // a no-op at that point.
                                     return;
                                 }
                             }
@@ -777,7 +662,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     Unsafe.CopyBlock(core->_cv, core->_keyWords, KeySizeWords * (uint)sizeof(uint));
 
 #if NET8_0_OR_GREATER
-                    // The buffer is empty again and more chunks remain 
+                    // The buffer is empty again and more chunks remain for batching
                     if (length - offset > 2 * ChunkSizeBytes)
                     {
                         goto RestartBatching;
@@ -828,6 +713,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// </param>
     /// <param name="partialKernel">The tier-specific partial-batch compression kernel to call.</param>
     /// <returns>The number of bytes consumed (<c>fullChunks * ChunkSizeBytes</c>).</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private int CommitPartialBatch(
         Blake3State* core, byte* srcPtr, int offset, int length, uint* scratch,
         delegate*<byte*, int, uint*, uint*, ulong, uint, void> partialKernel)
@@ -839,11 +725,33 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         partialKernel(srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
 
         int chunksToCommit = drainsRemainingInput ? fullChunks - 1 : fullChunks;
-        for (int i = 0; i < chunksToCommit; i++)
+        CommitBatchChunks(core, partialCvs, 0, chunksToCommit, drainsRemainingInput);
+
+        return fullChunks * ChunkSizeBytes;
+    }
+
+    /// <summary>
+    /// Commits CVs <c>[firstChunk, chunksToCommit)</c> from a compressed batch
+    /// buffer to the tree one at a time. If the batch exactly drained the
+    /// input, the CV at index <paramref name="chunksToCommit"/> is held back
+    /// as the new pending chunk instead of committed — it might turn out to be
+    /// the true last chunk of the whole message, which must never go through
+    /// the ordinary, non-root-flagged tree merge (see <see cref="FinalizeRoot"/>).
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> if the pending chunk was held back — every caller
+    /// of this method has confirmed that <c>offset == length</c> at that point,
+    /// so every remaining check downstream is guaranteed a no-op; callers with
+    /// their own control flow to unwind should <c>return</c> immediately.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private bool CommitBatchChunks(Blake3State* core, uint* batchCvs, int firstChunk, int chunksToCommit, bool drainsRemainingInput)
+    {
+        for (int i = firstChunk; i < chunksToCommit; i++)
         {
             Unsafe.CopyBlock(
                 core->_cvStackBuf + _cvStackDepth * 8,
-                partialCvs + i * KeySizeWords,
+                batchCvs + i * KeySizeWords,
                 KeySizeWords * (uint)sizeof(uint));
             AddChunkToTree(core);
             _chunkCounter++;
@@ -853,12 +761,89 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         {
             Unsafe.CopyBlock(
                 core->_pendingCv,
-                partialCvs + (fullChunks - 1) * KeySizeWords,
+                batchCvs + chunksToCommit * KeySizeWords,
                 KeySizeWords * (uint)sizeof(uint));
             _hasPendingCv = true;
+            return true;
         }
 
-        return fullChunks * ChunkSizeBytes;
+        return false;
+    }
+
+    /// <summary>
+    /// Copies a reduced subtree CV onto the tree stack and pushes it —
+    /// the shared tail of every "aligned subtree" branch across the SIMD
+    /// batch loops and <see cref="CompressSubtreeGroup"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void PushSubtreeCv(Blake3State* core, uint* cvs, int level)
+    {
+        Unsafe.CopyBlock(
+            core->_cvStackBuf + _cvStackDepth * 8,
+            cvs,
+            KeySizeWords * (uint)sizeof(uint));
+        AddSubtreeToTree(core, level);
+    }
+
+    /// <summary>
+    /// Shared body for every SIMD tier's "64-chunk subtree group" loop: runs
+    /// <c>ChunksPerSubtreeGroup / batchWidth</c> kernel batches into
+    /// <paramref name="batchCvs"/>, reduces all 64 CVs to one subtree CV in a
+    /// single pass, and pushes it — so the surplus-lane reduction tail and the
+    /// tree push are paid once per 64 KB instead of once per single-batch width.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="CommitPartialBatch"/>, the reduce step can't be a
+    /// second <c>delegate*</c> parameter: <c>ReduceChunkCvsToSubtreeCvAvx2</c>/
+    /// <c>ReduceChunkCvsToSubtreeCvNeon</c> are instance methods (they reach
+    /// <c>_baseFlags</c>/<c>_simdSupport</c> through <see cref="ComputeParentCv"/>),
+    /// and unmanaged function pointers can only target <see langword="static"/>
+    /// methods. Dispatching on <see cref="AdvSimd.Arm64.IsSupported"/> — the
+    /// same JIT-time-constant check already used elsewhere in <c>Append</c> —
+    /// avoids introducing a managed, allocating delegate on this hot path just
+    /// to unify two call sites; only one branch's code is ever actually
+    /// compiled in for a given platform.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the group starts.</param>
+    /// <param name="batchWidth">The tier's chunk-parallel width (4, 8, or 16).</param>
+    /// <param name="batchSizeBytes">
+    /// <c>batchWidth * ChunkSizeBytes</c> — the byte stride between kernel batches.
+    /// </param>
+    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
+    /// <param name="kernel">The tier-specific partial-batch compression kernel to call.</param>
+    /// <returns><paramref name="offset"/> advanced by <c>ChunksPerSubtreeGroup * ChunkSizeBytes</c>.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private int CompressSubtreeGroup(
+        Blake3State* core, byte* srcPtr, int offset, int batchWidth, int batchSizeBytes,
+        uint* batchCvs, delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel)
+    {
+        for (int b = 0; b < ChunksPerSubtreeGroup / batchWidth; b++)
+        {
+            kernel(
+                srcPtr + offset,
+                batchWidth,
+                core->_keyWords,
+                batchCvs + b * batchWidth * KeySizeWords,
+                _chunkCounter + (ulong)(b * batchWidth),
+                _baseFlags);
+            offset += batchSizeBytes;
+        }
+
+        // hardcoding, so the JIT can remove
+        if (AdvSimd.Arm64.IsSupported)
+        {
+            ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+        }
+        else
+        {
+            ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+        }
+
+        PushSubtreeCv(core, batchCvs, 6);
+        _chunkCounter += ChunksPerSubtreeGroup;
+        return offset;
     }
 #endif
 

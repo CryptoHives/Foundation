@@ -294,96 +294,18 @@ internal unsafe partial struct Blake3State
     internal const int NeonBatchSizeBytes = ChunksPerNeonBatch * ChunkSizeBytes;
 
     /// <summary>
-    /// Compresses 4 independent, full (1024-byte) chunks starting at
-    /// <paramref name="source"/> in parallel, writing each chunk's 8-word
-    /// chaining value contiguously into <paramref name="outCvs"/> (32 words total).
-    /// </summary>
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void CompressChunks4Neon(byte* source, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
-    {
-        var counterLow = Vector128.Create(
-            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3));
-        var counterHigh = Vector128.Create(
-            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
-            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32));
-        var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
-
-        Vector128<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
-        cv0 = Vector128.Create(key[0]); cv1 = Vector128.Create(key[1]);
-        cv2 = Vector128.Create(key[2]); cv3 = Vector128.Create(key[3]);
-        cv4 = Vector128.Create(key[4]); cv5 = Vector128.Create(key[5]);
-        cv6 = Vector128.Create(key[6]); cv7 = Vector128.Create(key[7]);
-
-        var m = stackalloc Vector128<uint>[16];
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
-        {
-            byte* blockBase = source + blockIdx * BlockSizeBytes;
-
-            // Load each chunk's 64-byte block as four 4-word quarters, then
-            // transpose each 4×4 quarter so m[w] holds message word w for all
-            // 4 chunks (lane j = chunk j).
-            for (int g = 0; g < 4; g++)
-            {
-                for (int j = 0; j < ChunksPerNeonBatch; j++)
-                {
-                    m[g * 4 + j] = AdvSimd.LoadVector128((uint*)(blockBase + j * ChunkSizeBytes + g * 16));
-                }
-
-                Transpose4x4Neon(m + g * 4);
-            }
-
-            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
-
-            var v0 = cv0; var v1 = cv1; var v2 = cv2; var v3 = cv3;
-            var v4 = cv4; var v5 = cv5; var v6 = cv6; var v7 = cv7;
-            var v8 = Vector128.Create(IV0); var v9 = Vector128.Create(IV1);
-            var v10 = Vector128.Create(IV2); var v11 = Vector128.Create(IV3);
-            var v12 = counterLow;
-            var v13 = counterHigh;
-            var v14 = blockLenVec;
-            var v15 = Vector128.Create(flags);
-
-            CompressVector128(
-                ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
-                ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
-                m);
-
-            cv0 = v0 ^ v8;
-            cv1 = v1 ^ v9;
-            cv2 = v2 ^ v10;
-            cv3 = v3 ^ v11;
-            cv4 = v4 ^ v12;
-            cv5 = v5 ^ v13;
-            cv6 = v6 ^ v14;
-            cv7 = v7 ^ v15;
-        }
-
-        // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network —
-        // both groups must be transposed before any store, since chunk0's/chunk1's
-        // second CV half (cv4/cv5) only becomes chunk-major after the second call.
-        Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
-        Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
-
-        AdvSimd.Store(outCvs, cv0);
-        AdvSimd.Store(outCvs + 4, cv4);
-        AdvSimd.Store(outCvs + 8, cv1);
-        AdvSimd.Store(outCvs + 12, cv5);
-        AdvSimd.Store(outCvs + 16, cv2);
-        AdvSimd.Store(outCvs + 20, cv6);
-        AdvSimd.Store(outCvs + 24, cv3);
-        AdvSimd.Store(outCvs + 28, cv7);
-    }
-
-    /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (2..3) independent, full
+    /// Compresses <paramref name="chunkCount"/> (2..4) independent, full
     /// (1024-byte) chunks with the 4-way kernel by pointing the surplus lanes
     /// back at the real chunks (lane <c>j</c> reads chunk <c>j</c> mod
     /// <paramref name="chunkCount"/>, so no memory outside the
     /// <paramref name="chunkCount"/>·1024 input bytes is touched); the surplus
     /// lanes' outputs are wrong (their counters don't match the duplicated
     /// data) and must be ignored. Only <paramref name="chunkCount"/> chaining
-    /// values in <paramref name="outCvs"/> are valid.
+    /// values in <paramref name="outCvs"/> are valid. At <paramref name="chunkCount"/>
+    /// == 4, <c>j % chunkCount == j</c> for every lane, so the lane-offset table
+    /// degenerates to the same direct addressing the exact 4-chunk case would
+    /// use — this single kernel serves both the exact-batch and partial-tail
+    /// call sites, mirroring <see cref="CompressChunksPartialAvx2"/>.
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -450,11 +372,10 @@ internal unsafe partial struct Blake3State
         }
 
         // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network —
-        // both groups must be transposed before any store (see CompressChunks4Neon).
-        // Only chunkCount (2 or 3) chunks are valid/requested here; the caller's
-        // outCvs buffer is sized for at most 3 chunks (see remarks above), so the
-        // 4th chunk's slot (which the surplus lanes would otherwise produce) is
-        // never written.
+        // both groups must be transposed before any store. Only chunkCount (2..4)
+        // chunks are valid/requested here; a surplus lane's slot (whenever
+        // chunkCount < 4) is never written, since the caller's outCvs buffer is
+        // only sized for chunkCount chunks.
         Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
         Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
 
@@ -463,6 +384,10 @@ internal unsafe partial struct Blake3State
         if (chunkCount > 2)
         {
             AdvSimd.Store(outCvs + 16, cv2); AdvSimd.Store(outCvs + 20, cv6);
+            if (chunkCount > 3)
+            {
+                AdvSimd.Store(outCvs + 24, cv3); AdvSimd.Store(outCvs + 28, cv7);
+            }
         }
     }
 
@@ -621,7 +546,7 @@ internal unsafe partial struct Blake3State
     /// Reduces <paramref name="chunkCount"/> (a power of two: 4, 16 or 64)
     /// contiguous chunk CVs to a single subtree CV at <paramref name="cvs"/>[0..8)
     /// using wide parent compressions, at NEON's 4-lane width. Mirrors
-    /// <see cref="ReduceChunkCvsToSubtreeCv"/> (AVX2, 8-lane) one register width down.
+    /// <see cref="ReduceChunkCvsToSubtreeCvAvx2"/> (AVX2, 8-lane) one register width down.
     /// </summary>
     /// <remarks>
     /// The buffer must be at least 8 CVs (256 bytes) long regardless of
