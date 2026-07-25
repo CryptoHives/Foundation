@@ -91,8 +91,25 @@ internal static class AesCoreAesNi
         ReadOnlySpan<byte> input, Span<byte> output,
         ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
     {
-        var state = Vector128.Create(input);
+        EncryptBlock(Vector128.Create(input), roundKeys, nr).CopyTo(output);
+    }
 
+    /// <summary>
+    /// Encrypts a single 16-byte block held in a register using AES-NI instructions.
+    /// </summary>
+    /// <remarks>
+    /// Register-in/register-out overload used by callers that keep state across
+    /// multiple blocks (e.g. serial-chained CBC encryption) to avoid repeated
+    /// span wrapping and copying.
+    /// </remarks>
+    /// <param name="state">The 16-byte plaintext block.</param>
+    /// <param name="roundKeys">The expanded encryption key schedule.</param>
+    /// <param name="nr">Number of rounds (10, 12, or 14).</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static Vector128<byte> EncryptBlock(
+        Vector128<byte> state,
+        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+    {
         state = Sse2.Xor(state, roundKeys[0]);
 
         // Unrolled main rounds for each key size
@@ -119,9 +136,7 @@ internal static class AesCoreAesNi
             }
         }
 
-        state = AesNi.EncryptLast(state, roundKeys[nr]);
-
-        state.CopyTo(output);
+        return AesNi.EncryptLast(state, roundKeys[nr]);
     }
 
     /// <summary>

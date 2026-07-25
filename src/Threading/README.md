@@ -1,17 +1,17 @@
-## CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
-## CryptoHives.Foundation.Threading
+## 🧵 CryptoHives.Foundation.Threading
 
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Threading.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Threading)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
 Pooled async synchronization primitives for .NET, built to keep `Task` and `TaskCompletionSource<T>` allocations off the hot path.
 
-## Classes
+## 🧱 Classes
 
 ### Synchronization Primitives
 
@@ -47,7 +47,7 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 
 ---
 
-## Key Features
+## ✨ Key Features
 
 - **Pooled primitives** — synchronization objects backed by `Microsoft.Extensions.ObjectPool`
 - **`ValueTask`-based APIs** — minimal to no allocations thanks to object pooling
@@ -61,7 +61,7 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 
 ---
 
-## Installation
+## 📥 Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
@@ -69,7 +69,7 @@ dotnet add package CryptoHives.Foundation.Threading
 
 ---
 
-## Quick Examples
+## 💡 Quick Examples
 
 ### Mutual Exclusion — `AsyncLock`
 
@@ -180,7 +180,7 @@ var evt = new AsyncAutoResetEvent(
 
 ---
 
-## ValueTask Contract
+## 📋 ValueTask Contract
 
 1. **Await a `ValueTask` exactly once.** A second `await` or `AsTask()` call may throw `InvalidOperationException`.
 2. **Avoid calling `AsTask()` before the primitive signals.** With `RunContinuationsAsynchronously=true` (the default), storing the result of `AsTask()` too early causes a severe performance hit. Await the `ValueTask` directly wherever you can.
@@ -190,7 +190,7 @@ The bundled **Threading.Analyzers** package enforces these rules at compile time
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 | Resource | Link |
 |----------|------|
@@ -202,12 +202,12 @@ The bundled **Threading.Analyzers** package enforces these rules at compile time
 
 ---
 
-## Security Policy
+## 🚨 Security Policy
 
 If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## License
+## ⚖️ License
 
 MIT — © 2026 The Keepers of the CryptoHives

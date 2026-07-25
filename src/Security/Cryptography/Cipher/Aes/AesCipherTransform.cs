@@ -202,13 +202,23 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         {
             return TransformCbcDecryptVectorized(input, output, blocks);
         }
+
+        // CBC encrypt is inherently serial (each block depends on the previous
+        // ciphertext), so there is no cross-block ILP to exploit. This path instead
+        // eliminates the per-block managed overhead (buffer re-pinning, stackalloc,
+        // byte-wise XOR) that dominates at bulk sizes by keeping state in registers
+        // across the whole loop.
+        if (_mode == CipherMode.CBC && _encrypting && (_useAesNi || _useArmAes))
+        {
+            return TransformCbcEncryptVectorized(input, output, blocks);
+        }
 #endif
 
         int offset = 0;
         for (int i = 0; i < blocks; i++)
         {
-            var inBlock = input.Slice(offset, BlockSize);
-            var outBlock = output.Slice(offset, BlockSize);
+            ReadOnlySpan<byte> inBlock = input.Slice(offset, BlockSize);
+            Span<byte> outBlock = output.Slice(offset, BlockSize);
 
             switch (_mode)
             {
@@ -446,7 +456,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
             fixed (uint* p = _buffers.Keys)
             {
-                var keys = MemoryMarshal.Cast<uint, Vector128<byte>>(new ReadOnlySpan<uint>(p, MaxRoundKeyWords));
+                ReadOnlySpan<Vector128<byte>> keys = MemoryMarshal.Cast<uint, Vector128<byte>>(new ReadOnlySpan<uint>(p, MaxRoundKeyWords));
 
                 // 8-block loop
                 while (offset + 8 * BlockSize <= blocks * BlockSize)
@@ -460,8 +470,10 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     var ct6 = Vector128.Create(input.Slice(offset + 6 * BlockSize, BlockSize));
                     var ct7 = Vector128.Create(input.Slice(offset + 7 * BlockSize, BlockSize));
 
-                    var b0 = ct0; var b1 = ct1; var b2 = ct2; var b3 = ct3;
-                    var b4 = ct4; var b5 = ct5; var b6 = ct6; var b7 = ct7;
+                    Vector128<byte> b0 = ct0; Vector128<byte> b1 = ct1;
+                    Vector128<byte> b2 = ct2; Vector128<byte> b3 = ct3;
+                    Vector128<byte> b4 = ct4; Vector128<byte> b5 = ct5;
+                    Vector128<byte> b6 = ct6; Vector128<byte> b7 = ct7;
 
                     if (_useAesNi)
                     {
@@ -497,7 +509,8 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     var ct2 = Vector128.Create(input.Slice(offset + 2 * BlockSize, BlockSize));
                     var ct3 = Vector128.Create(input.Slice(offset + 3 * BlockSize, BlockSize));
 
-                    var b0 = ct0; var b1 = ct1; var b2 = ct2; var b3 = ct3;
+                    Vector128<byte> b0 = ct0; Vector128<byte> b1 = ct1;
+                    Vector128<byte> b2 = ct2; Vector128<byte> b3 = ct3;
 
                     if (_useAesNi)
                     {
@@ -547,6 +560,51 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
             // Save feedback for next call
             feedback.CopyTo(feedbackBlock);
+        }
+
+        return offset;
+    }
+
+    /// <summary>
+    /// Processes CBC encrypt with per-block managed overhead hoisted out of the loop.
+    /// </summary>
+    /// <remarks>
+    /// CBC encryption is serial - each block's input is XOR'd with the previous
+    /// block's ciphertext, so blocks cannot be encrypted in parallel like CBC
+    /// decrypt. This path keeps the round-key span and feedback register live
+    /// across the whole call (no re-pinning or stackalloc per block) and does
+    /// the plaintext/feedback XOR as a single vector op, removing the fixed
+    /// per-block overhead that otherwise dominates at bulk sizes.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int TransformCbcEncryptVectorized(ReadOnlySpan<byte> input, Span<byte> output, int blocks)
+    {
+        int offset = 0;
+
+        fixed (byte* feedbackPtr = _buffers.Feedback)
+        {
+            var feedback = Vector128.Create(new ReadOnlySpan<byte>(feedbackPtr, AesCore.BlockSizeBytes));
+
+            fixed (uint* p = _buffers.Keys)
+            {
+                ReadOnlySpan<Vector128<byte>> keys = MemoryMarshal.Cast<uint, Vector128<byte>>(new ReadOnlySpan<uint>(p, MaxRoundKeyWords));
+
+                while (offset < blocks * BlockSize)
+                {
+                    var plaintext = Vector128.Create(input.Slice(offset, BlockSize));
+                    Vector128<byte> xored = plaintext ^ feedback;
+
+                    feedback = _useAesNi
+                        ? AesCoreAesNi.EncryptBlock(xored, keys, _rounds)
+                        : AesCoreArm.EncryptBlock(xored, keys, _rounds);
+
+                    feedback.CopyTo(output.Slice(offset, BlockSize));
+                    offset += BlockSize;
+                }
+
+                feedback.CopyTo(new Span<byte>(feedbackPtr, AesCore.BlockSizeBytes));
+            }
         }
 
         return offset;

@@ -80,6 +80,7 @@
   <!-- LLM/agent usage + porting guide, shipped at the package root -->
   <ItemGroup>
     <None Include="PORTING.md" Pack="true" PackagePath="" />
+    <None Update="README.md" Visible="true" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
