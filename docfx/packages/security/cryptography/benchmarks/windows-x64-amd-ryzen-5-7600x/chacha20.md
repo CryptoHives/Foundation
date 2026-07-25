@@ -1,49 +1,49 @@
-﻿| Description                             | TestDataSize | Mean          | Error        | StdDev       | Allocated |
-|---------------------------------------- |------------- |--------------:|-------------:|-------------:|----------:|
-| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 128B         |      68.12 ns |     0.303 ns |     0.268 ns |         - |
-| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 128B         |     125.02 ns |     0.483 ns |     0.428 ns |         - |
-| Decrypt · ChaCha20 (NaCl.Core)          | 128B         |     278.77 ns |     0.909 ns |     0.759 ns |      24 B |
-| Decrypt · ChaCha20 (BouncyCastle)       | 128B         |     361.47 ns |     1.201 ns |     1.124 ns |      96 B |
-| Decrypt · ChaCha20 (CryptoHives-Scalar) | 128B         |     457.72 ns |     0.780 ns |     0.692 ns |         - |
-|                                         |              |               |              |              |           |
-| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 128B         |      67.99 ns |     0.448 ns |     0.397 ns |         - |
-| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 128B         |     125.49 ns |     0.405 ns |     0.379 ns |         - |
-| Encrypt · ChaCha20 (NaCl.Core)          | 128B         |     283.42 ns |     0.451 ns |     0.400 ns |      24 B |
-| Encrypt · ChaCha20 (BouncyCastle)       | 128B         |     308.45 ns |     1.069 ns |     1.000 ns |      96 B |
-| Encrypt · ChaCha20 (CryptoHives-Scalar) | 128B         |     455.31 ns |     1.198 ns |     1.062 ns |         - |
-|                                         |              |               |              |              |           |
-| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 1KB          |     517.04 ns |     1.487 ns |     1.242 ns |         - |
-| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 1KB          |     993.49 ns |     1.972 ns |     1.748 ns |         - |
-| Decrypt · ChaCha20 (NaCl.Core)          | 1KB          |   1,492.87 ns |     2.690 ns |     2.384 ns |      24 B |
-| Decrypt · ChaCha20 (BouncyCastle)       | 1KB          |   1,782.13 ns |     6.678 ns |     5.920 ns |      96 B |
-| Decrypt · ChaCha20 (CryptoHives-Scalar) | 1KB          |   3,549.72 ns |     7.166 ns |     6.352 ns |         - |
-|                                         |              |               |              |              |           |
-| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 1KB          |     517.17 ns |     1.431 ns |     1.269 ns |         - |
-| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 1KB          |     993.84 ns |     3.039 ns |     2.843 ns |         - |
-| Encrypt · ChaCha20 (NaCl.Core)          | 1KB          |   1,510.31 ns |     4.616 ns |     3.855 ns |      24 B |
-| Encrypt · ChaCha20 (BouncyCastle)       | 1KB          |   1,778.35 ns |    15.179 ns |    14.198 ns |      96 B |
-| Encrypt · ChaCha20 (CryptoHives-Scalar) | 1KB          |   3,550.02 ns |     7.507 ns |     6.655 ns |         - |
-|                                         |              |               |              |              |           |
-| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 8KB          |   4,112.21 ns |    10.676 ns |     8.335 ns |         - |
-| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 8KB          |   7,973.43 ns |    15.091 ns |    12.601 ns |         - |
-| Decrypt · ChaCha20 (NaCl.Core)          | 8KB          |  11,215.16 ns |    17.882 ns |    15.852 ns |      24 B |
-| Decrypt · ChaCha20 (BouncyCastle)       | 8KB          |  13,453.92 ns |    35.210 ns |    29.402 ns |      96 B |
-| Decrypt · ChaCha20 (CryptoHives-Scalar) | 8KB          |  28,355.75 ns |    57.121 ns |    50.636 ns |         - |
-|                                         |              |               |              |              |           |
-| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 8KB          |   4,108.21 ns |     7.424 ns |     6.199 ns |         - |
-| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 8KB          |   7,967.10 ns |    18.206 ns |    16.139 ns |         - |
-| Encrypt · ChaCha20 (NaCl.Core)          | 8KB          |  11,203.31 ns |    17.016 ns |    15.084 ns |      24 B |
-| Encrypt · ChaCha20 (BouncyCastle)       | 8KB          |  13,428.49 ns |    33.346 ns |    27.846 ns |      96 B |
-| Encrypt · ChaCha20 (CryptoHives-Scalar) | 8KB          |  28,222.93 ns |    29.969 ns |    26.567 ns |         - |
-|                                         |              |               |              |              |           |
-| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 128KB        |  65,691.31 ns |   148.419 ns |   138.831 ns |         - |
-| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 128KB        | 127,341.47 ns |   419.809 ns |   350.560 ns |         - |
-| Decrypt · ChaCha20 (NaCl.Core)          | 128KB        | 177,926.79 ns |   519.198 ns |   485.658 ns |      24 B |
-| Decrypt · ChaCha20 (BouncyCastle)       | 128KB        | 213,883.77 ns |   557.884 ns |   494.550 ns |      96 B |
-| Decrypt · ChaCha20 (CryptoHives-Scalar) | 128KB        | 453,279.03 ns | 1,172.416 ns | 1,039.316 ns |         - |
-|                                         |              |               |              |              |           |
-| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 128KB        |  65,867.15 ns |   194.891 ns |   162.743 ns |         - |
-| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 128KB        | 127,506.50 ns |   509.641 ns |   451.783 ns |         - |
-| Encrypt · ChaCha20 (NaCl.Core)          | 128KB        | 177,904.71 ns |   249.016 ns |   207.940 ns |      24 B |
-| Encrypt · ChaCha20 (BouncyCastle)       | 128KB        | 213,657.74 ns |   701.518 ns |   585.800 ns |      96 B |
-| Encrypt · ChaCha20 (CryptoHives-Scalar) | 128KB        | 451,041.46 ns | 1,146.715 ns | 1,072.638 ns |         - |
+﻿| Description                             | TestDataSize | Mean          | Error        | StdDev       | Median        | Allocated |
+|---------------------------------------- |------------- |--------------:|-------------:|-------------:|--------------:|----------:|
+| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 128B         |      68.71 ns |     0.261 ns |     0.244 ns |      68.74 ns |         - |
+| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 128B         |     125.96 ns |     0.405 ns |     0.379 ns |     125.99 ns |         - |
+| Decrypt · ChaCha20 (NaCl.Core)          | 128B         |     279.83 ns |     0.529 ns |     0.442 ns |     280.00 ns |      24 B |
+| Decrypt · ChaCha20 (BouncyCastle)       | 128B         |     317.57 ns |     0.470 ns |     0.393 ns |     317.56 ns |      96 B |
+| Decrypt · ChaCha20 (CryptoHives-Scalar) | 128B         |     461.65 ns |     0.718 ns |     0.637 ns |     461.69 ns |         - |
+|                                         |              |               |              |              |               |           |
+| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 128B         |      68.76 ns |     0.266 ns |     0.236 ns |      68.70 ns |         - |
+| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 128B         |     127.06 ns |     1.111 ns |     0.927 ns |     126.82 ns |         - |
+| Encrypt · ChaCha20 (NaCl.Core)          | 128B         |     275.58 ns |     1.010 ns |     0.895 ns |     275.48 ns |      24 B |
+| Encrypt · ChaCha20 (BouncyCastle)       | 128B         |     316.48 ns |     0.675 ns |     0.599 ns |     316.45 ns |      96 B |
+| Encrypt · ChaCha20 (CryptoHives-Scalar) | 128B         |     460.43 ns |     0.487 ns |     0.431 ns |     460.37 ns |         - |
+|                                         |              |               |              |              |               |           |
+| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 1KB          |     520.18 ns |     1.450 ns |     1.356 ns |     520.28 ns |         - |
+| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 1KB          |   1,000.47 ns |     3.162 ns |     2.958 ns |   1,000.17 ns |         - |
+| Decrypt · ChaCha20 (NaCl.Core)          | 1KB          |   1,505.00 ns |     2.384 ns |     1.991 ns |   1,504.94 ns |      24 B |
+| Decrypt · ChaCha20 (BouncyCastle)       | 1KB          |   1,805.21 ns |     3.823 ns |     3.389 ns |   1,805.38 ns |      96 B |
+| Decrypt · ChaCha20 (CryptoHives-Scalar) | 1KB          |   3,611.11 ns |     6.663 ns |     5.906 ns |   3,610.61 ns |         - |
+|                                         |              |               |              |              |               |           |
+| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 1KB          |     520.92 ns |     1.673 ns |     1.483 ns |     520.61 ns |         - |
+| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 1KB          |   1,003.75 ns |     3.649 ns |     3.413 ns |   1,003.05 ns |         - |
+| Encrypt · ChaCha20 (NaCl.Core)          | 1KB          |   1,500.57 ns |     2.154 ns |     2.015 ns |   1,500.45 ns |      24 B |
+| Encrypt · ChaCha20 (BouncyCastle)       | 1KB          |   1,797.09 ns |     3.161 ns |     2.802 ns |   1,796.32 ns |      96 B |
+| Encrypt · ChaCha20 (CryptoHives-Scalar) | 1KB          |   3,592.26 ns |     4.760 ns |     4.220 ns |   3,591.55 ns |         - |
+|                                         |              |               |              |              |               |           |
+| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 8KB          |   4,151.85 ns |    13.677 ns |    11.421 ns |   4,152.57 ns |         - |
+| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 8KB          |   8,007.39 ns |    35.514 ns |    33.220 ns |   7,995.08 ns |         - |
+| Decrypt · ChaCha20 (NaCl.Core)          | 8KB          |  11,309.29 ns |    27.336 ns |    24.232 ns |  11,307.99 ns |      24 B |
+| Decrypt · ChaCha20 (BouncyCastle)       | 8KB          |  13,659.25 ns |    11.274 ns |     9.994 ns |  13,657.57 ns |      96 B |
+| Decrypt · ChaCha20 (CryptoHives-Scalar) | 8KB          |  28,735.90 ns |    23.626 ns |    20.944 ns |  28,735.48 ns |         - |
+|                                         |              |               |              |              |               |           |
+| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 8KB          |   4,140.87 ns |    17.260 ns |    16.145 ns |   4,138.69 ns |         - |
+| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 8KB          |   8,062.35 ns |   147.176 ns |   130.468 ns |   8,010.07 ns |         - |
+| Encrypt · ChaCha20 (NaCl.Core)          | 8KB          |  11,353.58 ns |   145.656 ns |   136.247 ns |  11,246.86 ns |      24 B |
+| Encrypt · ChaCha20 (BouncyCastle)       | 8KB          |  13,625.08 ns |    22.554 ns |    19.994 ns |  13,619.11 ns |      96 B |
+| Encrypt · ChaCha20 (CryptoHives-Scalar) | 8KB          |  28,662.90 ns |    44.668 ns |    41.782 ns |  28,652.48 ns |         - |
+|                                         |              |               |              |              |               |           |
+| Decrypt · ChaCha20 (CryptoHives-AVX2)   | 128KB        |  66,263.43 ns |   345.620 ns |   306.383 ns |  66,179.12 ns |         - |
+| Decrypt · ChaCha20 (CryptoHives-SSSE3)  | 128KB        | 128,436.38 ns |   713.914 ns |   632.866 ns | 128,291.24 ns |         - |
+| Decrypt · ChaCha20 (NaCl.Core)          | 128KB        | 182,403.32 ns | 2,885.183 ns | 5,128.410 ns | 180,120.35 ns |      24 B |
+| Decrypt · ChaCha20 (BouncyCastle)       | 128KB        | 217,864.72 ns |   692.249 ns |   613.661 ns | 217,605.69 ns |      96 B |
+| Decrypt · ChaCha20 (CryptoHives-Scalar) | 128KB        | 459,242.57 ns |   426.098 ns |   377.725 ns | 459,349.34 ns |         - |
+|                                         |              |               |              |              |               |           |
+| Encrypt · ChaCha20 (CryptoHives-AVX2)   | 128KB        |  66,103.97 ns |   211.471 ns |   197.811 ns |  66,073.47 ns |         - |
+| Encrypt · ChaCha20 (CryptoHives-SSSE3)  | 128KB        | 128,136.21 ns |   719.607 ns |   600.905 ns | 128,075.02 ns |         - |
+| Encrypt · ChaCha20 (NaCl.Core)          | 128KB        | 178,490.04 ns |   217.570 ns |   181.681 ns | 178,474.37 ns |      24 B |
+| Encrypt · ChaCha20 (BouncyCastle)       | 128KB        | 217,241.51 ns |   318.968 ns |   298.363 ns | 217,214.33 ns |      96 B |
+| Encrypt · ChaCha20 (CryptoHives-Scalar) | 128KB        | 457,646.76 ns |   462.641 ns |   410.120 ns | 457,697.05 ns |         - |

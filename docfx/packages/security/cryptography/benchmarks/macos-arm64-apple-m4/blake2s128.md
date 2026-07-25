@@ -1,31 +1,31 @@
-﻿| Description                                       | TestDataSize | Mean         | Error       | StdDev    | Allocated |
-|-------------------------------------------------- |------------- |-------------:|------------:|----------:|----------:|
-| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 128B         |     139.7 ns |     0.39 ns |   0.37 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 128B         |     155.3 ns |     0.59 ns |   0.55 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 128B         |     196.6 ns |     0.21 ns |   0.18 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 128B         |     389.3 ns |     6.76 ns |   6.32 ns |         - |
-|                                                   |              |              |             |           |           |
-| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 137B         |     207.3 ns |     0.69 ns |   0.64 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 137B         |     230.2 ns |     0.65 ns |   0.61 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 137B         |     284.5 ns |     1.37 ns |   1.07 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 137B         |     591.7 ns |     5.89 ns |   5.50 ns |         - |
-|                                                   |              |              |             |           |           |
-| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 1KB          |   1,086.1 ns |     5.77 ns |   5.40 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 1KB          |   1,215.4 ns |     6.48 ns |   6.07 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 1KB          |   1,470.1 ns |     2.63 ns |   2.46 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 1KB          |   3,225.5 ns |     2.89 ns |   2.41 ns |         - |
-|                                                   |              |              |             |           |           |
-| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 1025B        |   1,151.3 ns |     5.50 ns |   5.15 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 1025B        |   1,300.5 ns |     6.18 ns |   5.78 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 1025B        |   1,556.2 ns |     4.99 ns |   4.67 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 1025B        |   3,469.4 ns |     9.10 ns |   7.60 ns |         - |
-|                                                   |              |              |             |           |           |
-| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 8KB          |   8,585.2 ns |    52.71 ns |  49.30 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 8KB          |   9,755.4 ns |    48.32 ns |  45.20 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 8KB          |  11,616.9 ns |    19.73 ns |  18.45 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 8KB          |  26,318.5 ns |    19.93 ns |  18.65 ns |         - |
-|                                                   |              |              |             |           |           |
-| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 128KB        | 137,050.7 ns |   576.60 ns | 539.35 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 128KB        | 155,887.7 ns |   868.04 ns | 811.97 ns |         - |
-| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 128KB        | 185,352.5 ns |   348.15 ns | 325.66 ns |         - |
-| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 128KB        | 420,691.3 ns | 1,019.57 ns | 953.70 ns |         - |
+﻿| Description                                       | TestDataSize | Mean         | Error     | StdDev    | Allocated |
+|-------------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
+| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 128B         |     141.2 ns |   0.09 ns |   0.08 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 128B         |     157.0 ns |   0.09 ns |   0.08 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 128B         |     196.4 ns |   0.10 ns |   0.10 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 128B         |     385.5 ns |   5.26 ns |   4.92 ns |         - |
+|                                                   |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 137B         |     209.8 ns |   0.19 ns |   0.18 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 137B         |     234.1 ns |   0.34 ns |   0.32 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 137B         |     284.9 ns |   0.27 ns |   0.25 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 137B         |     589.2 ns |   5.74 ns |   5.37 ns |         - |
+|                                                   |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 1KB          |   1,090.5 ns |   1.27 ns |   1.19 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 1KB          |   1,238.7 ns |   4.91 ns |   4.59 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 1KB          |   1,450.5 ns |   1.06 ns |   0.94 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 1KB          |   3,225.1 ns |   7.11 ns |   6.65 ns |         - |
+|                                                   |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 1025B        |   1,158.1 ns |   1.06 ns |   0.99 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 1025B        |   1,315.1 ns |   4.04 ns |   3.78 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 1025B        |   1,541.1 ns |   1.51 ns |   1.41 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 1025B        |   3,428.7 ns |   6.77 ns |   6.33 ns |         - |
+|                                                   |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 8KB          |   8,651.1 ns |   7.63 ns |   7.14 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 8KB          |   9,869.8 ns |  28.20 ns |  26.37 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 8KB          |  11,489.6 ns |  10.28 ns |   9.62 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 8KB          |  25,901.9 ns |   9.05 ns |   7.56 ns |         - |
+|                                                   |              |              |           |           |           |
+| TryComputeHash · BLAKE2s-128 · Blake2Fast         | 128KB        | 138,039.7 ns | 206.60 ns | 193.25 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Scalar | 128KB        | 158,131.6 ns | 432.87 ns | 404.90 ns |         - |
+| TryComputeHash · BLAKE2s-128 · BouncyCastle       | 128KB        | 183,245.7 ns | 173.48 ns | 162.27 ns |         - |
+| TryComputeHash · BLAKE2s-128 · CryptoHives-Neon   | 128KB        | 414,679.2 ns |  74.05 ns |  61.83 ns |         - |

@@ -32,3 +32,16 @@ $ git commit -m "A brief summary of the commit
 ```
 
 Finally, push the commits to your fork, submit a pull request, wait for all gates to pass and fix any issues found as part of the gate process.  The team might ask for some [changes](https://help.github.com/articles/committing-changes-to-a-pull-request-branch-created-from-a-fork) before merging the pull request.
+
+AI Usage in Contributions
+=========================
+
+AI coding assistants (such as Claude and GitHub Copilot) are welcome as productivity tools for drafting boilerplate, tests, documentation, and code review — the same way they are used by the maintainers themselves.
+
+If you use AI tools as part of your contribution:
+* You are responsible for the correctness, licensing, and quality of everything you submit, regardless of how it was authored.
+* You must be able to fully explain and stand behind every line of your pull request; reviewers will ask questions, and "the AI wrote it" is not an acceptable answer.
+* Any cryptographic logic must be verified against the relevant specification and official test vectors before submission, no exceptions.
+* Purely machine-generated pull requests submitted without human understanding or review will be rejected.
+
+When in doubt, treat AI output the same way you would treat a pull request from an unfamiliar contributor: verify it, test it, and understand it before putting your name on it.

@@ -1,25 +1,25 @@
-﻿| Description                                     | TestDataSize | Mean         | Error       | StdDev      | Allocated |
-|------------------------------------------------ |------------- |-------------:|------------:|------------:|----------:|
-| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 128B         |     160.9 ns |     0.98 ns |     0.76 ns |         - |
-| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 128B         |     171.4 ns |     0.89 ns |     0.75 ns |         - |
-| TryComputeHash · cSHAKE256 · BouncyCastle       | 128B         |     179.7 ns |     0.49 ns |     0.45 ns |         - |
-|                                                 |              |              |             |             |           |
-| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 137B         |     305.4 ns |     0.26 ns |     0.20 ns |         - |
-| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 137B         |     327.3 ns |     0.38 ns |     0.34 ns |         - |
-| TryComputeHash · cSHAKE256 · BouncyCastle       | 137B         |     336.5 ns |     1.03 ns |     0.91 ns |         - |
-|                                                 |              |              |             |             |           |
-| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 1KB          |   1,228.1 ns |     4.29 ns |     4.01 ns |         - |
-| TryComputeHash · cSHAKE256 · BouncyCastle       | 1KB          |   1,275.7 ns |    12.12 ns |    10.74 ns |         - |
-| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 1KB          |   1,302.6 ns |    21.02 ns |    19.66 ns |         - |
-|                                                 |              |              |             |             |           |
-| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 1025B        |   1,222.1 ns |     1.40 ns |     1.09 ns |         - |
-| TryComputeHash · cSHAKE256 · BouncyCastle       | 1025B        |   1,267.5 ns |     3.94 ns |     3.50 ns |         - |
-| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 1025B        |   1,290.0 ns |     3.78 ns |     3.16 ns |         - |
-|                                                 |              |              |             |             |           |
-| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 8KB          |   9,314.5 ns |    16.66 ns |    15.59 ns |         - |
-| TryComputeHash · cSHAKE256 · BouncyCastle       | 8KB          |   9,502.6 ns |    39.18 ns |    34.73 ns |         - |
-| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 8KB          |   9,725.9 ns |    15.54 ns |    12.98 ns |         - |
-|                                                 |              |              |             |             |           |
-| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 128KB        | 146,894.1 ns |   272.24 ns |   227.34 ns |         - |
-| TryComputeHash · cSHAKE256 · BouncyCastle       | 128KB        | 151,896.5 ns | 2,910.90 ns | 2,722.86 ns |         - |
-| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 128KB        | 153,825.0 ns |   356.39 ns |   297.60 ns |         - |
+﻿| Description                                     | TestDataSize | Mean         | Error     | StdDev    | Allocated |
+|------------------------------------------------ |------------- |-------------:|----------:|----------:|----------:|
+| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 128B         |     159.9 ns |   0.14 ns |   0.13 ns |         - |
+| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 128B         |     169.2 ns |   0.09 ns |   0.08 ns |         - |
+| TryComputeHash · cSHAKE256 · BouncyCastle       | 128B         |     178.4 ns |   0.59 ns |   0.55 ns |         - |
+|                                                 |              |              |           |           |           |
+| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 137B         |     303.6 ns |   0.14 ns |   0.13 ns |         - |
+| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 137B         |     325.3 ns |   0.25 ns |   0.21 ns |         - |
+| TryComputeHash · cSHAKE256 · BouncyCastle       | 137B         |     326.3 ns |   0.31 ns |   0.24 ns |         - |
+|                                                 |              |              |           |           |           |
+| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 1KB          |   1,201.7 ns |   1.89 ns |   1.76 ns |         - |
+| TryComputeHash · cSHAKE256 · BouncyCastle       | 1KB          |   1,265.4 ns |  10.17 ns |   9.51 ns |         - |
+| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 1KB          |   1,282.1 ns |   1.29 ns |   1.08 ns |         - |
+|                                                 |              |              |           |           |           |
+| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 1025B        |   1,200.4 ns |   0.73 ns |   0.65 ns |         - |
+| TryComputeHash · cSHAKE256 · BouncyCastle       | 1025B        |   1,264.1 ns |   4.27 ns |   3.57 ns |         - |
+| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 1025B        |   1,285.1 ns |   3.84 ns |   3.20 ns |         - |
+|                                                 |              |              |           |           |           |
+| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 8KB          |   9,133.9 ns |   9.11 ns |   8.52 ns |         - |
+| TryComputeHash · cSHAKE256 · BouncyCastle       | 8KB          |   9,550.7 ns |  64.23 ns |  56.94 ns |         - |
+| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 8KB          |   9,696.8 ns |  17.24 ns |  16.13 ns |         - |
+|                                                 |              |              |           |           |           |
+| TryComputeHash · cSHAKE256 · CryptoHives-Arm64  | 128KB        | 144,639.3 ns | 201.10 ns | 178.27 ns |         - |
+| TryComputeHash · cSHAKE256 · BouncyCastle       | 128KB        | 152,973.3 ns | 463.45 ns | 433.52 ns |         - |
+| TryComputeHash · cSHAKE256 · CryptoHives-Scalar | 128KB        | 153,066.7 ns | 212.68 ns | 188.54 ns |         - |

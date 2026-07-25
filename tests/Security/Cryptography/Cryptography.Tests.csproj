@@ -35,13 +35,15 @@
     <PackageReference Include="IndexRange" ExcludeAssets="all" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- Blake3 NuGet package only supports .NET 8+ and is not strong name signed-->
+  <!-- Blake3 NuGet packages that only support .NET 8+ and which are not strong name signed. -->
   <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
-    <PackageReference Include="Blake3" />
+    <PackageReference Include="Blake3" Aliases="Blake3Managed" />
+    <PackageReference Include="Blake3.Native" />
+    <PackageReference Include="Blake3.Managed" />
   </ItemGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
-    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE</DefineConstants>
+    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED;BLAKE3_DISSIMILIS</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
