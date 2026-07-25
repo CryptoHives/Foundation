@@ -1012,6 +1012,16 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(destination, cv, KeySizeWords * (uint)sizeof(uint));
     }
 
+    // Single/few-block compression (parent merges, one chunk's worth of blocks
+    // via FinalizeChunk/SaveChunkAsRoot) never has independent work to spread
+    // across NEON's 4 lanes the way the chunk-parallel batch kernels in
+    // Blake3State.Neon.cs do — row-vectorizing one chunk's internal state still
+    // pays the TBL/shift-rotate overhead per round with nothing to hide it
+    // behind. Benchmarked slower than plain scalar (BitOperations.RotateRight,
+    // native ROR) at every size this path is ever reached at, matching the
+    // reference Blake3.NET managed implementation's own choice to only vectorize
+    // genuine 4-way batches and fall back to scalar otherwise — so NEON-tier
+    // instances use the scalar kernel here too, same as no-SIMD instances.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void CompressBlock(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
@@ -1020,10 +1030,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         {
             CompressBlockSsse3(cv, block, blockLen, counter, flags);
         }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
-        {
-            CompressBlocksNeon(cv, block, 1, blockLen, counter, flags);
-        }
         else
 #endif
         {
@@ -1031,7 +1037,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
-
+    // See the remarks on CompressBlock — same reasoning applies here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void CompressBlocks(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
@@ -1040,10 +1046,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         {
             CompressBlocksSsse3(cv, block, blocks, blockLen, counter, flags);
         }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
-        {
-            CompressBlocksNeon(cv, block, blocks, blockLen, counter, flags);
-        }
         else
 #endif
         {
@@ -1051,118 +1053,136 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
+    // [SkipLocalsInit]: v0..v7 are fully assigned from cv below before any read.
+    // v0..v15 are named locals (not a stackalloc'd array) passed by ref into an
+    // AggressiveInlining Compress — mirrors Blake3.NET's managed ARM64/x86 scalar
+    // compress, which uses the same named-local-plus-forced-inline shape. Named
+    // locals alone do NOT help here: passing 16 byref params to a *non-inlined*
+    // callee just forces those locals to real stack addresses anyway (to make
+    // them addressable across the call) and turns a compact 2-pointer call into a
+    // 17-argument one (ARM64 has 8 argument registers, so most of those spill) —
+    // that shape measured *slower* than the original uint* array. Only once
+    // Compress is actually force-inlined does the JIT see through the refs
+    // entirely and keep the whole state in registers across all 7 rounds.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressBlocksScalar(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
         uint* m = stackalloc uint[BlockSizeWords];
-        uint* v = stackalloc uint[BlockSizeWords];
-        Unsafe.CopyBlock(v, cv, KeySizeWords * (uint)sizeof(uint));
+        uint v0 = cv[0], v1 = cv[1], v2 = cv[2], v3 = cv[3];
+        uint v4 = cv[4], v5 = cv[5], v6 = cv[6], v7 = cv[7];
 
         while (true)
         {
             BinarySpans.ReadUInt32LittleEndian(block, m, BlockSizeWords);
 
-            v[8] = IV0; v[9] = IV1; v[10] = IV2; v[11] = IV3;
-            v[12] = (uint)counter;
-            v[13] = (uint)(counter >> 32);
-            v[14] = blockLen;
-            v[15] = flags;
+            uint v8 = IV0, v9 = IV1, v10 = IV2, v11 = IV3;
+            uint v12 = (uint)counter;
+            uint v13 = (uint)(counter >> 32);
+            uint v14 = blockLen;
+            uint v15 = flags;
 
-            Compress(v, m);
+            Compress(
+                ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+                ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+                m);
 
             if (--blocks <= 0)
             {
+                cv[0] = v0 ^ v8; cv[1] = v1 ^ v9; cv[2] = v2 ^ v10; cv[3] = v3 ^ v11;
+                cv[4] = v4 ^ v12; cv[5] = v5 ^ v13; cv[6] = v6 ^ v14; cv[7] = v7 ^ v15;
                 break;
             }
 
-            for (int i = 0; i < 8; i++)
-            {
-                v[i] ^= v[i + 8];
-            }
+            v0 ^= v8; v1 ^= v9; v2 ^= v10; v3 ^= v11;
+            v4 ^= v12; v5 ^= v13; v6 ^= v14; v7 ^= v15;
 
             block += blockLen;
             flags &= ~FlagChunkStart;
         }
-
-        for (int i = 0; i < 8; i++)
-        {
-            cv[i] = v[i] ^ v[i + 8];
-        }
     }
 
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    internal static void Compress(uint* v, uint* m)
+    // AggressiveInlining (not OptimizedLoop/NoInlining): this must be inlined into
+    // its two call sites for the byref named-locals shape to pay off — see the
+    // remarks on CompressBlocksScalar. Only ever called from those two sites, so
+    // the code-size duplication this trades for is bounded.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal static void Compress(
+        ref uint v0, ref uint v1, ref uint v2, ref uint v3,
+        ref uint v4, ref uint v5, ref uint v6, ref uint v7,
+        ref uint v8, ref uint v9, ref uint v10, ref uint v11,
+        ref uint v12, ref uint v13, ref uint v14, ref uint v15,
+        uint* m)
     {
         // Round 1
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[0], m[1]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[2], m[3]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[4], m[5]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[6], m[7]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[8], m[9]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[10], m[11]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[12], m[13]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[14], m[15]);
+        G(ref v0, ref v4, ref v8, ref v12, m[0], m[1]);
+        G(ref v1, ref v5, ref v9, ref v13, m[2], m[3]);
+        G(ref v2, ref v6, ref v10, ref v14, m[4], m[5]);
+        G(ref v3, ref v7, ref v11, ref v15, m[6], m[7]);
+        G(ref v0, ref v5, ref v10, ref v15, m[8], m[9]);
+        G(ref v1, ref v6, ref v11, ref v12, m[10], m[11]);
+        G(ref v2, ref v7, ref v8, ref v13, m[12], m[13]);
+        G(ref v3, ref v4, ref v9, ref v14, m[14], m[15]);
 
         // Round 2
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[2], m[6]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[3], m[10]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[7], m[0]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[4], m[13]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[1], m[11]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[12], m[5]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[9], m[14]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[15], m[8]);
+        G(ref v0, ref v4, ref v8, ref v12, m[2], m[6]);
+        G(ref v1, ref v5, ref v9, ref v13, m[3], m[10]);
+        G(ref v2, ref v6, ref v10, ref v14, m[7], m[0]);
+        G(ref v3, ref v7, ref v11, ref v15, m[4], m[13]);
+        G(ref v0, ref v5, ref v10, ref v15, m[1], m[11]);
+        G(ref v1, ref v6, ref v11, ref v12, m[12], m[5]);
+        G(ref v2, ref v7, ref v8, ref v13, m[9], m[14]);
+        G(ref v3, ref v4, ref v9, ref v14, m[15], m[8]);
 
         // Round 3
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[3], m[4]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[10], m[12]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[13], m[2]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[7], m[14]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[6], m[5]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[9], m[0]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[11], m[15]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[8], m[1]);
+        G(ref v0, ref v4, ref v8, ref v12, m[3], m[4]);
+        G(ref v1, ref v5, ref v9, ref v13, m[10], m[12]);
+        G(ref v2, ref v6, ref v10, ref v14, m[13], m[2]);
+        G(ref v3, ref v7, ref v11, ref v15, m[7], m[14]);
+        G(ref v0, ref v5, ref v10, ref v15, m[6], m[5]);
+        G(ref v1, ref v6, ref v11, ref v12, m[9], m[0]);
+        G(ref v2, ref v7, ref v8, ref v13, m[11], m[15]);
+        G(ref v3, ref v4, ref v9, ref v14, m[8], m[1]);
 
         // Round 4
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[10], m[7]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[12], m[9]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[14], m[3]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[13], m[15]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[4], m[0]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[11], m[2]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[5], m[8]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[1], m[6]);
+        G(ref v0, ref v4, ref v8, ref v12, m[10], m[7]);
+        G(ref v1, ref v5, ref v9, ref v13, m[12], m[9]);
+        G(ref v2, ref v6, ref v10, ref v14, m[14], m[3]);
+        G(ref v3, ref v7, ref v11, ref v15, m[13], m[15]);
+        G(ref v0, ref v5, ref v10, ref v15, m[4], m[0]);
+        G(ref v1, ref v6, ref v11, ref v12, m[11], m[2]);
+        G(ref v2, ref v7, ref v8, ref v13, m[5], m[8]);
+        G(ref v3, ref v4, ref v9, ref v14, m[1], m[6]);
 
         // Round 5
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[12], m[13]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[9], m[11]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[15], m[10]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[14], m[8]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[7], m[2]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[5], m[3]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[0], m[1]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[6], m[4]);
+        G(ref v0, ref v4, ref v8, ref v12, m[12], m[13]);
+        G(ref v1, ref v5, ref v9, ref v13, m[9], m[11]);
+        G(ref v2, ref v6, ref v10, ref v14, m[15], m[10]);
+        G(ref v3, ref v7, ref v11, ref v15, m[14], m[8]);
+        G(ref v0, ref v5, ref v10, ref v15, m[7], m[2]);
+        G(ref v1, ref v6, ref v11, ref v12, m[5], m[3]);
+        G(ref v2, ref v7, ref v8, ref v13, m[0], m[1]);
+        G(ref v3, ref v4, ref v9, ref v14, m[6], m[4]);
 
         // Round 6
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[9], m[14]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[11], m[5]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[8], m[12]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[15], m[1]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[13], m[3]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[0], m[10]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[2], m[6]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[4], m[7]);
+        G(ref v0, ref v4, ref v8, ref v12, m[9], m[14]);
+        G(ref v1, ref v5, ref v9, ref v13, m[11], m[5]);
+        G(ref v2, ref v6, ref v10, ref v14, m[8], m[12]);
+        G(ref v3, ref v7, ref v11, ref v15, m[15], m[1]);
+        G(ref v0, ref v5, ref v10, ref v15, m[13], m[3]);
+        G(ref v1, ref v6, ref v11, ref v12, m[0], m[10]);
+        G(ref v2, ref v7, ref v8, ref v13, m[2], m[6]);
+        G(ref v3, ref v4, ref v9, ref v14, m[4], m[7]);
 
         // Round 7
-        G(ref v[0], ref v[4], ref v[8], ref v[12], m[11], m[15]);
-        G(ref v[1], ref v[5], ref v[9], ref v[13], m[5], m[0]);
-        G(ref v[2], ref v[6], ref v[10], ref v[14], m[1], m[9]);
-        G(ref v[3], ref v[7], ref v[11], ref v[15], m[8], m[6]);
-        G(ref v[0], ref v[5], ref v[10], ref v[15], m[14], m[10]);
-        G(ref v[1], ref v[6], ref v[11], ref v[12], m[2], m[12]);
-        G(ref v[2], ref v[7], ref v[8], ref v[13], m[3], m[4]);
-        G(ref v[3], ref v[4], ref v[9], ref v[14], m[7], m[13]);
+        G(ref v0, ref v4, ref v8, ref v12, m[11], m[15]);
+        G(ref v1, ref v5, ref v9, ref v13, m[5], m[0]);
+        G(ref v2, ref v6, ref v10, ref v14, m[1], m[9]);
+        G(ref v3, ref v7, ref v11, ref v15, m[8], m[6]);
+        G(ref v0, ref v5, ref v10, ref v15, m[14], m[10]);
+        G(ref v1, ref v6, ref v11, ref v12, m[2], m[12]);
+        G(ref v2, ref v7, ref v8, ref v13, m[3], m[4]);
+        G(ref v3, ref v4, ref v9, ref v14, m[7], m[13]);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]

@@ -245,6 +245,10 @@ internal unsafe partial struct Blake3State
         _rootFlags = _baseFlags | FlagParent | FlagRoot;
     }
 
+    // Single-block squeeze has the same no-independent-work problem as
+    // CompressBlock/CompressBlocks (see their remarks in Blake3State.cs) —
+    // benchmarked slower via NEON's row-vectorized single-block kernel than
+    // plain scalar, so NEON-tier instances use scalar here too.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void SqueezeRootBlock(Blake3State* core, ulong counter, byte* dst)
     {
@@ -252,10 +256,6 @@ internal unsafe partial struct Blake3State
         if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
         {
             SqueezeRootBlocksSsse3(core, counter, 1, dst);
-        }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
-        {
-            SqueezeRootBlocksNeon(core, counter, 1, dst);
         }
         else
 #endif
@@ -333,10 +333,13 @@ internal unsafe partial struct Blake3State
                 offset += ChunksPerNeonBatch * BlockSizeBytes;
             }
 
+            // The 0-3 leftover blocks have no independent work to fill NEON's other
+            // lanes with — same reasoning as SqueezeRootBlock — so the tail falls
+            // back to scalar instead of the single-lane NEON kernel.
             int remaining = blocks - fullGroups * ChunksPerNeonBatch;
             if (remaining > 0)
             {
-                SqueezeRootBlocksNeon(
+                SqueezeRootBlocksScalar(
                     core, startCounter + (ulong)(fullGroups * ChunksPerNeonBatch), remaining, dst + offset);
             }
         }
@@ -347,13 +350,19 @@ internal unsafe partial struct Blake3State
         }
     }
 
+    // v0..v15 are named locals rather than a stackalloc'd array for the same
+    // register-allocation reason as CompressBlocksScalar (see its remarks);
+    // outBuf stages only the final per-block output for the bulk byte write.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void SqueezeRootBlocksScalar(Blake3State* core, ulong startCounter, int blocks, byte* dst)
     {
-        uint* v = stackalloc uint[BlockSizeWords];
         uint blockLen = _rootBlockLen;
         uint flags = _rootFlags;
+        uint* rootCv = core->_rootCv;
+        uint cv0 = rootCv[0], cv1 = rootCv[1], cv2 = rootCv[2], cv3 = rootCv[3];
+        uint cv4 = rootCv[4], cv5 = rootCv[5], cv6 = rootCv[6], cv7 = rootCv[7];
+        uint* outBuf = stackalloc uint[BlockSizeWords];
 
         // Raw pointer stores instead of Span.Slice: the caller always sizes
         // destination to exactly blocks * BlockSizeBytes, but that guarantee
@@ -363,22 +372,25 @@ internal unsafe partial struct Blake3State
         {
             ulong counter = startCounter + (ulong)i;
 
-            Unsafe.CopyBlock(v, core->_rootCv, KeySizeWords * (uint)sizeof(uint));
-            v[8] = IV0; v[9] = IV1; v[10] = IV2; v[11] = IV3;
-            v[12] = (uint)counter;
-            v[13] = (uint)(counter >> 32);
-            v[14] = blockLen;
-            v[15] = flags;
+            uint v0 = cv0, v1 = cv1, v2 = cv2, v3 = cv3;
+            uint v4 = cv4, v5 = cv5, v6 = cv6, v7 = cv7;
+            uint v8 = IV0, v9 = IV1, v10 = IV2, v11 = IV3;
+            uint v12 = (uint)counter;
+            uint v13 = (uint)(counter >> 32);
+            uint v14 = blockLen;
+            uint v15 = flags;
 
-            Compress(v, core->_rootBlock);
+            Compress(
+                ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+                ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+                core->_rootBlock);
 
-            for (int j = 0; j < 8; j++)
-            {
-                v[j] ^= v[j + 8];
-                v[j + 8] ^= core->_rootCv[j];
-            }
+            outBuf[0] = v0 ^ v8; outBuf[1] = v1 ^ v9; outBuf[2] = v2 ^ v10; outBuf[3] = v3 ^ v11;
+            outBuf[4] = v4 ^ v12; outBuf[5] = v5 ^ v13; outBuf[6] = v6 ^ v14; outBuf[7] = v7 ^ v15;
+            outBuf[8] = v8 ^ cv0; outBuf[9] = v9 ^ cv1; outBuf[10] = v10 ^ cv2; outBuf[11] = v11 ^ cv3;
+            outBuf[12] = v12 ^ cv4; outBuf[13] = v13 ^ cv5; outBuf[14] = v14 ^ cv6; outBuf[15] = v15 ^ cv7;
 
-            BinarySpans.WriteUInt32LittleEndian(v, dst + i * BlockSizeBytes, BlockSizeWords);
+            BinarySpans.WriteUInt32LittleEndian(outBuf, dst + i * BlockSizeBytes, BlockSizeWords);
         }
     }
 }
