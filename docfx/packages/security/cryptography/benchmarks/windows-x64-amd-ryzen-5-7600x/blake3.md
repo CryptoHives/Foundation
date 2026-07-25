@@ -1,4 +1,4 @@
-﻿| Description                                   | TestDataSize | Mean             | Error          | StdDev         | Median           | Code Size | Allocated |
+| Description                                   | TestDataSize | Mean             | Error          | StdDev         | Median           | Code Size | Allocated |
 |---------------------------------------------- |------------- |-----------------:|---------------:|---------------:|-----------------:|----------:|----------:|
 | TryComputeHash · BLAKE3 · Blake3.NET-Native   | 4B           |         56.45 ns |       0.251 ns |       0.210 ns |         56.39 ns |     988 B |         - |
 | TryComputeHash · BLAKE3 · CryptoHives-AVX2    | 4B           |         61.99 ns |       0.321 ns |       0.284 ns |         61.97 ns |        NA |         - |
@@ -155,9 +155,9 @@
 |                                               |              |                  |                |                |                  |           |           |
 | TryComputeHash · BLAKE3 · Blake3.Managed      | 1MB          |     39,156.01 ns |     453.972 ns |     424.646 ns |     39,218.29 ns |  29,898 B |    4152 B |
 | TryComputeHash · BLAKE3 · Blake3.NET-Native   | 1MB          |    112,612.83 ns |   2,150.522 ns |   2,112.101 ns |    111,815.59 ns |     989 B |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-AVX512F | 1MB          |    151,142.20 ns |     824.044 ns |     730.494 ns |    151,322.24 ns |        NA |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-AVX512F | 1MB          |    139,946.76 ns |   1,733.943 ns |   1,621.932 ns |    139,041.16 ns |        NA |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed  | 1MB          |    149,597.23 ns |   2,198.326 ns |   1,948.759 ns |    148,520.67 ns |   8,949 B |         - |
 | TryComputeHash · BLAKE3 · CryptoHives-AVX2    | 1MB          |    161,596.51 ns |   2,910.118 ns |   2,579.744 ns |    160,766.53 ns |        NA |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed  | 1MB          |    162,607.05 ns |   2,859.782 ns |   3,178.640 ns |    161,047.94 ns |   8,949 B |         - |
 | TryComputeHash · BLAKE3 · CryptoHives-Ssse3   | 1MB          |    897,281.70 ns |  15,630.968 ns |  13,052.566 ns |    891,093.99 ns |        NA |         - |
 | TryComputeHash · BLAKE3 · CryptoHives-Scalar  | 1MB          |  1,365,291.17 ns |   8,843.890 ns |   7,385.048 ns |  1,363,510.94 ns |        NA |         - |
 | TryComputeHash · BLAKE3 · BouncyCastle        | 1MB          |  9,873,685.94 ns |  68,449.689 ns |  60,678.867 ns |  9,846,896.09 ns |  22,244 B |   54656 B |
