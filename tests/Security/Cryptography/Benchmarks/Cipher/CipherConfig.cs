@@ -5,12 +5,12 @@ namespace Cryptography.Tests.Benchmarks.Cipher;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;

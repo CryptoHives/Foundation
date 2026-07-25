@@ -99,6 +99,10 @@ public class Blake3Benchmark : ParameterizedHashBenchmark
     public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
     public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.Blake3();
 
+    // Widen the size sweep only for BLAKE3: the 8 KB SIMD chunk-batch fast path makes it
+    // sensitive to sizes on and around batch boundaries that other algorithms don't care about.
+    public static new IEnumerable<DataSize> Sizes() => DataSize.Blake3Sizes;
+
     public Blake3Benchmark() { }
     public Blake3Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }

@@ -2,17 +2,6 @@
 
 This page collects BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` and organizes them by platform run. Each run is stored in its own platform folder so values from different hosts are never mixed.
 
-## Continuous Benchmark Trends
-
-Automated weekly CI benchmarks are tracked on [Bencher](https://bencher.dev/perf/cryptohives-foundation-project). Results for both `linux-x64` and `macos-arm64` testbeds are submitted on every scheduled run and on every `main` branch commit.
-
-| Testbed | Branch | Bencher Perf Dashboard |
-|---------|--------|------------------------|
-| Linux x64 | `main` | [View trends](https://bencher.dev/perf/cryptohives-foundation-project?testbeds[]=linux-x64) |
-| macOS ARM64 | `main` | [View trends](https://bencher.dev/perf/cryptohives-foundation-project?testbeds[]=macos-arm64) |
-
-The dashboard shows historical latency trends per benchmark across all recorded runs. Use the Bencher filters to drill into a specific algorithm family, data size, or platform combination. Regressions beyond the configured threshold automatically create a GitHub Check failure on the PR or workflow run that introduced the slowdown.
-
 ## Benchmark Categories
 
 ### [Hash Algorithm Benchmarks](benchmarks-hash.md)
@@ -72,9 +61,9 @@ The following tables show the per-instance memory footprint (internal state + bu
 | Keccak-256 | 336 B | 136 B | 192 B | Ethereum compatible |
 | Keccak-384 | 304 B | 104 B | 192 B | Ethereum compatible |
 | Keccak-512 | 272 B | 72 B | 192 B | Ethereum compatible |
-| BLAKE2b | 192 B+ | 128 B | 256 B | ulong[8] state + byte[128] buffer + key |
-| BLAKE2s | 96 B+ | 64 B | 192 B | uint[8] state + byte[64] buffer + key |
-| BLAKE3 | 2,816 B | 64 B | — | Merkle tree: 1 KB chunk buffer + 1.7 KB CV stack |
+| BLAKE2b | 216 B | 128 B | 256 B | ulong[8] state + byte[128] buffer + key |
+| BLAKE2s | 120 B | 64 B | 192 B | uint[8] state + byte[64] buffer + key |
+| BLAKE3 | 3,072 B | 64 B | — | Merkle tree: 1 KB chunk buffer + 1.7 KB CV stack |
 | Ascon-Hash256 | 48 B | 8 B | — | 5 × ulong state + byte[8] buffer |
 | Ascon-XOF128 | 48 B | 8 B | — | 5 × ulong state + byte[8] buffer |
 | RIPEMD-160 | 84 B | 64 B | — | uint[5] state + byte[64] buffer |
@@ -123,9 +112,9 @@ The following tables show the per-instance memory footprint (internal state + bu
 |-----------|---------------|-----------|---------------|-------|
 | KMAC128 | 368 B+ | 168 B | 192 B | Keccak state + buffer + encoded key/customization |
 | KMAC256 | 336 B+ | 136 B | 192 B | Keccak state + buffer + encoded key/customization |
-| BLAKE2b (keyed) | 192 B+ | 128 B | 256 B | Same as BLAKE2b + key material |
-| BLAKE2s (keyed) | 96 B+ | 64 B | 192 B | Same as BLAKE2s + key material |
-| BLAKE3 (keyed) | 2,816 B | 64 B | — | Same as BLAKE3 with key words |
+| BLAKE2b (keyed) | 216 B | 128 B | 256 B | Same as BLAKE2b + key material |
+| BLAKE2s (keyed) | 120 B | 64 B | 192 B | Same as BLAKE2s + key material |
+| BLAKE3 (keyed) | 3,072 B | 64 B | — | Same as BLAKE3 with key words |
 
 > **Static tables** are shared across all instances of algorithms in the same family and are loaded once into memory. AES T-tables (10.5 KB) are shared by all AES-based algorithms (ECB, CBC, CTR, GCM, CCM). Keccak round constants (192 B) are shared by all SHA-3, SHAKE, cSHAKE, TurboSHAKE, KT, and KMAC instances. Algorithms marked "—" use no static lookup tables (permutation-based or constant-time by design).
 
