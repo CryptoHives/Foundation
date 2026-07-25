@@ -953,7 +953,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(destination, core->_cv, KeySizeWords * (uint)sizeof(uint));
     }
 
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void AddChunkToTree(Blake3State* core) => AddSubtreeToTree(core, 0);
 
     /// <summary>
