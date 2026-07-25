@@ -38,13 +38,6 @@ internal unsafe partial struct Blake3State
     internal const int ChunksPerAvx2Batch = 8;
     internal const int Avx2BatchSizeBytes = ChunksPerAvx2Batch * ChunkSizeBytes;
 
-    private static readonly Vector256<byte> RotateRight8Mask256 =
-        Vector256.Create(RotateMask8, RotateMask8);
-
-    private static readonly Vector256<byte> RotateRight16Mask256 =
-        Vector256.Create(RotateMask16, RotateMask16);
-
-
     /// <summary>
     /// Compresses <paramref name="chunkCount"/> (2..8) independent, full
     /// (1024-byte) chunks with the 8-way kernel by ignoring the surplus lanes
@@ -596,22 +589,22 @@ internal unsafe partial struct Blake3State
         b = RotateRight7(Avx2.Xor(b, c));
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight16(Vector256<uint> value) => Avx512F.VL.IsSupported
        ? Avx512F.VL.RotateRight(value, 16)
-       : Avx2.Shuffle(value.AsByte(), RotateRight16Mask256).AsUInt32();
+       : Avx2.Or(Avx2.ShiftRightLogical(value, 16), Avx2.ShiftLeftLogical(value, 16));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight12(Vector256<uint> value) => Avx512F.VL.IsSupported
         ? Avx512F.VL.RotateRight(value, 12)
         : Avx2.Or(Avx2.ShiftRightLogical(value, 12), Avx2.ShiftLeftLogical(value, 20));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight8(Vector256<uint> value) => Avx512F.VL.IsSupported
         ? Avx512F.VL.RotateRight(value, 8)
-        : Avx2.Shuffle(value.AsByte(), RotateRight8Mask256).AsUInt32();
+        : Avx2.Or(Avx2.ShiftRightLogical(value, 8), Avx2.ShiftLeftLogical(value, 24));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight7(Vector256<uint> value) => Avx512F.VL.IsSupported
         ? Avx512F.VL.RotateRight(value, 7)
         : Avx2.Or(Avx2.ShiftRightLogical(value, 7), Avx2.ShiftLeftLogical(value, 25));
