@@ -965,13 +965,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
-     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static void Compress(
-        ref uint v0, ref uint v1, ref uint v2, ref uint v3,
-        ref uint v4, ref uint v5, ref uint v6, ref uint v7,
-        ref uint v8, ref uint v9, ref uint v10, ref uint v11,
-        ref uint v12, ref uint v13, ref uint v14, ref uint v15,
-        uint* m)
+       ref uint v0, ref uint v1, ref uint v2, ref uint v3,
+       ref uint v4, ref uint v5, ref uint v6, ref uint v7,
+       ref uint v8, ref uint v9, ref uint v10, ref uint v11,
+       ref uint v12, ref uint v13, ref uint v14, ref uint v15,
+       uint* m)
     {
         // Round 1
         G(ref v0, ref v4, ref v8, ref v12, m[0], m[1]);
