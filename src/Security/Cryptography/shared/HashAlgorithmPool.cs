@@ -32,6 +32,15 @@ internal static class HashAlgorithmPool<T>
     private static readonly ObjectPool<T> _pool =
         new DefaultObjectPool<T>(new PoolPolicy());
 
+    /// <summary>
+    /// Gets the shared pool instance, for algorithm-specific one-shot entry
+    /// points that need to rent an instance and call an API beyond the
+    /// streaming <see cref="HashAlgorithm"/> surface the helpers below use
+    /// (e.g. <c>Blake3.TryHashOneShot</c>). Renting from here instead of a
+    /// separate pool keeps a single pool per algorithm type.
+    /// </summary>
+    public static ObjectPool<T> Shared => _pool;
+
     private sealed class PoolPolicy : PooledObjectPolicy<T>
     {
         public override T Create() => new T();
@@ -39,7 +48,9 @@ internal static class HashAlgorithmPool<T>
         public override bool Return(T obj)
         {
             if (obj.TryReset())
+            {
                 return true;
+            }
 
             obj.Dispose();
             return false;
@@ -292,7 +303,9 @@ internal static class HashAlgorithmPool
         public override bool Return(T obj)
         {
             if (obj.TryReset())
+            {
                 return true;
+            }
 
             // TryReset failed — the instance is unhealthy; dispose and discard it
             // so the pool creates a fresh one on the next Get().
