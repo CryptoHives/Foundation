@@ -1,25 +1,25 @@
 ﻿| Description                            | TestDataSize | Mean           | Error       | StdDev      | Allocated |
 |--------------------------------------- |------------- |---------------:|------------:|------------:|----------:|
-| Decrypt · SM4-CBC (CryptoHives-Scalar) | 128B         |       792.2 ns |     2.61 ns |     2.45 ns |         - |
-| Decrypt · SM4-CBC (BouncyCastle)       | 128B         |     1,292.3 ns |     3.98 ns |     3.53 ns |      40 B |
+| Decrypt · SM4-CBC (CryptoHives-Scalar) | 128B         |       817.3 ns |     1.31 ns |     1.16 ns |         - |
+| Decrypt · SM4-CBC (BouncyCastle)       | 128B         |     1,303.7 ns |     5.11 ns |     4.27 ns |      40 B |
 |                                        |              |                |             |             |           |
-| Encrypt · SM4-CBC (CryptoHives-Scalar) | 128B         |       862.4 ns |     1.36 ns |     1.20 ns |         - |
-| Encrypt · SM4-CBC (BouncyCastle)       | 128B         |     1,309.3 ns |     3.76 ns |     3.52 ns |      40 B |
+| Encrypt · SM4-CBC (CryptoHives-Scalar) | 128B         |       871.9 ns |     0.80 ns |     0.71 ns |         - |
+| Encrypt · SM4-CBC (BouncyCastle)       | 128B         |     1,314.6 ns |     1.82 ns |     1.70 ns |      40 B |
 |                                        |              |                |             |             |           |
-| Decrypt · SM4-CBC (CryptoHives-Scalar) | 1KB          |     5,604.7 ns |    11.61 ns |    10.86 ns |         - |
-| Decrypt · SM4-CBC (BouncyCastle)       | 1KB          |     8,139.6 ns |    12.51 ns |    11.09 ns |      40 B |
+| Decrypt · SM4-CBC (CryptoHives-Scalar) | 1KB          |     5,805.4 ns |     8.52 ns |     7.12 ns |         - |
+| Decrypt · SM4-CBC (BouncyCastle)       | 1KB          |     8,205.3 ns |    17.46 ns |    15.47 ns |      40 B |
 |                                        |              |                |             |             |           |
-| Encrypt · SM4-CBC (CryptoHives-Scalar) | 1KB          |     6,187.6 ns |    10.73 ns |     9.51 ns |         - |
-| Encrypt · SM4-CBC (BouncyCastle)       | 1KB          |     8,289.3 ns |    12.37 ns |    10.33 ns |      40 B |
+| Encrypt · SM4-CBC (CryptoHives-Scalar) | 1KB          |     6,233.3 ns |    11.37 ns |    10.08 ns |         - |
+| Encrypt · SM4-CBC (BouncyCastle)       | 1KB          |     8,342.4 ns |     8.84 ns |     7.38 ns |      40 B |
 |                                        |              |                |             |             |           |
-| Decrypt · SM4-CBC (CryptoHives-Scalar) | 8KB          |    44,187.6 ns |   142.25 ns |   126.10 ns |         - |
-| Decrypt · SM4-CBC (BouncyCastle)       | 8KB          |    63,006.5 ns |   175.02 ns |   163.72 ns |      40 B |
+| Decrypt · SM4-CBC (CryptoHives-Scalar) | 8KB          |    45,685.6 ns |    73.29 ns |    64.97 ns |         - |
+| Decrypt · SM4-CBC (BouncyCastle)       | 8KB          |    63,440.4 ns |   121.66 ns |   107.84 ns |      40 B |
 |                                        |              |                |             |             |           |
-| Encrypt · SM4-CBC (CryptoHives-Scalar) | 8KB          |    49,049.6 ns |   104.41 ns |    97.66 ns |         - |
-| Encrypt · SM4-CBC (BouncyCastle)       | 8KB          |    64,173.3 ns |   190.27 ns |   177.98 ns |      40 B |
+| Encrypt · SM4-CBC (CryptoHives-Scalar) | 8KB          |    49,100.0 ns |    90.69 ns |    84.83 ns |         - |
+| Encrypt · SM4-CBC (BouncyCastle)       | 8KB          |    64,509.4 ns |   109.14 ns |    96.75 ns |      40 B |
 |                                        |              |                |             |             |           |
-| Decrypt · SM4-CBC (CryptoHives-Scalar) | 128KB        |   705,026.4 ns | 2,455.70 ns | 2,297.06 ns |         - |
-| Decrypt · SM4-CBC (BouncyCastle)       | 128KB        | 1,000,424.7 ns | 2,507.68 ns | 2,094.03 ns |      40 B |
+| Decrypt · SM4-CBC (CryptoHives-Scalar) | 128KB        |   727,746.9 ns |   970.63 ns |   860.44 ns |         - |
+| Decrypt · SM4-CBC (BouncyCastle)       | 128KB        | 1,005,229.8 ns | 1,246.91 ns | 1,041.23 ns |      40 B |
 |                                        |              |                |             |             |           |
-| Encrypt · SM4-CBC (CryptoHives-Scalar) | 128KB        |   777,629.4 ns | 1,589.16 ns | 1,486.50 ns |         - |
-| Encrypt · SM4-CBC (BouncyCastle)       | 128KB        | 1,024,598.9 ns | 2,702.42 ns | 2,527.85 ns |      40 B |
+| Encrypt · SM4-CBC (CryptoHives-Scalar) | 128KB        |   784,189.1 ns | 1,390.73 ns | 1,300.89 ns |         - |
+| Encrypt · SM4-CBC (BouncyCastle)       | 128KB        | 1,026,462.0 ns | 2,253.74 ns | 2,108.15 ns |      40 B |

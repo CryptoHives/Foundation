@@ -1,10 +1,10 @@
-## CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
 ---
 
-## CryptoHives.Foundation.Memory
+## 🧠 CryptoHives.Foundation.Memory
 
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Memory.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Memory)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
@@ -13,7 +13,7 @@ Pooled buffer management for .NET, built to keep allocations and GC pressure out
 
 ---
 
-## Installation
+## 📥 Installation
 
 ```bash
 dotnet add package CryptoHives.Foundation.Memory
@@ -21,9 +21,9 @@ dotnet add package CryptoHives.Foundation.Memory
 
 ---
 
-## Key Features
+## ✨ Key Features
 
-- **Pooled memory streams** — a `MemoryStream` replacement backed by `ArrayPool<byte>.Shared`; no resize-copy, no LOH pressure
+- **Pooled memory streams**
 - **Zero-copy handoff** — expose written data as a `ReadOnlySequence<byte>` without copying anything
 - **`IBufferWriter<T>` support** — `ArrayPoolBufferWriter<T>` works directly with `Utf8JsonWriter`, `PipeWriter`, or any other `IBufferWriter` consumer
 - **Read-only sequence streaming** — wrap an existing `ReadOnlySequence<byte>` as a `Stream` without copying
@@ -32,7 +32,7 @@ dotnet add package CryptoHives.Foundation.Memory
 
 ---
 
-## Quick Examples
+## 💡 Quick Examples
 
 ### Pooled Memory Stream
 
@@ -126,7 +126,7 @@ ISegmentOwner<byte> none = EmptySegment<byte>.Instance;
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 | Resource | Link |
 |----------|------|
@@ -136,13 +136,13 @@ ISegmentOwner<byte> none = EmptySegment<byte>.Instance;
 
 ---
 
-## Security Policy
+## 🚨 Security Policy
 
 If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 
-## License
+## ⚖️ License
 
 MIT — © 2026 The Keepers of the CryptoHives
 

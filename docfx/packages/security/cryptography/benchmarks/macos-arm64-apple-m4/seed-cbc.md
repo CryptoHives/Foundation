@@ -1,25 +1,25 @@
 ﻿| Description                             | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |---------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| Decrypt · SEED-CBC (CryptoHives-Scalar) | 128B         |     1.352 μs | 0.0154 μs | 0.0128 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle)       | 128B         |     1.438 μs | 0.0145 μs | 0.0121 μs |     152 B |
+| Decrypt · SEED-CBC (CryptoHives-Scalar) | 128B         |     1.351 μs | 0.0022 μs | 0.0021 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle)       | 128B         |     1.429 μs | 0.0042 μs | 0.0039 μs |     152 B |
 |                                         |              |              |           |           |           |
-| Encrypt · SEED-CBC (BouncyCastle)       | 128B         |     1.475 μs | 0.0066 μs | 0.0058 μs |     152 B |
-| Encrypt · SEED-CBC (CryptoHives-Scalar) | 128B         |     1.493 μs | 0.0072 μs | 0.0067 μs |         - |
+| Encrypt · SEED-CBC (CryptoHives-Scalar) | 128B         |     1.396 μs | 0.0040 μs | 0.0037 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle)       | 128B         |     1.462 μs | 0.0046 μs | 0.0043 μs |     152 B |
 |                                         |              |              |           |           |           |
-| Decrypt · SEED-CBC (CryptoHives-Scalar) | 1KB          |     9.553 μs | 0.0354 μs | 0.0314 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle)       | 1KB          |     9.780 μs | 0.0552 μs | 0.0490 μs |     152 B |
+| Decrypt · SEED-CBC (CryptoHives-Scalar) | 1KB          |     9.615 μs | 0.0341 μs | 0.0319 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle)       | 1KB          |     9.828 μs | 0.0226 μs | 0.0201 μs |     152 B |
 |                                         |              |              |           |           |           |
-| Encrypt · SEED-CBC (BouncyCastle)       | 1KB          |    10.390 μs | 0.1815 μs | 0.1698 μs |     152 B |
-| Encrypt · SEED-CBC (CryptoHives-Scalar) | 1KB          |    11.119 μs | 0.1949 μs | 0.2733 μs |         - |
+| Encrypt · SEED-CBC (CryptoHives-Scalar) | 1KB          |    10.059 μs | 0.0292 μs | 0.0273 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle)       | 1KB          |    10.188 μs | 0.0437 μs | 0.0408 μs |     152 B |
 |                                         |              |              |           |           |           |
-| Decrypt · SEED-CBC (CryptoHives-Scalar) | 8KB          |    74.943 μs | 0.3096 μs | 0.2896 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle)       | 8KB          |    76.362 μs | 0.3769 μs | 0.3342 μs |     152 B |
+| Decrypt · SEED-CBC (CryptoHives-Scalar) | 8KB          |    75.615 μs | 0.1927 μs | 0.1803 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle)       | 8KB          |    76.879 μs | 0.2183 μs | 0.2042 μs |     152 B |
 |                                         |              |              |           |           |           |
-| Encrypt · SEED-CBC (BouncyCastle)       | 8KB          |    80.960 μs | 1.2714 μs | 1.0617 μs |     152 B |
-| Encrypt · SEED-CBC (CryptoHives-Scalar) | 8KB          |    85.853 μs | 0.4465 μs | 0.3958 μs |         - |
+| Encrypt · SEED-CBC (CryptoHives-Scalar) | 8KB          |    79.385 μs | 0.2414 μs | 0.2258 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle)       | 8KB          |    80.066 μs | 0.3611 μs | 0.3378 μs |     152 B |
 |                                         |              |              |           |           |           |
-| Decrypt · SEED-CBC (CryptoHives-Scalar) | 128KB        | 1,192.777 μs | 8.1407 μs | 7.2165 μs |         - |
-| Decrypt · SEED-CBC (BouncyCastle)       | 128KB        | 1,225.473 μs | 8.5432 μs | 7.9913 μs |     152 B |
+| Decrypt · SEED-CBC (CryptoHives-Scalar) | 128KB        | 1,208.888 μs | 3.6126 μs | 3.3792 μs |         - |
+| Decrypt · SEED-CBC (BouncyCastle)       | 128KB        | 1,228.906 μs | 5.4685 μs | 5.1153 μs |     152 B |
 |                                         |              |              |           |           |           |
-| Encrypt · SEED-CBC (BouncyCastle)       | 128KB        | 1,286.279 μs | 4.3548 μs | 3.8605 μs |     152 B |
-| Encrypt · SEED-CBC (CryptoHives-Scalar) | 128KB        | 1,368.396 μs | 9.5930 μs | 7.4896 μs |         - |
+| Encrypt · SEED-CBC (CryptoHives-Scalar) | 128KB        | 1,268.079 μs | 4.5537 μs | 4.2596 μs |         - |
+| Encrypt · SEED-CBC (BouncyCastle)       | 128KB        | 1,276.503 μs | 3.3576 μs | 3.1407 μs |     152 B |

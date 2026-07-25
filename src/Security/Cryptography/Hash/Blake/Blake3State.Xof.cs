@@ -4,9 +4,9 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
-using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 /// <summary>
 /// BLAKE3 XOF (extendable-output) implementation using counter-mode output expansion.
@@ -22,16 +22,16 @@ internal unsafe partial struct Blake3State
     {
         fixed (Blake3State* core = &this)
         {
-            var destination = new Span<byte>(core->_squeezeBuf, BlockSizeBytes);
+            byte* dst = core->_squeezeBuf;
             if (!_squeezed)
             {
-                FinalizeRoot();
+                FinalizeRoot(core);
                 _squeezed = true;
                 _outputCounter = 0;
                 _squeezeOffset = 0;
 
                 // Fill the first squeeze buffer block (counter = 0)
-                SqueezeRootBlock(0, destination);
+                SqueezeRootBlock(core, 0, dst);
             }
 
             int remaining = output.Length;
@@ -53,14 +53,23 @@ internal unsafe partial struct Blake3State
                 if (_squeezeOffset == BlockSizeBytes)
                 {
                     _outputCounter++;
-                    SqueezeRootBlock(_outputCounter, destination);
+                    SqueezeRootBlock(core, _outputCounter, dst);
                     _squeezeOffset = 0;
                 }
             }
 
-            // Process full 64-byte output blocks
-            while (remaining >= BlockSizeBytes)
+            // Process full 64-byte output blocks. Unlike chunk compression,
+            // squeeze blocks have no chaining dependency on each other — each
+            // is an independent function of (_rootCv, _rootBlock, counter) —
+            // so instead of one SqueezeRootBlock call per block (each reloading
+            // _rootCv/_rootBlock and round-tripping through _squeezeBuf), batch
+            // everything but the already-buffered current block and the
+            // look-ahead block directly into the caller's span.
+            int fullBlocks = remaining / BlockSizeBytes;
+            if (fullBlocks > 0)
             {
+                // Block _outputCounter is already sitting in _squeezeBuf from
+                // the previous iteration/call — just copy it out.
                 Unsafe.CopyBlockUnaligned(
                     ref MemoryMarshal.GetReference(output.Slice(destOffset)),
                     ref core->_squeezeBuf[0],
@@ -68,8 +77,23 @@ internal unsafe partial struct Blake3State
                 destOffset += BlockSizeBytes;
                 remaining -= BlockSizeBytes;
 
-                _outputCounter++;
-                SqueezeRootBlock(_outputCounter, destination);
+                int extraBlocks = fullBlocks - 1;
+                if (extraBlocks > 0)
+                {
+                    fixed (byte* extraDst = output.Slice(destOffset, extraBlocks * BlockSizeBytes))
+                    {
+                        SqueezeRootBlocks(core, _outputCounter + 1, extraBlocks, extraDst);
+                    }
+
+                    destOffset += extraBlocks * BlockSizeBytes;
+                    remaining -= extraBlocks * BlockSizeBytes;
+                }
+
+                _outputCounter += (ulong)fullBlocks;
+
+                // Look-ahead: prime _squeezeBuf with the next block for a
+                // trailing partial read below, or a future Squeeze call.
+                SqueezeRootBlock(core, _outputCounter, dst);
                 _squeezeOffset = 0;
             }
 
@@ -89,108 +113,113 @@ internal unsafe partial struct Blake3State
     /// Finalizes the root hash computation by processing any remaining chunks
     /// and combining all chaining values into the final root output.
     /// </summary>
-    private void FinalizeRoot()
+    private void FinalizeRoot(Blake3State* core)
     {
         if (_cvStackDepth == 0 && _chunkCounter == 0)
         {
-            // Single chunk case
-            SaveChunkAsRoot();
+            // Single chunk case — source is the incremental chunk buffer,
+            // rather than the caller's own source span (see SaveChunkAsRootFromSource).
+            SaveChunkAsRoot(core, core->_chunkBuffer, _chunkBufferLength);
         }
         else
         {
             // Multi-chunk case - finalize current chunk and push onto stack
-            fixed (Blake3State* core = &this)
+#if NET8_0_OR_GREATER
+            // A bulk SIMD path (AVX2 batching) may have already computed the
+            // pending chunk's CV without being able to commit it to the tree
+            // yet (see Append) — use it directly instead of re-deriving it
+            // from _chunkBuffer/_cv, which wouldn't hold this chunk's data.
+            if (_hasPendingCv)
+            {
+                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * 8, core->_pendingCv, KeySizeWords * (uint)sizeof(uint));
+            }
+            else
+#endif
             {
                 FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * 8);
+            }
 
-                _cvStackDepth++;
+            _cvStackDepth++;
 
-                // Merge all CVs in the stack
-                while (_cvStackDepth > 1)
+            // Merge all CVs in the stack
+            while (_cvStackDepth > 1)
+            {
+                uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * 8;
+                uint* right = core->_cvStackBuf + (_cvStackDepth - 1) * 8;
+
+                if (_cvStackDepth == 2)
                 {
-                    uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * 8;
-                    uint* right = core->_cvStackBuf + (_cvStackDepth - 1) * 8;
-
-                    if (_cvStackDepth == 2)
-                    {
-                        SaveParentAsRoot(core, left, right);
-                        return;
-                    }
-
-                    ComputeParentCv(left, right, left);
-
-                    _cvStackDepth--;
+                    SaveParentAsRoot(core, left, right);
+                    return;
                 }
 
-                // Single CV remaining — treat as parent root with zero right child
-                if (_cvStackDepth == 1)
-                {
-                    uint* zr = stackalloc uint[8];
-                    SaveParentAsRoot(core, core->_cvStackBuf, zr);
-                }
+                // left/right are adjacent stack slots — the contiguous
+                // 64-byte parent block ComputeParentCv reads directly.
+                ComputeParentCv(left, core->_keyWords, left);
+
+                _cvStackDepth--;
+            }
+
+            // Single CV remaining — treat as parent root with zero right child
+            if (_cvStackDepth == 1)
+            {
+                uint* zr = stackalloc uint[8];
+                SaveParentAsRoot(core, core->_cvStackBuf, zr);
             }
         }
     }
 
     /// <summary>
-    /// Saves the single-chunk root node parameters for counter-mode output.
+    /// Saves the single-chunk root node parameters for counter-mode output, for
+    /// a message of at most one chunk. Serves both the streaming case (source =
+    /// the incremental <c>_chunkBuffer</c>) and the one-shot case (source = the
+    /// caller's buffer directly, skipping the copy-in streaming requires).
     /// </summary>
-    private void SaveChunkAsRoot()
+    /// <remarks>
+    /// Requires <c>_chunkCounter == 0</c> and <c>_cv</c> holding the IV or key,
+    /// true for both call sites.
+    /// </remarks>
+    [SkipLocalsInit]
+    private void SaveChunkAsRoot(Blake3State* core, byte* srcPtr, int length)
     {
-        // Compute last block boundary via integer math
-        int lastBlockOffset = (_chunkBufferLength <= BlockSizeBytes) ? 0
-            : (_chunkBufferLength - 1) / BlockSizeBytes * BlockSizeBytes;
-        int lastBlockLen = _chunkBufferLength - lastBlockOffset;
+        int lastBlockOffset = (length <= BlockSizeBytes) ? 0
+            : (length - 1) / BlockSizeBytes * BlockSizeBytes;
+        int lastBlockLen = length - lastBlockOffset;
 
-        fixed (Blake3State* core = &this)
+        uint flags = _baseFlags | FlagChunkStart;
+
+        // Process all blocks except the last — compress directly from the source
+        byte* p = srcPtr;
+        byte* pEnd = srcPtr + lastBlockOffset;
+        if (p < pEnd)
         {
-            // Process all blocks except the last — compress directly from chunk buffer
-            byte* p = core->_chunkBuffer;
-            byte* pEnd = p + lastBlockOffset;
-            while (p < pEnd)
-            {
-                uint flags = _baseFlags;
-                if (_blocksCompressed == 0)
-                {
-                    flags |= FlagChunkStart;
-                }
+            int blocks = lastBlockOffset / BlockSizeBytes;
+            CompressBlocks(core->_cv, p, blocks, BlockSizeBytes, _chunkCounter, flags);
 
-                CompressBlock(core->_cv, p, BlockSizeBytes, _chunkCounter, flags);
-
-                _blocksCompressed++;
-                p += BlockSizeBytes;
-            }
-
-            // Save root parameters from the last block
-            uint finalFlags = _baseFlags | FlagChunkEnd | FlagRoot;
-            if (_blocksCompressed == 0)
-            {
-                finalFlags |= FlagChunkStart;
-            }
-
-            uint* rb = core->_rootBlock;
-            if (lastBlockLen == BlockSizeBytes)
-            {
-                // Full last block: read directly from chunk buffer
-                BinarySpans.ReadUInt32LittleEndian(core->_chunkBuffer + lastBlockOffset, rb, BlockSizeWords);
-            }
-            else
-            {
-                // Partial last block: stackalloc is zero-initialized for padding
-                byte* block = stackalloc byte[BlockSizeBytes];
-                if (lastBlockLen > 0)
-                {
-                    Unsafe.CopyBlockUnaligned(ref *block, ref core->_chunkBuffer[lastBlockOffset], (uint)lastBlockLen);
-                }
-
-                BinarySpans.ReadUInt32LittleEndian(block, rb, BlockSizeWords);
-            }
-
-            Unsafe.CopyBlock(core->_rootCv, core->_cv, KeySizeWords * (uint)sizeof(uint));
-
-            _rootBlockLen = (uint)lastBlockLen;
-            _rootFlags = finalFlags;
+            p = pEnd;
+            flags = _baseFlags;
         }
+
+        uint finalFlags = flags | FlagChunkEnd | FlagRoot;
+
+        uint* rb = core->_rootBlock;
+        if (BitConverter.IsLittleEndian)
+        {
+            Unsafe.CopyBlockUnaligned(ref *(byte*)rb, ref *pEnd, (uint)lastBlockLen);
+            Unsafe.InitBlockUnaligned((byte*)rb + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
+        }
+        else
+        {
+            byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.CopyBlockUnaligned(ref *block, ref *pEnd, (uint)lastBlockLen);
+            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
+            BinarySpans.ReadUInt32LittleEndian(block, rb, BlockSizeWords);
+        }
+
+        Unsafe.CopyBlock(core->_rootCv, core->_cv, KeySizeWords * (uint)sizeof(uint));
+
+        _rootBlockLen = (uint)lastBlockLen;
+        _rootFlags = finalFlags;
     }
 
     /// <summary>
@@ -206,51 +235,135 @@ internal unsafe partial struct Blake3State
         _rootFlags = _baseFlags | FlagParent | FlagRoot;
     }
 
+    // Single-block squeeze has the same no-independent-work problem as
+    // CompressBlock (see Blake3State.cs) — NEON-tier instances use scalar here too.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void SqueezeRootBlock(ulong counter, Span<byte> destination)
+    private void SqueezeRootBlock(Blake3State* core, ulong counter, byte* dst)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
         {
-            SqueezeRootBlockSsse3(counter, destination);
-        }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
-        {
-            SqueezeRootBlockNeon(counter, destination);
+            SqueezeRootBlocksSsse3(core, counter, 1, dst);
         }
         else
 #endif
         {
-            SqueezeRootBlockScalar(counter, destination);
+            SqueezeRootBlocksScalar(core, counter, 1, dst);
         }
     }
 
+    /// <summary>
+    /// Squeezes <paramref name="blocks"/> consecutive, independent output blocks
+    /// (counters <paramref name="startCounter"/>.. <paramref name="startCounter"/>
+    /// + <paramref name="blocks"/> - 1) directly into <paramref name="dst"/>
+    /// in one call.
+    /// </summary>
+    /// <remarks>
+    /// Unlike chunk compression, squeeze blocks have no chaining dependency on
+    /// each other — each is an independent function of (<c>_rootCv</c>,
+    /// <c>_rootBlock</c>, counter) — so batching loads them once per tier
+    /// kernel and writes straight into the caller's span. On AVX2/AVX512F,
+    /// that independence lets <c>SqueezeRootBlocks8Avx2</c> compute 8 blocks
+    /// in parallel; leftover blocks fall back to the single-lane SSSE3 kernel.
+    /// No AVX-512-specific squeeze kernel exists: <c>CompressVector512</c>
+    /// only exposes the folded CV, not the second half a squeeze block needs.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void SqueezeRootBlocks(Blake3State* core, ulong startCounter, int blocks, byte* dst)
+    {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        {
+            int offset = 0;
+            int fullGroups = blocks / ChunksPerAvx2Batch;
+            for (int g = 0; g < fullGroups; g++)
+            {
+                SqueezeRootBlocks8Avx2(
+                    core,
+                    startCounter + (ulong)(g * ChunksPerAvx2Batch),
+                    dst + offset);
+                offset += ChunksPerAvx2Batch * BlockSizeBytes;
+            }
+
+            int remaining = blocks - fullGroups * ChunksPerAvx2Batch;
+            if (remaining > 0)
+            {
+                SqueezeRootBlocksSsse3(
+                    core, startCounter + (ulong)(fullGroups * ChunksPerAvx2Batch), remaining, dst + offset);
+            }
+        }
+        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            SqueezeRootBlocksSsse3(core, startCounter, blocks, dst);
+        }
+        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        {
+            int offset = 0;
+            int fullGroups = blocks / ChunksPerNeonBatch;
+            for (int g = 0; g < fullGroups; g++)
+            {
+                SqueezeRootBlocks4Neon(
+                    core,
+                    startCounter + (ulong)(g * ChunksPerNeonBatch),
+                    dst + offset);
+                offset += ChunksPerNeonBatch * BlockSizeBytes;
+            }
+
+            // 0-3 leftover blocks fall back to scalar — see SqueezeRootBlock.
+            int remaining = blocks - fullGroups * ChunksPerNeonBatch;
+            if (remaining > 0)
+            {
+                SqueezeRootBlocksScalar(
+                    core, startCounter + (ulong)(fullGroups * ChunksPerNeonBatch), remaining, dst + offset);
+            }
+        }
+        else
+#endif
+        {
+            SqueezeRootBlocksScalar(core, startCounter, blocks, dst);
+        }
+    }
+
+    // v0..v15 are named locals for the same reason as CompressBlocksScalar;
+    // outBuf stages only the final per-block output for the bulk byte write.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void SqueezeRootBlockScalar(ulong counter, Span<byte> destination)
+    private void SqueezeRootBlocksScalar(Blake3State* core, ulong startCounter, int blocks, byte* dst)
     {
-        uint* v = stackalloc uint[BlockSizeWords];
-        v[0] = _rootCv[0]; v[1] = _rootCv[1]; v[2] = _rootCv[2]; v[3] = _rootCv[3];
-        v[4] = _rootCv[4]; v[5] = _rootCv[5]; v[6] = _rootCv[6]; v[7] = _rootCv[7];
-        v[8] = IV[0]; v[9] = IV[1]; v[10] = IV[2]; v[11] = IV[3];
-        v[12] = (uint)counter;
-        v[13] = (uint)(counter >> 32);
-        v[14] = _rootBlockLen;
-        v[15] = _rootFlags;
+        uint blockLen = _rootBlockLen;
+        uint flags = _rootFlags;
+        uint* rootCv = core->_rootCv;
+        uint cv0 = rootCv[0], cv1 = rootCv[1], cv2 = rootCv[2], cv3 = rootCv[3];
+        uint cv4 = rootCv[4], cv5 = rootCv[5], cv6 = rootCv[6], cv7 = rootCv[7];
+        uint* outBuf = stackalloc uint[BlockSizeWords];
 
-        fixed (uint* rb = _rootBlock)
+        // Raw pointer stores instead of Span.Slice: the caller always sizes
+        // destination to exactly blocks * BlockSizeBytes, but that guarantee
+        // isn't visible across the call boundary, so Slice would otherwise
+        // re-check bounds on every block.
+        for (int i = 0; i < blocks; i++)
         {
-            Compress(v, rb);
-        }
+            ulong counter = startCounter + (ulong)i;
 
-        // Full 16-word output: v[i] ^ v[i+8] || v[i+8] ^ rootCv[i]
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(i * sizeof(uint)), v[i] ^ v[i + 8]);
-        }
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(32 + i * sizeof(uint)), v[i + 8] ^ _rootCv[i]);
+            uint v0 = cv0, v1 = cv1, v2 = cv2, v3 = cv3;
+            uint v4 = cv4, v5 = cv5, v6 = cv6, v7 = cv7;
+            uint v8 = IV0, v9 = IV1, v10 = IV2, v11 = IV3;
+            uint v12 = (uint)counter;
+            uint v13 = (uint)(counter >> 32);
+            uint v14 = blockLen;
+            uint v15 = flags;
+
+            Compress(
+                ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+                ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+                core->_rootBlock);
+
+            outBuf[0] = v0 ^ v8; outBuf[1] = v1 ^ v9; outBuf[2] = v2 ^ v10; outBuf[3] = v3 ^ v11;
+            outBuf[4] = v4 ^ v12; outBuf[5] = v5 ^ v13; outBuf[6] = v6 ^ v14; outBuf[7] = v7 ^ v15;
+            outBuf[8] = v8 ^ cv0; outBuf[9] = v9 ^ cv1; outBuf[10] = v10 ^ cv2; outBuf[11] = v11 ^ cv3;
+            outBuf[12] = v12 ^ cv4; outBuf[13] = v13 ^ cv5; outBuf[14] = v14 ^ cv6; outBuf[15] = v15 ^ cv7;
+
+            BinarySpans.WriteUInt32LittleEndian(outBuf, dst + i * BlockSizeBytes, BlockSizeWords);
         }
     }
 }
