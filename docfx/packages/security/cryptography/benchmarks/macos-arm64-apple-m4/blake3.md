@@ -1,134 +1,134 @@
-﻿| Description                                  | TestDataSize | Mean             | Error         | StdDev        | Allocated |
-|--------------------------------------------- |------------- |-----------------:|--------------:|--------------:|----------:|
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 4B           |         53.00 ns |      0.036 ns |      0.032 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 4B           |         54.46 ns |      0.094 ns |      0.088 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 4B           |         63.18 ns |      0.139 ns |      0.109 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 4B           |         64.65 ns |      0.071 ns |      0.059 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 4B           |         65.12 ns |      0.105 ns |      0.093 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 4B           |        326.79 ns |      0.875 ns |      0.819 ns |         - |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 100B         |        100.43 ns |      0.054 ns |      0.048 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 100B         |        109.29 ns |      0.077 ns |      0.069 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 100B         |        123.03 ns |      0.175 ns |      0.155 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 100B         |        124.56 ns |      0.260 ns |      0.231 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 100B         |        124.57 ns |      0.129 ns |      0.108 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 100B         |        715.73 ns |      2.360 ns |      2.092 ns |         - |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 128B         |        100.82 ns |      0.213 ns |      0.188 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 128B         |        109.18 ns |      0.205 ns |      0.182 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 128B         |        123.07 ns |      0.301 ns |      0.282 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 128B         |        124.13 ns |      0.081 ns |      0.068 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 128B         |        124.44 ns |      0.114 ns |      0.101 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 128B         |        718.62 ns |      2.028 ns |      1.897 ns |         - |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 137B         |        147.70 ns |      0.099 ns |      0.093 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 137B         |        165.52 ns |      0.095 ns |      0.080 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 137B         |        180.50 ns |      0.337 ns |      0.315 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 137B         |        180.72 ns |      0.100 ns |      0.094 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 137B         |        183.02 ns |      0.163 ns |      0.152 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 137B         |      1,065.49 ns |      3.493 ns |      3.267 ns |         - |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1000B        |        778.24 ns |      0.407 ns |      0.361 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1000B        |        896.92 ns |      1.539 ns |      1.440 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1000B        |        900.76 ns |      1.679 ns |      1.571 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1000B        |        903.95 ns |      1.567 ns |      1.466 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 1000B        |        971.28 ns |      0.722 ns |      0.676 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 1000B        |      5,440.58 ns |     10.972 ns |     10.264 ns |         - |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1KB          |        777.28 ns |      0.437 ns |      0.408 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1KB          |        898.68 ns |      0.403 ns |      0.377 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1KB          |        902.20 ns |      1.670 ns |      1.562 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1KB          |        903.20 ns |      1.566 ns |      1.465 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 1KB          |        970.71 ns |      0.708 ns |      0.591 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 1KB          |      5,415.90 ns |     15.182 ns |     14.201 ns |         - |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1025B        |        877.36 ns |      0.686 ns |      0.642 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1025B        |      1,024.98 ns |      0.674 ns |      0.630 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1025B        |      1,037.81 ns |      0.807 ns |      0.755 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1025B        |      1,039.48 ns |      0.422 ns |      0.395 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 1025B        |      1,141.33 ns |      4.170 ns |      3.901 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 1025B        |      6,156.11 ns |     10.293 ns |      9.628 ns |      56 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 2KB          |      1,598.67 ns |      0.943 ns |      0.882 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 2KB          |      1,873.47 ns |      2.297 ns |      2.036 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 2KB          |      1,876.09 ns |      3.882 ns |      3.631 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 2KB          |      1,947.88 ns |     11.742 ns |     10.983 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 2KB          |      2,056.00 ns |      7.109 ns |      6.650 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 2KB          |     11,169.36 ns |     37.806 ns |     33.514 ns |      56 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 4KB          |      1,716.47 ns |      5.869 ns |      5.490 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 4KB          |      1,989.89 ns |      5.170 ns |      4.583 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 4KB          |      2,077.39 ns |     13.148 ns |     12.298 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 4KB          |      3,081.70 ns |      8.964 ns |      8.385 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 4KB          |      3,806.22 ns |      1.335 ns |      1.184 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 4KB          |     22,656.68 ns |     65.397 ns |     61.172 ns |     168 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 6KB          |      3,279.30 ns |     10.262 ns |      9.599 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 6KB          |      3,883.75 ns |     17.287 ns |     16.170 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 6KB          |      4,134.45 ns |     18.593 ns |     17.392 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 6KB          |      4,190.80 ns |     17.513 ns |     16.381 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 6KB          |      5,735.74 ns |      2.391 ns |      1.997 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 6KB          |     34,223.55 ns |    104.399 ns |     97.655 ns |     280 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 8KB          |      3,397.75 ns |     14.074 ns |     13.165 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 8KB          |      3,911.61 ns |     20.130 ns |     18.830 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 8KB          |      4,257.87 ns |     17.720 ns |     16.576 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 8KB          |      5,209.47 ns |     25.549 ns |     23.899 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 8KB          |      7,658.06 ns |     18.796 ns |     17.582 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 8KB          |     45,765.55 ns |     85.011 ns |     79.519 ns |     392 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 10000B       |      4,783.76 ns |     29.657 ns |     26.290 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 10000B       |      5,631.57 ns |     12.301 ns |     10.905 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 10000B       |      5,987.25 ns |     16.951 ns |     15.856 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 10000B       |      6,134.47 ns |     19.187 ns |     17.947 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 10000B       |      9,434.37 ns |      3.898 ns |      3.647 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 10000B       |     56,274.31 ns |     87.787 ns |     82.116 ns |     504 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 64KB         |     26,897.40 ns |    121.650 ns |    113.791 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 64KB         |     30,901.58 ns |    139.030 ns |    130.049 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 64KB         |     34,502.61 ns |    121.423 ns |    107.639 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 64KB         |     35,131.39 ns |    136.074 ns |    127.284 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 64KB         |     61,669.89 ns |     79.719 ns |     74.570 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 64KB         |    367,973.91 ns |    602.929 ns |    563.980 ns |    3528 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 100000B      |     41,710.37 ns |    167.874 ns |    157.030 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 100000B      |     48,005.16 ns |    105.898 ns |     99.057 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 100000B      |     51,084.84 ns |    186.817 ns |    174.749 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 100000B      |     53,061.35 ns |    198.177 ns |    185.375 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 100000B      |     94,242.71 ns |     32.780 ns |     30.663 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 100000B      |    561,140.30 ns |  1,089.610 ns |  1,019.222 ns |    5432 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 128KB        |     53,898.46 ns |    129.109 ns |    120.768 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 128KB        |     61,858.86 ns |    126.669 ns |    105.775 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 128KB        |     66,972.53 ns |    341.751 ns |    319.674 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 128KB        |     69,462.00 ns |    215.040 ns |    201.149 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 128KB        |    123,434.03 ns |    277.067 ns |    259.168 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 128KB        |    736,167.44 ns |    853.280 ns |    798.159 ns |    7112 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 256KB        |    108,024.22 ns |    315.940 ns |    295.530 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 256KB        |    124,039.82 ns |    364.732 ns |    341.171 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 256KB        |    131,924.95 ns |    490.509 ns |    458.822 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 256KB        |    138,200.32 ns |    374.070 ns |    312.365 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 256KB        |    247,839.72 ns |    166.252 ns |    155.512 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 256KB        |  1,473,718.46 ns |  1,965.098 ns |  1,838.154 ns |   14280 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 512KB        |    216,001.60 ns |    915.066 ns |    855.953 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 512KB        |    247,967.15 ns |    763.441 ns |    714.124 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 512KB        |    261,527.41 ns |  1,495.404 ns |  1,398.802 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 512KB        |    275,614.31 ns |    915.304 ns |    856.176 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 512KB        |    495,721.46 ns |    343.993 ns |    321.771 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 512KB        |  2,954,383.20 ns |  3,533.620 ns |  3,305.350 ns |   28616 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1MB          |    412,776.66 ns |  2,058.449 ns |  1,925.475 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1MB          |    473,715.60 ns |  1,216.776 ns |  1,078.640 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1MB          |    496,141.03 ns |  3,008.136 ns |  2,813.813 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 1MB          |    524,639.15 ns |  2,132.628 ns |  1,994.862 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1MB          |    946,109.68 ns |    539.585 ns |    478.328 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 1MB          |  5,636,968.03 ns |  7,466.008 ns |  6,983.708 ns |   54656 B |
-|                                              |              |                  |               |               |           |
-| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 10MB         |  4,128,383.81 ns | 13,427.105 ns | 11,902.779 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 10MB         |  4,740,555.78 ns |  9,221.888 ns |  8,174.964 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 10MB         |  4,959,240.92 ns | 23,679.292 ns | 22,149.625 ns |         - |
-| TryComputeHash · BLAKE3 · Blake3.Managed     | 10MB         |  5,251,388.56 ns | 15,482.254 ns | 14,482.110 ns |         - |
-| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 10MB         |  9,468,812.76 ns |  3,750.708 ns |  3,508.414 ns |         - |
-| TryComputeHash · BLAKE3 · BouncyCastle       | 10MB         | 56,454,643.20 ns | 88,459.757 ns | 82,745.312 ns |  548211 B |
+﻿| Description                                  | TestDataSize | Mean             | Error         | StdDev        | Median           | Allocated |
+|--------------------------------------------- |------------- |-----------------:|--------------:|--------------:|-----------------:|----------:|
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 4B           |         52.97 ns |      0.036 ns |      0.032 ns |         52.97 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 4B           |         54.31 ns |      0.115 ns |      0.107 ns |         54.36 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 4B           |         64.76 ns |      0.082 ns |      0.077 ns |         64.76 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 4B           |         64.79 ns |      0.199 ns |      0.176 ns |         64.74 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 4B           |         64.85 ns |      1.331 ns |      2.657 ns |         63.29 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 4B           |        331.62 ns |      0.662 ns |      0.620 ns |        331.65 ns |         - |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 100B         |        100.52 ns |      0.091 ns |      0.085 ns |        100.55 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 100B         |        109.22 ns |      0.065 ns |      0.057 ns |        109.24 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 100B         |        122.98 ns |      0.322 ns |      0.302 ns |        123.00 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 100B         |        124.64 ns |      0.060 ns |      0.056 ns |        124.64 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 100B         |        124.73 ns |      0.120 ns |      0.112 ns |        124.77 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 100B         |        723.54 ns |      1.623 ns |      1.439 ns |        723.79 ns |         - |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 128B         |        100.55 ns |      0.108 ns |      0.096 ns |        100.58 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 128B         |        109.27 ns |      0.123 ns |      0.115 ns |        109.29 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 128B         |        123.11 ns |      0.066 ns |      0.059 ns |        123.12 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 128B         |        124.22 ns |      0.058 ns |      0.054 ns |        124.22 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 128B         |        124.29 ns |      0.100 ns |      0.089 ns |        124.32 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 128B         |        724.12 ns |      0.461 ns |      0.431 ns |        724.16 ns |         - |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 137B         |        147.66 ns |      0.302 ns |      0.252 ns |        147.75 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 137B         |        165.73 ns |      0.182 ns |      0.142 ns |        165.70 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 137B         |        180.52 ns |      0.128 ns |      0.120 ns |        180.54 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 137B         |        180.83 ns |      0.155 ns |      0.138 ns |        180.78 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 137B         |        183.36 ns |      0.154 ns |      0.144 ns |        183.34 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 137B         |      1,078.03 ns |      0.838 ns |      0.784 ns |      1,078.10 ns |         - |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1000B        |        779.20 ns |      0.771 ns |      0.721 ns |        779.50 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1000B        |        899.01 ns |      1.051 ns |      0.932 ns |        899.38 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1000B        |        904.19 ns |      0.519 ns |      0.485 ns |        904.27 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1000B        |        911.99 ns |      0.797 ns |      0.745 ns |        912.10 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 1000B        |        971.66 ns |      0.465 ns |      0.434 ns |        971.72 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 1000B        |      5,500.59 ns |      3.606 ns |      3.011 ns |      5,501.02 ns |         - |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1KB          |        778.25 ns |      1.396 ns |      1.166 ns |        778.46 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1KB          |        898.70 ns |      2.013 ns |      1.784 ns |        899.41 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1KB          |        904.60 ns |      0.879 ns |      0.687 ns |        904.70 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1KB          |        909.91 ns |      0.188 ns |      0.147 ns |        909.95 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 1KB          |        970.31 ns |      2.615 ns |      2.446 ns |        971.53 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 1KB          |      5,477.95 ns |     12.591 ns |     11.161 ns |      5,481.40 ns |         - |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1025B        |        878.26 ns |      1.934 ns |      1.714 ns |        879.02 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1025B        |      1,025.66 ns |      0.728 ns |      0.645 ns |      1,025.93 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1025B        |      1,038.42 ns |      1.149 ns |      1.075 ns |      1,038.59 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1025B        |      1,039.98 ns |      0.531 ns |      0.471 ns |      1,040.03 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 1025B        |      1,143.05 ns |      4.721 ns |      4.416 ns |      1,141.49 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 1025B        |      6,209.15 ns |      4.378 ns |      4.095 ns |      6,210.05 ns |      56 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 2KB          |      1,600.49 ns |      3.272 ns |      3.060 ns |      1,601.74 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 2KB          |      1,872.00 ns |      3.839 ns |      3.205 ns |      1,872.98 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 2KB          |      1,873.83 ns |      0.608 ns |      0.508 ns |      1,873.66 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 2KB          |      1,875.24 ns |      1.110 ns |      1.039 ns |      1,875.18 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 2KB          |      2,064.18 ns |      3.414 ns |      2.851 ns |      2,064.07 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 2KB          |     11,269.75 ns |      7.885 ns |      6.156 ns |     11,270.62 ns |      56 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 4KB          |      1,758.00 ns |      3.636 ns |      3.223 ns |      1,757.67 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 4KB          |      2,021.42 ns |      3.835 ns |      3.587 ns |      2,022.59 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 4KB          |      2,141.96 ns |     10.248 ns |      8.001 ns |      2,141.42 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 4KB          |      3,132.28 ns |      7.243 ns |      6.421 ns |      3,133.12 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 4KB          |      3,804.89 ns |      6.050 ns |      5.052 ns |      3,806.50 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 4KB          |     22,871.76 ns |     14.648 ns |     12.232 ns |     22,872.49 ns |     168 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 6KB          |      3,357.55 ns |      9.936 ns |      9.294 ns |      3,358.53 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 6KB          |      3,937.75 ns |     11.627 ns |     10.876 ns |      3,939.38 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 6KB          |      4,074.60 ns |     12.781 ns |     11.330 ns |      4,074.13 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 6KB          |      4,245.83 ns |      9.360 ns |      8.297 ns |      4,244.74 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 6KB          |      5,735.43 ns |      4.085 ns |      3.621 ns |      5,737.00 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 6KB          |     34,479.00 ns |     30.925 ns |     28.927 ns |     34,488.15 ns |     280 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 8KB          |      3,459.60 ns |      6.863 ns |      6.420 ns |      3,460.10 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 8KB          |      3,956.21 ns |     15.993 ns |     14.960 ns |      3,959.47 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 8KB          |      4,341.32 ns |     10.857 ns |      9.066 ns |      4,338.69 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 8KB          |      5,288.37 ns |     29.699 ns |     27.781 ns |      5,284.02 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 8KB          |      7,666.86 ns |      3.550 ns |      3.321 ns |      7,666.93 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 8KB          |     45,994.19 ns |    156.232 ns |    138.496 ns |     46,059.16 ns |     392 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 10000B       |      4,841.69 ns |     21.988 ns |     19.491 ns |      4,840.15 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 10000B       |      5,691.48 ns |     19.558 ns |     18.295 ns |      5,684.84 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 10000B       |      6,059.42 ns |     12.354 ns |     10.951 ns |      6,056.62 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 10000B       |      6,196.31 ns |     18.290 ns |     15.273 ns |      6,198.78 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 10000B       |      9,435.67 ns |      3.756 ns |      3.514 ns |      9,437.38 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 10000B       |     56,703.98 ns |    116.419 ns |    108.898 ns |     56,738.20 ns |     504 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 64KB         |     27,195.21 ns |    104.277 ns |     97.541 ns |     27,166.85 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 64KB         |     31,134.41 ns |     94.613 ns |     88.501 ns |     31,134.28 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 64KB         |     34,790.79 ns |    149.622 ns |    132.636 ns |     34,769.86 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 64KB         |     35,352.18 ns |    117.031 ns |     97.726 ns |     35,325.21 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 64KB         |     61,692.03 ns |     32.798 ns |     30.679 ns |     61,698.95 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 64KB         |    369,768.37 ns |    269.022 ns |    251.643 ns |    369,823.22 ns |    3528 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 100000B      |     42,013.61 ns |    175.718 ns |    164.367 ns |     42,039.49 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 100000B      |     48,269.63 ns |    184.549 ns |    163.598 ns |     48,271.70 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 100000B      |     51,606.07 ns |    167.733 ns |    156.898 ns |     51,599.24 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 100000B      |     53,376.02 ns |    100.560 ns |     94.064 ns |     53,389.83 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 100000B      |     94,232.20 ns |    156.388 ns |    130.591 ns |     94,264.40 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 100000B      |    564,156.53 ns |    481.789 ns |    450.665 ns |    564,267.29 ns |    5432 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 128KB        |     54,350.96 ns |    165.857 ns |    155.143 ns |     54,345.14 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 128KB        |     62,301.07 ns |    168.132 ns |    149.045 ns |     62,227.18 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 128KB        |     67,482.23 ns |    292.625 ns |    273.722 ns |     67,379.24 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 128KB        |     69,800.96 ns |    166.161 ns |    155.428 ns |     69,824.64 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 128KB        |    123,583.83 ns |    110.485 ns |     97.942 ns |    123,603.55 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 128KB        |    738,558.23 ns |  1,513.290 ns |  1,415.532 ns |    738,626.67 ns |    7112 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 256KB        |    108,651.89 ns |    252.500 ns |    210.849 ns |    108,684.46 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 256KB        |    124,566.91 ns |    187.588 ns |    156.644 ns |    124,526.38 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 256KB        |    132,775.79 ns |    640.282 ns |    598.920 ns |    132,685.66 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 256KB        |    138,800.05 ns |    502.230 ns |    419.385 ns |    138,695.72 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 256KB        |    247,826.74 ns |    198.565 ns |    176.023 ns |    247,812.40 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 256KB        |  1,480,715.13 ns |  1,089.971 ns |  1,019.559 ns |  1,480,537.68 ns |   14280 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 512KB        |    217,583.75 ns |    761.879 ns |    712.662 ns |    217,803.47 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 512KB        |    249,297.55 ns |    692.283 ns |    647.562 ns |    249,115.07 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 512KB        |    263,275.38 ns |    684.678 ns |    606.949 ns |    263,198.58 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 512KB        |    276,571.93 ns |    875.877 ns |    776.442 ns |    276,491.47 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 512KB        |    495,478.30 ns |    951.264 ns |    889.813 ns |    495,713.09 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 512KB        |  2,961,078.59 ns |  2,094.360 ns |  1,959.066 ns |  2,961,681.80 ns |   28616 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 1MB          |    415,411.63 ns |    918.852 ns |    859.494 ns |    415,479.21 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 1MB          |    476,033.50 ns |    867.645 ns |    769.145 ns |    476,134.03 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 1MB          |    497,723.01 ns |  1,910.724 ns |  1,595.541 ns |    497,645.87 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 1MB          |    526,545.96 ns |  1,565.351 ns |  1,464.231 ns |    526,276.90 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 1MB          |    944,692.51 ns |  2,001.006 ns |  1,871.742 ns |    945,325.97 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 1MB          |  5,652,098.16 ns | 19,052.019 ns | 17,821.270 ns |  5,659,373.70 ns |   54656 B |
+|                                              |              |                  |               |               |                  |           |
+| TryComputeHash · BLAKE3 · Blake3.NET-Native  | 10MB         |  4,157,705.79 ns | 15,193.686 ns | 14,212.183 ns |  4,156,923.18 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.NET-Managed | 10MB         |  4,755,618.96 ns | 11,229.891 ns | 10,504.447 ns |  4,751,035.16 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Neon   | 10MB         |  4,989,673.61 ns | 20,243.750 ns | 18,936.016 ns |  4,982,011.06 ns |         - |
+| TryComputeHash · BLAKE3 · Blake3.Managed     | 10MB         |  5,271,584.13 ns | 12,496.189 ns | 11,077.546 ns |  5,271,597.66 ns |         - |
+| TryComputeHash · BLAKE3 · CryptoHives-Scalar | 10MB         |  9,459,721.23 ns |  4,390.697 ns |  3,892.239 ns |  9,459,468.12 ns |         - |
+| TryComputeHash · BLAKE3 · BouncyCastle       | 10MB         | 56,639,758.01 ns | 65,315.762 ns | 61,096.404 ns | 56,640,675.89 ns |  546840 B |

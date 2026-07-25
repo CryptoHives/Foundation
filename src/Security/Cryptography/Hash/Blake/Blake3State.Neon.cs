@@ -19,19 +19,6 @@ internal unsafe partial struct Blake3State
     /// <summary>
     /// Performs one G round on 4 parallel lanes using ARM NEON intrinsics.
     /// </summary>
-    /// <remarks>
-    /// Uses NEON TBL (VectorTableLookup) for byte-aligned rotations (16, 8) and
-    /// shift+or for non-byte-aligned rotations (12, 7). The shuffle masks
-    /// <see cref="RotateMask16"/> and <see cref="RotateMask8"/> are shared with the
-    /// SSSE3 path; they have identical semantics for PSHUFB and TBL on little-endian.
-    /// </remarks>
-    /// <remarks>
-    /// This same function also serves as the chunk-parallel G-function in
-    /// <see cref="CompressVector128"/>: whether <paramref name="a"/>..<paramref name="d"/>
-    /// hold one chunk's internal row state (lane = state word) or one message-schedule
-    /// column across 4 independent chunks (lane = chunk), the arithmetic is identical —
-    /// only the caller's diagonalization (or lack of it, for independent chunks) differs.
-    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRoundNeon(
         ref Vector128<uint> a,
@@ -446,16 +433,7 @@ internal unsafe partial struct Blake3State
     /// 4 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
     /// word <c>w</c> of all 4 chunks (lane <c>j</c> = chunk <c>j</c>).
     /// </summary>
-    /// <remarks>
-    /// NEON's <c>zip1</c>/<c>zip2</c> (exposed as <c>ZipLow</c>/<c>ZipHigh</c>) interleave
-    /// the low/high halves of two same-width vectors — bit-for-bit identical to
-    /// SSE's <c>unpacklo</c>/<c>unpackhi</c> at the same element width. That equivalence
-    /// makes this the direct NEON translation of the classic 4×4 SSE transpose
-    /// (<c>_MM_TRANSPOSE4_PS</c>): interleave at 32-bit width, then again at 64-bit
-    /// width (reinterpreting the intermediates as <see cref="Vector128{UInt64}"/>)
-    /// to complete the transpose in two passes.
-    /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
+     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Transpose4x4Neon(ref Vector128<uint> v0, ref Vector128<uint> v1, ref Vector128<uint> v2, ref Vector128<uint> v3)
     {
         // Interleave 32-bit words of row pairs.
@@ -476,15 +454,6 @@ internal unsafe partial struct Blake3State
     /// 4 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
     /// word <c>w</c> of all 4 chunks (lane <c>j</c> = chunk <c>j</c>).
     /// </summary>
-    /// <remarks>
-    /// NEON's <c>zip1</c>/<c>zip2</c> (exposed as <c>ZipLow</c>/<c>ZipHigh</c>) interleave
-    /// the low/high halves of two same-width vectors — bit-for-bit identical to
-    /// SSE's <c>unpacklo</c>/<c>unpackhi</c> at the same element width. That equivalence
-    /// makes this the direct NEON translation of the classic 4×4 SSE transpose
-    /// (<c>_MM_TRANSPOSE4_PS</c>): interleave at 32-bit width, then again at 64-bit
-    /// width (reinterpreting the intermediates as <see cref="Vector128{UInt64}"/>)
-    /// to complete the transpose in two passes.
-    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Transpose4x4Neon(Vector128<uint>* vecs)
     {

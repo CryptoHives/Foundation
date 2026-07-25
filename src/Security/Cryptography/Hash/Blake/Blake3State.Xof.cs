@@ -170,24 +170,14 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Saves the single-chunk root node parameters for counter-mode output, for a
-    /// message that is at most one chunk. Serves both the streaming case (source =
-    /// the incremental <c>_chunkBuffer</c>, once a chunk is known to be the last)
-    /// and the one-shot case (source = the caller's own buffer directly, so a
-    /// single call never pays the byte-copy-in that streaming <see cref="Blake3State.Append"/>
-    /// requires to support resuming across multiple calls).
+    /// Saves the single-chunk root node parameters for counter-mode output, for
+    /// a message of at most one chunk. Serves both the streaming case (source =
+    /// the incremental <c>_chunkBuffer</c>) and the one-shot case (source = the
+    /// caller's buffer directly, skipping the copy-in streaming requires).
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>[SkipLocalsInit]</c>: this runs once for every hash of at most one chunk,
-    /// so skipping the 64-byte block zeroing matters for small inputs; the padding
-    /// tail is zeroed explicitly in the partial-block branch instead.
-    /// </para>
-    /// <para>
-    /// Requires <c>_chunkCounter == 0</c> and <c>_cv</c> holding the IV or key —
-    /// true both for a freshly-buffered single chunk and for the one-shot source
-    /// case, where the caller must not have appended any data first.
-    /// </para>
+    /// Requires <c>_chunkCounter == 0</c> and <c>_cv</c> holding the IV or key,
+    /// true for both call sites.
     /// </remarks>
     [SkipLocalsInit]
     private void SaveChunkAsRoot(Blake3State* core, byte* srcPtr, int length)
@@ -246,9 +236,7 @@ internal unsafe partial struct Blake3State
     }
 
     // Single-block squeeze has the same no-independent-work problem as
-    // CompressBlock/CompressBlocks (see their remarks in Blake3State.cs) —
-    // benchmarked slower via NEON's row-vectorized single-block kernel than
-    // plain scalar, so NEON-tier instances use scalar here too.
+    // CompressBlock (see Blake3State.cs) — NEON-tier instances use scalar here too.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void SqueezeRootBlock(Blake3State* core, ulong counter, byte* dst)
     {
@@ -271,26 +259,14 @@ internal unsafe partial struct Blake3State
     /// in one call.
     /// </summary>
     /// <remarks>
-    /// <para>
     /// Unlike chunk compression, squeeze blocks have no chaining dependency on
-    /// each other — every block is an independent function of
-    /// (<c>_rootCv</c>, <c>_rootBlock</c>, counter) — so batching here means
-    /// each per-tier kernel loads <c>_rootCv</c>/<c>_rootBlock</c> once instead
-    /// of once per block, and writes straight into the caller's span instead of
-    /// round-tripping through <c>_squeezeBuf</c>.
-    /// </para>
-    /// <para>
-    /// On AVX2/AVX512F hardware, that same independence lets
-    /// <c>SqueezeRootBlocks8Avx2</c> compute 8 output blocks *in
-    /// parallel* across lanes (keyed on counter instead of chunk content) —
-    /// full groups of 8 go through that kernel, and any 0-7 leftover blocks
-    /// fall back to the single-lane SSSE3 kernel. There's no AVX-512-specific
-    /// 16-lane squeeze kernel (yet): <c>CompressVector512</c> only exposes the
-    /// folded 8-word CV, not the second output half a full squeeze block
-    /// needs, and duplicating its round schedule to add that risks the
-    /// register-pressure-sensitive chunk-compression hot path for a tier that
-    /// already benefits from the AVX2-width kernel here.
-    /// </para>
+    /// each other — each is an independent function of (<c>_rootCv</c>,
+    /// <c>_rootBlock</c>, counter) — so batching loads them once per tier
+    /// kernel and writes straight into the caller's span. On AVX2/AVX512F,
+    /// that independence lets <c>SqueezeRootBlocks8Avx2</c> compute 8 blocks
+    /// in parallel; leftover blocks fall back to the single-lane SSSE3 kernel.
+    /// No AVX-512-specific squeeze kernel exists: <c>CompressVector512</c>
+    /// only exposes the folded CV, not the second half a squeeze block needs.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void SqueezeRootBlocks(Blake3State* core, ulong startCounter, int blocks, byte* dst)
@@ -333,9 +309,7 @@ internal unsafe partial struct Blake3State
                 offset += ChunksPerNeonBatch * BlockSizeBytes;
             }
 
-            // The 0-3 leftover blocks have no independent work to fill NEON's other
-            // lanes with — same reasoning as SqueezeRootBlock — so the tail falls
-            // back to scalar instead of the single-lane NEON kernel.
+            // 0-3 leftover blocks fall back to scalar — see SqueezeRootBlock.
             int remaining = blocks - fullGroups * ChunksPerNeonBatch;
             if (remaining > 0)
             {
@@ -350,8 +324,7 @@ internal unsafe partial struct Blake3State
         }
     }
 
-    // v0..v15 are named locals rather than a stackalloc'd array for the same
-    // register-allocation reason as CompressBlocksScalar (see its remarks);
+    // v0..v15 are named locals for the same reason as CompressBlocksScalar;
     // outBuf stages only the final per-block output for the bulk byte write.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]

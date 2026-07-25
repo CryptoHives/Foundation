@@ -89,10 +89,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     internal const uint IV7 = 0x5be0cd19U;
 
 #if NET8_0_OR_GREATER
-    // Collection expression over ReadOnlySpan compiles to an RVA data blob read
-    // directly from the image — no static-field + array-object double
-    // dereference in the kernel prologues, which broadcast IV[0..3] on every
-    // per-block compress call.
+    // ReadOnlySpan collection expression compiles to an RVA data blob — avoids
+    // a static-field + array dereference on every per-block compress call.
     internal static ReadOnlySpan<uint> IV =>
     [
         IV0, IV1, IV2, IV3,
@@ -107,16 +105,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     internal static ReadOnlySpan<uint> IV => s_IV;
 #endif
 
-    // Field order groups co-accessed state (fixed-buffer structs are laid out
-    // sequentially): the per-call control scalars, key, in-progress CV, and
-    // root/finalize cluster land in the first ~200 bytes so the single-chunk
-    // one-shot path (source <= 1024 bytes, TryHashOneShotSingleChunk) —
-    // which writes _rootBlock/_rootCv/_rootBlockLen/_rootFlags in
-    // SaveChunkAsRoot and reads them straight back in SqueezeRootBlock —
-    // never touches the bulk streaming-only buffers below it and stays
-    // within the first few cache lines; those bulk buffers (only touched by
-    // the incremental Append()/multi-chunk path) and the XOF squeeze state
-    // (only touched when output exceeds one block) follow.
+    // Field order groups co-accessed state for cache locality: hot per-call
+    // scalars, key, and the root/finalize cluster used by the <=1024-byte
+    // one-shot path come first; streaming-only and XOF-only buffers follow.
 
     // Hot per-call state
     private int _cvStackDepth;
@@ -137,14 +128,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private uint _rootFlags;
 
 #if NET8_0_OR_GREATER
-    // Holds a fully-computed chaining value for a chunk that a bulk SIMD path
-    // (e.g. AVX2 8-chunk batching) produced but could not yet commit to the
-    // Merkle tree via AddChunkToTree, because at the time it was computed it
-    // wasn't known whether more Append() data would follow (only the true last
-    // chunk of the whole message may skip the ordinary, non-root-flagged tree
-    // merge — see FinalizeRoot). Distinct from _cv, which is the in-progress
-    // accumulator for a chunk still being buffered byte-by-byte; reusing _cv
-    // here would corrupt it if a later Append() call starts a new chunk.
+    // Chaining value for a chunk that a bulk SIMD batch computed but couldn't yet
+    // commit to the tree — unknown at the time whether it's the true last
+    // chunk (see FinalizeRoot). Distinct from _cv, the in-progress accumulator
+    // for a chunk still being buffered byte-by-byte.
     private fixed uint _pendingCv[KeySizeWords];
     private bool _hasPendingCv;
 #endif
@@ -285,21 +272,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             return true;
         }
 
-        // Kept out-of-line (see TryHashOneShotSingleChunk) so this hot,
-        // large-input path — Append already contains the performance-critical
-        // batch loops — isn't sharing a compiled method body with the cold
-        // single-chunk branch's stackalloc/squeeze code; the two never run in
-        // the same call, but a shared body means the JIT lays them out
-        // together, which measurably hurt icache locality on the large-input
-        // path when they were one method.
         Append(source);
         return TryGetCurrentHash(destination, out bytesWritten);
     }
 
-    // Cold path relative to TryHashOneShot's large-input branch — see the
-    // comment there for why this is split out instead of inlined.
+    // OptimizedLoop keeps this cold path's stackalloc/squeeze code out of the
+    // hot large-input branch's icache footprint.
     [SkipLocalsInit]
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void TryHashOneShotSingleChunk(ReadOnlySpan<byte> source, Span<byte> destination)
     {
         fixed (Blake3State* core = &this)
@@ -366,10 +346,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             int offset = 0;
 
 #if NET8_0_OR_GREATER
-            // A previous call may have left the final chunk of an AVX2 batch
-            // "pending" (see below) because it didn't yet know whether more data
-            // would follow. Any new bytes here prove it wasn't the last chunk
-            // after all, so it's now safe to commit it to the tree normally.
+            // A prior call may have left the last batch chunk pending (see
+            // below) since it didn't know whether more data would follow. New
+            // bytes prove it wasn't the final chunk, so commit it now.
             if (_hasPendingCv && length > 0)
             {
                 Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * 8, core->_pendingCv, KeySizeWords * (uint)sizeof(uint));
@@ -378,52 +357,31 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 _hasPendingCv = false;
             }
 
-            // Single scratch buffer for every chunk-parallel fast path below —
-            // sized for the largest need (a full 64-chunk subtree group, 2 KB)
-            // and reused as-is by the narrower needs (16/8/4-chunk single
-            // batches, and CommitPartialBatch's tail case, all <= 480 bytes)
-            // instead of each one stackalloc'ing its own buffer. Declared once,
-            // here, before the RestartBatching label below — a stackalloc
-            // reached via a backward goto re-allocates on every jump instead
-            // of reusing the prior allocation, so this must sit outside the
-            // loop, not inside the block the goto re-enters (that previously
-            // stack-overflowed scalar-only hashing of large inputs, where
-            // every single chunk finalize re-triggered the goto).
+            // Shared scratch buffer for every chunk-parallel path below, sized
+            // for the largest need (64-chunk subtree group, 2 KB). Declared
+            // once here, outside the RestartBatching loop.
             uint* batchCvs = stackalloc uint[ChunksPerSubtreeGroup * KeySizeWords];
 
-            // Chunk-parallel fast paths below are only applicable at a chunk
-            // boundary (no partial chunk buffered) — checked once here rather
-            // than at every branch, since nothing between this point and the
-            // scalar loop at the bottom (the only place that buffers a partial
-            // chunk) ever changes _chunkBufferLength, other than the scalar
-            // loop's own finalize step, which jumps back here (see
-            // RestartBatching below) instead of falling permanently out of
-            // the batched paths — e.g. a small Append() leaving one byte
-            // buffered, followed by a large Append(), would otherwise process
-            // the entire large call one chunk at a time.
+            // The batched paths only apply at a chunk boundary. The scalar
+            // loop's finalize step jumps back here if unaligned buffers
+            //  are processed and the chunk buffer is empty again.
         RestartBatching:
             if (_chunkBufferLength == 0)
             {
                 // Helps to not JIT this branch on Arm
                 if (Avx512F.IsSupported)
                 {
-                    // Whole groups of 16 (AVX-512) or 8 (AVX2) independent chunks
-                    // can be compressed together instead of one at a time. A batch
-                    // that exactly drains the remaining input holds back its last
-                    // chunk as the new pending chunk instead of committing it,
-                    // since that one might turn out to be the true last chunk of
-                    // the whole message (which must never go through the ordinary,
-                    // non-root-flagged tree merge in AddChunkToTree — see FinalizeRoot).
+                    // Groups of 16 independent chunks compressed together. A
+                    // batch that exactly drains the input holds back its last
+                    // chunk as pending instead of committing it (see FinalizeRoot).
                     if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
                         length - offset >= Avx512BatchSizeBytes)
                     {
-                        // 64-chunk subtree groups: four kernel batches accumulate 64 CVs
-                        // reduced in one pass, so the surplus-lane reduction tail and the
-                        // tree push are paid once per 64 KB instead of per 16 KB batch.
-                        // The strictly-greater guard keeps the group clear of the message
-                        // tail, so no pending-CV holdback is needed here.
+                        // 64-chunk subtree groups: 4 batches reduce to one CV,
+                        // one tree push per 64 KB. Strictly-greater guard keeps
+                        // the group clear of the message tail.
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                               length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx512Batch,
                                 Avx512BatchSizeBytes, batchCvs, &CompressChunksPartialAvx512);
@@ -437,11 +395,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx512Batch - 1)) == 0)
                             {
-                                // The 16 chunks form a complete, aligned subtree that
-                                // provably isn't the message tail: reduce their CVs
-                                // with wide parent compressions and push one tree
-                                // node instead of 16 per-chunk commits with serial
-                                // single-lane merges.
+                                // Complete, aligned 16-chunk subtree, not the
+                                // tail: reduce and push one tree node instead
+                                // of 16 serial single-chunk commits.
                                 ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, 4);
                                 _chunkCounter += ChunksPerAvx512Batch;
@@ -465,10 +421,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                                 int chunksToCommit = drainsRemainingInput ? ChunksPerAvx512Batch - 1 : ChunksPerAvx512Batch;
 
-                                // Draining means offset would become exactly length —
-                                // every remaining check below (this tier's own partial
-                                // batch, AVX2, NEON, the scalar loop) is guaranteed a
-                                // no-op at that point, so skip straight to it.
+                                // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, firstChunk, chunksToCommit, drainsRemainingInput))
                                 {
                                     return;
@@ -479,13 +432,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // AVX-512 partial batch: 9..15 chunks handled by the 16-way kernel
-                    // with duplicated lanes. Without this, a tail in this range would
-                    // fall through to one full AVX2 8-chunk batch below plus a
-                    // separate AVX2 partial-batch call for the 1..7 chunk remainder —
-                    // two 8-wide kernel calls instead of one 16-wide call here. Same
-                    // pending-CV holdback and per-chunk (unaligned counter) commit
-                    // pattern as the AVX2 partial batch further down.
+                    // AVX-512 partial batch: 9..15 chunks via the 16-way kernel
                     if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
                         length - offset >= (ChunksPerAvx2Batch + 1) * ChunkSizeBytes)
                     {
@@ -496,18 +443,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 // Helps to not JIT this branch if unsupported
                 if (Avx2.IsSupported || Avx512F.IsSupported)
                 {
-                    // AVX2 8-chunk batches: primary path on AVX2-only hardware, and
-                    // picks up an 8–16 KB tail left behind by the AVX-512 loop above.
-                    // The Avx512F flag implies AVX2 hardware, so an isolated Avx512F
-                    // selection still batches sub-16 KB inputs and tails here instead
-                    // of falling back to the per-chunk path.
+                    // AVX2 8-chunk batches: primary path on AVX2-only hardware
                     if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
                         length - offset >= Avx2BatchSizeBytes)
                     {
-                        // 64-chunk subtree groups (primary path on AVX2-only hardware;
-                        // with AVX-512 enabled the loop above already consumed them):
-                        // eight kernel batches accumulate 64 CVs reduced in one pass —
-                        // see the AVX-512 group loop for the rationale.
+                        // 64-chunk subtree groups 
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
@@ -529,9 +469,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
                             {
-                                // Aligned complete 8-chunk subtree that isn't the
-                                // message tail — same wide reduction as the AVX-512
-                                // loop above, one level lower.
+                                // Complete aligned 8-chunk subtree, not the tail.
                                 ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, 3);
                                 _chunkCounter += ChunksPerAvx2Batch;
@@ -540,10 +478,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             {
                                 int chunksToCommit = drainsRemainingInput ? ChunksPerAvx2Batch - 1 : ChunksPerAvx2Batch;
 
-                                // Draining means offset would become exactly length —
-                                // the remaining checks below (this tier's own partial
-                                // batch, NEON, the scalar loop) are guaranteed no-ops
-                                // at that point, so skip straight to it.
+                                // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
                                 {
                                     return;
@@ -554,24 +489,15 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // Partial batch: 2..7 full chunks compressed in one pass by the
-                    // 8-way kernel with surplus lanes ignoring real chunks — one
-                    // pass costs ~1.5 single-lane chunk compressions, so it beats the
-                    // per-chunk path from 2 real chunks upward. When the chunks
-                    // exactly drain the input, the last one is held back as the
-                    // pending chunk (it might be the true message tail — see the
-                    // batch loops above); otherwise all of them provably have data
-                    // following and commit directly. Chunk counters here may be
-                    // unaligned, so CVs commit per-chunk (no subtree reduction).
+                    // Partial batch: 2..7 chunks via the 8-way kernel with surplus
+                    // lanes ignoring real data — beats per-chunk from 2 chunks up.
+                    // Counters may be unaligned here, so CVs commit per-chunk.
                     if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
                         length - offset >= 2 * ChunkSizeBytes)
                     {
-                        // The batch loop above consumed all >= 8 KB spans, so at most
-                        // 7 full chunks (8,191 bytes) remain. Below 5 real chunks, a
-                        // genuine 4-lane kernel beats the 8-lane kernel: the 8-lane
-                        // kernel's register spill and transpose cost are fixed
-                        // regardless of how many of its 8 lanes are real (see
-                        // CompressChunksPartial4Avx2 remarks).
+                        // At most 7 chunks remain. Below 5, the 4-lane kernel
+                        // beats the 8-lane one
+
                         int fullChunks = (length - offset) / ChunkSizeBytes;
                         delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel = fullChunks <= 4
                             ? &CompressChunksPartial4Avx2
@@ -583,16 +509,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 // Helps to not JIT this branch on Arm
                 if (AdvSimd.Arm64.IsSupported)
                 {
-                    // NEON 4-chunk batches: primary chunk-parallel path on ARM hardware,
-                    // one register width down from the AVX2 8-chunk batches above (NEON's
-                    // Vector128<uint> holds 4 lanes instead of AVX2's 8) — same subtree-group
-                    // amortization strategy, just at 4-chunk width.
+                    // NEON 4-chunk batches: same subtree-group strategy as AVX2
+                    // above, one register width down (4 lanes vs. 8).
                     if ((_simdSupport & SimdSupport.Neon) != 0 &&
                         length - offset >= NeonBatchSizeBytes)
                     {
-                        // 64-chunk subtree groups: sixteen kernel batches accumulate 64
-                        // CVs reduced in one pass — see the AVX2 group loop above for
-                        // the rationale, applied at 4-chunk width.
+                        // 64-chunk subtree groups
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
@@ -608,9 +530,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerNeonBatch - 1)) == 0)
                             {
-                                // Aligned complete 4-chunk subtree that isn't the
-                                // message tail — same wide reduction as the AVX2
-                                // loop above, one level lower.
+                                // Complete aligned 4-chunk subtree, not the tail.
                                 ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, 2);
                                 _chunkCounter += ChunksPerNeonBatch;
@@ -619,9 +539,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             {
                                 int chunksToCommit = drainsRemainingInput ? ChunksPerNeonBatch - 1 : ChunksPerNeonBatch;
 
-                                // Draining means offset would become exactly length —
-                                // the scalar loop below is guaranteed a no-op at that
-                                // point, so skip straight to it.
+                                // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
                                 {
                                     return;
@@ -632,15 +550,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // NEON partial batch: 2..3 full chunks compressed in one pass by
-                    // the 4-way kernel with surplus lanes duplicating real chunks —
-                    // mirrors the AVX2 partial-batch handling above, one register
-                    // width down (2..7 there vs 2..3 here).
+                    // NEON partial batch: exactly 3 chunks via the 4-way kernel
+                    // with one ignored lane. The 2-chunk case benchmarked
+                    // slower than scalar (fixed transpose/spill cost not repaid
+                    // by 2 chunks), so it falls through to the scalar loop instead.
                     if ((_simdSupport & SimdSupport.Neon) != 0 &&
-                        length - offset >= 2 * ChunkSizeBytes)
+                        length - offset >= 3 * ChunkSizeBytes)
                     {
-                        // The batch loop above consumed all >= 4 KB spans, so at most
-                        // 3 full chunks (3,071 bytes) remain.
+                        // At most 3 chunks remain here (3,072..4,095 bytes).
                         offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialNeon);
                     }
                 }
@@ -683,34 +600,17 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
 #if NET8_0_OR_GREATER
     /// <summary>
-    /// Shared tail-handling for every SIMD tier's "partial batch" case (fewer
-    /// full chunks remaining than one whole batch, but enough to still beat
-    /// per-chunk serial compression) — compresses all of them in a single
-    /// call to <paramref name="partialKernel"/>, commits every chunk but the
-    /// last to the tree, and holds the last one back as the pending chunk if
-    /// it exactly drains the input (it might be the true message tail — see
-    /// <see cref="FinalizeRoot"/>).
+    /// Shared tail handling for a SIMD tier's partial batch (fewer full chunks
+    /// remaining than one whole batch, but enough to beat serial per-chunk
+    /// compression): compresses them all via <paramref name="partialKernel"/>,
+    /// commits every chunk but the last, and holds the last back as pending if
+    /// it exactly drains the input (see <see cref="FinalizeRoot"/>).
     /// </summary>
-    /// <remarks>
-    /// All four partial kernels (<c>CompressChunksPartialAvx512</c>,
-    /// <c>CompressChunksPartialAvx2</c>, <c>CompressChunksPartial4Avx2</c>,
-    /// <c>CompressChunksPartialNeon</c>) share this exact signature, so a
-    /// plain unmanaged function pointer dispatches to any of them with no
-    /// virtual-call or delegate-allocation overhead. Only the tail case is
-    /// shared this way — the full-batch loops above have real per-tier
-    /// asymmetries (e.g. AVX-512's tail opportunistically re-reduces at AVX2
-    /// width) that don't generalize as cleanly.
-    /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the remaining full chunks start.</param>
     /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="scratch">
-    /// Caller-owned buffer for the partial kernel's output CVs — never more
-    /// than <c>(ChunksPerAvx512Batch - 1) * KeySizeWords</c> (120) words are
-    /// used across any tier, well within the caller's shared 64-chunk-group
-    /// (512-word) <c>batchCvs</c> buffer, so no separate allocation is needed.
-    /// </param>
+    /// <param name="scratch">Caller-owned scratch buffer for the partial kernel's output CVs.</param>
     /// <param name="partialKernel">The tier-specific partial-batch compression kernel to call.</param>
     /// <returns>The number of bytes consumed (<c>fullChunks * ChunkSizeBytes</c>).</returns>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -733,16 +633,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <summary>
     /// Commits CVs <c>[firstChunk, chunksToCommit)</c> from a compressed batch
     /// buffer to the tree one at a time. If the batch exactly drained the
-    /// input, the CV at index <paramref name="chunksToCommit"/> is held back
-    /// as the new pending chunk instead of committed — it might turn out to be
-    /// the true last chunk of the whole message, which must never go through
-    /// the ordinary, non-root-flagged tree merge (see <see cref="FinalizeRoot"/>).
+    /// input, the CV at index <paramref name="chunksToCommit"/> is held back as
+    /// pending instead (see <see cref="FinalizeRoot"/>).
     /// </summary>
     /// <returns>
-    /// <see langword="true"/> if the pending chunk was held back — every caller
-    /// of this method has confirmed that <c>offset == length</c> at that point,
-    /// so every remaining check downstream is guaranteed a no-op; callers with
-    /// their own control flow to unwind should <c>return</c> immediately.
+    /// <see langword="true"/> if the pending chunk was held back, meaning
+    /// <c>offset == length</c>; callers should <c>return</c> immediately.
     /// </returns>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private bool CommitBatchChunks(Blake3State* core, uint* batchCvs, int firstChunk, int chunksToCommit, bool drainsRemainingInput)
@@ -786,31 +682,16 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     /// <summary>
-    /// Shared body for every SIMD tier's "64-chunk subtree group" loop: runs
+    /// Shared body for every SIMD tier's 64-chunk subtree-group loop: runs
     /// <c>ChunksPerSubtreeGroup / batchWidth</c> kernel batches into
-    /// <paramref name="batchCvs"/>, reduces all 64 CVs to one subtree CV in a
-    /// single pass, and pushes it — so the surplus-lane reduction tail and the
-    /// tree push are paid once per 64 KB instead of once per single-batch width.
+    /// <paramref name="batchCvs"/>, reduces all 64 CVs to one subtree CV, and
+    /// pushes it — so the reduction and tree push are paid once per 64 KB.
     /// </summary>
-    /// <remarks>
-    /// Unlike <see cref="CommitPartialBatch"/>, the reduce step can't be a
-    /// second <c>delegate*</c> parameter: <c>ReduceChunkCvsToSubtreeCvAvx2</c>/
-    /// <c>ReduceChunkCvsToSubtreeCvNeon</c> are instance methods (they reach
-    /// <c>_baseFlags</c>/<c>_simdSupport</c> through <see cref="ComputeParentCv"/>),
-    /// and unmanaged function pointers can only target <see langword="static"/>
-    /// methods. Dispatching on <see cref="AdvSimd.Arm64.IsSupported"/> — the
-    /// same JIT-time-constant check already used elsewhere in <c>Append</c> —
-    /// avoids introducing a managed, allocating delegate on this hot path just
-    /// to unify two call sites; only one branch's code is ever actually
-    /// compiled in for a given platform.
-    /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the group starts.</param>
     /// <param name="batchWidth">The tier's chunk-parallel width (4, 8, or 16).</param>
-    /// <param name="batchSizeBytes">
-    /// <c>batchWidth * ChunkSizeBytes</c> — the byte stride between kernel batches.
-    /// </param>
+    /// <param name="batchSizeBytes"><c>batchWidth * ChunkSizeBytes</c>.</param>
     /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
     /// <param name="kernel">The tier-specific partial-batch compression kernel to call.</param>
     /// <returns><paramref name="offset"/> advanced by <c>ChunksPerSubtreeGroup * ChunkSizeBytes</c>.</returns>
@@ -962,12 +843,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// sibling pairs bottom-up (a chunk is the <paramref name="level"/> = 0 case).
     /// </summary>
     /// <remarks>
-    /// <c>_chunkCounter</c> must still be at the subtree's starting chunk index,
-    /// which must be a multiple of 2^<paramref name="level"/>; the caller
-    /// advances the counter afterwards. Because the subtree is complete and
-    /// aligned, the resulting stack state is identical to committing its
-    /// chunks one at a time — the stack always mirrors the binary
-    /// representation of the completed subtree count.
+    /// <c>_chunkCounter</c> must still be at the subtree's starting chunk
+    /// index (a multiple of 2^<paramref name="level"/>); the caller advances
+    /// it afterwards.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void AddSubtreeToTree(Blake3State* core, int level)
@@ -994,12 +872,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// writing the parent's 8-word CV to <paramref name="destination"/>.
     /// </summary>
     /// <remarks>
-    /// The children are read directly as the message block — no staging copy.
+    /// The children are read directly as the message block, no staging copy.
     /// In-place merges (<paramref name="destination"/> == <paramref name="children"/>)
-    /// are safe: both compress paths finish every message read before the
-    /// result is written (the SIMD block compress writes only its local CV,
-    /// the scalar path writes <paramref name="destination"/> after
-    /// <see cref="Compress"/> returns).
+    /// are safe since both compress paths finish reading before writing.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -1012,15 +887,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(destination, cv, KeySizeWords * (uint)sizeof(uint));
     }
 
-    // Single/few-block compression (parent merges, one chunk's worth of blocks
-    // via FinalizeChunk/SaveChunkAsRoot) never has independent work to spread
-    // across NEON's 4 lanes the way the chunk-parallel batch kernels in
-    // Blake3State.Neon.cs do — row-vectorizing one chunk's internal state still
-    // pays the TBL/shift-rotate overhead per round with nothing to hide it
-    // behind. Benchmarked slower than plain scalar (BitOperations.RotateRight,
-    // native ROR) at every size this path is ever reached at, matching the
-    // reference Blake3.NET managed implementation's own choice to only vectorize
-    // genuine 4-way batches and fall back to scalar otherwise — so NEON-tier
+    // Single/few-block work (parent merges, one chunk via FinalizeChunk/
+    // SaveChunkAsRoot) has no independent work to spread across NEON's lanes,
+    // so row-vectorizing it benchmarked slower than scalar — NEON-tier
     // instances use the scalar kernel here too, same as no-SIMD instances.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void CompressBlock(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
@@ -1037,7 +906,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
-    // See the remarks on CompressBlock — same reasoning applies here.
+    // See CompressBlock — same reasoning applies here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void CompressBlocks(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
@@ -1054,16 +923,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     // [SkipLocalsInit]: v0..v7 are fully assigned from cv below before any read.
-    // v0..v15 are named locals (not a stackalloc'd array) passed by ref into an
-    // AggressiveInlining Compress — mirrors Blake3.NET's managed ARM64/x86 scalar
-    // compress, which uses the same named-local-plus-forced-inline shape. Named
-    // locals alone do NOT help here: passing 16 byref params to a *non-inlined*
-    // callee just forces those locals to real stack addresses anyway (to make
-    // them addressable across the call) and turns a compact 2-pointer call into a
-    // 17-argument one (ARM64 has 8 argument registers, so most of those spill) —
-    // that shape measured *slower* than the original uint* array. Only once
-    // Compress is actually force-inlined does the JIT see through the refs
-    // entirely and keep the whole state in registers across all 7 rounds.
+    // v0..v15 are named locals rather than a stackalloc'd array, passed by ref
+    // into a force-inlined Compress: named locals only avoid the array's
+    // memory traffic if Compress is actually inlined, since byref params to a
+    // non-inlined callee force real stack addresses anyway.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressBlocksScalar(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
@@ -1102,11 +965,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
-    // AggressiveInlining (not OptimizedLoop/NoInlining): this must be inlined into
-    // its two call sites for the byref named-locals shape to pay off — see the
-    // remarks on CompressBlocksScalar. Only ever called from those two sites, so
-    // the code-size duplication this trades for is bounded.
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
+     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static void Compress(
         ref uint v0, ref uint v1, ref uint v2, ref uint v3,
         ref uint v4, ref uint v5, ref uint v6, ref uint v7,
