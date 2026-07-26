@@ -292,6 +292,16 @@ public sealed class HashAlgorithmType : IFormattable
 
     #endregion
 
+    #region ParallelHash Individual Algorithms
+
+    /// <summary>ParallelHash128 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> ParallelHash128() => FromFamily("ParallelHash128");
+
+    /// <summary>ParallelHash256 implementations.</summary>
+    public static IEnumerable<HashAlgorithmType> ParallelHash256() => FromFamily("ParallelHash256");
+
+    #endregion
+
     #region KMAC Algorithms
 
     // Shared key for KMAC benchmarks (32 bytes)
