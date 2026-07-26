@@ -20,7 +20,7 @@ Implementations are compared against:
 | **SHA-2** | OS (CommonCrypto) | Apple Silicon SHA hardware ~2.2× faster than ArmSha256 at 128 B; ArmSha256 is ~2.6× faster than Scalar at 128 B and ~7.3× faster at 128 KiB |
 | **SHA-3/Keccak** | CryptoHives Arm64 | Arm64 variant beats BouncyCastle at all sizes; Scalar on parity with BouncyCastle at bulk |
 | **BLAKE2b/2s** | BouncyCastle | BouncyCastle ~2× faster than Neon at 128 KiB; Neon ~1.75× faster than Managed |
-| **BLAKE3** | Native (Rust) | Rust ~5.4× faster than BouncyCastle at 128 KiB; Neon ~2.6× faster than BouncyCastle |
+| **BLAKE3** | Native (Rust) | Rust ~13.6× faster than BouncyCastle at 128 KiB; Neon ~11× faster than BouncyCastle, ~1.24× slower than native |
 | **Streebog** | Managed | ~1.7× faster than OpenGost; ~2.1× faster than BouncyCastle |
 | **Kupyna** | Managed | ~1.5× faster than BouncyCastle at all sizes |
 | **KMAC** | Managed | ~1.9× faster than BouncyCastle at 128 B; competitive at bulk sizes |
@@ -156,11 +156,9 @@ BouncyCastle leads the BLAKE2 benchmarks on Apple M4 — its JIT-compiled implem
 
 ## BLAKE3
 
-BLAKE3 is a modern hash function designed for extreme parallelism. At 128 KiB, the **Native (Rust)** variant via `blake3-dotnet` is **~5.4× faster than BouncyCastle** and **~2.6× faster than the NEON path** (52.6 μs vs 283 μs). The gap is smaller than on x86 (where the Rust build uses AVX-512 `hash_many` for ~12× advantage) because the ARM Rust build uses a single-threaded NEON path comparable in architecture to the CryptoHives Neon path — the key difference is that the Rust build also enables tree-hash parallelism via NEON-based chunk merging at 128 KiB, while the CryptoHives implementation processes chunks sequentially.
+BLAKE3 is a modern hash function designed for extreme parallelism. At 128 KiB, the **Native (Rust)** variant via `blake3-dotnet` is **~13.6× faster than BouncyCastle** and **~1.24× faster than the CryptoHives NEON path** (54.4 μs vs 67.5 μs) — a much narrower gap than on x86, where AVX-512F/AVX2 batch 16/8 chunks per pass; NEON's `Vector128<uint>` kernel batches only 4, so it trails native Rust's own NEON-based chunk-parallel build more closely than SSSE3 trails native on x64.
 
-The CryptoHives `Neon` path uses `Vector128<uint>` for the BLAKE3 compression function, yielding **~2.6× speedup over BouncyCastle at 128 KiB** (283 μs vs 729 μs). The scalar `Managed` path is ~1.4× faster than BouncyCastle at 128 B and ~1.3× at 128 KiB.
-
-> ⚠️ **Note**: The macOS benchmarks in this run were produced before the `Reset(bool)` allocation fix landed. The `Neon` and `Scalar` rows currently report 24 B allocated per call. This is a known stale artifact — the fix is confirmed zero-allocation on Windows. These benchmarks will be updated after the next macOS run.
+The CryptoHives `Neon` path yields **~11× speedup over BouncyCastle at 128 KiB** (67.5 μs vs 738.6 μs). The `Scalar` path is ~5.8× faster than BouncyCastle at 128 B and ~6× faster at 128 KiB.
 
 [!INCLUDE[](blake3.md)]
 

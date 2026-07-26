@@ -20,7 +20,7 @@ Implementations are compared against:
 | **SHA-2** | OS (SHA-NI) | Hardware SHA-NI gives OS ~4.5× advantage; managed outperforms BouncyCastle by ~13% |
 | **SHA-3/Keccak** | Managed | Scalar Keccak outperforms OS by ~30% and SIMD variants by 25–35% |
 | **BLAKE2b/2s** | Managed AVX2 | BLAKE2b AVX2 ~10% faster than BouncyCastle; BLAKE2s SIMD on parity with BouncyCastle |
-| **BLAKE3** | Native (Rust) | Rust interop ~1.4× faster at small inputs, ~12× at large due to multi-chunk parallelism; SSSE3 managed ~8–9× faster than BouncyCastle |
+| **BLAKE3** | Native (Rust) | Native ~1.3× faster than CryptoHives AVX-512F at 128 KiB; AVX-512F/AVX2 ~72×/62× faster than BouncyCastle (SSSE3 only ~12×) |
 | **Streebog** | Managed | 1.4–1.8× faster than OpenGost/BouncyCastle |
 | **Kupyna** | Managed | T-table optimization ~30–45% faster than BouncyCastle |
 | **KMAC** | Managed | ~36–67% faster than OS and ~35–67% faster than BouncyCastle depending on payload size |
@@ -153,7 +153,7 @@ CryptoHives leads the BLAKE2b benchmarks on x86. The **AVX2** path is ~10–15% 
 
 BLAKE3 is a modern hash function designed for extreme parallelism and speed. It can leverage tree hashing to process multiple chunks simultaneously, making it ideal for hashing large files. The **Native (Rust)** variant uses `blake3-dotnet`, which wraps the official Rust implementation via P/Invoke—this is the fastest option and recommended when native dependencies are acceptable.
 
-The managed CryptoHives implementation uses SSSE3 SIMD instructions with optimized state management. At small inputs (128 B–1 KB), the SSSE3 path is ~1.4× slower than the native Rust implementation and **~8–9× faster than BouncyCastle** (154 ns vs 1,281 ns at 128 B). At large inputs (128 KB), the gap widens to ~12× between native and BouncyCastle because the native implementation parallelizes chunk compression across SIMD lanes (AVX2/AVX-512 `hash_many`), while the managed version processes chunks sequentially. The SSSE3 path remains ~8× faster than BouncyCastle at 128 KB (166 μs vs 1,370 μs).
+The managed CryptoHives implementation ships four SIMD tiers selected automatically at runtime — **AVX-512F**, **AVX2**, **SSSE3**, and a portable **Scalar** fallback — each vectorizing chunk-parallel compression at progressively narrower lane widths. At small inputs (≤1 KB, below the multi-chunk batching threshold), all three x86 SIMD tiers converge to essentially the same per-block cost (~108 ns at 128 B, within 1% of native Rust) since there's no cross-chunk work yet to parallelize differently. At large inputs (128 KB, spanning many chunks), AVX-512F pulls ahead of AVX2 and SSSE3 by batching 16 chunks per pass instead of 8 or 1: AVX-512F is **~72× faster than BouncyCastle** (19.1 μs vs 1,369 μs) and only **~1.3× slower than native Rust** (14.4 μs) — closing nearly all of the gap that used to separate the managed and native implementations. AVX2 follows close behind at ~62× faster than BouncyCastle; SSSE3, limited to single-chunk-width vectorization, trails at ~12× faster than BouncyCastle.
 
 [!INCLUDE[](blake3.md)]
 
@@ -359,14 +359,16 @@ On AMD Ryzen 5 7600X, TurboSHAKE128 XOF and KT128 XOF perform nearly identically
 
 ### BLAKE3 (XOF)
 
-BLAKE3 XOF produces output of arbitrary length using the same ChaCha-based compression function but extending the tree hashing to output-reader mode. On x64, CryptoHives ships **three implementation tiers**: Native (Rust via `blake3-dotnet`, uses AVX2/AVX-512 hash-many parallelism), Ssse3 (SSSE3-based parallel chunk generation), and Managed (scalar).
+BLAKE3 XOF produces output of arbitrary length using the same compression function but extending the tree hashing to output-reader mode. On x64, CryptoHives ships the same four SIMD tiers as single-shot hashing — **AVX-512F**, **AVX2**, **SSSE3**, and **Scalar** — alongside Native (Rust via `blake3-dotnet`) and third-party managed comparisons.
 
-The Native Rust implementation dominates at all sizes: **~12× faster than Managed** at 128 KiB, and **~15.7× faster than BouncyCastle**. BouncyCastle's BLAKE3 XOF is extremely slow — it generates extended output sequentially without any tree parallelism and allocates only a fixed 56 B per call. Ssse3 provides a middle tier: ~4.3× faster than Managed at 128 KiB.
+At 128 KiB, CryptoHives' **AVX-512F tier is the fastest implementation in the benchmark, beating even native Rust**: 23.8 μs vs 84.5 μs for native, a **~3.5× advantage** — the squeeze/absorb XOF path amortizes the wide-batch chunk kernel differently than one-shot hashing, letting the managed AVX-512F kernel pull ahead. AVX2 follows closely at 24.3 μs (~57× faster than BouncyCastle). SSSE3, by contrast, is now the *slowest* of the SIMD tiers at 96.5 μs — slower even than the third-party `Blake3.Managed` reference (85.8 μs) — since it can't batch enough chunks per pass to amortize the squeeze overhead the way AVX2/AVX-512F do. BouncyCastle's BLAKE3 XOF remains extremely slow (1,394 μs): it generates extended output sequentially without any tree parallelism and allocates only a fixed 56 B per call.
 
 **Key observations:**
-- **Native**: ~12× faster than Managed at 128 KiB; ~15.7× faster than BC; zero-allocation
-- **Ssse3**: ~4.3× faster than Managed at 128 KiB; zero-allocation
-- **Managed**: ~2.4× faster than BC at 128 KiB; zero-allocation
+- **AVX-512F**: fastest overall at 128 KiB, ~3.5× faster than native Rust, ~58× faster than BC; zero-allocation
+- **AVX2**: ~57× faster than BC at 128 KiB; zero-allocation
+- **Native**: ~16.5× faster than BC at 128 KiB; zero-allocation
+- **SSSE3**: ~14.5× faster than BC at 128 KiB, but now the slowest CryptoHives SIMD tier; zero-allocation
+- **Scalar**: ~10× faster than BC at 128 KiB; zero-allocation
 - **BouncyCastle**: Slowest by a large margin; allocates only 56 B (BC does not buffer large output slabs)
 - Native tree hash-many exploits AVX-512 on capable CPUs; falls back to AVX2 on Ryzen 5 7600X
 
