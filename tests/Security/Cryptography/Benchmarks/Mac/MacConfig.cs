@@ -48,7 +48,9 @@ public class MacConfig : ManualConfig
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestMacAlgorithm");
 
+        // Markdown for docfx, plus full JSON so append_results.py can ingest results without extra flags.
         AddExporter(ShortExporter);
+        AddExporter(BenchmarkDotNet.Exporters.Json.JsonExporter.Full);
     }
 
     /// <summary>

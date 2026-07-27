@@ -54,7 +54,10 @@ $packageConfigurations = @{
 
     "Cryptography" = [ordered]@{
         SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
-        DestDir   = "docfx/packages/security/cryptography/benchmarks"
+        # Local scratch output only (see .gitignore) — the published benchmark view is the
+        # SQLite-backed dashboard under docfx/packages/security/cryptography/benchmark-trends/,
+        # not a per-platform markdown tree, so this must not point back into docfx/.
+        DestDir   = "bench-results/cryptography"
         Files     = @(
             # SHA-2 individual algorithms
             @{ Source = "SHA224Benchmark-report.md"; Target = "sha224.md" }

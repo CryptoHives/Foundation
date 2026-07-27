@@ -455,8 +455,8 @@ public bool ComputeHashThreadSafe(ReadOnlySpan<byte> data, Span<byte> destinatio
 - [MAC Algorithms Reference](mac-algorithms.md)
 - [KDF Algorithms Reference](kdf-algorithms.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
-- [Hash Benchmarks](benchmarks-hash.md)
-- [Cipher Benchmarks](benchmarks-cipher.md)
+- [Hash Benchmarks](benchmarks.md)
+- [Cipher Benchmarks](benchmarks.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

@@ -72,6 +72,9 @@ BenchmarkRun*.log
 !**/BenchmarkDotNet.Artifacts/results/*.md
 !**/BenchmarkDotNet.Artifacts/results/*-grouped.png
 
+# Local scratch output from update-benchmark-docs.ps1 (before/after comparison only, never published)
+/bench-results/
+
 # .NET Core
 project.lock.json
 packages.lock.json
