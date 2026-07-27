@@ -129,7 +129,13 @@ public static class MacAlgorithmRegistry
     ];
 
     // AES-128 key for AES-CMAC (block cipher key, distinct size from the HMAC/Poly1305 key above).
-    private static readonly byte[] Aes128Key = SharedKey[..16];
+    // A literal array (not a SharedKey slice) avoids RuntimeHelpers.GetSubArray, which isn't
+    // available on net48/net472's older BCL.
+    private static readonly byte[] Aes128Key =
+    [
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
+    ];
 
     private static List<MacImplementation> BuildRegistry()
     {

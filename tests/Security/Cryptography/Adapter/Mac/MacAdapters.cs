@@ -76,10 +76,27 @@ internal sealed class BouncyCastleMacAdapter : IMac
     public int MacSize => _mac.GetMacSize();
 
     /// <inheritdoc/>
-    public void Update(ReadOnlySpan<byte> input) => _mac.BlockUpdate(input);
+    public void Update(ReadOnlySpan<byte> input)
+    {
+#if NET6_0_OR_GREATER
+        _mac.BlockUpdate(input);
+#else
+        byte[] buffer = input.ToArray();
+        _mac.BlockUpdate(buffer, 0, buffer.Length);
+#endif
+    }
 
     /// <inheritdoc/>
-    public void Finalize(Span<byte> destination) => _mac.DoFinal(destination);
+    public void Finalize(Span<byte> destination)
+    {
+#if NET6_0_OR_GREATER
+        _mac.DoFinal(destination);
+#else
+        byte[] result = new byte[MacSize];
+        _mac.DoFinal(result, 0);
+        result.CopyTo(destination);
+#endif
+    }
 
     /// <inheritdoc/>
     public void Reset() => _mac.Reset();

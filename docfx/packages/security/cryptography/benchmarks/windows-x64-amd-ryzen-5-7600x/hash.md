@@ -25,6 +25,7 @@ Implementations are compared against:
 | **Kupyna** | Managed | T-table optimization ~30–45% faster than BouncyCastle |
 | **KMAC** | Managed | ~36–67% faster than OS and ~35–67% faster than BouncyCastle depending on payload size |
 | **Ascon** | Managed | ~33% faster than BouncyCastle across all input sizes |
+| **ParallelHash** | Managed | ~21× faster than BouncyCastle at 128 B, narrowing to ~1.48× at 128 KiB |
 
 ---
 
@@ -170,6 +171,20 @@ The managed implementation is approximately **33% faster** than BouncyCastle acr
 
 ### Ascon-XOF128
 [!INCLUDE[](asconxof128.md)]
+
+---
+
+## ParallelHash Family
+
+ParallelHash (NIST SP 800-185) splits input into fixed-size blocks, hashes each block independently with SHAKE128/SHAKE256, then combines the chaining values via a final cSHAKE call — a construction designed to expose parallelism across blocks, though this implementation processes blocks sequentially like the other tree/block hash constructions in this library.
+
+At small inputs (128 B), CryptoHives is **~21× faster than BouncyCastle** for both variants (e.g. 817 ns vs 17,153 ns for ParallelHash128) — BouncyCastle's implementation carries much higher fixed per-call overhead. At bulk sizes (128 KiB) the gap narrows to **~1.48× faster** as SHAKE permutation throughput dominates for both implementations. CryptoHives' `IncrementalParallelHash` API buffers absorbed data (unlike BouncyCastle's streaming digest), so its allocation grows with input size — a real characteristic of the public streaming API, not a benchmark artifact.
+
+### ParallelHash128
+[!INCLUDE[](parallelhash128.md)]
+
+### ParallelHash256
+[!INCLUDE[](parallelhash256.md)]
 
 ---
 

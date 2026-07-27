@@ -1,25 +1,25 @@
-﻿| Description                                   | TestDataSize | Mean           | Error       | StdDev      | Allocated |
-|---------------------------------------------- |------------- |---------------:|------------:|------------:|----------:|
-| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128B         |     1,270.8 ns |     2.72 ns |     2.41 ns |         - |
-| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 128B         |     3,256.7 ns |     5.23 ns |     4.89 ns |    1112 B |
-|                                               |              |                |             |             |           |
-| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128B         |       555.3 ns |     1.45 ns |     1.36 ns |         - |
-| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 128B         |     1,772.6 ns |     3.45 ns |     3.22 ns |    1112 B |
-|                                               |              |                |             |             |           |
-| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 1KB          |     9,106.9 ns |    17.18 ns |    14.35 ns |         - |
-| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 1KB          |    20,134.7 ns |    43.75 ns |    40.92 ns |    1112 B |
-|                                               |              |                |             |             |           |
-| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 1KB          |     3,909.5 ns |     7.99 ns |     7.08 ns |         - |
-| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 1KB          |     9,610.5 ns |    19.66 ns |    17.43 ns |    1112 B |
-|                                               |              |                |             |             |           |
-| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 8KB          |    71,420.0 ns |   109.93 ns |    97.45 ns |         - |
-| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 8KB          |   155,555.3 ns |   377.70 ns |   334.82 ns |    1112 B |
-|                                               |              |                |             |             |           |
-| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 8KB          |    30,734.0 ns |    42.76 ns |    35.71 ns |         - |
-| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 8KB          |    71,946.8 ns |    89.65 ns |    83.86 ns |    1112 B |
-|                                               |              |                |             |             |           |
-| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128KB        | 1,137,122.7 ns | 1,711.80 ns | 1,429.43 ns |         - |
-| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 128KB        | 2,467,322.8 ns | 7,261.35 ns | 5,669.19 ns |    1112 B |
-|                                               |              |                |             |             |           |
-| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128KB        |   490,099.1 ns | 1,084.17 ns |   961.09 ns |         - |
-| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 128KB        | 1,145,118.8 ns | 2,679.18 ns | 2,375.02 ns |    1112 B |
+﻿| Description                                   | TestDataSize | Mean           | Error        | StdDev       | Allocated |
+|---------------------------------------------- |------------- |---------------:|-------------:|-------------:|----------:|
+| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128B         |     1,261.4 ns |      7.83 ns |      6.94 ns |         - |
+| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 128B         |     3,234.1 ns |     21.85 ns |     17.06 ns |    1112 B |
+|                                               |              |                |              |              |           |
+| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128B         |       557.8 ns |      3.05 ns |      2.54 ns |         - |
+| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 128B         |     1,775.5 ns |      9.30 ns |      8.70 ns |    1112 B |
+|                                               |              |                |              |              |           |
+| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 1KB          |     9,021.1 ns |     41.89 ns |     34.98 ns |         - |
+| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 1KB          |    20,338.2 ns |    114.33 ns |    106.95 ns |    1112 B |
+|                                               |              |                |              |              |           |
+| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 1KB          |     3,889.0 ns |     22.68 ns |     20.10 ns |         - |
+| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 1KB          |     9,619.7 ns |     81.52 ns |     72.26 ns |    1112 B |
+|                                               |              |                |              |              |           |
+| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 8KB          |    71,115.0 ns |    312.73 ns |    292.52 ns |         - |
+| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 8KB          |   154,324.8 ns |  1,158.24 ns |  1,026.75 ns |    1112 B |
+|                                               |              |                |              |              |           |
+| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 8KB          |    30,640.7 ns |    201.86 ns |    188.82 ns |         - |
+| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 8KB          |    71,567.5 ns |    304.54 ns |    254.31 ns |    1112 B |
+|                                               |              |                |              |              |           |
+| Decrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128KB        | 1,133,259.1 ns |  3,172.71 ns |  2,967.76 ns |         - |
+| Decrypt · Kalyna-256-CBC (BouncyCastle)       | 128KB        | 2,460,387.9 ns | 19,070.09 ns | 17,838.18 ns |    1112 B |
+|                                               |              |                |              |              |           |
+| Encrypt · Kalyna-256-CBC (CryptoHives-Scalar) | 128KB        |   488,027.2 ns |  1,205.34 ns |  1,068.51 ns |         - |
+| Encrypt · Kalyna-256-CBC (BouncyCastle)       | 128KB        | 1,138,358.4 ns |  8,524.49 ns |  7,973.81 ns |    1112 B |
