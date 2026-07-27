@@ -1,19 +1,19 @@
 ﻿| Description                                    | TestDataSize | Mean         | Error     | StdDev    | Allocated |
 |----------------------------------------------- |------------- |-------------:|----------:|----------:|----------:|
-| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 128B         |     485.2 ns |   0.59 ns |   0.55 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle       | 128B         |   1,060.1 ns |   4.81 ns |   4.50 ns |     256 B |
+| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 128B         |     490.2 ns |   0.52 ns |   0.48 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle       | 128B         |   1,064.9 ns |   4.58 ns |   4.29 ns |     256 B |
 |                                                |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 137B         |     483.6 ns |   0.51 ns |   0.43 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle       | 137B         |   1,071.9 ns |   3.54 ns |   3.31 ns |     256 B |
+| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 137B         |     489.2 ns |   0.72 ns |   0.68 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle       | 137B         |   1,061.2 ns |   4.29 ns |   4.01 ns |     256 B |
 |                                                |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 1KB          |   1,385.9 ns |   1.64 ns |   1.53 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle       | 1KB          |   1,994.4 ns |   4.49 ns |   4.20 ns |     256 B |
+| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 1KB          |   1,389.8 ns |   1.90 ns |   1.69 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle       | 1KB          |   2,016.1 ns |   6.00 ns |   5.61 ns |     256 B |
 |                                                |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 1025B        |   1,372.6 ns |   0.54 ns |   0.50 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle       | 1025B        |   2,057.4 ns |  11.63 ns |  10.88 ns |     256 B |
+| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 1025B        |   1,382.5 ns |   3.88 ns |   3.63 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle       | 1025B        |   2,023.3 ns |   7.50 ns |   6.65 ns |     256 B |
 |                                                |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 8KB          |   7,678.9 ns |   3.77 ns |   3.34 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle       | 8KB          |   8,551.5 ns |  30.06 ns |  26.65 ns |     256 B |
+| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 8KB          |   7,695.7 ns |   8.62 ns |   8.06 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle       | 8KB          |   8,611.2 ns |  42.90 ns |  40.13 ns |     256 B |
 |                                                |              |              |           |           |           |
-| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 128KB        | 116,595.4 ns |  84.89 ns |  75.26 ns |         - |
-| TryComputeHash · KMAC-128 · BouncyCastle       | 128KB        | 126,294.7 ns | 997.15 ns | 932.74 ns |     256 B |
+| TryComputeHash · KMAC-128 · CryptoHives-Scalar | 128KB        | 117,400.9 ns | 336.31 ns | 298.13 ns |         - |
+| TryComputeHash · KMAC-128 · BouncyCastle       | 128KB        | 124,464.7 ns | 770.54 ns | 720.76 ns |     256 B |

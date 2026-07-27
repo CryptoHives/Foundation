@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable NUnit1032 // Both fields ARE disposed, in [OneTimeTearDown]/[GlobalCleanup] — matches AeadBenchmarkBase/AesKeyWrapBenchmark precedent; the analyzer doesn't recognize the dual-attribute BenchmarkDotNet+NUnit teardown shape here.
