@@ -1,40 +1,11 @@
 # Cryptography Benchmarks
 
-This page collects BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` and organizes them by platform run. Each run is stored in its own platform folder so values from different hosts are never mixed.
-
-## Benchmark Categories
-
-### [Hash Algorithm Benchmarks](benchmarks-hash.md)
-
-Run selector and platform-specific hash results (SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards).
-
-### [Cipher Algorithm Benchmarks](benchmarks-cipher.md)
-
-Run selector and platform-specific cipher results (AES-CBC/GCM/CCM, ChaCha family, and regional block ciphers).
-
-### [MAC Algorithm Benchmarks](benchmarks-mac.md)
-
-Run selector and platform-specific MAC results (HMAC across 8 hash variants, AES-CMAC, AES-GMAC, Poly1305). KMAC is covered under Hash since it shares the Keccak permutation core.
-
-## Published Benchmark Runs
-
-| Platform ID | Host | Published Pages |
-|-------------|------|-----------------|
-| `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Hash](benchmarks/macos-arm64-apple-m4/hash.md), [Cipher](benchmarks/macos-arm64-apple-m4/cipher.md) |
-| `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Hash](benchmarks/windows-x64-amd-ryzen-5-7600x/hash.md), [Cipher](benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.md), [MAC](benchmarks/windows-x64-amd-ryzen-5-7600x/mac.md) |
-
-Platform-specific pages keep benchmark tables isolated per machine so later runs such as Linux Arm64 or additional macOS/Windows hosts can be added without mixing incompatible numbers into the same page.
-
-## UI Structure Recommendation
-
-For a feasible long-term docfx UI:
-
-1. Keep this page as the top-level run catalog.
-2. Keep `benchmarks-hash.md` and `benchmarks-cipher.md` as selectors only (no raw table dumps).
-3. Keep full benchmark tables only in platform pages (`benchmarks/<platform-id>/hash.md` and `benchmarks/<platform-id>/cipher.md`).
-4. Add a tiny comparison summary table (5-10 representative algorithms) on selector pages for quick cross-platform snapshots.
-
-This keeps pages small, avoids duplicate content, and scales cleanly as platform count grows.
+BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` are published through the
+**[interactive benchmark trends dashboard](benchmark-trends/index.html)** rather than static per-platform pages.
+The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, category,
+algorithm family, method, and data size, plotting every matching implementation as its own line — including a
+size-scaling view and multi-size trend comparisons. Because `platform` is a free-form value in the database,
+results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
 
 ## Memory Footprint
 
@@ -125,7 +96,9 @@ The following tables show the per-instance memory footprint (internal state + bu
 
 ## Updating benchmark documentation
 
-1. Run the cryptography benchmarks (either via the helper script or directly through BenchmarkSwitcher):
+1. Run the cryptography benchmarks (either via the helper script or directly through BenchmarkSwitcher). This
+   always produces both the markdown table (for quick local before/after comparison) and a full JSON export
+   (for the trends database) — no extra flags needed:
    ```powershell
    # Run a specific algorithm family
    .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE
@@ -143,11 +116,20 @@ The following tables show the per-instance memory footprint (internal state + bu
    cd tests/Security/Cryptography
    dotnet run -c Release --framework net10.0 -- --filter *SHA256*
    ```
-2. Mirror the freshly generated markdown into the documentation folder:
+2. For a quick local before/after comparison, mirror the generated markdown into a scratch folder (not
+   published, see `.gitignore`):
    ```powershell
    .\scripts\update-benchmark-docs.ps1 -Project Cryptography
    ```
-   The script trims the machine header from the BenchmarkDotNet export, writes it once to a platform-local `machine-spec.md`, and stores each algorithm's benchmark table under the derived platform folder.
+3. Only if the run is worth keeping as a trend data point, record it into the tracked dashboard database —
+   this is a deliberate, separate step since not every local run needs to become history:
+   ```powershell
+   .\scripts\benchmark-trends\record-benchmark-run.ps1 -Category Hash
+   ```
+   The script derives a platform id from the JSON export's host info (override with `-PlatformId` for
+   self-reported/custom machines), tags the run with the current commit/branch, and appends it to
+   `benchmark-trends/benchmark-history.sqlite`. It never commits or pushes — review the diff and commit
+   yourself if you want the run published.
 
 ## See also
 

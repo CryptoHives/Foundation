@@ -792,7 +792,7 @@ public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expir
 
 ## See Also
 
-- [MAC Algorithm Benchmarks](benchmarks-mac.md)
+- [MAC Algorithm Benchmarks](benchmarks.md)
 - [Hash Algorithms](hash-algorithms.md)
 - [Cipher Algorithms](cipher-algorithms.md)
 - [KDF Algorithms](kdf-algorithms.md)
