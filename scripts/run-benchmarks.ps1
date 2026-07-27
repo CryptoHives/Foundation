@@ -7,6 +7,7 @@
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher  (runs SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED)
+#        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family MAC  (runs HMAC (8 variants), AES-CMAC, AES-GMAC, Poly1305)
 
 [CmdletBinding()]
 param(
@@ -35,6 +36,7 @@ param(
         "Kupyna256", "Kupyna384", "Kupyna512",
         "Lsh256_256", "Lsh512_256", "Lsh512_512",
         "AsconHash256", "AsconXof128",
+        "ParallelHash128", "ParallelHash256",
         "KMac128", "KMac256",
         # XOF (Absorb/Squeeze) benchmarks
         "Shake128Xof", "Shake256Xof",
@@ -54,14 +56,18 @@ param(
         "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256",
         "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256",
         "SeedCbc",
+        # MAC algorithms (individual)
+        "HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512",
+        "HmacSha3_256", "HmacSha3_384", "HmacSha3_512",
+        "AesCmac", "AesGmac", "Poly1305",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "KeccakCore", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
-        "Legacy", "RegionalHash", "Kupyna", "LSH", "Ascon", "KMAC",
+        "Legacy", "RegionalHash", "Kupyna", "LSH", "Ascon", "ParallelHash", "KMAC",
         "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
         "AES-GCM", "AES-CCM", "AES-CBC", "ChaCha",
         "RegionalCipher", "SimdArm",
-        "Cipher", "AEAD",
+        "Cipher", "AEAD", "HMAC", "MAC",
         "All"
     )]
     [string]$Family,
@@ -196,6 +202,9 @@ $AlgorithmBenchmarkMap = @{
     # Ascon
     "AsconHash256"      = "AsconHash256"
     "AsconXof128"       = "AsconXof128"
+    # ParallelHash (NIST SP 800-185)
+    "ParallelHash128"   = "ParallelHash128"
+    "ParallelHash256"   = "ParallelHash256"
     # KMAC
     "KMac128"           = "KMac128"
     "KMac256"           = "KMac256"
@@ -237,6 +246,19 @@ $AlgorithmBenchmarkMap = @{
     "KalynaCbc128"      = "KalynaCbc128"
     "KalynaCbc256"      = "KalynaCbc256"
     "SeedCbc"           = "SeedCbc"
+    # MAC - HMAC
+    "HmacMd5"           = "HmacMd5"
+    "HmacSha1"          = "HmacSha1"
+    "HmacSha256"        = "HmacSha256"
+    "HmacSha384"        = "HmacSha384"
+    "HmacSha512"        = "HmacSha512"
+    "HmacSha3_256"      = "HmacSha3_256"
+    "HmacSha3_384"      = "HmacSha3_384"
+    "HmacSha3_512"      = "HmacSha3_512"
+    # MAC - CMAC / GMAC / Poly1305
+    "AesCmac"           = "AesCmac"
+    "AesGmac"           = "AesGmac"
+    "Poly1305"          = "Mac.Poly1305Benchmark"
     # Group Aliases
     "All"               = "Hash"
 }
@@ -260,6 +282,7 @@ $GroupAliases = @{
     "Kupyna"         = @("Kupyna256", "Kupyna384", "Kupyna512")
     "LSH"            = @("Lsh256_256", "Lsh512_256", "Lsh512_512")
     "Ascon"          = @("AsconHash256", "AsconXof128")
+    "ParallelHash"   = @("ParallelHash128", "ParallelHash256")
     "KMAC"           = @("KMac128", "KMac256")
     "XOF"            = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof", "KMac128Xof", "KMac256Xof", "Blake3Xof", "AsconXof128Xof")
     "KeccakXOF"      = @("Shake128Xof", "Shake256Xof", "CShake128Xof", "CShake256Xof", "TurboShake128Xof", "TurboShake256Xof", "KT128Xof", "KT256Xof")
@@ -274,13 +297,16 @@ $GroupAliases = @{
     "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
     "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
 }
 
-# 'All' should run all hash and cipher benchmarks (convenience alias)
-$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"] + $GroupAliases["Cipher"]
+$GroupAliases["MAC"] = $GroupAliases["HMAC"] + @("AesCmac", "AesGmac", "Poly1305")
+
+# 'All' should run all hash, cipher, and MAC benchmarks (convenience alias)
+$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"] + $GroupAliases["Cipher"] + $GroupAliases["MAC"]
 
 # 'Hash' alias groups the common hash families (excluding XOF-specific families)
-$GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["KMAC"]
+$GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"]
 
 # Get repository root
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -377,6 +403,7 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  LSH:           -Family Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  Kupyna:        -Family Kupyna256, Kupyna384, Kupyna512"
     Write-Host "  Ascon:         -Family AsconHash256, AsconXof128"
+    Write-Host "  ParallelHash:  -Family ParallelHash128, ParallelHash256"
     Write-Host "  KMAC:          -Family KMac128, KMac256"
     Write-Host "  XOF:           -Family Shake128Xof, Shake256Xof, CShake128Xof, CShake256Xof, TurboShake128Xof, TurboShake256Xof"
     Write-Host "                          KT128Xof, KT256Xof, KMac128Xof, KMac256Xof, Blake3Xof, AsconXof128Xof"
@@ -389,6 +416,13 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  ChaCha:        -Family ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
     Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
     Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, SeedCbc"
+    Write-Host ""
+    Write-Host "Available MAC algorithm families:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  HMAC:          -Family HmacMd5, HmacSha1, HmacSha256, HmacSha384, HmacSha512"
+    Write-Host "                          HmacSha3_256, HmacSha3_384, HmacSha3_512"
+    Write-Host "  CMAC/GMAC:     -Family AesCmac, AesGmac"
+    Write-Host "  Poly1305:      -Family Poly1305"
     Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -407,6 +441,7 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family Kupyna     runs: Kupyna256, Kupyna384, Kupyna512"
     Write-Host "  -Family LSH        runs: Lsh256_256, Lsh512_256, Lsh512_512"
     Write-Host "  -Family Ascon      runs: AsconHash256, AsconXof128"
+    Write-Host "  -Family ParallelHash   : ParallelHash128, ParallelHash256"
     Write-Host "  -Family KMAC       runs: KMac128, KMac256"
     Write-Host "  -Family XOF        runs: All XOF Absorb/Squeeze benchmarks (12 algorithms)"
     Write-Host "  -Family KeccakXOF  runs: Shake128Xof, Shake256Xof, CShake128Xof, CShake256Xof, TurboShake128Xof, TurboShake256Xof, KT128Xof, KT256Xof"
@@ -420,7 +455,9 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
     Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA, Camellia-128/192/256, Kuznyechik, Kalyna, SEED)"
     Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
-    Write-Host "  -Family All        runs: All Hash and Cipher benchmarks"
+    Write-Host "  -Family HMAC       runs: HmacMd5, HmacSha1, HmacSha256, HmacSha384, HmacSha512, HmacSha3_256, HmacSha3_384, HmacSha3_512"
+    Write-Host "  -Family MAC        runs: All HMAC variants + AesCmac, AesGmac, Poly1305"
+    Write-Host "  -Family All        runs: All Hash, Cipher, and MAC benchmarks"
     Write-Host ""
     exit 0
 }

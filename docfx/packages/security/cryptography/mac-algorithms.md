@@ -673,7 +673,7 @@ blake3.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 | NIST approved | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | .NET built-in | ✅ | ❌ | ❌ | ❌ | Partial | ❌ | ❌ |
 | Key derivation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Arbitrary key size | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Arbitrary key size | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Hardware accelerated | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 
 ¹ Poly1305 does not use a nonce directly, but its key must be unique per message (typically derived from a nonce via ChaCha20).
@@ -792,6 +792,7 @@ public byte[] GenerateSessionKey(byte[] masterKey, string userId, DateTime expir
 
 ## See Also
 
+- [MAC Algorithm Benchmarks](benchmarks-mac.md)
 - [Hash Algorithms](hash-algorithms.md)
 - [Cipher Algorithms](cipher-algorithms.md)
 - [KDF Algorithms](kdf-algorithms.md)

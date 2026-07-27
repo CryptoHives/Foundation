@@ -12,12 +12,16 @@ Run selector and platform-specific hash results (SHA-2, SHA-3, BLAKE2/3, Keccak,
 
 Run selector and platform-specific cipher results (AES-CBC/GCM/CCM, ChaCha family, and regional block ciphers).
 
+### [MAC Algorithm Benchmarks](benchmarks-mac.md)
+
+Run selector and platform-specific MAC results (HMAC across 8 hash variants, AES-CMAC, AES-GMAC, Poly1305). KMAC is covered under Hash since it shares the Keccak permutation core.
+
 ## Published Benchmark Runs
 
 | Platform ID | Host | Published Pages |
 |-------------|------|-----------------|
 | `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Hash](benchmarks/macos-arm64-apple-m4/hash.md), [Cipher](benchmarks/macos-arm64-apple-m4/cipher.md) |
-| `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Hash](benchmarks/windows-x64-amd-ryzen-5-7600x/hash.md), [Cipher](benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.md) |
+| `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Hash](benchmarks/windows-x64-amd-ryzen-5-7600x/hash.md), [Cipher](benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.md), [MAC](benchmarks/windows-x64-amd-ryzen-5-7600x/mac.md) |
 
 Platform-specific pages keep benchmark tables isolated per machine so later runs such as Linux Arm64 or additional macOS/Windows hosts can be added without mixing incompatible numbers into the same page.
 

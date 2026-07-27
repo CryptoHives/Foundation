@@ -1,17 +1,17 @@
 ﻿| Description                                    | TestDataSize | Mean       | Error     | StdDev    | Allocated |
 |----------------------------------------------- |------------- |-----------:|----------:|----------:|----------:|
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 128B         |   1.961 μs | 0.0022 μs | 0.0021 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 128B         |   2.074 μs | 0.0032 μs | 0.0028 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 128B         |   2.097 μs | 0.0043 μs | 0.0038 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 128B         |   1.982 μs | 0.0022 μs | 0.0020 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 128B         |   2.082 μs | 0.0107 μs | 0.0095 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 128B         |   2.112 μs | 0.0049 μs | 0.0046 μs |         - |
 |                                                |              |            |           |           |           |
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 1KB          |   2.821 μs | 0.0015 μs | 0.0014 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 1KB          |   3.014 μs | 0.0062 μs | 0.0058 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 1KB          |   3.075 μs | 0.0069 μs | 0.0065 μs |    1152 B |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 1KB          |   2.843 μs | 0.0100 μs | 0.0093 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 1KB          |   3.040 μs | 0.0039 μs | 0.0037 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 1KB          |   3.098 μs | 0.0058 μs | 0.0054 μs |    1152 B |
 |                                                |              |            |           |           |           |
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 8KB          |   8.789 μs | 0.0032 μs | 0.0025 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 8KB          |   9.403 μs | 0.0234 μs | 0.0219 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 8KB          |  10.058 μs | 0.0145 μs | 0.0128 μs |    9216 B |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 8KB          |   8.839 μs | 0.0282 μs | 0.0264 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 8KB          |   9.473 μs | 0.0134 μs | 0.0119 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 8KB          |  10.120 μs | 0.0139 μs | 0.0123 μs |    9216 B |
 |                                                |              |            |           |           |           |
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 128KB        | 112.845 μs | 0.0452 μs | 0.0401 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 128KB        | 120.932 μs | 0.1758 μs | 0.1644 μs |         - |
-| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 128KB        | 132.125 μs | 0.1888 μs | 0.1766 μs |  149760 B |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Arm64  | 128KB        | 113.599 μs | 0.2614 μs | 0.2445 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · CryptoHives-Scalar | 128KB        | 121.783 μs | 0.1872 μs | 0.1659 μs |         - |
+| AbsorbSqueeze · cSHAKE128 · BouncyCastle       | 128KB        | 132.951 μs | 0.2446 μs | 0.2288 μs |  149760 B |

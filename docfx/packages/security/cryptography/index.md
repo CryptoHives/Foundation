@@ -418,7 +418,7 @@ Every implementation uses fixed-size internal buffers sized to its block size â€
 |---------|-------------|------------------------------|
 | OS dependency | None | Uses CNG/OpenSSL |
 | Cross-platform consistency | Guaranteed | May vary |
-| Hardware acceleration | Managed SIMD (AES-NI/PCLMULQDQ/VPCLMULQDQ/SSE2/SSSE3/AVX2) | OS-level (CNG/OpenSSL/SymCrypt) |
+| Hardware acceleration | Managed SIMD (AES-NI/PCLMULQDQ/VPCLMULQDQ/SSE2/SSSE3/AVX2/AVX-512/ARM NEON) | OS-level (CNG/OpenSSL/SymCrypt) |
 | SHA-3 support | Full | .NET 8+ only |
 | BLAKE2/3 support | Yes | No |
 | Keccak-256 (Ethereum) | Yes | No |
