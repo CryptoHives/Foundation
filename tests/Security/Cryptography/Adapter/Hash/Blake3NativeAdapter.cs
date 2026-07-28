@@ -6,8 +6,8 @@ namespace Cryptography.Tests.Adapter.Hash;
 #if BLAKE3_NATIVE
 
 using System;
-using CH = CryptoHives.Foundation.Security.Cryptography;
 using Blake3Native = Blake3;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Wraps the Blake3.NET native implementation as a

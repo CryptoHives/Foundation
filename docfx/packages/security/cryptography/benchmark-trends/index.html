@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CryptoHives Benchmark Trends</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 2rem; max-width: 1100px; }
+  h1 { font-size: 1.4rem; }
+  fieldset.mode-toggle { display: flex; gap: 1rem; margin: 0 0 1rem; border: 1px solid #ddd; border-radius: 6px; padding: 0.5rem 1rem; }
+  fieldset.mode-toggle legend { font-size: 0.8rem; color: #666; padding: 0 0.3rem; }
+  fieldset.mode-toggle label { font-size: 0.9rem; display: flex; align-items: center; gap: 0.3rem; }
+  .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0 1.5rem; align-items: flex-start; }
+  .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
+  select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
+  #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-bottom: 0.4rem; }
+  .legend-row:empty { margin-bottom: 0; }
+  .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: #333; cursor: pointer; user-select: none; }
+  .legend-item.disabled { opacity: 0.35; text-decoration: line-through; }
+  .legend-swatch { width: 13px; height: 13px; border-radius: 2px; flex: none; }
+  .legend-hint { font-size: 0.78rem; color: #888; margin: -0.2rem 0 0.5rem; }
+  #chart-container { position: relative; height: 480px; }
+  .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+<h1>CryptoHives Benchmark Trends</h1>
+<p>
+  Benchmark history for <code>CryptoHives.Foundation.Security.Cryptography</code>'s hash, cipher,
+  and MAC implementations — how each one performs against reference libraries (the OS,
+  BouncyCastle, and others) across platforms and data sizes, and how that's changed over time as
+  the code evolves. Pick a platform, category, algorithm family, and method below; every
+  implementation is plotted as its own line so they're directly comparable at a glance. Runs
+  entirely in your browser (no server, no external database) — see the hint below the chart for
+  the two view modes.
+</p>
+
+<fieldset class="mode-toggle">
+  <legend>View</legend>
+  <label><input type="radio" name="mode" value="trend" checked> Trend over time</label>
+  <label><input type="radio" name="mode" value="scaling"> Scaling by size</label>
+</fieldset>
+
+<div class="controls">
+  <label>Platform
+    <select id="platform"></select>
+  </label>
+  <label>Category
+    <select id="category"></select>
+  </label>
+  <label>Family
+    <select id="family"></select>
+  </label>
+  <label>Method
+    <select id="method"></select>
+  </label>
+  <label>Metric
+    <select id="metric">
+      <option value="mean_ns">Mean time (ns)</option>
+      <option value="allocated_bytes">Allocated bytes</option>
+    </select>
+  </label>
+  <label>Date range
+    <select id="date-range">
+      <option value="all">All time</option>
+      <option value="30">Last 30 days</option>
+      <option value="90">Last 90 days</option>
+    </select>
+  </label>
+  <label style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
+    <input type="checkbox" id="log-scale">
+    Logarithmic Y axis
+  </label>
+  <label style="flex-direction: row; align-items: center; gap: 0.5rem; margin-top: 1.2rem;">
+    <button type="button" id="copy-link">🔗 Copy link to this view</button>
+    <span id="copy-link-status" style="font-size: 0.8rem; color: #666;"></span>
+  </label>
+</div>
+
+<div id="status">Loading database…</div>
+<p id="legend-hint" class="legend-hint" hidden>Click a color or line style below to hide/show it.</p>
+<div id="legend-colors" class="legend-row"></div>
+<div id="legend-dashes" class="legend-row"></div>
+<div id="chart-container"><canvas id="chart"></canvas></div>
+
+<p class="hint">
+  Data source: <code>benchmark-history.sqlite</code>, appended to by
+  <code>scripts/cryptography-benchmark-trends/record-benchmark-run.ps1</code> whenever someone decides a local
+  run is worth keeping. Each point is one recorded run; hover a point for the exact commit and value.
+  <strong>Trend over time</strong> plots every recorded data size for the current filters at once
+  (use the line-style legend below to hide sizes you don't want). <strong>Scaling by size</strong>
+  plots data size on the X axis using each implementation's most recent run, showing how it scales
+  across sizes at a glance.
+</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+(async function () {
+  const statusEl = document.getElementById("status");
+  const platformSel = document.getElementById("platform");
+  const categorySel = document.getElementById("category");
+  const familySel = document.getElementById("family");
+  const methodSel = document.getElementById("method");
+  const metricSel = document.getElementById("metric");
+  const logScaleCb = document.getElementById("log-scale");
+  const legendColorsEl = document.getElementById("legend-colors");
+  const legendDashesEl = document.getElementById("legend-dashes");
+  const copyLinkBtn = document.getElementById("copy-link");
+  const copyLinkStatusEl = document.getElementById("copy-link-status");
+  const dateRangeSel = document.getElementById("date-range");
+  const legendHintEl = document.getElementById("legend-hint");
+  const modeRadios = document.querySelectorAll('input[name="mode"]');
+
+  const PALETTE = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
+
+  // Custom legends replace Chart.js's built-in one-entry-per-dataset legend, which would
+  // otherwise show one row per (variant, size) combination in multi-size trend mode — e.g.
+  // "BouncyCastle @ 128B", "BouncyCastle @ 256B", ... Splitting color (= variant) from dash
+  // pattern (= size) into two small legends cuts that down to variants + sizes rows instead of
+  // variants × sizes. Both stay clickable to toggle visibility, same as Chart.js's default.
+  const hiddenVariants = new Set();
+  const hiddenSizes = new Set();
+
+  function dashSwatchSvg(dash) {
+    const dasharray = dash && dash.length ? dash.join(",") : "";
+    return `<svg width="26" height="12" style="flex:none"><line x1="1" y1="6" x2="25" y2="6" stroke="#555" stroke-width="2"${dasharray ? ` stroke-dasharray="${dasharray}"` : ""}/></svg>`;
+  }
+
+  function renderColorLegend(entries) {
+    legendColorsEl.innerHTML = "";
+    legendHintEl.hidden = entries.length === 0;
+    for (const { variant, color } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenVariants.has(variant) ? " disabled" : "");
+      const swatch = document.createElement("span");
+      swatch.className = "legend-swatch";
+      swatch.style.background = color;
+      item.append(swatch, document.createTextNode(variant));
+      item.onclick = () => {
+        if (hiddenVariants.has(variant)) hiddenVariants.delete(variant);
+        else hiddenVariants.add(variant);
+        renderChart();
+      };
+      legendColorsEl.appendChild(item);
+    }
+  }
+
+  function renderDashLegend(entries) {
+    legendDashesEl.innerHTML = "";
+    for (const { sizeLabel, dash } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenSizes.has(sizeLabel) ? " disabled" : "");
+      item.innerHTML = dashSwatchSvg(dash);
+      item.append(document.createTextNode(sizeLabel));
+      item.onclick = () => {
+        if (hiddenSizes.has(sizeLabel)) hiddenSizes.delete(sizeLabel);
+        else hiddenSizes.add(sizeLabel);
+        renderChart();
+      };
+      legendDashesEl.appendChild(item);
+    }
+  }
+
+  let db;
+  let chart;
+  // Every recorded data size for the current platform/category/family/method is always
+  // queried; the dash-pattern legend (click to hide/show, same as the color legend) is now the
+  // only way to focus on a subset — there's no separate picker to keep in sync with it.
+  let currentSizes = [];
+
+  function distinct(column, whereSql, params) {
+    const stmt = db.prepare(`SELECT DISTINCT ${column} FROM benchmark_results ${whereSql} ORDER BY ${column}`);
+    stmt.bind(params || []);
+    const values = [];
+    while (stmt.step()) values.push(stmt.getAsObject()[column]);
+    stmt.free();
+    return values;
+  }
+
+  function populateSelect(selectEl, values, placeholder, preferredValue) {
+    selectEl.innerHTML = "";
+    if (placeholder) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = placeholder;
+      selectEl.appendChild(opt);
+    }
+    for (const v of values) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      selectEl.appendChild(opt);
+    }
+    if (preferredValue !== undefined && values.includes(preferredValue)) {
+      selectEl.value = preferredValue;
+    }
+  }
+
+  // Shareable-URL support: the current selection set (platform/category/family/method/
+  // metric/mode/log) round-trips through the URL hash, so a copied link reproduces exactly
+  // this view for someone else — no server involved, it's just parsed back out on load.
+  // Data size is no longer part of this: every size is always queried, and which ones are
+  // visible is a hiddenSizes legend-click choice (same as hiddenVariants), neither of which is
+  // synced to the URL today.
+  function parseUrlState() {
+    const raw = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
+    if (!raw) return null;
+    const params = new URLSearchParams(raw);
+    if ([...params.keys()].length === 0) return null;
+    return {
+      platform: params.get("platform") ?? undefined,
+      category: params.get("category") ?? undefined,
+      family: params.get("family") ?? undefined,
+      method: params.get("method") ?? undefined,
+      metric: params.get("metric") ?? undefined,
+      range: params.get("range") ?? undefined,
+      mode: params.get("mode") ?? undefined,
+      log: params.has("log") ? params.get("log") === "1" : undefined,
+    };
+  }
+
+  function syncUrlHash() {
+    const params = new URLSearchParams();
+    params.set("platform", platformSel.value);
+    params.set("category", categorySel.value);
+    params.set("family", familySel.value);
+    params.set("method", methodSel.value);
+    params.set("metric", metricSel.value);
+    params.set("range", dateRangeSel.value);
+    params.set("mode", currentMode());
+    params.set("log", logScaleCb.checked ? "1" : "0");
+    const newHash = "#" + params.toString();
+    if (location.hash !== newHash) history.replaceState(null, "", newHash);
+  }
+
+  function currentMode() {
+    return Array.from(modeRadios).find((r) => r.checked).value;
+  }
+
+  function metricLabel(metric) {
+    return metric === "mean_ns" ? "Mean time (ns)" : "Allocated bytes";
+  }
+
+  // Some algorithms are 100x+ slower/heavier than others, which flattens the faster lines
+  // into an unreadable strip on a linear axis — logarithmic makes every line legible at once.
+  // Zero-valued points (e.g. stack-only allocations) are simply not plottable on a log axis;
+  // Chart.js skips them rather than erroring.
+  function yAxisScale(metric) {
+    const useLog = logScaleCb.checked;
+    return {
+      type: useLog ? "logarithmic" : "linear",
+      title: { display: true, text: metricLabel(metric) },
+      beginAtZero: useLog ? undefined : true,
+    };
+  }
+
+  // All history is already loaded client-side (it's one sql.js database fetched once), so a
+  // preset date-range filter is just an extra WHERE clause — no re-fetching, no extra library.
+  // Returns an ISO cutoff string, or null for "All time".
+  function dateRangeCutoffIso() {
+    const days = dateRangeSel.value === "30" ? 30 : dateRangeSel.value === "90" ? 90 : null;
+    if (days == null) return null;
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - days);
+    return cutoff.toISOString();
+  }
+
+  function refreshFamilies(preferred) {
+    const families = distinct(
+      "family",
+      "WHERE platform = ? AND category = ?",
+      [platformSel.value, categorySel.value]
+    );
+    populateSelect(familySel, families, null, preferred?.family);
+    refreshMethods(preferred);
+  }
+
+  function refreshMethods(preferred) {
+    // A family can span multiple benchmark methods (e.g. BLAKE3 has both
+    // TryComputeHash from Blake3Benchmark and AbsorbSqueeze from Blake3XofBenchmark) —
+    // these measure different things and must never be plotted on the same line.
+    const methods = distinct(
+      "method",
+      "WHERE platform = ? AND category = ? AND family = ?",
+      [platformSel.value, categorySel.value, familySel.value]
+    );
+    populateSelect(methodSel, methods, null, preferred?.method);
+    refreshSizes(preferred);
+  }
+
+  function refreshSizes() {
+    // A new family/method means a different set of variants and sizes, so any prior
+    // show/hide legend selections no longer refer to anything meaningful here.
+    hiddenVariants.clear();
+    hiddenSizes.clear();
+    const stmt = db.prepare(
+      `SELECT DISTINCT data_size_label, data_size_bytes FROM benchmark_results
+       WHERE platform = ? AND category = ? AND family = ? AND method = ?
+       ORDER BY data_size_bytes`
+    );
+    stmt.bind([platformSel.value, categorySel.value, familySel.value, methodSel.value]);
+    currentSizes = [];
+    while (stmt.step()) currentSizes.push(stmt.getAsObject().data_size_label);
+    stmt.free();
+    renderChart();
+  }
+
+  function renderChartInstance(datasets, scales, tooltipAfterLabel) {
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales,
+        plugins: {
+          legend: { display: false }, // replaced by the custom color/dash legends above the chart
+          tooltip: {
+            callbacks: { afterLabel: tooltipAfterLabel },
+          },
+        },
+      },
+    });
+  }
+
+  function renderTrendChart() {
+    const metric = metricSel.value;
+    const sizes = currentSizes;
+    if (sizes.length === 0) {
+      if (chart) chart.destroy();
+      statusEl.textContent = "No data for this selection yet.";
+      return;
+    }
+
+    const placeholders = sizes.map(() => "?").join(",");
+    const cutoff = dateRangeCutoffIso();
+    const stmt = db.prepare(`
+      SELECT variant, data_size_label, run_date, commit_sha, ${metric} AS value
+      FROM benchmark_results
+      WHERE platform = ? AND category = ? AND family = ? AND method = ? AND data_size_label IN (${placeholders})
+        ${cutoff ? "AND run_date >= ?" : ""}
+      ORDER BY variant, data_size_label, run_date
+    `);
+    stmt.bind([platformSel.value, categorySel.value, familySel.value, methodSel.value, ...sizes, ...(cutoff ? [cutoff] : [])]);
+
+    const multiSize = sizes.length > 1;
+    const seriesByKey = new Map();
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      const key = multiSize ? `${row.variant} @ ${row.data_size_label}` : row.variant;
+      if (!seriesByKey.has(key)) seriesByKey.set(key, { variant: row.variant, sizeLabel: row.data_size_label, points: [] });
+      seriesByKey.get(key).points.push({ x: row.run_date, y: row.value, commit: row.commit_sha });
+    }
+    stmt.free();
+
+    // Color tracks the variant/implementation, not the (variant, size) combination — so the
+    // same algorithm stays the same color across every size, and what changes per size is the
+    // dash pattern. That way a variant's trend is easy to follow by eye, and differences in how
+    // it scales across sizes show up as diverging lines of the same color rather than a wall of
+    // same-looking colors that force reading the legend for every point.
+    const variantOrder = [];
+    for (const { variant } of seriesByKey.values()) {
+      if (!variantOrder.includes(variant)) variantOrder.push(variant);
+    }
+    const colorForVariant = new Map(variantOrder.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+
+    const DASH_PATTERNS = [[], [6, 3], [2, 2], [8, 3, 2, 3], [1, 3], [10, 4], [4, 2, 1, 2]];
+    const dashForSize = new Map(sizes.map((label, i) => [label, DASH_PATTERNS[i % DASH_PATTERNS.length]]));
+
+    const datasets = Array.from(seriesByKey.entries()).map(([label, { variant, sizeLabel, points }]) => ({
+      label,
+      data: points,
+      borderColor: colorForVariant.get(variant),
+      backgroundColor: colorForVariant.get(variant),
+      borderDash: multiSize ? dashForSize.get(sizeLabel) : [],
+      hidden: hiddenVariants.has(variant) || hiddenSizes.has(sizeLabel),
+      tension: 0.15,
+      pointRadius: 3,
+    }));
+
+    renderChartInstance(
+      datasets,
+      {
+        x: { type: "time", time: { unit: "day" }, title: { display: true, text: "Run date" } },
+        y: yAxisScale(metric),
+      },
+      (ctx) => `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+    );
+
+    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
+    renderDashLegend(multiSize ? sizes.map((label) => ({ sizeLabel: label, dash: dashForSize.get(label) })) : []);
+
+    const visibleCount = datasets.filter((d) => !d.hidden).length;
+    statusEl.textContent = datasets.length
+      ? `${visibleCount} of ${datasets.length} series shown, ` +
+        `${datasets.filter((d) => !d.hidden).reduce((n, d) => n + d.data.length, 0)} data point(s)`
+      : "No data for this selection yet.";
+  }
+
+  function renderScalingChart() {
+    const metric = metricSel.value;
+    const cutoff = dateRangeCutoffIso();
+    const stmt = db.prepare(`
+      SELECT variant, data_size_bytes, data_size_label, run_date, commit_sha, ${metric} AS value
+      FROM benchmark_results
+      WHERE platform = ? AND category = ? AND family = ? AND method = ?
+        ${cutoff ? "AND run_date >= ?" : ""}
+      ORDER BY variant, data_size_bytes, run_date
+    `);
+    stmt.bind([platformSel.value, categorySel.value, familySel.value, methodSel.value, ...(cutoff ? [cutoff] : [])]);
+
+    // ORDER BY run_date ASC means the last row seen for a given (variant, size) is the most
+    // recent recorded run within the selected date range — exactly the one we want for a
+    // "current scaling" snapshot (or a rewind, if a shorter range is selected).
+    const latestByVariant = new Map();
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      if (!latestByVariant.has(row.variant)) latestByVariant.set(row.variant, new Map());
+      latestByVariant.get(row.variant).set(row.data_size_bytes, {
+        x: row.data_size_bytes,
+        y: row.value,
+        size_label: row.data_size_label,
+        commit: row.commit_sha,
+      });
+    }
+    stmt.free();
+
+    const variantOrder = Array.from(latestByVariant.keys());
+    const colorForVariant = new Map(variantOrder.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+
+    const datasets = variantOrder.map((variant) => ({
+      label: variant,
+      data: Array.from(latestByVariant.get(variant).values()).sort((a, b) => a.x - b.x),
+      borderColor: colorForVariant.get(variant),
+      backgroundColor: colorForVariant.get(variant),
+      hidden: hiddenVariants.has(variant),
+      tension: 0.15,
+      pointRadius: 3,
+    }));
+
+    renderChartInstance(
+      datasets,
+      {
+        x: { type: "logarithmic", title: { display: true, text: "Data size (bytes)" } },
+        y: yAxisScale(metric),
+      },
+      (ctx) => `${ctx.raw.size_label} · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+    );
+
+    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
+    renderDashLegend([]); // one line per variant here — no per-size distinction to show
+
+    const visibleCount = datasets.filter((d) => !d.hidden).length;
+    statusEl.textContent = datasets.length
+      ? `${visibleCount} of ${datasets.length} variant(s) shown, most recent run per size`
+      : "No data for this selection yet.";
+  }
+
+  function renderChart() {
+    if (currentMode() === "scaling") renderScalingChart();
+    else renderTrendChart();
+    syncUrlHash();
+  }
+
+  if (location.protocol === "file:") {
+    statusEl.textContent =
+      "This page was opened directly from disk (file://) — browsers block fetch() of local files " +
+      "regardless of what's in the folder. Serve it over HTTP instead, e.g. from this folder run: " +
+      "python3 -m http.server 8000, then open http://localhost:8000/";
+    return;
+  }
+
+  try {
+    const SQL = await initSqlJs({
+      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
+    });
+    const response = await fetch("benchmark-history.sqlite");
+    if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
+    const buffer = await response.arrayBuffer();
+    db = new SQL.Database(new Uint8Array(buffer));
+
+    const restoreState = parseUrlState();
+
+    populateSelect(platformSel, distinct("platform", ""), null, restoreState?.platform);
+    platformSel.onchange = () => {
+      populateSelect(categorySel, distinct("category", "WHERE platform = ?", [platformSel.value]));
+      refreshFamilies();
+    };
+    categorySel.onchange = refreshFamilies;
+    familySel.onchange = refreshMethods;
+    methodSel.onchange = refreshSizes;
+    metricSel.onchange = renderChart;
+    dateRangeSel.onchange = renderChart;
+    logScaleCb.onchange = renderChart;
+    modeRadios.forEach((r) => (r.onchange = renderChart));
+    copyLinkBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        copyLinkStatusEl.textContent = "Copied!";
+      } catch {
+        copyLinkStatusEl.textContent = location.href;
+      }
+      setTimeout(() => { copyLinkStatusEl.textContent = ""; }, 2500);
+    };
+
+    if (restoreState?.metric) metricSel.value = restoreState.metric;
+    if (restoreState?.range) dateRangeSel.value = restoreState.range;
+    if (restoreState?.mode) {
+      const radio = Array.from(modeRadios).find((r) => r.value === restoreState.mode);
+      if (radio) radio.checked = true;
+    }
+    if (restoreState?.log !== undefined) logScaleCb.checked = restoreState.log;
+
+    populateSelect(categorySel, distinct("category", "WHERE platform = ?", [platformSel.value]), null, restoreState?.category);
+    refreshFamilies(restoreState);
+  } catch (err) {
+    statusEl.textContent = `Failed to load benchmark-history.sqlite: ${err.message}`;
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
