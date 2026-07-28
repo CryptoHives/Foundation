@@ -10,8 +10,8 @@
 # keeping as a trend data point. Run this only when you've decided a run should be recorded.
 #
 # Usage:
-#   .\scripts\benchmark-trends\record-benchmark-run.ps1 -Category Hash
-#   .\scripts\benchmark-trends\record-benchmark-run.ps1 -Category Cipher -PlatformId linux-arm64-aws-graviton-4
+#   .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category Hash
+#   .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category Cipher -PlatformId linux-arm64-aws-graviton-4
 #
 # Note: only files written within -RecentWindowMinutes (default 30) of the newest file in the
 # results directory are ingested — older leftovers from an earlier, unrelated run are ignored

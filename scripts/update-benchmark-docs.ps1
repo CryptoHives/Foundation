@@ -32,7 +32,10 @@ $RepoRoot = Split-Path $PSScriptRoot
 $packageConfigurations = @{
     "Threading" = [ordered]@{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
-        DestDir   = "docfx/packages/threading/benchmarks"
+        # Local scratch output only (see .gitignore) — the published benchmark view is the
+        # SQLite-backed dashboard under docfx/packages/threading/benchmark-trends/, not a
+        # per-platform markdown tree, so this must not point back into docfx/.
+        DestDir   = "bench-results/threading"
         Files     = @(
             @{ Source = "AsyncLockSingleBenchmark-report.md"; Target = "asynclock-single.md" }
             @{ Source = "AsyncLockMultipleBenchmark-report.md"; Target = "asynclock-multiple.md" }
