@@ -292,3 +292,41 @@ public class Lsh512_512Benchmark : ParameterizedHashBenchmark
     public Lsh512_512Benchmark() { }
     public Lsh512_512Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
 }
+
+/// <summary>
+/// Benchmark for ParallelHash128 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "ParallelHash", "ParallelHash128")]
+[NonParallelizable]
+public class ParallelHash128Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.ParallelHash128();
+
+    public ParallelHash128Benchmark() { }
+    public ParallelHash128Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}
+
+/// <summary>
+/// Benchmark for ParallelHash256 implementations.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(HashAlgorithmTypeArgs))]
+[Config(typeof(HashConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Hash", "ParallelHash", "ParallelHash256")]
+[NonParallelizable]
+public class ParallelHash256Benchmark : ParameterizedHashBenchmark
+{
+    public static readonly object[] HashAlgorithmTypeArgs = Algorithms().Select(s => new object[] { s }).ToArray();
+    public static IEnumerable<HashAlgorithmType> Algorithms() => HashAlgorithmType.ParallelHash256();
+
+    public ParallelHash256Benchmark() { }
+    public ParallelHash256Benchmark(HashAlgorithmType hashAlgorithm) : base(hashAlgorithm) { }
+}

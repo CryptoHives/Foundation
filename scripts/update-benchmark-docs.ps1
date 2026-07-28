@@ -54,7 +54,10 @@ $packageConfigurations = @{
 
     "Cryptography" = [ordered]@{
         SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
-        DestDir   = "docfx/packages/security/cryptography/benchmarks"
+        # Local scratch output only (see .gitignore) — the published benchmark view is the
+        # SQLite-backed dashboard under docfx/packages/security/cryptography/benchmark-trends/,
+        # not a per-platform markdown tree, so this must not point back into docfx/.
+        DestDir   = "bench-results/cryptography"
         Files     = @(
             # SHA-2 individual algorithms
             @{ Source = "SHA224Benchmark-report.md"; Target = "sha224.md" }
@@ -127,6 +130,10 @@ $packageConfigurations = @{
             @{ Source = "AsconHash256Benchmark-report.md"; Target = "asconhash256.md" }
             @{ Source = "AsconXof128Benchmark-report.md"; Target = "asconxof128.md" }
 
+            # ParallelHash (NIST SP 800-185)
+            @{ Source = "ParallelHash128Benchmark-report.md"; Target = "parallelhash128.md" }
+            @{ Source = "ParallelHash256Benchmark-report.md"; Target = "parallelhash256.md" }
+
             # KMAC
             @{ Source = "KMac128Benchmark-report.md"; Target = "kmac128.md" }
             @{ Source = "KMac256Benchmark-report.md"; Target = "kmac256.md" }
@@ -176,6 +183,21 @@ $packageConfigurations = @{
             @{ Source = "KalynaCbc128Benchmark-report.md"; Target = "kalyna-cbc-128.md" }
             @{ Source = "KalynaCbc256Benchmark-report.md"; Target = "kalyna-cbc-256.md" }
             @{ Source = "SeedCbcBenchmark-report.md"; Target = "seed-cbc.md" }
+
+            # MAC benchmarks - HMAC
+            @{ Source = "HmacMd5Benchmark-report.md"; Target = "hmac-md5.md" }
+            @{ Source = "HmacSha1Benchmark-report.md"; Target = "hmac-sha1.md" }
+            @{ Source = "HmacSha256Benchmark-report.md"; Target = "hmac-sha256.md" }
+            @{ Source = "HmacSha384Benchmark-report.md"; Target = "hmac-sha384.md" }
+            @{ Source = "HmacSha512Benchmark-report.md"; Target = "hmac-sha512.md" }
+            @{ Source = "HmacSha3_256Benchmark-report.md"; Target = "hmac-sha3-256.md" }
+            @{ Source = "HmacSha3_384Benchmark-report.md"; Target = "hmac-sha3-384.md" }
+            @{ Source = "HmacSha3_512Benchmark-report.md"; Target = "hmac-sha3-512.md" }
+
+            # MAC benchmarks - CMAC / GMAC / Poly1305
+            @{ Source = "AesCmacBenchmark-report.md"; Target = "aes-cmac.md" }
+            @{ Source = "AesGmacBenchmark-report.md"; Target = "aes-gmac.md" }
+            @{ Source = "Poly1305Benchmark-report.md"; Target = "poly1305.md" }
         )
     }
 }

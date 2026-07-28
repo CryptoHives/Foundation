@@ -32,7 +32,8 @@
       {
         "files": [
           "images/**",
-          "googled2fe7d86cf779a1b.html"
+          "googled2fe7d86cf779a1b.html",
+          "packages/security/cryptography/benchmark-trends/**"
         ]
       }
     ],

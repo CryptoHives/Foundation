@@ -11,7 +11,7 @@
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Cryptography Hash MAC Ascon BLAKE SHA SHAKE SM3 Keccak Gost LSH Kupyna</PackageTags>
+    <PackageTags>$(PackageTags) Cryptography Hash MAC KDF Cipher AEAD Ascon BLAKE2 BLAKE3 SHA2 SHA3 MD5 RIPEMD160 SHAKE SM3 SM4 Keccak Gost Kuznyechik Streebog Whirlpool LSH Kupyna AES GCM CCM ChaCha20 Poly1305 Camellia Aria Kalyna Seed HMAC CMAC GMAC KMAC HKDF PBKDF2 KBKDF</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

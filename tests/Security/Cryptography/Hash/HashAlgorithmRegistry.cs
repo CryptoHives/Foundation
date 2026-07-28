@@ -37,6 +37,8 @@ public static class HashAlgorithmRegistry
         Managed,
         /// <summary>CryptoHives SIMD-optimized implementation.</summary>
         Simd,
+        /// <summary>CryptoHives managed implementation reached through a test adapter.</summary>
+        ManagedAdapter,
         /// <summary>BouncyCastle implementation.</summary>
         BouncyCastle,
         /// <summary>HashifyNET implementation.</summary>
@@ -48,7 +50,11 @@ public static class HashAlgorithmRegistry
         /// <summary>Konscious.Security.Cryptography implementation.</summary>
         Konscious,
         /// <summary>SauceControl.Blake2Fast implementation.</summary>
-        Blake2Fast
+        Blake2Fast,
+        /// <summary>Blake3 managed (xoofx/Blake3.NET, "Blake3" package) implementation.</summary>
+        Blake3Managed,
+        /// <summary>Blake3.Managed (Dissimilis/Blake3.Managed package) implementation.</summary>
+        Blake3Dissimilis
     }
 
     /// <summary>
@@ -243,6 +249,9 @@ public static class HashAlgorithmRegistry
 
         // Ascon (NIST SP 800-232)
         AddAscon(list);
+
+        // ParallelHash (NIST SP 800-185)
+        AddParallelHash(list);
 
         return list;
     }
@@ -510,6 +519,14 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE3", "Blake3Native", 256,
             () => new Blake3NativeAdapter(32), Source.Native));
 #endif
+#if BLAKE3_MANAGED
+        list.Add(new("BLAKE3", "Blake3Managed", 256,
+            () => new Blake3ManagedAdapter(32), Source.Blake3Managed));
+#endif
+#if BLAKE3_DISSIMILIS
+        list.Add(new("BLAKE3", "Blake3Dissimilis", 256,
+            () => new Blake3DissimilisAdapter(32), Source.Blake3Dissimilis));
+#endif
     }
 
     #endregion
@@ -699,6 +716,29 @@ public static class HashAlgorithmRegistry
             () => CH.AsconXof128.Create(32), Source.Managed));
         list.Add(new("Ascon-XOF128", "BouncyCastle", 256,
             () => new BouncyCastleGenericXofAdapter(new BC.AsconXof128(), 32), Source.BouncyCastle));
+    }
+
+    #endregion
+
+    #region ParallelHash
+
+    private static void AddParallelHash(List<HashImplementation> list)
+    {
+        // ParallelHash128 (32-byte output)
+        list.Add(new("ParallelHash128", "CryptoHives-Scalar", 256,
+            () => new ParallelHashAdapter(CH.IncrementalParallelHash.ShakeType.Shake128, 32), Source.ManagedAdapter));
+        list.Add(new("ParallelHash128", "BouncyCastle", 256,
+            () => new BouncyCastleGenericXofAdapter(
+                new BC.ParallelHash(128, [], CH.ParallelHash.DefaultBlockSizeBytes, 256), 32),
+            Source.BouncyCastle));
+
+        // ParallelHash256 (64-byte output)
+        list.Add(new("ParallelHash256", "CryptoHives-Scalar", 512,
+            () => new ParallelHashAdapter(CH.IncrementalParallelHash.ShakeType.Shake256, 64), Source.ManagedAdapter));
+        list.Add(new("ParallelHash256", "BouncyCastle", 512,
+            () => new BouncyCastleGenericXofAdapter(
+                new BC.ParallelHash(256, [], CH.ParallelHash.DefaultBlockSizeBytes, 512), 64),
+            Source.BouncyCastle));
     }
 
     #endregion
