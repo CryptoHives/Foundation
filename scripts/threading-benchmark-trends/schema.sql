@@ -16,9 +16,10 @@
 --   - `data_size_label`/`data_size_bytes` are replaced with `param_label`/`param_value`,
 --     representing contention level (BenchmarkDotNet's `Iterations`/`ParticipantCount`
 --     [Params] axis) instead of data size — the closest analog for a "scaling" X axis.
---   - CancellationToken state (None/NotCancelled/Cancelled), where present, is folded into
---     `variant` (e.g. 'Pooled' vs 'Pooled (Cancelled)') rather than given its own column, so
---     it still renders as its own comparable line without a sixth schema dimension.
+--   - CancellationToken state (None/NotCancelled) is its own `cancellation` column instead of
+--     being folded into `variant` as a parenthetical suffix — this lets the dashboard offer a
+--     dedicated Cancellation selector (mirroring the contention selector) instead of doubling
+--     the number of distinct legend entries for every variant that supports cancellation.
 
 CREATE TABLE IF NOT EXISTS benchmark_results (
     run_id      TEXT    NOT NULL,  -- e.g. short commit sha + run number; groups one run
@@ -28,14 +29,15 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     platform    TEXT    NOT NULL,  -- e.g. 'windows-x64-amd-ryzen-5-7600x'
     class_name  TEXT    NOT NULL,  -- e.g. 'AsyncLockMultipleBenchmark'
     method      TEXT    NOT NULL,  -- e.g. 'Multiple', 'Single', 'SignalAndWait' (the "Operation")
-    family      TEXT    NOT NULL,  -- e.g. 'AsyncLock', 'SemaphoreSlim' (the primitive/type compared)
-    variant     TEXT    NOT NULL,  -- e.g. 'Pooled (ValueTask)', 'Nito', 'System (Cancelled)'
+    family      TEXT    NOT NULL,  -- e.g. 'AsyncLock', 'AsyncBarrier' (the primitive/type compared)
+    variant     TEXT    NOT NULL,  -- e.g. 'Pooled (ValueTask)', 'Nito', 'Lock.EnterScope'
+    cancellation TEXT   NOT NULL DEFAULT 'None', -- 'None' or 'NotCancelled' (CancellationToken state)
     param_label TEXT,              -- e.g. '10' (contention level; NULL for non-parameterized benchmarks)
     param_value INTEGER,           -- 10 (for numeric sort/filter; NULL alongside label)
     mean_ns     REAL    NOT NULL,
     stddev_ns   REAL,              -- usually NULL: ThreadingConfig hides the StdDev/Error columns
     allocated_bytes REAL,
-    PRIMARY KEY (run_id, platform, class_name, method, family, variant, param_label)
+    PRIMARY KEY (run_id, platform, class_name, method, family, variant, cancellation, param_label)
 );
 
 -- Powers "all variants of one family/contention-level over time" and "one variant across

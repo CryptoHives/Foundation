@@ -29,11 +29,16 @@
 <p>
   Benchmark history for <code>CryptoHives.Foundation.Threading</code>'s async synchronization
   primitives — how each one performs against reference libraries (Nito.AsyncEx, NeoSmart,
-  ProtoPromise, Microsoft.VisualStudio.Threading, and .NET's own built-in primitives) across
+  ProtoPromise, Microsoft.VisualStudio.Threading), and against the synchronous BCL baselines they
+  replace (<code>lock</code>/<code>Monitor</code>, <code>SpinLock</code>, <code>Interlocked</code>,
+  <code>ReaderWriterLockSlim</code>, <code>Barrier</code>, <code>CountdownEvent</code>, ...) — across
   platforms and contention levels, and how that's changed over time as the code evolves. Pick a
   platform, primitive family, and operation below; every implementation is plotted as its own
-  line so they're directly comparable at a glance. Runs entirely in your browser (no server, no
-  external database) — see the hint below the chart for the two view modes.
+  line so they're directly comparable at a glance. Where a benchmark varies by
+  <code>CancellationToken</code> state, the Cancellation selector picks which state to plot (a
+  live-but-unfired token adds overhead compared to <code>CancellationToken.None</code>, which is
+  why it's kept as its own axis rather than doubling every legend entry). Runs entirely in your
+  browser (no server, no external database) — see the hint below the chart for the two view modes.
 </p>
 
 <fieldset class="mode-toggle">
@@ -51,6 +56,9 @@
   </label>
   <label>Method
     <select id="method"></select>
+  </label>
+  <label>Cancellation
+    <select id="cancellation"></select>
   </label>
   <label>Metric
     <select id="metric">
@@ -102,6 +110,7 @@
   const platformSel = document.getElementById("platform");
   const familySel = document.getElementById("family");
   const methodSel = document.getElementById("method");
+  const cancellationSel = document.getElementById("cancellation");
   const metricSel = document.getElementById("metric");
   const logScaleCb = document.getElementById("log-scale");
   const legendColorsEl = document.getElementById("legend-colors");
@@ -112,7 +121,15 @@
   const legendHintEl = document.getElementById("legend-hint");
   const modeRadios = document.querySelectorAll('input[name="mode"]');
 
-  const PALETTE = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
+  // 16 entries (not 8): colors are now assigned per-family across *every* method's variants (see
+  // refreshFamilyColors), and some families have more than 8 variants once every method's variants
+  // are pooled together (e.g. AsyncLock's Multiple-only "Pooled (Task)"/"Pooled (ValueTask)" add to
+  // its Single/Timeout variants; SyncLock has 11 on its own) — an 8-color palette would silently
+  // wrap and give two variants the same color.
+  const PALETTE = [
+    "#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d",
+    "#ea580c", "#0d9488", "#4f46e5", "#be123c", "#78716c", "#059669", "#ca8a04", "#0369a1",
+  ];
 
   // Custom legends replace Chart.js's built-in one-entry-per-dataset legend, which would
   // otherwise show one row per (variant, contention level) combination in multi-level trend
@@ -168,6 +185,11 @@
   // the dash-pattern legend (click to hide/show, same as the color legend) is the only way to
   // focus on a subset — there's no separate picker to keep in sync with it.
   let currentParams = [];
+  // Colors are assigned once per (platform, family) from the *full* set of variants that family
+  // ever has — not per-method — so e.g. "Pooled" stays the same color across Single/Multiple/
+  // Timeout instead of shifting depending on which variants happen to appear in one method's
+  // result set. Rebuilt in refreshMethods(), which already runs on every platform/family change.
+  let familyColors = new Map();
 
   function distinct(column, whereSql, params) {
     const stmt = db.prepare(`SELECT DISTINCT ${column} FROM benchmark_results ${whereSql} ORDER BY ${column}`);
@@ -178,7 +200,7 @@
     return values;
   }
 
-  function populateSelect(selectEl, values, placeholder, preferredValue) {
+  function populateSelect(selectEl, values, placeholder, preferredValue, labelFor) {
     selectEl.innerHTML = "";
     if (placeholder) {
       const opt = document.createElement("option");
@@ -189,12 +211,21 @@
     for (const v of values) {
       const opt = document.createElement("option");
       opt.value = v;
-      opt.textContent = v;
+      opt.textContent = labelFor ? labelFor(v) : v;
       selectEl.appendChild(opt);
     }
     if (preferredValue !== undefined && values.includes(preferredValue)) {
       selectEl.value = preferredValue;
     }
+  }
+
+  // "None" = CancellationToken.None passed (or no token at all, for implementations that don't
+  // support cancellation); "NotCancelled" = a live, registered token was passed but never fired
+  // — measuring the overhead of supporting cancellation, not an actual cancellation. Kept as its
+  // own selector (like contention level) instead of a "(NotCancelled)" suffix on every variant
+  // name, so the legend doesn't double in size for every implementation that supports it.
+  function cancellationLabel(value) {
+    return value === "NotCancelled" ? "Cancellable (token not fired)" : "None";
   }
 
   // Shareable-URL support: the current selection set (platform/family/method/metric/mode/log)
@@ -211,6 +242,7 @@
       platform: params.get("platform") ?? undefined,
       family: params.get("family") ?? undefined,
       method: params.get("method") ?? undefined,
+      cancellation: params.get("cancellation") ?? undefined,
       metric: params.get("metric") ?? undefined,
       range: params.get("range") ?? undefined,
       mode: params.get("mode") ?? undefined,
@@ -223,6 +255,7 @@
     params.set("platform", platformSel.value);
     params.set("family", familySel.value);
     params.set("method", methodSel.value);
+    params.set("cancellation", cancellationSel.value);
     params.set("metric", metricSel.value);
     params.set("range", dateRangeSel.value);
     params.set("mode", currentMode());
@@ -278,20 +311,47 @@
       [platformSel.value, familySel.value]
     );
     populateSelect(methodSel, methods, null, preferred?.method);
+    refreshFamilyColors();
+    refreshCancellation(preferred);
+  }
+
+  // Assigns each variant in this (platform, family) a fixed color from the whole family's variant
+  // set — not just the ones present under the currently selected method — so e.g. "Pooled" is the
+  // same color under Single, Multiple, and Timeout instead of shifting with whatever else happens
+  // to be in that method's result set.
+  function refreshFamilyColors() {
+    const variants = distinct(
+      "variant",
+      "WHERE platform = ? AND family = ?",
+      [platformSel.value, familySel.value]
+    );
+    familyColors = new Map(variants.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+  }
+
+  function refreshCancellation(preferred) {
+    // Not every method varies by cancellation state (most sync baselines only ever run with
+    // "None"); default to "None" since it's the one state every implementation has a row for,
+    // making it the most comparable choice across the whole family.
+    const states = distinct(
+      "cancellation",
+      "WHERE platform = ? AND family = ? AND method = ?",
+      [platformSel.value, familySel.value, methodSel.value]
+    );
+    populateSelect(cancellationSel, states, null, preferred?.cancellation ?? "None", cancellationLabel);
     refreshParams();
   }
 
   function refreshParams() {
-    // A new family/method means a different set of variants and contention levels, so any
-    // prior show/hide legend selections no longer refer to anything meaningful here.
+    // A new family/method/cancellation-state means a different set of variants and contention
+    // levels, so any prior show/hide legend selections no longer refer to anything meaningful here.
     hiddenVariants.clear();
     hiddenParams.clear();
     const stmt = db.prepare(
       `SELECT DISTINCT param_label, param_value FROM benchmark_results
-       WHERE platform = ? AND family = ? AND method = ? AND param_label IS NOT NULL
+       WHERE platform = ? AND family = ? AND method = ? AND cancellation = ? AND param_label IS NOT NULL
        ORDER BY param_value`
     );
-    stmt.bind([platformSel.value, familySel.value, methodSel.value]);
+    stmt.bind([platformSel.value, familySel.value, methodSel.value, cancellationSel.value]);
     currentParams = [];
     while (stmt.step()) currentParams.push(stmt.getAsObject().param_label);
     stmt.free();
@@ -306,6 +366,7 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false, // every filter change destroys/recreates the chart anyway; no point animating in
         scales,
         plugins: {
           legend: { display: false }, // replaced by the custom color/dash legends above the chart
@@ -331,12 +392,12 @@
     const stmt = db.prepare(`
       SELECT variant, param_label, run_date, commit_sha, ${metric} AS value
       FROM benchmark_results
-      WHERE platform = ? AND family = ? AND method = ? ${paramClause}
+      WHERE platform = ? AND family = ? AND method = ? AND cancellation = ? ${paramClause}
         ${cutoff ? "AND run_date >= ?" : ""}
       ORDER BY variant, param_label, run_date
     `);
     stmt.bind([
-      platformSel.value, familySel.value, methodSel.value,
+      platformSel.value, familySel.value, methodSel.value, cancellationSel.value,
       ...(hasRealParams ? params : []),
       ...(cutoff ? [cutoff] : []),
     ]);
@@ -354,11 +415,12 @@
     // Color tracks the variant/implementation, not the (variant, contention level) combination
     // — so the same implementation stays the same color at every level, and what changes per
     // level is the dash pattern. That way an implementation's trend is easy to follow by eye.
+    // The color itself comes from familyColors (fixed per platform+family, built in
+    // refreshFamilyColors), not from this query's result order, so it stays stable across methods.
     const variantOrder = [];
     for (const { variant } of seriesByKey.values()) {
       if (!variantOrder.includes(variant)) variantOrder.push(variant);
     }
-    const colorForVariant = new Map(variantOrder.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
 
     const DASH_PATTERNS = [[], [6, 3], [2, 2], [8, 3, 2, 3], [1, 3], [10, 4], [4, 2, 1, 2]];
     const dashForParam = new Map(params.map((label, i) => [label, DASH_PATTERNS[i % DASH_PATTERNS.length]]));
@@ -366,8 +428,8 @@
     const datasets = Array.from(seriesByKey.entries()).map(([label, { variant, paramLabel, points }]) => ({
       label,
       data: points,
-      borderColor: colorForVariant.get(variant),
-      backgroundColor: colorForVariant.get(variant),
+      borderColor: familyColors.get(variant),
+      backgroundColor: familyColors.get(variant),
       borderDash: multiParam ? dashForParam.get(paramLabel) : [],
       hidden: hiddenVariants.has(variant) || (paramLabel != null && hiddenParams.has(paramLabel)),
       tension: 0.15,
@@ -383,7 +445,7 @@
       (ctx) => `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
     );
 
-    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
+    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: familyColors.get(v) })));
     renderDashLegend(
       multiParam ? params.map((label) => ({ paramLabel: label, dash: dashForParam.get(label) })) : []
     );
@@ -398,39 +460,49 @@
   function renderScalingChart() {
     const metric = metricSel.value;
     const cutoff = dateRangeCutoffIso();
+    // Some methods (e.g. AsyncRWLock's WriterLock) aren't contention-parameterized at all — every
+    // row has a NULL param_label. Requiring "param_label IS NOT NULL" unconditionally would leave
+    // those with zero rows and an empty chart; fall back to the NULL-param rows instead, same as
+    // renderTrendChart already does, so every method plots something in both view modes.
+    const hasRealParams = currentParams.length > 0;
+    const paramClause = hasRealParams ? "AND param_label IS NOT NULL" : "AND param_label IS NULL";
     const stmt = db.prepare(`
       SELECT variant, param_value, param_label, run_date, commit_sha, ${metric} AS value
       FROM benchmark_results
-      WHERE platform = ? AND family = ? AND method = ? AND param_label IS NOT NULL
+      WHERE platform = ? AND family = ? AND method = ? AND cancellation = ? ${paramClause}
         ${cutoff ? "AND run_date >= ?" : ""}
       ORDER BY variant, param_value, run_date
     `);
-    stmt.bind([platformSel.value, familySel.value, methodSel.value, ...(cutoff ? [cutoff] : [])]);
+    stmt.bind([platformSel.value, familySel.value, methodSel.value, cancellationSel.value, ...(cutoff ? [cutoff] : [])]);
 
     // ORDER BY run_date ASC means the last row seen for a given (variant, level) is the most
     // recent recorded run within the selected date range — exactly the one we want for a
-    // "current scaling" snapshot (or a rewind, if a shorter range is selected).
+    // "current scaling" snapshot (or a rewind, if a shorter range is selected). When there's no
+    // real contention level, every row's param_value is NULL, so key on a single fixed bucket (0)
+    // instead — there's only ever one point per variant in that case anyway.
     const latestByVariant = new Map();
     while (stmt.step()) {
       const row = stmt.getAsObject();
+      const x = hasRealParams ? row.param_value : 0;
       if (!latestByVariant.has(row.variant)) latestByVariant.set(row.variant, new Map());
-      latestByVariant.get(row.variant).set(row.param_value, {
-        x: row.param_value,
+      latestByVariant.get(row.variant).set(x, {
+        x,
         y: row.value,
-        param_label: row.param_label,
+        param_label: hasRealParams ? row.param_label : "single scenario",
         commit: row.commit_sha,
       });
     }
     stmt.free();
 
+    // Color comes from familyColors (fixed per platform+family), not this query's key order, so
+    // it stays stable across methods — see refreshFamilyColors.
     const variantOrder = Array.from(latestByVariant.keys());
-    const colorForVariant = new Map(variantOrder.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
 
     const datasets = variantOrder.map((variant) => ({
       label: variant,
       data: Array.from(latestByVariant.get(variant).values()).sort((a, b) => a.x - b.x),
-      borderColor: colorForVariant.get(variant),
-      backgroundColor: colorForVariant.get(variant),
+      borderColor: familyColors.get(variant),
+      backgroundColor: familyColors.get(variant),
       hidden: hiddenVariants.has(variant),
       tension: 0.15,
       pointRadius: 3,
@@ -439,19 +511,27 @@
     renderChartInstance(
       datasets,
       {
-        x: { type: "linear", title: { display: true, text: "Contention level (queued waiters)" } },
+        x: {
+          type: "linear",
+          title: { display: true, text: hasRealParams ? "Contention level (queued waiters)" : "(single, fixed scenario — no contention axis)" },
+          ticks: hasRealParams ? undefined : { display: false },
+        },
         y: yAxisScale(metric),
       },
-      (ctx) => `${ctx.raw.param_label} waiters · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+      (ctx) => hasRealParams
+        ? `${ctx.raw.param_label} waiters · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+        : `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
     );
 
-    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
+    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: familyColors.get(v) })));
     renderDashLegend([]); // one line per variant here — no per-level distinction to show
 
     const visibleCount = datasets.filter((d) => !d.hidden).length;
     statusEl.textContent = datasets.length
-      ? `${visibleCount} of ${datasets.length} variant(s) shown, most recent run per contention level`
-      : "No contention-parameterized data for this selection (this method may only run at a single, fixed scenario).";
+      ? hasRealParams
+        ? `${visibleCount} of ${datasets.length} variant(s) shown, most recent run per contention level`
+        : `${visibleCount} of ${datasets.length} variant(s) shown, most recent run (this method has a single, fixed scenario — no contention scaling)`
+      : "No data for this selection yet.";
   }
 
   function renderChart() {
@@ -480,9 +560,19 @@
     const restoreState = parseUrlState();
 
     populateSelect(platformSel, distinct("platform", ""), null, restoreState?.platform);
-    platformSel.onchange = () => refreshFamilies();
+    // Keep the current family/method/cancellation selected across a platform switch when the
+    // other platform has that same combination too — e.g. flipping between windows and macos
+    // shouldn't reset back to the first family/method every time. populateSelect() already falls
+    // back to the first available option on its own when the preferred value doesn't exist for
+    // the new platform, so this is safe even when the two platforms' data don't fully overlap.
+    platformSel.onchange = () => refreshFamilies({
+      family: familySel.value,
+      method: methodSel.value,
+      cancellation: cancellationSel.value,
+    });
     familySel.onchange = refreshMethods;
-    methodSel.onchange = refreshParams;
+    methodSel.onchange = () => refreshCancellation();
+    cancellationSel.onchange = refreshParams;
     metricSel.onchange = renderChart;
     dateRangeSel.onchange = renderChart;
     logScaleCb.onchange = renderChart;

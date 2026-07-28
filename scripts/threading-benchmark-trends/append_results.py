@@ -81,13 +81,13 @@ def main() -> int:
                     """
                     INSERT OR REPLACE INTO benchmark_results
                         (run_id, run_date, commit_sha, branch, platform,
-                         class_name, method, family, variant,
+                         class_name, method, family, variant, cancellation,
                          param_label, param_value, mean_ns, stddev_ns, allocated_bytes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         args.run_id, run_date, args.commit_sha, args.branch, args.platform,
-                        class_name, row["method"], row["family"], row["variant"],
+                        class_name, row["method"], row["family"], row["variant"], row["cancellation"],
                         row["param_label"], row["param_value"],
                         row["mean_ns"], row["stddev_ns"], row["allocated_bytes"],
                     ),
