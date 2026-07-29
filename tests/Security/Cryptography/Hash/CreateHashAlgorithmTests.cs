@@ -153,6 +153,37 @@ public class CreateHashAlgorithmTests
     }
 
     /// <summary>
+    /// Test that Create returns correct types for Ascon.
+    /// </summary>
+    [TestCase("ASCON-HASH256", typeof(CryptoHivesHash.AsconHash256))]
+    [TestCase("ASCONHASH256", typeof(CryptoHivesHash.AsconHash256))]
+    [TestCase("ASCON-XOF128", typeof(CryptoHivesHash.AsconXof128))]
+    [TestCase("ASCONXOF128", typeof(CryptoHivesHash.AsconXof128))]
+    public void CreateReturnsAsconTypes(string name, Type expectedType)
+    {
+        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        Assert.That(hash, Is.InstanceOf(expectedType));
+    }
+
+    /// <summary>
+    /// Test that Create returns correctly sized instances for LSH.
+    /// </summary>
+    [TestCase("LSH-256-224", typeof(CryptoHivesHash.Lsh256), 28)]
+    [TestCase("LSH-256-256", typeof(CryptoHivesHash.Lsh256), 32)]
+    [TestCase("LSH-256", typeof(CryptoHivesHash.Lsh256), 32)]
+    [TestCase("LSH-512-224", typeof(CryptoHivesHash.Lsh512), 28)]
+    [TestCase("LSH-512-256", typeof(CryptoHivesHash.Lsh512), 32)]
+    [TestCase("LSH-512-384", typeof(CryptoHivesHash.Lsh512), 48)]
+    [TestCase("LSH-512-512", typeof(CryptoHivesHash.Lsh512), 64)]
+    [TestCase("LSH-512", typeof(CryptoHivesHash.Lsh512), 64)]
+    public void CreateReturnsLshTypes(string name, Type expectedType, int expectedHashSizeBytes)
+    {
+        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        Assert.That(hash, Is.InstanceOf(expectedType));
+        Assert.That(hash.HashSize, Is.EqualTo(expectedHashSizeBytes * 8));
+    }
+
+    /// <summary>
     /// Test that Create throws for unknown algorithms.
     /// </summary>
     [TestCase("UNKNOWN")]

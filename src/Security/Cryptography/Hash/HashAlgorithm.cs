@@ -140,6 +140,16 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             "KUPYNA-256" or "KUPYNA256" or "DSTU7564-256" => Kupyna.Create(32),
             "KUPYNA-384" or "KUPYNA384" or "DSTU7564-384" => Kupyna.Create(48),
             "KUPYNA-512" or "KUPYNA512" or "DSTU7564-512" or "KUPYNA" => Kupyna.Create(64),
+            // Ascon (NIST Lightweight Cryptography standard)
+            "ASCON-HASH256" or "ASCONHASH256" => AsconHash256.Create(),
+            "ASCON-XOF128" or "ASCONXOF128" => AsconXof128.Create(),
+            // LSH / KS X 3262 (Korean national standard)
+            "LSH-256-224" => Lsh256.Create(28),
+            "LSH-256-256" or "LSH-256" => Lsh256.Create(32),
+            "LSH-512-224" => Lsh512.Create(28),
+            "LSH-512-256" => Lsh512.Create(32),
+            "LSH-512-384" => Lsh512.Create(48),
+            "LSH-512-512" or "LSH-512" => Lsh512.Create(64),
             // Legacy (deprecated)
 #pragma warning disable CS0618 // SHA-1 obsolete warning - intentionally supported for legacy compatibility
             "SHA1" or "SHA-1" => SHA1.Create(),

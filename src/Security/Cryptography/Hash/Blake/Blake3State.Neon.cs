@@ -433,7 +433,7 @@ internal unsafe partial struct Blake3State
     /// 4 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
     /// word <c>w</c> of all 4 chunks (lane <c>j</c> = chunk <c>j</c>).
     /// </summary>
-     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Transpose4x4Neon(ref Vector128<uint> v0, ref Vector128<uint> v1, ref Vector128<uint> v2, ref Vector128<uint> v3)
     {
         // Interleave 32-bit words of row pairs.

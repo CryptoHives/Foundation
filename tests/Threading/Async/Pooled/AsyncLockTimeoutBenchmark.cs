@@ -214,7 +214,7 @@ public class AsyncLockTimeoutBenchmark : AsyncLockBaseBenchmark
     /// queued waiters that specify a timeout.
     /// </summary>
     [Benchmark]
-    [BenchmarkCategory("MultipleTimeout", "VS.Threading", "AsyncSemaphore")]
+    [BenchmarkCategory("MultipleTimeout", "VS.Threading")]
     public async Task LockUnlockVSThreadingTimeoutMultipleAsync()
     {
         using (await _lockVSThreading.EnterAsync().ConfigureAwait(false))
