@@ -46,9 +46,15 @@ public class ThreadingConfig : ManualConfig
     /// Derives the description from <c>[BenchmarkCategory]</c> attributes on the method and class:
     /// <list type="bullet">
     /// <item><description>Method categories[0] → Operation (e.g. "Set", "WaitThenSet", "LockAsync")</description></item>
-    /// <item><description>Method categories[1] → Implementation variant (e.g. "Pooled", "Nito.AsyncEx")</description></item>
-    /// <item><description>Method categories[2] → Type override (optional, e.g. "AutoResetEvent" for sync baseline)</description></item>
-    /// <item><description>Class-level category → Default type when categories[2] is absent</description></item>
+    /// <item><description>Method categories[2], if present, → Implementation variant for a sync baseline
+    /// comparison (e.g. "Lock.EnterScope", "AutoResetEvent"); otherwise categories[1] (e.g. "Pooled",
+    /// "Nito.AsyncEx")</description></item>
+    /// <item><description>Method categories[3], if present, → Family override (e.g. "SyncLock" for the
+    /// pure synchronous lock/interlocked/spin baselines, which form their own comparison table rather
+    /// than the class-level primitive's); otherwise the class-level category (e.g. "AsyncLock",
+    /// "AsyncAutoReset") — so sync baselines that ARE meant as a direct comparison (AutoResetEvent,
+    /// ManualResetEvent, Barrier, CountdownEvent, ReaderWriterLockSlim) land in the same family/table
+    /// as the async implementation being compared against.</description></item>
     /// </list>
     /// Uses middle dot (·) separator instead of pipe (|) to avoid breaking markdown tables.
     /// </remarks>
@@ -80,13 +86,20 @@ public class ThreadingConfig : ManualConfig
                 .ToArray();
 
             string operation = methodCategories.Length > 0 ? methodCategories[0] : benchmarkCase.Descriptor.WorkloadMethodDisplayInfo;
-            string implementation = methodCategories.Length > 1 ? methodCategories[1] : "";
 
-            // Use explicit type override (categories[2]) if present, otherwise fall back to class-level category.
-            // This allows sync baseline methods (e.g. AutoResetEvent) to show their actual type
-            // instead of the async class name (e.g. AsyncAutoResetEvent).
-            string typeName = methodCategories.Length > 2
+            // categories[2], when present, names the specific sync-baseline implementation
+            // (e.g. "Lock.EnterScope", "AutoResetEvent"); otherwise categories[1] is the
+            // implementation name for the common two-category case (e.g. "Pooled", "Nito.AsyncEx").
+            string implementation = methodCategories.Length > 2
                 ? methodCategories[2]
+                : methodCategories.Length > 1 ? methodCategories[1] : "";
+
+            // Family defaults to the class-level category (the primitive being benchmarked), so
+            // sync baselines plot in the same family/table as the async implementations they're
+            // compared against — unless categories[3] overrides it (e.g. "SyncLock" for the
+            // sync-only lock/spin/interlocked baselines, which get their own table instead).
+            string typeName = methodCategories.Length > 3
+                ? methodCategories[3]
                 : classCategories.Length > 0 ? FormatPrimitive(classCategories[0]) : "";
 
             if (!string.IsNullOrEmpty(typeName) && !string.IsNullOrEmpty(implementation))
@@ -116,7 +129,6 @@ public class ThreadingConfig : ManualConfig
             "AsyncSemaphore" => "AsyncSemaphore",
             "AsyncReaderWriterLock" => "AsyncRWLock",
             "AsyncBarrier" => "AsyncBarrier",
-            "AsyncCountdownEvent" => "AsyncCountdownEv",
             _ => name,
         };
     }
