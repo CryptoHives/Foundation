@@ -1,7 +1,7 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Benchmarks.Hash;
+namespace Cryptography.Tests.Benchmarks.Mac;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
@@ -11,7 +11,6 @@ using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -19,19 +18,21 @@ using System.Linq;
 using System.Runtime.InteropServices;
 
 /// <summary>
-/// BenchmarkDotNet configuration for hash benchmarks.
-/// Groups results by category (algorithm) then data size, highlights CryptoHives implementations.
+/// BenchmarkDotNet configuration for MAC benchmarks.
 /// </summary>
-public class HashConfig : ManualConfig
+/// <remarks>
+/// Mirrors <c>HashConfig</c> but is tailored for <c>TestMacAlgorithm</c> parameters.
+/// Groups results by category (algorithm) then data size.
+/// </remarks>
+public class MacConfig : ManualConfig
 {
     /// <summary>
     /// Shared instance of the short name markdown exporter.
     /// </summary>
     private static readonly ShortNameMarkdownExporter ShortExporter = new();
 
-    public HashConfig()
+    public MacConfig()
     {
-        // Disable default exporters
         WithOptions(ConfigOptions.DisableLogFile);
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -45,17 +46,15 @@ public class HashConfig : ManualConfig
 
         Orderer = new CategoryThenDataSizeOrderer();
         AddColumn(new DescriptionColumn());
-        HideColumns("Method", "TestHashAlgorithm", "TestXofAlgorithm");
+        HideColumns("Method", "TestMacAlgorithm");
 
-        // Export formats: markdown for docfx, plus full JSON so
-        // scripts/cryptography-benchmark-trends/append_results.py can ingest results without extra flags.
+        // Markdown for docfx, plus full JSON so append_results.py can ingest results without extra flags.
         AddExporter(ShortExporter);
         AddExporter(BenchmarkDotNet.Exporters.Json.JsonExporter.Full);
     }
 
     /// <summary>
-    /// Custom column that creates a descriptive benchmark name like "ComputeHash · SHA-256 · BouncyCastle".
-    /// Uses middle dot (·) separator instead of pipe (|) to avoid breaking markdown tables.
+    /// Custom column that creates a descriptive benchmark name like "ComputeMac · HMAC-SHA256 · BouncyCastle".
     /// </summary>
     private class DescriptionColumn : IColumn
     {
@@ -63,7 +62,7 @@ public class HashConfig : ManualConfig
         public string ColumnName => "Description";
         public bool AlwaysShow => true;
         public ColumnCategory Category => ColumnCategory.Job;
-        public int PriorityInCategory => -10; // Show first
+        public int PriorityInCategory => -10;
         public bool IsNumeric => false;
         public UnitType UnitType => UnitType.Dimensionless;
         public string Legend => "Benchmark description: Method · Category · Implementation";
@@ -71,23 +70,18 @@ public class HashConfig : ManualConfig
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase)
         {
             var method = benchmarkCase.Descriptor.WorkloadMethodDisplayInfo;
-            var hashAlgorithm = benchmarkCase.Parameters["TestHashAlgorithm"] as HashAlgorithmType;
+            var macAlgorithm = benchmarkCase.Parameters["TestMacAlgorithm"] as MacAlgorithmType;
 
-            if (hashAlgorithm != null)
+            if (macAlgorithm != null)
             {
-                var implType = GetImplementationType(hashAlgorithm.Name);
-                // Use middle dot (·) as separator to avoid breaking markdown tables
-                return $"{method} · {hashAlgorithm.Category} · {implType}";
+                return $"{method} · {macAlgorithm.Category} · {GetImplementationType(macAlgorithm.Name)}";
             }
 
-            var xofAlgorithm = benchmarkCase.Parameters["TestXofAlgorithm"] as XofAlgorithmType;
-            if (xofAlgorithm != null)
-            {
-                var implType = GetImplementationType(xofAlgorithm.Name);
-                return $"{method} · {xofAlgorithm.Category} · {implType}";
-            }
-
-            return method;
+            // Benchmarks without a TestMacAlgorithm parameter (e.g. AesGmacBenchmark, which uses
+            // [Benchmark(Description = ...)] directly instead of the registry-driven pattern) fall
+            // back to WorkloadMethodDisplayInfo — BenchmarkDotNet wraps that in single quotes when
+            // the description contains spaces, which the markdown exporter then HTML-escapes.
+            return method.Trim('\'');
         }
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)
@@ -99,46 +93,18 @@ public class HashConfig : ManualConfig
 
         private static string GetImplementationType(string name)
         {
-            if (name.EndsWith("(OS)", StringComparison.InvariantCultureIgnoreCase) ||
-                name.EndsWith("(DotNet)", StringComparison.InvariantCultureIgnoreCase))
-                return "OS Native";
-            if (name.EndsWith("(Blake3Native)", StringComparison.InvariantCultureIgnoreCase))
-                return "Blake3.NET-Native";
-            if (name.EndsWith("(Blake3Managed)", StringComparison.InvariantCultureIgnoreCase))
-                return "Blake3.NET-Managed";
-            if (name.EndsWith("(Blake3Dissimilis)", StringComparison.InvariantCultureIgnoreCase))
-                return "Blake3.Managed";
-            if (name.EndsWith("(CryptoHives-Arm64)", StringComparison.InvariantCultureIgnoreCase))
-                return "CryptoHives-Arm64";
-            if (name.EndsWith("(CryptoHives-Neon)", StringComparison.InvariantCultureIgnoreCase))
-                return "CryptoHives-Neon";
-            if (name.EndsWith("(CryptoHives-AVX2)", StringComparison.InvariantCultureIgnoreCase))
-                return "CryptoHives-AVX2";
-            if (name.EndsWith("(CryptoHives-AVX512F)", StringComparison.InvariantCultureIgnoreCase))
-                return "CryptoHives-AVX512F";
-            if (name.EndsWith("(CryptoHives-Sse2)", StringComparison.InvariantCultureIgnoreCase))
-                return "CryptoHives-Sse2";
-            if (name.EndsWith("(CryptoHives-Ssse3)", StringComparison.InvariantCultureIgnoreCase))
-                return "CryptoHives-Ssse3";
-            if (name.EndsWith("(Managed)", StringComparison.InvariantCultureIgnoreCase) ||
-                name.EndsWith("(CryptoHives-Scalar)", StringComparison.InvariantCultureIgnoreCase))
+            if (name.EndsWith("(OS)", System.StringComparison.InvariantCultureIgnoreCase))
+                return "OS";
+            if (name.EndsWith("(CryptoHives-Scalar)", System.StringComparison.InvariantCultureIgnoreCase))
                 return "CryptoHives-Scalar";
-            if (name.EndsWith("(HashifyNET)", StringComparison.InvariantCultureIgnoreCase))
-                return "Hashify .NET";
-            if (name.EndsWith("(BouncyCastle)", StringComparison.InvariantCultureIgnoreCase))
+            if (name.EndsWith("(BouncyCastle)", System.StringComparison.InvariantCultureIgnoreCase))
                 return "BouncyCastle";
-            if (name.EndsWith("(OpenGost)", StringComparison.InvariantCultureIgnoreCase))
-                return "OpenGost";
-            if (name.EndsWith("(Blake2Fast)", StringComparison.InvariantCultureIgnoreCase))
-                return "Blake2Fast";
-            if (name.EndsWith("(Konscious)", StringComparison.InvariantCultureIgnoreCase))
-                return "Konscious";
             return name;
         }
     }
 
     /// <summary>
-    /// Orders benchmarks by category (algorithm), then by data size, with fastest results first within each group.
+    /// Orders benchmarks by category (algorithm), then by data size.
     /// </summary>
     private class CategoryThenDataSizeOrderer : IOrderer
     {
@@ -157,11 +123,12 @@ public class HashConfig : ManualConfig
                 summary[benchmark]?.ResultStatistics?.Mean ?? double.MaxValue
             select benchmark;
 
-        public string GetHighlightGroupKey(BenchmarkCase benchmarkCase)
+        public string? GetHighlightGroupKey(BenchmarkCase benchmarkCase)
         {
-            // Highlight CryptoHives "CryptoHives-Scalar" implementations
-            var hashAlgorithm = benchmarkCase.Parameters["TestHashAlgorithm"] as HashAlgorithmType;
-            return hashAlgorithm?.Name.EndsWith("_Managed", StringComparison.Ordinal) == true ? "CryptoHives-Scalar" : null!;
+            var macAlgorithm = benchmarkCase.Parameters["TestMacAlgorithm"] as MacAlgorithmType;
+            return macAlgorithm?.Name.EndsWith("(CryptoHives-Scalar)", System.StringComparison.Ordinal) == true
+                ? "CryptoHives-Scalar"
+                : null;
         }
 
         public string GetLogicalGroupKey(ImmutableArray<BenchmarkCase> allBenchmarksCases, BenchmarkCase benchmarkCase)
@@ -175,16 +142,13 @@ public class HashConfig : ManualConfig
             IEnumerable<BenchmarkLogicalGroupRule>? order = null) =>
             logicalGroups
                 .OrderBy(g => {
-                    // Order by category first
                     var parts = g.Key.Split('|');
                     return parts.Length > 0 ? parts[0].Trim() : "";
                 })
                 .ThenBy(g => {
-                    // Then by data size bytes
                     var parts = g.Key.Split('|');
                     var sizeName = parts.Length > 1 ? parts[1].Trim() : "";
-                    var size = (DataSize?)DataSize.AllSizes.FirstOrDefault(s => s.Name == sizeName)
-                        ?? XofDataSize.AllSizes.FirstOrDefault(s => s.Name == sizeName);
+                    var size = DataSize.AllSizes.FirstOrDefault(s => s.Name == sizeName);
                     return size?.Bytes ?? int.MaxValue;
                 });
 
@@ -198,20 +162,14 @@ public class HashConfig : ManualConfig
 
         private static string GetCategory(BenchmarkCase benchmark)
         {
-            var hashAlgorithm = benchmark.Parameters["TestHashAlgorithm"] as HashAlgorithmType;
-            if (hashAlgorithm != null) return hashAlgorithm.Category;
-            var xofAlgorithm = benchmark.Parameters["TestXofAlgorithm"] as XofAlgorithmType;
-            return xofAlgorithm?.Category ?? "Unknown";
+            var macAlgorithm = benchmark.Parameters["TestMacAlgorithm"] as MacAlgorithmType;
+            return macAlgorithm?.Category ?? "Unknown";
         }
     }
 
     /// <summary>
     /// Custom markdown exporter that uses short file names (class name only, no namespace).
     /// </summary>
-    /// <remarks>
-    /// Produces files like "SHA256Benchmark-report.md" instead of
-    /// "Cryptography.Tests.Benchmarks.SHA256Benchmark-report-github.md".
-    /// </remarks>
     private sealed class ShortNameMarkdownExporter : IExporter
     {
         private readonly IExporter _inner = MarkdownExporter.GitHub;
@@ -220,13 +178,11 @@ public class HashConfig : ManualConfig
 
         public IEnumerable<string> ExportToFiles(Summary summary, ILogger consoleLogger)
         {
-            // Get short class name (without namespace)
             var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
 
             var fileName = $"{typeName}-report.md";
             var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
 
-            // Export using the inner exporter's logic
             using var writer = new StreamWriter(filePath);
             using var logger = new StreamLogger(writer);
             _inner.ExportToLog(summary, logger);
@@ -241,6 +197,3 @@ public class HashConfig : ManualConfig
         }
     }
 }
-
-
-
