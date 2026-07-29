@@ -140,6 +140,16 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
             "KUPYNA-256" or "KUPYNA256" or "DSTU7564-256" => Kupyna.Create(32),
             "KUPYNA-384" or "KUPYNA384" or "DSTU7564-384" => Kupyna.Create(48),
             "KUPYNA-512" or "KUPYNA512" or "DSTU7564-512" or "KUPYNA" => Kupyna.Create(64),
+            // Ascon (NIST Lightweight Cryptography standard)
+            "ASCON-HASH256" or "ASCONHASH256" => AsconHash256.Create(),
+            "ASCON-XOF128" or "ASCONXOF128" => AsconXof128.Create(),
+            // LSH / KS X 3262 (Korean national standard)
+            "LSH-256-224" => Lsh256.Create(28),
+            "LSH-256-256" or "LSH-256" => Lsh256.Create(32),
+            "LSH-512-224" => Lsh512.Create(28),
+            "LSH-512-256" => Lsh512.Create(32),
+            "LSH-512-384" => Lsh512.Create(48),
+            "LSH-512-512" or "LSH-512" => Lsh512.Create(64),
             // Legacy (deprecated)
 #pragma warning disable CS0618 // SHA-1 obsolete warning - intentionally supported for legacy compatibility
             "SHA1" or "SHA-1" => SHA1.Create(),
@@ -321,15 +331,22 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// Resets this instance to its initial state so it can be returned to an object pool for reuse.
     /// </summary>
     /// <returns>
-    /// <see langword="true"/> always — all CryptoHives hash algorithms fully support reset via
-    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/>.
+    /// <see langword="true"/> if the instance was reset and may be returned to the pool;
+    /// <see langword="false"/> if it must instead be disposed and discarded (see remarks).
     /// </returns>
     /// <remarks>
+    /// <para>
     /// This method implements <see cref="IResettable"/> from
     /// <c>Microsoft.Extensions.ObjectPool</c>, enabling any CryptoHives hash algorithm to be
     /// used with <c>DefaultObjectPool&lt;T&gt;</c> without a custom policy.
+    /// </para>
+    /// <para>
+    /// Overridden by algorithms that can carry caller-supplied secret material (e.g. a keyed
+    /// BLAKE3 instance): those return <see langword="false"/> so the pool's policy disposes
+    /// the instance — erasing the secret — instead of recycling it for an unrelated caller.
+    /// </para>
     /// </remarks>
-    public bool TryReset()
+    public virtual bool TryReset()
     {
         Initialize();
         return true;

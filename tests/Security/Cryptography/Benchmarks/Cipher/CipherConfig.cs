@@ -5,12 +5,12 @@ namespace Cryptography.Tests.Benchmarks.Cipher;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -41,8 +41,9 @@ public class CipherConfig : ManualConfig
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestCipherAlgorithm");
 
-        // Export formats: markdown with short file names (class name only, no namespace)
+        // Markdown with short file names, plus full JSON so append_results.py can ingest results without extra flags.
         AddExporter(ShortExporter);
+        AddExporter(BenchmarkDotNet.Exporters.Json.JsonExporter.Full);
     }
 
     /// <summary>

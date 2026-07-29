@@ -6,33 +6,29 @@ This page documents how the benchmarks are executed which are included in the Th
 
 BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Threading/Async/Pooled/` and can be executed with the BenchmarkSwitcher entry point at `tests/Common/Main.cs`.
 
-### Updating Benchmark Results
+### Viewing Benchmark Results
 
-First run the benchmarks locally (see below).
-Benchmark results are stored in `docfx/packages/threading/benchmarks/<platform-id>/` and can be updated after a local benchmark run using:
+Published results live in the interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, primitive family, and operation, plotting every matching implementation as its own line — including a scaling-by-contention view and trend-over-time comparisons. Because `platform` is a free-form value in the database, results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
 
-```cmd
-scripts\update-benchmark-docs.cmd
-```
+<iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading benchmark trends dashboard"></iframe>
 
-Or on PowerShell:
+[Open the dashboard in its own page →](benchmark-trends/index.html)
+
+### Recording a benchmark run
+
+First run the benchmarks locally (see below). For a quick local before/after comparison, mirror the generated markdown into a scratch folder (not published, see `.gitignore`):
 
 ```powershell
-.\scripts\update-benchmark-docs.ps1
+.\scripts\update-benchmark-docs.ps1 -Project Threading
 ```
 
-See [benchmarks/README.md](benchmarks/README.md) for details.
+Only if the run is worth keeping as a trend data point, record it into the tracked dashboard database — a deliberate, separate step since not every local run needs to become history:
 
-### Published Runs
+```powershell
+.\scripts\threading-benchmark-trends\record-benchmark-run.ps1
+```
 
-| Platform ID | Host | Page |
-|-------------|------|------|
-| `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Open Threading Results](benchmarks/macos-arm64-apple-m4/threading.md) |
-| `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Open Threading Results](benchmarks/windows-x64-amd-ryzen-5-7600x/threading.md) |
-
-### Continuous Benchmark Trends
-
-CI benchmark results are tracked on [Bencher](https://bencher.dev/perf/cryptohives-foundation-project). Use the testbed and benchmark filters to compare threading primitive latencies across `linux-x64` and `macos-arm64` over time. Regression alerts are raised automatically when a run exceeds the configured threshold.
+The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported/custom machines), tags the run with the current commit/branch, and appends it to `benchmark-trends/benchmark-history.sqlite`. It never commits or pushes — review the diff and commit yourself if you want the run published.
 
 ### Included benchmark suites
 
@@ -92,7 +88,7 @@ Notes:
 When run locally in `Release` mode, BenchmarkDotNet writes results and artifacts to:
 - `tests/Threading/BenchmarkDotNet.Artifacts/results/`
 
-After running benchmarks, use the update scripts to copy results to the documentation folder.
+After running benchmarks, see "Recording a benchmark run" above for how to compare locally or record a run into the published dashboard.
 
 ### Adding a new benchmark
 
@@ -100,7 +96,7 @@ After running benchmarks, use the update scripts to copy results to the document
 2. Include `[Benchmark]` methods and `[GlobalSetup]` where needed.
 3. Add a `[Params]` or `FixtureArgs` entry if parameterized runs are required.
 4. Run locally and inspect generated artifacts in `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
-5. Update documentation using the provided scripts.
+5. Once the results look right, record the run into the trends dashboard (see "Recording a benchmark run" above).
 
 ## See Also
 

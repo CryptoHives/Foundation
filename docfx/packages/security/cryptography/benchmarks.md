@@ -1,47 +1,15 @@
 # Cryptography Benchmarks
 
-This page collects BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` and organizes them by platform run. Each run is stored in its own platform folder so values from different hosts are never mixed.
+BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` are published through the
+interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small
+SQLite database client-side (no server) and lets you pick platform, category, algorithm family, method, and data
+size, plotting every matching implementation as its own line — including a size-scaling view and multi-size trend
+comparisons. Because `platform` is a free-form value in the database, results from any contributor's machine can
+appear side by side, not just a fixed set of CI hosts.
 
-## Continuous Benchmark Trends
+<iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Cryptography benchmark trends dashboard"></iframe>
 
-Automated weekly CI benchmarks are tracked on [Bencher](https://bencher.dev/perf/cryptohives-foundation-project). Results for both `linux-x64` and `macos-arm64` testbeds are submitted on every scheduled run and on every `main` branch commit.
-
-| Testbed | Branch | Bencher Perf Dashboard |
-|---------|--------|------------------------|
-| Linux x64 | `main` | [View trends](https://bencher.dev/perf/cryptohives-foundation-project?testbeds[]=linux-x64) |
-| macOS ARM64 | `main` | [View trends](https://bencher.dev/perf/cryptohives-foundation-project?testbeds[]=macos-arm64) |
-
-The dashboard shows historical latency trends per benchmark across all recorded runs. Use the Bencher filters to drill into a specific algorithm family, data size, or platform combination. Regressions beyond the configured threshold automatically create a GitHub Check failure on the PR or workflow run that introduced the slowdown.
-
-## Benchmark Categories
-
-### [Hash Algorithm Benchmarks](benchmarks-hash.md)
-
-Run selector and platform-specific hash results (SHA-2, SHA-3, BLAKE2/3, Keccak, KMAC, Ascon, and regional standards).
-
-### [Cipher Algorithm Benchmarks](benchmarks-cipher.md)
-
-Run selector and platform-specific cipher results (AES-CBC/GCM/CCM, ChaCha family, and regional block ciphers).
-
-## Published Benchmark Runs
-
-| Platform ID | Host | Published Pages |
-|-------------|------|-----------------|
-| `macos-arm64-apple-m4` | macOS Tahoe, Apple M4, Arm64 | [Hash](benchmarks/macos-arm64-apple-m4/hash.md), [Cipher](benchmarks/macos-arm64-apple-m4/cipher.md) |
-| `windows-x64-amd-ryzen-5-7600x` | Windows 11, AMD Ryzen 5 7600X, X64 | [Hash](benchmarks/windows-x64-amd-ryzen-5-7600x/hash.md), [Cipher](benchmarks/windows-x64-amd-ryzen-5-7600x/cipher.md) |
-
-Platform-specific pages keep benchmark tables isolated per machine so later runs such as Linux Arm64 or additional macOS/Windows hosts can be added without mixing incompatible numbers into the same page.
-
-## UI Structure Recommendation
-
-For a feasible long-term docfx UI:
-
-1. Keep this page as the top-level run catalog.
-2. Keep `benchmarks-hash.md` and `benchmarks-cipher.md` as selectors only (no raw table dumps).
-3. Keep full benchmark tables only in platform pages (`benchmarks/<platform-id>/hash.md` and `benchmarks/<platform-id>/cipher.md`).
-4. Add a tiny comparison summary table (5-10 representative algorithms) on selector pages for quick cross-platform snapshots.
-
-This keeps pages small, avoids duplicate content, and scales cleanly as platform count grows.
+[Open the dashboard in its own page →](benchmark-trends/index.html)
 
 ## Memory Footprint
 
@@ -72,9 +40,9 @@ The following tables show the per-instance memory footprint (internal state + bu
 | Keccak-256 | 336 B | 136 B | 192 B | Ethereum compatible |
 | Keccak-384 | 304 B | 104 B | 192 B | Ethereum compatible |
 | Keccak-512 | 272 B | 72 B | 192 B | Ethereum compatible |
-| BLAKE2b | 192 B+ | 128 B | 256 B | ulong[8] state + byte[128] buffer + key |
-| BLAKE2s | 96 B+ | 64 B | 192 B | uint[8] state + byte[64] buffer + key |
-| BLAKE3 | 2,816 B | 64 B | — | Merkle tree: 1 KB chunk buffer + 1.7 KB CV stack |
+| BLAKE2b | 216 B | 128 B | 256 B | ulong[8] state + byte[128] buffer + key |
+| BLAKE2s | 120 B | 64 B | 192 B | uint[8] state + byte[64] buffer + key |
+| BLAKE3 | 3,072 B | 64 B | — | Merkle tree: 1 KB chunk buffer + 1.7 KB CV stack |
 | Ascon-Hash256 | 48 B | 8 B | — | 5 × ulong state + byte[8] buffer |
 | Ascon-XOF128 | 48 B | 8 B | — | 5 × ulong state + byte[8] buffer |
 | RIPEMD-160 | 84 B | 64 B | — | uint[5] state + byte[64] buffer |
@@ -123,16 +91,18 @@ The following tables show the per-instance memory footprint (internal state + bu
 |-----------|---------------|-----------|---------------|-------|
 | KMAC128 | 368 B+ | 168 B | 192 B | Keccak state + buffer + encoded key/customization |
 | KMAC256 | 336 B+ | 136 B | 192 B | Keccak state + buffer + encoded key/customization |
-| BLAKE2b (keyed) | 192 B+ | 128 B | 256 B | Same as BLAKE2b + key material |
-| BLAKE2s (keyed) | 96 B+ | 64 B | 192 B | Same as BLAKE2s + key material |
-| BLAKE3 (keyed) | 2,816 B | 64 B | — | Same as BLAKE3 with key words |
+| BLAKE2b (keyed) | 216 B | 128 B | 256 B | Same as BLAKE2b + key material |
+| BLAKE2s (keyed) | 120 B | 64 B | 192 B | Same as BLAKE2s + key material |
+| BLAKE3 (keyed) | 3,072 B | 64 B | — | Same as BLAKE3 with key words |
 
 > **Static tables** are shared across all instances of algorithms in the same family and are loaded once into memory. AES T-tables (10.5 KB) are shared by all AES-based algorithms (ECB, CBC, CTR, GCM, CCM). Keccak round constants (192 B) are shared by all SHA-3, SHAKE, cSHAKE, TurboSHAKE, KT, and KMAC instances. Algorithms marked "—" use no static lookup tables (permutation-based or constant-time by design).
 
 
 ## Updating benchmark documentation
 
-1. Run the cryptography benchmarks (either via the helper script or directly through BenchmarkSwitcher):
+1. Run the cryptography benchmarks (either via the helper script or directly through BenchmarkSwitcher). This
+   always produces both the markdown table (for quick local before/after comparison) and a full JSON export
+   (for the trends database) — no extra flags needed:
    ```powershell
    # Run a specific algorithm family
    .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE
@@ -150,11 +120,20 @@ The following tables show the per-instance memory footprint (internal state + bu
    cd tests/Security/Cryptography
    dotnet run -c Release --framework net10.0 -- --filter *SHA256*
    ```
-2. Mirror the freshly generated markdown into the documentation folder:
+2. For a quick local before/after comparison, mirror the generated markdown into a scratch folder (not
+   published, see `.gitignore`):
    ```powershell
    .\scripts\update-benchmark-docs.ps1 -Project Cryptography
    ```
-   The script trims the machine header from the BenchmarkDotNet export, writes it once to a platform-local `machine-spec.md`, and stores each algorithm's benchmark table under the derived platform folder.
+3. Only if the run is worth keeping as a trend data point, record it into the tracked dashboard database —
+   this is a deliberate, separate step since not every local run needs to become history:
+   ```powershell
+   .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category Hash
+   ```
+   The script derives a platform id from the JSON export's host info (override with `-PlatformId` for
+   self-reported/custom machines), tags the run with the current commit/branch, and appends it to
+   `benchmark-trends/benchmark-history.sqlite`. It never commits or pushes — review the diff and commit
+   yourself if you want the run published.
 
 ## See also
 

@@ -20,6 +20,7 @@ The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the
 - 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
 - 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
 - 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+- ⏱️ **Live benchmark dashboards** — [Cryptography](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) · [Threading](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html)
 
 ---
 
@@ -100,9 +101,7 @@ All XOF algorithms implement `IExtendableOutput` for streaming variable-length o
 
 **⏱️ Benchmarks**
 
-Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions.
-- [Hash algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html)
-- [Cipher algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html)
+Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions. Results are published through an [interactive trends dashboard](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) — pick platform, algorithm family, and method, and every implementation plots as its own line.
 
 ---
 
@@ -275,7 +274,7 @@ string pem = cert.Certificate.ExportPem();
 
 ## 🚨 Security Policy
 
-Security comes first here. If you find a vulnerability, please don't open a public issue
+Security comes first here. If you find a vulnerability, please don't open a public issue — follow the process described on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
 
 ---
 

@@ -53,7 +53,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Increment")]
+    [BenchmarkCategory("LockAsync", "System", "Increment", "SyncLock")]
     public void IncrementSingle()
     {
         // simulate work
@@ -70,7 +70,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Lock")]
+    [BenchmarkCategory("LockAsync", "System", "Lock", "SyncLock")]
     public void LockUnlockSingle()
     {
         lock (_lock)
@@ -89,7 +89,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Lock.EnterScope")]
+    [BenchmarkCategory("LockAsync", "System", "Lock.EnterScope", "SyncLock")]
     public void LockEnterScopeSingle()
     {
         using (_lock.EnterScope())
@@ -109,7 +109,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "lock()")]
+    [BenchmarkCategory("LockAsync", "System", "lock()", "SyncLock")]
     public void ObjectLockUnlockSingle()
     {
         lock (_objectLock)
@@ -124,7 +124,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SpinWait", "System", "SpinOnce")]
+    [BenchmarkCategory("LockAsync", "System", "SpinOnce", "SyncLock")]
     public void SpinWaitSingle()
     {
         var spinWait = new SpinWait();
@@ -136,7 +136,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Interlocked.Inc")]
+    [BenchmarkCategory("LockAsync", "System", "Interlocked.Inc", "SyncLock")]
     public void InterlockedIncrementSingle()
     {
         _ = Interlocked.Increment(ref _counter);
@@ -147,7 +147,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Interlocked.Add")]
+    [BenchmarkCategory("LockAsync", "System", "Interlocked.Add", "SyncLock")]
     public void InterlockedAdd()
     {
         _ = Interlocked.Add(ref _counter, 13);
@@ -158,7 +158,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Interlocked.Exchange")]
+    [BenchmarkCategory("LockAsync", "System", "Interlocked.Exchange", "SyncLock")]
     public void InterlockedExchange()
     {
         // perform the increment in an unchecked context to match other increment benchmarks
@@ -173,7 +173,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Lock", "System", "Interlocked.CmpX")]
+    [BenchmarkCategory("LockAsync", "System", "Interlocked.CmpX", "SyncLock")]
     public void InterlockedCompareExchange()
     {
         // perform the increment in an unchecked context to match other increment benchmarks
@@ -189,7 +189,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SpinLock", "System", "SpinLock")]
+    [BenchmarkCategory("LockAsync", "System", "SpinLock", "SyncLock")]
     public async Task LockUnlockSpinLockSingleAsync()
     {
         bool lockTaken = false;
@@ -210,7 +210,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("SpinLock", "CryptoHives", "SpinLock")]
+    [BenchmarkCategory("LockAsync", "CryptoHives", "SpinLock (CryptoHives)", "SyncLock")]
     public async Task LockUnlockCryptoHivesSpinLockSingleAsync()
     {
         _spinLockCryptoHives.Enter();
@@ -347,7 +347,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("LockAsync", "VS.Threading", "AsyncSemaphore")]
+    [BenchmarkCategory("LockAsync", "VS.Threading")]
     public async Task LockUnlockVSThreadingSingleAsync()
     {
         using (await _lockVSThreading.EnterAsync().ConfigureAwait(false))

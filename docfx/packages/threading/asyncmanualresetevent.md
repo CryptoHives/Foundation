@@ -231,20 +231,20 @@ The following benchmarks compare `AsyncManualResetEvent` against popular alterna
 
 Measures the performance of rapid uncontended Set/Reset cycles. No surprises here except for Nito and Refimpl which expose some memory allocations, probably for a TaskCompletionSource instance.
 
-[!INCLUDE[Set Reset Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setreset.md)]
+[View live Set/Reset Cycle benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetReset)
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before waiters arrive (synchronous completion path). Again no surprises here; all implementations complete synchronously but Nito and Refimpl require allocations.
 
-[!INCLUDE[Set Then Wait Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setthenw.md)]
+[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetThenWait)
 
 ### Wait Then Set Benchmark
 
 Measures the pattern where waiters are queued before the event is signaled (asynchronous completion path). The pooled implementation shows strong performance here without allocations, especially when a cancellation token is provided. 
 Nito and Refimpl again show higher allocation counts due to TaskCompletionSource usage. In the tests for non cancellable tokens, Nito is ahead of the pack because it can share a single TaskCompletionSource with all waiters, but falls back when real cancellable tokens are used.
 
-[!INCLUDE[Wait Then Set Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-waitthenset.md)]
+[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=WaitThenSet)
 
 ### Benchmark Analysis
 
