@@ -566,11 +566,8 @@ try {
     Write-Host ""
     
     if ($Project -eq "Cryptography") {
-        Write-Host "To generate benchmark charts, run:"
-        Write-Host "  .\scripts\generate-benchmark-charts.ps1"
-        Write-Host ""
-        Write-Host "To update documentation, run:"
-        Write-Host "  .\scripts\update-benchmark-docs.ps1 -Package Cryptography"
+        Write-Host "To record this run into the trends dashboard, run:"
+        Write-Host "  .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category <Hash|Cipher|Mac>"
         Write-Host ""
     }
 }

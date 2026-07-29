@@ -441,7 +441,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Benchmark for Visual Studio Threading async semaphore used as an async lock with multiple queued waiters.
     /// </summary>
     [Benchmark]
-    [BenchmarkCategory("Multiple", "VS.Threading", "AsyncSemaphore")]
+    [BenchmarkCategory("Multiple", "VS.Threading")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockVSThreadingMultipleAsync(CancellationType cancellationType)
     {

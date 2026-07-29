@@ -46,8 +46,8 @@ public class HashConfig : ManualConfig
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestHashAlgorithm", "TestXofAlgorithm");
 
-        // Export formats: markdown for docfx (custom R script generates grouped charts from it),
-        // plus full JSON so scripts/benchmark-trends/append_results.py can ingest results without extra flags.
+        // Export formats: markdown for docfx, plus full JSON so
+        // scripts/cryptography-benchmark-trends/append_results.py can ingest results without extra flags.
         AddExporter(ShortExporter);
         AddExporter(BenchmarkDotNet.Exporters.Json.JsonExporter.Full);
     }

@@ -1,11 +1,15 @@
 # Cryptography Benchmarks
 
 BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` are published through the
-**[interactive benchmark trends dashboard](benchmark-trends/index.html)** rather than static per-platform pages.
-The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, category,
-algorithm family, method, and data size, plotting every matching implementation as its own line — including a
-size-scaling view and multi-size trend comparisons. Because `platform` is a free-form value in the database,
-results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
+interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small
+SQLite database client-side (no server) and lets you pick platform, category, algorithm family, method, and data
+size, plotting every matching implementation as its own line — including a size-scaling view and multi-size trend
+comparisons. Because `platform` is a free-form value in the database, results from any contributor's machine can
+appear side by side, not just a fixed set of CI hosts.
+
+<iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Cryptography benchmark trends dashboard"></iframe>
+
+[Open the dashboard in its own page →](benchmark-trends/index.html)
 
 ## Memory Footprint
 
@@ -124,7 +128,7 @@ The following tables show the per-instance memory footprint (internal state + bu
 3. Only if the run is worth keeping as a trend data point, record it into the tracked dashboard database —
    this is a deliberate, separate step since not every local run needs to become history:
    ```powershell
-   .\scripts\benchmark-trends\record-benchmark-run.ps1 -Category Hash
+   .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category Hash
    ```
    The script derives a platform id from the JSON export's host info (override with `-PlatformId` for
    self-reported/custom machines), tags the run with the current commit/branch, and appends it to
