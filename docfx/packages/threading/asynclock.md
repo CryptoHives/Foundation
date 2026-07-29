@@ -184,6 +184,10 @@ The new .NET 9 `Lock` primitive shows slighlty better performance than the well 
 
 [View live Single Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncLock&method=LockAsync)
 
+The synchronous baselines (`lock`/`Monitor`, .NET 9 `Lock`/`Lock.EnterScope`, `SpinLock`, and the `Interlocked` variants) are broken out into their own comparison table, since they're several orders of magnitude faster than any async option and would otherwise flatten the async comparison on a shared chart:
+
+[View live synchronous lock/Interlocked baseline results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=SyncLock&method=LockAsync)
+
 ### Multiple Concurrent Lock Benchmark
 
 This benchmark measures performance under contention with multiple concurrent lock requests (iterations).

@@ -24,8 +24,8 @@ Confirmed directly against a real generated report (AsyncLockMultipleBenchmark-r
 - The contention-level [Params] axis is named either "Iterations" or "ParticipantCount"
   depending on the benchmark class (confirmed via grep across tests/Threading/Async/Pooled/*.cs).
 - CancellationToken state, where present, is a separate "cancellationType" column
-  (None/NotCancelled/Cancelled) — folded into `variant` here rather than given its own schema
-  column, so cancelled vs. non-cancelled still renders as distinguishable dashboard lines.
+  (None/NotCancelled/Cancelled) — returned here as its own `cancellation` field (not folded
+  into `variant`), so the dashboard can offer a dedicated Cancellation selector.
 """
 
 import re
@@ -62,13 +62,11 @@ def parse_allocated_bytes(cell: str) -> int | None:
 
 
 def parse_markdown_table(content: str, source_label: str = "<content>", normalize_variant=None):
-    """Yields dicts with method/family/variant/param_label/param_value/mean/stddev/allocated
-    for each data row. `source_label` is only used in stderr diagnostics.
+    """Yields dicts with method/family/variant/cancellation/param_label/param_value/mean/stddev/
+    allocated for each data row. `source_label` is only used in stderr diagnostics.
 
-    `normalize_variant`, if given, is applied to the *base* variant name before the
-    cancellation-state suffix (e.g. " (NotCancelled)") is folded on — so a caller-supplied
-    rename table (e.g. historical "Nito.AsyncEx" -> current "Nito") matches regardless of
-    whether the row also varies by cancellation state. Defaults to identity."""
+    `normalize_variant`, if given, is applied to the variant name (e.g. a caller-supplied rename
+    table mapping historical "Nito.AsyncEx" -> current "Nito"). Defaults to identity."""
     if normalize_variant is None:
         normalize_variant = lambda v: v  # noqa: E731
     content = content.lstrip("﻿")
@@ -124,9 +122,7 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
             continue
         variant = normalize_variant(variant)
 
-        cancellation = fields.get(CANCELLATION_COLUMN, "").strip()
-        if cancellation and cancellation != "None":
-            variant = f"{variant} ({cancellation})"
+        cancellation = fields.get(CANCELLATION_COLUMN, "").strip() or "None"
 
         param_label = None
         for col in CONTENTION_COLUMNS:
@@ -144,6 +140,7 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
             "method": method,
             "family": family,
             "variant": variant,
+            "cancellation": cancellation,
             "param_label": param_label,
             "param_value": param_value,
             "mean_ns": mean_ns,
