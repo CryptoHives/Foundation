@@ -25,8 +25,12 @@ public abstract class KeccakHashCore : KeccakCore
     /// <param name="outputBytes">The output size of the hash in bytes for this variant.</param>
     /// <param name="domainSeparator">The domain separation byte for this variant.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    internal KeccakHashCore(int rateBytes, int outputBytes, byte domainSeparator, SimdSupport simdSupport = SimdSupport.KeccakDefault)
-        : base(rateBytes, simdSupport)
+    /// <param name="useOsNative">
+    /// <see langword="true"/> to delegate hashing to the OS-native implementation returned by
+    /// <see cref="KeccakCore.CreateOsNativeInstance"/> instead of this algorithm's managed implementation.
+    /// </param>
+    internal KeccakHashCore(int rateBytes, int outputBytes, byte domainSeparator, SimdSupport simdSupport = SimdSupport.KeccakDefault, bool useOsNative = false)
+        : base(rateBytes, simdSupport, useOsNative)
     {
         _outputBytes = outputBytes;
         _domainSeparator = domainSeparator;
@@ -41,6 +45,16 @@ public abstract class KeccakHashCore : KeccakCore
         {
             bytesWritten = 0;
             return false;
+        }
+
+        if (_useOsNative)
+        {
+            _osImpl!.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            byte[] hash = _osImpl.Hash!;
+            System.Diagnostics.Debug.Assert(hash.Length == _outputBytes, "OS-native hash output size must match _outputBytes.");
+            hash.CopyTo(destination);
+            bytesWritten = _outputBytes;
+            return true;
         }
 
         // Clear the last byte to prevent stale buffer data from leaking into the

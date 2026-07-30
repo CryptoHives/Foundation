@@ -26,11 +26,18 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
     private long _bytesProcessed;
     private int _bufferLength;
     private bool _allocated;
+    private bool _useOsNative;
+    private System.Security.Cryptography.HashAlgorithm? _osImpl;
 
     /// <summary>
     /// The number of words in the state.
     /// </summary>
     public const int StateSizeWords = 8;
+
+    /// <summary>
+    /// The maximum chunk size copied into a pooled buffer when feeding data to an OS-native implementation.
+    /// </summary>
+    private const int OsNativeChunkSizeBytes = 8192;
 
     /// <summary>
     /// Gets the block size in bytes for this algorithm.
@@ -45,8 +52,14 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Sha2HashAlgorithm{TWord}"/> class.
     /// </summary>
-    protected Sha2HashAlgorithm()
+    /// <param name="useOsNative">
+    /// <see langword="true"/> to delegate hashing to the OS-native implementation returned by
+    /// <see cref="CreateOsNativeInstance"/> instead of this algorithm's managed implementation.
+    /// </param>
+    protected Sha2HashAlgorithm(bool useOsNative = false)
     {
+        _useOsNative = useOsNative;
+
         // Allocate buffers - block size determined by derived class properties
         _buffer = ArrayPool<byte>.Shared.Rent(BlockSizeBytes);
         _state = ArrayPool<T>.Shared.Rent(StateSizeWords);
@@ -54,16 +67,37 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
         Initialize();
     }
 
+    /// <summary>
+    /// When <see cref="_useOsNative"/> is requested, creates the OS-native <see cref="System.Security.Cryptography.HashAlgorithm"/>
+    /// instance to delegate hashing to. Returns <see langword="null"/> if this algorithm has no known OS-native
+    /// equivalent, in which case the managed implementation is used instead.
+    /// </summary>
+    protected virtual System.Security.Cryptography.HashAlgorithm? CreateOsNativeInstance() => null;
+
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public sealed override void Initialize()
     {
         if (!_allocated) throw new ObjectDisposedException(GetType().Name);
 
-        InitializeState();
         _bytesProcessed = 0;
         _bufferLength = 0;
         ClearBuffer(_buffer);
+
+        if (_useOsNative)
+        {
+            _osImpl ??= CreateOsNativeInstance();
+            if (_osImpl is not null)
+            {
+                _osImpl.Initialize();
+                return;
+            }
+
+            // Defensive fallback: the Os bit was requested but no OS-native instance is available.
+            _useOsNative = false;
+        }
+
+        InitializeState();
     }
 
     /// <summary>
@@ -100,6 +134,12 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
     {
         if (!_allocated) throw new ObjectDisposedException(GetType().Name);
 
+        if (_useOsNative)
+        {
+            HashCoreOsNative(source);
+            return;
+        }
+
         int offset = 0;
 
         // If we have leftover data in the buffer, fill it first
@@ -134,6 +174,33 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
         }
     }
 
+    /// <summary>
+    /// Feeds <paramref name="source"/> into <see cref="_osImpl"/> via a pooled chunk buffer, since
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.TransformBlock"/> requires an array.
+    /// </summary>
+    private void HashCoreOsNative(ReadOnlySpan<byte> source)
+    {
+        if (source.IsEmpty) return;
+
+        int chunkSize = Math.Min(source.Length, OsNativeChunkSizeBytes);
+        byte[] chunk = ArrayPool<byte>.Shared.Rent(chunkSize);
+        try
+        {
+            int offset = 0;
+            while (offset < source.Length)
+            {
+                int length = Math.Min(chunkSize, source.Length - offset);
+                source.Slice(offset, length).CopyTo(chunk);
+                _osImpl!.TransformBlock(chunk, 0, length, chunk, 0);
+                offset += length;
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(chunk, clearArray: true);
+        }
+    }
+
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected sealed override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
@@ -143,6 +210,16 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
         {
             bytesWritten = 0;
             return false;
+        }
+
+        if (_useOsNative)
+        {
+            _osImpl!.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            byte[] hash = _osImpl.Hash!;
+            Debug.Assert(hash.Length == OutputSizeBytes, "OS-native hash output size must match OutputSizeBytes.");
+            hash.CopyTo(destination);
+            bytesWritten = OutputSizeBytes;
+            return true;
         }
 
         PadAndFinalize(_buffer, _bufferLength, _bytesProcessed, _state);
@@ -163,6 +240,9 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
                 ArrayPool<T>.Shared.Return(_state, clearArray: true);
                 _allocated = false;
             }
+
+            _osImpl?.Dispose();
+            _osImpl = null;
         }
         base.Dispose(disposing);
     }

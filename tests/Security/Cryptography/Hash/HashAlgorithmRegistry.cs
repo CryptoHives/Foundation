@@ -33,6 +33,8 @@ public static class HashAlgorithmRegistry
     {
         /// <summary>Operating system provided implementation.</summary>
         OS,
+        /// <summary>CryptoHives managed implementation configured to prefer the OS-native implementation.</summary>
+        ManagedOsPreferred,
         /// <summary>CryptoHives managed scalar implementation.</summary>
         Managed,
         /// <summary>CryptoHives SIMD-optimized implementation.</summary>
@@ -293,12 +295,16 @@ public static class HashAlgorithmRegistry
         }
         list.Add(new HashImplementation("SHA-256", "CryptoHives-Scalar", 256,
             () => CH.SHA256.Create(CHRoot.SimdSupport.None), Source.Managed));
+        list.Add(new("SHA-256", "CryptoHives-OS", 256,
+            () => CH.SHA256.Create(CHRoot.SimdSupport.All | CHRoot.SimdSupport.Os), Source.ManagedOsPreferred));
         list.Add(new("SHA-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Sha256Digest()), Source.BouncyCastle));
 
         // SHA-384
         list.Add(new HashImplementation("SHA-384", "OS", 384, SHA384.Create, Source.OS));
         list.Add(new("SHA-384", "CryptoHives-Scalar", 384, CH.SHA384.Create, Source.Managed));
+        list.Add(new("SHA-384", "CryptoHives-OS", 384,
+            () => CH.SHA384.Create(CHRoot.SimdSupport.All | CHRoot.SimdSupport.Os), Source.ManagedOsPreferred));
         list.Add(new("SHA-384", "BouncyCastle", 384,
             () => new BouncyCastleHashAdapter(new BC.Sha384Digest()), Source.BouncyCastle));
 
@@ -306,6 +312,8 @@ public static class HashAlgorithmRegistry
         list.Add(new HashImplementation("SHA-512", "OS", 512, SHA512.Create, Source.OS));
         list.Add(new("SHA-512", "CryptoHives-Scalar", 512,
             CH.SHA512.Create, Source.Managed));
+        list.Add(new("SHA-512", "CryptoHives-OS", 512,
+            () => CH.SHA512.Create(CHRoot.SimdSupport.All | CHRoot.SimdSupport.Os), Source.ManagedOsPreferred));
         list.Add(new("SHA-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Sha512Digest()), Source.BouncyCastle));
 
@@ -359,6 +367,24 @@ public static class HashAlgorithmRegistry
             null
 #endif
         );
+
+#if NET8_0_OR_GREATER
+        if (SHA3_256.IsSupported)
+        {
+            list.Add(new("SHA3-256", "CryptoHives-OS", 256,
+                () => CH.SHA3_256.Create(CHRoot.SimdSupport.KeccakDefault | CHRoot.SimdSupport.Os), Source.ManagedOsPreferred));
+        }
+        if (SHA3_384.IsSupported)
+        {
+            list.Add(new("SHA3-384", "CryptoHives-OS", 384,
+                () => CH.SHA3_384.Create(CHRoot.SimdSupport.KeccakDefault | CHRoot.SimdSupport.Os), Source.ManagedOsPreferred));
+        }
+        if (SHA3_512.IsSupported)
+        {
+            list.Add(new("SHA3-512", "CryptoHives-OS", 512,
+                () => CH.SHA3_512.Create(CHRoot.SimdSupport.KeccakDefault | CHRoot.SimdSupport.Os), Source.ManagedOsPreferred));
+        }
+#endif
     }
 
     private static void AddKeccakFamilyVariant(

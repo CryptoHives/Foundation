@@ -52,10 +52,21 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// <exception cref="ArgumentException">The specified algorithm name is unknown.</exception>
     /// <exception cref="PlatformNotSupportedException">The specified algorithm is not supported.</exception>
     public static System.Security.Cryptography.HashAlgorithm Create(string hashName, bool osVersion = false)
+        => Create(hashName, osVersion ? HashImplementationKind.OsNative : HashImplementationKind.Managed);
+
+    /// <summary>
+    /// Creates a new instance of the specified hash algorithm using the requested implementation.
+    /// </summary>
+    /// <param name="hashName">The name of the hash algorithm to create.</param>
+    /// <param name="implementation">Which implementation of the algorithm to use.</param>
+    /// <returns>A new hash algorithm instance.</returns>
+    /// <exception cref="ArgumentException">The specified algorithm name is unknown.</exception>
+    /// <exception cref="PlatformNotSupportedException">The specified algorithm is not supported.</exception>
+    public static System.Security.Cryptography.HashAlgorithm Create(string hashName, HashImplementationKind implementation)
     {
         if (string.IsNullOrEmpty(hashName)) throw new ArgumentNullException(nameof(hashName));
 
-        if (osVersion)
+        if (implementation == HashImplementationKind.OsNative)
         {
             System.Security.Cryptography.HashAlgorithm? hashAlgorithm = hashName.ToUpperInvariant() switch {
                 // SHA-2 family (FIPS 180-4)
@@ -73,6 +84,26 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
                 "SHA1" or "SHA-1" => System.Security.Cryptography.SHA1.Create(),
                 "MD5" => System.Security.Cryptography.MD5.Create(),
 #pragma warning restore CS0618
+                _ => null
+            };
+
+            if (hashAlgorithm != null)
+            {
+                return hashAlgorithm;
+            }
+        }
+        else if (implementation == HashImplementationKind.Auto)
+        {
+            // OsNativeDefaults is the curated, benchmark-informed decision of whether OS-native is
+            // actually recommended for this algorithm on this platform; requesting the Os bit here
+            // only takes effect when that curation says so (unlike an explicit OsNative/forced request).
+            System.Security.Cryptography.HashAlgorithm? hashAlgorithm = hashName.ToUpperInvariant() switch {
+                "SHA256" or "SHA-256" => OsNativeDefaults.Sha256 ? SHA256.Create(SimdSupport.All | SimdSupport.Os) : null,
+                "SHA384" or "SHA-384" => OsNativeDefaults.Sha384 ? SHA384.Create(SimdSupport.All | SimdSupport.Os) : null,
+                "SHA512" or "SHA-512" => OsNativeDefaults.Sha512 ? SHA512.Create(SimdSupport.All | SimdSupport.Os) : null,
+                "SHA3-256" or "SHA3256" => OsNativeDefaults.Sha3_256 ? SHA3_256.Create(SimdSupport.KeccakDefault | SimdSupport.Os) : null,
+                "SHA3-384" or "SHA3384" => OsNativeDefaults.Sha3_384 ? SHA3_384.Create(SimdSupport.KeccakDefault | SimdSupport.Os) : null,
+                "SHA3-512" or "SHA3512" => OsNativeDefaults.Sha3_512 ? SHA3_512.Create(SimdSupport.KeccakDefault | SimdSupport.Os) : null,
                 _ => null
             };
 

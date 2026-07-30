@@ -59,10 +59,41 @@ public sealed class SHA3_384 : KeccakHashCore
     /// Initializes a new instance of the <see cref="SHA3_384"/> class with specified SIMD support.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
-    internal SHA3_384(SimdSupport simdSupport) : base(RateBytes, HashSizeBytes, DomainSeparator, simdSupport)
+    internal SHA3_384(SimdSupport simdSupport)
+        : base(RateBytes, HashSizeBytes, DomainSeparator, simdSupport, ShouldUseOsNative(simdSupport))
     {
         HashSizeValue = HashSizeBits;
         Initialize();
+    }
+
+    private static bool ShouldUseOsNative(SimdSupport requested) =>
+        ((requested & SimdSupport) & global::CryptoHives.Foundation.Security.Cryptography.SimdSupport.Os) != 0;
+
+    /// <inheritdoc/>
+    protected override System.Security.Cryptography.HashAlgorithm? CreateOsNativeInstance()
+    {
+#if NET8_0_OR_GREATER
+        return System.Security.Cryptography.SHA3_384.IsSupported ? System.Security.Cryptography.SHA3_384.Create() : null;
+#else
+        return null;
+#endif
+    }
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by SHA3-384 on the current platform.
+    /// </summary>
+    internal new static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = KeccakCore.SimdSupport;
+            // Whether the OS-native implementation is recommended by default is a separate, curated
+            // decision (see HashImplementationKind.Auto) - this only reports hard availability.
+#if NET8_0_OR_GREATER
+            if (System.Security.Cryptography.SHA3_384.IsSupported) support |= SimdSupport.Os;
+#endif
+            return support;
+        }
     }
 
     /// <inheritdoc/>

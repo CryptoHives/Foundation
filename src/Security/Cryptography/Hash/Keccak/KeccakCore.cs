@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 
 /// <summary>
 /// All algorithms based on the Keccak permutation should derive from this class.
@@ -28,18 +29,33 @@ public abstract class KeccakCore : HashAlgorithm
     private protected readonly int _rateBytes;
     private protected int _bufferLength;
     private protected bool _disposed;
+    private protected bool _useOsNative;
+    private protected System.Security.Cryptography.HashAlgorithm? _osImpl;
 
-    internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.KeccakDefault)
-        : this(rateBytes, 0, simdSupport)
+    /// <summary>
+    /// The maximum chunk size copied into a pooled buffer when feeding data to an OS-native implementation.
+    /// </summary>
+    private const int OsNativeChunkSizeBytes = 8192;
+
+    internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.KeccakDefault, bool useOsNative = false)
+        : this(rateBytes, 0, simdSupport, useOsNative)
     {
     }
 
-    internal KeccakCore(int rateBytes, int startRound, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+    internal KeccakCore(int rateBytes, int startRound, SimdSupport simdSupport = SimdSupport.KeccakDefault, bool useOsNative = false)
     {
         _keccakCore = new KeccakCoreState(simdSupport, startRound);
         _buffer = new byte[rateBytes];
         _rateBytes = rateBytes;
+        _useOsNative = useOsNative;
     }
+
+    /// <summary>
+    /// When OS-native use is requested, creates the OS-native <see cref="System.Security.Cryptography.HashAlgorithm"/>
+    /// instance to delegate hashing to. Returns <see langword="null"/> if this algorithm has no known OS-native
+    /// equivalent, in which case the managed implementation is used instead.
+    /// </summary>
+    protected virtual System.Security.Cryptography.HashAlgorithm? CreateOsNativeInstance() => null;
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
@@ -50,6 +66,19 @@ public abstract class KeccakCore : HashAlgorithm
         _keccakCore.Reset();
         ClearBuffer(_buffer);
         _bufferLength = 0;
+
+        if (_useOsNative)
+        {
+            _osImpl ??= CreateOsNativeInstance();
+            if (_osImpl is not null)
+            {
+                _osImpl.Initialize();
+                return;
+            }
+
+            // Defensive fallback: OS-native use was requested but no OS-native instance is available.
+            _useOsNative = false;
+        }
     }
 
     /// <summary>
@@ -62,6 +91,12 @@ public abstract class KeccakCore : HashAlgorithm
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
         if (_disposed) throw new ObjectDisposedException(GetType().Name);
+
+        if (_useOsNative)
+        {
+            HashCoreOsNative(source);
+            return;
+        }
 
         int offset = 0;
 
@@ -95,6 +130,33 @@ public abstract class KeccakCore : HashAlgorithm
         }
     }
 
+    /// <summary>
+    /// Feeds <paramref name="source"/> into <see cref="_osImpl"/> via a pooled chunk buffer, since
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.TransformBlock"/> requires an array.
+    /// </summary>
+    private void HashCoreOsNative(ReadOnlySpan<byte> source)
+    {
+        if (source.IsEmpty) return;
+
+        int chunkSize = Math.Min(source.Length, OsNativeChunkSizeBytes);
+        byte[] chunk = ArrayPool<byte>.Shared.Rent(chunkSize);
+        try
+        {
+            int offset = 0;
+            while (offset < source.Length)
+            {
+                int length = Math.Min(chunkSize, source.Length - offset);
+                source.Slice(offset, length).CopyTo(chunk);
+                _osImpl!.TransformBlock(chunk, 0, length, chunk, 0);
+                offset += length;
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(chunk, clearArray: true);
+        }
+    }
+
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
@@ -103,6 +165,8 @@ public abstract class KeccakCore : HashAlgorithm
             _keccakCore.Reset();
             ClearBuffer(_buffer);
             _disposed = true;
+            _osImpl?.Dispose();
+            _osImpl = null;
         }
         base.Dispose(disposing);
     }

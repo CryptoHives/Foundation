@@ -82,6 +82,24 @@ internal enum SimdSupport
     Arm64 = 1 << 11,
 
     /// <summary>
+    /// Prefer the OS-native (BCL/CNG/OpenSSL/CommonCrypto) implementation over the managed one, for
+    /// algorithms that have one available.
+    /// </summary>
+    /// <remarks>
+    /// Unlike every other bit in this enum, this is not a CPU-ISA capability - an algorithm's static
+    /// capability property reports it as supported whenever an OS-native implementation actually exists
+    /// for that algorithm on the current runtime (see each algorithm's <c>CreateOsNativeInstance</c>
+    /// override), independent of whether it is known to be faster. Whether it is *recommended* by
+    /// default (i.e. requested automatically via <c>HashImplementationKind.Auto</c>) is a separate,
+    /// curated, per-platform decision made by <see cref="OsNativeDefaults"/> based on benchmark data -
+    /// requesting this bit directly always honors it if available, bypassing that curation. Selecting it
+    /// changes the correctness-trust boundary (the OS crypto provider is relied on instead of this
+    /// library's self-contained managed code), not just performance, so it is deliberately excluded from
+    /// <see cref="All"/> and must always be requested explicitly.
+    /// </remarks>
+    Os = 1 << 12,
+
+    /// <summary>
     /// All available SIMD optimizations (default behavior).
     /// </summary>
     All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256 | ArmAes | ArmPmull | ArmSha256 | Arm64,

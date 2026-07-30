@@ -36,9 +36,38 @@ public sealed class SHA384 : Sha2HashAlgorithm<ulong>
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA384"/> class.
     /// </summary>
-    public SHA384()
+    public SHA384() : this(SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SHA384"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    internal SHA384(SimdSupport simdSupport) : base(ShouldUseOsNative(simdSupport))
     {
         HashSizeValue = HashSizeBits;
+    }
+
+    private static bool ShouldUseOsNative(SimdSupport requested) =>
+        ((requested & SimdSupport) & global::CryptoHives.Foundation.Security.Cryptography.SimdSupport.Os) != 0;
+
+    /// <inheritdoc/>
+    protected override System.Security.Cryptography.HashAlgorithm? CreateOsNativeInstance() => System.Security.Cryptography.SHA384.Create();
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by SHA-384 on the current platform.
+    /// </summary>
+    internal new static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+            // The OS-native BCL implementation is unconditionally available for SHA-384; whether it is
+            // recommended by default is a separate, curated decision (see HashImplementationKind.Auto).
+            support |= SimdSupport.Os;
+            return support;
+        }
     }
 
     /// <inheritdoc/>
@@ -58,6 +87,13 @@ public sealed class SHA384 : Sha2HashAlgorithm<ulong>
     /// </summary>
     /// <returns>A new SHA-384 hash algorithm instance.</returns>
     public static new SHA384 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="SHA384"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new SHA-384 hash algorithm instance.</returns>
+    internal static SHA384 Create(SimdSupport simdSupport) => new(simdSupport);
 
     /// <summary>
     /// Computes the SHA-384 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.

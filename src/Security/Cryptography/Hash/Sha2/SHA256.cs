@@ -54,11 +54,17 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
     /// Initializes a new instance of the <see cref="SHA256"/> class with forced SIMD support.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    internal SHA256(SimdSupport simdSupport)
+    internal SHA256(SimdSupport simdSupport) : base(ShouldUseOsNative(simdSupport))
     {
         _simdSupport = simdSupport & SimdSupport;
         HashSizeValue = HashSizeBits;
     }
+
+    private static bool ShouldUseOsNative(SimdSupport requested) =>
+        ((requested & SimdSupport) & global::CryptoHives.Foundation.Security.Cryptography.SimdSupport.Os) != 0;
+
+    /// <inheritdoc/>
+    protected override System.Security.Cryptography.HashAlgorithm? CreateOsNativeInstance() => System.Security.Cryptography.SHA256.Create();
 
     /// <inheritdoc/>
     public override string AlgorithmName => "SHA-256";
@@ -83,6 +89,9 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
 #if NET8_0_OR_GREATER
             if (SHA256Core.IsArmSha256Supported) support |= SimdSupport.ArmSha256;
 #endif
+            // The OS-native BCL implementation is unconditionally available for SHA-256; whether it is
+            // recommended by default is a separate, curated decision (see HashImplementationKind.Auto).
+            support |= SimdSupport.Os;
             return support;
         }
     }
