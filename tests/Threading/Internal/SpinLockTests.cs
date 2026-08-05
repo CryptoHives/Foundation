@@ -78,7 +78,7 @@ public class SpinLockTests
     /// <summary>
     /// Number of threads to use in contention tests.
     /// </summary>
-    private int _threadCount = Environment.ProcessorCount;
+    private readonly int _threadCount = Environment.ProcessorCount;
 
     [Test, CancelAfter(5_000)]
     public void TryEnterReturnsTrueWhenUncontended()
