@@ -61,7 +61,7 @@ internal sealed class MeasurementGate : IDisposable
     /// </summary>
     public static MeasurementGate Acquire()
     {
-        string path = Path.Combine(Path.GetTempPath(), LockFileName);
+        string path = Path.Combine(Path.GetTempPath(), Path.GetFileName(LockFileName));
         long deadline = Stopwatch.GetTimestamp() + (long)(AcquireTimeout.TotalSeconds * Stopwatch.Frequency);
         bool waited = false;
 
