@@ -5,6 +5,7 @@ namespace Threading.Tests.Internal;
 
 using NUnit.Framework;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -34,7 +35,16 @@ using SpinLock = CryptoHives.Foundation.Threading.Internal.SpinLock;
 ///   <item><description>Store ordering: data written inside the critical section is fully visible
 ///     to the next thread that acquires the lock.</description></item>
 ///   <item><description>No lost updates: a shared counter incremented under the lock never loses increments.</description></item>
+///   <item><description>No quantum stalls: the run completes at a mean cost per acquisition that is
+///     impossible if waiters are being parked on the scheduler-quantum timer.</description></item>
 /// </list>
+/// </para>
+/// <para>
+/// Each contention test is bounded twice over. <c>CancelAfter</c> is the outer bound - it stops a run that
+/// has stalled outright rather than letting it hang the suite - and
+/// <see cref="MaxMeanAcquisitionMicroseconds"/> is the inner one, which fails long before the outer bound
+/// is reached. Per-acquisition latency, rather than the aggregate, is measured in
+/// <see cref="SpinLockLatencyTests"/>.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -42,16 +52,35 @@ using SpinLock = CryptoHives.Foundation.Threading.Internal.SpinLock;
 public class SpinLockTests
 {
     /// <summary>
-    /// Number of threads to use in contention tests.
-    /// </summary>
-    private const int ThreadCount = 8;
-
-    /// <summary>
     /// Number of iterations each thread performs.
     /// </summary>
     private const int IterationsPerThread = 200_000;
 
-    [Test]
+    /// <summary>
+    /// Ceiling on the mean wall-clock cost of one acquisition across a contention run.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the aggregate form of the per-acquisition assertion in <see cref="SpinLockLatencyTests"/>.
+    /// A contended acquisition of a nanosecond-scale critical section costs a fraction of a microsecond,
+    /// so a mean in the tens of microseconds can only mean waiters are being parked on the scheduler
+    /// quantum - roughly 15.6 ms on Windows, see the contention policy on <see cref="SpinLock"/>.
+    /// </para>
+    /// <para>
+    /// The bound is deliberately loose against measured throughput - runs here sit well under a
+    /// microsecond per acquisition - because it has to hold on a loaded CI agent. It is still tight
+    /// enough to be worth having: at 15.6 ms a park, one park per six hundred acquisitions would breach
+    /// it, and a regression to the framework's default backoff parks far more often than that.
+    /// </para>
+    /// </remarks>
+    private const double MaxMeanAcquisitionMicroseconds = 25.0;
+
+    /// <summary>
+    /// Number of threads to use in contention tests.
+    /// </summary>
+    private readonly int _threadCount = Environment.ProcessorCount;
+
+    [Test, CancelAfter(5_000)]
     public void TryEnterReturnsTrueWhenUncontended()
     {
         var spinLock = new SpinLock();
@@ -61,7 +90,7 @@ public class SpinLockTests
         spinLock.Exit();
     }
 
-    [Test]
+    [Test, CancelAfter(5_000)]
     public void TryEnterReturnsFalseWhenAlreadyHeld()
     {
         var spinLock = new SpinLock();
@@ -72,7 +101,7 @@ public class SpinLockTests
         spinLock.Exit();
     }
 
-    [Test]
+    [Test, CancelAfter(5_000)]
     public void EnterAndExitAreReusable()
     {
         var spinLock = new SpinLock();
@@ -99,7 +128,7 @@ public class SpinLockTests
         var spinLock = new SpinLock();
         long sharedCounter = 0;
 
-        RunContentionTest(ThreadCount, IterationsPerThread, () => {
+        TimeSpan elapsed = RunContentionTest(_threadCount, IterationsPerThread, () => {
             for (int i = 0; i < IterationsPerThread; i++)
             {
                 spinLock.Enter();
@@ -108,7 +137,9 @@ public class SpinLockTests
             }
         });
 
-        Assert.That(sharedCounter, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+        AssertNoQuantumStalls(nameof(MutualExclusionUnderContention), _threadCount, (long)_threadCount * IterationsPerThread, elapsed);
+
+        Assert.That(sharedCounter, Is.EqualTo((long)_threadCount * IterationsPerThread));
     }
 
     /// <summary>
@@ -130,7 +161,7 @@ public class SpinLockTests
         long sharedB = 0;
         int violations = 0;
 
-        RunContentionTest(ThreadCount, IterationsPerThread, () => {
+        TimeSpan elapsed = RunContentionTest(_threadCount, IterationsPerThread, () => {
             for (int i = 0; i < IterationsPerThread; i++)
             {
                 spinLock.Enter();
@@ -152,12 +183,14 @@ public class SpinLockTests
             }
         });
 
+        AssertNoQuantumStalls(nameof(StoreOrderingIsPreservedAcrossRelease), _threadCount, (long)_threadCount * IterationsPerThread, elapsed);
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(violations, Is.Zero, "Inconsistent pair observed: release reordered before stores");
             Assert.That(sharedA, Is.EqualTo(sharedB));
+            Assert.That(sharedA, Is.EqualTo((long)_threadCount * IterationsPerThread));
         }
-        Assert.That(sharedA, Is.EqualTo((long)ThreadCount * IterationsPerThread));
     }
 
     /// <summary>
@@ -174,7 +207,7 @@ public class SpinLockTests
         long word0 = 0, word1 = 0, word2 = 0, word3 = 0;
         int violations = 0;
 
-        RunContentionTest(ThreadCount, IterationsPerThread, () => {
+        TimeSpan elapsed = RunContentionTest(_threadCount, IterationsPerThread, () => {
             for (int i = 0; i < IterationsPerThread; i++)
             {
                 spinLock.Enter();
@@ -200,10 +233,12 @@ public class SpinLockTests
             }
         });
 
+        AssertNoQuantumStalls(nameof(AcquirerSeesAllStoresFromPreviousHolder), _threadCount, (long)_threadCount * IterationsPerThread, elapsed);
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(violations, Is.Zero, "Acquirer observed partially-written state from previous holder");
-            Assert.That(word0, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+            Assert.That(word0, Is.EqualTo((long)_threadCount * IterationsPerThread));
         }
     }
 
@@ -220,7 +255,7 @@ public class SpinLockTests
         long payload = 0;
         int violations = 0;
 
-        RunContentionTest(ThreadCount, IterationsPerThread, () => {
+        TimeSpan elapsed = RunContentionTest(_threadCount, IterationsPerThread, () => {
             for (int i = 0; i < IterationsPerThread; i++)
             {
                 spinLock.Enter();
@@ -243,10 +278,12 @@ public class SpinLockTests
             }
         });
 
+        AssertNoQuantumStalls(nameof(ProducerConsumerHandoffIsOrdered), _threadCount, (long)_threadCount * IterationsPerThread, elapsed);
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(violations, Is.Zero, "Payload/sequence mismatch: release did not fence stores");
-            Assert.That(sequence, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+            Assert.That(sequence, Is.EqualTo((long)_threadCount * IterationsPerThread));
         }
     }
 
@@ -263,7 +300,7 @@ public class SpinLockTests
         int concurrencyViolations = 0;
         long totalIterations = 0;
 
-        RunContentionTest(ThreadCount, IterationsPerThread, () => {
+        TimeSpan elapsed = RunContentionTest(_threadCount, IterationsPerThread, () => {
             for (int i = 0; i < IterationsPerThread; i++)
             {
                 spinLock.Enter();
@@ -284,10 +321,12 @@ public class SpinLockTests
             }
         });
 
+        AssertNoQuantumStalls(nameof(NoConcurrentCriticalSectionEntry), _threadCount, (long)_threadCount * IterationsPerThread, elapsed);
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(concurrencyViolations, Is.Zero, "Multiple threads entered the critical section simultaneously");
-            Assert.That(totalIterations, Is.EqualTo((long)ThreadCount * IterationsPerThread));
+            Assert.That(totalIterations, Is.EqualTo((long)_threadCount * IterationsPerThread));
         }
     }
 
@@ -303,10 +342,10 @@ public class SpinLockTests
         long sharedCounter = 0;
         int iterations = IterationsPerThread / 2;
 
-        var threads = new Thread[ThreadCount];
+        var threads = new Thread[_threadCount];
         using var barrier = new ManualResetEventSlim(false);
 
-        for (int t = 0; t < ThreadCount; t++)
+        for (int t = 0; t < _threadCount; t++)
         {
             int threadId = t;
             threads[t] = new Thread(() => {
@@ -336,22 +375,32 @@ public class SpinLockTests
             threads[t].Start();
         }
 
+        long start = Stopwatch.GetTimestamp();
         barrier.Set();
 
-        for (int t = 0; t < ThreadCount; t++)
+        for (int t = 0; t < _threadCount; t++)
         {
             threads[t].Join();
         }
 
-        Assert.That(sharedCounter, Is.EqualTo((long)ThreadCount * iterations));
+        TimeSpan elapsed = Elapsed(start);
+
+        AssertNoQuantumStalls(nameof(AsymmetricWorkloadMaintainsConsistency), _threadCount, (long)_threadCount * iterations, elapsed);
+
+        Assert.That(sharedCounter, Is.EqualTo((long)_threadCount * iterations));
     }
 
     /// <summary>
     /// Runs the specified action on <paramref name="threadCount"/> threads in parallel,
     /// with a barrier to synchronize start and maximize contention.
     /// </summary>
+    /// <returns>
+    /// Wall-clock time from the moment the threads were released to the moment the last one finished,
+    /// taken from the high performance counter. The timer starts after the threads have been created, so
+    /// thread-creation cost is not charged to the lock.
+    /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void RunContentionTest(int threadCount, int iterationsPerThread, Action body)
+    private static TimeSpan RunContentionTest(int threadCount, int iterationsPerThread, Action body)
     {
         var threads = new Thread[threadCount];
         using var barrier = new ManualResetEventSlim(false);
@@ -368,11 +417,42 @@ public class SpinLockTests
         }
 
         // Release all threads simultaneously for maximum contention.
+        long start = Stopwatch.GetTimestamp();
         barrier.Set();
 
         for (int t = 0; t < threadCount; t++)
         {
             threads[t].Join();
         }
+
+        return Elapsed(start);
+    }
+
+    /// <summary>High performance counter ticks since <paramref name="start"/>, as a <see cref="TimeSpan"/>.</summary>
+    private static TimeSpan Elapsed(long start)
+        => TimeSpan.FromMilliseconds((Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
+
+    /// <summary>
+    /// Reports the throughput of a contention run and asserts that no waiter was parked on the
+    /// scheduler-quantum timer often enough to show up in the aggregate.
+    /// </summary>
+    /// <param name="operation">Name of the run, for the report.</param>
+    /// <param name="threadCount">Threads that took part.</param>
+    /// <param name="acquisitions">Total lock acquisitions across all threads.</param>
+    /// <param name="elapsed">Wall-clock time the run took.</param>
+    private static void AssertNoQuantumStalls(string operation, int threadCount, long acquisitions, TimeSpan elapsed)
+    {
+        double microsecondsPerAcquisition = elapsed.TotalMilliseconds * 1000.0 / acquisitions;
+
+        TestContext.Out.WriteLine();
+        TestContext.Out.WriteLine($"{operation}: {acquisitions:N0} acquisitions on {threadCount} threads in {elapsed.TotalMilliseconds:N1} ms");
+        TestContext.Out.WriteLine($"{"  mean per acquisition",-32} {microsecondsPerAcquisition,10:N3} us");
+        TestContext.Out.WriteLine($"{"  budget",-32} {MaxMeanAcquisitionMicroseconds,10:N3} us");
+
+        Assert.That(
+            microsecondsPerAcquisition,
+            Is.LessThan(MaxMeanAcquisitionMicroseconds),
+            $"{microsecondsPerAcquisition:N1} us per acquisition of a critical section that is a handful of " +
+            "instructions long: waiters are being parked rather than spun.");
     }
 }

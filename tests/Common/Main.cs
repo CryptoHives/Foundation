@@ -22,6 +22,6 @@ static class Program
             .AddAnalyser(DefaultConfig.Instance.GetAnalysers().ToArray())
             .AddValidator(DefaultConfig.Instance.GetValidators().ToArray())
         ;
-        BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
+        _ = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
     }
 }
