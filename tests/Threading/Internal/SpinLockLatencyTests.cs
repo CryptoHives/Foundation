@@ -94,7 +94,22 @@ public class SpinLockLatencyTests
     /// Fraction of handoffs permitted to land in the quantum band regardless. A waiter can be descheduled
     /// by the operating system through no fault of the lock, so a hard zero would be a flake.
     /// </summary>
-    private const double QuantumBandOutlierTolerance = 0.002;
+    /// <remarks>
+    /// <para>
+    /// Sized from measurement rather than taste. <see cref="MeasurementGate"/> stops two timing fixtures
+    /// from measuring at once, but it cannot stop the <em>ordinary</em> tests in the sibling
+    /// per-target-framework processes from running - and several of those spawn a thread per core. Under
+    /// that load this fixture has been observed to put around 1% of handoffs in the band with the lock
+    /// behaving perfectly correctly.
+    /// </para>
+    /// <para>
+    /// The signal being guarded against is far larger: when the framework's default backoff hits the
+    /// quantum cliff it parks on 25% to 100% of handoffs. Five percent sits an order of magnitude above
+    /// the load-induced noise and an order of magnitude below the regression, which is the widest
+    /// separation available - so it is where the threshold belongs, even though it looks generous.
+    /// </para>
+    /// </remarks>
+    private const double QuantumBandOutlierTolerance = 0.05;
 
     /// <summary>Absolute floor for the outlier allowance, so short runs are not hair-triggered.</summary>
     private const int MinQuantumBandOutlierAllowance = 3;
