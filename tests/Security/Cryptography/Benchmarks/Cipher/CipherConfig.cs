@@ -13,7 +13,6 @@ using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
 
 /// <summary>
@@ -30,7 +29,7 @@ public class CipherConfig : ManualConfig
     /// <summary>
     /// Shared instance of the short name markdown exporter.
     /// </summary>
-    private static readonly ShortNameMarkdownExporter ShortExporter = new();
+    private static readonly ShortNameMarkdownExporter ShortExporter = ShortNameMarkdownExporter.Default;
 
     public CipherConfig()
     {
@@ -140,42 +139,6 @@ public class CipherConfig : ManualConfig
                 "128KB" => 131072,
                 _ => 0
             };
-        }
-    }
-
-    /// <summary>
-    /// Custom markdown exporter that uses short file names (class name only, no namespace).
-    /// </summary>
-    /// <remarks>
-    /// Produces files like "AesGcm256Benchmark-report.md" instead of
-    /// "Cryptography.Tests.Benchmarks.AesGcm256Benchmark-report-github.md".
-    /// </remarks>
-    private sealed class ShortNameMarkdownExporter : IExporter
-    {
-        private readonly IExporter _inner = MarkdownExporter.GitHub;
-
-        public string Name => "ShortMarkdown";
-
-        public IEnumerable<string> ExportToFiles(Summary summary, ILogger consoleLogger)
-        {
-            var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
-
-            var fileName = $"{typeName}-report.md";
-            var filePath = Path.IsPathRooted(fileName)
-                ? fileName
-                : Path.Combine(summary.ResultsDirectoryPath, fileName);
-
-            using var writer = new StreamWriter(filePath);
-            using var logger = new StreamLogger(writer);
-            _inner.ExportToLog(summary, logger);
-
-            consoleLogger.WriteLine($"  // * Results exported to: {filePath}");
-            return [filePath];
-        }
-
-        public void ExportToLog(Summary summary, ILogger logger)
-        {
-            _inner.ExportToLog(summary, logger);
         }
     }
 }

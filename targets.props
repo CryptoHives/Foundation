@@ -131,6 +131,18 @@
         <CryptolibTargetFrameworks>net10.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
+    <When  Condition="'$(CustomTestTarget)' == 'net11.0'">
+      <PropertyGroup>
+        <AnalysisLevel>preview</AnalysisLevel>
+        <AnalysisMode>all</AnalysisMode>
+        <AnalysisModeStyle>default</AnalysisModeStyle>
+        <AppTargetFrameworks>net11.0</AppTargetFrameworks>
+        <AppTargetFramework>net11.0</AppTargetFramework>
+        <TestsTargetFrameworks>net11.0</TestsTargetFrameworks>
+        <LibTargetFrameworks>net11.0</LibTargetFrameworks>
+        <CryptolibTargetFrameworks>net11.0</CryptolibTargetFrameworks>
+      </PropertyGroup>
+    </When>
 
     <!-- On macOS default to the latest .NET target only. -->
     <When Condition="$([System.OperatingSystem]::IsMacOS())">
@@ -154,9 +166,9 @@
         <AnalysisModeStyle>default</AnalysisModeStyle>
         <AppTargetFrameworks>net10.0;net48</AppTargetFrameworks>
         <AppTargetFramework>net10.0</AppTargetFramework>
-        <TestsTargetFrameworks>net48;net8.0;net10.0</TestsTargetFrameworks>
-        <LibTargetFrameworks>net462;netstandard2.0;netstandard2.1;net8.0;net10.0</LibTargetFrameworks>
-        <CryptolibTargetFrameworks>net462;net472;netstandard2.0;netstandard2.1;net8.0;net10.0</CryptolibTargetFrameworks>
+        <TestsTargetFrameworks>net48;net8.0;net10.0;net11.0</TestsTargetFrameworks>
+        <LibTargetFrameworks>net462;netstandard2.0;netstandard2.1;net8.0;net10.0;net11.0</LibTargetFrameworks>
+        <CryptolibTargetFrameworks>net462;net472;netstandard2.0;netstandard2.1;net8.0;net10.0;net11.0</CryptolibTargetFrameworks>
       </PropertyGroup>
     </When>
     
