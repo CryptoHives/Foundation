@@ -252,16 +252,16 @@ public sealed class AsyncSemaphore
 
             version = waiter.Version;
             _waiters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)
