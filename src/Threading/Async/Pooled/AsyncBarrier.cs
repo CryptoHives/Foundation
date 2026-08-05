@@ -33,6 +33,18 @@ using System.Threading.Tasks.Sources;
 /// receive a <see cref="BarrierPostPhaseException"/>.
 /// </para>
 /// <para>
+/// <b>Post-phase action contract:</b> the action runs on the thread of the participant that completed
+/// the phase - the last to signal, or the caller of <see cref="RemoveParticipants"/> that removed the
+/// last outstanding one. It observes <see cref="CurrentPhase"/> as the phase it is completing, and no
+/// participant is released until it returns. It runs with no internal lock held, so it may block, do
+/// I/O, or take as long as it needs; in particular it may cancel a
+/// <see cref="CancellationToken"/> that one of this barrier's own waiters is registered on without
+/// deadlocking. It must not reenter the barrier:
+/// <see cref="SignalAndWaitAsync(CancellationToken)"/>, <see cref="AddParticipants"/> and
+/// <see cref="RemoveParticipants"/> all throw <see cref="InvalidOperationException"/> when called from
+/// within it.
+/// </para>
+/// <para>
 /// <b>Optional timeout and cancellation token</b> parameters on
 /// <see cref="SignalAndWaitAsync(TimeSpan, CancellationToken)"/>.
 /// </para>
@@ -80,14 +92,20 @@ using System.Threading.Tasks.Sources;
 /// </remarks>
 public sealed class AsyncBarrier
 {
+    /// <summary>
+    /// Value of <see cref="_phaseTransitionThreadId"/> when no post-phase action is running.
+    /// </summary>
+    private const int NoPhaseTransition = 0;
+
     private readonly IGetPooledManualResetValueTaskSource<bool> _pool;
     private readonly Action<AsyncBarrier>? _postPhaseAction;
-    private Internal.SpinLock _spinLock;
+    private readonly object _lock;
     private WaiterQueue<bool> _waiters;
     private int _participantCount;
     private int _participantsRemaining;
     private long _currentPhase;
     private bool _runContinuationAsynchronously;
+    private int _phaseTransitionThreadId;
 
     /// <summary>
     /// Constructs a new AsyncBarrier instance with the specified number of participants.
@@ -122,7 +140,8 @@ public sealed class AsyncBarrier
         _currentPhase = 0;
         _postPhaseAction = postPhaseAction;
         _runContinuationAsynchronously = runContinuationAsynchronously;
-        _spinLock = new();
+        _phaseTransitionThreadId = NoPhaseTransition;
+        _lock = new();
         _waiters = new();
         _pool = pool ?? ValueTaskSourceObjectPools.ValueTaskSourcePoolBoolean;
     }
@@ -208,12 +227,14 @@ public sealed class AsyncBarrier
         if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
         ManualResetValueTaskSource<bool>? toReleaseChain = null;
-        Exception? postPhaseException = null;
-        bool earlyExit = false;
+        PooledManualResetValueTaskSource<bool>? waiter = null;
+        bool postPhaseActionPending = false;
+        short version = 0;
 
-        _spinLock.Enter();
-        try
+        lock (_lock)
         {
+            WaitForStablePhase();
+
             if (_participantsRemaining <= 0)
             {
                 throw new InvalidOperationException("The number of threads using the barrier exceeded the total number of registered participants.");
@@ -235,11 +256,11 @@ public sealed class AsyncBarrier
                     return new ValueTask(Task.FromException(new TimeoutException()));
                 }
 
-                PooledManualResetValueTaskSource<bool> waiter = _pool.GetPooledWaiter(this);
+                waiter = _pool.GetPooledWaiter(this);
                 waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
                 waiter.CancellationToken = cancellationToken;
 
-                short version = waiter.Version;
+                version = waiter.Version;
                 _waiters.Enqueue(waiter);
 
                 if (timeout != Timeout.InfiniteTimeSpan)
@@ -247,65 +268,140 @@ public sealed class AsyncBarrier
                     waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
                         _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
                 }
+            }
+            else
+            {
+                // Last participant. Detach the waiters up front, so timeout or cancel callback can finish
+                // instead of waiting for the post phase action.
+                toReleaseChain = _waiters.DetachAll(out _);
 
-                earlyExit = true;
-                _spinLock.Exit();
-
-                if (cancellationToken.CanBeCanceled)
+                if (_postPhaseAction is null)
                 {
-#if NET6_0_OR_GREATER
-                    // Use UnsafeRegister on .NET 6+ for allocation free registration
-                    waiter.CancellationTokenRegistration =
-                        cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-                    waiter.CancellationTokenRegistration =
-                        cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
+                    AdvancePhase();
                 }
                 else
                 {
-                    Debug.Assert(waiter.CancellationTokenRegistration == default);
+                    // Advancing is deferred until the action has run, so that it observes the phase it
+                    // is completing rather than the next one.
+                    _phaseTransitionThreadId = Environment.CurrentManagedThreadId;
+                    postPhaseActionPending = true;
                 }
-
-                return new ValueTask(waiter, version);
-            }
-
-            // Last participant - execute post-phase action, then release all waiters and advance phase
-            if (_postPhaseAction is not null)
-            {
-                try
-                {
-                    _postPhaseAction(this);
-                }
-                catch (Exception ex) when (ex is not OutOfMemoryException
-                    && ex is not StackOverflowException
-                    && ex is not AccessViolationException)
-                {
-                    postPhaseException = new BarrierPostPhaseException(ex);
-                }
-            }
-
-            _participantsRemaining = _participantCount;
-            _currentPhase++;
-
-            toReleaseChain = _waiters.DetachAll(out _);
-        }
-        finally
-        {
-            if (!earlyExit)
-            {
-                _spinLock.Exit();
             }
         }
 
-        if (postPhaseException is not null)
+        if (waiter is not null)
         {
-            WaiterQueue<bool>.SetChainException(toReleaseChain, postPhaseException);
-            return new ValueTask(Task.FromException(postPhaseException));
+            // Registered outside the lock: the callback can fire synchronously on this thread if the
+            // token is already cancelled, and it takes the lock itself.
+            if (cancellationToken.CanBeCanceled)
+            {
+#if NET6_0_OR_GREATER
+                // Use UnsafeRegister on .NET 6+ for allocation free registration
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
+#else
+                waiter.CancellationTokenRegistration =
+                    cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
+#endif
+            }
+            else
+            {
+                Debug.Assert(waiter.CancellationTokenRegistration == default);
+            }
+
+            return new ValueTask(waiter, version);
+        }
+
+        if (postPhaseActionPending)
+        {
+            Exception? postPhaseException = RunPostPhaseActionAndAdvancePhase();
+
+            if (postPhaseException is not null)
+            {
+                WaiterQueue<bool>.SetChainException(toReleaseChain, postPhaseException);
+                return new ValueTask(Task.FromException(postPhaseException));
+            }
         }
 
         toReleaseChain?.SetChainResult(true);
         return default;
+    }
+
+    /// <summary>
+    /// Resets the participant count for the next phase and advances the phase number.
+    /// </summary>
+    /// <remarks>Must be called while holding <see cref="_lock"/>.</remarks>
+    private void AdvancePhase()
+    {
+        _participantsRemaining = _participantCount;
+        _currentPhase++;
+    }
+
+    /// <summary>
+    /// Blocks until no post-phase action is running.
+    /// </summary>
+    /// <remarks>
+    /// Must be called while holding <see cref="_lock"/>. The reentrancy check has to precede the wait:
+    /// a monitor is reentrant, so the thread running the action would otherwise re-enter the lock and
+    /// then wait for itself to finish.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when called from the thread currently running the post-phase action.
+    /// </exception>
+    private void WaitForStablePhase()
+    {
+        while (_phaseTransitionThreadId != NoPhaseTransition)
+        {
+            if (_phaseTransitionThreadId == Environment.CurrentManagedThreadId)
+            {
+                throw new InvalidOperationException(
+                    "The barrier cannot be reentered from within its own post-phase action.");
+            }
+
+            Monitor.Wait(_lock);
+        }
+    }
+
+    /// <summary>
+    /// Runs the post-phase action outside <see cref="_lock"/>, then advances the phase and ends the
+    /// transition under it.
+    /// </summary>
+    /// <remarks>
+    /// The phase is advanced in a <see langword="finally"/> so that an action throwing something outside
+    /// the caught set - <see cref="OutOfMemoryException"/> and friends - still leaves the barrier usable
+    /// rather than wedged in a transition no other operation can get past.
+    /// </remarks>
+    /// <returns>
+    /// The <see cref="BarrierPostPhaseException"/> wrapping whatever the action threw, or
+    /// <see langword="null"/> if it returned normally.
+    /// </returns>
+    private Exception? RunPostPhaseActionAndAdvancePhase()
+    {
+        Debug.Assert(_postPhaseAction is not null, "Caller checked for a post-phase action.");
+
+        Exception? postPhaseException = null;
+
+        try
+        {
+            _postPhaseAction!(this);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException
+            && ex is not StackOverflowException
+            && ex is not AccessViolationException)
+        {
+            postPhaseException = new BarrierPostPhaseException(ex);
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                AdvancePhase();
+                _phaseTransitionThreadId = NoPhaseTransition;
+                Monitor.PulseAll(_lock);
+            }
+        }
+
+        return postPhaseException;
     }
 
     /// <summary>
@@ -323,15 +419,23 @@ public sealed class AsyncBarrier
     /// </summary>
     /// <param name="participantCount">The number of additional participants to add.</param>
     /// <returns>The phase number of the barrier when the participants are added.</returns>
+    /// <remarks>
+    /// If a post-phase action is running on another thread this waits for it to finish first, so the
+    /// participant count never changes underneath it.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="participantCount"/> is less than 1.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when adding participants would cause an overflow.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when adding participants would cause an overflow, or when called from within the barrier's
+    /// own post-phase action.
+    /// </exception>
     public long AddParticipants(int participantCount)
     {
         if (participantCount < 1) throw new ArgumentOutOfRangeException(nameof(participantCount), participantCount, "The participantCount argument must be a positive value.");
 
-        _spinLock.Enter();
-        try
+        lock (_lock)
         {
+            WaitForStablePhase();
+
             // Check for overflow
             if (_participantCount > int.MaxValue - participantCount)
             {
@@ -341,10 +445,6 @@ public sealed class AsyncBarrier
             _participantCount += participantCount;
             _participantsRemaining += participantCount;
             return _currentPhase;
-        }
-        finally
-        {
-            _spinLock.Exit();
         }
     }
 
@@ -361,18 +461,31 @@ public sealed class AsyncBarrier
     /// Notifies the <see cref="AsyncBarrier"/> that there will be fewer participants.
     /// </summary>
     /// <param name="participantCount">The number of participants to remove.</param>
+    /// <remarks>
+    /// If a post-phase action is running on another thread this waits for it to finish first, so the
+    /// participant count never changes underneath it. Removing the last outstanding participant
+    /// completes the phase, and therefore runs the post-phase action on the calling thread.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="participantCount"/> is less than 1.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when there are not enough participants to remove, or when the barrier would have zero participants.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when there are not enough participants to remove, when the barrier would have zero
+    /// participants, or when called from within the barrier's own post-phase action.
+    /// </exception>
+    /// <exception cref="BarrierPostPhaseException">
+    /// Thrown when removing the last outstanding participant completes the phase and the post-phase
+    /// action throws.
+    /// </exception>
     public void RemoveParticipants(int participantCount)
     {
         if (participantCount < 1) throw new ArgumentOutOfRangeException(nameof(participantCount), participantCount, "The participantCount argument must be a positive value.");
 
         ManualResetValueTaskSource<bool>? toRelease = null;
-        Exception? postPhaseException = null;
+        bool postPhaseActionPending = false;
 
-        _spinLock.Enter();
-        try
+        lock (_lock)
         {
+            WaitForStablePhase();
+
             if (participantCount > _participantCount)
             {
                 throw new InvalidOperationException("The participantCount argument is greater than the number of participants.");
@@ -389,23 +502,18 @@ public sealed class AsyncBarrier
             // If this causes remaining to hit zero, advance the phase
             if (_participantsRemaining == 0 && _participantCount > 0)
             {
-                // Execute post-phase action
-                if (_postPhaseAction is not null)
-                {
-                    try
-                    {
-                        _postPhaseAction(this);
-                    }
-                    catch (Exception ex)
-                    {
-                        postPhaseException = new BarrierPostPhaseException(ex);
-                    }
-                }
-
-                _currentPhase++;
-                _participantsRemaining = _participantCount;
-
+                // Detached before the action runs, for the same reason as in SignalAndWaitAsync.
                 toRelease = _waiters.DetachAll(out _);
+
+                if (_postPhaseAction is null)
+                {
+                    AdvancePhase();
+                }
+                else
+                {
+                    _phaseTransitionThreadId = Environment.CurrentManagedThreadId;
+                    postPhaseActionPending = true;
+                }
             }
             else if (_participantCount == 0)
             {
@@ -421,15 +529,16 @@ public sealed class AsyncBarrier
                 return;
             }
         }
-        finally
-        {
-            _spinLock.Exit();
-        }
 
-        if (postPhaseException is not null)
+        if (postPhaseActionPending)
         {
-            WaiterQueue<bool>.SetChainException(toRelease, postPhaseException);
-            throw postPhaseException;
+            Exception? postPhaseException = RunPostPhaseActionAndAdvancePhase();
+
+            if (postPhaseException is not null)
+            {
+                WaiterQueue<bool>.SetChainException(toRelease, postPhaseException);
+                throw postPhaseException;
+            }
         }
 
         toRelease?.SetChainResult(true);
@@ -473,24 +582,33 @@ public sealed class AsyncBarrier
     /// <summary>
     /// O(1) removal from intrusive linked list.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Deliberately does <b>not</b> call <see cref="WaitForStablePhase"/>. This is the timeout and
+    /// cancellation path, and letting it run while a post-phase action is in flight is the entire point
+    /// of running that action outside <see cref="_lock"/>. It is safe during a transition because the
+    /// queue has already been detached, so the removal simply fails and the waiter is completed by the
+    /// detached chain instead.
+    /// </para>
+    /// <para>
+    /// It also runs reentrantly, when a post-phase action cancels a token one of this barrier's own
+    /// waiters is registered on - the registration fires synchronously on that thread. A monitor
+    /// tolerates that; the library's spin lock would have deadlocked.
+    /// </para>
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ManualResetValueTaskSource<bool>? RemoveWaiter(ManualResetValueTaskSource<bool> waiter, short version)
     {
-        _spinLock.Enter();
-        try
+        lock (_lock)
         {
             // A stale timer callback must not touch a recycled waiter: the version
             // changes when the waiter is reset for reuse, and re-enqueueing requires
-            // this spin lock, so the check and the removal are atomic w.r.t. reuse.
+            // this lock, so the check and the removal are atomic w.r.t. reuse.
             if (waiter.Version == version && _waiters.Remove(waiter))
             {
                 _participantsRemaining++;
                 return waiter;
             }
-        }
-        finally
-        {
-            _spinLock.Exit();
         }
 
         return null;
