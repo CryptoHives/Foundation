@@ -33,6 +33,12 @@ using System.Threading;
 /// that may run on a single-core container or with the holder descheduled by a long GC pause, and in
 /// those genuinely pathological cases backing off is better than yielding forever.
 /// </para>
+/// <para>
+/// Sidenote: <see cref="CryptoHives.Foundation.Threading.Async.Pooled.AsyncBarrier"/> does not use this
+/// lock: it runs a user-supplied post-phase action as part of completing a phase, which is unbounded by
+/// definition. A primitive that has to hold state across code it does not control wants a monitor, whose
+/// waiters park, rather than this lock, whose waiters spin.
+/// </para>
 /// </remarks>
 internal struct SpinLock
 {
