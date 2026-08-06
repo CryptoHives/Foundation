@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -13,7 +13,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Sources;
 
 /// <summary>
 /// An allocation-light async-compatible per-key exclusive lock implemented with pooled ValueTask sources.
@@ -27,8 +26,12 @@ using System.Threading.Tasks.Sources;
 /// <para>
 /// <b>Allocation behavior:</b> Per-key lock state (<see cref="ManualResetValueTaskSource{T}"/> waiters,
 /// internal spin lock, waiter queue) is exactly as allocation-free as <see cref="AsyncLock"/>
-/// for a key that already has an active entry. The first acquisition for a key additionally allocates the
-/// entry itself (evicted again once nobody references the key), and every acquisition briefly takes an
+/// for a key that already has an active entry. Entries are evicted lazily rather than the moment their last
+/// reference is dropped: a released key stays mapped as an <em>idle</em> entry, so locking and releasing the
+/// same key repeatedly allocates <b>nothing at all</b> - neither the entry nor the dictionary node. At most
+/// <c>maxIdleEntries</c> idle entries are retained; once the cache is full, a key that is not mapped yet
+/// takes over the least recently idled entry instead of allocating one, so even a workload cycling through
+/// unboundedly many distinct keys only pays for the dictionary node. Every acquisition briefly takes an
 /// internal administrative spin lock to look up or create that entry and update its reference count -
 /// an O(1) dictionary operation, not the actual lock wait. Because acquiring and releasing a key both
 /// require an <see langword="await"/> boundary to reliably clean up a failed acquisition, this type
@@ -54,24 +57,61 @@ using System.Threading.Tasks.Sources;
 /// <typeparam name="TKey">The type of key that operations are serialized by.</typeparam>
 public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 {
+    /// <summary>
+    /// Default number of idle entries retained for reuse when the caller does not specify one.
+    /// </summary>
+    /// <remarks>
+    /// Shares <see cref="ValueTaskSourceObjectPools.DefaultMaxRetainedItems"/> so the library keeps one
+    /// retention story across its pools. Sized to span the set of keys that are hot at the same time: a
+    /// cache smaller than that set degrades into evicting an entry per acquisition, which is both slower
+    /// and no longer allocation free. Retention is bounded by the keys actually used rather than by this
+    /// cap, so a generous default costs a lock with few keys nothing.
+    /// </remarks>
+    public const int DefaultMaxIdleEntries = ValueTaskSourceObjectPools.DefaultMaxRetainedItems;
+
     private readonly ConcurrentDictionary<TKey, Entry> _entries;
-    private readonly Func<TKey, Entry> _entryFactory;
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
+    private readonly int _maxIdleEntries;
 
     // Guards only entry creation/reference-counting/eviction below - never the actual lock wait/hold,
     // which stays fully parallel across keys via each Entry's own SpinLock and WaiterQueue.
     private Internal.SpinLock _adminLock;
+
+    // Intrusive LRU list of idle (mapped but unreferenced) entries, threaded through Entry.IdleNext and
+    // Entry.IdlePrev. _idleHead is the least recently idled entry and therefore the next eviction victim.
+    // Guarded by _adminLock, which already serializes the entire entry lifecycle.
+    private Entry? _idleHead;
+    private Entry? _idleTail;
+    private int _idleCount;
+
+    // Number of entries with a non-zero reference count, i.e. currently held or awaited. Maintained under
+    // _adminLock so Count stays O(1) now that the dictionary also holds idle entries.
+    private int _activeCount;
 
     /// <summary>
     /// Constructs a new AsyncKeyedLock instance with an optional custom key comparer and custom pool.
     /// </summary>
     /// <param name="comparer">Custom equality comparer for keys. Defaults to <see cref="EqualityComparer{TKey}.Default"/>.</param>
     /// <param name="pool">Custom pool for this instance.</param>
-    public AsyncKeyedLock(IEqualityComparer<TKey>? comparer = null, IGetPooledManualResetValueTaskSource<Releaser>? pool = null)
+    /// <param name="maxIdleEntries">
+    /// How many released keys stay cached for reuse before the least recently released one is evicted.
+    /// Larger values trade memory - each retained entry keeps its key alive - for fewer allocations on a
+    /// large hot key set; a value below the number of keys that are hot at once gives up the allocation-free
+    /// path entirely, so err on the generous side. Pass <c>0</c> to evict eagerly for the smallest possible
+    /// footprint, at the cost of allocating an entry and a dictionary node on every acquisition - there is
+    /// nothing retained to reuse. Defaults to <see cref="DefaultMaxIdleEntries"/>.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxIdleEntries"/> is negative.</exception>
+    public AsyncKeyedLock(
+        IEqualityComparer<TKey>? comparer = null,
+        IGetPooledManualResetValueTaskSource<Releaser>? pool = null,
+        int maxIdleEntries = DefaultMaxIdleEntries)
     {
+        if (maxIdleEntries < 0) throw new ArgumentOutOfRangeException(nameof(maxIdleEntries));
+
         _entries = comparer is null ? new() : new(comparer);
-        _entryFactory = key => new Entry(this, key);
         _pool = pool ?? ValueTaskSourceObjectPools<TKey>.ValueTaskSourcePoolAsyncKeyedLockReleaser;
+        _maxIdleEntries = maxIdleEntries;
         _adminLock = new();
     }
 
@@ -79,24 +119,36 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     /// Gets the number of keys currently tracked, i.e. either held or awaited.
     /// </summary>
     /// <remarks>
-    /// This is a best-effort diagnostic snapshot, not a value that can be relied upon for synchronization -
-    /// it can change immediately after being read.
+    /// Keys that were released but are still cached for reuse are not counted. This is a best-effort
+    /// diagnostic snapshot, not a value that can be relied upon for synchronization - it can change
+    /// immediately after being read.
     /// </remarks>
-    public int Count => _entries.Count;
+    public int Count => Volatile.Read(ref _activeCount);
 
     /// <summary>
     /// Gets whether <paramref name="key"/> currently has an active entry, i.e. it is either held or awaited.
     /// </summary>
     /// <remarks>
-    /// This is a best-effort diagnostic snapshot, not a value that can be relied upon for synchronization -
-    /// it can change immediately after being read.
+    /// Returns <see langword="false"/> for a key whose entry is merely cached for reuse. This is a
+    /// best-effort diagnostic snapshot, not a value that can be relied upon for synchronization - it can
+    /// change immediately after being read.
     /// </remarks>
     /// <param name="key">The key to check.</param>
-    public bool IsInUse(TKey key) => _entries.ContainsKey(key);
+    public bool IsInUse(TKey key) => _entries.TryGetValue(key, out Entry? entry) && entry.RefCount > 0;
+
+    /// <summary>
+    /// Gets whether <paramref name="key"/> has an entry at all, whether active or merely cached for reuse.
+    /// </summary>
+    internal bool IsCached(TKey key) => _entries.ContainsKey(key);
+
+    /// <summary>
+    /// Gets the number of entries retained, counting both active keys and those cached for reuse.
+    /// </summary>
+    internal int CachedCount => _entries.Count;
 
     /// <summary>
     /// Gets whether the local (non-pooled) waiter for <paramref name="key"/>'s entry is currently in use.
-    /// Returns <see langword="false"/> if <paramref name="key"/> has no active entry.
+    /// Returns <see langword="false"/> if <paramref name="key"/> has no entry.
     /// </summary>
     internal bool InternalWaiterInUse(TKey key)
         => _entries.TryGetValue(key, out Entry? entry) && entry.InternalWaiterInUse;
@@ -105,17 +157,25 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     /// A small value type returned by awaiting a lock acquisition. Disposing the releaser releases the lock
     /// for <see cref="Key"/>.
     /// </summary>
+    /// <remarks>
+    /// A releaser identifies one specific acquisition, not merely the key: because entries are reused across
+    /// acquisitions, it carries a generation token stamped when the lock was taken - the same technique
+    /// <see cref="ValueTask{TResult}"/> uses to tell a live result apart from a recycled source. Disposing a
+    /// releaser whose token no longer matches throws rather than releasing somebody else's hold.
+    /// </remarks>
     public readonly struct Releaser : IDisposable, IAsyncDisposable, IEquatable<Releaser>
     {
         private readonly AsyncKeyedLock<TKey> _owner;
         private readonly TKey _key;
         private readonly Entry _entry;
+        private readonly short _generation;
 
-        internal Releaser(AsyncKeyedLock<TKey> owner, TKey key, Entry entry)
+        internal Releaser(AsyncKeyedLock<TKey> owner, TKey key, Entry entry, short generation)
         {
             _owner = owner;
             _key = key;
             _entry = entry;
+            _generation = generation;
         }
 
         /// <summary>
@@ -123,12 +183,32 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         /// </summary>
         public TKey Key => _key;
 
+        // CA1065 asks that Dispose never throw, on the grounds that a throwing cleanup can mask the
+        // exception it is unwinding. That trade is worth taking here: this releaser is a single-use handle
+        // to one acquisition, and the alternative to throwing is silently releasing a lock that some other
+        // acquisition currently holds - corruption that surfaces arbitrarily far away instead of at the
+        // offending Dispose. Same reasoning ValueTask applies when GetResult rejects a stale token.
+#pragma warning disable CA1065 // Do not raise exceptions in unexpected locations
+
         /// <inheritdoc/>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when this releaser has already been disposed, or otherwise no longer represents the
+        /// acquisition that is currently holding the lock for <see cref="Key"/>.
+        /// </exception>
         public void Dispose()
         {
+            // Validate before releasing, never after: the moment ReleaseLock hands the entry on, another
+            // acquisition can take it and stamp a new generation, and the check would race.
+            if (_entry is null || _entry.Generation != _generation)
+            {
+                throw StaleReleaserException();
+            }
+
             _entry.ReleaseLock();
-            _owner.ReleaseEntry(_key, _entry);
+            _owner.ReleaseEntry(_entry);
         }
+
+#pragma warning restore CA1065 // Do not raise exceptions in unexpected locations
 
         /// <inheritdoc/>
         public ValueTask DisposeAsync()
@@ -143,11 +223,15 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
         /// <inheritdoc/>
         public bool Equals(Releaser other)
-            => ReferenceEquals(_entry, other._entry);
+            => ReferenceEquals(_entry, other._entry) && _generation == other._generation;
 
         /// <inheritdoc/>
         public override int GetHashCode()
-            => _entry is null ? 0 : _entry.GetHashCode();
+            => _entry is null ? 0 : _entry.GetHashCode() ^ _generation;
+
+        private static InvalidOperationException StaleReleaserException()
+            => new("The releaser does not represent the current acquisition of this key. A releaser is "
+                + "single use and must be disposed exactly once by the acquisition that produced it.");
 
         /// <summary>
         /// Determines whether two <see cref="Releaser"/> instances are equal.
@@ -244,7 +328,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             // The claim never turned into a hold (timeout/cancellation/pre-cancelled token), so
             // the Releaser that would normally drive cleanup was never produced. Release our
             // administrative reference here instead, so the entry can still be evicted when idle.
-            ReleaseEntry(key, entry);
+            ReleaseEntry(entry);
             throw;
         }
     }
@@ -255,7 +339,27 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         _adminLock.Enter();
         try
         {
-            Entry entry = _entries.GetOrAdd(key, _entryFactory);
+            if (_entries.TryGetValue(key, out Entry? entry))
+            {
+                // A cached entry is waking up: take it off the idle list before it gains a reference.
+                // Being mapped with no references and being on the idle list are the same state - an entry
+                // is linked the moment its count reaches zero and unmapped when it is evicted.
+                Debug.Assert((entry.RefCount == 0) == (entry.IdleNext is not null || entry.IdlePrev is not null || ReferenceEquals(_idleHead, entry)),
+                    "A mapped, unreferenced entry must be on the idle list.");
+
+                if (entry.RefCount == 0)
+                {
+                    UnlinkIdle(entry);
+                    _activeCount++;
+                }
+            }
+            else
+            {
+                entry = RentEntry(key);
+                _entries[key] = entry;
+                _activeCount++;
+            }
+
             entry.RefCount++;
             return entry;
         }
@@ -265,17 +369,28 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         }
     }
 
-    private void ReleaseEntry(TKey key, Entry entry)
+    private void ReleaseEntry(Entry entry)
     {
         _adminLock.Enter();
         try
         {
+            Debug.Assert(entry.RefCount > 0, "Entry released more often than it was acquired - most likely a Releaser disposed twice.");
+
             if (--entry.RefCount == 0)
             {
-                // Identity-checked removal: only evicts if `entry` is still the mapped instance for
-                // `key`. Since creation, ref-counting and eviction are all serialized under
-                // _adminLock, this can never race with a concurrent AcquireEntry for the same key.
-                ((ICollection<KeyValuePair<TKey, Entry>>)_entries).Remove(new(key, entry));
+                _activeCount--;
+
+                // Lazy eviction: the entry keeps its mapping so the next acquisition of this key finds it
+                // ready to use, allocating neither an entry nor a dictionary node.
+                LinkIdle(entry);
+
+                // Only trims a cache that shrank past its cap - in steady state a miss repurposes the
+                // oldest idle entry, leaving the list one below the cap, so the release that follows lands
+                // exactly at it and never gets here.
+                while (_idleCount > _maxIdleEntries)
+                {
+                    DropOldestIdle();
+                }
             }
         }
         finally
@@ -285,9 +400,131 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     }
 
     /// <summary>
+    /// Appends a newly idle entry to the most-recently-used end of the idle list.
+    /// Caller holds <see cref="_adminLock"/>.
+    /// </summary>
+    private void LinkIdle(Entry entry)
+    {
+        Debug.Assert(entry.IdleNext is null && entry.IdlePrev is null, "Entry is already on the idle list.");
+
+        entry.IdlePrev = _idleTail;
+        entry.IdleNext = null;
+
+        if (_idleTail is not null)
+        {
+            _idleTail.IdleNext = entry;
+        }
+        else
+        {
+            _idleHead = entry;
+        }
+
+        _idleTail = entry;
+        _idleCount++;
+    }
+
+    /// <summary>
+    /// Removes an entry from the idle list in O(1) - the reason the list is doubly linked, since a key can
+    /// be re-acquired from anywhere in it. Caller holds <see cref="_adminLock"/>.
+    /// </summary>
+    private void UnlinkIdle(Entry entry)
+    {
+        if (ReferenceEquals(_idleHead, entry))
+        {
+            _idleHead = entry.IdleNext;
+        }
+
+        if (ReferenceEquals(_idleTail, entry))
+        {
+            _idleTail = entry.IdlePrev;
+        }
+
+        if (entry.IdlePrev is not null)
+        {
+            entry.IdlePrev.IdleNext = entry.IdleNext;
+        }
+
+        if (entry.IdleNext is not null)
+        {
+            entry.IdleNext.IdlePrev = entry.IdlePrev;
+        }
+
+        entry.IdleNext = null;
+        entry.IdlePrev = null;
+        _idleCount--;
+
+        Debug.Assert(_idleCount >= 0);
+    }
+
+    /// <summary>
+    /// Produces an entry for a key that is not mapped yet, reusing the least recently idled entry once the
+    /// cache is full rather than allocating. Caller holds <see cref="_adminLock"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Eviction and allocation are the same event, so they are done as one step: the entry the cache was
+    /// about to give up is exactly the entry the new key needs. That keeps an evicted entry - and its
+    /// <see cref="LocalManualResetValueTaskSource{T}"/>, the larger half of what an entry costs - in
+    /// continuous use, with no pool to park it in between and no second retention bound to reason about.
+    /// </para>
+    /// <para>
+    /// Reuse is safe precisely because an idle entry reached a reference count of zero: a waiter handed the
+    /// lock by <see cref="Entry.ReleaseLock"/> still holds the reference it took in
+    /// <see cref="AcquireEntry"/>, so a count of zero means the entry is unheld, its waiter queue is empty
+    /// and its local waiter has been reset. A stale timeout or cancellation callback may still reach the
+    /// reused entry, but it is rejected by the same waiter version check that already guards a recycled
+    /// waiter.
+    /// </para>
+    /// </remarks>
+    private Entry RentEntry(TKey key)
+    {
+        // Below the cap the cache is still growing, so add an entry rather than cannibalizing one.
+        Entry entry;
+        if (_idleCount == 0 || _idleCount < _maxIdleEntries)
+        {
+            entry = new Entry(this);
+        }
+        else
+        {
+            entry = _idleHead!;
+            DetachIdleHead(entry);
+        }
+
+        entry.Bind(key);
+        return entry;
+    }
+
+    /// <summary>
+    /// Drops the least recently idled entry, letting it be collected. Only reached when the cache has
+    /// shrunk past its cap. Caller holds <see cref="_adminLock"/>.
+    /// </summary>
+    private void DropOldestIdle()
+    {
+        Entry victim = _idleHead!;
+        DetachIdleHead(victim);
+        victim.Unbind();
+    }
+
+    /// <summary>
+    /// Removes the least recently idled entry from both the idle list and the key map.
+    /// Caller holds <see cref="_adminLock"/>.
+    /// </summary>
+    private void DetachIdleHead(Entry victim)
+    {
+        Debug.Assert(_idleCount > 0 && _idleHead is not null, "Idle list is empty but the idle count is positive.");
+        Debug.Assert(ReferenceEquals(_idleHead, victim));
+
+        bool removed = _entries.TryRemove(victim.Key, out Entry? removedEntry);
+        Debug.Assert(removed && ReferenceEquals(removedEntry, victim));
+
+        UnlinkIdle(victim);
+    }
+
+    /// <summary>
     /// Per-key lock state. Structurally identical to <see cref="AsyncLock"/>'s internals (local waiter,
     /// shared pool, spin lock, intrusive <see cref="WaiterQueue{T}"/>), plus the reference count that
-    /// the owning <see cref="AsyncKeyedLock{TKey}"/> uses to decide when the entry can be evicted.
+    /// the owning <see cref="AsyncKeyedLock{TKey}"/> uses to decide when the entry falls idle and becomes
+    /// a candidate for eviction and reuse.
     /// </summary>
     /// <remarks>
     /// Visible only as <c>internal</c> because it appears as a parameter type on the public
@@ -296,11 +533,12 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     internal sealed class Entry
     {
         private readonly AsyncKeyedLock<TKey> _owner;
-        private readonly TKey _key;
         private readonly LocalManualResetValueTaskSource<Releaser> _localWaiter;
+        private TKey _key;
         private Internal.SpinLock _spinLock;
         private WaiterQueue<Releaser> _waiters;
         private volatile int _taken;
+        private short _generation;
 
         /// <summary>
         /// Number of outstanding claims (held or awaited) on this entry. Guarded exclusively by
@@ -308,10 +546,20 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         /// </summary>
         public int RefCount;
 
-        public Entry(AsyncKeyedLock<TKey> owner, TKey key)
+        /// <summary>
+        /// Links into the owner's intrusive LRU list of idle entries while this entry is mapped but
+        /// unreferenced; both are <see langword="null"/> while the entry is active or pooled. Guarded by
+        /// <see cref="AsyncKeyedLock{TKey}._adminLock"/>.
+        /// </summary>
+        public Entry? IdleNext;
+
+        /// <inheritdoc cref="IdleNext"/>
+        public Entry? IdlePrev;
+
+        public Entry(AsyncKeyedLock<TKey> owner)
         {
             _owner = owner;
-            _key = key;
+            _key = default!;
             _waiters = new();
             _spinLock = new();
             _localWaiter = new(this) {
@@ -319,12 +567,56 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             };
         }
 
+        /// <summary>
+        /// Gets the key this entry is currently mapped to. Meaningful only while the entry is mapped.
+        /// </summary>
+        public TKey Key => _key;
+
+        /// <summary>
+        /// Gets the token identifying the acquisition currently holding this entry. Stamped into the
+        /// <see cref="Releaser"/> handed to that acquisition, so a stale handle can be told apart from a
+        /// live one once entries start being reused.
+        /// </summary>
+        public short Generation => _generation;
+
+        /// <summary>
+        /// Binds a pooled entry to a key. Caller holds <see cref="AsyncKeyedLock{TKey}._adminLock"/>.
+        /// </summary>
+        /// <remarks>
+        /// Only the key is restored: the spin lock, the (empty) waiter queue and the local waiter are
+        /// reusable as-is, and the local waiter deliberately keeps its identity, since it is constructed
+        /// with this entry as its <see cref="ManualResetValueTaskSource{T}.Owner"/> and that relationship
+        /// survives recycling. <c>RunContinuationsAsynchronously</c> likewise survives, as
+        /// <c>ManualResetValueTaskSourceCore.Reset</c> does not clear it. The generation deliberately keeps
+        /// counting up across rebinds so a releaser stranded by an eviction stays distinguishable.
+        /// </remarks>
+        public void Bind(TKey key)
+        {
+            Debug.Assert(RefCount == 0 && _taken == 0 && _waiters.Count == 0 && !_localWaiter.InUse,
+                "Recycled entry is not idle.");
+
+            _key = key;
+        }
+
+        /// <summary>
+        /// Drops the key reference when the entry is evicted, so a pooled entry does not keep an otherwise
+        /// unreachable key alive. Caller holds <see cref="AsyncKeyedLock{TKey}._adminLock"/>.
+        /// </summary>
+        public void Unbind() => _key = default!;
+
+        /// <summary>
+        /// Stamps a fresh acquisition token. Called only by the thread that just took the lock, which owns
+        /// the entry exclusively until it releases, so no interlocked operation is needed.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private short NextGeneration() => unchecked(++_generation);
+
         [MethodImpl(MethodImplOptionsEx.HotPath)]
         public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken)
         {
             if (Interlocked.Exchange(ref _taken, 1) == 0)
             {
-                return new ValueTask<Releaser>(new Releaser(_owner, _key, this));
+                return new ValueTask<Releaser>(new Releaser(_owner, _key, this, NextGeneration()));
             }
 
             if (timeout == TimeSpan.Zero)
@@ -346,7 +638,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             {
                 if (Interlocked.Exchange(ref _taken, 1) == 0)
                 {
-                    return new ValueTask<Releaser>(new Releaser(_owner, _key, this));
+                    return new ValueTask<Releaser>(new Releaser(_owner, _key, this, NextGeneration()));
                 }
 
                 if (cancellationToken.IsCancellationRequested)
@@ -364,16 +656,16 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
                 version = waiter.Version;
                 _waiters.Enqueue(waiter);
-
-                if (timeout != Timeout.InfiniteTimeSpan)
-                {
-                    waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                        _timerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
-                }
             }
             finally
             {
                 _spinLock.Exit();
+            }
+
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    _timerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
             }
 
             if (cancellationToken.CanBeCanceled)
@@ -417,6 +709,10 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             {
                 if (_waiters.Count == 0)
                 {
+                    // Retire the caller's token before the entry becomes takeable, so a second dispose of
+                    // the same releaser is rejected rather than releasing whoever acquires next. Ordered
+                    // ahead of the volatile _taken write, and safe because _taken is still set here.
+                    NextGeneration();
                     _taken = 0;
                     return;
                 }
@@ -428,7 +724,10 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
                 _spinLock.Exit();
             }
 
-            toRelease.SetResult(new Releaser(_owner, _key, this));
+            // Handing the lock straight to the next waiter is a new acquisition, so it gets a new token -
+            // which also retires the releaser the caller just used. Safe outside the spin lock: _taken stays
+            // set across the handoff, so no other thread can be stamping a generation concurrently.
+            toRelease.SetResult(new Releaser(_owner, _key, this, NextGeneration()));
         }
 
         /// <summary>

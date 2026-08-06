@@ -88,7 +88,7 @@ public class AsyncKeyedLockTests
     }
 
     [Test]
-    public async Task EntryIsEvictedAfterLastReleaseOnKey()
+    public async Task EntryIsInactiveAfterLastReleaseOnKey()
     {
         using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
         var locks = new AsyncKeyedLock<string>(pool: pool);
@@ -294,17 +294,15 @@ public class AsyncKeyedLockTests
     }
 
     [Test]
-    public async Task ReleaserFromSameLiveEntryAreEqual()
+    public async Task ReleaserCopiesOfSameAcquisitionAreEqual()
     {
         using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
         var locks = new AsyncKeyedLock<string>(pool: pool);
 
-        // Two overlapping acquisitions of the same key share the same underlying entry.
+        // A releaser identifies one acquisition, so copies of the same handle compare equal.
         AsyncKeyedLock<string>.Releaser first = await locks.LockAsync("a").ConfigureAwait(false);
-        Task<AsyncKeyedLock<string>.Releaser> secondTask = locks.LockAsync("a").AsTask();
+        AsyncKeyedLock<string>.Releaser second = first;
         first.Dispose();
-        AsyncKeyedLock<string>.Releaser second = await secondTask.ConfigureAwait(false);
-        second.Dispose();
 
         using (Assert.EnterMultipleScope())
         {
@@ -317,13 +315,35 @@ public class AsyncKeyedLockTests
     }
 
     [Test]
-    public async Task ReleaserFromEvictedAndRecreatedEntryAreNotEqual()
+    public async Task ReleaserFromHandoffOnSameEntryAreNotEqual()
     {
         using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
         var locks = new AsyncKeyedLock<string>(pool: pool);
 
-        // Two non-overlapping acquisitions of the same key each get a fresh entry, because the
-        // first entry is evicted once its last reference is released.
+        // Two overlapping acquisitions of the same key share the same underlying entry, but they are
+        // still distinct acquisitions - the generation token stamped on handoff keeps them apart.
+        AsyncKeyedLock<string>.Releaser first = await locks.LockAsync("a").ConfigureAwait(false);
+        Task<AsyncKeyedLock<string>.Releaser> secondTask = locks.LockAsync("a").AsTask();
+        first.Dispose();
+        AsyncKeyedLock<string>.Releaser second = await secondTask.ConfigureAwait(false);
+        second.Dispose();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(first.Equals(second), Is.False);
+            Assert.That(first == second, Is.False);
+            Assert.That(first != second, Is.True);
+        }
+    }
+
+    [Test]
+    public async Task ReleaserFromReacquiredEntryAreNotEqual()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool);
+
+        // Two non-overlapping acquisitions of the same key now reuse the same cached entry, so only
+        // the per-acquisition generation token distinguishes their releasers.
         AsyncKeyedLock<string>.Releaser first;
         using (first = await locks.LockAsync("a").ConfigureAwait(false)) { }
         Assert.That(locks.IsInUse("a"), Is.False);
@@ -399,6 +419,174 @@ public class AsyncKeyedLockTests
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
         Assert.That(locks.Count, Is.Zero);
+    }
+
+    [Test]
+    public async Task SurvivesConcurrentEvictionPressure()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+
+        // A cache far smaller than the key set, so nearly every release evicts and nearly every
+        // acquisition rents from the entry pool - all while other threads mutate the same idle list.
+        var locks = new AsyncKeyedLock<string>(pool: pool, maxIdleEntries: 2);
+
+        var tasks = new Task[16];
+        for (int i = 0; i < tasks.Length; i++)
+        {
+            int offset = i;
+            tasks[i] = Task.Run(async () => {
+                for (int j = 0; j < 100; j++)
+                {
+                    using (await locks.LockAsync($"key-{(offset + j) % 32}").ConfigureAwait(false))
+                    {
+                        await Task.Yield();
+                    }
+                }
+            });
+        }
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(locks.Count, Is.Zero);
+            Assert.That(locks.CachedCount, Is.EqualTo(2));
+        }
+    }
+
+    [Test]
+    public async Task ReleasedKeyStaysCachedForReuse()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool);
+
+        using (await locks.LockAsync("a").ConfigureAwait(false)) { }
+
+        using (Assert.EnterMultipleScope())
+        {
+            // Released, so no longer in use - but still mapped, so the next acquisition reuses it.
+            Assert.That(locks.IsInUse("a"), Is.False);
+            Assert.That(locks.IsCached("a"), Is.True);
+            Assert.That(locks.CachedCount, Is.EqualTo(1));
+        }
+
+        using (await locks.LockAsync("a").ConfigureAwait(false)) { }
+
+        Assert.That(locks.CachedCount, Is.EqualTo(1), "Re-acquiring a cached key must not create a second entry.");
+    }
+
+    [Test]
+    public async Task IdleCacheIsBoundedByMaxIdleEntries()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool, maxIdleEntries: 4);
+
+        for (int i = 0; i < 32; i++)
+        {
+            using (await locks.LockAsync($"key-{i}").ConfigureAwait(false)) { }
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(locks.CachedCount, Is.EqualTo(4));
+            Assert.That(locks.Count, Is.Zero);
+
+            // The cache is least-recently-used, so the newest keys survive and the oldest are gone.
+            Assert.That(locks.IsCached("key-31"), Is.True);
+            Assert.That(locks.IsCached("key-0"), Is.False);
+        }
+    }
+
+    [Test]
+    public async Task ZeroMaxIdleEntriesEvictsEagerly()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool, maxIdleEntries: 0);
+
+        using (await locks.LockAsync("a").ConfigureAwait(false))
+        {
+            Assert.That(locks.IsInUse("a"), Is.True);
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(locks.IsCached("a"), Is.False);
+            Assert.That(locks.CachedCount, Is.Zero);
+        }
+
+        // Still fully usable with the cache disabled.
+        using (await locks.LockAsync("a").ConfigureAwait(false))
+        {
+            Assert.That(locks.IsInUse("a"), Is.True);
+        }
+    }
+
+    [Test]
+    public void NegativeMaxIdleEntriesThrows()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AsyncKeyedLock<string>(maxIdleEntries: -1));
+    }
+
+    [Test]
+    public async Task DisposingReleaserTwiceThrows()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool);
+
+        AsyncKeyedLock<string>.Releaser releaser = await locks.LockAsync("a").ConfigureAwait(false);
+        releaser.Dispose();
+
+        Assert.Throws<InvalidOperationException>(releaser.Dispose);
+    }
+
+    [Test]
+    public async Task DisposingStaleReleaserAfterReacquireThrows()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool);
+
+        // The entry is reused by the second acquisition, so the stale handle would otherwise release
+        // a hold that belongs to somebody else.
+        AsyncKeyedLock<string>.Releaser stale = await locks.LockAsync("a").ConfigureAwait(false);
+        stale.Dispose();
+
+        using (await locks.LockAsync("a").ConfigureAwait(false))
+        {
+            Assert.Throws<InvalidOperationException>(stale.Dispose);
+            Assert.That(locks.IsInUse("a"), Is.True, "The live acquisition must still hold the lock.");
+        }
+    }
+
+    [Test]
+    public async Task RepeatedLockOnCachedKeyDoesNotAllocate()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool);
+
+        // Warm up so the entry, its local waiter and the dictionary node all already exist.
+        for (int i = 0; i < 100; i++)
+        {
+            using (await locks.LockAsync("a").ConfigureAwait(false)) { }
+        }
+
+        const int Iterations = 1000;
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < Iterations; i++)
+        {
+            using (await locks.LockAsync("a").ConfigureAwait(false)) { }
+        }
+        long perOperation = (GC.GetAllocatedBytesForCurrentThread() - before) / Iterations;
+
+#if DEBUG
+        // Debug builds compile async state machines as classes, so every LockAsync boxes one no matter
+        // what the entry cache does - a fixed ~184 B that has nothing to do with this type. Entry churn
+        // would add several hundred bytes on top, so this bound still catches a regression; the exact
+        // zero that the documented allocation behavior promises is asserted by the Release build.
+        Assert.That(perOperation, Is.LessThan(256), "Lock/release on a cached key must not churn entries.");
+#else
+        Assert.That(perOperation, Is.Zero, "Uncontended lock/release on a cached key must be allocation free.");
+#endif
     }
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()
