@@ -589,6 +589,114 @@ public class AsyncKeyedLockTests
 #endif
     }
 
+    [Test]
+    public async Task QueuedWaitersDoNotAllocate()
+    {
+        const string Key = "a";
+        const int Waiters = 100;
+
+        var locks = new AsyncKeyedLock<string>();
+        var handles = new ValueTask<AsyncKeyedLock<string>.Releaser>[Waiters];
+
+        // Warm up with the same shape, so the entry, its local waiter and the waiter pool are all
+        // populated before anything is measured.
+        for (int round = 0; round < 20; round++)
+        {
+            await QueueAndDrainAsync(locks, handles, Waiters).ConfigureAwait(false);
+        }
+
+        AsyncKeyedLock<string>.Releaser holder = await locks.LockAsync(Key).ConfigureAwait(false);
+
+        // Only the queuing phase is measured, and it contains no await, so it stays on this thread and
+        // GC.GetAllocatedBytesForCurrentThread is meaningful for it. That phase is where an enclosing
+        // async method would box a state machine per suspended acquisition.
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < Waiters; i++)
+        {
+            handles[i] = locks.LockAsync(Key);
+        }
+
+        long perWaiter = (GC.GetAllocatedBytesForCurrentThread() - before) / Waiters;
+
+        holder.Dispose();
+        for (int i = 0; i < Waiters; i++)
+        {
+            using (await handles[i].ConfigureAwait(false)) { }
+        }
+
+#if DEBUG
+        // Debug builds do not inline the fast paths and keep more locals alive, but the per-waiter cost
+        // is still far below the ~234 B a boxed state machine per queued waiter used to cost.
+        Assert.That(perWaiter, Is.LessThan(64), "Queuing a waiter must not box a state machine.");
+#else
+        Assert.That(perWaiter, Is.Zero, "Contended acquisition must be allocation free.");
+#endif
+    }
+
+    private static async Task QueueAndDrainAsync(
+        AsyncKeyedLock<string> locks,
+        ValueTask<AsyncKeyedLock<string>.Releaser>[] handles,
+        int waiters)
+    {
+        AsyncKeyedLock<string>.Releaser holder = await locks.LockAsync("a").ConfigureAwait(false);
+        for (int i = 0; i < waiters; i++)
+        {
+            handles[i] = locks.LockAsync("a");
+        }
+
+        holder.Dispose();
+        for (int i = 0; i < waiters; i++)
+        {
+            using (await handles[i].ConfigureAwait(false)) { }
+        }
+    }
+
+    [Test]
+    public async Task TimedOutEntryIsNotReusedBeforeItsWaiterIsReset()
+    {
+        // A failed acquisition drops its administrative reference as soon as the timeout fires, but its
+        // waiter is only reset when the awaiter finally observes the result. This drives the entry into
+        // exactly that state - unreferenced, idle, and still holding a live local waiter - and then puts
+        // it under maximum reuse pressure. Reusing it there would rebind a key onto an entry whose
+        // previous waiter has not let go, which Entry.Bind asserts against in Debug builds.
+        var locks = new AsyncKeyedLock<string>(maxIdleEntries: 1);
+
+        AsyncKeyedLock<string>.Releaser holder = await locks.LockAsync("a").ConfigureAwait(false);
+        ValueTask<AsyncKeyedLock<string>.Releaser> timedOut = locks.LockAsync("a", TimeSpan.FromMilliseconds(50));
+
+        // Let the timer fire: the waiter leaves the queue, is completed, and its reference is dropped -
+        // all without the result having been observed yet.
+        await Task.Delay(300).ConfigureAwait(false);
+
+        // The holder was the only remaining reference, so "a" now falls idle un-quiesced.
+        holder.Dispose();
+
+        // With maxIdleEntries: 1 these both hit the reuse path and must decline to take "a".
+        using (await locks.LockAsync("b").ConfigureAwait(false)) { }
+        using (await locks.LockAsync("c").ConfigureAwait(false)) { }
+
+        // The abandoned acquisition still reports its own failure rather than another key's state.
+        // Awaited directly rather than through Assert.ThrowsAsync, which would capture the ValueTask in
+        // a closure (CHT010) and risk consuming it more than once.
+        TimeoutException? caught = null;
+        try
+        {
+            using (await timedOut.ConfigureAwait(false)) { }
+        }
+        catch (TimeoutException ex)
+        {
+            caught = ex;
+        }
+
+        Assert.That(caught, Is.Not.Null, "The abandoned acquisition must still time out.");
+
+        // ... and the key remains usable afterwards.
+        using (await locks.LockAsync("a").ConfigureAwait(false))
+        {
+            Assert.That(locks.IsInUse("a"), Is.True);
+        }
+    }
+
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()
     {
         return new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -11,110 +11,110 @@ Job=.NET 10.0  Runtime=.NET 10.0  Toolchain=net10.0
 ```
 | Description                                             | KeySpaceSize | WindowSize | AdvanceDivisor | Mean       | Ratio | Allocated | 
 |-------------------------------------------------------- |------------- |----------- |--------------- |-----------:|------:|----------:|
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 8          | 1              |   234.2 ns |  0.47 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 8          | 1              |   254.4 ns |  0.51 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 8          | 1              |   454.9 ns |  0.91 |         - | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 8          | 1              |   497.9 ns |  1.00 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 8          | 1              |   534.6 ns |  1.07 |     384 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 8          | 1              |   586.9 ns |  1.18 |    2048 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 8          | 1              |   639.5 ns |  1.28 |    1600 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 8          | 1              |   860.4 ns |  1.73 |    4160 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 8          | 1              |   234.7 ns |  0.69 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 8          | 1              |   249.3 ns |  0.74 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 8          | 1              |   337.9 ns |  1.00 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 8          | 1              |   440.7 ns |  1.30 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 8          | 1              |   526.5 ns |  1.56 |     384 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 8          | 1              |   562.2 ns |  1.66 |    2048 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 8          | 1              |   634.5 ns |  1.88 |    1600 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 8          | 1              |   808.2 ns |  2.39 |    4160 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 8          | 2              |   235.0 ns |  0.47 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 8          | 2              |   253.7 ns |  0.51 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 8          | 2              |   436.0 ns |  0.88 |         - | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 8          | 2              |   497.7 ns |  1.00 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 8          | 2              |   531.1 ns |  1.07 |     384 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 8          | 2              |   564.2 ns |  1.13 |    2048 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 8          | 2              |   638.2 ns |  1.28 |    1600 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 8          | 2              |   827.0 ns |  1.66 |    4160 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 8          | 2              |   229.0 ns |  0.71 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 8          | 2              |   249.9 ns |  0.78 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 8          | 2              |   321.9 ns |  1.00 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 8          | 2              |   436.8 ns |  1.36 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 8          | 2              |   524.3 ns |  1.63 |     384 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 8          | 2              |   557.4 ns |  1.73 |    2048 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 8          | 2              |   643.5 ns |  2.00 |    1600 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 8          | 2              |   825.0 ns |  2.56 |    4160 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 8          | 4              |   244.0 ns |  0.47 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 8          | 4              |   253.7 ns |  0.49 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 8          | 4              |   438.1 ns |  0.85 |         - | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 8          | 4              |   516.4 ns |  1.00 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 8          | 4              |   537.9 ns |  1.04 |     384 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 8          | 4              |   555.9 ns |  1.08 |    2048 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 8          | 4              |   662.6 ns |  1.28 |    1600 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 8          | 4              |   815.9 ns |  1.58 |    4160 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 8          | 4              |   229.3 ns |  0.71 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 8          | 4              |   250.1 ns |  0.78 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 8          | 4              |   321.7 ns |  1.00 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 8          | 4              |   436.9 ns |  1.36 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 8          | 4              |   526.4 ns |  1.64 |     384 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 8          | 4              |   628.8 ns |  1.95 |    2048 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 8          | 4              |   636.6 ns |  1.98 |    1600 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 8          | 4              |   839.9 ns |  2.61 |    4160 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 32         | 1              |   899.9 ns |  0.44 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 32         | 1              |   953.5 ns |  0.46 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 32         | 1              | 1,724.4 ns |  0.84 |         - | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 32         | 1              | 2,054.1 ns |  1.00 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 32         | 1              | 2,061.7 ns |  1.00 |    1536 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 32         | 1              | 2,194.7 ns |  1.07 |    8192 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 32         | 1              | 2,530.0 ns |  1.23 |    6400 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 32         | 1              | 3,207.3 ns |  1.56 |   16640 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 32         | 1              |   875.0 ns |  0.65 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 32         | 1              |   950.4 ns |  0.71 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 32         | 1              | 1,336.1 ns |  1.00 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 32         | 1              | 1,718.9 ns |  1.29 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 32         | 1              | 2,073.6 ns |  1.55 |    1536 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 32         | 1              | 2,150.5 ns |  1.61 |    8192 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 32         | 1              | 2,477.7 ns |  1.85 |    6400 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 32         | 1              | 3,208.5 ns |  2.40 |   16640 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 32         | 2              |   892.0 ns |  0.46 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 32         | 2              |   950.6 ns |  0.49 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 32         | 2              | 1,742.6 ns |  0.90 |         - | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 32         | 2              | 1,929.3 ns |  1.00 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 32         | 2              | 2,072.6 ns |  1.07 |    1536 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 32         | 2              | 2,206.9 ns |  1.14 |    8192 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 32         | 2              | 2,512.8 ns |  1.30 |    6400 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 32         | 2              | 3,213.7 ns |  1.67 |   16640 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 32         | 2              |   870.4 ns |  0.66 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 32         | 2              |   936.3 ns |  0.71 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 32         | 2              | 1,324.6 ns |  1.00 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 32         | 2              | 1,704.7 ns |  1.29 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 32         | 2              | 2,029.5 ns |  1.53 |    1536 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 32         | 2              | 2,202.4 ns |  1.66 |    8192 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 32         | 2              | 2,557.5 ns |  1.93 |    6400 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 32         | 2              | 3,292.2 ns |  2.49 |   16640 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 32         | 4              |   899.5 ns |  0.47 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 32         | 4              |   950.6 ns |  0.50 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 32         | 4              | 1,735.0 ns |  0.91 |         - | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 32         | 4              | 1,908.7 ns |  1.00 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 32         | 4              | 2,044.5 ns |  1.07 |    1536 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 32         | 4              | 2,186.5 ns |  1.15 |    8192 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 32         | 4              | 2,477.2 ns |  1.30 |    6400 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 32         | 4              | 3,242.1 ns |  1.70 |   16640 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64           | 32         | 4              |   882.2 ns |  0.68 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 64           | 32         | 4              |   936.4 ns |  0.73 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 64           | 32         | 4              | 1,291.0 ns |  1.00 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 64           | 32         | 4              | 1,736.1 ns |  1.34 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 64           | 32         | 4              | 2,072.5 ns |  1.61 |    1536 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 64           | 32         | 4              | 2,180.9 ns |  1.69 |    8192 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 64           | 32         | 4              | 2,472.8 ns |  1.92 |    6400 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 64           | 32         | 4              | 3,212.7 ns |  2.49 |   16640 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 8          | 1              |   234.8 ns |  0.30 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 8          | 1              |   254.8 ns |  0.32 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 8          | 1              |   435.5 ns |  0.55 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 8          | 1              |   536.7 ns |  0.68 |     384 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 8          | 1              |   602.9 ns |  0.76 |    2048 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 8          | 1              |   653.3 ns |  0.82 |    1600 B | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 8          | 1              |   794.1 ns |  1.00 |     384 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 8          | 1              |   825.6 ns |  1.04 |    4160 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 8          | 1              |   231.3 ns |  0.37 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 8          | 1              |   251.2 ns |  0.40 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 8          | 1              |   433.4 ns |  0.69 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 8          | 1              |   533.9 ns |  0.85 |     384 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 8          | 1              |   574.6 ns |  0.91 |    2048 B | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 8          | 1              |   631.7 ns |  1.00 |     384 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 8          | 1              |   656.0 ns |  1.04 |    1600 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 8          | 1              |   832.9 ns |  1.32 |    4160 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 8          | 2              |   235.1 ns |  0.35 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 8          | 2              |   255.6 ns |  0.38 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 8          | 2              |   437.5 ns |  0.65 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 8          | 2              |   536.4 ns |  0.79 |     384 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 8          | 2              |   572.3 ns |  0.85 |    2048 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 8          | 2              |   646.6 ns |  0.96 |    1600 B | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 8          | 2              |   675.3 ns |  1.00 |     192 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 8          | 2              |   887.7 ns |  1.31 |    4160 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 8          | 2              |   230.4 ns |  0.49 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 8          | 2              |   251.1 ns |  0.53 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 8          | 2              |   438.5 ns |  0.93 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 8          | 2              |   472.9 ns |  1.00 |     192 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 8          | 2              |   531.6 ns |  1.12 |     384 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 8          | 2              |   567.8 ns |  1.20 |    2048 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 8          | 2              |   660.6 ns |  1.40 |    1600 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 8          | 2              |   803.9 ns |  1.70 |    4160 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 8          | 4              |   241.2 ns |  0.39 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 8          | 4              |   256.1 ns |  0.41 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 8          | 4              |   438.5 ns |  0.71 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 8          | 4              |   536.2 ns |  0.87 |     384 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 8          | 4              |   569.3 ns |  0.92 |    2048 B | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 8          | 4              |   618.6 ns |  1.00 |      96 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 8          | 4              |   646.8 ns |  1.05 |    1600 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 8          | 4              |   808.4 ns |  1.31 |    4160 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 8          | 4              |   233.6 ns |  0.58 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 8          | 4              |   250.2 ns |  0.62 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 8          | 4              |   402.6 ns |  1.00 |      96 B | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 8          | 4              |   434.4 ns |  1.08 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 8          | 4              |   527.7 ns |  1.31 |     384 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 8          | 4              |   571.9 ns |  1.42 |    2048 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 8          | 4              |   642.4 ns |  1.60 |    1600 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 8          | 4              |   830.7 ns |  2.06 |    4160 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 32         | 1              |   896.9 ns |  0.29 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 32         | 1              |   959.7 ns |  0.31 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 32         | 1              | 1,750.0 ns |  0.56 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 32         | 1              | 2,078.3 ns |  0.67 |    1536 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 32         | 1              | 2,294.1 ns |  0.74 |    8192 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 32         | 1              | 2,552.3 ns |  0.82 |    6400 B | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 32         | 1              | 3,102.2 ns |  1.00 |    1536 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 32         | 1              | 3,188.8 ns |  1.03 |   16640 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 32         | 1              |   889.2 ns |  0.36 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 32         | 1              |   934.1 ns |  0.38 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 32         | 1              | 1,738.8 ns |  0.70 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 32         | 1              | 2,044.1 ns |  0.82 |    1536 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 32         | 1              | 2,240.3 ns |  0.90 |    8192 B | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 32         | 1              | 2,481.3 ns |  1.00 |    1536 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 32         | 1              | 2,675.2 ns |  1.08 |    6400 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 32         | 1              | 3,372.9 ns |  1.36 |   16640 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 32         | 2              |   906.3 ns |  0.35 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 32         | 2              |   963.5 ns |  0.37 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 32         | 2              | 1,758.6 ns |  0.68 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 32         | 2              | 2,074.0 ns |  0.80 |    1536 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 32         | 2              | 2,237.1 ns |  0.87 |    8192 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 32         | 2              | 2,529.6 ns |  0.98 |    6400 B | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 32         | 2              | 2,581.4 ns |  1.00 |     768 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 32         | 2              | 3,189.9 ns |  1.24 |   16640 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 32         | 2              |   880.2 ns |  0.46 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 32         | 2              |   936.4 ns |  0.49 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 32         | 2              | 1,721.7 ns |  0.90 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 32         | 2              | 1,915.9 ns |  1.00 |     768 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 32         | 2              | 2,116.8 ns |  1.10 |    1536 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 32         | 2              | 2,239.8 ns |  1.17 |    8192 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 32         | 2              | 2,548.8 ns |  1.33 |    6400 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 32         | 2              | 3,144.6 ns |  1.64 |   16640 B | 
 |                                                         |              |            |                |            |       |           | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 32         | 4              |   903.9 ns |  0.36 |         - | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 32         | 4              |   969.0 ns |  0.39 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 32         | 4              | 1,760.7 ns |  0.71 |         - | 
-| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 32         | 4              | 2,082.7 ns |  0.84 |    1536 B | 
-| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 32         | 4              | 2,228.1 ns |  0.90 |    8192 B | 
-| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 32         | 4              | 2,489.5 ns |  1.00 |     384 B | 
-| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 32         | 4              | 2,597.3 ns |  1.04 |    6400 B | 
-| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 32         | 4              | 3,176.7 ns |  1.28 |   16640 B | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1024         | 32         | 4              |   886.7 ns |  0.56 |         - | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores (Striped) | 1024         | 32         | 4              | 1,011.6 ns |  0.64 |         - | 
+| RollingKey · AsyncKeyedLock · Pooled                    | 1024         | 32         | 4              | 1,591.0 ns |  1.00 |     384 B | 
+| RollingKey · AsyncKeyedLock · AsyncUtilities (Striped)  | 1024         | 32         | 4              | 1,782.4 ns |  1.12 |         - | 
+| RollingKey · AsyncKeyedLock · AsyncKeyedLock            | 1024         | 32         | 4              | 2,038.3 ns |  1.28 |    1536 B | 
+| RollingKey · AsyncKeyedLock · RefImpl                   | 1024         | 32         | 4              | 2,227.0 ns |  1.40 |    8192 B | 
+| RollingKey · AsyncKeyedLock · KeyedSemaphores           | 1024         | 32         | 4              | 2,504.8 ns |  1.57 |    6400 B | 
+| RollingKey · AsyncKeyedLock · Dao.IndividualLock        | 1024         | 32         | 4              | 3,153.9 ns |  1.98 |   16640 B | 

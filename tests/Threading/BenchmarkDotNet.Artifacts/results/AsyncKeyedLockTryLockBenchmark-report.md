@@ -12,8 +12,8 @@ Alloc Ratio=NA
 ```
 | Description                                          | Mean     | Ratio | Allocated | 
 |----------------------------------------------------- |---------:|------:|----------:|
-| TryLock · AsyncKeyedLock · Pooled                    | 15.40 ns |  1.00 |         - | 
-| TryLock · AsyncKeyedLock · KeyedSemaphores (Striped) | 37.14 ns |  2.41 |         - | 
-| TryLock · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 41.04 ns |  2.66 |      24 B | 
-| TryLock · AsyncKeyedLock · AsyncKeyedLock            | 70.08 ns |  4.55 |      48 B | 
-| TryLock · AsyncKeyedLock · KeyedSemaphores           | 85.97 ns |  5.58 |     200 B | 
+| TryLock · AsyncKeyedLock · Pooled                    | 14.89 ns |  1.00 |         - | 
+| TryLock · AsyncKeyedLock · KeyedSemaphores (Striped) | 36.19 ns |  2.43 |         - | 
+| TryLock · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 40.40 ns |  2.71 |      24 B | 
+| TryLock · AsyncKeyedLock · AsyncKeyedLock            | 68.98 ns |  4.63 |      48 B | 
+| TryLock · AsyncKeyedLock · KeyedSemaphores           | 84.15 ns |  5.65 |     200 B | 

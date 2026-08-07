@@ -34,11 +34,18 @@ using System.Threading.Tasks;
 /// takes over the least recently idled entry instead of allocating one, so even a workload cycling through
 /// unboundedly many distinct keys only pays for the dictionary node. Every acquisition briefly takes an
 /// internal administrative spin lock to look up or create that entry and update its reference count -
-/// an O(1) dictionary operation, not the actual lock wait. Because acquiring and releasing a key both
-/// require an <see langword="await"/> boundary to reliably clean up a failed acquisition, this type
-/// exposes <see cref="ValueTask{Releaser}"/> via an <see langword="async"/> method rather than the fully
-/// manual state machine used by <see cref="AsyncLock"/>; a synchronously completing acquisition still does
-/// not allocate, since the ValueTask async method builder never boxes a state machine that never suspends.
+/// an O(1) dictionary operation, not the actual lock wait. Acquisition introduces no
+/// <see langword="await"/> boundary of its own: <see cref="LockAsyncImpl"/> hands back the entry's own
+/// <see cref="ValueTask{Releaser}"/> unchanged, so a queued waiter costs no more than the uncontended fast
+/// path does. Cleaning up an acquisition that never becomes a hold is driven by the entry's failure paths
+/// rather than by an enclosing <see langword="async"/> method, precisely so that no state machine has to
+/// be boxed to hold the two together.
+/// </para>
+/// <para>
+/// <b>The allocation-free guarantee is conditional</b> on the set of keys that are hot at the same time
+/// fitting in <c>maxIdleEntries</c>. Beyond it, every acquisition of an unmapped key evicts an idle entry
+/// and allocates a fresh dictionary node, so a workload cycling through many more distinct keys than the
+/// cache holds is neither allocation free nor as fast - size the cache to the working set.
 /// </para>
 /// <example>
 /// <code>
@@ -348,22 +355,45 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         return false;
     }
 
-#if NET6_0_OR_GREATER
-    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-#endif
+    /// <summary>
+    /// Takes the administrative reference for <paramref name="key"/> and hands back its entry's
+    /// acquisition, without introducing an <see langword="await"/> boundary of its own.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why this is not an <see langword="async"/> method.</b> <see cref="Entry.LockAsync"/> already
+    /// returns the pooled waiter's <see cref="ValueTask{Releaser}"/> and allocates nothing, so a wrapper
+    /// that awaited it would be the only allocating step on a contended acquisition: an async method's
+    /// builder boxes its state machine onto the heap whenever the method actually suspends. Pooling that
+    /// box does not help either, because a queue of waiters suspends all of them at once - the boxes are
+    /// live simultaneously rather than in sequence, so there is nothing for a pool to recycle. Returning
+    /// the entry's own ValueTask straight through is what makes a queued waiter cost nothing.
+    /// </para>
+    /// <para>
+    /// The reference taken here is dropped by exactly one of three parties, never two: by
+    /// <see cref="Releaser.Dispose"/> when the acquisition becomes a hold, by <see cref="Entry"/> itself
+    /// when the acquisition fails (see <see cref="Entry.FailAcquisition"/> and the synchronous failure
+    /// paths in <see cref="Entry.LockAsync"/>), or by the <see langword="catch"/> below when
+    /// <see cref="Entry.LockAsync"/> throws outright rather than returning a faulted result - the one
+    /// case the entry cannot clean up after itself.
+    /// </para>
+    /// <para>
+    /// Because there is no async method to capture them, exceptions thrown while taking the entry now
+    /// propagate synchronously rather than surfacing on the returned <see cref="ValueTask{Releaser}"/>.
+    /// That is only reachable through a key comparer that throws, and matches how this type already
+    /// reports argument validation.
+    /// </para>
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private async ValueTask<Releaser> LockAsyncImpl(TKey key, TimeSpan timeout, CancellationToken cancellationToken)
+    private ValueTask<Releaser> LockAsyncImpl(TKey key, TimeSpan timeout, CancellationToken cancellationToken)
     {
         Entry entry = AcquireEntry(key);
         try
         {
-            return await entry.LockAsync(timeout, cancellationToken).ConfigureAwait(false);
+            return entry.LockAsync(timeout, cancellationToken);
         }
         catch
         {
-            // The claim never turned into a hold (timeout/cancellation/pre-cancelled token), so
-            // the Releaser that would normally drive cleanup was never produced. Release our
-            // administrative reference here instead, so the entry can still be evicted when idle.
             ReleaseEntry(entry);
             throw;
         }
@@ -504,52 +534,71 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     /// continuous use, with no pool to park it in between and no second retention bound to reason about.
     /// </para>
     /// <para>
-    /// Reuse is safe precisely because an idle entry reached a reference count of zero: a waiter handed the
-    /// lock by <see cref="Entry.ReleaseLock"/> still holds the reference it took in
-    /// <see cref="AcquireEntry"/>, so a count of zero means the entry is unheld, its waiter queue is empty
-    /// and its local waiter has been reset. A stale timeout or cancellation callback may still reach the
-    /// reused entry, but it is rejected by the same waiter version check that already guards a recycled
-    /// waiter.
+    /// Reuse is safe because an idle entry reached a reference count of zero - a waiter handed the lock by
+    /// <see cref="Entry.ReleaseLock"/> still holds the reference it took in <see cref="AcquireEntry"/>, so
+    /// a count of zero means the entry is unheld and its waiter queue is empty - and because the candidate
+    /// is additionally checked for <see cref="Entry.IsQuiesced"/>, which covers the one case a zero count
+    /// does not: a failed acquisition drops its reference before its waiter has been reset. A stale timeout
+    /// or cancellation callback may still reach the reused entry, but it is rejected by the same waiter
+    /// version check that already guards a recycled waiter.
+    /// </para>
+    /// <para>
+    /// The scan walks from the least recently idled end, so it keeps LRU order and normally stops on the
+    /// very first candidate - an entry that has not quiesced is both rare and transient. If none of them
+    /// has settled, allocating is the correct fallback rather than waiting for one.
     /// </para>
     /// </remarks>
     private Entry RentEntry(TKey key)
     {
         // Below the cap the cache is still growing, so add an entry rather than cannibalizing one.
-        Entry entry;
-        if (_idleCount == 0 || _idleCount < _maxIdleEntries)
-        {
-            entry = new Entry(this);
-        }
-        else
-        {
-            entry = _idleHead!;
-            DetachIdleHead(entry);
-        }
+        Entry? entry = _idleCount == 0 || _idleCount < _maxIdleEntries ? null : FindReusableIdle();
+        entry ??= new Entry(this);
 
         entry.Bind(key);
         return entry;
     }
 
     /// <summary>
+    /// Finds the least recently idled entry that has fully settled and detaches it for reuse, or returns
+    /// <see langword="null"/> if none has. Caller holds <see cref="_keyLock"/>.
+    /// </summary>
+    private Entry? FindReusableIdle()
+    {
+        for (Entry? candidate = _idleHead; candidate is not null; candidate = candidate.IdleNext)
+        {
+            if (candidate.IsQuiesced)
+            {
+                DetachIdle(candidate);
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Drops the least recently idled entry, letting it be collected. Only reached when the cache has
     /// shrunk past its cap. Caller holds <see cref="_keyLock"/>.
     /// </summary>
+    /// <remarks>
+    /// Unlike reuse, dropping does not require the victim to have quiesced: the entry is only unmapped and
+    /// unbound, never handed to another key, so a waiter that has not been reset yet simply keeps the
+    /// entry alive until it is done and the entry is then collected.
+    /// </remarks>
     private void DropOldestIdle()
     {
+        Debug.Assert(_idleCount > 0 && _idleHead is not null, "Idle list is empty but the idle count is positive.");
+
         Entry victim = _idleHead!;
-        DetachIdleHead(victim);
+        DetachIdle(victim);
         victim.Unbind();
     }
 
     /// <summary>
-    /// Removes the least recently idled entry from both the idle list and the key map.
-    /// Caller holds <see cref="_keyLock"/>.
+    /// Removes an idle entry from both the idle list and the key map. Caller holds <see cref="_keyLock"/>.
     /// </summary>
-    private void DetachIdleHead(Entry victim)
+    private void DetachIdle(Entry victim)
     {
-        Debug.Assert(_idleCount > 0 && _idleHead is not null, "Idle list is empty but the idle count is positive.");
-        Debug.Assert(ReferenceEquals(_idleHead, victim));
-
         bool removed = _entries.TryRemove(victim.Key, out Entry? removedEntry);
         Debug.Assert(removed && ReferenceEquals(removedEntry, victim));
 
@@ -628,11 +677,26 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         /// </remarks>
         public void Bind(TKey key)
         {
-            Debug.Assert(RefCount == 0 && _taken == 0 && _waiters.Count == 0 && !_localWaiter.InUse,
-                "Recycled entry is not idle.");
+            Debug.Assert(RefCount == 0 && IsQuiesced, "Recycled entry is not idle.");
 
             _key = key;
         }
+
+        /// <summary>
+        /// Whether an unreferenced entry has fully settled and may be rebound to a different key.
+        /// Read by <see cref="AsyncKeyedLock{TKey}.RentEntry"/> under the owner's key lock.
+        /// </summary>
+        /// <remarks>
+        /// A reference count of zero is <em>almost</em> sufficient on its own, and used to be treated as
+        /// such. The gap is the acquisition that fails: <see cref="FailAcquisition"/> drops its reference
+        /// as soon as the waiter is completed, but the waiter is only reset - and only stops reporting
+        /// itself in use - when its awaiter finally calls <c>GetResult</c>. Between those two moments the
+        /// entry is unreferenced yet still owns a live local waiter, so rebinding it would hand a second
+        /// key an entry whose previous waiter has not let go. The window is short (it closes as soon as
+        /// the failed awaiter is scheduled) and rare (only timeouts and cancellations reach it), but it
+        /// is real, so eviction checks rather than assumes.
+        /// </remarks>
+        public bool IsQuiesced => _taken == 0 && _waiters.Count == 0 && !_localWaiter.InUse;
 
         /// <summary>
         /// Drops the key reference when the entry is evicted, so a pooled entry does not keep an otherwise
@@ -673,7 +737,11 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
             if (timeout == TimeSpan.Zero)
             {
-                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+                // Built before releasing: if allocating it fails, the administrative reference is still
+                // outstanding and AsyncKeyedLock.LockAsyncImpl's catch is the one that drops it.
+                var timedOut = new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+                _owner.ReleaseEntry(this);
+                return timedOut;
             }
 
             return LockAsyncImpl(timeout, cancellationToken);
@@ -685,6 +753,12 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             ManualResetValueTaskSource<Releaser> waiter;
             short version;
 
+            // Set when the token was already cancelled, so the waiter never entered the queue and no
+            // callback will ever run for it. Handled after the spin lock is released, because dropping
+            // the administrative reference takes the owner's key lock and this lock must never nest
+            // inside that one.
+            bool cancelledBeforeQueueing = false;
+
             _spinLock.Enter();
             try
             {
@@ -695,23 +769,35 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+                    cancelledBeforeQueueing = true;
+                    waiter = null!;
+                    version = 0;
                 }
-
-                if (!_localWaiter.TryGetValueTaskSource(out waiter))
+                else
                 {
-                    waiter = _owner._pool.GetPooledWaiter(this);
-                    waiter.RunContinuationsAsynchronously = true;
+                    if (!_localWaiter.TryGetValueTaskSource(out waiter))
+                    {
+                        waiter = _owner._pool.GetPooledWaiter(this);
+                        waiter.RunContinuationsAsynchronously = true;
+                    }
+
+                    waiter.CancellationToken = cancellationToken;
+
+                    version = waiter.Version;
+                    _waiters.Enqueue(waiter);
                 }
-
-                waiter.CancellationToken = cancellationToken;
-
-                version = waiter.Version;
-                _waiters.Enqueue(waiter);
             }
             finally
             {
                 _spinLock.Exit();
+            }
+
+            if (cancelledBeforeQueueing)
+            {
+                // Built before releasing, for the same reason as the zero-timeout path above.
+                var cancelled = new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+                _owner.ReleaseEntry(this);
+                return cancelled;
             }
 
             if (timeout != Timeout.InfiniteTimeSpan)
@@ -790,7 +876,10 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             var timeoutState = (TimeoutState<Releaser>)state!;
             var entry = (Entry)timeoutState.Source.Owner!;
             ManualResetValueTaskSource<Releaser>? toCancel = entry.RemoveWaiter(timeoutState.Source, timeoutState.Version);
-            toCancel?.SetException(new TimeoutException());
+            if (toCancel is not null)
+            {
+                entry.FailAcquisition(toCancel, new TimeoutException());
+            }
         };
 
 #if NET6_0_OR_GREATER
@@ -814,7 +903,37 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             // The version is stable here: GetResult disposes the registration before the
             // waiter is recycled, and disposal waits for an in-flight callback.
             ManualResetValueTaskSource<Releaser>? toCancel = RemoveWaiter(waiter, waiter.Version);
-            toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+            if (toCancel is not null)
+            {
+                FailAcquisition(toCancel, new OperationCanceledException(waiter.CancellationToken));
+            }
+        }
+
+        /// <summary>
+        /// Completes a waiter whose acquisition lost, and drops the administrative reference that
+        /// acquisition took.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Reached only when <see cref="RemoveWaiter"/> confirmed the waiter was still queued, which is
+        /// exactly the condition for "this acquisition will never become a hold": a waiter handed the
+        /// lock is dequeued under the same spin lock by <see cref="ReleaseLock"/>, so the two outcomes
+        /// cannot both happen. That is what keeps the reference from being dropped twice - a successful
+        /// acquisition is released by <see cref="Releaser.Dispose"/> instead.
+        /// </para>
+        /// <para>
+        /// The exception is published first, matching the order the previous <see langword="async"/>
+        /// wrapper produced: while the reference is still outstanding the entry cannot fall idle, so a
+        /// concurrent eviction cannot observe it half-torn-down. Once released, the entry may become idle
+        /// while this waiter is still technically in use - it has not been reset until its awaiter calls
+        /// <c>GetResult</c> - which is why <see cref="AsyncKeyedLock{TKey}.RentEntry"/> only rebinds an
+        /// idle entry that has quiesced.
+        /// </para>
+        /// </remarks>
+        private void FailAcquisition(ManualResetValueTaskSource<Releaser> waiter, Exception exception)
+        {
+            waiter.SetException(exception);
+            _owner.ReleaseEntry(this);
         }
 
         /// <summary>
