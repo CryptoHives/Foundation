@@ -269,6 +269,23 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 ---
 
+## Key Encapsulation Mechanisms (KEM)
+
+### FIPS 203 (Module-Lattice-Based Key-Encapsulation Mechanism)
+
+| Algorithm | Security Category | Status | Class |
+|-----------|-------------------|--------|-------|
+| ML-KEM-512 | 1 (~AES-128) | ✅ Implemented | `MlKem512`, `MlKem` |
+| ML-KEM-768 | 3 (~AES-192) | ✅ Implemented | `MlKem768`, `MlKem` |
+| ML-KEM-1024 | 5 (~AES-256) | ✅ Implemented | `MlKem1024`, `MlKem` |
+
+> **Note:** Validated against official NIST ACVP vectors (key generation, encapsulation,
+> decapsulation including implicit rejection, and the FIPS 203 §7.2/§7.3 key checks) and
+> cross-checked against BouncyCastle and .NET 10 `System.Security.Cryptography.MLKem`.
+> The `MlKem` key-holding class mirrors the .NET 10 API shape on all target frameworks.
+
+---
+
 ## Sources
 
 ### NIST (National Institute of Standards and Technology)
@@ -412,6 +429,14 @@ The official FIPS 197 specification is available from NIST:
 
 - [draft-irtf-cfrg-xchacha](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha) - XChaCha20 and XChaCha20-Poly1305
 
+### ML-KEM (FIPS 203)
+
+The official FIPS 203 specification and ACVP test vectors are available from NIST:
+- **[NIST-FIPS-203.md](NIST-FIPS-203.md)** - Local reference with algorithm details
+- **[ML-KEM-vectors.md](ML-KEM-vectors.md)** - Test vector documentation (NIST ACVP)
+- [NIST FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) - Module-Lattice-Based Key-Encapsulation Mechanism Standard
+- [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - ML-KEM-keyGen-FIPS203 and ML-KEM-encapDecap-FIPS203
+
 ## File Organization
 
 ```
@@ -445,7 +470,9 @@ specs/
 ├── CMAC-vectors.md        # AES-CMAC test vectors (SP 800-38B)
 ├── AES-vectors.md         # AES ECB/GCM/CCM test vectors
 ├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
-└── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
+├── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
+├── NIST-FIPS-203.md       # NIST FIPS 203 - ML-KEM reference
+└── ML-KEM-vectors.md      # ML-KEM test vectors (NIST ACVP)
 ```
 
 ## Usage

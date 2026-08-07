@@ -9,7 +9,7 @@ An open, community-driven collection of cryptography and performance libraries f
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-Fully managed, OS-independent implementations of hash, MAC, KDF, and cipher algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
+Fully managed, OS-independent implementations of hash, MAC, KDF, cipher, and post-quantum KEM algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
 
 No OS crypto dependency means deterministic results on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics are used automatically.
 
@@ -54,6 +54,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
+| Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 
 ---
 
@@ -114,6 +115,31 @@ if (!aesGcm.Decrypt(nonce, ciphertext, tag, recovered, associatedData))
     throw new CryptographicException("Authentication failed.");
 }
 ```
+
+### Post-Quantum Key Encapsulation (`ML-KEM`)
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kem;
+
+// The API mirrors System.Security.Cryptography.MLKem from .NET 10,
+// but runs fully managed on every target framework down to net462.
+using var receiver = MlKem.GenerateKey(MlKemAlgorithm.MlKem768);
+byte[] encapsulationKey = receiver.ExportEncapsulationKey();
+
+// Sender: encapsulate a shared secret for the receiver.
+using var sender = MlKem.ImportEncapsulationKey(MlKemAlgorithm.MlKem768, encapsulationKey);
+byte[] ciphertext   = new byte[sender.Algorithm.CiphertextSizeInBytes];
+byte[] senderSecret = new byte[sender.Algorithm.SharedSecretSizeInBytes];
+sender.Encapsulate(ciphertext, senderSecret);
+
+// Receiver: recover the same shared secret.
+byte[] receiverSecret = new byte[receiver.Algorithm.SharedSecretSizeInBytes];
+receiver.Decapsulate(ciphertext, receiverSecret);
+```
+
+Keys are validated on import per FIPS 203 §7.2/§7.3, decapsulation uses constant-time
+implicit rejection, and all three parameter sets are verified against the official
+NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
 
 ### cSHAKE — Domain-Separated XOF
 
