@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
+#pragma warning disable CA1065 // Do not raise exceptions in unexpected locations
 
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
@@ -75,17 +76,17 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
     // Guards only entry creation/reference-counting/eviction below - never the actual lock wait/hold,
     // which stays fully parallel across keys via each Entry's own SpinLock and WaiterQueue.
-    private Internal.SpinLock _adminLock;
+    private Internal.SpinLock _keyLock;
 
-    // Intrusive LRU list of idle (mapped but unreferenced) entries, threaded through Entry.IdleNext and
-    // Entry.IdlePrev. _idleHead is the least recently idled entry and therefore the next eviction victim.
-    // Guarded by _adminLock, which already serializes the entire entry lifecycle.
+    /// Intrusive LRU list of idle (mapped but unreferenced) entries, threaded through Entry.IdleNext and
+    /// Entry.IdlePrev. _idleHead is the least recently idled entry and therefore the next eviction victim.
+    /// Guarded by <see cref="_keyLock"/>, which already serializes the entire entry lifecycle.
     private Entry? _idleHead;
     private Entry? _idleTail;
     private int _idleCount;
 
     // Number of entries with a non-zero reference count, i.e. currently held or awaited. Maintained under
-    // _adminLock so Count stays O(1) now that the dictionary also holds idle entries.
+    // _keyLock so Count stays O(1) now that the dictionary also holds idle entries.
     private int _activeCount;
 
     /// <summary>
@@ -112,7 +113,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         _entries = comparer is null ? new() : new(comparer);
         _pool = pool ?? ValueTaskSourceObjectPools<TKey>.ValueTaskSourcePoolAsyncKeyedLockReleaser;
         _maxIdleEntries = maxIdleEntries;
-        _adminLock = new();
+        _keyLock = new();
     }
 
     /// <summary>
@@ -188,7 +189,6 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         // to one acquisition, and the alternative to throwing is silently releasing a lock that some other
         // acquisition currently holds - corruption that surfaces arbitrarily far away instead of at the
         // offending Dispose. Same reasoning ValueTask applies when GetResult rejects a stale token.
-#pragma warning disable CA1065 // Do not raise exceptions in unexpected locations
 
         /// <inheritdoc/>
         /// <exception cref="InvalidOperationException">
@@ -207,8 +207,6 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             _entry.ReleaseLock();
             _owner.ReleaseEntry(_entry);
         }
-
-#pragma warning restore CA1065 // Do not raise exceptions in unexpected locations
 
         /// <inheritdoc/>
         public ValueTask DisposeAsync()
@@ -305,17 +303,55 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     /// <exception cref="OperationCanceledException">
     /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<Releaser> LockAsync(TKey key, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        // Validated synchronously, before any entry is acquired, so invalid arguments throw
-        // directly from the call frame instead of being captured into the returned ValueTask -
-        // matching AsyncLock's behavior.
         if (key is null) throw new ArgumentNullException(nameof(key));
         if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
         return LockAsyncImpl(key, timeout, cancellationToken);
     }
 
+    /// <summary>
+    /// Attempts to acquire the lock for <paramref name="key"/> immediately, without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="LockAsync(TKey, TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask{Releaser}"/> - there is nothing to await in the first place, since this either
+    /// succeeds immediately or doesn't.
+    /// </remarks>
+    /// <param name="key">The key to serialize operations by.</param>
+    /// <param name="releaser">
+    /// The releaser for the acquired lock, if this method returns <see langword="true"/>. Dispose it to
+    /// release the lock. Undefined if this method returns <see langword="false"/>.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the lock for <paramref name="key"/> was acquired immediately;
+    /// <see langword="false"/> if it is currently held or awaited by someone else.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is <see langword="null"/>.</exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryLock(TKey key, out Releaser releaser)
+    {
+        if (key is null) throw new ArgumentNullException(nameof(key));
+
+        Entry entry = AcquireEntry(key);
+        if (entry.TryTake(out releaser))
+        {
+            return true;
+        }
+
+        // The claim never turned into a hold - release our administrative reference here instead,
+        // exactly like LockAsyncImpl's catch block does for a failed timed/cancelled acquisition.
+        ReleaseEntry(entry);
+        return false;
+    }
+
+#if NET6_0_OR_GREATER
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+#endif
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private async ValueTask<Releaser> LockAsyncImpl(TKey key, TimeSpan timeout, CancellationToken cancellationToken)
     {
         Entry entry = AcquireEntry(key);
@@ -333,10 +369,10 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private Entry AcquireEntry(TKey key)
     {
-        _adminLock.Enter();
+        _keyLock.Enter();
         try
         {
             if (_entries.TryGetValue(key, out Entry? entry))
@@ -365,13 +401,13 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         }
         finally
         {
-            _adminLock.Exit();
+            _keyLock.Exit();
         }
     }
 
     private void ReleaseEntry(Entry entry)
     {
-        _adminLock.Enter();
+        _keyLock.Enter();
         try
         {
             Debug.Assert(entry.RefCount > 0, "Entry released more often than it was acquired - most likely a Releaser disposed twice.");
@@ -395,13 +431,13 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         }
         finally
         {
-            _adminLock.Exit();
+            _keyLock.Exit();
         }
     }
 
     /// <summary>
     /// Appends a newly idle entry to the most-recently-used end of the idle list.
-    /// Caller holds <see cref="_adminLock"/>.
+    /// Caller holds <see cref="_keyLock"/>.
     /// </summary>
     private void LinkIdle(Entry entry)
     {
@@ -425,7 +461,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
     /// <summary>
     /// Removes an entry from the idle list in O(1) - the reason the list is doubly linked, since a key can
-    /// be re-acquired from anywhere in it. Caller holds <see cref="_adminLock"/>.
+    /// be re-acquired from anywhere in it. Caller holds <see cref="_keyLock"/>.
     /// </summary>
     private void UnlinkIdle(Entry entry)
     {
@@ -458,7 +494,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
     /// <summary>
     /// Produces an entry for a key that is not mapped yet, reusing the least recently idled entry once the
-    /// cache is full rather than allocating. Caller holds <see cref="_adminLock"/>.
+    /// cache is full rather than allocating. Caller holds <see cref="_keyLock"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -496,7 +532,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
     /// <summary>
     /// Drops the least recently idled entry, letting it be collected. Only reached when the cache has
-    /// shrunk past its cap. Caller holds <see cref="_adminLock"/>.
+    /// shrunk past its cap. Caller holds <see cref="_keyLock"/>.
     /// </summary>
     private void DropOldestIdle()
     {
@@ -507,7 +543,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
     /// <summary>
     /// Removes the least recently idled entry from both the idle list and the key map.
-    /// Caller holds <see cref="_adminLock"/>.
+    /// Caller holds <see cref="_keyLock"/>.
     /// </summary>
     private void DetachIdleHead(Entry victim)
     {
@@ -542,14 +578,14 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
         /// <summary>
         /// Number of outstanding claims (held or awaited) on this entry. Guarded exclusively by
-        /// <see cref="AsyncKeyedLock{TKey}._adminLock"/> - never touched by the wait/release path below.
+        /// <see cref="AsyncKeyedLock{TKey}._keyLock"/> - never touched by the wait/release path below.
         /// </summary>
         public int RefCount;
 
         /// <summary>
         /// Links into the owner's intrusive LRU list of idle entries while this entry is mapped but
         /// unreferenced; both are <see langword="null"/> while the entry is active or pooled. Guarded by
-        /// <see cref="AsyncKeyedLock{TKey}._adminLock"/>.
+        /// <see cref="AsyncKeyedLock{TKey}._keyLock"/>.
         /// </summary>
         public Entry? IdleNext;
 
@@ -580,7 +616,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         public short Generation => _generation;
 
         /// <summary>
-        /// Binds a pooled entry to a key. Caller holds <see cref="AsyncKeyedLock{TKey}._adminLock"/>.
+        /// Binds a pooled entry to a key. Caller holds <see cref="AsyncKeyedLock{TKey}._keyLock"/>.
         /// </summary>
         /// <remarks>
         /// Only the key is restored: the spin lock, the (empty) waiter queue and the local waiter are
@@ -600,7 +636,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
         /// <summary>
         /// Drops the key reference when the entry is evicted, so a pooled entry does not keep an otherwise
-        /// unreachable key alive. Caller holds <see cref="AsyncKeyedLock{TKey}._adminLock"/>.
+        /// unreachable key alive. Caller holds <see cref="AsyncKeyedLock{TKey}._keyLock"/>.
         /// </summary>
         public void Unbind() => _key = default!;
 
@@ -608,8 +644,24 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         /// Stamps a fresh acquisition token. Called only by the thread that just took the lock, which owns
         /// the entry exclusively until it releases, so no interlocked operation is needed.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private short NextGeneration() => unchecked(++_generation);
+
+        /// <summary>
+        /// Attempts to take the lock immediately via a single atomic exchange, with no queueing,
+        /// no allocation, and no waiting - the building block behind <see cref="AsyncKeyedLock{TKey}.TryLock"/>.
+        /// </summary>
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        internal bool TryTake(out Releaser releaser)
+        {
+            if (Interlocked.Exchange(ref _taken, 1) == 0)
+            {
+                releaser = new Releaser(_owner, _key, this, NextGeneration());
+                return true;
+            }
+
+            releaser = default;
+            return false;
+        }
 
         [MethodImpl(MethodImplOptionsEx.HotPath)]
         public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken)
@@ -768,7 +820,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
         /// <summary>
         /// O(1) removal from intrusive linked list.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
         private ManualResetValueTaskSource<Releaser>? RemoveWaiter(ManualResetValueTaskSource<Releaser> waiter, short version)
         {
             _spinLock.Enter();

@@ -20,6 +20,7 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 | Class | Description | 
 |-------|-------------|
 | [AsyncLock](https://cryptohives.github.io/Foundation/packages/threading/asynclock.html) | Pooled async mutual exclusion lock
+| [AsyncKeyedLock&lt;TKey&gt;](https://cryptohives.github.io/Foundation/packages/threading/asynckeyedlock.html) | Pooled per-key async exclusive lock (different keys never block each other)
 | [AsyncAutoResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncautoresetevent.html) | Pooled async auto-reset event (one waiter per signal)
 | [AsyncManualResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncmanualresetevent.html) | Pooled async manual-reset event (all waiters per signal)
 | [AsyncSemaphore](https://cryptohives.github.io/Foundation/packages/threading/asyncsemaphore.html) | Pooled async semaphore with configurable permit count

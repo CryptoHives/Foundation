@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -20,7 +20,8 @@ using System.Threading.Tasks;
 /// </para>
 /// <para>
 /// <b>Test scenario:</b> Cycle through <see cref="KeyCount"/> distinct keys, acquiring and releasing
-/// the lock for each key once per operation.
+/// the lock for each key once per operation. A single counter increment stands in for the work done
+/// under the lock, so the measurement isolates lock overhead rather than modelling a real workload.
 /// </para>
 /// <para>
 /// <b>Compared implementations:</b>
@@ -29,6 +30,11 @@ using System.Threading.Tasks;
 /// <item><description><b>Pooled (baseline):</b> <c>AsyncKeyedLock&lt;TKey&gt;</c> - ConcurrentDictionary-backed entry registry with pooled IValueTaskSource waiters.</description></item>
 /// <item><description><b>AsyncKeyedLock:</b> Third-party <c>AsyncKeyedLocker&lt;TKey&gt;</c> - the reference implementation this type was benchmarked against.</description></item>
 /// <item><description><b>AsyncKeyedLock (Striped):</b> Third-party <c>StripedAsyncKeyedLocker&lt;TKey&gt;</c> - fixed stripe array; unaffected by key cardinality by design.</description></item>
+/// <item><description><b>KeyedSemaphores:</b> Third-party <c>KeyedSemaphoresDictionary&lt;TKey&gt;</c> - dictionary-backed with ref-count eviction, the closest architectural match to the pooled implementation.</description></item>
+/// <item><description><b>KeyedSemaphores (Striped):</b> Third-party <c>KeyedSemaphoresCollection&lt;TKey&gt;</c> - fixed-size striped array; unaffected by key cardinality by design.</description></item>
+/// <item><description><b>Dao.IndividualLock:</b> Third-party <c>IndividualLocks&lt;TKey&gt;</c> - dictionary-backed keyed lock library.</description></item>
+/// <item><description><b>AsyncUtilities (Striped):</b> Third-party <c>StripedAsyncLock&lt;TKey&gt;</c> - another fixed-size striped implementation; unaffected by key cardinality by design.</description></item>
+/// <item><description><b>RefImpl:</b> Naive "AsyncDuplicateLock" reference pattern (SemaphoreSlim per key, ConcurrentDictionary with manual ref-counting).</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Execution time and memory allocations as <see cref="KeyCount"/> grows
@@ -38,6 +44,7 @@ using System.Threading.Tasks;
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
 [Config(typeof(ThreadingConfig))]
+[Description("Measures uncontended lock/unlock performance across a growing number of distinct keys.")]
 [NonParallelizable]
 [BenchmarkCategory("AsyncKeyedLock")]
 public class AsyncKeyedLockCardinalityBenchmark : AsyncKeyedLockBaseBenchmark
@@ -90,7 +97,10 @@ public class AsyncKeyedLockCardinalityBenchmark : AsyncKeyedLockBaseBenchmark
     {
         foreach (string key in _keys!)
         {
-            using (await _lockPooled.LockAsync(key).ConfigureAwait(false)) { }
+            using (await _lockPooled.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
         }
     }
 
@@ -113,7 +123,10 @@ public class AsyncKeyedLockCardinalityBenchmark : AsyncKeyedLockBaseBenchmark
     {
         foreach (string key in _keys!)
         {
-            using (await _lockThirdParty.LockAsync(key).ConfigureAwait(false)) { }
+            using (await _lockThirdParty.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
         }
     }
 
@@ -136,7 +149,147 @@ public class AsyncKeyedLockCardinalityBenchmark : AsyncKeyedLockBaseBenchmark
     {
         foreach (string key in _keys!)
         {
-            using (await _lockStriped.LockAsync(key).ConfigureAwait(false)) { }
+            using (await _lockStriped.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
+        }
+    }
+
+#if !NETFRAMEWORK
+    [Test]
+    public Task LockUnlockKeyedSemaphoresDictionaryCardinalityTestAsync()
+    {
+        KeyedSemaphoresDictionaryGlobalSetup();
+        return LockUnlockKeyedSemaphoresDictionaryCardinalityAsync();
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockKeyedSemaphoresDictionaryCardinalityAsync))]
+    public void KeyedSemaphoresDictionaryGlobalSetup() => SetUpKeys();
+
+    /// <summary>
+    /// Benchmark for the third-party KeyedSemaphores dictionary-backed lock cycling through
+    /// <see cref="KeyCount"/> distinct keys.
+    /// </summary>
+    [Benchmark]
+    [BenchmarkCategory("Cardinality", "KeyedSemaphores")]
+    public async Task LockUnlockKeyedSemaphoresDictionaryCardinalityAsync()
+    {
+        foreach (string key in _keys!)
+        {
+            using (await _lockKeyedSemaphoresDictionary.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
+        }
+    }
+
+    [Test]
+    public Task LockUnlockKeyedSemaphoresStripedCardinalityTestAsync()
+    {
+        KeyedSemaphoresStripedGlobalSetup();
+        return LockUnlockKeyedSemaphoresStripedCardinalityAsync();
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockKeyedSemaphoresStripedCardinalityAsync))]
+    public void KeyedSemaphoresStripedGlobalSetup() => SetUpKeys();
+
+    /// <summary>
+    /// Benchmark for the third-party KeyedSemaphores striped variant cycling through
+    /// <see cref="KeyCount"/> distinct keys.
+    /// </summary>
+    [Benchmark]
+    [BenchmarkCategory("Cardinality", "KeyedSemaphores (Striped)")]
+    public async Task LockUnlockKeyedSemaphoresStripedCardinalityAsync()
+    {
+        foreach (string key in _keys!)
+        {
+            using (await _lockKeyedSemaphoresStriped.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
+        }
+    }
+#endif
+
+    [Test]
+    public Task LockUnlockDaoCardinalityTestAsync()
+    {
+        DaoGlobalSetup();
+        return LockUnlockDaoCardinalityAsync();
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockDaoCardinalityAsync))]
+    public void DaoGlobalSetup() => SetUpKeys();
+
+    /// <summary>
+    /// Benchmark for the third-party Dao.IndividualLock library cycling through
+    /// <see cref="KeyCount"/> distinct keys.
+    /// </summary>
+    [Benchmark]
+    [BenchmarkCategory("Cardinality", "Dao.IndividualLock")]
+    public async Task LockUnlockDaoCardinalityAsync()
+    {
+        foreach (string key in _keys!)
+        {
+            using (await _lockDao.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
+        }
+    }
+
+    [Test]
+    public Task LockUnlockAsyncUtilitiesStripedCardinalityTestAsync()
+    {
+        AsyncUtilitiesStripedGlobalSetup();
+        return LockUnlockAsyncUtilitiesStripedCardinalityAsync();
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockAsyncUtilitiesStripedCardinalityAsync))]
+    public void AsyncUtilitiesStripedGlobalSetup() => SetUpKeys();
+
+    /// <summary>
+    /// Benchmark for the third-party AsyncUtilities striped async lock cycling through
+    /// <see cref="KeyCount"/> distinct keys.
+    /// </summary>
+    [Benchmark]
+    [BenchmarkCategory("Cardinality", "AsyncUtilities (Striped)")]
+    public async Task LockUnlockAsyncUtilitiesStripedCardinalityAsync()
+    {
+        foreach (string key in _keys!)
+        {
+            using (await _lockAsyncUtilitiesStriped.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
+        }
+    }
+
+    [Test]
+    public Task LockUnlockRefImplCardinalityTestAsync()
+    {
+        RefImplGlobalSetup();
+        return LockUnlockRefImplCardinalityAsync();
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockRefImplCardinalityAsync))]
+    public void RefImplGlobalSetup() => SetUpKeys();
+
+    /// <summary>
+    /// Benchmark for the naive "AsyncDuplicateLock" reference implementation cycling through
+    /// <see cref="KeyCount"/> distinct keys.
+    /// </summary>
+    [Benchmark]
+    [BenchmarkCategory("Cardinality", "RefImpl")]
+    public async Task LockUnlockRefImplCardinalityAsync()
+    {
+        foreach (string key in _keys!)
+        {
+            using (await _lockRefImpl.LockAsync(key).ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
         }
     }
 }
