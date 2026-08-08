@@ -12,10 +12,10 @@ Alloc Ratio=NA
 ```
 | Description                            | ParticipantCount | Mean        | Ratio | Allocated | 
 |--------------------------------------- |----------------- |------------:|------:|----------:|
-| SignalAndWait · AsyncBarrier · Pooled  | 1                |    13.66 ns |  1.00 |         - | 
-| SignalAndWait · AsyncBarrier · Barrier | 1                |   442.75 ns | 32.41 |     238 B | 
-| SignalAndWait · AsyncBarrier · RefImpl | 1                |   950.58 ns | 69.59 |    8349 B | 
+| SignalAndWait · AsyncBarrier · Pooled  | 1                |    13.84 ns |  1.00 |         - | 
+| SignalAndWait · AsyncBarrier · Barrier | 1                |   444.78 ns | 32.15 |     238 B | 
+| SignalAndWait · AsyncBarrier · RefImpl | 1                |   952.50 ns | 68.84 |    8370 B | 
 |                                        |                  |             |       |           | 
-| SignalAndWait · AsyncBarrier · Pooled  | 10               |   299.07 ns |  1.00 |         - | 
-| SignalAndWait · AsyncBarrier · RefImpl | 10               | 1,727.64 ns |  5.78 |   10458 B | 
-| SignalAndWait · AsyncBarrier · Barrier | 10               | 4,452.96 ns | 14.89 |    1392 B | 
+| SignalAndWait · AsyncBarrier · Pooled  | 10               |   303.86 ns |  1.00 |         - | 
+| SignalAndWait · AsyncBarrier · RefImpl | 10               | 1,681.36 ns |  5.53 |   10067 B | 
+| SignalAndWait · AsyncBarrier · Barrier | 10               | 4,615.13 ns | 15.19 |    1393 B | 

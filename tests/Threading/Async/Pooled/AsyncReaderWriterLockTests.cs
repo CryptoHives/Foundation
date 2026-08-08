@@ -1646,7 +1646,7 @@ public class AsyncReaderWriterLockTests
 
     [Test]
     [CancelAfter(CancelAfterMS)]
-    public async Task UpgradeToWriterLockAsync_WithoutTimeout_OnDefaultReleaser_Throws(CancellationToken ct)
+    public void UpgradeToWriterLockAsync_WithoutTimeout_OnDefaultReleaser_Throws(CancellationToken ct)
     {
         var none = default(AsyncReaderWriterLock.Releaser);
         Assert.ThrowsAsync<InvalidOperationException>(async () => await none.UpgradeToWriterLockAsync(ct).ConfigureAwait(false));

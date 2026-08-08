@@ -12,8 +12,8 @@ Alloc Ratio=NA
 ```
 | Description                                       | Mean      | Ratio | Allocated | 
 |-------------------------------------------------- |----------:|------:|----------:|
-| SetThenWait · AsyncAutoReset · ProtoPromise       |  5.315 ns |  0.85 |         - | 
-| SetThenWait · AsyncAutoReset · Pooled (ValueTask) |  6.257 ns |  1.00 |         - | 
-| SetThenWait · AsyncAutoReset · Pooled (AsTask)    |  8.508 ns |  1.36 |         - | 
-| SetThenWait · AsyncAutoReset · Nito.AsyncEx       | 14.877 ns |  2.38 |         - | 
-| SetThenWait · AsyncAutoReset · RefImpl            | 15.267 ns |  2.44 |         - | 
+| SetThenWait · AsyncAutoReset · ProtoPromise       |  5.394 ns |  0.89 |         - | 
+| SetThenWait · AsyncAutoReset · Pooled (ValueTask) |  6.059 ns |  1.00 |         - | 
+| SetThenWait · AsyncAutoReset · Pooled (AsTask)    |  8.555 ns |  1.41 |         - | 
+| SetThenWait · AsyncAutoReset · Nito.AsyncEx       | 14.121 ns |  2.33 |         - | 
+| SetThenWait · AsyncAutoReset · RefImpl            | 15.425 ns |  2.55 |         - | 

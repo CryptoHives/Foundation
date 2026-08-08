@@ -12,9 +12,9 @@ Alloc Ratio=NA
 ```
 | Description                               | Mean         | Ratio | Allocated | 
 |------------------------------------------ |-------------:|------:|----------:|
-| WriterLock · AsyncRWLock · RWLockSlim     |     6.984 ns |  0.64 |         - | 
-| WriterLock · AsyncRWLock · Proto.Promises |     8.782 ns |  0.80 |         - | 
-| WriterLock · AsyncRWLock · Pooled         |    10.940 ns |  1.00 |         - | 
-| WriterLock · AsyncRWLock · RefImpl        |    18.845 ns |  1.72 |         - | 
-| WriterLock · AsyncRWLock · Nito.AsyncEx   |    53.959 ns |  4.93 |     496 B | 
-| WriterLock · AsyncRWLock · VS.Threading   | 1,023.340 ns | 93.54 |     584 B | 
+| WriterLock · AsyncRWLock · RWLockSlim     |     7.054 ns |  0.60 |         - | 
+| WriterLock · AsyncRWLock · Proto.Promises |     8.856 ns |  0.75 |         - | 
+| WriterLock · AsyncRWLock · Pooled         |    11.766 ns |  1.00 |         - | 
+| WriterLock · AsyncRWLock · RefImpl        |    18.849 ns |  1.60 |         - | 
+| WriterLock · AsyncRWLock · Nito.AsyncEx   |    54.377 ns |  4.62 |     496 B | 
+| WriterLock · AsyncRWLock · VS.Threading   | 1,053.228 ns | 89.52 |     584 B | 

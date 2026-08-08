@@ -12,38 +12,38 @@ Alloc Ratio=NA
 ```
 | Description                                          | Iterations | cancellationType | Mean         | Ratio | Allocated | 
 |----------------------------------------------------- |----------- |----------------- |-------------:|------:|----------:|
-| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 0          | None             |     6.777 ns |  0.41 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 0          | None             |    16.387 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 0          | None             |    19.627 ns |  1.20 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 0          | None             | 1,087.911 ns | 66.39 |     616 B | 
+| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 0          | None             |     7.060 ns |  0.41 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 0          | None             |    17.111 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 0          | None             |    19.859 ns |  1.16 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 0          | None             | 1,097.493 ns | 64.14 |     616 B | 
 |                                                      |            |                  |              |       |           | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 0          | NotCancelled     |    16.373 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 0          | NotCancelled     |    17.989 ns |  1.10 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 0          | NotCancelled     | 1,129.157 ns | 68.97 |     616 B | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 0          | NotCancelled     |    16.952 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 0          | NotCancelled     |    18.815 ns |  1.11 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 0          | NotCancelled     | 1,142.426 ns | 67.39 |     616 B | 
 |                                                      |            |                  |              |       |           | 
-| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 1          | None             |     6.762 ns |  0.35 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 1          | None             |    17.519 ns |  0.91 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 1          | None             |    19.319 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 1          | None             | 1,100.419 ns | 56.96 |     616 B | 
+| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 1          | None             |     6.994 ns |  0.35 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 1          | None             |    19.938 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 1          | None             |    20.025 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 1          | None             | 1,108.723 ns | 55.61 |     616 B | 
 |                                                      |            |                  |              |       |           | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 1          | NotCancelled     |    17.757 ns |  0.92 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 1          | NotCancelled     |    19.348 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 1          | NotCancelled     | 1,164.361 ns | 60.18 |     616 B | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 1          | NotCancelled     |    18.946 ns |  0.95 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 1          | NotCancelled     |    20.005 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 1          | NotCancelled     | 1,167.750 ns | 58.37 |     616 B | 
 |                                                      |            |                  |              |       |           | 
-| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 2          | None             |     6.792 ns |  0.35 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 2          | None             |    17.807 ns |  0.93 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 2          | None             |    19.215 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 2          | None             | 1,059.323 ns | 55.13 |     616 B | 
+| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 2          | None             |     6.948 ns |  0.35 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 2          | None             |    18.429 ns |  0.93 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 2          | None             |    19.845 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 2          | None             | 1,085.138 ns | 54.68 |     616 B | 
 |                                                      |            |                  |              |       |           | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 2          | NotCancelled     |    17.613 ns |  0.91 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 2          | NotCancelled     |    19.401 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 2          | NotCancelled     | 1,146.324 ns | 59.09 |     616 B | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 2          | NotCancelled     |    18.383 ns |  0.86 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 2          | NotCancelled     |    21.298 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 2          | NotCancelled     | 1,193.286 ns | 56.04 |     616 B | 
 |                                                      |            |                  |              |       |           | 
-| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 5          | None             |    24.596 ns |  0.33 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 5          | None             |    52.278 ns |  0.70 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 5          | None             |    74.756 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 5          | None             | 2,464.881 ns | 32.97 |    1240 B | 
+| UpgradeableReaderLock · AsyncRWLock · RWLockSlim     | 5          | None             |    24.919 ns |  0.31 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 5          | None             |    54.657 ns |  0.67 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 5          | None             |    81.413 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 5          | None             | 2,690.952 ns | 33.05 |    1240 B | 
 |                                                      |            |                  |              |       |           | 
-| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 5          | NotCancelled     |    54.673 ns |  0.73 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · Pooled         | 5          | NotCancelled     |    75.188 ns |  1.00 |         - | 
-| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 5          | NotCancelled     | 2,635.199 ns | 35.05 |    1240 B | 
+| UpgradeableReaderLock · AsyncRWLock · Proto.Promises | 5          | NotCancelled     |    56.538 ns |  0.72 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · Pooled         | 5          | NotCancelled     |    78.384 ns |  1.00 |         - | 
+| UpgradeableReaderLock · AsyncRWLock · VS.Threading   | 5          | NotCancelled     | 2,753.491 ns | 35.13 |    1240 B | 

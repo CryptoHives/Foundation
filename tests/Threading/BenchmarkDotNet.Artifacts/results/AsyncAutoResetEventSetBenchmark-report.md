@@ -12,8 +12,8 @@ Alloc Ratio=NA
 ```
 | Description                           | Mean        | Ratio  | Allocated | 
 |-------------------------------------- |------------:|-------:|----------:|
-| Set · AsyncAutoReset · ProtoPromise   |   0.5548 ns |   0.75 |         - | 
-| Set · AsyncAutoReset · Pooled         |   0.7370 ns |   1.00 |         - | 
-| Set · AsyncAutoReset · RefImpl        |   4.2014 ns |   5.70 |         - | 
-| Set · AsyncAutoReset · Nito.AsyncEx   |   4.3196 ns |   5.86 |         - | 
-| Set · AsyncAutoReset · AutoResetEvent | 216.5008 ns | 293.83 |         - | 
+| Set · AsyncAutoReset · ProtoPromise   |   0.5917 ns |   0.77 |         - | 
+| Set · AsyncAutoReset · Pooled         |   0.7726 ns |   1.00 |         - | 
+| Set · AsyncAutoReset · RefImpl        |   4.3108 ns |   5.58 |         - | 
+| Set · AsyncAutoReset · Nito.AsyncEx   |   4.3306 ns |   5.61 |         - | 
+| Set · AsyncAutoReset · AutoResetEvent | 218.9571 ns | 283.59 |         - | 

@@ -43,11 +43,11 @@ public partial class CancellationType : IFormattable
     public static readonly CancellationType NotCancelled = new(nameof(NotCancelled), _cancellationSource.Token);
 
     /// <summary>No token, but a timeout - isolates the timer's cost from a registration's.</summary>
-    public static readonly CancellationType Timed = new(nameof(Timed), CancellationToken.None, NonElapsingTimeout);
+    public static readonly CancellationType Timed = new(nameof(Timed), NonElapsingTimeout, CancellationToken.None);
 
     /// <summary>Both a live token and a timeout: everything a waiter can be asked to carry at once.</summary>
     public static readonly CancellationType NotCancelledTimed =
-        new(nameof(NotCancelledTimed), _cancellationSource.Token, NonElapsingTimeout);
+        new(nameof(NotCancelledTimed), NonElapsingTimeout, _cancellationSource.Token);
 
     /// <summary>
     /// Provides a predefined array of cancellation type groups representing None, cancelled, and not cancelled token
@@ -119,11 +119,11 @@ public partial class CancellationType : IFormattable
     }
 
     public CancellationType(string description, CancellationToken cancellationToken)
-        : this(description, cancellationToken, System.Threading.Timeout.InfiniteTimeSpan)
+        : this(description, System.Threading.Timeout.InfiniteTimeSpan, cancellationToken)
     {
     }
 
-    public CancellationType(string description, CancellationToken cancellationToken, TimeSpan timeout)
+    public CancellationType(string description, TimeSpan timeout, CancellationToken cancellationToken)
     {
         Description = description;
         CancellationToken = cancellationToken;

@@ -384,7 +384,7 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task RemoveParticipantWhenAllHaveSignaledButNotLastThrows()
+    public void RemoveParticipantWhenAllHaveSignaledButNotLastThrows()
     {
         var barrier = new AsyncBarrier(3);
 
@@ -487,7 +487,7 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionThrowsBarrierPostPhaseException()
+    public Task PostPhaseActionExceptionThrowsBarrierPostPhaseException()
     {
         var barrier = new AsyncBarrier(1, b => {
             throw new InvalidOperationException("Post-phase error");
@@ -501,10 +501,12 @@ public class AsyncBarrierTests
             Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
             Assert.That(ex.InnerException!.Message, Is.EqualTo("Post-phase error"));
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionPropagatedToAllWaiters()
+    public Task PostPhaseActionExceptionPropagatedToAllWaiters()
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
@@ -541,6 +543,8 @@ public class AsyncBarrierTests
 
             Assert.That(pool.ActiveCount, Is.Zero);
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
@@ -565,7 +569,7 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionOnRemoveParticipantsThrowsBarrierPostPhaseException()
+    public Task PostPhaseActionExceptionOnRemoveParticipantsThrowsBarrierPostPhaseException()
     {
         var barrier = new AsyncBarrier(2, b => {
             throw new InvalidOperationException("Remove participant error");
@@ -582,10 +586,12 @@ public class AsyncBarrierTests
             Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
             Assert.That(ex.InnerException!.Message, Is.EqualTo("Remove participant error"));
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
+    public Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
@@ -613,6 +619,8 @@ public class AsyncBarrierTests
             Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
             Assert.That(pool.ActiveCount, Is.Zero);
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
@@ -799,12 +807,13 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
+    public Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
     {
         var barrier = new AsyncBarrier(2);
 
         Assert.ThrowsAsync<TimeoutException>(async () =>
             await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+        return Task.CompletedTask;
     }
 
     [Test]

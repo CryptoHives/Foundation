@@ -236,7 +236,7 @@ public class AsyncAutoResetEventTests
 
     [Test]
     [CancelAfter(10000)]
-    public async Task WaitAsyncCancelReturnsToPool(CancellationToken ct)
+    public void WaitAsyncCancelReturnsToPool(CancellationToken ct)
     {
         using var cts = new CancellationTokenSource();
         using var pool = new TestObjectPool<bool>();
@@ -690,12 +690,13 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
-    public async Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSignalled()
+    public Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSignalled()
     {
         var ev = new AsyncAutoResetEvent();
 
         Assert.ThrowsAsync<TimeoutException>(async () =>
             await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+        return Task.CompletedTask;
     }
 
     [Test]

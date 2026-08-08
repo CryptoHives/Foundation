@@ -12,9 +12,9 @@ Alloc Ratio=NA
 ```
 | Description                                        | Mean       | Ratio  | Allocated | 
 |--------------------------------------------------- |-----------:|-------:|----------:|
-| SetReset · AsyncManualReset · ProtoPromise         |   1.425 ns |   0.69 |         - | 
-| SetReset · AsyncManualReset · Pooled               |   2.054 ns |   1.00 |         - | 
-| SetReset · AsyncManualReset · ManualResetEventSlim |   5.591 ns |   2.72 |         - | 
-| SetReset · AsyncManualReset · RefImpl              |  10.063 ns |   4.90 |      96 B | 
-| SetReset · AsyncManualReset · Nito.AsyncEx         |  17.257 ns |   8.40 |      96 B | 
-| SetReset · AsyncManualReset · ManualResetEvent     | 428.312 ns | 208.57 |         - | 
+| SetReset · AsyncManualReset · ProtoPromise         |   1.468 ns |   0.71 |         - | 
+| SetReset · AsyncManualReset · Pooled               |   2.061 ns |   1.00 |         - | 
+| SetReset · AsyncManualReset · ManualResetEventSlim |   5.565 ns |   2.70 |         - | 
+| SetReset · AsyncManualReset · RefImpl              |  10.158 ns |   4.93 |      96 B | 
+| SetReset · AsyncManualReset · Nito.AsyncEx         |  17.146 ns |   8.32 |      96 B | 
+| SetReset · AsyncManualReset · ManualResetEvent     | 431.857 ns | 209.59 |         - | 

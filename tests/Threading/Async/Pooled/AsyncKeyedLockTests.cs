@@ -3,6 +3,7 @@
 
 #pragma warning disable CA1849 // Call async methods when in an async method
 #pragma warning disable CHT001 // ValueTask awaited multiple times - intentionally testing cancellation behavior
+#pragma warning disable CA2012 // ValueTask instances returned from method calls should be directly awaited
 
 namespace Threading.Tests.Async.Pooled;
 
@@ -39,9 +40,7 @@ public class AsyncKeyedLockTests
         var locks = new AsyncKeyedLock<string>();
 
 #pragma warning disable VSTHRD110
-#pragma warning disable CA2012
         Assert.Throws<ArgumentNullException>(() => locks.LockAsync(null!));
-#pragma warning restore CA2012
 #pragma warning restore VSTHRD110
     }
 
@@ -271,9 +270,7 @@ public class AsyncKeyedLockTests
         var locks = new AsyncKeyedLock<string>(pool: pool);
 
 #pragma warning disable VSTHRD110
-#pragma warning disable CA2012
         Assert.Throws<ArgumentOutOfRangeException>(() => locks.LockAsync("a", TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore CA2012
 #pragma warning restore VSTHRD110
 
         Assert.That(locks.IsInUse("a"), Is.False);

@@ -12,8 +12,8 @@ Alloc Ratio=NA
 ```
 | Description                                  | Mean      | Ratio | Allocated | 
 |--------------------------------------------- |----------:|------:|----------:|
-| WaitRelease · AsyncSemaphore · ProtoPromise  |  6.506 ns |  0.72 |         - | 
-| WaitRelease · AsyncSemaphore · Pooled        |  9.058 ns |  1.00 |         - | 
-| WaitRelease · AsyncSemaphore · Nito.AsyncEx  | 14.960 ns |  1.65 |         - | 
-| WaitRelease · AsyncSemaphore · SemaphoreSlim | 16.345 ns |  1.80 |         - | 
-| WaitRelease · AsyncSemaphore · RefImpl       | 18.167 ns |  2.01 |         - | 
+| WaitRelease · AsyncSemaphore · ProtoPromise  |  6.607 ns |  0.74 |         - | 
+| WaitRelease · AsyncSemaphore · Pooled        |  8.922 ns |  1.00 |         - | 
+| WaitRelease · AsyncSemaphore · Nito.AsyncEx  | 14.957 ns |  1.68 |         - | 
+| WaitRelease · AsyncSemaphore · SemaphoreSlim | 17.163 ns |  1.92 |         - | 
+| WaitRelease · AsyncSemaphore · RefImpl       | 18.109 ns |  2.03 |         - | 
