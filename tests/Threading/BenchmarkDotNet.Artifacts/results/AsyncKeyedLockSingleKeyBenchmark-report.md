@@ -12,11 +12,11 @@ Alloc Ratio=NA
 ```
 | Description                                            | Mean      | Ratio | Allocated | 
 |------------------------------------------------------- |----------:|------:|----------:|
-| LockAsync · AsyncKeyedLock · AsyncKeyedLock (Striped)  |  28.37 ns |  0.70 |         - | 
-| LockAsync · AsyncKeyedLock · KeyedSemaphores (Striped) |  32.24 ns |  0.80 |         - | 
-| LockAsync · AsyncKeyedLock · Pooled                    |  40.25 ns |  1.00 |         - | 
-| LockAsync · AsyncKeyedLock · AsyncUtilities (Striped)  |  56.83 ns |  1.41 |         - | 
-| LockAsync · AsyncKeyedLock · AsyncKeyedLock            |  65.79 ns |  1.63 |      48 B | 
-| LockAsync · AsyncKeyedLock · RefImpl                   |  78.97 ns |  1.96 |     256 B | 
-| LockAsync · AsyncKeyedLock · KeyedSemaphores           |  83.62 ns |  2.08 |     200 B | 
-| LockAsync · AsyncKeyedLock · Dao.IndividualLock        | 106.42 ns |  2.64 |     520 B | 
+| LockAsync · AsyncKeyedLock · AsyncKeyedLock (Striped)  |  29.00 ns |  0.72 |         - | 
+| LockAsync · AsyncKeyedLock · KeyedSemaphores (Striped) |  33.33 ns |  0.83 |         - | 
+| LockAsync · AsyncKeyedLock · Pooled                    |  40.33 ns |  1.00 |         - | 
+| LockAsync · AsyncKeyedLock · AsyncUtilities (Striped)  |  56.25 ns |  1.39 |         - | 
+| LockAsync · AsyncKeyedLock · AsyncKeyedLock            |  65.81 ns |  1.63 |      48 B | 
+| LockAsync · AsyncKeyedLock · RefImpl                   |  70.99 ns |  1.76 |     256 B | 
+| LockAsync · AsyncKeyedLock · KeyedSemaphores           |  80.61 ns |  2.00 |     200 B | 
+| LockAsync · AsyncKeyedLock · Dao.IndividualLock        | 100.24 ns |  2.49 |     520 B | 

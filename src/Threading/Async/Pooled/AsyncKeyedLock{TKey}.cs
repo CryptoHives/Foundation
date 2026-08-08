@@ -42,10 +42,24 @@ using System.Threading.Tasks;
 /// be boxed to hold the two together.
 /// </para>
 /// <para>
-/// <b>The allocation-free guarantee is conditional</b> on the set of keys that are hot at the same time
-/// fitting in <c>maxIdleEntries</c>. Beyond it, every acquisition of an unmapped key evicts an idle entry
-/// and allocates a fresh dictionary node, so a workload cycling through many more distinct keys than the
-/// cache holds is neither allocation free nor as fast - size the cache to the working set.
+/// <b>The allocation-free guarantee is bounded by two caps</b>, and holds only while a workload fits
+/// inside both:
+/// </para>
+/// <list type="bullet">
+/// <item><description><c>maxIdleEntries</c> bounds <em>key cardinality</em>. Beyond it, every acquisition
+/// of an unmapped key evicts an idle entry and allocates a fresh dictionary node, so a workload cycling
+/// through many more distinct keys than the cache holds is neither allocation free nor as fast.</description></item>
+/// <item><description><c>maxRetainedWaiters</c> bounds <em>simultaneous contention</em>. Each entry
+/// supplies one waiter itself; every further waiter queued at the same moment - summed across all keys -
+/// comes from the pool, and each one beyond the cap is allocated and then discarded rather than reused.
+/// A lock with 4 keys and 100 waiters behind each needs 396 pooled waiters, so at the default of
+/// <see cref="DefaultMaxRetainedWaiters"/> such a burst allocates on 268 of them.</description></item>
+/// </list>
+/// <para>
+/// Size both to the workload: the first to the set of keys that are hot at once, the second to the peak
+/// number of waiters queued at once. Note that the default waiter pool is shared process-wide per closed
+/// <typeparamref name="TKey"/>, so passing <c>maxRetainedWaiters</c> is also what gives an instance a
+/// private pool rather than a share of the common one.
 /// </para>
 /// <example>
 /// <code>
@@ -77,12 +91,47 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     /// </remarks>
     public const int DefaultMaxIdleEntries = ValueTaskSourceObjectPools.DefaultMaxRetainedItems;
 
+    /// <summary>
+    /// Default number of waiter objects retained for reuse when the caller does not specify one, and the
+    /// number of simultaneously queued waiters up to which a contended acquisition is allocation free.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Unlike <see cref="DefaultMaxIdleEntries"/>, this bounds <em>concurrency</em> rather than
+    /// cardinality: what matters is how many waiters are queued at the same moment across all keys, not
+    /// how many distinct keys exist. Each entry supplies one waiter of its own, so the pool covers the
+    /// rest - a lock with 4 keys and 100 waiters queued behind each needs 396 pooled waiters, and every
+    /// one beyond this cap is allocated and then discarded rather than returned.
+    /// </para>
+    /// <para>
+    /// Note also that the default pool is <b>shared process-wide per closed <typeparamref name="TKey"/></b>
+    /// (see <see cref="ValueTaskSourceObjectPools{TKey}"/>), so simultaneous waiters across every
+    /// <see cref="AsyncKeyedLock{TKey}"/> instance with the same key type draw on the same budget. Pass
+    /// <c>maxRetainedWaiters</c> to give an instance its own pool sized to its own peak.
+    /// </para>
+    /// </remarks>
+    public const int DefaultMaxRetainedWaiters = ValueTaskSourceObjectPools.DefaultMaxRetainedItems;
+
     private readonly ConcurrentDictionary<TKey, Entry> _entries;
     private readonly IGetPooledManualResetValueTaskSource<Releaser> _pool;
     private readonly int _maxIdleEntries;
 
     // Guards only entry creation/reference-counting/eviction below - never the actual lock wait/hold,
     // which stays fully parallel across keys via each Entry's own SpinLock and WaiterQueue.
+    //
+    // Deliberately a spin lock rather than a monitor. Replacing it with System.Threading.Lock (which
+    // spins briefly, then parks) measured 23-52% slower across 2, 4 and 8 threads on the disjoint-key
+    // workload - consistent in direction, though single-sample, so treat it as strongly indicated rather
+    // than settled. The reasoning behind it does hold up: these critical sections are a few dozen
+    // nanoseconds, so a waiter that parks pays more in scheduling than it saves in burnt cycles, and
+    // with more logical cores than contending threads the spinners are not stealing the holder's core.
+    //
+    // What limits throughput at high thread counts is how much work is serialized through this one lock,
+    // not how its waiters wait. Shrinking the critical section by moving the (already thread-safe)
+    // dictionary probe outside it was tried and produced no effect a careful harness could distinguish
+    // from noise, so it was dropped rather than carried as unproven complexity. Genuinely fixing this
+    // means partitioning the bookkeeping, which changes the type's semantics enough to belong in a
+    // separate sharded implementation rather than here.
     private Internal.SpinLock _keyLock;
 
     /// Intrusive LRU list of idle (mapped but unreferenced) entries, threaded through Entry.IdleNext and
@@ -109,16 +158,37 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     /// footprint, at the cost of allocating an entry and a dictionary node on every acquisition - there is
     /// nothing retained to reuse. Defaults to <see cref="DefaultMaxIdleEntries"/>.
     /// </param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxIdleEntries"/> is negative.</exception>
+    /// <param name="maxRetainedWaiters">
+    /// How many waiter objects this lock keeps for reuse, and therefore how many waiters can be queued
+    /// simultaneously - across all of its keys at once - before a contended acquisition starts
+    /// allocating. Leave at <see cref="DefaultMaxRetainedWaiters"/> to use the pool shared by every
+    /// <see cref="AsyncKeyedLock{TKey}"/> with this key type; pass a larger value to give this instance
+    /// a private pool sized to its own peak. Ignored when <paramref name="pool"/> is supplied, since the
+    /// caller's pool already carries its own bound.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="maxIdleEntries"/> is negative, or <paramref name="maxRetainedWaiters"/>
+    /// is less than one.
+    /// </exception>
     public AsyncKeyedLock(
         IEqualityComparer<TKey>? comparer = null,
         IGetPooledManualResetValueTaskSource<Releaser>? pool = null,
-        int maxIdleEntries = DefaultMaxIdleEntries)
+        int maxIdleEntries = DefaultMaxIdleEntries,
+        int maxRetainedWaiters = DefaultMaxRetainedWaiters)
     {
         if (maxIdleEntries < 0) throw new ArgumentOutOfRangeException(nameof(maxIdleEntries));
+        if (maxRetainedWaiters < 1) throw new ArgumentOutOfRangeException(nameof(maxRetainedWaiters));
 
         _entries = comparer is null ? new() : new(comparer);
-        _pool = pool ?? ValueTaskSourceObjectPools<TKey>.ValueTaskSourcePoolAsyncKeyedLockReleaser;
+
+        // The shared pool is only right when the caller is happy with the shared bound; asking for a
+        // different one has to mean a private pool, or raising it would silently change every other
+        // AsyncKeyedLock with this key type.
+        _pool = pool
+            ?? (maxRetainedWaiters == DefaultMaxRetainedWaiters
+                ? ValueTaskSourceObjectPools<TKey>.ValueTaskSourcePoolAsyncKeyedLockReleaser
+                : new ValueTaskSourceObjectPool<Releaser>(new PooledValueTaskSourceObjectPolicy<Releaser>(), maxRetainedWaiters));
+
         _maxIdleEntries = maxIdleEntries;
         _keyLock = new();
     }

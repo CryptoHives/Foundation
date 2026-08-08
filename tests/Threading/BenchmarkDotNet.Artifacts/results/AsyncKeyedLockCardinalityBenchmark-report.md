@@ -12,38 +12,38 @@ Alloc Ratio=NA
 ```
 | Description                                              | KeyCount | Mean        | Ratio | Allocated | 
 |--------------------------------------------------------- |--------- |------------:|------:|----------:|
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1        |    33.06 ns |  0.70 |         - | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 1        |    35.69 ns |  0.76 |         - | 
-| Cardinality · AsyncKeyedLock · Pooled                    | 1        |    47.21 ns |  1.00 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 1        |    56.82 ns |  1.20 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 1        |    72.48 ns |  1.54 |      48 B | 
-| Cardinality · AsyncKeyedLock · RefImpl                   | 1        |    77.62 ns |  1.64 |     256 B | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 1        |    89.50 ns |  1.90 |     200 B | 
-| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 1        |   115.82 ns |  2.45 |     520 B | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 1        |    34.13 ns |  0.73 |         - | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 1        |    35.15 ns |  0.76 |         - | 
+| Cardinality · AsyncKeyedLock · Pooled                    | 1        |    46.44 ns |  1.00 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 1        |    59.17 ns |  1.27 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 1        |    71.38 ns |  1.54 |      48 B | 
+| Cardinality · AsyncKeyedLock · RefImpl                   | 1        |    75.80 ns |  1.63 |     256 B | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 1        |    88.59 ns |  1.91 |     200 B | 
+| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 1        |   105.63 ns |  2.27 |     520 B | 
 |                                                          |          |             |       |           | 
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 4        |   111.18 ns |  0.67 |         - | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 4        |   122.58 ns |  0.74 |         - | 
-| Cardinality · AsyncKeyedLock · Pooled                    | 4        |   165.72 ns |  1.00 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 4        |   207.79 ns |  1.25 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 4        |   262.49 ns |  1.58 |     192 B | 
-| Cardinality · AsyncKeyedLock · RefImpl                   | 4        |   287.62 ns |  1.74 |    1024 B | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 4        |   333.02 ns |  2.01 |     800 B | 
-| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 4        |   451.55 ns |  2.72 |    2080 B | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 4        |   108.47 ns |  0.67 |         - | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 4        |   119.54 ns |  0.74 |         - | 
+| Cardinality · AsyncKeyedLock · Pooled                    | 4        |   162.28 ns |  1.00 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 4        |   209.12 ns |  1.29 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 4        |   254.45 ns |  1.57 |     192 B | 
+| Cardinality · AsyncKeyedLock · RefImpl                   | 4        |   283.84 ns |  1.75 |    1024 B | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 4        |   317.28 ns |  1.96 |     800 B | 
+| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 4        |   387.61 ns |  2.39 |    2080 B | 
 |                                                          |          |             |       |           | 
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 16       |   414.59 ns |  0.68 |         - | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 16       |   454.33 ns |  0.75 |         - | 
-| Cardinality · AsyncKeyedLock · Pooled                    | 16       |   609.54 ns |  1.00 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 16       |   782.27 ns |  1.28 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 16       | 1,019.77 ns |  1.67 |     768 B | 
-| Cardinality · AsyncKeyedLock · RefImpl                   | 16       | 1,141.90 ns |  1.87 |    4096 B | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 16       | 1,256.92 ns |  2.06 |    3200 B | 
-| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 16       | 1,649.63 ns |  2.71 |    8320 B | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 16       |   413.44 ns |  0.69 |         - | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 16       |   441.10 ns |  0.74 |         - | 
+| Cardinality · AsyncKeyedLock · Pooled                    | 16       |   594.97 ns |  1.00 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 16       |   769.45 ns |  1.29 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 16       | 1,013.64 ns |  1.70 |     768 B | 
+| Cardinality · AsyncKeyedLock · RefImpl                   | 16       | 1,126.25 ns |  1.89 |    4096 B | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 16       | 1,285.57 ns |  2.16 |    3200 B | 
+| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 16       | 1,604.18 ns |  2.70 |    8320 B | 
 |                                                          |          |             |       |           | 
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64       | 1,702.27 ns |  0.71 |         - | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 64       | 1,766.14 ns |  0.73 |         - | 
-| Cardinality · AsyncKeyedLock · Pooled                    | 64       | 2,410.58 ns |  1.00 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 64       | 3,142.39 ns |  1.30 |         - | 
-| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 64       | 4,056.37 ns |  1.68 |    3072 B | 
-| Cardinality · AsyncKeyedLock · RefImpl                   | 64       | 4,580.70 ns |  1.90 |   16384 B | 
-| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 64       | 5,215.24 ns |  2.16 |   12800 B | 
-| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 64       | 6,481.44 ns |  2.69 |   33280 B | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock (Striped)  | 64       | 1,615.67 ns |  0.68 |         - | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores (Striped) | 64       | 1,743.31 ns |  0.74 |         - | 
+| Cardinality · AsyncKeyedLock · Pooled                    | 64       | 2,358.83 ns |  1.00 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncUtilities (Striped)  | 64       | 3,036.30 ns |  1.29 |         - | 
+| Cardinality · AsyncKeyedLock · AsyncKeyedLock            | 64       | 4,058.13 ns |  1.72 |    3072 B | 
+| Cardinality · AsyncKeyedLock · RefImpl                   | 64       | 4,510.56 ns |  1.91 |   16384 B | 
+| Cardinality · AsyncKeyedLock · KeyedSemaphores           | 64       | 4,989.25 ns |  2.12 |   12800 B | 
+| Cardinality · AsyncKeyedLock · Dao.IndividualLock        | 64       | 6,376.89 ns |  2.70 |   33280 B | 

@@ -103,7 +103,7 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     private AsyncKeyedLock<string>.Releaser[]? _pooledOuter;
     private ValueTask<AsyncKeyedLock<string>.Releaser>[]? _pooledHandle;
 
-    private IDisposable[]? _thirdPartyOuter;
+    private IDisposable?[]? _thirdPartyOuter;
     private ValueTask<IDisposable>[]? _thirdPartyHandle;
 
     // Striped locks alias arbitrary keys onto a fixed stripe count, so - unlike every
@@ -114,6 +114,13 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     // drain, release, then move on - never two keys held open simultaneously. Reused per key,
     // so these need only one outer slot and Iterations handle slots, not KeyCount of each.
     private ValueTask<AsyncKeyedLock.StripedAsyncKeyedLockReleaser>[]? _stripedHandle;
+
+    // The timed competitors below use each library's timeout-capable overload, whose return type differs
+    // from its untimed one - a nullable releaser that reports whether the wait succeeded rather than one
+    // that always did. That is exactly why they are separate benchmark methods rather than another
+    // cancellationType variant of the existing ones: the arrays cannot be shared.
+    private ValueTask<IDisposable?>[]? _thirdPartyTimedHandle;
+    private ValueTask<AsyncKeyedLock.StripedAsyncKeyedLockReleaser?>[]? _stripedTimedHandle;
 
     // No KeyedSemaphores fields here - both variants are excluded from this suite; see the
     // "Exception - KeyedSemaphores is excluded" paragraph in the class remarks for the measurements
@@ -170,7 +177,7 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     }
 
     [Test]
-    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
     public Task LockUnlockPooledMultipleTestAsync(CancellationType cancellationType)
     {
         PooledGlobalSetup();
@@ -189,21 +196,34 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     /// Benchmark for the pooled keyed async lock: <see cref="KeyCount"/> keys held simultaneously,
     /// <see cref="Iterations"/> waiters queued behind each.
     /// </summary>
+    /// <remarks>
+    /// The only variant here that exercises <see cref="CancellationType.Timed"/>, because it is the only
+    /// implementation in this suite whose timeout overload has the same shape as its untimed one - the
+    /// third-party keyed lockers do offer timeouts, but return a different releaser type with
+    /// try-semantics instead of throwing, so their timed path is not the same operation. The timed row's
+    /// value is therefore the comparison against this method's own <c>None</c> row: the difference is
+    /// what arming and disposing one timer per queued waiter costs.
+    /// </remarks>
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Multiple", "Pooled")]
-    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
     public async Task LockUnlockPooledMultipleAsync(CancellationType cancellationType)
     {
+        // Timeout is InfiniteTimeSpan for the untimed variants, which the implementation treats as "arm
+        // no timer" - so this one call site serves every variant without branching.
         for (int k = 0; k < KeyCount; k++)
         {
-            _pooledOuter![k] = await _lockPooled.LockAsync(_keys![k], cancellationType.CancellationToken).ConfigureAwait(false);
+            _pooledOuter![k] = await _lockPooled
+                .LockAsync(_keys![k], cancellationType.Timeout, cancellationType.CancellationToken)
+                .ConfigureAwait(false);
         }
 
         for (int k = 0; k < KeyCount; k++)
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _pooledHandle![(k * Iterations) + i] = _lockPooled.LockAsync(_keys![k], cancellationType.CancellationToken);
+                _pooledHandle![(k * Iterations) + i] =
+                    _lockPooled.LockAsync(_keys![k], cancellationType.Timeout, cancellationType.CancellationToken);
             }
         }
 
@@ -249,7 +269,7 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     {
         for (int k = 0; k < KeyCount; k++)
         {
-            _thirdPartyOuter![k] = await _lockThirdParty.LockAsync(_keys![k], cancellationType.CancellationToken).ConfigureAwait(false);
+            _thirdPartyOuter![k] = await _lockThirdParty.LockOrNullAsync(_keys![k], cancellationType.Timeout, cancellationType.CancellationToken).ConfigureAwait(false);
         }
 
         for (int k = 0; k < KeyCount; k++)
@@ -263,7 +283,8 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
         for (int k = 0; k < KeyCount; k++)
         {
             unchecked { _counter++; }
-            _thirdPartyOuter![k].Dispose();
+            IDisposable? disposable = _thirdPartyOuter![k];
+            disposable?.Dispose();
         }
 
         foreach (ValueTask<IDisposable> handle in _thirdPartyHandle!)
@@ -303,7 +324,8 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     {
         for (int k = 0; k < KeyCount; k++)
         {
-            AsyncKeyedLock.StripedAsyncKeyedLockReleaser outer = await _lockStriped.LockAsync(_keys![k], cancellationType.CancellationToken).ConfigureAwait(false);
+            AsyncKeyedLock.StripedAsyncKeyedLockReleaser outer =
+                await _lockStriped.LockAsync(_keys![k], cancellationType.CancellationToken).ConfigureAwait(false);
 
             for (int i = 0; i < Iterations; i++)
             {
@@ -417,6 +439,117 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
             for (int i = 0; i < Iterations; i++)
             {
                 using (await _asyncUtilitiesStripedHandle![i].ConfigureAwait(false))
+                {
+                    unchecked { _counter++; }
+                }
+            }
+        }
+    }
+
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public Task LockUnlockThirdPartyTimedMultipleTestAsync(CancellationType cancellationType)
+    {
+        ThirdPartyTimedGlobalSetup();
+        return LockUnlockThirdPartyTimedMultipleAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockThirdPartyTimedMultipleAsync))]
+    public void ThirdPartyTimedGlobalSetup()
+    {
+        SetUpKeys();
+        _thirdPartyOuter = new IDisposable?[KeyCount];
+        _thirdPartyTimedHandle = new ValueTask<IDisposable?>[KeyCount * Iterations];
+    }
+
+    /// <summary>
+    /// Timed counterpart to <see cref="LockUnlockThirdPartyMultipleAsync"/>, using the third-party
+    /// library's own timeout overload so the timed rows have something to compare against.
+    /// </summary>
+    /// <remarks>
+    /// <c>LockOrNullAsync</c> rather than <c>LockAsync</c> because the timeout must be observable: it
+    /// returns <see langword="null"/> when the wait gives up, where our <c>LockAsync</c> throws. The
+    /// timeout used here never elapses, so both always succeed and what is measured is the same thing on
+    /// both sides - arming and disposing a timer per queued waiter.
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "AsyncKeyedLock")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public async Task LockUnlockThirdPartyTimedMultipleAsync(CancellationType cancellationType)
+    {
+        for (int k = 0; k < KeyCount; k++)
+        {
+            _thirdPartyOuter![k] = await _lockThirdParty
+                .LockOrNullAsync(_keys![k], cancellationType.Timeout, cancellationType.CancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        for (int k = 0; k < KeyCount; k++)
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _thirdPartyTimedHandle![(k * Iterations) + i] =
+                    _lockThirdParty.LockOrNullAsync(_keys![k], cancellationType.Timeout, cancellationType.CancellationToken);
+            }
+        }
+
+        for (int k = 0; k < KeyCount; k++)
+        {
+            unchecked { _counter++; }
+            _thirdPartyOuter![k]?.Dispose();
+        }
+
+        foreach (ValueTask<IDisposable?> handle in _thirdPartyTimedHandle!)
+        {
+            using (await handle.ConfigureAwait(false))
+            {
+                unchecked { _counter++; }
+            }
+        }
+    }
+
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public Task LockUnlockStripedTimedMultipleTestAsync(CancellationType cancellationType)
+    {
+        StripedTimedGlobalSetup();
+        return LockUnlockStripedTimedMultipleAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockStripedTimedMultipleAsync))]
+    public void StripedTimedGlobalSetup()
+    {
+        SetUpKeys();
+        _stripedTimedHandle = new ValueTask<AsyncKeyedLock.StripedAsyncKeyedLockReleaser?>[Iterations];
+    }
+
+    /// <summary>
+    /// Timed counterpart to <see cref="LockUnlockStripedMultipleAsync"/>, one key at a time for the same
+    /// stripe-collision reason as its untimed sibling.
+    /// </summary>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "AsyncKeyedLock (Striped)")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public async Task LockUnlockStripedTimedMultipleAsync(CancellationType cancellationType)
+    {
+        for (int k = 0; k < KeyCount; k++)
+        {
+            AsyncKeyedLock.StripedAsyncKeyedLockReleaser? outer = await _lockStriped
+                .LockOrNullAsync(_keys![k], cancellationType.Timeout, cancellationType.CancellationToken)
+                .ConfigureAwait(false);
+
+            for (int i = 0; i < Iterations; i++)
+            {
+                _stripedTimedHandle![i] =
+                    _lockStriped.LockOrNullAsync(_keys![k], cancellationType.Timeout, cancellationType.CancellationToken);
+            }
+
+            unchecked { _counter++; }
+            outer?.Dispose();
+
+            for (int i = 0; i < Iterations; i++)
+            {
+                using (await _stripedTimedHandle![i].ConfigureAwait(false))
                 {
                     unchecked { _counter++; }
                 }

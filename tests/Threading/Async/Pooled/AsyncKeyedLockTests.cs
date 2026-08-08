@@ -697,6 +697,285 @@ public class AsyncKeyedLockTests
         }
     }
 
+    [Test]
+    public void TryLockOnFreeKeySucceedsAndReleaserWorks()
+    {
+        using var pool = new TestObjectPool<AsyncKeyedLock<string>.Releaser>();
+        var locks = new AsyncKeyedLock<string>(pool: pool);
+
+        Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser releaser), Is.True);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(releaser.Key, Is.EqualTo("a"));
+            Assert.That(locks.IsInUse("a"), Is.True);
+            Assert.That(locks.Count, Is.EqualTo(1));
+        }
+
+        releaser.Dispose();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(locks.IsInUse("a"), Is.False);
+            Assert.That(locks.Count, Is.Zero);
+            Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser again), Is.True);
+            Assert.That(again.Key, Is.EqualTo("a"));
+        }
+    }
+
+    [Test]
+    public void TryLockOnHeldKeyFailsWithoutLeakingTheEntry()
+    {
+        var locks = new AsyncKeyedLock<string>();
+
+        Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser held), Is.True);
+        Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser failed), Is.False);
+
+        held.Dispose();
+
+        // The failed attempt still took an administrative reference on the entry before discovering the
+        // key was taken. If it did not give that reference back, the entry would stay active forever and
+        // could never be evicted - so the count returning to zero is what proves the release happened.
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(locks.Count, Is.Zero, "A failed TryLock must release its administrative reference.");
+            Assert.That(locks.IsInUse("a"), Is.False);
+            Assert.That(failed, Is.EqualTo(default(AsyncKeyedLock<string>.Releaser)));
+        }
+    }
+
+    [Test]
+    public void TryLockFailureReleaserIsNotDisposable()
+    {
+        var locks = new AsyncKeyedLock<string>();
+
+        Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser held), Is.True);
+        Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser failed), Is.False);
+
+        // Disposing the out-value of a failed attempt would otherwise release someone else's hold.
+        Assert.Throws<InvalidOperationException>(failed.Dispose);
+
+        held.Dispose();
+    }
+
+    [Test]
+    public void TryLockWithNullKeyThrows()
+    {
+        var locks = new AsyncKeyedLock<string>();
+
+        Assert.Throws<ArgumentNullException>(() => locks.TryLock(null!, out _));
+    }
+
+    [Test]
+    public void TryLockOnDifferentKeysDoNotBlockEachOther()
+    {
+        var locks = new AsyncKeyedLock<string>();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser first), Is.True);
+            Assert.That(locks.TryLock("b", out AsyncKeyedLock<string>.Releaser second), Is.True);
+            Assert.That(locks.Count, Is.EqualTo(2));
+
+            first.Dispose();
+            second.Dispose();
+        }
+    }
+
+    [Test]
+    public async Task TryLockFailsWhileLockAsyncHoldsTheSameKey()
+    {
+        var locks = new AsyncKeyedLock<string>();
+
+        using (await locks.LockAsync("a").ConfigureAwait(false))
+        {
+            Assert.That(locks.TryLock("a", out _), Is.False);
+            Assert.That(locks.TryLock("b", out AsyncKeyedLock<string>.Releaser other), Is.True);
+            other.Dispose();
+        }
+
+        Assert.That(locks.TryLock("a", out AsyncKeyedLock<string>.Releaser afterRelease), Is.True);
+        afterRelease.Dispose();
+    }
+
+    [Test]
+    public async Task TryLockNeverAllowsTwoSimultaneousHoldersUnderContention()
+    {
+        // The failure mode this guards against is the one still open upstream in the third-party
+        // AsyncKeyedLock library (GitHub issue #68): under sustained high-throughput contention a pooled
+        // releaser was recycled for a different key while a stale reference to it was still in flight,
+        // letting two callers believe they held the same key at once. This is that access pattern - many
+        // threads racing TryLock on a single key against a pooled entry/releaser implementation.
+        const int Tasks = 16;
+        const int Iterations = 5000;
+        const string Key = "contended";
+
+        var locks = new AsyncKeyedLock<string>();
+        int concurrentHolders = 0;
+        int violations = 0;
+        int successes = 0;
+
+        var workers = new Task[Tasks];
+        for (int t = 0; t < Tasks; t++)
+        {
+            workers[t] = Task.Run(() => {
+                for (int i = 0; i < Iterations; i++)
+                {
+                    if (!locks.TryLock(Key, out AsyncKeyedLock<string>.Releaser releaser))
+                    {
+                        continue;
+                    }
+
+                    if (Interlocked.Increment(ref concurrentHolders) != 1)
+                    {
+                        Interlocked.Increment(ref violations);
+                    }
+
+                    Interlocked.Increment(ref successes);
+                    Interlocked.Decrement(ref concurrentHolders);
+                    releaser.Dispose();
+                }
+            });
+        }
+
+        await Task.WhenAll(workers).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(violations, Is.Zero, "Two callers held the same key simultaneously.");
+            Assert.That(successes, Is.GreaterThan(0), "No attempt ever succeeded - the test proved nothing.");
+            Assert.That(locks.Count, Is.Zero, "Every acquisition and failed attempt must release its reference.");
+        }
+    }
+
+    [Test]
+    public async Task TryLockUnderEvictionPressureKeepsEntriesConsistent()
+    {
+        // Combines the contended TryLock path with entry recycling, so a failed attempt's reference
+        // release races against eviction rebinding the very entry it was released from.
+        const int Tasks = 8;
+        const int Iterations = 2000;
+        const int Keys = 32;
+
+        var locks = new AsyncKeyedLock<string>(maxIdleEntries: 2);
+        var keys = new string[Keys];
+        for (int i = 0; i < Keys; i++)
+        {
+            keys[i] = $"key-{i}";
+        }
+
+        int violations = 0;
+        var holders = new int[Keys];
+
+        var workers = new Task[Tasks];
+        for (int t = 0; t < Tasks; t++)
+        {
+            int worker = t;
+            workers[t] = Task.Run(() => {
+                for (int i = 0; i < Iterations; i++)
+                {
+                    int index = (worker + i) % Keys;
+                    if (!locks.TryLock(keys[index], out AsyncKeyedLock<string>.Releaser releaser))
+                    {
+                        continue;
+                    }
+
+                    if (Interlocked.Increment(ref holders[index]) != 1)
+                    {
+                        Interlocked.Increment(ref violations);
+                    }
+
+                    Interlocked.Decrement(ref holders[index]);
+                    releaser.Dispose();
+                }
+            });
+        }
+
+        await Task.WhenAll(workers).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(violations, Is.Zero, "Two callers held the same key simultaneously under eviction pressure.");
+            Assert.That(locks.Count, Is.Zero);
+        }
+    }
+
+    [Test]
+    public void NonPositiveMaxRetainedWaitersThrows()
+    {
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => new AsyncKeyedLock<string>(maxRetainedWaiters: 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new AsyncKeyedLock<string>(maxRetainedWaiters: -1));
+        }
+    }
+
+    [Test]
+    public async Task QueueBeyondMaxRetainedWaitersAllocates()
+    {
+        // Documents the bound rather than a defect: the waiter pool retains a fixed number of objects,
+        // so a burst larger than it has to allocate the excess. Asserted so the limit stays a known,
+        // deliberate property instead of a surprise - the companion test below shows how to lift it.
+        const int Retained = 16;
+        const int Waiters = 64;
+
+        double perWaiter = await MeasureQueuePhaseAllocationAsync(
+            new AsyncKeyedLock<string>(maxRetainedWaiters: Retained), Waiters).ConfigureAwait(false);
+
+        Assert.That(perWaiter, Is.GreaterThan(0),
+            "Queuing well past maxRetainedWaiters is expected to allocate the excess waiters.");
+    }
+
+    [Test]
+    public async Task RaisingMaxRetainedWaitersKeepsLargeQueuesAllocationFree()
+    {
+        const int Waiters = 300;   // more than twice the shared default
+
+        double perWaiter = await MeasureQueuePhaseAllocationAsync(
+            new AsyncKeyedLock<string>(maxRetainedWaiters: Waiters + 8), Waiters).ConfigureAwait(false);
+
+#if DEBUG
+        Assert.That(perWaiter, Is.LessThan(64));
+#else
+        Assert.That(perWaiter, Is.Zero,
+            "A pool sized to the peak must make even a large contended burst allocation free.");
+#endif
+    }
+
+    /// <summary>
+    /// Queues <paramref name="waiters"/> acquisitions behind one held key and returns the bytes allocated
+    /// per waiter while doing so. Only the queuing phase is measured, and it contains no await, so it
+    /// stays on one thread and <see cref="GC.GetAllocatedBytesForCurrentThread"/> is meaningful for it.
+    /// </summary>
+    private static async Task<double> MeasureQueuePhaseAllocationAsync(AsyncKeyedLock<string> locks, int waiters)
+    {
+        const string Key = "a";
+        var handles = new ValueTask<AsyncKeyedLock<string>.Releaser>[waiters];
+
+        for (int round = 0; round < 20; round++)
+        {
+            await QueueAndDrainAsync(locks, handles, waiters).ConfigureAwait(false);
+        }
+
+        AsyncKeyedLock<string>.Releaser holder = await locks.LockAsync(Key).ConfigureAwait(false);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < waiters; i++)
+        {
+            handles[i] = locks.LockAsync(Key);
+        }
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        holder.Dispose();
+        for (int i = 0; i < waiters; i++)
+        {
+            using (await handles[i].ConfigureAwait(false)) { }
+        }
+
+        return (double)allocated / waiters;
+    }
+
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()
     {
         return new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);

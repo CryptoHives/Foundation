@@ -47,9 +47,15 @@ using System.Threading.Tasks;
 /// pooled entry/releaser implementation - is exactly the shape of a real, currently-unfixed upstream
 /// race condition in the third-party AsyncKeyedLock library (GitHub issue #68): under sustained
 /// high-throughput contention, its pooled releaser could be recycled for a different key while a stale
-/// reference to it was still in flight, letting two threads hold the "same" key simultaneously. See
-/// <see cref="AsyncKeyedLockTests.TryLockNeverAllowsTwoSimultaneousHoldersUnderContention"/> for a direct
-/// stress test proving our own <c>TryLock</c> doesn't share that failure mode.
+/// reference to it was still in flight, letting two threads hold the "same" key simultaneously.
+/// <see cref="AsyncKeyedLockTests.TryLockNeverAllowsTwoSimultaneousHoldersUnderContention"/> stress tests
+/// exactly that shape against our own <c>TryLock</c>, and
+/// <see cref="AsyncKeyedLockTests.TryLockUnderEvictionPressureKeepsEntriesConsistent"/> adds the recycling
+/// half of it, racing failed attempts against entries actually being rebound to other keys.
+/// </para>
+/// <para>
+/// Note that this benchmark measures only the <em>uncontended</em> attempt. The contended behaviour is a
+/// correctness property rather than a throughput one, so it is covered by those tests rather than here.
 /// </para>
 /// </remarks>
 [TestFixture]
