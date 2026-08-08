@@ -139,6 +139,8 @@ Diagnostics:
 | CHT008 | Warning | ValueTask not awaited or consumed |
 | CHT009 | Info | `SemaphoreSlim(1,1)` — replace with `AsyncLock` |
 | CHT010 | Warning | ValueTask captured in lambda/closure |
+| CHT011 | Warning | `async` method only forwards an awaited ValueTask; return it directly |
+| CHT012 | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
 
 ### `CryptoHives.Foundation.Memory`
 

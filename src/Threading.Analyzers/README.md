@@ -44,6 +44,8 @@ Or as a development-only dependency (no runtime reference):
 | [CHT008](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT008.html) | Warning | `ValueTask` not awaited or consumed |
 | [CHT009](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT009.html) | Info | `SemaphoreSlim(1, 1)` used as an async lock; consider `AsyncLock` instead |
 | [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Error | `ValueTask` captured in a lambda/closure |
+| [CHT011](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT011.html) | Warning | `async` method only forwards an awaited `ValueTask` |
+| [CHT012](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT012.html) | Info | `async` `ValueTask` wrapper boxes a state machine when it suspends |
 
 ---
 
@@ -132,6 +134,8 @@ Most diagnostics come with a code fix:
 | CHT008 | Add `await`; discard explicitly with `_ =` |
 | CHT009 | Replace `SemaphoreSlim(1,1)` with `AsyncLock` |
 | CHT010 | Convert to `AsTask()` at declaration; use `Preserve()` |
+| CHT011 | Remove `async` and return the `ValueTask` directly |
+| CHT012 | Pool the state machine box (.NET 6+ only; a partial mitigation) |
 
 ---
 

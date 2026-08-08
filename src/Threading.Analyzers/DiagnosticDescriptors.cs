@@ -152,4 +152,32 @@ public static class DiagnosticDescriptors
         description: "Capturing a ValueTask in a lambda or local function is potentially unsafe because the lambda might be invoked multiple times, or the ValueTask may be consumed by other code before the lambda executes. If you need to use the result multiple times, convert it to a Task using .AsTask() or use .Preserve() to safely capture it for multiple consumes.",
         helpLinkUri: HelpLinkBase + "CHT010.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+
+    /// <summary>
+    /// CHT011: async method only forwards an awaited ValueTask.
+    /// </summary>
+    public static readonly DiagnosticDescriptor RedundantAsyncForwarding = new(
+        id: DiagnosticIds.RedundantAsyncForwarding,
+        title: "async method only forwards an awaited ValueTask",
+        messageFormat: "'{0}' only awaits and returns a ValueTask; remove async/await and return it directly",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "An async method compiles to a state machine, and its builder boxes that state machine onto the heap the first time the method suspends. When the method does nothing but await one ValueTask and return the result, that machinery buys nothing: returning the inner ValueTask directly is equivalent and removes the allocation. The synchronous fast path benefits too, because the builder costs setup work even when it never suspends. Note that the exception behaviour changes subtly - an argument validated inside the method would now throw synchronously instead of surfacing on the returned ValueTask - so split validation into a non-async wrapper if callers depend on it.",
+        helpLinkUri: HelpLinkBase + "CHT011.html",
+        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+
+    /// <summary>
+    /// CHT012: async ValueTask wrapper boxes a state machine on every suspension.
+    /// </summary>
+    public static readonly DiagnosticDescriptor AsyncWrapperBoxesStateMachine = new(
+        id: DiagnosticIds.AsyncWrapperBoxesStateMachine,
+        title: "async ValueTask wrapper boxes a state machine when it suspends",
+        messageFormat: "'{0}' forwards a single ValueTask but cannot return it directly because of surrounding cleanup; every suspension boxes a state machine",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "This method awaits exactly one ValueTask and returns it, but the await is wrapped in cleanup (try/catch, try/finally or using) that keeps the async machinery load-bearing. The cost is real but conditional: a call that completes synchronously allocates nothing, while every call that actually suspends boxes a state machine onto the heap - so this is a contended-path cost that an uncontended benchmark will not show. Consider whether the cleanup can be relocated to the awaited operation's own completion and failure paths, which allows the inner ValueTask to be returned directly. Applying [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))] to the method is a lower-effort alternative that pools the box, but it only helps when boxes are reused in sequence - it cannot reduce peak live objects, so it does little when many waiters suspend at the same time. Measure before choosing. If the cleanup genuinely requires the await boundary, suppress this diagnostic with a comment explaining why.",
+        helpLinkUri: HelpLinkBase + "CHT012.html",
+        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 }

@@ -57,4 +57,14 @@ public static class DiagnosticIds
     /// ValueTask captured in lambda/closure. 
     /// </summary> 
     public const string CapturedInClosure = "CHT010";
+
+    /// <summary>
+    /// <c>async</c> ValueTask method only forwards an awaited ValueTask; return it directly.
+    /// </summary>
+    public const string RedundantAsyncForwarding = "CHT011";
+
+    /// <summary>
+    /// <c>async</c> ValueTask wrapper boxes a state machine whenever it suspends.
+    /// </summary>
+    public const string AsyncWrapperBoxesStateMachine = "CHT012";
 }

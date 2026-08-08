@@ -30,6 +30,8 @@ Or add to your project file:
 | [CHT008](CHT008.md) | Warning | ValueTask not awaited or consumed |
 | [CHT009](CHT009.md) | Info | `SemaphoreSlim(1, 1)` used as async lock; replace with `AsyncLock` |
 | [CHT010](CHT010.md) | Error | ValueTask captured in lambda/closure |
+| [CHT011](CHT011.md) | Warning | `async` method only forwards an awaited ValueTask |
+| [CHT012](CHT012.md) | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
 
 ## Quick Reference
 
@@ -118,6 +120,8 @@ The analyzer package includes automatic code fixes for most diagnostics:
 | CHT008 | Add await, Explicitly discard with _ = |
 | CHT009 | Replace with AsyncLock |
 | CHT010 | Convert to AsTask() at declaration, Use Preserve() |
+| CHT011 | Remove async and return the ValueTask directly |
+| CHT012 | Pool the state machine box (offered only on .NET 6+; a partial mitigation) |
 
 ## The Preserve() Method
 
