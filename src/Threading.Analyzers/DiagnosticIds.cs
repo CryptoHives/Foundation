@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
@@ -23,20 +23,12 @@ public static class DiagnosticIds
     /// </summary> 
     public const string StoredInField = "CHT003";
 
-    /// <summary>
-    /// ValueTask.AsTask() called multiple times. 
-    /// </summary> 
-    public const string MultipleAsTask = "CHT004";
 
     /// <summary>
     /// ValueTask.Result accessed directly (blocking and potential misuse). 
     /// </summary> 
     public const string DirectResultAccess = "CHT005";
 
-    /// <summary>
-    /// ValueTask passed to method that may consume it multiple times. 
-    /// </summary> 
-    public const string PassedToUnsafeMethod = "CHT006";
 
     /// <summary>
     /// ValueTask.AsTask() stored before signaling can cause performance issues. 

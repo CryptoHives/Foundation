@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
@@ -14,16 +14,22 @@ public static class DiagnosticDescriptors
     private const string HelpLinkBase = "https://cryptohives.github.io/Foundation/packages/threading.analyzers/";
 
     /// <summary>
-    /// CHT001: ValueTask awaited multiple times.
+    /// CHT001: ValueTask consumed multiple times.
     /// </summary>
+    /// <remarks>
+    /// Worded as "consumed" rather than "awaited" because that is what the rule actually detects: a
+    /// ValueTask is consumed by <c>await</c>, by <c>AsTask()</c>, by <c>Preserve()</c> and by
+    /// <c>GetAwaiter().GetResult()</c> alike, and any second consumption in any combination is reported
+    /// here. Saying "awaited" misdescribed code that, for instance, only calls <c>AsTask()</c> twice.
+    /// </remarks>
     public static readonly DiagnosticDescriptor MultipleAwait = new(
         id: DiagnosticIds.MultipleAwait,
-        title: "ValueTask awaited multiple times",
-        messageFormat: "ValueTask '{0}' is awaited multiple times",
+        title: "ValueTask consumed multiple times",
+        messageFormat: "ValueTask '{0}' is consumed more than once",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A ValueTask should only be awaited once. Awaiting it multiple times can cause undefined behavior or InvalidOperationException. Consider using .AsTask() if you need to await multiple times, or use .Preserve() to safely consume the ValueTask.",
+        description: "A ValueTask may only be consumed once. Awaiting it, calling AsTask(), calling Preserve() or calling GetAwaiter().GetResult() each consume it, and doing any two of those to the same instance - in any combination - can cause undefined behavior or InvalidOperationException, because a ValueTask backed by a pooled IValueTaskSource may have been recycled in between. Convert once with .AsTask() and reuse the resulting Task, or use .Preserve() to make the ValueTask safe to consume repeatedly.",
         helpLinkUri: HelpLinkBase + "CHT001.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 
@@ -56,20 +62,6 @@ public static class DiagnosticDescriptors
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 
     /// <summary>
-    /// CHT004: ValueTask.AsTask() called multiple times.
-    /// </summary>
-    public static readonly DiagnosticDescriptor MultipleAsTask = new(
-        id: DiagnosticIds.MultipleAsTask,
-        title: "ValueTask.AsTask() called multiple times",
-        messageFormat: "AsTask() called multiple times on ValueTask '{0}'",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true,
-        description: "Calling AsTask() multiple times on the same ValueTask is undefined behavior and may throw InvalidOperationException. Store the result of AsTask() if you need to use it multiple times.",
-        helpLinkUri: HelpLinkBase + "CHT004.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
-
-    /// <summary>
     /// CHT005: ValueTask.Result accessed directly.
     /// </summary>
     public static readonly DiagnosticDescriptor DirectResultAccess = new(
@@ -81,20 +73,6 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Accessing .Result directly on a ValueTask is undefined behavior when the ValueTask is backed by IValueTaskSource. Use await or convert to Task first.",
         helpLinkUri: HelpLinkBase + "CHT005.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
-
-    /// <summary>
-    /// CHT006: ValueTask passed to method that may consume it multiple times.
-    /// </summary>
-    public static readonly DiagnosticDescriptor PassedToUnsafeMethod = new(
-        id: DiagnosticIds.PassedToUnsafeMethod,
-        title: "ValueTask passed to potentially unsafe method",
-        messageFormat: "ValueTask passed to '{0}' which may consume it multiple times",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Passing a ValueTask to certain methods like WhenAll, WhenAny, or custom methods may result in multiple consumption attempts. Consider using .AsTask() or .Preserve() before passing.",
-        helpLinkUri: HelpLinkBase + "CHT006.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 
     /// <summary>

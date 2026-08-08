@@ -34,12 +34,10 @@ Or as a development-only dependency (no runtime reference):
 
 | ID | Severity | Description |
 |----|----------|-------------|
-| [CHT001](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT001.html) | Error | `ValueTask` awaited multiple times |
+| [CHT001](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT001.html) | Error | `ValueTask` consumed multiple times |
 | [CHT002](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT002.html) | Warning | `ValueTask.GetAwaiter().GetResult()` used (blocking) |
 | [CHT003](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT003.html) | Warning | `ValueTask` stored in a field |
-| [CHT004](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT004.html) | Error | `ValueTask.AsTask()` called multiple times |
 | [CHT005](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT005.html) | Warning | `ValueTask.Result` accessed directly |
-| [CHT006](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT006.html) | Warning | `ValueTask` passed to a potentially unsafe method |
 | [CHT007](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT007.html) | Info | `AsTask()` stored before signaling (causes a performance hit) |
 | [CHT008](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT008.html) | Warning | `ValueTask` not awaited or consumed |
 | [CHT009](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT009.html) | Info | `SemaphoreSlim(1, 1)` used as an async lock; consider `AsyncLock` instead |
@@ -64,7 +62,7 @@ vt.GetAwaiter().GetResult(); // Warning: undefined behavior
 // CHT003: Stored in field — Warning
 private ValueTask _task; // Warning: may be consumed multiple times
 
-// CHT004: Multiple AsTask() — Error
+// CHT001 also covers repeated AsTask(): converting twice consumes twice — Error
 ValueTask vt = GetValueTask();
 var t1 = vt.AsTask();
 var t2 = vt.AsTask(); // Error: already consumed
@@ -72,9 +70,6 @@ var t2 = vt.AsTask(); // Error: already consumed
 // CHT005: Direct .Result — Warning
 ValueTask<int> vt = GetValueTask();
 int result = vt.Result; // Warning: undefined behavior
-
-// CHT006: Passed to unsafe method — Warning
-await Task.WhenAll(GetValueTask()); // Warning: use AsTask() or Preserve()
 
 // CHT007: AsTask() before signaling — Info (performance)
 Task t = someAsyncLock.LockAsync().AsTask();
@@ -128,7 +123,6 @@ Most diagnostics come with a code fix:
 | CHT001 | Convert to `AsTask()` at declaration; use `Preserve()` |
 | CHT002 | Convert to `await`; use `AsTask()` before `GetAwaiter().GetResult()` |
 | CHT003 | Change field type to `Task` |
-| CHT004 | Store `AsTask()` result in a variable |
 | CHT005 | Convert to `await`; use `AsTask().Result` |
 | CHT007 | Await the `ValueTask` directly |
 | CHT008 | Add `await`; discard explicitly with `_ =` |

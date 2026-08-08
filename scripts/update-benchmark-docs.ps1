@@ -56,8 +56,11 @@ $packageConfigurations = @{
             @{ Source = "AsyncManualResetEventSetThenWaitBenchmark-report.md"; Target = "asyncmanualresetevent-setthenw.md" }
             @{ Source = "AsyncManualResetEventWaitThenSetBenchmark-report.md"; Target = "asyncmanualresetevent-waitthenset.md" }
             @{ Source = "AsyncSemaphoreSingleBenchmark-report.md"; Target = "asyncsemaphore-single.md" }
+            @{ Source = "AsyncSemaphoreMultipleBenchmark-report.md"; Target = "asyncsemaphore-multiple.md" }
             @{ Source = "AsyncCountdownEventSignalBenchmark-report.md"; Target = "asynccountdownevent-signal.md" }
+            @{ Source = "AsyncCountdownEventWaitersBenchmark-report.md"; Target = "asynccountdownevent-waiters.md" }
             @{ Source = "AsyncBarrierSignalAndWaitBenchmark-report.md"; Target = "asyncbarrier-signalandwait.md" }
+            @{ Source = "AsyncBarrierPostPhaseBenchmark-report.md"; Target = "asyncbarrier-postphase.md" }
             @{ Source = "AsyncReaderWriterLockContentionBenchmark-report.md"; Target = "asyncreaderwriterlock-contention.md" }
             @{ Source = "AsyncReaderWriterLockReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-reader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradeableReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradeablereader.md" }

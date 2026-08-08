@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
@@ -26,9 +26,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
         DiagnosticIds.MultipleAwait,
         DiagnosticIds.BlockingGetResult,
         DiagnosticIds.StoredInField,
-        DiagnosticIds.MultipleAsTask,
         DiagnosticIds.DirectResultAccess,
-        DiagnosticIds.PassedToUnsafeMethod,
         DiagnosticIds.AsTaskStoredBeforeSignal,
         DiagnosticIds.NotConsumed);
 
@@ -62,16 +60,8 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
                 RegisterStoredInFieldFixes(context, node, diagnostic);
                 break;
 
-            case DiagnosticIds.MultipleAsTask:
-                RegisterMultipleAsTaskFixes(context, node, diagnostic);
-                break;
-
             case DiagnosticIds.DirectResultAccess:
                 RegisterDirectResultAccessFixes(context, node, diagnostic);
-                break;
-
-            case DiagnosticIds.PassedToUnsafeMethod:
-                RegisterPassedToUnsafeMethodFixes(context, node, diagnostic);
                 break;
 
             case DiagnosticIds.AsTaskStoredBeforeSignal:
@@ -133,17 +123,6 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterMultipleAsTaskFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
-    {
-        // Fix: Store AsTask() result in variable
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Store AsTask() result in a variable",
-                createChangedDocument: c => StoreAsTaskResultAsync(context.Document, node, c),
-                equivalenceKey: "StoreAsTask"),
-            diagnostic);
-    }
-
     private static void RegisterDirectResultAccessFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
     {
         // Fix 1: Convert to await
@@ -193,16 +172,6 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
-    private static void RegisterPassedToUnsafeMethodFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
-    {
-        // Fix: Wrap the ValueTask argument with .AsTask()
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Convert to AsTask() before passing",
-                createChangedDocument: c => WrapArgumentWithAsTaskAsync(context.Document, node, c),
-                equivalenceKey: "WrapArgWithAsTask"),
-            diagnostic);
-    }
 
     private static async Task<Document> ConvertToAsTaskAtDeclarationAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
