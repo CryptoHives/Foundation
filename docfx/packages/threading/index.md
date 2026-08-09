@@ -47,6 +47,7 @@ using CryptoHives.Foundation.Threading.Pools;
 | Class | Description | Documentation |
 |-------|-------------|---------------|
 | [AsyncLock](asynclock.md) | Pooled async mutual exclusion lock | [Details](asynclock.md) |
+| [AsyncKeyedLock&lt;TKey&gt;](asynckeyedlock.md) | Pooled per-key async exclusive lock (different keys never block each other) | [Details](asynckeyedlock.md) |
 | [AsyncAutoResetEvent](asyncautoresetevent.md) | Pooled async auto-reset event (one waiter per signal) | [Details](asyncautoresetevent.md) |
 | [AsyncManualResetEvent](asyncmanualresetevent.md) | Pooled async manual-reset event (all waiters per signal) | [Details](asyncmanualresetevent.md) |
 | [AsyncSemaphore](asyncsemaphore.md) | Pooled async semaphore with configurable permit count | [Details](asyncsemaphore.md) |
@@ -267,6 +268,7 @@ public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetrie
 ## Performance Characteristics by Primitive
 
 - **AsyncLock**: O(1) acquire when uncontended, FIFO queue for waiters
+- **AsyncKeyedLock**: O(1) acquire per key when uncontended; one administrative lock guards the key registry
 - **AsyncAutoResetEvent**: O(1) Set/Wait, FIFO queue for single waiter release
 - **AsyncManualResetEvent**: O(n) Set broadcast to all n waiters, O(1) Reset
 
@@ -386,6 +388,7 @@ var evt = new AsyncAutoResetEvent(
 - [AsyncManualResetEvent](asyncmanualresetevent.md)
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md)
 - [AsyncLock](asynclock.md)
+- [AsyncKeyedLock](asynckeyedlock.md)
 - [AsyncCountdownEvent](asynccountdownevent.md)
 - [AsyncBarrier](asyncbarrier.md)
 - [AsyncSemaphore](asyncsemaphore.md)
