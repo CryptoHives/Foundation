@@ -248,11 +248,6 @@ public sealed class AsyncManualResetEvent : IResettable
             return default;
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask(Task.FromException(new TimeoutException()));
-        }
-
         return WaitAsyncImpl(timeout, cancellationToken);
     }
 
@@ -273,6 +268,11 @@ public sealed class AsyncManualResetEvent : IResettable
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
             }
 
             if (!_localWaiter.TryGetValueTaskSource(out waiter))

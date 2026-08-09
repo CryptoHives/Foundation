@@ -201,11 +201,6 @@ public sealed class AsyncSemaphore
             }
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask(Task.FromException(new TimeoutException()));
-        }
-
         return WaitAsyncImpl(timeout, cancellationToken);
     }
 
@@ -241,6 +236,11 @@ public sealed class AsyncSemaphore
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask(Task.FromCanceled(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
             }
 
             if (!_localWaiter.TryGetValueTaskSource(out waiter))

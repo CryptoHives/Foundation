@@ -181,11 +181,6 @@ public sealed class AsyncCountdownEvent
             return default;
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask(Task.FromException(new TimeoutException()));
-        }
-
         return WaitAsyncImpl(timeout, cancellationToken);
     }
 
@@ -206,6 +201,11 @@ public sealed class AsyncCountdownEvent
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
             }
 
             waiter = _pool.GetPooledWaiter(this);

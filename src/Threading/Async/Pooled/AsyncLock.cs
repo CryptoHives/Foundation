@@ -246,11 +246,6 @@ public sealed class AsyncLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return LockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -271,6 +266,11 @@ public sealed class AsyncLock : IResettable
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (!_localWaiter.TryGetValueTaskSource(out waiter))

@@ -118,20 +118,6 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
 
     // Guards only entry creation/reference-counting/eviction below - never the actual lock wait/hold,
     // which stays fully parallel across keys via each Entry's own SpinLock and WaiterQueue.
-    //
-    // Deliberately a spin lock rather than a monitor. Replacing it with System.Threading.Lock (which
-    // spins briefly, then parks) measured 23-52% slower across 2, 4 and 8 threads on the disjoint-key
-    // workload - consistent in direction, though single-sample, so treat it as strongly indicated rather
-    // than settled. The reasoning behind it does hold up: these critical sections are a few dozen
-    // nanoseconds, so a waiter that parks pays more in scheduling than it saves in burnt cycles, and
-    // with more logical cores than contending threads the spinners are not stealing the holder's core.
-    //
-    // What limits throughput at high thread counts is how much work is serialized through this one lock,
-    // not how its waiters wait. Shrinking the critical section by moving the (already thread-safe)
-    // dictionary probe outside it was tried and produced no effect a careful harness could distinguish
-    // from noise, so it was dropped rather than carried as unproven complexity. Genuinely fixing this
-    // means partitioning the bookkeeping, which changes the type's semantics enough to belong in a
-    // separate sharded implementation rather than here.
     private Internal.SpinLock _keyLock;
 
     /// Intrusive LRU list of idle (mapped but unreferenced) entries, threaded through Entry.IdleNext and
@@ -141,8 +127,7 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
     private Entry? _idleTail;
     private int _idleCount;
 
-    // Number of entries with a non-zero reference count, i.e. currently held or awaited. Maintained under
-    // _keyLock so Count stays O(1) now that the dictionary also holds idle entries.
+    // Number of entries with a non-zero reference count, i.e. currently held or awaited.
     private int _activeCount;
 
     /// <summary>
@@ -805,15 +790,6 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
                 return new ValueTask<Releaser>(new Releaser(_owner, _key, this, NextGeneration()));
             }
 
-            if (timeout == TimeSpan.Zero)
-            {
-                // Built before releasing: if allocating it fails, the administrative reference is still
-                // outstanding and AsyncKeyedLock.LockAsyncImpl's catch is the one that drops it.
-                var timedOut = new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-                _owner.ReleaseEntry(this);
-                return timedOut;
-            }
-
             return LockAsyncImpl(timeout, cancellationToken);
         }
 
@@ -823,11 +799,12 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
             ManualResetValueTaskSource<Releaser> waiter;
             short version;
 
-            // Set when the token was already cancelled, so the waiter never entered the queue and no
-            // callback will ever run for it. Handled after the spin lock is released, because dropping
-            // the administrative reference takes the owner's key lock and this lock must never nest
-            // inside that one.
+            // Set when the acquisition failed before the waiter ever entered the queue, so no callback
+            // will run for it. Both are handled after the spin lock is released, because dropping the
+            // administrative reference takes the owner's key lock and this lock must never nest inside
+            // that one.
             bool cancelledBeforeQueueing = false;
+            bool timedOutBeforeQueueing = false;
 
             _spinLock.Enter();
             try
@@ -840,6 +817,12 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
                 if (cancellationToken.IsCancellationRequested)
                 {
                     cancelledBeforeQueueing = true;
+                    waiter = null!;
+                    version = 0;
+                }
+                else if (timeout == TimeSpan.Zero)
+                {
+                    timedOutBeforeQueueing = true;
                     waiter = null!;
                     version = 0;
                 }
@@ -862,12 +845,21 @@ public sealed class AsyncKeyedLock<TKey> where TKey : notnull
                 _spinLock.Exit();
             }
 
+            // Both failure results are built before the reference is released: if allocating one throws,
+            // the administrative reference is still outstanding and AsyncKeyedLock.LockAsyncImpl's catch
+            // is the one that drops it.
             if (cancelledBeforeQueueing)
             {
-                // Built before releasing, for the same reason as the zero-timeout path above.
                 var cancelled = new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
                 _owner.ReleaseEntry(this);
                 return cancelled;
+            }
+
+            if (timedOutBeforeQueueing)
+            {
+                var timedOut = new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+                _owner.ReleaseEntry(this);
+                return timedOut;
             }
 
             if (timeout != Timeout.InfiniteTimeSpan)

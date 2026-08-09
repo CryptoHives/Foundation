@@ -241,25 +241,12 @@ public sealed class AsyncAutoResetEvent : IResettable
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
+
         // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
         {
             return default;
-        }
-
-        if (timeout <= TimeSpan.Zero)
-        {
-            if (timeout == Timeout.InfiniteTimeSpan)
-            {
-                return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
-            }
-
-            if (timeout == TimeSpan.Zero)
-            {
-                return new ValueTask(Task.FromException(new TimeoutException()));
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(timeout));
         }
 
         return WaitAsyncImpl(timeout, cancellationToken);
@@ -283,6 +270,11 @@ public sealed class AsyncAutoResetEvent : IResettable
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
             }
 
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
