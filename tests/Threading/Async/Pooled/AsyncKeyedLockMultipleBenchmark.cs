@@ -54,7 +54,7 @@ using System.Threading.Tasks;
 /// <item><description><b>AsyncKeyedLock (Striped):</b> Third-party <c>StripedAsyncKeyedLocker&lt;TKey&gt;</c>.</description></item>
 /// <item><description><b>Dao.IndividualLock:</b> Third-party <c>IndividualLocks&lt;TKey&gt;</c>.</description></item>
 /// <item><description><b>AsyncUtilities (Striped):</b> Third-party <c>StripedAsyncLock&lt;TKey&gt;</c>.</description></item>
-/// <item><description><b>RefImpl:</b> Theodor Zoulias's "AsyncDuplicateLock" reference implementation - out of contest, no cancellation support.</description></item>
+/// <item><description><b>RefImpl:</b> Naive "AsyncDuplicateLock" reference pattern - out of contest, no cancellation support.</description></item>
 /// </list>
 /// <para>
 /// <b>Exception - KeyedSemaphores is excluded from this suite</b> (it is present in every other one).
@@ -132,7 +132,7 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     private ValueTask<AsyncUtilitiesLib::AsyncUtilities.StripedAsyncLock<string>.Releaser>[]? _asyncUtilitiesStripedHandle;
 
     private RefImpl.AsyncKeyedLock<string>.Releaser[]? _refImplOuter;
-    private ValueTask<RefImpl.AsyncKeyedLock<string>.Releaser>[]? _refImplHandle;
+    private Task<RefImpl.AsyncKeyedLock<string>.Releaser>[]? _refImplHandle;
 
     public static readonly object[] FixtureArgs = {
         new object[] { 1, 0 },
@@ -570,11 +570,11 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     {
         SetUpKeys();
         _refImplOuter = new RefImpl.AsyncKeyedLock<string>.Releaser[KeyCount];
-        _refImplHandle = new ValueTask<RefImpl.AsyncKeyedLock<string>.Releaser>[KeyCount * Iterations];
+        _refImplHandle = new Task<RefImpl.AsyncKeyedLock<string>.Releaser>[KeyCount * Iterations];
     }
 
     /// <summary>
-    /// Benchmark for the "AsyncDuplicateLock" reference implementation: <see cref="KeyCount"/>
+    /// Benchmark for the naive "AsyncDuplicateLock" reference implementation: <see cref="KeyCount"/>
     /// keys held simultaneously, <see cref="Iterations"/> waiters queued behind each. Out of contest:
     /// no cancellation token support, so only <see cref="CancellationType.None"/> is exercised.
     /// </summary>
@@ -604,7 +604,7 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
             _refImplOuter![k].Dispose();
         }
 
-        foreach (ValueTask<RefImpl.AsyncKeyedLock<string>.Releaser> handle in _refImplHandle!)
+        foreach (Task<RefImpl.AsyncKeyedLock<string>.Releaser> handle in _refImplHandle!)
         {
             using (await handle.ConfigureAwait(false))
             {

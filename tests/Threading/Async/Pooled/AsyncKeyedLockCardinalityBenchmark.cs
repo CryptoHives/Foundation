@@ -34,7 +34,7 @@ using System.Threading.Tasks;
 /// <item><description><b>KeyedSemaphores (Striped):</b> Third-party <c>KeyedSemaphoresCollection&lt;TKey&gt;</c> - fixed-size striped array; unaffected by key cardinality by design.</description></item>
 /// <item><description><b>Dao.IndividualLock:</b> Third-party <c>IndividualLocks&lt;TKey&gt;</c> - dictionary-backed keyed lock library.</description></item>
 /// <item><description><b>AsyncUtilities (Striped):</b> Third-party <c>StripedAsyncLock&lt;TKey&gt;</c> - another fixed-size striped implementation; unaffected by key cardinality by design.</description></item>
-/// <item><description><b>RefImpl:</b> Theodor Zoulias's "AsyncDuplicateLock" reference implementation (SemaphoreSlim per key, ConcurrentDictionary with compare-and-swap ref-counting).</description></item>
+/// <item><description><b>RefImpl:</b> Naive "AsyncDuplicateLock" reference pattern (SemaphoreSlim per key, ConcurrentDictionary with manual ref-counting).</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Execution time and memory allocations as <see cref="KeyCount"/> grows
@@ -277,7 +277,7 @@ public class AsyncKeyedLockCardinalityBenchmark : AsyncKeyedLockBaseBenchmark
     public void RefImplGlobalSetup() => SetUpKeys();
 
     /// <summary>
-    /// Benchmark for the "AsyncDuplicateLock" reference implementation cycling through
+    /// Benchmark for the naive "AsyncDuplicateLock" reference implementation cycling through
     /// <see cref="KeyCount"/> distinct keys.
     /// </summary>
     [Benchmark]
