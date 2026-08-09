@@ -624,11 +624,6 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Reader));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return ReaderLockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -654,6 +649,11 @@ public sealed class AsyncReaderWriterLock : IResettable
 
                     return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Reader));
                 }
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (cancellationToken.IsCancellationRequested)
@@ -757,11 +757,6 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.UpgradeableReader));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return UpgradeableReaderLockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -786,6 +781,11 @@ public sealed class AsyncReaderWriterLock : IResettable
 
                     return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.UpgradeableReader));
                 }
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (cancellationToken.IsCancellationRequested)
@@ -886,11 +886,6 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Writer));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return WriterLockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -906,6 +901,11 @@ public sealed class AsyncReaderWriterLock : IResettable
             if (Interlocked.CompareExchange(ref _status, (int)LockState.Writer, (int)LockState.Uncontested) == (int)LockState.Uncontested)
             {
                 return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Writer));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (cancellationToken.IsCancellationRequested)
