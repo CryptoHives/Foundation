@@ -87,6 +87,7 @@
 <p id="legend-hint" class="legend-hint" hidden>Click a color or line style below to hide/show it.</p>
 <div id="legend-colors" class="legend-row"></div>
 <div id="legend-dashes" class="legend-row"></div>
+<div id="legend-metrics" class="legend-row"></div>
 <div id="chart-container"><canvas id="chart"></canvas></div>
 
 <p class="hint">
@@ -100,8 +101,13 @@
   ones you don't want). <strong>Scaling by contention</strong> plots the benchmark's parameterized
   axis on the X axis using each implementation's most recent run — usually queued waiters, but
   some benchmarks scale a different dimension (distinct keys or threads, for the keyed locks).
-  Some methods aren't parameterized at all (e.g. a plain uncontended-only benchmark) — those show
-  a single point per implementation in both views.
+  Because that view spends its X axis on the parameter, the line-style channel is free, so it
+  draws <em>every</em> cancellation state and <em>both</em> metrics at once — colour is the
+  implementation, line style the cancellation state, and time is read off the left axis with
+  allocation on the right. All three legends toggle. The Cancellation and Metric selectors above
+  therefore apply to <strong>Trend over time</strong> only, where the parameter needs the line
+  style and there is no channel left for them. Some methods aren't parameterized at all (e.g. a
+  plain uncontended-only benchmark) — those show a single point per implementation in both views.
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
@@ -118,6 +124,7 @@
   const logScaleCb = document.getElementById("log-scale");
   const legendColorsEl = document.getElementById("legend-colors");
   const legendDashesEl = document.getElementById("legend-dashes");
+  const legendMetricsEl = document.getElementById("legend-metrics");
   const copyLinkBtn = document.getElementById("copy-link");
   const copyLinkStatusEl = document.getElementById("copy-link-status");
   const dateRangeSel = document.getElementById("date-range");
@@ -164,6 +171,10 @@
   // clickable to toggle visibility, same as Chart.js's default.
   const hiddenVariants = new Set();
   const hiddenParams = new Set();
+  // Scaling mode plots every cancellation state and both metrics at once, so each needs its own
+  // hide set - the selectors above only narrow what is queried, not what is drawn.
+  const hiddenCancellations = new Set();
+  const hiddenMetrics = new Set();
 
   function dashSwatchSvg(dash) {
     const dasharray = dash && dash.length ? dash.join(",") : "";
@@ -189,19 +200,41 @@
     }
   }
 
-  function renderDashLegend(entries) {
+  // Line style means contention level in Trend mode and cancellation state in Scaling mode -
+  // the two views have different channel budgets, since Scaling spends its X axis on the
+  // parameter and Trend spends it on the date. `hiddenSet` says which one is being toggled.
+  function renderDashLegend(entries, hiddenSet = hiddenParams) {
     legendDashesEl.innerHTML = "";
-    for (const { paramLabel, dash } of entries) {
+    for (const { paramLabel, dash, text } of entries) {
       const item = document.createElement("span");
-      item.className = "legend-item" + (hiddenParams.has(paramLabel) ? " disabled" : "");
+      item.className = "legend-item" + (hiddenSet.has(paramLabel) ? " disabled" : "");
       item.innerHTML = dashSwatchSvg(dash);
-      item.append(document.createTextNode(paramLabel));
+      item.append(document.createTextNode(text ?? paramLabel));
       item.onclick = () => {
-        if (hiddenParams.has(paramLabel)) hiddenParams.delete(paramLabel);
-        else hiddenParams.add(paramLabel);
+        if (hiddenSet.has(paramLabel)) hiddenSet.delete(paramLabel);
+        else hiddenSet.add(paramLabel);
         renderChart();
       };
       legendDashesEl.appendChild(item);
+    }
+  }
+
+  // Metric legend: which Y axis each entry belongs to is shown by the axis title, so the swatch
+  // only has to distinguish the two point shapes used for them.
+  function renderMetricLegend(entries) {
+    legendMetricsEl.innerHTML = "";
+    for (const { metric, text } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenMetrics.has(metric) ? " disabled" : "");
+      item.innerHTML = `<svg width="16" height="12" style="flex:none"><circle cx="8" cy="6" r="${metric === "mean_ns" ? 4 : 0}" fill="#555"/>` +
+        (metric === "mean_ns" ? "" : `<rect x="4" y="2" width="8" height="8" transform="rotate(45 8 6)" fill="#555"/>`) + `</svg>`;
+      item.append(document.createTextNode(text));
+      item.onclick = () => {
+        if (hiddenMetrics.has(metric)) hiddenMetrics.delete(metric);
+        else hiddenMetrics.add(metric);
+        renderChart();
+      };
+      legendMetricsEl.appendChild(item);
     }
   }
 
@@ -528,70 +561,119 @@
       : "No data for this selection yet.";
   }
 
+  // Scaling mode spends its X axis on the benchmark's parameter, which frees the line-style
+  // channel that Trend mode needs for it. That budget is what lets this view draw every
+  // cancellation state and both metrics at once instead of making them selectors:
+  //
+  //   colour      implementation (stable per family - see refreshFamilyColors)
+  //   line style  cancellation state
+  //   Y axis      metric: time on the left, allocation on the right
+  //
+  // Worst case here is 6 variants x 3 cancellations x 2 metrics = 36 lines, against the 432 the
+  // same encoding would produce in Trend mode, where the parameter also needs a channel.
+  const METRICS = [
+    { key: "mean_ns", axis: "y", point: "circle", text: "Mean time" },
+    { key: "allocated_bytes", axis: "yAlloc", point: "rectRot", text: "Allocated" },
+  ];
+
   function renderScalingChart() {
-    const metric = metricSel.value;
     const cutoff = dateRangeCutoffIso();
-    // Some methods (e.g. AsyncRWLock's WriterLock) aren't contention-parameterized at all — every
+    // Some methods (e.g. AsyncRWLock's WriterLock) aren't contention-parameterized at all - every
     // row has a NULL param_label. Requiring "param_label IS NOT NULL" unconditionally would leave
     // those with zero rows and an empty chart; fall back to the NULL-param rows instead, same as
     // renderTrendChart already does, so every method plots something in both view modes.
     const hasRealParams = currentParams.length > 0;
-    const paramClause = hasRealParams ? "AND param_label IS NOT NULL" : "AND param_label IS NULL";
+    const paramClause = hasRealParams ? "AND r.param_label IS NOT NULL" : "AND r.param_label IS NULL";
     const stmt = db.prepare(`
-      SELECT r.variant, r.param_value, r.param_label, r.run_date, r.commit_sha,
-             b.runtime_version, r.${metric} AS value
+      SELECT r.variant, r.cancellation, r.param_value, r.param_label, r.run_date, r.commit_sha,
+             b.runtime_version, r.mean_ns, r.allocated_bytes
       FROM benchmark_results r
       LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
-      WHERE r.platform = ? AND r.family = ? AND r.method = ? AND r.cancellation = ? ${paramClause.replace(/param_label/g, "r.param_label")}
+      WHERE r.platform = ? AND r.family = ? AND r.method = ? ${paramClause}
         ${cutoff ? "AND r.run_date >= ?" : ""}
-      ORDER BY r.variant, r.param_value, r.run_date
+      ORDER BY r.variant, r.cancellation, r.param_value, r.run_date
     `);
-    stmt.bind([platformSel.value, familySel.value, methodSel.value, cancellationSel.value, ...(cutoff ? [cutoff] : [])]);
+    stmt.bind([platformSel.value, familySel.value, methodSel.value, ...(cutoff ? [cutoff] : [])]);
 
-    // ORDER BY run_date ASC means the last row seen for a given (variant, level) is the most
-    // recent recorded run within the selected date range — exactly the one we want for a
+    // ORDER BY run_date ASC means the last row seen for a given (variant, cancellation, level) is
+    // the most recent recorded run within the selected date range - exactly the one we want for a
     // "current scaling" snapshot (or a rewind, if a shorter range is selected). When there's no
     // real contention level, every row's param_value is NULL, so key on a single fixed bucket (0)
-    // instead — there's only ever one point per variant in that case anyway.
-    const latestByVariant = new Map();
+    // instead - there's only ever one point per series in that case anyway.
+    const latest = new Map();      // "variant cancellation" -> Map(x -> row)
+    const variantOrder = [];
+    const cancellations = [];
     while (stmt.step()) {
       const row = stmt.getAsObject();
       const x = hasRealParams ? row.param_value : 0;
-      if (!latestByVariant.has(row.variant)) latestByVariant.set(row.variant, new Map());
-      latestByVariant.get(row.variant).set(x, {
-        x,
-        y: row.value,
-        param_label: hasRealParams ? row.param_label : "single scenario",
-        commit: row.commit_sha,
-        runtime: row.runtime_version,
-      });
+      const key = `${row.variant} ${row.cancellation}`;
+      if (!latest.has(key)) latest.set(key, new Map());
+      latest.get(key).set(x, row);
+      if (!variantOrder.includes(row.variant)) variantOrder.push(row.variant);
+      if (!cancellations.includes(row.cancellation)) cancellations.push(row.cancellation);
     }
     stmt.free();
 
-    // Color comes from familyColors (fixed per platform+family), not this query's key order, so
-    // it stays stable across methods — see refreshFamilyColors.
-    const variantOrder = Array.from(latestByVariant.keys());
+    const DASH_PATTERNS = [[], [6, 3], [2, 2], [8, 3, 2, 3], [1, 3]];
+    const dashFor = new Map(cancellations.map((c, i) => [c, DASH_PATTERNS[i % DASH_PATTERNS.length]]));
+    const multiCancellation = cancellations.length > 1;
 
-    const datasets = variantOrder.map((variant) => ({
-      label: variant,
-      data: Array.from(latestByVariant.get(variant).values()).sort((a, b) => a.x - b.x),
-      borderColor: familyColors.get(variant),
-      backgroundColor: familyColors.get(variant),
-      hidden: hiddenVariants.has(variant),
-      tension: 0.15,
-      pointRadius: 3,
-    }));
+    const datasets = [];
+    for (const [key, byX] of latest) {
+      const [variant, cancellation] = key.split(" ");
+      const points = Array.from(byX.values()).sort((a, b) => a.x - b.x);
+      for (const metric of METRICS) {
+        // An all-null metric contributes nothing but a legend row and an empty axis. Allocation
+        // is never null now that a measured zero is stored as 0, so in practice this only skips
+        // a metric a report genuinely didn't carry.
+        if (points.every((r) => r[metric.key] == null)) continue;
+        datasets.push({
+          label: multiCancellation ? `${variant} · ${cancellationLabel(cancellation)} · ${metric.text}`
+                                   : `${variant} · ${metric.text}`,
+          data: points.map((r) => ({
+            x: hasRealParams ? r.param_value : 0,
+            y: r[metric.key],
+            param_label: hasRealParams ? r.param_label : "single scenario",
+            commit: r.commit_sha,
+            runtime: r.runtime_version,
+          })),
+          yAxisID: metric.axis,
+          borderColor: familyColors.get(variant),
+          backgroundColor: familyColors.get(variant),
+          borderDash: dashFor.get(cancellation),
+          pointStyle: metric.point,
+          hidden: hiddenVariants.has(variant) || hiddenCancellations.has(cancellation)
+                  || hiddenMetrics.has(metric.key),
+          tension: 0.15,
+          pointRadius: 3,
+        });
+      }
+    }
+
+    const usesAlloc = datasets.some((d) => d.yAxisID === "yAlloc");
+    const scales = {
+      x: {
+        type: "linear",
+        title: { display: true, text: hasRealParams ? "Contention level" : "(single, fixed scenario - no contention axis)" },
+        ticks: hasRealParams ? undefined : { display: false },
+      },
+      y: { ...yAxisScale("mean_ns"), position: "left" },
+    };
+    if (usesAlloc) {
+      // Allocation stays linear even when the time axis is logarithmic: a zero-allocation series
+      // is the result this library exists to produce, and a log axis cannot plot zero - it would
+      // drop exactly the lines that matter. Its gridlines are suppressed so the two axes don't
+      // draw two conflicting sets across the same plot area.
+      scales.yAlloc = {
+        type: "linear", position: "right", beginAtZero: true,
+        title: { display: true, text: metricLabel("allocated_bytes") },
+        grid: { drawOnChartArea: false },
+      };
+    }
 
     renderChartInstance(
       datasets,
-      {
-        x: {
-          type: "linear",
-          title: { display: true, text: hasRealParams ? "Contention level" : "(single, fixed scenario — no contention axis)" },
-          ticks: hasRealParams ? undefined : { display: false },
-        },
-        y: yAxisScale(metric),
-      },
+      scales,
       // param_label names its own axes (e.g. "KeyCount=1, Iterations=10"), so no unit word is
       // appended here. Most benchmarks scale queued waiters, but not all do - keyed locks scale
       // distinct keys or threads - and a fixed "waiters" suffix was wrong for those.
@@ -601,13 +683,20 @@
     );
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: familyColors.get(v) })));
-    renderDashLegend([]); // one line per variant here — no per-level distinction to show
+    renderDashLegend(
+      multiCancellation
+        ? cancellations.map((c) => ({ paramLabel: c, dash: dashFor.get(c), text: cancellationLabel(c) }))
+        : [],
+      hiddenCancellations
+    );
+    renderMetricLegend(
+      METRICS.filter((m) => datasets.some((d) => d.yAxisID === m.axis))
+             .map((m) => ({ metric: m.key, text: m.text }))
+    );
 
     const visibleCount = datasets.filter((d) => !d.hidden).length;
     statusEl.textContent = datasets.length
-      ? hasRealParams
-        ? `${visibleCount} of ${datasets.length} variant(s) shown, most recent run per contention level`
-        : `${visibleCount} of ${datasets.length} variant(s) shown, most recent run (this method has a single, fixed scenario — no contention scaling)`
+      ? `${visibleCount} of ${datasets.length} series shown` + (hasRealParams ? "" : " (single scenario)")
       : "No data for this selection yet.";
   }
 
