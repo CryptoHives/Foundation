@@ -127,9 +127,32 @@
   // its Single/Timeout variants; SyncLock has 11 on its own) — an 8-color palette would silently
   // wrap and give two variants the same color.
   const PALETTE = [
-    "#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d",
-    "#ea580c", "#0d9488", "#4f46e5", "#be123c", "#78716c", "#059669", "#ca8a04", "#0369a1",
+    "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#0891b2", "#db2777", "#65a30d",
+    "#0d9488", "#4f46e5", "#be123c", "#78716c", "#059669", "#0369a1", "#9333ea", "#475569",
   ];
+
+  // This library's own implementations are pinned to the CryptoHives amber (#FFB643, sampled from
+  // the logo) rather than taking whatever the rotating palette hands them, so "ours" is the same
+  // colour on every chart instead of moving as the variant list changes between families.
+  //
+  // The plain "Pooled" baseline always gets the brand colour itself. Families whose variants are
+  // all qualified — AsyncManualResetEvent has "Pooled (ValueTask)", "Pooled (AsTask)" and so on,
+  // with no unqualified entry — give it to whichever sorts first, so those charts still anchor on
+  // the brand colour. Remaining Pooled variants walk a ramp around it: recognisably the same
+  // family, still told apart. Two amber tones were dropped from PALETTE above so no unrelated
+  // variant can land near them.
+  // Eight entries, because AsyncAutoResetEvent and AsyncManualResetEvent each expose seven Pooled
+  // variants once every method's variants are pooled together (ValueTask/AsTask/AsValueTask, each
+  // with a SyncCont pair). A six-colour ramp wrapped and gave the seventh the brand colour, which
+  // is the one thing this must never do.
+  const BRAND_AMBER = "#FFB643";
+  const POOLED_RAMP = [
+    BRAND_AMBER, "#c2410c", "#a16207", "#f59e0b", "#7c2d12", "#fcd34d", "#ea580c", "#92400e",
+  ];
+
+  function isPooled(variant) {
+    return variant === "Pooled" || variant.startsWith("Pooled (");
+  }
 
   // Custom legends replace Chart.js's built-in one-entry-per-dataset legend, which would
   // otherwise show one row per (variant, contention level) combination in multi-level trend
@@ -345,7 +368,20 @@
       "WHERE platform = ? AND family = ?",
       [platformSel.value, familySel.value]
     );
-    familyColors = new Map(variants.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+    // Pooled variants are coloured from their own ramp and everything else from PALETTE, each
+    // counted separately so a family with many Pooled variants doesn't push the others along the
+    // palette. The unqualified "Pooled" is pulled to the front of its ramp so it takes the brand
+    // colour whatever its alphabetical position; families without one fall back to first-sorted.
+    const pooled = variants.filter(isPooled);
+    pooled.sort((a, b) => (a === "Pooled" ? -1 : b === "Pooled" ? 1 : 0));
+
+    let otherIndex = 0;
+    familyColors = new Map(variants.map((v) => {
+      if (isPooled(v)) {
+        return [v, POOLED_RAMP[pooled.indexOf(v) % POOLED_RAMP.length]];
+      }
+      return [v, PALETTE[otherIndex++ % PALETTE.length]];
+    }));
   }
 
   function refreshCancellation(preferred) {
