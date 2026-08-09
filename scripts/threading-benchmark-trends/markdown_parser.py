@@ -78,7 +78,15 @@ def parse_measurement_ns(cell: str) -> float | None:
 
 def parse_allocated_bytes(cell: str) -> int | None:
     cell = cell.strip().replace(",", "")
-    if cell in ("", "-", "NA"):
+    # "-" is BenchmarkDotNet reporting a measured zero, not a missing measurement, and conflating
+    # the two hid the library's headline result: an allocation-free variant became NULL, so the
+    # Allocated metric dropped its points entirely and the series vanished from the chart rather
+    # than drawing the flat line at zero that is the whole claim. "NA" (diagnoser did not run)
+    # and an empty cell stay NULL - checked across every committed report, neither ever occurs
+    # in an Allocated column, so nothing currently relies on that path.
+    if cell == "-":
+        return 0
+    if cell in ("", "NA"):
         return None
     cell = cell.rstrip("B").strip()
     try:
