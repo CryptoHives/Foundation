@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
@@ -166,20 +166,20 @@ public sealed class AsyncValueTaskBoxingCodeFixProvider : CodeFixProvider
         switch (declaration)
         {
             case MethodDeclarationSyntax method:
-            {
-                SyntaxTriviaList leading = method.GetLeadingTrivia();
-                return method
-                    .WithLeadingTrivia(SyntaxFactory.TriviaList())
-                    .WithAttributeLists(method.AttributeLists.Insert(0, list.WithLeadingTrivia(leading)));
-            }
+                {
+                    SyntaxTriviaList leading = method.GetLeadingTrivia();
+                    return method
+                        .WithLeadingTrivia(SyntaxFactory.TriviaList())
+                        .WithAttributeLists(method.AttributeLists.Insert(0, list.WithLeadingTrivia(leading)));
+                }
 
             case LocalFunctionStatementSyntax local:
-            {
-                SyntaxTriviaList leading = local.GetLeadingTrivia();
-                return local
-                    .WithLeadingTrivia(SyntaxFactory.TriviaList())
-                    .WithAttributeLists(local.AttributeLists.Insert(0, list.WithLeadingTrivia(leading)));
-            }
+                {
+                    SyntaxTriviaList leading = local.GetLeadingTrivia();
+                    return local
+                        .WithLeadingTrivia(SyntaxFactory.TriviaList())
+                        .WithAttributeLists(local.AttributeLists.Insert(0, list.WithLeadingTrivia(leading)));
+                }
 
             default:
                 return null;
@@ -298,28 +298,28 @@ public sealed class AsyncValueTaskBoxingCodeFixProvider : CodeFixProvider
         {
             // ValueTask<T>: `return await X();` becomes `return X();`
             case ReturnStatementSyntax { Expression: not null } returnStatement:
-            {
-                ExpressionSyntax? forwarded = Unwrap(returnStatement.Expression);
-                return forwarded is null
-                    ? null
-                    : block.ReplaceNode(returnStatement, returnStatement.WithExpression(forwarded));
-            }
+                {
+                    ExpressionSyntax? forwarded = Unwrap(returnStatement.Expression);
+                    return forwarded is null
+                        ? null
+                        : block.ReplaceNode(returnStatement, returnStatement.WithExpression(forwarded));
+                }
 
             // Non-generic ValueTask: a trailing `await X();` becomes `return X();`
             case ExpressionStatementSyntax expressionStatement:
-            {
-                ExpressionSyntax? forwarded = Unwrap(expressionStatement.Expression);
-                if (forwarded is null)
                 {
-                    return null;
+                    ExpressionSyntax? forwarded = Unwrap(expressionStatement.Expression);
+                    if (forwarded is null)
+                    {
+                        return null;
+                    }
+
+                    ReturnStatementSyntax replacement = SyntaxFactory
+                        .ReturnStatement(forwarded)
+                        .WithTriviaFrom(expressionStatement);
+
+                    return block.ReplaceNode(expressionStatement, replacement);
                 }
-
-                ReturnStatementSyntax replacement = SyntaxFactory
-                    .ReturnStatement(forwarded)
-                    .WithTriviaFrom(expressionStatement);
-
-                return block.ReplaceNode(expressionStatement, replacement);
-            }
 
             default:
                 return null;
