@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 /// <item><description><b>KeyedSemaphores (Striped):</b> Third-party <c>KeyedSemaphoresCollection&lt;TKey&gt;</c> - fixed-size striped array, same tradeoff as the AsyncKeyedLock striped variant.</description></item>
 /// <item><description><b>Dao.IndividualLock:</b> Third-party <c>IndividualLocks&lt;TKey&gt;</c> - dictionary-backed keyed lock library.</description></item>
 /// <item><description><b>AsyncUtilities (Striped):</b> Third-party <c>StripedAsyncLock&lt;TKey&gt;</c> - another fixed-size striped implementation.</description></item>
-/// <item><description><b>RefImpl:</b> Naive "AsyncDuplicateLock" reference pattern (SemaphoreSlim per key, ConcurrentDictionary with manual ref-counting) - the pattern most blog posts on this topic converge on.</description></item>
+/// <item><description><b>RefImpl:</b> Theodor Zoulias's "AsyncDuplicateLock" reference implementation (SemaphoreSlim per key, ConcurrentDictionary with compare-and-swap ref-counting) - the baseline the AsyncKeyedLock author benchmarks against.</description></item>
 /// </list>
 /// <para>
 /// <b>Key metrics:</b> Per-operation overhead and memory allocations for the entry lookup/ref-count
@@ -147,7 +147,7 @@ public class AsyncKeyedLockSingleKeyBenchmark : AsyncKeyedLockBaseBenchmark
     }
 
     /// <summary>
-    /// Benchmark for the naive "AsyncDuplicateLock" reference implementation (single uncontended key).
+    /// Benchmark for the "AsyncDuplicateLock" reference implementation (single uncontended key).
     /// </summary>
     [Test]
     [Benchmark]

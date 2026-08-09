@@ -427,16 +427,30 @@ public class AsyncKeyedLockConcurrentBenchmark : AsyncKeyedLockBaseBenchmark
     public void RefImplGlobalSetup() => SetUpKeys();
 
     /// <summary>
-    /// Benchmark for the naive "AsyncDuplicateLock" reference implementation under concurrent
-    /// multi-threaded access. <b>Out of contest.</b>
+    /// Benchmark for the "AsyncDuplicateLock" reference implementation under concurrent
+    /// multi-threaded access. <b>In contest here</b>, unlike in the other classes.
     /// </summary>
     /// <remarks>
-    /// Its own source documents that the ref-count decrement/removal "isn't fully race-free under
-    /// extreme contention", and this suite - many threads, one shared registry, especially at
-    /// <see cref="SharedKeys"/> = <see langword="true"/> and high <see cref="ThreadCount"/> - is
-    /// precisely the shape that exercises that race. It is kept as a familiar point of reference for
-    /// what the naive pattern costs, not as a correct implementation to be beaten, and its numbers
-    /// should be read with that caveat. <c>AsyncKeyedLockMultipleBenchmark</c> labels it the same way.
+    /// <para>
+    /// This class was previously labelled out of contest, on the grounds that the reference
+    /// implementation's ref-count decrement and removal were not race-free under extreme
+    /// contention - exactly the shape this suite produces at <see cref="SharedKeys"/> =
+    /// <see langword="true"/> and high <see cref="ThreadCount"/>. That caveat described an earlier
+    /// hand-written variant. The baseline is now a faithful port of Theodor Zoulias's version, whose
+    /// compare-and-swap release loop exists precisely to close that race, so its results here are
+    /// legitimate and should be read as a genuine comparison.
+    /// </para>
+    /// <para>
+    /// It remains out of contest in the classes that vary cancellation or timeout, since it supports
+    /// neither - but neither of those is an axis here.
+    /// </para>
+    /// <para>
+    /// Worth keeping in mind when reading the multi-threaded scaling: this implementation has no
+    /// administrative lock at all, reaching its key map only through
+    /// <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey, TValue}"/> operations. An
+    /// implementation that guards a shared map with a single lock is not just paying a different
+    /// waiting policy, it is serializing where this one does not.
+    /// </para>
     /// </remarks>
     [Benchmark]
     [BenchmarkCategory("Concurrent", "RefImpl")]
