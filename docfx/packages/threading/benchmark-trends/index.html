@@ -90,15 +90,18 @@
 <div id="chart-container"><canvas id="chart"></canvas></div>
 
 <p class="hint">
-  Data source: <code>benchmark-history.sqlite</code>, appended to by
-  <code>scripts/threading-benchmark-trends/record-benchmark-run.ps1</code> whenever someone
-  decides a local run is worth keeping. Each point is one recorded run; hover a point for the
-  exact commit and value. <strong>Trend over time</strong> plots every recorded contention level
-  for the current filters at once (use the line-style legend below to hide levels you don't
-  want). <strong>Scaling by contention</strong> plots contention level (queued waiters) on the X
-  axis using each implementation's most recent run, showing how it scales under load at a
-  glance. Some methods aren't contention-parameterized at all (e.g. a plain uncontended-only
-  benchmark) — those show a single point per implementation in both views.
+  Data source: <code>benchmark-history.sqlite</code>, rebuilt by
+  <code>scripts/threading-benchmark-trends/import_historical_markdown.py</code> from the
+  per-platform markdown under <code>docfx/packages/threading/benchmarks/</code>, which is
+  committed with each run — so the database is a derived artifact and can be regenerated from git
+  history at any time. Each point is one recorded run; hover a point for the exact commit, value
+  and the .NET runtime it was measured on. <strong>Trend over time</strong> plots every recorded
+  parameter combination for the current filters at once (use the line-style legend below to hide
+  ones you don't want). <strong>Scaling by contention</strong> plots the benchmark's parameterized
+  axis on the X axis using each implementation's most recent run — usually queued waiters, but
+  some benchmarks scale a different dimension (distinct keys or threads, for the keyed locks).
+  Some methods aren't parameterized at all (e.g. a plain uncontended-only benchmark) — those show
+  a single point per implementation in both views.
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
@@ -414,6 +417,15 @@
     renderChart();
   }
 
+  // The runtime a point was measured on belongs next to the commit: between the recorded runs so
+  // far the .NET version moved almost every time (10.0.3 -> 10.0.5 -> 10.0.9 -> 10.0.10), so a step
+  // in a line cannot be read as a code change without knowing whether the floor moved under it.
+  // Older rows predate the environment table and simply omit it rather than showing a blank.
+  function pointFooter(raw) {
+    const commit = `commit ${raw.commit?.slice(0, 8) ?? "?"}`;
+    return raw.runtime ? `${commit} · .NET ${raw.runtime}` : commit;
+  }
+
   function renderChartInstance(datasets, scales, tooltipAfterLabel) {
     if (chart) chart.destroy();
     chart = new Chart(document.getElementById("chart"), {
@@ -445,11 +457,13 @@
     const cutoff = dateRangeCutoffIso();
     const paramClause = hasRealParams ? `AND param_label IN (${placeholders})` : "AND param_label IS NULL";
     const stmt = db.prepare(`
-      SELECT variant, param_label, run_date, commit_sha, ${metric} AS value
-      FROM benchmark_results
-      WHERE platform = ? AND family = ? AND method = ? AND cancellation = ? ${paramClause}
-        ${cutoff ? "AND run_date >= ?" : ""}
-      ORDER BY variant, param_label, run_date
+      SELECT r.variant, r.param_label, r.run_date, r.commit_sha, b.runtime_version,
+             r.${metric} AS value
+      FROM benchmark_results r
+      LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
+      WHERE r.platform = ? AND r.family = ? AND r.method = ? AND r.cancellation = ? ${paramClause.replace(/param_label/g, "r.param_label")}
+        ${cutoff ? "AND r.run_date >= ?" : ""}
+      ORDER BY r.variant, r.param_label, r.run_date
     `);
     stmt.bind([
       platformSel.value, familySel.value, methodSel.value, cancellationSel.value,
@@ -463,7 +477,9 @@
       const row = stmt.getAsObject();
       const key = multiParam ? `${row.variant} @ ${row.param_label}` : row.variant;
       if (!seriesByKey.has(key)) seriesByKey.set(key, { variant: row.variant, paramLabel: row.param_label, points: [] });
-      seriesByKey.get(key).points.push({ x: row.run_date, y: row.value, commit: row.commit_sha });
+      seriesByKey.get(key).points.push({
+        x: row.run_date, y: row.value, commit: row.commit_sha, runtime: row.runtime_version,
+      });
     }
     stmt.free();
 
@@ -497,7 +513,7 @@
         x: { type: "time", time: { unit: "day" }, title: { display: true, text: "Run date" } },
         y: yAxisScale(metric),
       },
-      (ctx) => `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+      (ctx) => pointFooter(ctx.raw)
     );
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: familyColors.get(v) })));
@@ -522,11 +538,13 @@
     const hasRealParams = currentParams.length > 0;
     const paramClause = hasRealParams ? "AND param_label IS NOT NULL" : "AND param_label IS NULL";
     const stmt = db.prepare(`
-      SELECT variant, param_value, param_label, run_date, commit_sha, ${metric} AS value
-      FROM benchmark_results
-      WHERE platform = ? AND family = ? AND method = ? AND cancellation = ? ${paramClause}
-        ${cutoff ? "AND run_date >= ?" : ""}
-      ORDER BY variant, param_value, run_date
+      SELECT r.variant, r.param_value, r.param_label, r.run_date, r.commit_sha,
+             b.runtime_version, r.${metric} AS value
+      FROM benchmark_results r
+      LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
+      WHERE r.platform = ? AND r.family = ? AND r.method = ? AND r.cancellation = ? ${paramClause.replace(/param_label/g, "r.param_label")}
+        ${cutoff ? "AND r.run_date >= ?" : ""}
+      ORDER BY r.variant, r.param_value, r.run_date
     `);
     stmt.bind([platformSel.value, familySel.value, methodSel.value, cancellationSel.value, ...(cutoff ? [cutoff] : [])]);
 
@@ -545,6 +563,7 @@
         y: row.value,
         param_label: hasRealParams ? row.param_label : "single scenario",
         commit: row.commit_sha,
+        runtime: row.runtime_version,
       });
     }
     stmt.free();
@@ -577,8 +596,8 @@
       // appended here. Most benchmarks scale queued waiters, but not all do - keyed locks scale
       // distinct keys or threads - and a fixed "waiters" suffix was wrong for those.
       (ctx) => hasRealParams
-        ? `${ctx.raw.param_label} · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
-        : `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+        ? `${ctx.raw.param_label} · ${pointFooter(ctx.raw)}`
+        : pointFooter(ctx.raw)
     );
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: familyColors.get(v) })));

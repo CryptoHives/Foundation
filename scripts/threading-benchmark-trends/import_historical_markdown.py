@@ -37,7 +37,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 sys.path.insert(0, SCRIPT_DIR)
 
-from markdown_parser import parse_markdown_table  # noqa: E402
+from markdown_parser import parse_machine_spec, parse_markdown_table  # noqa: E402
 
 PLATFORM_FOR_FLAT_ERA = "windows-x64-amd-ryzen-5-7600x"
 BRANCH_FOR_HISTORY = "main"
@@ -213,6 +213,21 @@ def resolve_platform_and_filename(path: str):
     return None
 
 
+def read_machine_spec(sha: str, platform: str):
+    """Reads the machine-spec.md that applies to `platform` at `sha`, or None if there is none.
+
+    Tries the per-platform path first and falls back to the flat-era root file, so both layouts
+    resolve without the caller needing to know which era a commit belongs to.
+    """
+    base = "docfx/packages/threading/benchmarks"
+    for path in (f"{base}/{platform}/machine-spec.md", f"{base}/machine-spec.md"):
+        try:
+            return parse_machine_spec(git("show", f"{sha}:{path}"))
+        except subprocess.CalledProcessError:
+            continue
+    return None
+
+
 def main() -> int:
     import argparse
 
@@ -237,6 +252,11 @@ def main() -> int:
     for sha, date, paths in commits:
         run_id = f"hist-{sha[:10]}"
         commit_rows = 0
+
+        # Platforms this commit actually produced results for, collected during the loop below so
+        # the environment is recorded for exactly those - see record_run_environment().
+        platforms_with_results = set()
+
         for path in paths:
             resolved = resolve_platform_and_filename(path)
             if resolved is None:
@@ -258,6 +278,7 @@ def main() -> int:
             if not rows:
                 continue
             total_files += 1
+            platforms_with_results.add(platform)
 
             for row in rows:
                 commit_rows += 1
@@ -281,6 +302,29 @@ def main() -> int:
                         row["mean_ns"], row["stddev_ns"], row["allocated_bytes"],
                     ),
                 )
+        # Read at the commit rather than from its changed-file list: git log --name-only reports
+        # only what a commit touched, and a run that reused an unchanged machine-spec.md would
+        # otherwise record no environment at all. Restricting this to platforms that produced
+        # results also keeps out commits that revised the spec without publishing any tables.
+        if not args.dry_run:
+            for platform in sorted(platforms_with_results):
+                spec = read_machine_spec(sha, platform)
+                if spec is None:
+                    print(f"  [warn] {sha[:10]} {platform}: no machine-spec.md found; "
+                          f"environment not recorded", file=sys.stderr)
+                    continue
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO benchmark_runs
+                        (run_id, platform, run_date, commit_sha, branch, bdn_version, os, cpu,
+                         logical_cores, physical_cores, sdk_version, runtime_version, jit)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (run_id, platform, date, sha, None, spec["bdn_version"], spec["os"],
+                     spec["cpu"], spec["logical_cores"], spec["physical_cores"],
+                     spec["sdk_version"], spec["runtime_version"], spec["jit"]),
+                )
+
         if commit_rows:
             print(f"  [{'dry-run' if args.dry_run else 'ok'}] {sha[:10]} {date}: {commit_rows} row(s)")
         total_rows += commit_rows
