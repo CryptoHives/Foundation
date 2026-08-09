@@ -37,3 +37,7 @@
       href: ../threading.analyzers/CHT009.md
     - name: CHT010 - ValueTask captured in lambda/closure
       href: ../threading.analyzers/CHT010.md
+    - name: CHT011 - Redundant async forwarding
+      href: ../threading.analyzers/CHT011.md
+    - name: CHT012 - async wrapper boxes state machine
+      href: ../threading.analyzers/CHT012.md
