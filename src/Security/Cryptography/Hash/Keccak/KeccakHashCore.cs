@@ -33,8 +33,10 @@ public abstract class KeccakHashCore : KeccakCore
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(GetType().Name);
         if (destination.Length < _outputBytes)
         {
             bytesWritten = 0;

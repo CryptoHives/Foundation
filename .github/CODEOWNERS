@@ -1,0 +1,21 @@
+# Code owners for CryptoHives.Foundation
+# https://docs.github.com/articles/about-code-owners
+#
+# These owners are automatically requested for review on matching PRs.
+# All areas currently map to @CryptoHives/maintainers; split into
+# specialized teams here as the project grows.
+
+# Default owner for everything in the repo
+*                           @cryptohivekeeper
+
+# Packages
+/src/Security/Cryptography/  @CryptoHives/maintainers
+/src/Threading/             @CryptoHives/maintainers
+/src/Threading.Analyzers/   @CryptoHives/maintainers
+/src/Memory/                @CryptoHives/maintainers
+
+# CI, build, and repo configuration
+/.github/                   @cryptohivekeeper
+/.azurepipelines/           @cryptohivekeeper
+/*.props                    @cryptohivekeeper
+/*.targets                  @cryptohivekeeper

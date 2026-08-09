@@ -102,7 +102,7 @@ Asynchronously waits for the countdown to reach zero.
 public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously waits for the countdown to reach zero, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously waits for the countdown to reach zero, or throws `TimeoutException` if the timeout elapses first.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
@@ -110,7 +110,8 @@ Asynchronously waits for the countdown to reach zero, or throws `OperationCancel
 **Returns**: A `ValueTask` that completes when the count reaches zero.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before the count reaches zero.
+- `TimeoutException` — If the timeout elapses before the count reaches zero.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -130,7 +131,7 @@ try
     await _countdown.WaitAsync(TimeSpan.FromSeconds(30));
     ProcessResults();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
@@ -201,7 +202,9 @@ ProtoPromise is included as an additional comparison point and is faster than th
 Only the pooled `AsyncCountdownEvent` is benchmarked in a contested and a uncontested scenario to proof that no memory allocations occur.
 The Nito.Async implementation can not be benchmarked due to its internal design which doesn't allow to Reset the event, a new allocation for the AsyncCountdownEvent were necessary for each run so it was left out of contest.
 
-[!INCLUDE[Countdown Event Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asynccountdownevent-signal.md)]
+[View live SignalAndWait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=SignalAndWait)
+
+[View live WaitAndSignal benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=WaitAndSignal)
 
 ### Benchmark Analysis
 
@@ -236,7 +239,7 @@ try
 {
     await countdown.WaitAsync(TimeSpan.FromMinutes(1));
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }

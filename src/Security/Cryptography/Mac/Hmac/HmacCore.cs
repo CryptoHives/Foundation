@@ -68,31 +68,36 @@ public class HmacCore : IMac
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Update(ReadOnlySpan<byte> input)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(HmacCore));
         if (_finalized) throw new InvalidOperationException("Cannot update after finalization. Call Reset() first.");
 
-        // Feed through the inner hash via TransformBlock
-        byte[] temp = input.ToArray();
-        _innerHash.TransformBlock(temp, 0, temp.Length, null, 0);
+        // Zero-allocation append; avoids copying (potentially secret) input to the heap
+        // and avoids reallocating per call.
+        _innerHash.AppendData(input);
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Finalize(Span<byte> destination)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(HmacCore));
         if (destination.Length < _macSize) throw new ArgumentException("Destination buffer is too small.", nameof(destination));
         if (_finalized) throw new InvalidOperationException("Already finalized. Call Reset() first.");
 
         // Complete inner hash: H((K' ⊕ ipad) ‖ m)
-        _innerHash.TransformFinalBlock([], 0, 0);
-        byte[] innerResult = _innerHash.Hash!;
+        Span<byte> innerResult = stackalloc byte[_macSize];
+        _innerHash.TryGetHashAndReset(innerResult, out _);
 
         // Complete outer hash: H((K' ⊕ opad) ‖ innerResult)
         // The opad key block was already fed in InitializeInner()
-        _outerHash.TransformFinalBlock(innerResult, 0, innerResult.Length);
-        byte[] outerResult = _outerHash.Hash!;
+        _outerHash.AppendData(innerResult);
+        Span<byte> outerResult = stackalloc byte[_macSize];
+        _outerHash.TryGetHashAndReset(outerResult, out _);
 
-        outerResult.AsSpan(0, _macSize).CopyTo(destination);
+        outerResult.CopyTo(destination);
         _finalized = true;
     }
 
@@ -158,10 +163,12 @@ public class HmacCore : IMac
 
         if (key.Length > blockSize)
         {
-            // Key longer than block size: hash it first
-            byte[] hashedKey = _innerHash.ComputeHash(key.ToArray());
-            _innerHash.Initialize();
-            hashedKey.AsSpan().CopyTo(keyBlock);
+            // Key longer than block size: hash it first. Zero-allocation and self-clearing
+            // since hashedKey is stack-allocated rather than a heap array left uncleared.
+            _innerHash.AppendData(key);
+            Span<byte> hashedKey = stackalloc byte[_macSize];
+            _innerHash.TryGetHashAndReset(hashedKey, out _);
+            hashedKey.CopyTo(keyBlock);
         }
         else
         {
@@ -181,10 +188,10 @@ public class HmacCore : IMac
     {
         // Start inner hash with ipad key block
         _innerHash.Initialize();
-        _innerHash.TransformBlock(_ipadKey, 0, _ipadKey.Length, null, 0);
+        _innerHash.AppendData(_ipadKey);
 
         // Pre-feed outer hash with opad key block
         _outerHash.Initialize();
-        _outerHash.TransformBlock(_opadKey, 0, _opadKey.Length, null, 0);
+        _outerHash.AppendData(_opadKey);
     }
 }

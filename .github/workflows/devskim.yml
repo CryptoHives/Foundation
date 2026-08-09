@@ -8,10 +8,18 @@ name: DevSkim
 on:
   push:
     branches: [ "main" ]
+    paths:
+    - '**.cs'
   pull_request:
     branches: [ "main" ]
+    paths:
+    - '**.cs'
   schedule:
     - cron: '17 22 * * 2'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
@@ -29,6 +37,6 @@ jobs:
         uses: microsoft/DevSkim-Action@v1
 
       - name: Upload DevSkim scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.6
         with:
           sarif_file: devskim-results.sarif

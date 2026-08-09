@@ -54,7 +54,7 @@ bool success = aesGcm.Decrypt(nonce, ciphertext, tag, decrypted, aad);
 ```
 
 **See Also:**
-- [AES-GCM Benchmarks](benchmarks-cipher.md)
+- [AES-GCM Benchmarks](benchmarks.md)
 
 ### AES-CCM (Counter with CBC-MAC)
 
@@ -133,7 +133,7 @@ byte[] decrypted = chacha.Decrypt(nonce, ciphertext);
 ```
 
 **See Also:**
-- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md)
+- [ChaCha20-Poly1305 Benchmarks](benchmarks.md)
 
 ### XChaCha20-Poly1305
 
@@ -172,8 +172,8 @@ byte[] decrypted = xchacha.Decrypt(nonce, ciphertext);
 ```
 
 **See Also:**
-- [XChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md)
-- [ChaCha20-Poly1305 Benchmarks](benchmarks-cipher.md)
+- [XChaCha20-Poly1305 Benchmarks](benchmarks.md)
+- [ChaCha20-Poly1305 Benchmarks](benchmarks.md)
 
 ### Ascon-AEAD128
 
@@ -646,13 +646,18 @@ byte[] ciphertext = kuz.Encrypt(plaintext);
 ```csharp
 public sealed class Kalyna128 : BlockCipherTransform
 public sealed class Kalyna256 : BlockCipherTransform
+public sealed class Kalyna512 : BlockCipherTransform
 ```
 
 **Properties:**
-- Key Sizes: 128 or 256 bits
-- Block Size: 128 bits
-- Rounds: 10 (128-bit key), 14 (256-bit key)
+- Key Sizes: 128, 256, or 512 bits
+- Block Size: 128 bits (Kalyna-128/Kalyna-256), 256 bits (Kalyna-512)
+- Rounds: 10 (128-bit key), 14 (256-bit key), 18 (512-bit key)
 - Standard: DSTU 7624:2014
+
+**Kalyna-512 note:**
+- Uses a 256-bit block with a 512-bit key
+- Matches the widest Kalyna configuration in the standard
 
 **Security:**
 - ✅ Ukrainian national standard
@@ -709,7 +714,7 @@ byte[] decrypted = seed.Decrypt(ciphertext);
 | **SEED** | Korea | 128 | 128 bits | 16 | RFC 4269 |
 
 **See Also:**
-- [Regional Cipher Benchmarks](benchmarks-cipher.md)
+- [Regional Cipher Benchmarks](benchmarks.md)
 
 ---
 
@@ -737,8 +742,8 @@ byte[] decrypted = seed.Decrypt(ciphertext);
 Test vector documentation is coming soon.
 
 ### Benchmarks
-- [All Cipher Benchmarks](benchmarks-cipher.md)
-- [AES-GCM Performance](benchmarks-cipher.md)
-- [ChaCha20-Poly1305 Performance](benchmarks-cipher.md)
-- [XChaCha20-Poly1305 Performance](benchmarks-cipher.md)
-- [Regional Cipher Benchmarks](benchmarks-cipher.md)
+- [All Cipher Benchmarks](benchmarks.md)
+- [AES-GCM Performance](benchmarks.md)
+- [ChaCha20-Poly1305 Performance](benchmarks.md)
+- [XChaCha20-Poly1305 Performance](benchmarks.md)
+- [Regional Cipher Benchmarks](benchmarks.md)

@@ -74,8 +74,11 @@ public class AsyncAutoResetEventTests
             Interlocked.Exchange(ref stage, 100);
         });
 
-        // Give the waiter time to start waiting
-        await Task.Delay(100).ConfigureAwait(false);
+        // Wait for the waiter to actually register instead of assuming a fixed delay
+        while (!ev.InternalWaiterInUse)
+        {
+            await Task.Delay(1).ConfigureAwait(false);
+        }
 
         int beforeContinuation = Interlocked.Exchange(ref stage, 1);
         ev.Set();
@@ -233,7 +236,7 @@ public class AsyncAutoResetEventTests
 
     [Test]
     [CancelAfter(10000)]
-    public async Task WaitAsyncCancelReturnsToPool(CancellationToken ct)
+    public void WaitAsyncCancelReturnsToPool(CancellationToken ct)
     {
         using var cts = new CancellationTokenSource();
         using var pool = new TestObjectPool<bool>();
@@ -678,7 +681,7 @@ public class AsyncAutoResetEventTests
     {
         var ev = new AsyncAutoResetEvent();
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await ev.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
 
         await Task.Delay(50).ConfigureAwait(false);
@@ -687,12 +690,13 @@ public class AsyncAutoResetEventTests
     }
 
     [Test]
-    public async Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSignalled()
+    public Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSignalled()
     {
         var ev = new AsyncAutoResetEvent();
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TimeoutException>(async () =>
             await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+        return Task.CompletedTask;
     }
 
     [Test]
@@ -760,8 +764,8 @@ public class AsyncAutoResetEventTests
         var waiter2 = ev.WaitAsync(TimeSpan.FromMilliseconds(200));
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter1.ConfigureAwait(false));
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
+        Assert.ThrowsAsync<TimeoutException>(async () => await waiter1.ConfigureAwait(false));
+        Assert.ThrowsAsync<TimeoutException>(async () => await waiter2.ConfigureAwait(false));
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         await Task.Delay(50).ConfigureAwait(false);

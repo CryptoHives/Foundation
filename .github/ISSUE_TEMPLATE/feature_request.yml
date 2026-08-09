@@ -1,0 +1,56 @@
+name: ✨ Feature request
+description: Suggest a new algorithm, primitive, or enhancement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Please describe the motivation and what you would like to see.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checklist
+      options:
+        - label: I searched existing issues and this has not already been requested.
+          required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Target package
+      options:
+        - CryptoHives.Foundation.Memory
+        - CryptoHives.Foundation.Security.Cryptography
+        - CryptoHives.Foundation.Threading
+        - CryptoHives.Foundation.Threading.Analyzers
+        - New package / Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem does this solve? What are you trying to do that you cannot today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: >-
+        The API, algorithm, or behavior you would like. For a new algorithm, please link the
+        spec / RFC / standard and, if possible, known-answer test vectors for validation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false

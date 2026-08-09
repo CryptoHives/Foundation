@@ -1,4 +1,4 @@
-- name: Memory Package
+﻿- name: Memory Package
   href: index.md
 - name: Classes
   items:
@@ -12,3 +12,14 @@
       href: objectowner.md
     - name: ObjectPools
       href: objectpools.md
+- name: Segment Ownership
+  items:
+    - name: ISegmentOwner<T>
+      href: isegmentowner.md
+    - name: PooledSegment<T>
+      href: pooledsegment.md
+    - name: AllocatedSegment<T>
+      href: allocatedsegment.md
+    - name: EmptySegment<T>
+      href: emptysegment.md
+

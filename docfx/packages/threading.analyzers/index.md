@@ -20,16 +20,16 @@ Or add to your project file:
 
 | ID | Severity | Description |
 |----|----------|----------|
-| [CHT001](CHT001.md) | Error | ValueTask awaited multiple times |
+| [CHT001](CHT001.md) | Error | ValueTask consumed multiple times (await, AsTask, Preserve, GetResult) |
 | [CHT002](CHT002.md) | Warning | ValueTask.GetAwaiter().GetResult() used (blocking) |
 | [CHT003](CHT003.md) | Warning | ValueTask stored in field |
-| [CHT004](CHT004.md) | Error | ValueTask.AsTask() called multiple times |
 | [CHT005](CHT005.md) | Warning | ValueTask.Result accessed directly |
-| [CHT006](CHT006.md) | Warning | ValueTask passed to potentially unsafe method |
 | [CHT007](CHT007.md) | Info | AsTask() stored before signaling (performance) |
 | [CHT008](CHT008.md) | Warning | ValueTask not awaited or consumed |
 | [CHT009](CHT009.md) | Info | `SemaphoreSlim(1, 1)` used as async lock; replace with `AsyncLock` |
 | [CHT010](CHT010.md) | Error | ValueTask captured in lambda/closure |
+| [CHT011](CHT011.md) | Warning | `async` method only forwards an awaited ValueTask |
+| [CHT012](CHT012.md) | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
 
 ## Quick Reference
 
@@ -48,7 +48,7 @@ vt.GetAwaiter().GetResult(); // Warning: undefined behavior
 // CHT003: Stored in field (Warning)
 private ValueTask _task; // Warning: may be consumed multiple times
 
-// CHT004: Multiple AsTask() calls (Error)
+// CHT001 also covers repeated AsTask(): converting twice consumes twice (Error)
 ValueTask vt = GetValueTask();
 var t1 = vt.AsTask();
 var t2 = vt.AsTask(); // Error: already consumed
@@ -56,9 +56,6 @@ var t2 = vt.AsTask(); // Error: already consumed
 // CHT005: Direct .Result access (Warning)
 ValueTask<int> vt = GetValueTask();
 int result = vt.Result; // Warning: undefined behavior
-
-// CHT006: Passed to unsafe method (Warning)
-await Task.WhenAll(GetValueTask()); // Warning: use AsTask() or Preserve()
 
 // CHT007: AsTask() stored before signaling (Info)
 Task t = GetValueTask().AsTask(); // Info: may cause perf degradation
@@ -112,12 +109,13 @@ The analyzer package includes automatic code fixes for most diagnostics:
 | CHT001 | Convert to AsTask() at declaration, Use Preserve() |
 | CHT002 | Convert to await, Use AsTask() before GetAwaiter().GetResult() |
 | CHT003 | Change field type to Task |
-| CHT004 | Store AsTask() result in variable |
 | CHT005 | Convert to await, Use AsTask().Result |
 | CHT007 | Await ValueTask directly |
 | CHT008 | Add await, Explicitly discard with _ = |
 | CHT009 | Replace with AsyncLock |
 | CHT010 | Convert to AsTask() at declaration, Use Preserve() |
+| CHT011 | Remove async and return the ValueTask directly |
+| CHT012 | Pool the state machine box (offered only on .NET 6+; a partial mitigation) |
 
 ## The Preserve() Method
 

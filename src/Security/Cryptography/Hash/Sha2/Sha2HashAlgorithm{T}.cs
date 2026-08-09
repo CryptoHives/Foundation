@@ -55,8 +55,11 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public sealed override void Initialize()
     {
+        if (!_allocated) throw new ObjectDisposedException(GetType().Name);
+
         InitializeState();
         _bytesProcessed = 0;
         _bufferLength = 0;
@@ -92,8 +95,11 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
     protected abstract void OutputHash(Span<byte> destination, T[] state);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected sealed override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (!_allocated) throw new ObjectDisposedException(GetType().Name);
+
         int offset = 0;
 
         // If we have leftover data in the buffer, fill it first
@@ -129,8 +135,10 @@ public abstract class Sha2HashAlgorithm<T> : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected sealed override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (!_allocated) throw new ObjectDisposedException(GetType().Name);
         if (destination.Length < OutputSizeBytes)
         {
             bytesWritten = 0;

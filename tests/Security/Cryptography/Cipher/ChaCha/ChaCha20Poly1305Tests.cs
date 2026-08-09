@@ -350,6 +350,27 @@ public class ChaCha20Poly1305Tests
             Throws.InstanceOf<ArgumentException>().Or.InstanceOf<CryptographicException>());
     }
 
+    [Test]
+    public void ChaCha20Poly1305_DisposedInstance_Throws()
+    {
+        if (_implementation.Source != Source.Managed && _implementation.Source != Source.Simd)
+            Assert.Ignore("Dispose behavior is implementation-specific.");
+
+        byte[] key = new byte[32];
+        byte[] nonce = new byte[12];
+        byte[] plaintext = System.Text.Encoding.UTF8.GetBytes("Test");
+
+        var aead = (IAeadCipher)_implementation.Create(key);
+        aead.Dispose();
+
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] tag = new byte[16];
+        byte[] decrypted = new byte[plaintext.Length];
+
+        Assert.Throws<ObjectDisposedException>(() => aead.Encrypt(nonce, plaintext, ciphertext, tag));
+        Assert.Throws<ObjectDisposedException>(() => aead.Decrypt(nonce, ciphertext, tag, decrypted));
+    }
+
     // ========================================================================
     // Helper Methods
     // ========================================================================

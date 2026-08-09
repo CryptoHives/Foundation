@@ -242,5 +242,23 @@ public class GmacTests
         Assert.That(gmac.ComputeTag(nonce1, aad), Is.Not.EqualTo(gmac.ComputeTag(nonce2, aad)));
     }
 
+    /// <summary>
+    /// A disposed instance throws instead of silently authenticating with cleared key material.
+    /// </summary>
+    [Test]
+    public void DisposedInstanceThrows()
+    {
+        byte[] key = new byte[16];
+        byte[] nonce = new byte[12];
+        byte[] aad = Encoding.UTF8.GetBytes("test");
+
+        var gmac = AesGmac.Create(key);
+        gmac.ComputeTag(nonce, aad);
+
+        gmac.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => gmac.ComputeTag(nonce, aad));
+    }
+
     #endregion
 }

@@ -78,7 +78,7 @@ public class RandomNumberGenerator : IDisposable
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(temp);
+            ArrayPool<byte>.Shared.Return(temp, clearArray: true);
         }
 #endif
     }

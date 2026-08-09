@@ -214,6 +214,7 @@ public sealed class Streebog : HashAlgorithm
     private readonly ulong[] _sigma;  // Checksum accumulator (512-bit as 8 ulongs)
     private readonly byte[] _buffer;  // Message block buffer
     private int _bufferLength;
+    private bool _disposed;
 
     /// <summary>
     /// Converts a hex string to a byte array.
@@ -357,8 +358,11 @@ public sealed class Streebog : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Streebog));
+
         // IV is 0x00 for 512-bit, 0x01 for 256-bit (RFC 6986 Section 6.1)
         ulong iv = _hashSizeBytes == 32 ? 0x0101010101010101UL : 0UL;
 
@@ -372,8 +376,10 @@ public sealed class Streebog : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Streebog));
         int offset = 0;
 
         // Fill buffer if partially full
@@ -427,9 +433,11 @@ public sealed class Streebog : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(Streebog));
         if (destination.Length < _hashSizeBytes)
         {
             bytesWritten = 0;
@@ -748,6 +756,7 @@ public sealed class Streebog : HashAlgorithm
             Array.Clear(_n, 0, BlockSizeWords);
             Array.Clear(_sigma, 0, BlockSizeWords);
             ClearBuffer(_buffer);
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

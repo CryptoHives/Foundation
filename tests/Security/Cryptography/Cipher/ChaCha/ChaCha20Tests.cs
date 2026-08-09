@@ -401,6 +401,27 @@ public class ChaCha20Tests
         Assert.That(chacha.IV!.Length, Is.EqualTo(12));
     }
 
+    [Test]
+    public void ChaCha20CipherTransform_DisposedInstance_Throws()
+    {
+        if (_implementation.Source != Source.Managed && _implementation.Source != Source.Simd)
+            Assert.Ignore("Dispose behavior is implementation-specific.");
+
+        using var chacha = (SymmetricCipher)_implementation.Create();
+        chacha.Key = new byte[32];
+        chacha.IV = new byte[12];
+
+        var encryptor = chacha.CreateEncryptor();
+        byte[] block = new byte[16];
+        byte[] output = new byte[16];
+        encryptor.TransformBlock(block, output);
+
+        encryptor.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformBlock(block, output));
+        Assert.Throws<ObjectDisposedException>(() => encryptor.TransformFinalBlock(block, output));
+    }
+
     // ========================================================================
     // Helper Methods
     // ========================================================================

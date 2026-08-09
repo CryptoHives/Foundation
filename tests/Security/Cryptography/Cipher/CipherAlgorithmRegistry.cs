@@ -1116,6 +1116,29 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(128), 32, "Kalyna-256-CBC"),
             Source.BouncyCastle));
 
+        // Kalyna-512-CBC - Managed
+        implementations.Add(new CipherImplementation(
+            "Kalyna-512-CBC",
+            "CryptoHives-Scalar",
+            512,
+            Mode.CBC,
+            () => {
+                var kal = CH.Cipher.Kalyna512.Create();
+                kal.Mode = CH.Cipher.CipherMode.CBC;
+                kal.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return kal;
+            },
+            Source.Managed));
+
+        // Kalyna-512-CBC - BouncyCastle (Dstu7624Engine)
+        implementations.Add(new CipherImplementation(
+            "Kalyna-512-CBC",
+            "BouncyCastle",
+            512,
+            Mode.CBC,
+            () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(256), 64, "Kalyna-512-CBC"),
+            Source.BouncyCastle));
+
         // Kuznyechik-CBC - Managed (no BouncyCastle engine available)
         implementations.Add(new CipherImplementation(
             "Kuznyechik-CBC",

@@ -23,11 +23,6 @@ using System.Threading.Tasks.Sources;
 public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource, IResettable
 {
     /// <summary>
-    /// Shared operation cancelled exception.
-    /// </summary>
-    internal static OperationCanceledException OperationCanceled = new("The operation timed out.");
-
-    /// <summary>
     /// Link to the next node in the intrusive <see cref="WaiterQueue{T}"/>.
     /// </summary>
     internal ManualResetValueTaskSource<T>? Next { get; set; }
@@ -76,8 +71,30 @@ public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValu
     /// Gets or sets the <see cref="TimeoutTimer"/> used to enforce a timeout on the wait operation.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Set to a non-<see langword="null"/> value when the waiter is created with a timeout.
-    /// The source is disposed automatically by <see cref="GetResult"/> and cleared by <see cref="TryReset"/>.
+    /// The timer is disposed and cleared by <see cref="TryReset"/> when the waiter is recycled.
+    /// </para>
+    /// <para>
+    /// <b>Assign this after leaving the owner's lock, not inside it.</b> Creating a timer takes the
+    /// runtime's process-global timer queue lock and allocates, which is the one cost in those critical
+    /// sections that the library cannot bound - and the primitives' spin lock is tuned on the premise
+    /// that everything it guards is a few pointer writes.
+    /// </para>
+    /// <para>
+    /// This is safe for the same reason <see cref="CancellationTokenRegistration"/> is already assigned
+    /// outside the lock. A waiter is recycled only by <see cref="TryReset"/>, which runs from
+    /// <see cref="GetResult"/>, which is reachable only through the <see cref="System.Threading.Tasks.ValueTask"/>
+    /// the enqueueing method has not returned yet. So between releasing the lock and returning that
+    /// <see cref="System.Threading.Tasks.ValueTask"/>, the waiter is owned exclusively by the enqueueing
+    /// thread: another thread may <see cref="SetResult"/> it, but cannot reset it, so
+    /// <see cref="Version"/> is stable and the timer cannot be disposed underneath the assignment.
+    /// </para>
+    /// <para>
+    /// A waiter completed inside that window still gets a timer, which fires and finds either a version
+    /// mismatch or a waiter no longer in the queue, and does nothing - the stale-callback case
+    /// <see cref="TimeoutState{T}"/> already exists to handle.
+    /// </para>
     /// </remarks>
     public abstract ITimer? TimeoutTimer { get; set; }
 
