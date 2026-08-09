@@ -129,16 +129,16 @@ Roslyn analyzer + code-fix provider for the `Threading` NuGet package. Needs to 
 Diagnostics:
 | ID | Severity | Description |
 |---|---|---|
-| CHT001 | Error | ValueTask awaited multiple times |
+| CHT001 | Error | ValueTask consumed multiple times (await, AsTask, Preserve, GetResult) |
 | CHT002 | Warning | `GetAwaiter().GetResult()` on ValueTask (blocking) |
 | CHT003 | Warning | ValueTask stored in field |
-| CHT004 | Error | `AsTask()` called multiple times |
 | CHT005 | Warning | `.Result` accessed directly |
-| CHT006 | Warning | ValueTask passed to `WhenAll`/`WhenAny` or similar |
 | CHT007 | Info | `AsTask()` stored before signaling (perf) |
 | CHT008 | Warning | ValueTask not awaited or consumed |
 | CHT009 | Info | `SemaphoreSlim(1,1)` — replace with `AsyncLock` |
 | CHT010 | Warning | ValueTask captured in lambda/closure |
+| CHT011 | Warning | `async` method only forwards an awaited ValueTask; return it directly |
+| CHT012 | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
 
 ### `CryptoHives.Foundation.Memory`
 

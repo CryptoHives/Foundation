@@ -190,7 +190,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("LockAsync", "System", "SpinLock", "SyncLock")]
-    public async Task LockUnlockSpinLockSingleAsync()
+    public void LockUnlockSpinLockSingleAsync()
     {
         bool lockTaken = false;
         _spinLock.Enter(ref lockTaken);
@@ -201,7 +201,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         }
         finally
         {
-            _spinLock.Exit();
+            _spinLock.Exit(useMemoryBarrier: false);
         }
     }
 
@@ -211,7 +211,7 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("LockAsync", "CryptoHives", "SpinLock (CryptoHives)", "SyncLock")]
-    public async Task LockUnlockCryptoHivesSpinLockSingleAsync()
+    public void LockUnlockCryptoHivesSpinLockSingleAsync()
     {
         _spinLockCryptoHives.Enter();
         try

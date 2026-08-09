@@ -1024,4 +1024,67 @@ public class TestClass
 }";
         await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Converting the same ValueTask with <c>AsTask()</c> twice is a consumption violation just as much
+    /// as awaiting it twice, and is reported as CHT001 rather than by a rule of its own.
+    /// </summary>
+    /// <remarks>
+    /// The usage tracker counts every form of consumption through one counter - await, <c>AsTask()</c>,
+    /// <c>Preserve()</c> and <c>GetAwaiter().GetResult()</c> all increment it - so the second consumption
+    /// is reported whichever forms it takes. This test pins that, because the separate CHT004 rule that
+    /// nominally covers "AsTask called multiple times" has no detection code and never fires; without a
+    /// test saying so, the scenario looks uncovered when it is not.
+    /// </remarks>
+    [Test]
+    public async Task AsTaskCalledTwiceReportsMultipleConsumption()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public void Run()
+    {
+        ValueTask<int> vt = GetAsync();
+        Task<int> first = vt.AsTask();
+        Task<int> second = {|#0:vt|}.AsTask();
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Mixing an await with an <c>AsTask()</c> on the same ValueTask is equally a second consumption.
+    /// </summary>
+    [Test]
+    public async Task AwaitThenAsTaskReportsMultipleConsumption()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public async Task RunAsync()
+    {
+        ValueTask<int> vt = GetAsync();
+        int value = await vt;
+        Task<int> converted = {|#0:vt|}.AsTask();
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
 }

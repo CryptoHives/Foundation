@@ -37,8 +37,18 @@ $packageConfigurations = @{
         # per-platform markdown tree, so this must not point back into docfx/.
         DestDir   = "bench-results/threading"
         Files     = @(
+            # AsyncLock
             @{ Source = "AsyncLockSingleBenchmark-report.md"; Target = "asynclock-single.md" }
             @{ Source = "AsyncLockMultipleBenchmark-report.md"; Target = "asynclock-multiple.md" }
+
+            # AsyncKeyedLock - uncontended, then contended, then multi-threaded
+            @{ Source = "AsyncKeyedLockSingleKeyBenchmark-report.md"; Target = "asynckeyedlock-singlekey.md" }
+            @{ Source = "AsyncKeyedLockTryLockBenchmark-report.md"; Target = "asynckeyedlock-trylock.md" }
+            @{ Source = "AsyncKeyedLockCardinalityBenchmark-report.md"; Target = "asynckeyedlock-cardinality.md" }
+            @{ Source = "AsyncKeyedLockRollingKeyBenchmark-report.md"; Target = "asynckeyedlock-rollingkey.md" }
+            @{ Source = "AsyncKeyedLockMultipleBenchmark-report.md"; Target = "asynckeyedlock-multiple.md" }
+            @{ Source = "AsyncKeyedLockConcurrentBenchmark-report.md"; Target = "asynckeyedlock-concurrent.md" }
+
             @{ Source = "AsyncAutoResetEventSetBenchmark-report.md"; Target = "asyncautoresetevent-set.md" }
             @{ Source = "AsyncAutoResetEventSetThenWaitBenchmark-report.md"; Target = "asyncautoresetevent-setthenw.md" }
             @{ Source = "AsyncAutoResetEventWaitThenSetBenchmark-report.md"; Target = "asyncautoresetevent-waitthenset.md" }
@@ -46,8 +56,12 @@ $packageConfigurations = @{
             @{ Source = "AsyncManualResetEventSetThenWaitBenchmark-report.md"; Target = "asyncmanualresetevent-setthenw.md" }
             @{ Source = "AsyncManualResetEventWaitThenSetBenchmark-report.md"; Target = "asyncmanualresetevent-waitthenset.md" }
             @{ Source = "AsyncSemaphoreSingleBenchmark-report.md"; Target = "asyncsemaphore-single.md" }
+            @{ Source = "AsyncSemaphoreMultipleBenchmark-report.md"; Target = "asyncsemaphore-multiple.md" }
             @{ Source = "AsyncCountdownEventSignalBenchmark-report.md"; Target = "asynccountdownevent-signal.md" }
+            @{ Source = "AsyncCountdownEventWaitersBenchmark-report.md"; Target = "asynccountdownevent-waiters.md" }
             @{ Source = "AsyncBarrierSignalAndWaitBenchmark-report.md"; Target = "asyncbarrier-signalandwait.md" }
+            @{ Source = "AsyncBarrierPostPhaseBenchmark-report.md"; Target = "asyncbarrier-postphase.md" }
+            @{ Source = "AsyncReaderWriterLockContentionBenchmark-report.md"; Target = "asyncreaderwriterlock-contention.md" }
             @{ Source = "AsyncReaderWriterLockReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-reader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradeableReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradeablereader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradedWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradedwriter.md" }

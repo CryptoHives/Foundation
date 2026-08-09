@@ -27,12 +27,8 @@
       href: ../threading.analyzers/CHT002.md
     - name: CHT003 - Stored in Field
       href: ../threading.analyzers/CHT003.md
-    - name: CHT004 - Multiple AsTask
-      href: ../threading.analyzers/CHT004.md
     - name: CHT005 - Direct Result Access
       href: ../threading.analyzers/CHT005.md
-    - name: CHT006 - Unsafe Method
-      href: ../threading.analyzers/CHT006.md
     - name: CHT007 - AsTask Before Signal
       href: ../threading.analyzers/CHT007.md
     - name: CHT008 - Not Consumed
@@ -41,3 +37,7 @@
       href: ../threading.analyzers/CHT009.md
     - name: CHT010 - ValueTask captured in lambda/closure
       href: ../threading.analyzers/CHT010.md
+    - name: CHT011 - Redundant async forwarding
+      href: ../threading.analyzers/CHT011.md
+    - name: CHT012 - async wrapper boxes state machine
+      href: ../threading.analyzers/CHT012.md
