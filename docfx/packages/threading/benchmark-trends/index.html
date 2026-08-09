@@ -219,13 +219,33 @@
     }
   }
 
-  // "None" = CancellationToken.None passed (or no token at all, for implementations that don't
-  // support cancellation); "NotCancelled" = a live, registered token was passed but never fired
-  // — measuring the overhead of supporting cancellation, not an actual cancellation. Kept as its
-  // own selector (like contention level) instead of a "(NotCancelled)" suffix on every variant
-  // name, so the legend doesn't double in size for every implementation that supports it.
+  // How a benchmarked wait was configured. Kept as its own selector (like contention level)
+  // instead of a suffix on every variant name, so the legend doesn't double in size for every
+  // implementation that supports cancellation.
+  //
+  //   None               CancellationToken.None, or no token at all for implementations that
+  //                      don't support one
+  //   NotCancelled       a live, registered token that never fired — the overhead of supporting
+  //                      cancellation, not the cost of an actual cancellation
+  //   Cancelled          a token already cancelled on entry — the unwind path
+  //   Timed              a timeout long enough never to elapse — the cost of arming and
+  //                      disposing the timer
+  //   NotCancelledTimed  both at once
+  //
+  // Table-driven rather than a chain of comparisons: this started as a two-way branch that
+  // returned "None" for everything that wasn't NotCancelled, so Timed rows — added when the
+  // timeout benchmarks landed — silently displayed as None. An unknown value now shows itself
+  // rather than being absorbed into a neighbour.
+  const CANCELLATION_LABELS = {
+    None: "None",
+    NotCancelled: "Cancellable (token not fired)",
+    Cancelled: "Cancelled on entry",
+    Timed: "Timed (timer armed, never fires)",
+    NotCancelledTimed: "Cancellable + timed",
+  };
+
   function cancellationLabel(value) {
-    return value === "NotCancelled" ? "Cancellable (token not fired)" : "None";
+    return CANCELLATION_LABELS[value] ?? value;
   }
 
   // Shareable-URL support: the current selection set (platform/family/method/metric/mode/log)
