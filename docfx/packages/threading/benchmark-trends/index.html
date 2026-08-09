@@ -21,13 +21,6 @@
   .legend-swatch { width: 13px; height: 13px; border-radius: 2px; flex: none; }
   .legend-hint { font-size: 0.78rem; color: #888; margin: -0.2rem 0 0.5rem; }
   #chart-container { position: relative; height: 480px; }
-  #table-container { overflow-x: auto; }
-  table.data-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
-  table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 0.35rem 0.6rem; text-align: left; white-space: nowrap; }
-  table.data-table th { background: #f5f5f5; cursor: pointer; user-select: none; position: sticky; top: 0; }
-  table.data-table th.sorted::after { content: " " attr(data-arrow); }
-  table.data-table td.numeric, table.data-table th.numeric { text-align: right; }
-  table.data-table tbody tr:nth-child(even) { background: #fafafa; }
   .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
 </style>
 </head>
@@ -52,7 +45,6 @@
   <legend>View</legend>
   <label><input type="radio" name="mode" value="trend" checked> Trend over time</label>
   <label><input type="radio" name="mode" value="scaling"> Scaling by contention</label>
-  <label><input type="radio" name="mode" value="table"> Table</label>
 </fieldset>
 
 <div class="controls">
@@ -96,12 +88,6 @@
 <div id="legend-colors" class="legend-row"></div>
 <div id="legend-dashes" class="legend-row"></div>
 <div id="chart-container"><canvas id="chart"></canvas></div>
-<div id="table-container" hidden>
-  <table class="data-table" id="data-table">
-    <thead><tr id="data-table-head"></tr></thead>
-    <tbody id="data-table-body"></tbody>
-  </table>
-</div>
 
 <p class="hint">
   Data source: <code>benchmark-history.sqlite</code>, appended to by
@@ -109,14 +95,10 @@
   decides a local run is worth keeping. Each point is one recorded run; hover a point for the
   exact commit and value. <strong>Trend over time</strong> plots every recorded contention level
   for the current filters at once (use the line-style legend below to hide levels you don't
-  want). <strong>Scaling by contention</strong> plots the benchmark's parameterized axis on the X
-  axis using each implementation's most recent run — usually queued waiters, but some benchmarks
-  scale a different dimension instead (e.g. distinct key count for keyed locks) — showing how it
-  scales under load at a glance. Some methods aren't parameterized at all (e.g. a plain
-  uncontended-only benchmark) — those show a single point per implementation in both views.
-  <strong>Table</strong> drops the chart entirely and lists every matching row for the current
-  filters directly — useful for digging into an exact value, commit, or run date that's hard to
-  read off a hovering tooltip. Click a column header to sort.
+  want). <strong>Scaling by contention</strong> plots contention level (queued waiters) on the X
+  axis using each implementation's most recent run, showing how it scales under load at a
+  glance. Some methods aren't contention-parameterized at all (e.g. a plain uncontended-only
+  benchmark) — those show a single point per implementation in both views.
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
@@ -138,10 +120,6 @@
   const dateRangeSel = document.getElementById("date-range");
   const legendHintEl = document.getElementById("legend-hint");
   const modeRadios = document.querySelectorAll('input[name="mode"]');
-  const chartContainerEl = document.getElementById("chart-container");
-  const tableContainerEl = document.getElementById("table-container");
-  const dataTableHeadEl = document.getElementById("data-table-head");
-  const dataTableBodyEl = document.getElementById("data-table-body");
 
   // 16 entries (not 8): colors are now assigned per-family across *every* method's variants (see
   // refreshFamilyColors), and some families have more than 8 variants once every method's variants
@@ -248,31 +226,6 @@
   // name, so the legend doesn't double in size for every implementation that supports it.
   function cancellationLabel(value) {
     return value === "NotCancelled" ? "Cancellable (token not fired)" : "None";
-  }
-
-  // Mirrors BenchmarkDotNet's own Mean/Allocated column formatting (ns/μs/ms scaling,
-  // comma-grouped thousands, B/KB scaling) so Table mode reads like the markdown reports this
-  // dashboard replaced, instead of inventing a new convention.
-  function formatMeanNs(ns) {
-    if (ns == null) return "-";
-    let value, unit;
-    if (ns < 1000) { value = ns; unit = "ns"; }
-    else if (ns < 1e6) { value = ns / 1000; unit = "μs"; }
-    else if (ns < 1e9) { value = ns / 1e6; unit = "ms"; }
-    else { value = ns / 1e9; unit = "s"; }
-    const digits = value < 10 ? 3 : value < 100 ? 2 : 1;
-    return `${value.toLocaleString(undefined, { maximumFractionDigits: digits })} ${unit}`;
-  }
-
-  function formatAllocatedBytes(bytes) {
-    if (bytes == null) return "-";
-    if (bytes < 1024) return `${bytes.toLocaleString()} B`;
-    const kb = bytes / 1024;
-    return `${kb.toLocaleString(undefined, { maximumFractionDigits: kb < 10 ? 2 : 1 })} KB`;
-  }
-
-  function formatRunDate(iso) {
-    return iso ? iso.replace("T", " ").replace(/\.\d+Z$/, "Z") : "-";
   }
 
   // Shareable-URL support: the current selection set (platform/family/method/metric/mode/log)
@@ -559,16 +512,13 @@
       {
         x: {
           type: "linear",
-          title: { display: true, text: hasRealParams ? "Contention level" : "(single, fixed scenario — no contention axis)" },
+          title: { display: true, text: hasRealParams ? "Contention level (queued waiters)" : "(single, fixed scenario — no contention axis)" },
           ticks: hasRealParams ? undefined : { display: false },
         },
         y: yAxisScale(metric),
       },
-      // param_label is just the raw [Params] value (e.g. "10") - no axis name is stored per row,
-      // since most benchmarks scale queued waiters but not all do (e.g. distinct key count for
-      // keyed locks), so no single unit word can be appended here without being wrong sometimes.
       (ctx) => hasRealParams
-        ? `${ctx.raw.param_label} · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+        ? `${ctx.raw.param_label} waiters · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
         : `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
     );
 
@@ -583,108 +533,8 @@
       : "No data for this selection yet.";
   }
 
-  // Table mode's raw row set (before sorting) — kept around so clicking a header can re-sort
-  // without re-querying the database.
-  let tableRows = [];
-  let tableSort = { column: "run_date", dir: "desc" };
-
-  // No "Description" column here the way the old markdown reports had one: that column existed
-  // to encode operation + family + implementation all in one string, but platform/family/method
-  // are already pinned by the dropdowns above, so repeating them per row would just be duplicated
-  // text. What's left to distinguish rows is exactly what's shown: variant (implementation),
-  // contention level, cancellation state, and the run itself.
-  const TABLE_COLUMNS = [
-    { key: "variant", label: "Variant" },
-    { key: "param_label", label: "Contention" },
-    { key: "cancellation", label: "Cancellation", format: cancellationLabel },
-    { key: "mean_ns", label: "Mean", numeric: true, format: formatMeanNs },
-    { key: "allocated_bytes", label: "Allocated", numeric: true, format: formatAllocatedBytes },
-    { key: "run_date", label: "Run date", format: formatRunDate },
-    { key: "commit_sha", label: "Commit", format: (v) => v ? v.slice(0, 8) : "-" },
-    { key: "branch", label: "Branch" },
-  ];
-
-  function sortTableRows() {
-    const { column, dir } = tableSort;
-    const sign = dir === "asc" ? 1 : -1;
-    tableRows.sort((a, b) => {
-      const av = a[column], bv = b[column];
-      if (av == null && bv == null) return 0;
-      if (av == null) return 1; // NULLs (e.g. no contention param) always sort last
-      if (bv == null) return -1;
-      if (typeof av === "number") return (av - bv) * sign;
-      return String(av).localeCompare(String(bv)) * sign;
-    });
-  }
-
-  function renderDataTable() {
-    dataTableHeadEl.innerHTML = "";
-    for (const col of TABLE_COLUMNS) {
-      const th = document.createElement("th");
-      th.textContent = col.label;
-      if (col.numeric) th.classList.add("numeric");
-      if (tableSort.column === col.key) {
-        th.classList.add("sorted");
-        th.dataset.arrow = tableSort.dir === "asc" ? "▲" : "▼";
-      }
-      th.onclick = () => {
-        tableSort = tableSort.column === col.key
-          ? { column: col.key, dir: tableSort.dir === "asc" ? "desc" : "asc" }
-          : { column: col.key, dir: col.key === "run_date" ? "desc" : "asc" };
-        sortTableRows();
-        renderDataTable();
-      };
-      dataTableHeadEl.appendChild(th);
-    }
-
-    dataTableBodyEl.innerHTML = "";
-    for (const row of tableRows) {
-      const tr = document.createElement("tr");
-      for (const col of TABLE_COLUMNS) {
-        const td = document.createElement("td");
-        const raw = row[col.key];
-        td.textContent = col.format ? col.format(raw) : (raw ?? "-");
-        if (col.numeric) td.classList.add("numeric");
-        tr.appendChild(td);
-      }
-      dataTableBodyEl.appendChild(tr);
-    }
-  }
-
-  function renderTableView() {
-    const cutoff = dateRangeCutoffIso();
-    const stmt = db.prepare(`
-      SELECT variant, param_label, cancellation, mean_ns, allocated_bytes, run_date, commit_sha, branch
-      FROM benchmark_results
-      WHERE platform = ? AND family = ? AND method = ? AND cancellation = ?
-        ${cutoff ? "AND run_date >= ?" : ""}
-    `);
-    stmt.bind([
-      platformSel.value, familySel.value, methodSel.value, cancellationSel.value,
-      ...(cutoff ? [cutoff] : []),
-    ]);
-    tableRows = [];
-    while (stmt.step()) tableRows.push(stmt.getAsObject());
-    stmt.free();
-
-    sortTableRows();
-    renderDataTable();
-
-    statusEl.textContent = tableRows.length
-      ? `${tableRows.length} row(s) shown`
-      : "No data for this selection yet.";
-  }
-
   function renderChart() {
-    const isTable = currentMode() === "table";
-    chartContainerEl.hidden = isTable;
-    if (isTable) legendHintEl.hidden = true; // else left to renderColorLegend(), called below
-    legendColorsEl.hidden = isTable;
-    legendDashesEl.hidden = isTable;
-    tableContainerEl.hidden = !isTable;
-
-    if (isTable) renderTableView();
-    else if (currentMode() === "scaling") renderScalingChart();
+    if (currentMode() === "scaling") renderScalingChart();
     else renderTrendChart();
     syncUrlHash();
   }
