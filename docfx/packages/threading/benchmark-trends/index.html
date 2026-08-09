@@ -434,16 +434,24 @@
   }
 
   function refreshParams() {
-    // A new family/method/cancellation-state means a different set of variants and contention
-    // levels, so any prior show/hide legend selections no longer refer to anything meaningful here.
+    // A new family/method/cancellation-state means a different set of variants, contention levels
+    // and cancellation states, so any prior show/hide legend selections no longer refer to
+    // anything meaningful here. All four sets are cleared together: leaving one behind strands a
+    // hidden series whose legend entry no longer exists, which reads as data silently missing.
     hiddenVariants.clear();
     hiddenParams.clear();
+    hiddenCancellations.clear();
+    hiddenMetrics.clear();
+    // Deliberately not filtered by the cancellation selector: this answers "is this method
+    // parameterized at all", which is a property of the method rather than of one cancellation
+    // state, and Scaling mode ignores that selector entirely. Trend mode filters by it in its own
+    // query anyway, so a level with no rows for the selected state simply plots nothing.
     const stmt = db.prepare(
       `SELECT DISTINCT param_label, param_value FROM benchmark_results
-       WHERE platform = ? AND family = ? AND method = ? AND cancellation = ? AND param_label IS NOT NULL
+       WHERE platform = ? AND family = ? AND method = ? AND param_label IS NOT NULL
        ORDER BY param_value`
     );
-    stmt.bind([platformSel.value, familySel.value, methodSel.value, cancellationSel.value]);
+    stmt.bind([platformSel.value, familySel.value, methodSel.value]);
     currentParams = [];
     while (stmt.step()) currentParams.push(stmt.getAsObject().param_label);
     stmt.free();
@@ -642,7 +650,11 @@
           backgroundColor: familyColors.get(variant),
           borderDash: dashFor.get(cancellation),
           pointStyle: metric.point,
-          hidden: hiddenVariants.has(variant) || hiddenCancellations.has(cancellation)
+          // hiddenCancellations is only honoured when the dash legend is actually rendered:
+          // with a single cancellation state that legend is empty, so a stale hide would blank
+          // the chart with no control left to restore it.
+          hidden: hiddenVariants.has(variant)
+                  || (multiCancellation && hiddenCancellations.has(cancellation))
                   || hiddenMetrics.has(metric.key),
           tension: 0.15,
           pointRadius: 3,
