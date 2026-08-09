@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 using Microsoft.CodeAnalysis.Testing;
+using System;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -76,14 +77,24 @@ public abstract class CodeFixTestBase<TAnalyzer, TCodeFix>
     }
 
     /// <summary>
-    /// Rewrites a test source to CRLF, which is what Roslyn's formatter emits for anything a fix
-    /// inserts.
+    /// Rewrites a test source to <see cref="Environment.NewLine"/>, which is what Roslyn's formatter
+    /// emits for anything a fix inserts or reformats.
     /// </summary>
     /// <remarks>
-    /// These sources are verbatim strings, so they carry whatever line endings the test file itself has
-    /// - LF in this repository. Without normalizing, every fix that adds a line would fail on line
-    /// endings alone, which says nothing about whether the fix is correct.
+    /// <para>
+    /// These sources are verbatim strings, so they carry whatever line endings the test file itself
+    /// has - LF in this repository, and whatever git's autocrlf leaves behind on a Windows checkout.
+    /// Without normalizing, every fix that adds a line would fail on line endings alone, which says
+    /// nothing about whether the fix is correct.
+    /// </para>
+    /// <para>
+    /// <see cref="Environment.NewLine"/> rather than a fixed <c>\r\n</c>: the formatter takes its
+    /// newline from the environment, not from the document it is rewriting, so only the lines a fix
+    /// touches pick it up while the rest keep whatever the input had. Hard-coding CRLF therefore
+    /// passed on Windows and failed on Linux, and only on the one or two lines each fix rewrote -
+    /// the opening brace of a reformatted block, or an inserted attribute.
+    /// </para>
     /// </remarks>
     private static string NormalizeLineEndings(string source)
-        => source.Replace("\r\n", "\n").Replace("\n", "\r\n");
+        => source.Replace("\r\n", "\n").Replace("\n", Environment.NewLine);
 }
