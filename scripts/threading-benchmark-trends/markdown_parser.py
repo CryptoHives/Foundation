@@ -32,8 +32,34 @@ import re
 import sys
 
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
-CONTENTION_COLUMNS = ("Iterations", "ParticipantCount")
 CANCELLATION_COLUMN = "cancellationType"
+
+# Everything BenchmarkDotNet emits that measures rather than parameterizes. Parameters are
+# identified by exclusion rather than by a whitelist of known names: a whitelist silently drops
+# any [Params] axis nobody remembered to add to it, and because param_label is part of the
+# primary key, dropping an axis makes distinct rows collide and overwrite each other. Excluding
+# known metrics instead fails safe - an unrecognized metric column would show up as a spurious
+# parameter, which is visible, rather than as silently merged rows, which is not.
+METRIC_COLUMNS = frozenset({
+    "Mean", "Error", "StdDev", "StdErr", "Median", "Min", "Max", "Op/s",
+    "Ratio", "RatioSD", "Rank", "Baseline",
+    "Gen0", "Gen1", "Gen2", "Allocated", "Alloc Ratio", "Code Size",
+    "Completed Work Items", "Lock Contentions",
+})
+
+# Which parameter supplies the numeric X axis of the dashboard's scaling view, most preferred
+# first. Only one column can, since the chart plots a single dimension; the rest still appear in
+# param_label, so no information is lost - they just narrow the series rather than spread it.
+# Ordered by which axis a reader of that benchmark would expect to see load plotted against.
+CONTENTION_COLUMNS = (
+    "Iterations",       # queued waiters - the original and most common contention axis
+    "WaiterCount",      # AsyncCountdownEvent's waiter side
+    "ParticipantCount", # AsyncBarrier / AsyncCountdownEvent
+    "ThreadCount",      # AsyncKeyedLock concurrent access
+    "KeyCount",         # AsyncKeyedLock cardinality
+    "WindowSize",       # AsyncKeyedLock rolling key: the live working set
+    "InitialCount",     # AsyncSemaphore permits
+)
 
 
 def parse_measurement_ns(cell: str) -> float | None:
@@ -124,15 +150,33 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
 
         cancellation = fields.get(CANCELLATION_COLUMN, "").strip() or "None"
 
-        param_label = None
-        for col in CONTENTION_COLUMNS:
-            if col in fields and fields[col].strip():
-                param_label = fields[col].strip()
-                break
+        # Every parameter column, in the order the report lists them, composed into one label.
+        # A benchmark with two axes (e.g. KeyCount x Iterations) needs both here: param_label is
+        # part of the primary key, so a label naming only one of them makes every value of the
+        # other collapse onto a single row, last write winning.
+        params = [
+            (col, fields[col].strip())
+            for col in header_cells[1:]
+            if col not in METRIC_COLUMNS and col != CANCELLATION_COLUMN and fields.get(col, "").strip()
+        ]
+        param_label = ", ".join(f"{col}={value}" for col, value in params) or None
+
+        # A single numeric value for the scaling chart's X axis, which can only plot one
+        # dimension. Prefer a recognized contention axis; fall back to the sole parameter when a
+        # benchmark has exactly one and it is numeric. Left NULL when neither applies, which the
+        # dashboard already treats as "not contention-parameterized".
         param_value = None
-        if param_label is not None:
+        by_name = dict(params)
+        candidates = [c for c in CONTENTION_COLUMNS if c in by_name]
+        if candidates:
+            chosen = by_name[candidates[0]]
+        elif len(params) == 1:
+            chosen = params[0][1]
+        else:
+            chosen = None
+        if chosen is not None:
             try:
-                param_value = int(param_label)
+                param_value = int(chosen)
             except ValueError:
                 param_value = None
 

@@ -512,13 +512,16 @@
       {
         x: {
           type: "linear",
-          title: { display: true, text: hasRealParams ? "Contention level (queued waiters)" : "(single, fixed scenario — no contention axis)" },
+          title: { display: true, text: hasRealParams ? "Contention level" : "(single, fixed scenario — no contention axis)" },
           ticks: hasRealParams ? undefined : { display: false },
         },
         y: yAxisScale(metric),
       },
+      // param_label names its own axes (e.g. "KeyCount=1, Iterations=10"), so no unit word is
+      // appended here. Most benchmarks scale queued waiters, but not all do - keyed locks scale
+      // distinct keys or threads - and a fixed "waiters" suffix was wrong for those.
       (ctx) => hasRealParams
-        ? `${ctx.raw.param_label} waiters · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+        ? `${ctx.raw.param_label} · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
         : `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
     );
 
