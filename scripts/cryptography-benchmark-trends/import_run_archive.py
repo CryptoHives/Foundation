@@ -42,6 +42,7 @@ sys.path.insert(0, SCRIPT_DIR)
 
 from import_historical_markdown import (  # noqa: E402
     classify_category,
+    parse_machine_spec,
     parse_markdown_table,
 )
 
@@ -81,6 +82,15 @@ def discover_runs(archive_root):
         yield run_id, platform, run_dir, metadata
 
 
+def read_environment(run_dir):
+    """The machine and runtime a run was measured on, or None when the run carries no spec."""
+    path = os.path.join(run_dir, "machine-spec.md")
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as handle:
+        return parse_machine_spec(handle.read())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -94,6 +104,22 @@ def main():
 
     conn = sqlite3.connect(args.db)
     conn.executescript(schema_sql)
+
+    # Start from empty. The database is derived from the archive, so anything already in the file
+    # is either about to be rewritten or is no longer true - a run withdrawn from the archive, or
+    # rows keyed differently by an earlier version of the parser.
+    #
+    # INSERT OR REPLACE alone does not achieve this. param_label is part of the primary key and is
+    # NULL for benchmarks with no [Params] axis, and SQLite treats NULLs in a key as distinct, so
+    # those rows never match an existing one and every rebuild appends another copy. Locally that
+    # grew the Threading database from 4,718 rows to 6,413 across four rebuilds, all of the excess
+    # in unparameterised benchmarks. CI never saw it, because it always starts from a fresh
+    # checkout with no database file.
+    #
+    # Deleting inside the same transaction as the inserts, rather than unlinking the file, means a
+    # failed import leaves the previous database intact instead of an empty one.
+    conn.execute("DELETE FROM benchmark_results")
+    conn.execute("DELETE FROM benchmark_runs")
 
     total_rows = 0
     total_runs = 0
@@ -127,6 +153,24 @@ def main():
                      row["method"], row["family"], row["variant"], row["data_size_label"],
                      row["data_size_bytes"], row["mean_ns"], row["stddev_ns"],
                      row["allocated_bytes"]))
+
+        # Recorded per (run, platform) so a step in a trend line can be checked against a runtime
+        # or SDK change before being read as a code regression - the recorded runs span .NET 10.0.2
+        # to 10.0.9 across three machines.
+        environment = read_environment(run_dir)
+        if environment and not args.dry_run:
+            conn.execute(
+                "INSERT OR REPLACE INTO benchmark_runs "
+                "(run_id, platform, run_date, commit_sha, branch, bdn_version, os, cpu, "
+                " logical_cores, physical_cores, sdk_version, runtime_version, jit) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (run_id, platform, run_date, commit_sha, branch, environment["bdn_version"],
+                 environment["os"], environment["cpu"], environment["logical_cores"],
+                 environment["physical_cores"], environment["sdk_version"],
+                 environment["runtime_version"], environment["jit"]))
+        elif not environment:
+            print(f"  [warn] {run_id}/{platform}: no machine-spec.md; environment not recorded",
+                  file=sys.stderr)
 
         print(f"  [{'dry-run' if args.dry_run else 'ok'}] {run_id}/{platform}: {run_rows} row(s)")
         total_rows += run_rows

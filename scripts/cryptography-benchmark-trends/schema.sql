@@ -32,3 +32,35 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
 CREATE INDEX IF NOT EXISTS idx_family_variant ON benchmark_results(family, variant);
 CREATE INDEX IF NOT EXISTS idx_run_date        ON benchmark_results(run_date);
 CREATE INDEX IF NOT EXISTS idx_platform        ON benchmark_results(platform);
+
+-- One row per (run, platform): the environment the numbers were produced in.
+--
+-- Mirrors the table of the same name in scripts/threading-benchmark-trends/schema.sql - these two
+-- pipelines are deliberate siblings rather than one generic one, because their result shapes
+-- differ, but the environment a run was measured in is identical across both.
+--
+-- Kept beside benchmark_results rather than folded into it, since it is constant across a run's
+-- hundreds of rows. Every field is parsed out of the machine-spec.md that sits next to the
+-- scenario tables in the run archive, so this backfills across the whole history.
+--
+-- The point is attribution: the recorded runs span .NET 10.0.2 through 10.0.9 on three different
+-- machines, so a step in a trend line cannot be read as a code regression without knowing whether
+-- the floor moved under it.
+CREATE TABLE IF NOT EXISTS benchmark_runs (
+    run_id          TEXT NOT NULL,
+    platform        TEXT NOT NULL,  -- matches benchmark_results.platform
+    run_date        TEXT,           -- ISO 8601, same value as the results rows
+    commit_sha      TEXT,
+    branch          TEXT,
+    bdn_version     TEXT,           -- e.g. '0.15.8'
+    os              TEXT,           -- e.g. 'Windows 10 (10.0.19045.6456/22H2/2022Update)'
+    cpu             TEXT,           -- e.g. 'Intel Xeon CPU E3-1240 v5 3.50GHz'
+    logical_cores   INTEGER,
+    physical_cores  INTEGER,
+    sdk_version     TEXT,           -- e.g. '10.0.102'
+    runtime_version TEXT,           -- host runtime, e.g. '10.0.2'
+    jit             TEXT,           -- e.g. 'X64 RyuJIT x86-64-v3'
+    PRIMARY KEY (run_id, platform)
+);
+
+CREATE INDEX IF NOT EXISTS idx_runs_runtime ON benchmark_runs(runtime_version);
