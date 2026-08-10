@@ -137,6 +137,28 @@ def parse_allocated_bytes(cell: str) -> int | None:
         return None
 
 
+def parse_ratio(cell: str) -> float | None:
+    """The report's Ratio column, which is how BenchmarkDotNet records the declared baseline.
+
+    Every Threading benchmark class marks one method `[Benchmark(Baseline = true)]`, and BDN then
+    prints Ratio = 1.00 for it in every parameter group. That is the only place the declaration
+    survives into the recorded data - the method attribute is not in the report, and the variant
+    name gives no hint which one it was.
+
+    Worth keeping precisely because the alternative is guessing. The dashboard used to pick the
+    alphabetically first "Pooled" variant, which chose "Pooled (AsTask)" over "Pooled (ValueTask)"
+    and computed every Ratio in the table against the wrong row - wrong in 7 of the 23 reports of
+    a full run.
+    """
+    cell = cell.strip()
+    if cell in ("", "-", "NA", "?"):
+        return None
+    try:
+        return float(cell)
+    except ValueError:
+        return None
+
+
 def parse_markdown_table(content: str, source_label: str = "<content>", normalize_variant=None):
     """Yields dicts with method/family/variant/cancellation/param_label/param_value/mean/stddev/
     allocated for each data row. `source_label` is only used in stderr diagnostics.
@@ -248,6 +270,7 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
             "param_label": param_label,
             "param_value": param_value,
             "mean_ns": mean_ns,
+            "ratio": parse_ratio(fields.get("Ratio", "")),
             "stddev_ns": parse_measurement_ns(fields.get("StdDev", "")),
             "allocated_bytes": parse_allocated_bytes(fields.get("Allocated", "")),
         }

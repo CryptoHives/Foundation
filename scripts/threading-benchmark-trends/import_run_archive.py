@@ -154,14 +154,15 @@ def main():
                     "INSERT OR REPLACE INTO benchmark_results "
                     "(run_id, run_date, commit_sha, branch, platform, framework, class_name, "
                     " method, family, variant, cancellation, param_label, param_value, mean_ns, "
-                    " stddev_ns, allocated_bytes) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    " stddev_ns, allocated_bytes, ratio) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (run_id, run_date, commit_sha, branch, platform,
                      # A report covering several runtimes names each row's own; one covering a
                      # single runtime has no such column, so the directory is the authority.
                      row["framework"] or framework,
                      class_name, method, family, variant, row["cancellation"], row["param_label"],
-                     row["param_value"], row["mean_ns"], row["stddev_ns"], row["allocated_bytes"]))
+                     row["param_value"], row["mean_ns"], row["stddev_ns"], row["allocated_bytes"],
+                     row["ratio"]))
 
         environment = read_environment(run_dir)
         if environment and not args.dry_run:

@@ -47,6 +47,14 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     mean_ns     REAL    NOT NULL,
     stddev_ns   REAL,              -- usually NULL: ThreadingConfig hides the StdDev/Error columns
     allocated_bytes REAL,
+    -- The report's Ratio column, kept solely to identify the declared baseline: every Threading
+    -- benchmark marks one method `[Benchmark(Baseline = true)]`, and BenchmarkDotNet records that
+    -- as Ratio = 1.00 in every parameter group. Nothing else in the recorded data says which row
+    -- the report treated as its reference, and guessing got it wrong in 7 of 23 reports.
+    --
+    -- NULL for Cryptography-shaped data and for any report without the column. Not part of the
+    -- primary key - it is a derived measurement, not a dimension.
+    ratio       REAL,
     PRIMARY KEY (run_id, platform, framework, class_name, method, family, variant, cancellation, param_label)
 );
 
