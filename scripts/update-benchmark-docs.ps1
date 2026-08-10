@@ -75,7 +75,9 @@ $packageConfigurations = @{
 
     "Cryptography" = [ordered]@{
         SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
-        DestDir   = "docfx/packages/security/cryptography/benchmarks"
+        # Recorded runs live on the `benchmarks` branch, not in docfx - see the Threading entry
+        # above for why. Default is a sibling worktree; pass -DestDir if yours is elsewhere.
+        DestDir   = "../foundation-bench/cryptography"
         Files     = @(
             # SHA-2 individual algorithms
             @{ Source = "SHA224Benchmark-report.md"; Target = "sha224.md" }

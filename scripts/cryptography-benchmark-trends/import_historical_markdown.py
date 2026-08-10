@@ -29,6 +29,7 @@ Design notes:
   each historical benchmark refresh shows up as a distinct point in the trends dashboard.
 """
 
+import json
 import os
 import re
 import sqlite3
@@ -301,16 +302,103 @@ def resolve_platform_and_filename(path: str):
     return None
 
 
+def read_machine_spec_text(sha: str, platform: str):
+    """The machine-spec.md that applies to `platform` at `sha`, or None.
+
+    Tries the per-platform path first and falls back to the flat-era root file, so both layouts
+    resolve without the caller needing to know which era a commit belongs to.
+    """
+    base = "docfx/packages/security/cryptography/benchmarks"
+    for path in (f"{base}/{platform}/machine-spec.md", f"{base}/machine-spec.md"):
+        try:
+            return git("show", f"{sha}:{path}")
+        except subprocess.CalledProcessError:
+            continue
+    return None
+
+
+def export_archive(dest_root: str) -> int:
+    """Writes every run reachable from history into the per-run directory layout.
+
+    One directory per run, keyed by the commit its binaries were built from, with a platform
+    directory inside - the layout the `benchmarks` branch uses and import_run_archive.py reads.
+    Unlike this module, that reader needs no git history at all, which is what lets CI build the
+    database from a shallow checkout.
+
+    These runs predate run.json, so one is synthesized and marked backfilled: results were
+    committed alongside the code they measured, so the recording commit is the code commit.
+    """
+    commits = discover_commits()
+    written_runs = 0
+    written_files = 0
+
+    for sha, date, paths in commits:
+        by_platform = {}
+        for path in paths:
+            resolved = resolve_platform_and_filename(path)
+            if resolved is None:
+                continue
+            platform, filename = resolved
+            if filename in EXCLUDE_FILENAMES or filename == "machine-spec.md":
+                continue
+            try:
+                content = git("show", f"{sha}:{path}")
+            except subprocess.CalledProcessError:
+                continue  # deleted in this commit
+            if not list(parse_markdown_table(content)):
+                continue  # nothing parseable - not a results table
+            by_platform.setdefault(platform, {})[filename] = content
+
+        for platform, files in sorted(by_platform.items()):
+            run_dir = os.path.join(dest_root, "cryptography", sha[:10], platform)
+            os.makedirs(run_dir, exist_ok=True)
+
+            spec = read_machine_spec_text(sha, platform)
+            if spec is not None:
+                files["machine-spec.md"] = spec
+
+            for filename, content in sorted(files.items()):
+                with open(os.path.join(run_dir, filename), "w", encoding="utf-8", newline="\n") as handle:
+                    handle.write(content)
+                written_files += 1
+
+            metadata = {
+                "codeCommit": sha,
+                "recordedAt": date,
+                "package": "cryptography",
+                "platform": platform,
+                "backfilled": True,
+                "note": "Recovered from git history, where results were committed alongside the "
+                        "code they measured, so the recording commit is the code commit.",
+            }
+            with open(os.path.join(run_dir, "run.json"), "w", encoding="utf-8", newline="\n") as handle:
+                json.dump(metadata, handle, indent=2)
+                handle.write("\n")
+            written_files += 1
+            written_runs += 1
+            print(f"  [export] {sha[:10]}/{platform}: {len(files)} file(s)")
+
+    print(f"\nExported {written_runs} run-platform(s), {written_files} file(s) to {dest_root}")
+    return 0
+
+
 def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", required=True, help="Path to the SQLite database file (created if missing)")
     parser.add_argument("--dry-run", action="store_true", help="Parse and report without writing to the database")
+    parser.add_argument("--export", metavar="DIR",
+                        help="Instead of importing, write every run found in history into DIR as "
+                             "cryptography/<code-commit>/<platform>/, the layout the benchmarks "
+                             "branch uses")
     args = parser.parse_args()
 
     with open(os.path.join(SCRIPT_DIR, "schema.sql"), encoding="utf-8") as f:
         schema_sql = f.read()
+
+    if args.export:
+        return export_archive(args.export)
 
     conn = sqlite3.connect(args.db)
     conn.executescript(schema_sql)

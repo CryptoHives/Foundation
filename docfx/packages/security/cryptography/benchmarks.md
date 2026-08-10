@@ -1,4 +1,4 @@
-# Cryptography Benchmarks
+﻿# Cryptography Benchmarks
 
 BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` are published through the
 interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small
@@ -120,20 +120,32 @@ The following tables show the per-instance memory footprint (internal state + bu
    cd tests/Security/Cryptography
    dotnet run -c Release --framework net10.0 -- --filter *SHA256*
    ```
-2. For a quick local before/after comparison, mirror the generated markdown into a scratch folder (not
-   published, see `.gitignore`):
-   ```powershell
-   .\scripts\update-benchmark-docs.ps1 -Project Cryptography
+2. Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
    ```
-3. Only if the run is worth keeping as a trend data point, record it into the tracked dashboard database —
-   this is a deliberate, separate step since not every local run needs to become history:
-   ```powershell
-   .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category Hash
+   cryptography/<code-commit>/<platform>/
+       run.json          what the numbers measure
+       machine-spec.md   the machine and runtime they were measured on
+       <scenario>.md     one report per benchmark class
    ```
-   The script derives a platform id from the JSON export's host info (override with `-PlatformId` for
-   self-reported/custom machines), tags the run with the current commit/branch, and appends it to
-   `benchmark-trends/benchmark-history.sqlite`. It never commits or pushes — review the diff and commit
-   yourself if you want the run published.
+   A run is keyed by the commit its binaries were built from, not by the commit that records it, so two
+   machines measuring the same build land in one run directory as two platform directories.
+
+   Write the reports into a worktree of that branch:
+   ```powershell
+   git worktree add ../foundation-bench benchmarks
+   .\scripts\update-benchmark-docs.ps1 -Project Cryptography -DestDir ../foundation-bench/cryptography
+   ```
+   The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId`
+   for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass
+   `-CodeCommit` when recording after the fact. It never commits or pushes: review the result and commit
+   in that worktree when the run is worth keeping. Pushing the branch republishes the site.
+3. The dashboard database is a derived artifact, not a tracked file — SQLite rewrites pages throughout on
+   every change, so committing it added a fresh multi-megabyte blob per rebuild for data that is fully
+   reproducible from the archive. The docs workflow builds it, and so can you:
+   ```powershell
+   .\scripts\build-trends-database.ps1 -Project Cryptography
+   ```
+   `.\scripts\run-docfx.ps1` does this for both packages before building.
 
 ## See also
 
