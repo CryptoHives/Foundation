@@ -34,6 +34,11 @@
     <PackageReference Condition="'$(TargetFramework)' != 'net462' AND '$(TargetFramework)' != 'net48'" Include="NeoSmart.AsyncLock" />
     <PackageReference Condition="'$(TargetFramework)' != 'net462' AND '$(TargetFramework)' != 'net48'" Include="ProtoPromise" />
     <PackageReference Include="Microsoft.VisualStudio.Threading" />
+    <PackageReference Condition="'$(TargetFramework)' != 'net462' AND '$(TargetFramework)' != 'net48'" Include="KeyedSemaphores" />
+    <PackageReference Include="Dao.IndividualLock" />
+    <!-- Aliased: AsyncUtilities' GetAwaiter(this IEnumerable<Task>) extension is broad enough that
+         unrelated code elsewhere in this project is modified. Keep it under alias.  -->
+    <PackageReference Include="AsyncUtilities" Aliases="AsyncUtilitiesLib" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' != 'true'">

@@ -74,6 +74,16 @@ BenchmarkRun*.log
 # Local scratch output from update-benchmark-docs.ps1 (before/after comparison only, never published)
 /bench-results/
 
+# Benchmark trends databases are derived artifacts, generated from the run archive on the
+# `benchmarks` branch by scripts/*-benchmark-trends/import_run_archive.py. Committing them added a
+# fresh multi-megabyte blob per rebuild - sqlite rewrites pages throughout, so git cannot delta
+# them - for data that is fully reproducible. Build one locally with scripts/build-trends-database.ps1,
+# or let the docs workflow do it.
+**/benchmark-trends/benchmark-history.sqlite
+
+# Working checkout of the benchmarks branch, made by the docs workflow and by anyone following it.
+/.benchmarks-archive/
+
 # .NET Core
 project.lock.json
 packages.lock.json

@@ -325,7 +325,7 @@ public class AsyncCountdownEventTests
     }
 
     [Test]
-    public async Task WaitAsyncWithZeroTimeoutThrowsWhenCountIsNonZero()
+    public void WaitAsyncWithZeroTimeoutThrowsWhenCountIsNonZero()
     {
         var countdown = new AsyncCountdownEvent(1);
 

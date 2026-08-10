@@ -49,7 +49,7 @@ public abstract class AsyncLockBaseBenchmark
         _objectLock = new();
         _lockPooled = new();
         _semaphoreSlim = new(1, 1);
-        _spinLock = new();
+        _spinLock = new(enableThreadOwnerTracking: false);
         _spinLockCryptoHives = new();
         _lockNitoAsync = new();
         _lockNonKeyed = new();

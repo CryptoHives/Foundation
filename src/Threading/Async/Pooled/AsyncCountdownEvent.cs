@@ -181,11 +181,6 @@ public sealed class AsyncCountdownEvent
             return default;
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask(Task.FromException(new TimeoutException()));
-        }
-
         return WaitAsyncImpl(timeout, cancellationToken);
     }
 
@@ -208,22 +203,27 @@ public sealed class AsyncCountdownEvent
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
+            }
+
             waiter = _pool.GetPooledWaiter(this);
             waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
             waiter.CancellationToken = cancellationToken;
 
             version = waiter.Version;
             _waiters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)
