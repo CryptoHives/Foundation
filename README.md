@@ -34,7 +34,13 @@ From a checkout of the code branch, with results in `tests/<Package>/BenchmarkDo
 git worktree add ../foundation-bench benchmarks
 ./scripts/update-benchmark-docs.ps1 -Project Threading -DestDir ../foundation-bench/threading
 cd ../foundation-bench && git add . && git commit && git push
+gh workflow run docfx.yml     # publish it: pushing this branch does not
 ```
+
+That last step is not optional. The trends database is generated when the docs workflow runs, and a
+push to this branch cannot start it — GitHub only runs workflows that exist in the pushed ref, and
+this branch carries no `.github/` directory. Without the dispatch the run sits here unpublished
+until something else pushes to `main`.
 
 `update-benchmark-docs.ps1` writes `run.json`, defaulting the code commit to `HEAD`. Pass
 `-CodeCommit` when recording a run after the fact, or when HEAD has moved on since the run.
