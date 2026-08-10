@@ -35,7 +35,11 @@ $RepoRoot = Split-Path $PSScriptRoot
 $packageConfigurations = @{
     "Threading" = [ordered]@{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
-        DestDir   = "docfx/packages/threading/benchmarks"
+        # Recorded runs live on the `benchmarks` branch, not in docfx: the published view is the
+        # SQLite-backed dashboard, whose database is generated from that branch at build time. The
+        # default is a sibling worktree, so pass -DestDir if yours is elsewhere:
+        #     git worktree add ../foundation-bench benchmarks
+        DestDir   = "../foundation-bench/threading"
         Files     = @(
             # AsyncLock
             @{ Source = "AsyncLockSingleBenchmark-report.md"; Target = "asynclock-single.md" }

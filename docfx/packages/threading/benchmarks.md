@@ -1,4 +1,4 @@
-## Threading Benchmarks
+﻿## Threading Benchmarks
 
 This page documents how the benchmarks are executed which are included in the Threading library.
 
@@ -16,19 +16,38 @@ Published results live in the interactive benchmark trends dashboard below rathe
 
 ### Recording a benchmark run
 
-First run the benchmarks locally (see below). For a quick local before/after comparison, mirror the generated markdown into a scratch folder (not published, see `.gitignore`):
+Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
 
-```powershell
-.\scripts\update-benchmark-docs.ps1 -Project Threading
+```
+threading/<code-commit>/<platform>/
+    run.json          what the numbers measure
+    machine-spec.md   the machine and runtime they were measured on
+    <scenario>.md     one report per benchmark class
 ```
 
-Only if the run is worth keeping as a trend data point, record it into the tracked dashboard database — a deliberate, separate step since not every local run needs to become history:
+A run is keyed by the commit its binaries were built from, not by the commit that records it. Two machines measuring the same build therefore land in one run directory as two platform directories, which is what makes a cross-platform comparison possible at all.
+
+Run the benchmarks locally first (see below), then write the reports into a worktree of that branch:
 
 ```powershell
-.\scripts\threading-benchmark-trends\record-benchmark-run.ps1
+git worktree add ../foundation-bench benchmarks
+.\scripts\update-benchmark-docs.ps1 -Project Threading -DestDir ../foundation-bench/threading
 ```
 
-The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported/custom machines), tags the run with the current commit/branch, and appends it to `benchmark-trends/benchmark-history.sqlite`. It never commits or pushes — review the diff and commit yourself if you want the run published.
+`update-benchmark-docs.ps1` derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass `-CodeCommit` when recording a run after the fact, or when `HEAD` has moved on since the run. It never commits or pushes: review the result and commit in that worktree when the run is worth keeping.
+
+Pushing the branch republishes the site, because the dashboard database is generated at build time rather than committed.
+
+### Rebuilding the dashboard database
+
+`benchmark-history.sqlite` is a derived artifact, not a tracked file: SQLite rewrites pages throughout on every change, so committing it added a fresh multi-megabyte blob per rebuild for data that is fully reproducible from the archive. The docs workflow builds it, and so can you:
+
+```powershell
+.\scripts\build-trends-database.ps1          # from the committed branch, via a throwaway worktree
+.\scripts\build-trends-database.ps1 -Archive ../foundation-bench   # including runs you have not committed
+```
+
+`.\scripts\run-docfx.ps1` does this for you before building, so the local site always has data.
 
 ### Included benchmark suites
 
@@ -88,7 +107,7 @@ Notes:
 When run locally in `Release` mode, BenchmarkDotNet writes results and artifacts to:
 - `tests/Threading/BenchmarkDotNet.Artifacts/results/`
 
-After running benchmarks, see "Recording a benchmark run" above for how to compare locally or record a run into the published dashboard.
+After running benchmarks, see "Recording a benchmark run" above for how to record a run into the archive so it appears in the published dashboard.
 
 ### Adding a new benchmark
 
@@ -96,7 +115,7 @@ After running benchmarks, see "Recording a benchmark run" above for how to compa
 2. Include `[Benchmark]` methods and `[GlobalSetup]` where needed.
 3. Add a `[Params]` or `FixtureArgs` entry if parameterized runs are required.
 4. Run locally and inspect generated artifacts in `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
-5. Once the results look right, record the run into the trends dashboard (see "Recording a benchmark run" above).
+5. Once the results look right, record the run into the archive (see "Recording a benchmark run" above). A new benchmark class also needs an entry in `scripts/update-benchmark-docs.ps1`, which maps report file names onto the archive's scenario names.
 
 ## See Also
 

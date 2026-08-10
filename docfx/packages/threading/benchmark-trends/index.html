@@ -53,9 +53,9 @@
 
 <fieldset class="mode-toggle">
   <legend>View</legend>
-  <label><input type="radio" name="mode" value="trend" checked> Trend over time</label>
+  <label><input type="radio" name="mode" value="table" checked> Table (one run)</label>
+  <label><input type="radio" name="mode" value="trend"> Trend over time</label>
   <label><input type="radio" name="mode" value="scaling"> Scaling by contention</label>
-  <label><input type="radio" name="mode" value="table"> Table (one run)</label>
 </fieldset>
 
 <div class="controls">
@@ -110,12 +110,17 @@
 <div id="table-container" hidden><table class="data-table" id="data-table"><thead><tr id="data-table-head"></tr></thead><tbody id="data-table-body"></tbody></table></div>
 
 <p class="hint">
-  Data source: <code>benchmark-history.sqlite</code>, rebuilt by
-  <code>scripts/threading-benchmark-trends/import_historical_markdown.py</code> from the
-  per-platform markdown under <code>docfx/packages/threading/benchmarks/</code>, which is
-  committed with each run — so the database is a derived artifact and can be regenerated from git
-  history at any time. Each point is one recorded run; hover a point for the exact commit, value
-  and the .NET runtime it was measured on. <strong>Trend over time</strong> plots every recorded
+  Data source: <code>benchmark-history.sqlite</code>, generated at build time by
+  <code>scripts/threading-benchmark-trends/import_run_archive.py</code> from the run archive on the
+  <code>benchmarks</code> branch — so it is a derived artifact rather than a committed file, and
+  any recorded run can be rebuilt from the archive at any time. <strong>Table (one run)</strong> is the default: it reproduces one run's
+  report, every dimension that run carried as its own column, grouped and ordered as
+  BenchmarkDotNet ordered it, with the baseline row highlighted and Ratio computed against it per
+  parameter combination and cancellation state. Pick any recorded run rather than only the newest,
+  and optionally a second one to compare against — two dates on one machine, or the same commit on
+  two machines, which the run list marks as <em>(same commit)</em>. The chart modes plot one point
+  per recorded run; hover a point for the exact commit, value and the .NET runtime it was measured
+  on. <strong>Trend over time</strong> plots every recorded
   parameter combination for the current filters at once (use the line-style legend below to hide
   ones you don't want). <strong>Scaling by contention</strong> plots the benchmark's parameterized
   axis on the X axis using each implementation's most recent run — usually queued waiters, but
@@ -127,12 +132,6 @@
   therefore apply to <strong>Trend over time</strong> only, where the parameter needs the line
   style and there is no channel left for them. Some methods aren't parameterized at all (e.g. a
   plain uncontended-only benchmark) — those show a single point per implementation in both views.
-  <strong>Table (one run)</strong> drops the charts and reproduces one run's report: every
-  dimension that run carried as its own column, grouped and ordered as BenchmarkDotNet ordered it,
-  with the baseline row highlighted and Ratio computed against it per parameter combination and
-  cancellation state. Pick any recorded run rather than only the newest, and optionally a second
-  one to compare against — two dates on one machine, or the same commit on two machines, which
-  the run list marks as <em>(same commit)</em>.
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
