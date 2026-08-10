@@ -231,6 +231,24 @@ def read_run_metadata(sha: str, platform: str):
     return None
 
 
+def read_latest_run_metadata(platform: str):
+    """Reads run.json from the working tree for `platform`, or None.
+
+    Needed because run.json can only describe the run whose files sit beside it, and a run
+    recorded before the file existed has none at its own commit - the metadata was added
+    afterwards, so `git show <recording sha>:...` finds nothing. This is consulted only for the
+    most recent commit touching a platform, which is the one those files still describe. Older
+    commits overwrote the same paths, so their metadata is genuinely unrecoverable this way;
+    recovering those is what the per-run directory layout is for.
+    """
+    path = os.path.join(REPO_ROOT, "docfx", "packages", "threading", "benchmarks", platform, "run.json")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError):
+        return None
+
+
 def read_machine_spec(sha: str, platform: str):
     """Reads the machine-spec.md that applies to `platform` at `sha`, or None if there is none.
 
@@ -265,6 +283,14 @@ def main() -> int:
     commits = discover_commits()
     print(f"Found {len(commits)} commit(s) touching Threading benchmark markdown tables.")
 
+    # Newest commit per platform, so the working tree's run.json is only credited to the run its
+    # files still describe (commits are oldest-first, so the last write wins).
+    latest_commit_per_platform = {}
+    for sha, _date, paths in commits:
+        for resolved in (resolve_platform_and_filename(x) for x in paths):
+            if resolved:
+                latest_commit_per_platform[resolved[0]] = sha
+
     total_rows = 0
     total_files = 0
     for sha, date, paths in commits:
@@ -289,6 +315,8 @@ def main() -> int:
         })
         for platform_probe in commit_platforms:
             metadata = read_run_metadata(sha, platform_probe)
+            if metadata is None and sha == latest_commit_per_platform.get(platform_probe):
+                metadata = read_latest_run_metadata(platform_probe)
             run_metadata_by_platform[platform_probe] = metadata
             if metadata and metadata.get("codeCommit"):
                 run_id = metadata["codeCommit"][:10]
