@@ -145,7 +145,10 @@ The following tables show the per-instance memory footprint (internal state + bu
    The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId`
    for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass
    `-CodeCommit` when recording after the fact. It never commits or pushes: review the result and commit
-   in that worktree when the run is worth keeping. Pushing the branch republishes the site.
+   in that worktree when the run is worth keeping. Pushing the branch does not republish the site on
+   its own — GitHub only runs workflows that exist in the pushed branch, and the orphan archive branch
+   carries no `.github/`. Publish a new run deliberately with `gh workflow run docfx.yml`, or let the
+   next push to `main` pick it up.
 
    It also records the version of every reference implementation the run measured against, read from the
    benchmark project's resolved NuGet graph. A reference's trend line steps when that library ships a

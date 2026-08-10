@@ -40,7 +40,7 @@ git worktree add ../foundation-bench benchmarks
 
 It also records the version of every third-party library the run measured against, read from the benchmark project's resolved NuGet graph. A competitor's trend line steps when that competitor ships a release just as readily as when this library changes, and nothing else in a recorded run tells the two apart — `Microsoft.VisualStudio.Threading` moved 17.14.15 to 18.7.23 between runs already in the archive. The dashboard shows the version in each point's tooltip, and marks any compared row whose library moved between the two runs. Pass `-TargetFramework` if the benchmarks did not run on the default `net10.0`.
 
-Pushing the branch republishes the site, because the dashboard database is generated at build time rather than committed.
+Pushing the branch does not republish the site on its own. The dashboard database is generated at build time rather than committed, so a new run becomes visible only when the docs workflow runs again — and a push to `benchmarks` cannot start it, because GitHub only runs workflows that exist in the pushed branch and that orphan branch carries no `.github/`. Publish it deliberately with `gh workflow run docfx.yml`, or let the next push to `main` pick it up.
 
 ### Rebuilding the dashboard database
 

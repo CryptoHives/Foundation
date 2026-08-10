@@ -5,22 +5,26 @@ name: DocFX Deployment
 # Trigger on push to main, but only when documentation or the API-doc sources change.
 # (API reference is generated from src/**; other churn does not affect the site.)
 #
-# Also on push to `benchmarks`, the orphan branch holding recorded benchmark runs: the trends
-# database is generated from it at build time, so a newly recorded run has to republish the site
-# to become visible. `threading/**` and `cryptography/**` are that branch's layout and match
-# nothing on main, so they add no spurious main builds. Note that `paths` applies to every listed
-# branch, which is why the archive needs its own entries rather than being covered by `docfx/**`.
+# Recording a benchmark run does NOT publish it. The trends databases are generated at build time
+# from the orphan `benchmarks` branch, so a new run only becomes visible once this workflow runs
+# again - but a push to that branch cannot start it. For push events GitHub only runs workflows
+# that exist in the pushed ref, and `benchmarks` carries nothing but README.md and the two run
+# directories; it has no .github/ at all. Listing it here looked right and never once fired.
+#
+# So after pushing a recorded run, publish it deliberately:
+#
+#     gh workflow run docfx.yml
+#
+# which is what workflow_dispatch below is for. Any later push to main republishes it too, since
+# the build always reads the archive branch fresh.
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - benchmarks
     paths:
       - 'docfx/**'
       - 'src/**'
-      - 'threading/**'
-      - 'cryptography/**'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
