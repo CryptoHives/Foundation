@@ -14,6 +14,11 @@
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  /* A control the current view ignores. Disabled rather than hidden: it keeps the layout
+     stable while switching modes, and keeps the setting visible so you can see what it will be
+     when you switch back. The title attribute says why on hover. */
+  .controls > label.inert { opacity: 0.4; }
+  .controls > label.inert select, .controls > label.inert input { cursor: not-allowed; }
   .legend-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-bottom: 0.4rem; }
   .legend-row:empty { margin-bottom: 0; }
   .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: #333; cursor: pointer; user-select: none; }
@@ -28,7 +33,11 @@
   table.data-table th { background: #f5f5f5; position: sticky; top: 0; z-index: 1; }
   table.data-table td.numeric, table.data-table th.numeric { text-align: right; }
   table.data-table tr.group-start td { border-top: 2px solid #bbb; }
-  table.data-table tr.baseline td { background: #fff6e6; font-weight: 600; }
+  /* Ours get a wash of the brand amber so they stand out from third parties at a glance; the
+     baseline is the same hue a shade deeper, so the two are related but never confusable.
+     Identical to the Cryptography dashboard's table - the two are meant to read as one product. */
+  table.data-table tr.ours td { background: #fffcf4; }
+  table.data-table tr.baseline td { background: #ffeecc; font-weight: 600; }
   table.data-table td.worse { color: #b91c1c; }
   /* A delta whose competitor also changed version between the two runs. Not an error state -
      the number is real - so it is marked rather than coloured, and carries its own tooltip. */
@@ -51,7 +60,7 @@
   <code>CancellationToken</code> state, the Cancellation selector picks which state to plot (a
   live-but-unfired token adds overhead compared to <code>CancellationToken.None</code>, which is
   why it's kept as its own axis rather than doubling every legend entry). Runs entirely in your
-  browser (no server, no external database) — see the hint below the chart for the two view modes.
+  browser (no server, no external database) — see the notes below for the three view modes.
 </p>
 
 <fieldset class="mode-toggle">
@@ -74,10 +83,10 @@
   <label>Method
     <select id="method"></select>
   </label>
-  <label>Cancellation
+  <label id="cancellation-picker">Cancellation
     <select id="cancellation"></select>
   </label>
-  <label>Metric
+  <label id="metric-picker">Metric
     <select id="metric">
       <option value="mean_ns">Mean time (ns)</option>
       <option value="allocated_bytes">Allocated bytes</option>
@@ -89,14 +98,14 @@
   <label id="compare-picker" hidden>Compare with
     <select id="compare"></select>
   </label>
-  <label>Date range
+  <label id="range-picker">Date range
     <select id="date-range">
       <option value="all">All time</option>
       <option value="30">Last 30 days</option>
       <option value="90">Last 90 days</option>
     </select>
   </label>
-  <label style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
+  <label id="log-picker" style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
     <input type="checkbox" id="log-scale">
     Logarithmic Y axis
   </label>
@@ -157,6 +166,10 @@
   const legendColorsEl = document.getElementById("legend-colors");
   const legendDashesEl = document.getElementById("legend-dashes");
   const legendMetricsEl = document.getElementById("legend-metrics");
+  const cancellationPickerEl = document.getElementById("cancellation-picker");
+  const metricPickerEl = document.getElementById("metric-picker");
+  const rangePickerEl = document.getElementById("range-picker");
+  const logPickerEl = document.getElementById("log-picker");
   const copyLinkBtn = document.getElementById("copy-link");
   const copyLinkStatusEl = document.getElementById("copy-link-status");
   const dateRangeSel = document.getElementById("date-range");
@@ -601,6 +614,42 @@
     return parts.join(" · ");
   }
 
+
+  // Which controls each view actually reads. A control left enabled but ignored is worse than one
+  // greyed out: changing it looks like it should do something, and the view simply does not move.
+  //
+  // Deliberately not listed: platform, framework, family and method drive the selector cascade in
+  // every mode, so they always apply - in Table mode they narrow which runs the picker offers,
+  // even though the picker has the final say on which one is shown.
+  function setInert(labelEl, inert, reason) {
+    if (!labelEl) return;
+    labelEl.classList.toggle("inert", inert);
+    const field = labelEl.querySelector("select, input");
+    if (field) field.disabled = inert;
+    if (inert) labelEl.title = reason;
+    else labelEl.removeAttribute("title");
+  }
+
+  // Threading:
+  //   Table   - shows one recorded run whole. Every cancellation state is a column and both
+  //             metrics are columns, so neither selector applies; the run picker replaces the
+  //             date range, and there is no chart to scale logarithmically.
+  //   Scaling - plots both metrics on two axes and every cancellation state as its own dash
+  //             pattern, so those two selectors are replaced by their legends.
+  //   Trend   - reads all of them.
+  function syncControlAvailability(mode) {
+    const table = mode === "table";
+    const scaling = mode === "scaling";
+    setInert(cancellationPickerEl, table || scaling,
+             table ? "The table shows every cancellation state as its own column."
+                   : "Scaling plots every cancellation state at once - use the dash legend below.");
+    setInert(metricPickerEl, table || scaling,
+             table ? "The table shows mean time and allocation as separate columns."
+                   : "Scaling plots both metrics on two axes - use the metric legend below.");
+    setInert(rangePickerEl, table, "The table shows one run, chosen with the Run picker.");
+    setInert(logPickerEl, table, "No chart axis to scale in table mode.");
+  }
+
   function renderChartInstance(datasets, scales, tooltipAfterLabel) {
     if (chart) chart.destroy();
     chart = new Chart(document.getElementById("chart"), {
@@ -893,10 +942,41 @@
   // The report's baseline is this library's own implementation, and the database has no
   // is-baseline flag to read it off - so pick it the same way the colour assignment does, and
   // leave the ratio blank for a group that has none (the SyncLock family is all BCL primitives).
-  function baselineVariantOf(variants) {
-    if (variants.includes("Pooled")) return "Pooled";
-    const pooled = variants.filter(isPooled).sort();
-    return pooled.length ? pooled[0] : null;
+  // Which row the report treated as its reference.
+  //
+  // Every Threading benchmark class marks one method `[Benchmark(Baseline = true)]`, and
+  // BenchmarkDotNet records that as Ratio = 1.00 in every parameter group. Reading it back beats
+  // guessing: the previous version returned the alphabetically first "Pooled" variant, which
+  // picked "Pooled (AsTask)" over the declared "Pooled (ValueTask)" and got the baseline wrong in
+  // 7 of a full run's 23 reports - and with it every Ratio in those tables.
+  //
+  // A variant qualifies only if it is 1.00 in *every* group it appears in. One group's row can
+  // land on 1.00 by rounding; the declared baseline is 1.00 throughout, because it is the same
+  // method being compared to itself.
+  //
+  // Returns null when the baseline is not among these rows at all, which is a real case rather
+  // than a failure: BenchmarkDotNet computes Ratio per benchmark class, while this table is
+  // filtered to one family and method. asynclock-single's baseline is AsyncLock's "Pooled", so
+  // selecting the SyncLock family shows rows whose reference sits outside the view.
+  function baselineVariantOf(rows) {
+    const ratios = new Map();
+    for (const r of rows) {
+      if (r.ratio == null) continue;
+      if (!ratios.has(r.variant)) ratios.set(r.variant, []);
+      ratios.get(r.variant).push(r.ratio);
+    }
+    const declared = Array.from(ratios).filter(([, rs]) => rs.every((x) => x === 1));
+    if (declared.length === 1) return declared[0][0];
+
+    // Nothing recorded a ratio - data from a report without the column. Fall back to the old
+    // guess, which is still right whenever a plain "Pooled" is present.
+    if (ratios.size === 0) {
+      const variants = rows.map((r) => r.variant);
+      if (variants.includes("Pooled")) return "Pooled";
+      const pooled = variants.filter(isPooled).sort();
+      return pooled.length ? pooled[0] : null;
+    }
+    return null;
   }
 
   // Set from the URL on load and consumed by the first refreshRunPickers() call.
@@ -989,7 +1069,7 @@
     if (!key) return [];
     const parts = key.split(" ");
     const stmt = db.prepare(
-      "SELECT variant, cancellation, param_label, mean_ns, allocated_bytes " +
+      "SELECT variant, cancellation, param_label, mean_ns, allocated_bytes, ratio " +
       "FROM benchmark_results WHERE run_id = ? AND platform = ? AND framework = ? " +
       "  AND family = ? AND method = ?"
     );
@@ -1043,6 +1123,11 @@
     }
     const cancellations = Array.from(new Set(rows.map((r) => r.cancellation)));
     const showCancellation = cancellations.length > 1 || cancellations[0] !== "None";
+
+    // The baseline is a property of the benchmark class, not of one parameter group, so it is
+    // resolved once over every row rather than per group - which also lets a variant be rejected
+    // for being 1.00 in only some groups.
+    const baselineVariant = baselineVariantOf(rows);
 
     // Grouped exactly as the report groups: one baseline per (parameter combination, state).
     // Keyed by a joined string for lookup, but the two components are stored alongside rather
@@ -1102,12 +1187,12 @@
     let total = 0;
     for (const key of orderedKeys) {
       const group = groups.get(key).rows.slice().sort((a, b) => a.mean_ns - b.mean_ns);
-      const baselineVariant = baselineVariantOf(group.map((r) => r.variant));
       const baseline = group.find((r) => r.variant === baselineVariant);
       let first = true;
       for (const r of group) {
         const tr = document.createElement("tr");
         if (first) tr.classList.add("group-start");
+        if (isPooled(r.variant)) tr.classList.add("ours");
         if (r.variant === baselineVariant) tr.classList.add("baseline");
         first = false;
         const params = new Map(splitParams(r.param_label));
@@ -1128,7 +1213,12 @@
           } else if (col.key === "mean") {
             td.textContent = formatMeanNs(r.mean_ns);
           } else if (col.key === "ratio") {
-            td.textContent = (baseline && baseline.mean_ns) ? (r.mean_ns / baseline.mean_ns).toFixed(2) : "-";
+            // The recorded value wherever there is one: it is what the report printed, and it
+            // stays correct when the baseline is outside this view - recomputing against an
+            // in-view row would quietly answer a different question. Computed only as a fallback
+            // for data recorded without a Ratio column.
+            td.textContent = r.ratio != null ? r.ratio.toFixed(2)
+              : (baseline && baseline.mean_ns) ? (r.mean_ns / baseline.mean_ns).toFixed(2) : "-";
           } else if (col.key === "allocated") {
             td.textContent = formatAllocated(r.allocated_bytes);
           } else if (col.key === "cmpMean") {
@@ -1165,8 +1255,10 @@
     const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
     tableNoteEl.hidden = false;
     let note =
-      "Baseline (highlighted) is this library's own implementation; Ratio is each row's mean over it, " +
-      "computed per parameter combination and cancellation state." +
+      "This library's own implementations are shaded, the baseline more deeply. Ratio is the " +
+      "report's own, relative to the method the benchmark class declares as its baseline — " +
+      "which BenchmarkDotNet fixes per class, so for some families that reference row is not " +
+      "among the ones shown here." +
       (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
                    " — positive means slower here." : "");
 
@@ -1219,6 +1311,7 @@
     } else {
       renderTrendChart();
     }
+    syncControlAvailability(mode);
     syncUrlHash();
   }
 
