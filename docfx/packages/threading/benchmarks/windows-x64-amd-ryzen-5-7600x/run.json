@@ -1,7 +1,0 @@
-{
-  "codeCommit": "4a8991d393202dab89a4bae2f13f80df981eebf2",
-  "recordedAt": "2026-08-09T16:00:58Z",
-  "package": "threading",
-  "platform": "windows-x64-amd-ryzen-5-7600x",
-  "note": "Backfilled. Both platforms measured byte-identical src/Threading and tests/Threading at this commit; verified with git diff 4a8991d..ff76296."
-}
