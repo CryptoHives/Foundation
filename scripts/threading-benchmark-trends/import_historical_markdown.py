@@ -29,6 +29,7 @@ Design notes:
   NORMALIZE_VARIANT below as they're found.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -48,7 +49,7 @@ PATHSPECS = [
 ]
 
 EXCLUDE_FILENAMES = {
-    "README.md", "machine-spec.md", "threading.md",
+    "README.md", "machine-spec.md", "threading.md", "run.json",
 }
 
 # Renames discovered empirically (dry-run, compare old vs. new distinct (family, variant)
@@ -213,6 +214,23 @@ def resolve_platform_and_filename(path: str):
     return None
 
 
+def read_run_metadata(sha: str, platform: str):
+    """Reads run.json for `platform` at `sha`, or None when the run predates it.
+
+    A run is identified by the commit its binaries were built from, not by the commit that
+    recorded the numbers. Those coincided while results were committed alongside code, but stop
+    coinciding the moment two machines report separately - and it is the code commit that makes
+    "the same build on two platforms" one run rather than two.
+    """
+    base = "docfx/packages/threading/benchmarks"
+    for path in (f"{base}/{platform}/run.json", f"{base}/run.json"):
+        try:
+            return json.loads(git("show", f"{sha}:{path}"))
+        except (subprocess.CalledProcessError, ValueError):
+            continue
+    return None
+
+
 def read_machine_spec(sha: str, platform: str):
     """Reads the machine-spec.md that applies to `platform` at `sha`, or None if there is none.
 
@@ -250,12 +268,31 @@ def main() -> int:
     total_rows = 0
     total_files = 0
     for sha, date, paths in commits:
+        # Fallback identity for the runs recorded before run.json existed; replaced below by the
+        # code commit as soon as any platform in this commit carries one.
         run_id = f"hist-{sha[:10]}"
         commit_rows = 0
 
         # Platforms this commit actually produced results for, collected during the loop below so
-        # the environment is recorded for exactly those - see record_run_environment().
+        # the environment is recorded for exactly those.
         platforms_with_results = set()
+
+        # A commit may carry several platforms, but they are one run only if they name the same
+        # code commit - which is exactly the case run.json exists to express.
+        run_metadata_by_platform = {}
+
+        # Resolved before the rows are written, since every insert carries it: prefer the code
+        # commit any platform in this commit declares, and fall back to the recording commit for
+        # the runs that predate run.json.
+        commit_platforms = sorted({
+            resolved[0] for resolved in (resolve_platform_and_filename(x) for x in paths) if resolved
+        })
+        for platform_probe in commit_platforms:
+            metadata = read_run_metadata(sha, platform_probe)
+            run_metadata_by_platform[platform_probe] = metadata
+            if metadata and metadata.get("codeCommit"):
+                run_id = metadata["codeCommit"][:10]
+                break
 
         for path in paths:
             resolved = resolve_platform_and_filename(path)
