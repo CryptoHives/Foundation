@@ -656,11 +656,13 @@
     const metric = metricSel.value;
     const cutoff = dateRangeCutoffIso();
     const stmt = db.prepare(`
-      SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_date, r.commit_sha,
-             b.runtime_version, r.${metric} AS value
+      SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_date, r.run_id,
+             r.commit_sha, b.runtime_version, r.${metric} AS value
       FROM benchmark_results r
       LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
-      WHERE r.platform = ? AND r.category = ? AND r.family = ? AND r.method = ?
+                                AND b.framework = r.framework
+      WHERE r.platform = ? AND r.framework = ? AND r.category = ? AND r.family = ?
+        AND r.method = ?
         ${cutoff ? "AND r.run_date >= ?" : ""}
       ORDER BY r.variant, r.data_size_bytes, r.run_date
     `);
