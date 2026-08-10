@@ -6,6 +6,8 @@
   items:
     - name: AsyncLock
       href: asynclock.md
+    - name: AsyncKeyedLock
+      href: asynckeyedlock.md
     - name: AsyncAutoResetEvent
       href: asyncautoresetevent.md
     - name: AsyncManualResetEvent

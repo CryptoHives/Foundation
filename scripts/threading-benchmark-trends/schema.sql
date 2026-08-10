@@ -45,3 +45,32 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
 CREATE INDEX IF NOT EXISTS idx_family_variant ON benchmark_results(family, variant);
 CREATE INDEX IF NOT EXISTS idx_run_date        ON benchmark_results(run_date);
 CREATE INDEX IF NOT EXISTS idx_platform        ON benchmark_results(platform);
+
+-- One row per (run, platform): the environment the numbers were produced in.
+--
+-- Kept beside benchmark_results rather than folded into it, since it is constant across a run's
+-- ~900 rows. Every field is parsed out of the machine-spec.md that sits next to the scenario
+-- tables and has been committed alongside them since the first run, so this backfills across the
+-- whole history rather than starting empty.
+--
+-- The point is attribution: the .NET runtime moved between nearly every recorded run so far
+-- (10.0.3 -> 10.0.5 -> 10.0.9 -> 10.0.10, with the SDK jumping to an 11.0 preview), so a step in
+-- a trend line cannot be read as a code regression without knowing whether the floor moved too.
+CREATE TABLE IF NOT EXISTS benchmark_runs (
+    run_id          TEXT NOT NULL,
+    platform        TEXT NOT NULL,  -- matches benchmark_results.platform
+    run_date        TEXT,           -- ISO 8601, same value as the results rows
+    commit_sha      TEXT,
+    branch          TEXT,
+    bdn_version     TEXT,           -- e.g. '0.15.8'
+    os              TEXT,           -- e.g. 'Windows 11 (10.0.26200.8875/25H2/...)'
+    cpu             TEXT,           -- e.g. 'AMD Ryzen 5 7600X 4.70GHz'
+    logical_cores   INTEGER,
+    physical_cores  INTEGER,
+    sdk_version     TEXT,           -- e.g. '11.0.100-preview.5.26302.115'
+    runtime_version TEXT,           -- host runtime, e.g. '10.0.10'
+    jit             TEXT,           -- e.g. 'X64 RyuJIT x86-64-v4'
+    PRIMARY KEY (run_id, platform)
+);
+
+CREATE INDEX IF NOT EXISTS idx_runs_runtime ON benchmark_runs(runtime_version);

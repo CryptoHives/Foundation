@@ -32,8 +32,34 @@ import re
 import sys
 
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
-CONTENTION_COLUMNS = ("Iterations", "ParticipantCount")
 CANCELLATION_COLUMN = "cancellationType"
+
+# Everything BenchmarkDotNet emits that measures rather than parameterizes. Parameters are
+# identified by exclusion rather than by a whitelist of known names: a whitelist silently drops
+# any [Params] axis nobody remembered to add to it, and because param_label is part of the
+# primary key, dropping an axis makes distinct rows collide and overwrite each other. Excluding
+# known metrics instead fails safe - an unrecognized metric column would show up as a spurious
+# parameter, which is visible, rather than as silently merged rows, which is not.
+METRIC_COLUMNS = frozenset({
+    "Mean", "Error", "StdDev", "StdErr", "Median", "Min", "Max", "Op/s",
+    "Ratio", "RatioSD", "Rank", "Baseline",
+    "Gen0", "Gen1", "Gen2", "Allocated", "Alloc Ratio", "Code Size",
+    "Completed Work Items", "Lock Contentions",
+})
+
+# Which parameter supplies the numeric X axis of the dashboard's scaling view, most preferred
+# first. Only one column can, since the chart plots a single dimension; the rest still appear in
+# param_label, so no information is lost - they just narrow the series rather than spread it.
+# Ordered by which axis a reader of that benchmark would expect to see load plotted against.
+CONTENTION_COLUMNS = (
+    "Iterations",       # queued waiters - the original and most common contention axis
+    "WaiterCount",      # AsyncCountdownEvent's waiter side
+    "ParticipantCount", # AsyncBarrier / AsyncCountdownEvent
+    "ThreadCount",      # AsyncKeyedLock concurrent access
+    "KeyCount",         # AsyncKeyedLock cardinality
+    "WindowSize",       # AsyncKeyedLock rolling key: the live working set
+    "InitialCount",     # AsyncSemaphore permits
+)
 
 
 def parse_measurement_ns(cell: str) -> float | None:
@@ -52,7 +78,15 @@ def parse_measurement_ns(cell: str) -> float | None:
 
 def parse_allocated_bytes(cell: str) -> int | None:
     cell = cell.strip().replace(",", "")
-    if cell in ("", "-", "NA"):
+    # "-" is BenchmarkDotNet reporting a measured zero, not a missing measurement, and conflating
+    # the two hid the library's headline result: an allocation-free variant became NULL, so the
+    # Allocated metric dropped its points entirely and the series vanished from the chart rather
+    # than drawing the flat line at zero that is the whole claim. "NA" (diagnoser did not run)
+    # and an empty cell stay NULL - checked across every committed report, neither ever occurs
+    # in an Allocated column, so nothing currently relies on that path.
+    if cell == "-":
+        return 0
+    if cell in ("", "NA"):
         return None
     cell = cell.rstrip("B").strip()
     try:
@@ -124,15 +158,33 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
 
         cancellation = fields.get(CANCELLATION_COLUMN, "").strip() or "None"
 
-        param_label = None
-        for col in CONTENTION_COLUMNS:
-            if col in fields and fields[col].strip():
-                param_label = fields[col].strip()
-                break
+        # Every parameter column, in the order the report lists them, composed into one label.
+        # A benchmark with two axes (e.g. KeyCount x Iterations) needs both here: param_label is
+        # part of the primary key, so a label naming only one of them makes every value of the
+        # other collapse onto a single row, last write winning.
+        params = [
+            (col, fields[col].strip())
+            for col in header_cells[1:]
+            if col not in METRIC_COLUMNS and col != CANCELLATION_COLUMN and fields.get(col, "").strip()
+        ]
+        param_label = ", ".join(f"{col}={value}" for col, value in params) or None
+
+        # A single numeric value for the scaling chart's X axis, which can only plot one
+        # dimension. Prefer a recognized contention axis; fall back to the sole parameter when a
+        # benchmark has exactly one and it is numeric. Left NULL when neither applies, which the
+        # dashboard already treats as "not contention-parameterized".
         param_value = None
-        if param_label is not None:
+        by_name = dict(params)
+        candidates = [c for c in CONTENTION_COLUMNS if c in by_name]
+        if candidates:
+            chosen = by_name[candidates[0]]
+        elif len(params) == 1:
+            chosen = params[0][1]
+        else:
+            chosen = None
+        if chosen is not None:
             try:
-                param_value = int(param_label)
+                param_value = int(chosen)
             except ValueError:
                 param_value = None
 
@@ -147,3 +199,59 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
             "stddev_ns": parse_measurement_ns(fields.get("StdDev", "")),
             "allocated_bytes": parse_allocated_bytes(fields.get("Allocated", "")),
         }
+
+
+# BenchmarkDotNet's machine-spec preamble, e.g.
+#
+#     BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8875/25H2/2025Update/HudsonValley2)
+#     AMD Ryzen 5 7600X 4.70GHz, 1 CPU, 12 logical and 6 physical cores
+#     .NET SDK 11.0.100-preview.5.26302.115
+#     [Host]    : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+#
+# Every field is optional: the flat era's files and the per-platform era's differ in wording, and
+# a missing line should leave a NULL column rather than abort the import of a whole run.
+_BDN_LINE = re.compile(r"^BenchmarkDotNet v(?P<bdn>[\w.\-+]+),\s*(?P<os>.+?)\s*$", re.M)
+_CPU_LINE = re.compile(
+    r"^(?P<cpu>.+?),\s*\d+ CPU,\s*(?P<logical>\d+) logical(?: and (?P<physical>\d+) physical)? cores",
+    re.M,
+)
+_SDK_LINE = re.compile(r"^\.NET SDK (?P<sdk>[\w.\-+]+)", re.M)
+_HOST_LINE = re.compile(
+    r"^\s*\[Host\]\s*:\s*\.NET (?P<runtime>[\w.\-+]+)\s*\([^)]*\),\s*(?P<jit>.+?)\s*$", re.M
+)
+
+
+def parse_machine_spec(text: str) -> dict:
+    """Extracts the environment fields from a machine-spec.md.
+
+    Returns a dict with bdn_version/os/cpu/logical_cores/physical_cores/sdk_version/
+    runtime_version/jit, each None when that line is absent.
+    """
+    spec = {
+        "bdn_version": None, "os": None, "cpu": None,
+        "logical_cores": None, "physical_cores": None,
+        "sdk_version": None, "runtime_version": None, "jit": None,
+    }
+
+    match = _BDN_LINE.search(text)
+    if match:
+        spec["bdn_version"] = match.group("bdn")
+        spec["os"] = match.group("os")
+
+    match = _CPU_LINE.search(text)
+    if match:
+        spec["cpu"] = match.group("cpu").strip()
+        spec["logical_cores"] = int(match.group("logical"))
+        if match.group("physical"):
+            spec["physical_cores"] = int(match.group("physical"))
+
+    match = _SDK_LINE.search(text)
+    if match:
+        spec["sdk_version"] = match.group("sdk")
+
+    match = _HOST_LINE.search(text)
+    if match:
+        spec["runtime_version"] = match.group("runtime")
+        spec["jit"] = match.group("jit")
+
+    return spec
