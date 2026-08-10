@@ -1,0 +1,22 @@
+{
+  "codeCommit": "675f7eec1fd11c769f11b106384a42eac0cf511c",
+  "recordedAt": "2026-07-27T11:04:18+02:00",
+  "package": "cryptography",
+  "platform": "macos-arm64-apple-m4",
+  "framework": "net10.0",
+  "backfilled": true,
+  "note": "Recovered from git history, where results were committed alongside the code they measured, so the recording commit is the code commit.",
+  "packagesSource": "Directory.Packages.props",
+  "packages": {
+    "BenchmarkDotNet": "0.15.8",
+    "Blake3": "3.0.2",
+    "Blake3.Managed": "1.2.1",
+    "Blake3.Native": "3.0.2",
+    "BouncyCastle.Cryptography": "2.6.2",
+    "HashifyNET": "7.1.1",
+    "Konscious.Security.Cryptography.Blake2": "1.1.1",
+    "NaCl.Core": "2.2.0",
+    "OpenGost.Security.Cryptography": "0.3.0",
+    "SauceControl.Blake2Fast": "2.0.0"
+  }
+}

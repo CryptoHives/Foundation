@@ -1,8 +1,0 @@
-{
-  "codeCommit": "471b6052d42a3f605a78c2c12de3cd9c4bb2798c",
-  "recordedAt": "2026-02-09T14:03:28+01:00",
-  "package": "cryptography",
-  "platform": "windows-x64-amd-ryzen-5-7600x",
-  "backfilled": true,
-  "note": "Recovered from git history, where results were committed alongside the code they measured, so the recording commit is the code commit."
-}

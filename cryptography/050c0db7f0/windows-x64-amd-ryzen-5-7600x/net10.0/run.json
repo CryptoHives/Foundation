@@ -1,0 +1,25 @@
+{
+  "codeCommit": "050c0db7f09a82b9c8a56d6c232650d6c8ce194d",
+  "recordedAt": "2026-03-29T08:10:42+02:00",
+  "package": "cryptography",
+  "platform": "windows-x64-amd-ryzen-5-7600x",
+  "framework": "net10.0",
+  "backfilled": true,
+  "note": "Recovered from git history, where results were committed alongside the code they measured, so the recording commit is the code commit.",
+  "packagesSource": "Directory.Packages.props",
+  "packages": {
+    "BenchmarkDotNet": "0.15.8",
+    "Blake3": "2.2.1",
+    "BouncyCastle.Cryptography": "2.6.2",
+    "HashifyNET": "7.1.1",
+    "Konscious.Security.Cryptography.Blake2": "1.1.1",
+    "Microsoft.NET.Test.Sdk": "18.3.0",
+    "NUnit": "4.5.1",
+    "NUnit.Analyzers": "4.12.0",
+    "NUnit.Console": "3.22.0",
+    "NUnit3TestAdapter": "6.1.0",
+    "NaCl.Core": "2.1.0",
+    "OpenGost.Security.Cryptography": "0.3.0",
+    "coverlet.collector": "8.0.0"
+  }
+}

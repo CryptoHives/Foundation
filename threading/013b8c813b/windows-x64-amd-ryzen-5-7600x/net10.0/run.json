@@ -1,0 +1,18 @@
+{
+  "codeCommit": "013b8c813b8ee9fd9b592f674dd1cffef86e0cf8",
+  "recordedAt": "2026-07-15T19:28:30+02:00",
+  "package": "threading",
+  "platform": "windows-x64-amd-ryzen-5-7600x",
+  "framework": "net10.0",
+  "backfilled": true,
+  "note": "Recovered from git history, where results were committed alongside the code they measured, so the recording commit is the code commit.",
+  "packagesSource": "Directory.Packages.props",
+  "packages": {
+    "AsyncKeyedLock": "8.0.2",
+    "BenchmarkDotNet": "0.15.8",
+    "Microsoft.VisualStudio.Threading": "17.14.15",
+    "NeoSmart.AsyncLock": "3.3.0-preview1",
+    "Nito.AsyncEx": "5.1.2",
+    "ProtoPromise": "3.5.1"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "codeCommit": "4a8991d393202dab89a4bae2f13f80df981eebf2",
+  "recordedAt": "2026-08-10T04:00:12Z",
+  "package": "threading",
+  "platform": "macos-arm64-apple-m4",
+  "framework": "net10.0",
+  "note": "Backfilled. Both platforms measured byte-identical src/Threading and tests/Threading at this commit; verified with git diff 4a8991d..ff76296.",
+  "packagesSource": "Directory.Packages.props",
+  "packages": {
+    "AsyncKeyedLock": "8.0.2",
+    "AsyncUtilities": "1.1.1",
+    "BenchmarkDotNet": "0.15.8",
+    "Dao.IndividualLock": "3.1.1",
+    "KeyedSemaphores": "6.1.0",
+    "Microsoft.VisualStudio.Threading": "18.7.23",
+    "NeoSmart.AsyncLock": "3.3.0-preview1",
+    "Nito.AsyncEx": "5.1.2",
+    "ProtoPromise": "3.5.1"
+  }
+}

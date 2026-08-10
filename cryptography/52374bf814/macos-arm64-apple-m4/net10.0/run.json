@@ -1,0 +1,25 @@
+{
+  "codeCommit": "52374bf8143fb29ce527b9a813cf6b4820b19b2d",
+  "recordedAt": "2026-04-02T12:01:55+02:00",
+  "package": "cryptography",
+  "platform": "macos-arm64-apple-m4",
+  "framework": "net10.0",
+  "backfilled": true,
+  "note": "Recovered from git history, where results were committed alongside the code they measured, so the recording commit is the code commit.",
+  "packagesSource": "Directory.Packages.props",
+  "packages": {
+    "BenchmarkDotNet": "0.15.8",
+    "Blake3": "2.2.1",
+    "BouncyCastle.Cryptography": "2.6.2",
+    "HashifyNET": "7.1.1",
+    "Konscious.Security.Cryptography.Blake2": "1.1.1",
+    "Microsoft.NET.Test.Sdk": "18.3.0",
+    "NUnit": "4.5.1",
+    "NUnit.Analyzers": "4.12.0",
+    "NUnit.Console": "3.22.0",
+    "NUnit3TestAdapter": "6.1.0",
+    "NaCl.Core": "2.1.0",
+    "OpenGost.Security.Cryptography": "0.3.0",
+    "coverlet.collector": "8.0.0"
+  }
+}

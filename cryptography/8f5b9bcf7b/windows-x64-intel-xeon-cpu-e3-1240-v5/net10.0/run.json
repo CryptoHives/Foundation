@@ -1,0 +1,23 @@
+{
+  "codeCommit": "8f5b9bcf7bf0e1e99db7ed8aec6a6c10dc5a00dc",
+  "recordedAt": "2026-01-26T07:45:16Z",
+  "package": "cryptography",
+  "platform": "windows-x64-intel-xeon-cpu-e3-1240-v5",
+  "framework": "net10.0",
+  "backfilled": true,
+  "note": "One-time import of a run recorded on branch intelxeonbenchtables at 8f5b9bc, on an Intel Xeon E3-1240 v5 that is no longer available. Taken from the raw BenchmarkDotNet artifacts committed there; recordedAt is that commit's date. Two reports from that era were left out: KmacIncremental and KmacOutputSize. The first has no algorithm/variant breakdown in its Description, so it parses to a family that is really an escaped method name; the second varies output size, an axis this schema cannot express, so 12 of its 16 rows collapse onto 4 keys. Both remain on the intelxeonbenchtables branch. kmac128 and kmac256 are kept but contribute no rows - the parser already declines that era's flat-token KMAC descriptions.",
+  "packagesSource": "Directory.Packages.props",
+  "packages": {
+    "BenchmarkDotNet": "0.15.8",
+    "Blake3": "2.2.0",
+    "BouncyCastle.Cryptography": "2.6.2",
+    "HashifyNET": "7.1.1",
+    "Microsoft.NET.Test.Sdk": "18.0.1",
+    "NUnit": "4.4.0",
+    "NUnit.Analyzers": "4.11.2",
+    "NUnit.Console": "3.22.0",
+    "NUnit3TestAdapter": "6.1.0",
+    "OpenGost.Security.Cryptography": "0.3.0",
+    "coverlet.collector": "6.0.4"
+  }
+}
