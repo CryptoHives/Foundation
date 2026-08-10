@@ -150,13 +150,11 @@ The following tables show the per-instance memory footprint (internal state + bu
    carries no `.github/`. Publish a new run deliberately with `gh workflow run docfx.yml`, or let the
    next push to `main` pick it up.
 
-   It also records the version of every reference implementation the run measured against, read from the
-   benchmark project's resolved NuGet graph. A reference's trend line steps when that library ships a
-   release just as readily as when this library changes, and nothing else in a recorded run tells the two
-   apart — BouncyCastle moved 2.6.2 to 2.7.0, and Blake3 2.2.0 to 3.0.2, between runs already in the
-   archive. The dashboard shows the version in each point's tooltip, and marks any compared row whose
-   library moved between the two runs. Pass `-TargetFramework` if the benchmarks did not run on the
-   default `net10.0`.
+   It also records the version of every reference implementation the run measured against, read from
+   the benchmark project's resolved NuGet graph. The dashboard shows that version in each point's
+   tooltip, and marks any compared row whose library differs between the two runs — a series can step
+   because the library it measures shipped a release, independently of any change here. Pass
+   `-TargetFramework` if the benchmarks did not run on the default `net10.0`.
 3. The dashboard database is a derived artifact, not a tracked file — SQLite rewrites pages throughout on
    every change, so committing it added a fresh multi-megabyte blob per rebuild for data that is fully
    reproducible from the archive. The docs workflow builds it, and so can you:

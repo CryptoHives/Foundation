@@ -14,6 +14,11 @@
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  /* A control the current view ignores. Disabled rather than hidden: it keeps the layout
+     stable while switching modes, and keeps the setting visible so you can see what it will be
+     when you switch back. The title attribute says why on hover. */
+  .controls > label.inert { opacity: 0.4; }
+  .controls > label.inert select, .controls > label.inert input { cursor: not-allowed; }
   .legend-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-bottom: 0.4rem; }
   .legend-row:empty { margin-bottom: 0; }
   .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: #333; cursor: pointer; user-select: none; }
@@ -44,15 +49,18 @@
 </style>
 </head>
 <body>
-<h1>CryptoHives Benchmark Trends</h1>
+<h1>CryptoHives Cryptography Benchmark Trends</h1>
 <p>
-  Benchmark history for <code>CryptoHives.Foundation.Security.Cryptography</code>'s hash, cipher,
-  and MAC implementations — how each one performs against reference libraries (the OS,
-  BouncyCastle, and others) across platforms and data sizes, and how that's changed over time as
-  the code evolves. Pick a platform, category, algorithm family, and method below; every
-  implementation is plotted as its own line so they're directly comparable at a glance. Runs
-  entirely in your browser (no server, no external database) — see the hint below the chart for
-  the two view modes.
+  Benchmark history for the hash, cipher and MAC implementations in
+  <code>CryptoHives.Foundation.Security.Cryptography</code>, measured against reference
+  implementations (the operating system's own, BouncyCastle, and others) across platforms, target
+  frameworks and data sizes.
+</p>
+<p>
+  Select a platform, category, algorithm family and method; each implementation is drawn as its
+  own series, including the separate SIMD paths — AVX2, AVX-512, SSSE3, NEON and the portable
+  scalar fallback — where an algorithm provides them. The page runs entirely in the browser,
+  with no server and no external database.
 </p>
 
 <fieldset class="mode-toggle">
@@ -78,7 +86,7 @@
   <label>Method
     <select id="method"></select>
   </label>
-  <label>Metric
+  <label id="metric-picker">Metric
     <select id="metric">
       <option value="mean_ns">Mean time (ns)</option>
       <option value="allocated_bytes">Allocated bytes</option>
@@ -90,14 +98,14 @@
   <label id="compare-picker" hidden>Compare with
     <select id="compare"></select>
   </label>
-  <label>Date range
+  <label id="range-picker">Date range
     <select id="date-range">
       <option value="all">All time</option>
       <option value="30">Last 30 days</option>
       <option value="90">Last 90 days</option>
     </select>
   </label>
-  <label style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
+  <label id="log-picker" style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
     <input type="checkbox" id="log-scale">
     Logarithmic Y axis
   </label>
@@ -108,9 +116,10 @@
 </div>
 
 <div id="status">Loading database…</div>
-<p id="legend-hint" class="legend-hint" hidden>Click a color or line style below to hide/show it.</p>
+<p id="legend-hint" class="legend-hint" hidden>Click a color, line style or point shape to hide or show that series.</p>
 <div id="legend-colors" class="legend-row"></div>
 <div id="legend-dashes" class="legend-row"></div>
+<div id="legend-metrics" class="legend-row"></div>
 <div id="chart-container"><canvas id="chart"></canvas></div>
 <p id="table-note" class="table-note" hidden></p>
 <div id="table-container" hidden><table class="data-table" id="data-table">
@@ -119,18 +128,27 @@
 <p class="hint">
   Data source: <code>benchmark-history.sqlite</code>, generated at build time by
   <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
-  the <code>benchmarks</code> branch — so it is a derived artifact rather than a committed file, and
-  any recorded run can be rebuilt from the archive at any time.
-  <strong>Table (one run)</strong> is the default: it reproduces one run's report, with the baseline
-  row highlighted and Ratio computed against it per data size. Pick any recorded run rather than
-  only the newest, and optionally a second one to compare against — two dates on one machine, or
-  the same commit on two machines, which the run list marks as <em>(same commit)</em>.
-  The chart modes plot one point per recorded run; hover a point for the exact commit, value and
-  the .NET runtime it was measured on. <strong>Trend over time</strong> plots every recorded data
-  size for the current filters at once (use the line-style legend below to hide sizes you don't
-  want). <strong>Scaling by size</strong> plots data size on the X axis using each implementation's
-  most recent run, showing how it scales across sizes at a glance.
-</p>
+  the <code>benchmarks</code> branch.
+  </p>
+
+  <p class="hint">
+  <strong>Table (one run)</strong> reproduces a single run's report, grouped by data size. Rows
+  for this library's own implementations are shaded, and the baseline row more deeply; Ratio is
+  each row's mean over that baseline. Rows marked <em>not in package</em> are compiled in for
+  measurement only and are excluded from the published NuGet package. Any recorded run can be
+  shown, and a second one compared against it — two dates on one machine, or one commit on two
+  machines, which the run list marks as <em>(same commit)</em>.
+  </p>
+
+  <p class="hint">
+  The chart modes plot one point per recorded run. Hovering a point gives the commit, the value,
+  the .NET runtime it was measured on, and the version of the reference library where one
+  applies. <strong>Trend over time</strong> plots every recorded data size for the current
+  filters; the line-style legend hides individual sizes. <strong>Scaling by size</strong> plots
+  data size on the X axis using each implementation's most recent run, drawing both metrics
+  together: mean time is read from the left axis and allocation from the right, with point shape
+  distinguishing the two. The Metric selector applies to <strong>Trend over time</strong>, and is
+  disabled in the other two views.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -153,6 +171,10 @@
   const logScaleCb = document.getElementById("log-scale");
   const legendColorsEl = document.getElementById("legend-colors");
   const legendDashesEl = document.getElementById("legend-dashes");
+  const legendMetricsEl = document.getElementById("legend-metrics");
+  const metricPickerEl = document.getElementById("metric-picker");
+  const rangePickerEl = document.getElementById("range-picker");
+  const logPickerEl = document.getElementById("log-picker");
   const copyLinkBtn = document.getElementById("copy-link");
   const copyLinkStatusEl = document.getElementById("copy-link-status");
   const dateRangeSel = document.getElementById("date-range");
@@ -329,6 +351,7 @@
   // pattern (= size) into two small legends cuts that down to variants + sizes rows instead of
   // variants × sizes. Both stay clickable to toggle visibility, same as Chart.js's default.
   const hiddenVariants = new Set();
+  const hiddenMetrics = new Set();
   const hiddenSizes = new Set();
 
   function dashSwatchSvg(dash) {
@@ -363,6 +386,26 @@
         renderChart();
       };
       legendColorsEl.appendChild(item);
+    }
+  }
+
+  // Sibling of the colour and dash legends: colour picks the implementation, dash the data size,
+  // and this the measurement. Scaling mode plots time and allocation together on two axes, so
+  // without a way to switch one off the two families of lines sit on top of each other.
+  function renderMetricLegend(entries) {
+    legendMetricsEl.innerHTML = "";
+    for (const { metric, text } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenMetrics.has(metric) ? " disabled" : "");
+      item.innerHTML = `<svg width="16" height="12" style="flex:none"><circle cx="8" cy="6" r="${metric === "mean_ns" ? 4 : 0}" fill="#555"/>` +
+        (metric === "mean_ns" ? "" : `<rect x="4" y="2" width="8" height="8" transform="rotate(45 8 6)" fill="#555"/>`) + `</svg>`;
+      item.append(document.createTextNode(text));
+      item.onclick = () => {
+        if (hiddenMetrics.has(metric)) hiddenMetrics.delete(metric);
+        else hiddenMetrics.add(metric);
+        renderChart();
+      };
+      legendMetricsEl.appendChild(item);
     }
   }
 
@@ -538,6 +581,7 @@
     // A new family/method means a different set of variants and sizes, so any prior
     // show/hide legend selections no longer refer to anything meaningful here.
     hiddenVariants.clear();
+    hiddenMetrics.clear();
     hiddenSizes.clear();
     const stmt = db.prepare(
       `SELECT DISTINCT data_size_label, data_size_bytes FROM benchmark_results
@@ -550,6 +594,38 @@
     while (stmt.step()) currentSizes.push(stmt.getAsObject().data_size_label);
     stmt.free();
     renderChart();
+  }
+
+
+  // Which controls each view actually reads. A control left enabled but ignored is worse than one
+  // greyed out: changing it looks like it should do something, and the view simply does not move.
+  //
+  // Deliberately not listed: platform, framework, family and method drive the selector cascade in
+  // every mode, so they always apply - in Table mode they narrow which runs the picker offers,
+  // even though the picker has the final say on which one is shown.
+  function setInert(labelEl, inert, reason) {
+    if (!labelEl) return;
+    labelEl.classList.toggle("inert", inert);
+    const field = labelEl.querySelector("select, input");
+    if (field) field.disabled = inert;
+    if (inert) labelEl.title = reason;
+    else labelEl.removeAttribute("title");
+  }
+
+  // Cryptography:
+  //   Table   - shows one recorded run whole, with mean time and allocation as separate columns,
+  //             so the metric selector does not apply; the run picker replaces the date range,
+  //             and there is no chart to scale logarithmically.
+  //   Scaling - plots both metrics on two axes, so the metric selector is replaced by its legend.
+  //   Trend   - reads all of them.
+  function syncControlAvailability(mode) {
+    const table = mode === "table";
+    const scaling = mode === "scaling";
+    setInert(metricPickerEl, table || scaling,
+             table ? "The table shows mean time and allocation as separate columns."
+                   : "Scaling plots both metrics on two axes - use the metric legend below.");
+    setInert(rangePickerEl, table, "The table shows one run, chosen with the Run picker.");
+    setInert(logPickerEl, table, "No chart axis to scale in table mode.");
   }
 
   function renderChartInstance(datasets, scales, tooltipAfterLabel) {
@@ -644,6 +720,7 @@
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
     renderDashLegend(multiSize ? sizes.map((label) => ({ sizeLabel: label, dash: dashForSize.get(label) })) : []);
+    renderMetricLegend([]);   // trend mode plots the single selected metric
 
     const visibleCount = datasets.filter((d) => !d.hidden).length;
     statusEl.textContent = datasets.length
@@ -652,12 +729,19 @@
       : "No data for this selection yet.";
   }
 
+  // Mean time and allocation are plotted together in Scaling mode, each on its own axis. Point
+  // shape distinguishes them so one implementation keeps one colour across both. Mirrors the same
+  // constant in the Threading dashboard.
+  const METRICS = [
+    { key: "mean_ns", axis: "y", point: "circle", text: "Mean time" },
+    { key: "allocated_bytes", axis: "yAlloc", point: "rectRot", text: "Allocated" },
+  ];
+
   function renderScalingChart() {
-    const metric = metricSel.value;
     const cutoff = dateRangeCutoffIso();
     const stmt = db.prepare(`
       SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_date, r.run_id,
-             r.commit_sha, b.runtime_version, r.${metric} AS value
+             r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
       FROM benchmark_results r
       LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
                                 AND b.framework = r.framework
@@ -678,7 +762,8 @@
       if (!latestByVariant.has(row.variant)) latestByVariant.set(row.variant, new Map());
       latestByVariant.get(row.variant).set(row.data_size_bytes, {
         x: row.data_size_bytes,
-        y: row.value,
+        mean_ns: row.mean_ns,
+        allocated_bytes: row.allocated_bytes,
         size_label: row.data_size_label,
         commit: row.commit_sha,
         runtime: row.runtime_version,
@@ -690,27 +775,56 @@
     const variantOrder = Array.from(latestByVariant.keys());
     const colorForVariant = colorsForVariants(variantOrder);
 
-    const datasets = variantOrder.map((variant) => ({
-      label: variant,
-      data: Array.from(latestByVariant.get(variant).values()).sort((a, b) => a.x - b.x),
-      borderColor: colorForVariant.get(variant),
-      backgroundColor: colorForVariant.get(variant),
-      hidden: hiddenVariants.has(variant),
-      tension: 0.15,
-      pointRadius: 3,
-    }));
+    // Both measurements at once, on their own axes - the Metric selector is ignored here. Reading
+    // a cipher or hash means asking "how fast, and at what allocation cost", and answering that by
+    // flipping a dropdown makes the two impossible to see against each other. Point shape carries
+    // the metric so a single colour still reads as one implementation across both axes.
+    const datasets = [];
+    for (const variant of variantOrder) {
+      const points = Array.from(latestByVariant.get(variant).values()).sort((a, b) => a.x - b.x);
+      for (const m of METRICS) {
+        // An all-null metric contributes nothing but a legend row and an empty axis.
+        if (points.every((p) => p[m.key] == null)) continue;
+        datasets.push({
+          label: `${variant} · ${m.text}`,
+          data: points.map((p) => ({ ...p, y: p[m.key] })),
+          yAxisID: m.axis,
+          borderColor: colorForVariant.get(variant),
+          backgroundColor: colorForVariant.get(variant),
+          pointStyle: m.point,
+          hidden: hiddenVariants.has(variant) || hiddenMetrics.has(m.key),
+          tension: 0.15,
+          pointRadius: 3,
+        });
+      }
+    }
+
+    const usesAlloc = datasets.some((d) => d.yAxisID === "yAlloc");
+    const scales = {
+      x: { type: "logarithmic", title: { display: true, text: "Data size (bytes)" } },
+      y: { ...yAxisScale("mean_ns"), position: "left" },
+    };
+    if (usesAlloc) {
+      // Allocation stays linear even when the time axis is logarithmic: an allocation-free series
+      // is a real and interesting result, and a log axis cannot plot zero - it would drop exactly
+      // the lines worth seeing. Gridlines are suppressed so the two axes do not draw two
+      // conflicting sets across the same plot area.
+      scales.yAlloc = {
+        type: "linear", position: "right", beginAtZero: true,
+        title: { display: true, text: metricLabel("allocated_bytes") },
+        grid: { drawOnChartArea: false },
+      };
+    }
 
     renderChartInstance(
       datasets,
-      {
-        x: { type: "logarithmic", title: { display: true, text: "Data size (bytes)" } },
-        y: yAxisScale(metric),
-      },
+      scales,
       (ctx) => `${ctx.raw.size_label} · ${pointFooter(ctx.raw)}`
     );
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
     renderDashLegend([]); // one line per variant here — no per-size distinction to show
+    renderMetricLegend(METRICS.map((m) => ({ metric: m.key, text: m.text })));
 
     const visibleCount = datasets.filter((d) => !d.hidden).length;
     statusEl.textContent = datasets.length
@@ -984,18 +1098,19 @@
     const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
     tableNoteEl.hidden = false;
     let note =
-      "This library's own implementations are shaded, the baseline more deeply; Ratio is each " +
-      "row's mean over that baseline, computed per data size. Rows marked “not in package” " +
-      "are compiled in for measurement only and excluded from the published NuGet package." +
+      "Shaded rows are this library's own implementations; the baseline is shaded more deeply. " +
+      "Ratio is each row's mean over that baseline, per data size. Rows marked “not in " +
+      "package” are compiled in for measurement only and are excluded from the published " +
+      "NuGet package." +
       (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
                    " — positive means slower here." : "");
 
     // Named explicitly rather than left to the per-row markers: a reader scanning for a regression
     // should learn that a reference moved underneath the comparison before reading any number.
     if (comparing && changed.size) {
-      note += "  Reference versions differ between these runs — " +
+      note += "  Reference library versions differ between these runs: " +
         Array.from(changed, ([id, [from, to]]) => `${id} ${from} → ${to}`).join(", ") +
-        ". Rows marked ‡ measure a different build of the library, not only different code here.";
+        ". Rows marked ‡ compare against a different build of that library.";
     } else if (!comparing) {
       const packages = runPackages.get(runSel.value);
       const measured = packages && Object.values(VARIANT_PACKAGES)
@@ -1022,6 +1137,7 @@
     chartContainerEl.hidden = isTable;
     legendColorsEl.hidden = isTable;
     legendDashesEl.hidden = isTable;
+    legendMetricsEl.hidden = isTable;
     if (isTable) legendHintEl.hidden = true;   // otherwise left to renderColorLegend below
     tableContainerEl.hidden = !isTable;
     tableNoteEl.hidden = !isTable;
@@ -1036,6 +1152,7 @@
     } else {
       renderTrendChart();
     }
+    syncControlAvailability(mode);
     syncUrlHash();
   }
 
