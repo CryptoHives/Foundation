@@ -20,6 +20,7 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 | Class | Description | 
 |-------|-------------|
 | [AsyncLock](https://cryptohives.github.io/Foundation/packages/threading/asynclock.html) | Pooled async mutual exclusion lock
+| [AsyncKeyedLock&lt;TKey&gt;](https://cryptohives.github.io/Foundation/packages/threading/asynckeyedlock.html) | Pooled per-key async exclusive lock (different keys never block each other)
 | [AsyncAutoResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncautoresetevent.html) | Pooled async auto-reset event (one waiter per signal)
 | [AsyncManualResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncmanualresetevent.html) | Pooled async manual-reset event (all waiters per signal)
 | [AsyncSemaphore](https://cryptohives.github.io/Foundation/packages/threading/asyncsemaphore.html) | Pooled async semaphore with configurable permit count
@@ -50,7 +51,7 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 ## ✨ Key Features
 
 - **Pooled primitives** — synchronization objects backed by `Microsoft.Extensions.ObjectPool`
-- **`ValueTask`-based APIs** — minimal to no allocations thanks to object pooling
+- **`ValueTask`-based APIs** — minimal to no allocations thanks to object pooling; pooled primitives retain a bounded number of objects, so allocation-free behaviour holds while the workload fits the pool (see [Sizing the caches](#sizing-the-caches) for `AsyncKeyedLock<TKey>`, the one primitive where the bound is worth sizing deliberately)
 - **`CancellationToken` support** — full cancellation across all primitives, allocation-free on modern .NET
 - **`ConfigureAwait` support** — works naturally with `.ConfigureAwait(false)` in library code
 - **Timeouts** — every lock acquisition method accepts a timeout; a timed-out wait throws `TimeoutException`, a cancelled one throws `OperationCanceledException`
@@ -87,6 +88,50 @@ public async Task DoWorkAsync(CancellationToken ct)
     }
 }
 ```
+
+### Per-Key Exclusion — `AsyncKeyedLock<TKey>`
+
+```csharp
+private readonly AsyncKeyedLock<string> _locksByAccount = new();
+
+public async Task TransferAsync(string accountId, CancellationToken ct)
+{
+    using (await _locksByAccount.LockAsync(accountId, ct).ConfigureAwait(false))
+    {
+        // Only one operation per accountId; other accounts proceed in parallel
+        await ApplyTransferAsync(accountId).ConfigureAwait(false);
+    }
+}
+```
+
+#### Sizing the caches
+
+`AsyncKeyedLock<TKey>` is allocation-free while a workload fits inside two caps, and degrades
+gracefully — not catastrophically — past either. Both default to `128`.
+
+| Cap | Bounds | Past the cap |
+|-----|--------|--------------|
+| `maxIdleEntries` | **key cardinality** — the keys that are hot at the same time | Each acquisition of an unmapped key takes over the least recently idled entry and allocates a fresh dictionary node (~48 B/key). The entry itself is still reused. |
+| `maxRetainedWaiters` | **simultaneous contention** — waiters queued at one moment, summed across all keys | Each waiter beyond the cap is allocated and then discarded rather than returned to the pool. |
+
+A released key stays mapped as an *idle* entry rather than being torn down, so locking and releasing
+the same key repeatedly allocates **nothing at all**. That is what makes the common case free — and
+it is also why `maxIdleEntries` should span the hot key set rather than the total number of distinct
+keys ever seen. Retention is bounded by the keys actually used, so a generous cap costs a lock with
+few keys nothing.
+
+Each entry supplies one waiter itself and the pool covers the rest, so a lock with 4 keys and 100
+waiters behind each needs 396 pooled waiters — at the default, such a burst allocates on 268 of them.
+
+```csharp
+// Sized to the workload: ~2000 hot tenants, up to ~500 waiters queued at peak
+private readonly AsyncKeyedLock<string> _locksByTenant =
+    new(maxIdleEntries: 2048, maxRetainedWaiters: 512);
+```
+
+> **Note:** the default waiter pool is shared process-wide per closed `TKey`, so every
+> `AsyncKeyedLock<string>` in the process draws on one budget. Passing `maxRetainedWaiters` is also
+> what gives an instance a private pool.
 
 ### Producer-Consumer — `AsyncAutoResetEvent`
 

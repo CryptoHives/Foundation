@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1000 // Do not declare static members on generic types
+
 namespace CryptoHives.Foundation.Memory.Buffers;
 
 using System;

@@ -145,12 +145,10 @@ After porting, build. The analyzer emits (see `CLAUDE.md` for the full table):
 
 | ID | Meaning — fix |
 |---|---|
-| CHT001 (Error) | `ValueTask` awaited multiple times — await once, capture the result. |
+| CHT001 (Error) | `ValueTask` consumed multiple times — consume once, capture the result. |
 | CHT002 (Warn) | `.GetAwaiter().GetResult()` on `ValueTask` — make the caller async and `await`. |
 | CHT003 (Warn) | `ValueTask` stored in a field — don't; await it locally. |
-| CHT004 (Error) | `AsTask()` called multiple times. |
 | CHT005 (Warn) | `.Result` on a `ValueTask` — `await` instead. |
-| CHT006 (Warn) | `ValueTask` passed to `WhenAll`/`WhenAny` — call `.AsTask()` once first, or restructure. |
 | CHT008 (Warn) | `ValueTask` not awaited/consumed. |
 | CHT009 (Info) | `SemaphoreSlim(1,1)` — switch to `AsyncLock`. |
 | CHT010 (Warn) | `ValueTask` captured in a lambda/closure. |

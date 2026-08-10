@@ -9,6 +9,8 @@
     <RootNamespace>CryptoHives.Foundation.Threading.Analyzers.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,10 +20,21 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
   </ItemGroup>
 
-  <!-- Bump Nuget on .NET Framework due to vulnerable transitive dependency -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
+  <!-- Bump NuGet to avoid vulnerable/mismatched transitive dependencies -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net462'">
+    <PackageReference Include="Nuget.Resolver" />
     <PackageReference Include="Nuget.Packaging" />
     <PackageReference Include="Nuget.Protocol" />
+  </ItemGroup>
+
+  <!-- 
+    NuGet client libraries 7.x dropped net462 support (net472 minimum); 
+    pin the last version that still targets net462 
+  -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
+    <PackageReference Include="Nuget.Resolver" VersionOverride="6.3.4" />
+    <PackageReference Include="Nuget.Packaging" VersionOverride="6.3.4" />
+    <PackageReference Include="Nuget.Protocol" VersionOverride="6.3.4" />
   </ItemGroup>
 
   <ItemGroup>

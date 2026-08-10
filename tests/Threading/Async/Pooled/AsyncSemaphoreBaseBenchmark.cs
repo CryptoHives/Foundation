@@ -29,20 +29,35 @@ public abstract class AsyncSemaphoreBaseBenchmark
     private protected SemaphoreSlim _semaphoreSlim;
 
     /// <summary>
+    /// How many holders each semaphore admits at once.
+    /// </summary>
+    /// <remarks>
+    /// Virtual rather than fixed at one because a semaphore configured with a count of one is a mutex,
+    /// and measuring only that duplicates what the AsyncLock benchmarks already cover while never
+    /// exercising the behaviour that makes a semaphore a semaphore - several holders admitted
+    /// concurrently, and a release that has to decide which of several waiters to wake. Derived classes
+    /// that care override this with a <c>[Params]</c> property; the rest inherit the mutex configuration
+    /// their existing numbers were taken with.
+    /// </remarks>
+    private protected virtual int SemaphoreInitialCount => 1;
+
+    /// <summary>
     /// Global Setup for benchmarks and tests.
     /// </summary>
     [OneTimeSetUp]
     [GlobalSetup]
     public virtual void GlobalSetup()
     {
-        _semaphorePooled = new AsyncSemaphore(1);
-        _semaphoreNitoAsync = new NitoAsyncEx.AsyncSemaphore(1);
-        _semaphoreRefImp = new RefImpl.AsyncSemaphore(1);
+        int count = SemaphoreInitialCount;
+
+        _semaphorePooled = new AsyncSemaphore(count);
+        _semaphoreNitoAsync = new NitoAsyncEx.AsyncSemaphore(count);
+        _semaphoreRefImp = new RefImpl.AsyncSemaphore(count);
 #if !NETFRAMEWORK
-        _semaphoreProtoPromises = new Proto.Promises.Threading.AsyncSemaphore(1);
+        _semaphoreProtoPromises = new Proto.Promises.Threading.AsyncSemaphore(count);
 #endif
-        _semaphoreSlim = new SemaphoreSlim(1, 1);
-        _semaphoreVSThreading = new Microsoft.VisualStudio.Threading.AsyncSemaphore(1);
+        _semaphoreSlim = new SemaphoreSlim(count, count);
+        _semaphoreVSThreading = new Microsoft.VisualStudio.Threading.AsyncSemaphore(count);
     }
 
     /// <summary>

@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -141,9 +142,14 @@ public sealed class SemaphoreSlimAsAsyncLockCodeFixProvider : CodeFixProvider
             return root;
         }
 
+        // The annotation is what makes the elastic trivia elastic in practice: CodeAction's post
+        // processing formats only annotated nodes, so without it the trivia is emitted with the
+        // literal "\r\n" its name carries, regardless of what the rest of the document uses. That
+        // matched on Windows and inserted a lone CRLF line into an LF document everywhere else.
         var newUsing = SyntaxFactory.UsingDirective(
                 SyntaxFactory.ParseName(" " + namespaceName))
-            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed);
+            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed)
+            .WithAdditionalAnnotations(Formatter.Annotation);
 
         // Insert after the last existing using directive, or at the top of the file.
         if (compilationUnit.Usings.Count > 0)

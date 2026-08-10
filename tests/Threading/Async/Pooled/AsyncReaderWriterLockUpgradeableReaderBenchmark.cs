@@ -247,13 +247,13 @@ public class AsyncReaderWriterLockUpgradeableReaderBenchmark : AsyncReaderWriter
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task UpgradeableReaderLockProtoPromisesTestAsync(CancellationType cancellationType)
     {
-        await ProtoPromisesGlobalSetup().ConfigureAwait(false);
+        ProtoPromisesGlobalSetup();
         await UpgradeableReaderLockProtoPromisesAsync(cancellationType).ConfigureAwait(false);
         ProtoPromisesGlobalCleanup();
     }
 
     [GlobalSetup(Target = nameof(UpgradeableReaderLockProtoPromisesAsync))]
-    public async Task ProtoPromisesGlobalSetup()
+    public void ProtoPromisesGlobalSetup()
     {
         base.GlobalSetup();
         _rwlockProtoPromisesHandle = new Proto.Promises.Threading.AsyncReaderWriterLock.ReaderKey[Iterations];

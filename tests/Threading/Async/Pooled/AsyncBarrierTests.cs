@@ -384,7 +384,7 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task RemoveParticipantWhenAllHaveSignaledButNotLastThrows()
+    public void RemoveParticipantWhenAllHaveSignaledButNotLastThrows()
     {
         var barrier = new AsyncBarrier(3);
 
@@ -487,7 +487,7 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionThrowsBarrierPostPhaseException()
+    public Task PostPhaseActionExceptionThrowsBarrierPostPhaseException()
     {
         var barrier = new AsyncBarrier(1, b => {
             throw new InvalidOperationException("Post-phase error");
@@ -501,10 +501,12 @@ public class AsyncBarrierTests
             Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
             Assert.That(ex.InnerException!.Message, Is.EqualTo("Post-phase error"));
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionPropagatedToAllWaiters()
+    public Task PostPhaseActionExceptionPropagatedToAllWaiters()
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
@@ -541,6 +543,8 @@ public class AsyncBarrierTests
 
             Assert.That(pool.ActiveCount, Is.Zero);
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
@@ -565,7 +569,7 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionOnRemoveParticipantsThrowsBarrierPostPhaseException()
+    public Task PostPhaseActionExceptionOnRemoveParticipantsThrowsBarrierPostPhaseException()
     {
         var barrier = new AsyncBarrier(2, b => {
             throw new InvalidOperationException("Remove participant error");
@@ -582,10 +586,12 @@ public class AsyncBarrierTests
             Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
             Assert.That(ex.InnerException!.Message, Is.EqualTo("Remove participant error"));
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
+    public Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
@@ -613,6 +619,8 @@ public class AsyncBarrierTests
             Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
             Assert.That(pool.ActiveCount, Is.Zero);
         }
+
+        return Task.CompletedTask;
     }
 
     [Test]
@@ -620,6 +628,138 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2, postPhaseAction: null);
         Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+    }
+
+    /// <summary>
+    /// A post-phase action that cancels a token one of the barrier's own waiters is registered on must
+    /// not deadlock.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the sharpest consequence of running the action outside the barrier's lock. A
+    /// cancellation registration fires synchronously on the thread calling <c>Cancel()</c>, so the
+    /// callback reenters the barrier to unqueue the waiter. While the action ran under the internal spin
+    /// lock - which is not reentrant - that reentry spun forever against a lock the same thread already
+    /// held, and the test hung rather than failed.
+    /// </para>
+    /// <para>
+    /// The waiter has already been detached by the time the action runs, so the cancellation loses the
+    /// race and the waiter is released with the phase. The assertion is only that everything completes.
+    /// </para>
+    /// </remarks>
+    [Test, CancelAfter(30_000)]
+    public async Task PostPhaseActionCanCancelAWaiterWithoutDeadlocking()
+    {
+        using var cts = new CancellationTokenSource();
+        bool actionRan = false;
+
+        var barrier = new AsyncBarrier(2, _ => {
+            actionRan = true;
+            cts.Cancel();
+        });
+
+        Task waiting = barrier.SignalAndWaitAsync(cts.Token).AsTask();
+        Task completing = Task.Run(() => barrier.SignalAndWaitAsync().AsTask());
+
+        await completing.ConfigureAwait(false);
+
+        try
+        {
+            await waiting.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Legitimate if the cancellation won the race against the phase completing.
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(actionRan, Is.True);
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+        }
+    }
+
+    /// <summary>
+    /// Changing the participant count from inside the post-phase action used to deadlock outright: the
+    /// action ran while holding a non-reentrant spin lock that the change needed. It now throws.
+    /// </summary>
+    [Test, CancelAfter(30_000)]
+    public async Task PostPhaseActionCannotChangeParticipantCount()
+    {
+        Exception? fromAdd = null;
+        Exception? fromRemove = null;
+
+        var barrier = new AsyncBarrier(1, b => {
+            fromAdd = Assert.Catch(() => b.AddParticipant());
+            fromRemove = Assert.Catch(() => b.RemoveParticipant());
+        });
+
+        await barrier.SignalAndWaitAsync().ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(fromAdd, Is.TypeOf<InvalidOperationException>());
+            Assert.That(fromRemove, Is.TypeOf<InvalidOperationException>());
+
+            // The phase still completed normally despite the rejected reentrancy.
+            Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(1));
+        }
+    }
+
+    /// <summary>
+    /// Signalling the barrier from inside its own post-phase action is rejected rather than deadlocking.
+    /// </summary>
+    [Test, CancelAfter(30_000)]
+    public async Task PostPhaseActionCannotSignalTheBarrier()
+    {
+        Exception? fromSignal = null;
+
+        var barrier = new AsyncBarrier(1, b => {
+            fromSignal = Assert.CatchAsync(async () => await b.SignalAndWaitAsync().ConfigureAwait(false));
+        });
+
+        await barrier.SignalAndWaitAsync().ConfigureAwait(false);
+
+        Assert.That(fromSignal, Is.TypeOf<InvalidOperationException>());
+    }
+
+    /// <summary>
+    /// A participant-count change from another thread waits for the post-phase action rather than
+    /// observing the barrier mid-transition.
+    /// </summary>
+    [Test, CancelAfter(30_000)]
+    public async Task ParticipantCountChangeWaitsForPostPhaseAction()
+    {
+        using var actionStarted = new ManualResetEventSlim(false);
+        using var releaseAction = new ManualResetEventSlim(false);
+        long phaseSeenByAdd = -1;
+
+        var barrier = new AsyncBarrier(1, _ => {
+            actionStarted.Set();
+            releaseAction.Wait(TimeSpan.FromSeconds(20));
+        });
+
+        Task completing = Task.Run(() => barrier.SignalAndWaitAsync().AsTask());
+
+        Assert.That(actionStarted.Wait(TimeSpan.FromSeconds(10)), Is.True, "Post-phase action never started.");
+
+        Task adding = Task.Run(() => phaseSeenByAdd = barrier.AddParticipant());
+
+        // The add must not complete while the action is still running.
+        Assert.That(adding.Wait(TimeSpan.FromMilliseconds(500)), Is.False,
+            "AddParticipant did not wait for the post-phase action.");
+
+        releaseAction.Set();
+        await completing.ConfigureAwait(false);
+        await adding.ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            // The phase had advanced before the add was let through.
+            Assert.That(phaseSeenByAdd, Is.EqualTo(1));
+            Assert.That(barrier.ParticipantCount, Is.EqualTo(2));
+        }
     }
 
     [Test]
@@ -667,12 +807,13 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public async Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
+    public Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
     {
         var barrier = new AsyncBarrier(2);
 
         Assert.ThrowsAsync<TimeoutException>(async () =>
             await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+        return Task.CompletedTask;
     }
 
     [Test]

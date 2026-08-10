@@ -14,16 +14,22 @@ public static class DiagnosticDescriptors
     private const string HelpLinkBase = "https://cryptohives.github.io/Foundation/packages/threading.analyzers/";
 
     /// <summary>
-    /// CHT001: ValueTask awaited multiple times.
+    /// CHT001: ValueTask consumed multiple times.
     /// </summary>
+    /// <remarks>
+    /// Worded as "consumed" rather than "awaited" because that is what the rule actually detects: a
+    /// ValueTask is consumed by <c>await</c>, by <c>AsTask()</c>, by <c>Preserve()</c> and by
+    /// <c>GetAwaiter().GetResult()</c> alike, and any second consumption in any combination is reported
+    /// here. Saying "awaited" misdescribed code that, for instance, only calls <c>AsTask()</c> twice.
+    /// </remarks>
     public static readonly DiagnosticDescriptor MultipleAwait = new(
         id: DiagnosticIds.MultipleAwait,
-        title: "ValueTask awaited multiple times",
-        messageFormat: "ValueTask '{0}' is awaited multiple times",
+        title: "ValueTask consumed multiple times",
+        messageFormat: "ValueTask '{0}' is consumed more than once",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A ValueTask should only be awaited once. Awaiting it multiple times can cause undefined behavior or InvalidOperationException. Consider using .AsTask() if you need to await multiple times, or use .Preserve() to safely consume the ValueTask.",
+        description: "A ValueTask may only be consumed once. Awaiting it, calling AsTask(), calling Preserve() or calling GetAwaiter().GetResult() each consume it, and doing any two of those to the same instance - in any combination - can cause undefined behavior or InvalidOperationException, because a ValueTask backed by a pooled IValueTaskSource may have been recycled in between. Convert once with .AsTask() and reuse the resulting Task, or use .Preserve() to make the ValueTask safe to consume repeatedly.",
         helpLinkUri: HelpLinkBase + "CHT001.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 
@@ -56,20 +62,6 @@ public static class DiagnosticDescriptors
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 
     /// <summary>
-    /// CHT004: ValueTask.AsTask() called multiple times.
-    /// </summary>
-    public static readonly DiagnosticDescriptor MultipleAsTask = new(
-        id: DiagnosticIds.MultipleAsTask,
-        title: "ValueTask.AsTask() called multiple times",
-        messageFormat: "AsTask() called multiple times on ValueTask '{0}'",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true,
-        description: "Calling AsTask() multiple times on the same ValueTask is undefined behavior and may throw InvalidOperationException. Store the result of AsTask() if you need to use it multiple times.",
-        helpLinkUri: HelpLinkBase + "CHT004.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
-
-    /// <summary>
     /// CHT005: ValueTask.Result accessed directly.
     /// </summary>
     public static readonly DiagnosticDescriptor DirectResultAccess = new(
@@ -81,20 +73,6 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Accessing .Result directly on a ValueTask is undefined behavior when the ValueTask is backed by IValueTaskSource. Use await or convert to Task first.",
         helpLinkUri: HelpLinkBase + "CHT005.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
-
-    /// <summary>
-    /// CHT006: ValueTask passed to method that may consume it multiple times.
-    /// </summary>
-    public static readonly DiagnosticDescriptor PassedToUnsafeMethod = new(
-        id: DiagnosticIds.PassedToUnsafeMethod,
-        title: "ValueTask passed to potentially unsafe method",
-        messageFormat: "ValueTask passed to '{0}' which may consume it multiple times",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Passing a ValueTask to certain methods like WhenAll, WhenAny, or custom methods may result in multiple consumption attempts. Consider using .AsTask() or .Preserve() before passing.",
-        helpLinkUri: HelpLinkBase + "CHT006.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 
     /// <summary>
@@ -151,5 +129,33 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Capturing a ValueTask in a lambda or local function is potentially unsafe because the lambda might be invoked multiple times, or the ValueTask may be consumed by other code before the lambda executes. If you need to use the result multiple times, convert it to a Task using .AsTask() or use .Preserve() to safely capture it for multiple consumes.",
         helpLinkUri: HelpLinkBase + "CHT010.html",
+        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+
+    /// <summary>
+    /// CHT011: async method only forwards an awaited ValueTask.
+    /// </summary>
+    public static readonly DiagnosticDescriptor RedundantAsyncForwarding = new(
+        id: DiagnosticIds.RedundantAsyncForwarding,
+        title: "async method only forwards an awaited ValueTask",
+        messageFormat: "'{0}' only awaits and returns a ValueTask; remove async/await and return it directly",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "An async method compiles to a state machine, and its builder boxes that state machine onto the heap the first time the method suspends. When the method does nothing but await one ValueTask and return the result, that machinery buys nothing: returning the inner ValueTask directly is equivalent and removes the allocation. The synchronous fast path benefits too, because the builder costs setup work even when it never suspends. Note that the exception behaviour changes subtly - an argument validated inside the method would now throw synchronously instead of surfacing on the returned ValueTask - so split validation into a non-async wrapper if callers depend on it.",
+        helpLinkUri: HelpLinkBase + "CHT011.html",
+        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+
+    /// <summary>
+    /// CHT012: async ValueTask wrapper boxes a state machine on every suspension.
+    /// </summary>
+    public static readonly DiagnosticDescriptor AsyncWrapperBoxesStateMachine = new(
+        id: DiagnosticIds.AsyncWrapperBoxesStateMachine,
+        title: "async ValueTask wrapper boxes a state machine when it suspends",
+        messageFormat: "'{0}' forwards a single ValueTask but cannot return it directly because of surrounding cleanup; every suspension boxes a state machine",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "This method awaits exactly one ValueTask and returns it, but the await is wrapped in cleanup (try/catch, try/finally or using) that keeps the async machinery load-bearing. The cost is real but conditional: a call that completes synchronously allocates nothing, while every call that actually suspends boxes a state machine onto the heap - so this is a contended-path cost that an uncontended benchmark will not show. Consider whether the cleanup can be relocated to the awaited operation's own completion and failure paths, which allows the inner ValueTask to be returned directly. Applying [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))] to the method is a lower-effort alternative that pools the box, but it only helps when boxes are reused in sequence - it cannot reduce peak live objects, so it does little when many waiters suspend at the same time. Measure before choosing. If the cleanup genuinely requires the await boundary, suppress this diagnostic with a comment explaining why.",
+        helpLinkUri: HelpLinkBase + "CHT012.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 }
