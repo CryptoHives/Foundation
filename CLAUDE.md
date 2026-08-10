@@ -155,7 +155,8 @@ Diagnostics:
 - Test framework: **NUnit 4**
 - Each test project has `OutputType=Exe` and links `tests/Common/Main.cs` (NUnit entry point)
 - Cryptography tests use **BouncyCastle**, **NaCl.Core**, **HashifyNET**, and other reference implementations for cross-validation
-- Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**
+- Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**, **KeyedSemaphores**, **Dao.IndividualLock**, **AsyncUtilities**, and **Microsoft.VisualStudio.Threading**
+- Benchmark runs are recorded on the orphan `benchmarks` branch, one directory per run keyed by the commit measured; the trends database under `docfx/**/benchmark-trends/` is generated from it at build time and is not committed. Record with `update-benchmark-docs.ps1 -DestDir <archive worktree>`, rebuild locally with `build-trends-database.ps1`
 - `tests/Directory.Build.props` imports the root props and adds shared `GlobalSuppressions.cs`
 - Some test-only packages (e.g., `Konscious.Security.Cryptography.Blake2`, `Blake3`) are excluded when strong-name signing is active because they are not signed
 

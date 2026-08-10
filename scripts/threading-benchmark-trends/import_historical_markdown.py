@@ -2,9 +2,18 @@
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 """
-One-time backfill: walks git history for every commit that touched the (now-retired)
-per-platform Threading benchmark markdown tables and imports each commit's numbers into the
-trends SQLite database as its own dated run. Sibling of
+One-time backfill, kept for the record and for two things that still depend on it.
+
+Walks git history for every commit that touched the per-platform Threading benchmark markdown
+tables and imports each commit's numbers into the trends SQLite database as its own dated run.
+Those tables no longer exist on main - the runs were exported with --export into the archive on
+the `benchmarks` branch, and import_run_archive.py is what builds the database now. This still
+works, because git history retains the files it reads.
+
+Retained because: --export documents exactly how the pre-archive era was recovered and can
+reproduce it; and NORMALIZE_VARIANT / FAMILY_VARIANT_REMAP below, the empirically-built mapping
+from historical label spellings onto the current taxonomy, are imported by import_run_archive.py
+and apply to the exported files too. Sibling of
 scripts/cryptography-benchmark-trends/import_historical_markdown.py (Cryptography's) — same design, adapted
 for Threading's different data shape (no category, contention level instead of data size).
 

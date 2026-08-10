@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: MIT
 """
 Shared markdown-table parsing for Threading's benchmark trends pipeline, used by both
-import_historical_markdown.py (git history backfill) and append_results.py (live recording).
+import_run_archive.py (the run archive on the `benchmarks` branch, which builds the published
+database) and import_historical_markdown.py (the one-time recovery of the pre-archive era).
 Unlike Cryptography's pipeline — which parses JSON for live recording and markdown only for
 historical backfill, because those two eras use genuinely different formats — Threading's live
 and historical reports are the *same* format (ThreadingConfig's DescriptionColumn), so one
