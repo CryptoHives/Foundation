@@ -52,6 +52,20 @@ using SpinLock = CryptoHives.Foundation.Threading.Internal.SpinLock;
 /// designed behaviour and is reported rather than asserted.
 /// </para>
 /// <para>
+/// <b>Noise.</b> This is a wall-clock measurement on a machine the fixture does not own, and the artefact
+/// it is most vulnerable to is the operating system descheduling the <em>holder</em> mid-critical-section:
+/// every waiter in that round is then blocked for however long the holder was away, correctly spends its
+/// whole spin budget, and correctly parks - producing exactly the reading the fixture is looking for, from
+/// exactly the case the lock's safety valve exists to handle. A waiter descheduled while spinning on the
+/// gate is the same artefact one thread over. Both are measured directly - the holder times its own
+/// critical section, and each waiter times how long it took to notice a gate it was already spinning on -
+/// and neither interval contains any lock waiting, so an overrun can only mean that thread was not running.
+/// Those handoffs are discarded rather than scored, and the counts are reported - and they double as the
+/// fixture's own estimate of how disturbed the one interval it <em>cannot</em> attribute was, which is what
+/// <see cref="RequireMeasurableProbe"/> uses to decide whether the survivors are worth scoring at all. What
+/// keeps the counts small in the first place is leaving a core unsaturated: see <see cref="WaiterCount"/>.
+/// </para>
+/// <para>
 /// The fixture is <see cref="NonParallelizableAttribute">non-parallelizable</see> because it measures
 /// wall-clock latency and needs a free core per thread; running it alongside other fixtures would
 /// oversubscribe the machine and inject preemption stalls that have nothing to do with the lock. That
@@ -91,10 +105,19 @@ public class SpinLockLatencyTests
     private const double MinQuantumBandMilliseconds = 2.0;
 
     /// <summary>
-    /// Fraction of handoffs permitted to land in the quantum band regardless. A waiter can be descheduled
-    /// by the operating system through no fault of the lock, so a hard zero would be a flake.
+    /// Fraction of handoffs permitted to exceed a threshold regardless - both the quantum band and the
+    /// healthy-handoff ceiling. A waiter can be descheduled by the operating system through no fault of the
+    /// lock, so a hard zero would be a flake.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// One constant governs both assertions on purpose. Discarding rounds in which the <em>holder</em> was
+    /// descheduled removes the larger of the two noise sources, but a <em>waiter</em> can equally be
+    /// descheduled while spinning, and nothing on the holder's side can detect that. Scoring the band
+    /// against a measured tolerance while scoring the ceiling against an untolerated p99 made the tighter
+    /// threshold the stricter one, which is backwards: a handoff a millisecond over budget is weaker
+    /// evidence of a cliff than one a whole half-quantum over it, and it was the one with no allowance.
+    /// </para>
     /// <para>
     /// Sized from measurement rather than taste. <see cref="MeasurementGate"/> stops two timing fixtures
     /// from measuring at once, but it cannot stop the <em>ordinary</em> tests in the sibling
@@ -171,7 +194,19 @@ public class SpinLockLatencyTests
     /// </summary>
     private const double HandoffHeadroomMilliseconds = 1.0;
 
-    private static int WaiterCount => Math.Max(2, Math.Min(Environment.ProcessorCount - 1, MaxWaiters));
+    /// <summary>
+    /// Waiters per probe: a core for the holder, a core left free for everything else on the machine, and a
+    /// waiter on each of the rest, capped at <see cref="MaxWaiters"/>.
+    /// </summary>
+    /// <remarks>
+    /// The spare core is what makes this measurable on a four-vCPU CI runner. A waiter spins hot for its
+    /// whole round and the holder busy-waits through its critical section, so leaving no core idle gives the
+    /// operating system - and the sibling per-target-framework test processes that <see cref="MeasurementGate"/>
+    /// cannot exclude - nowhere to run but on top of a measured thread. When the thread it lands on is the
+    /// holder, its waiters correctly exhaust their spin budget and park, and the fixture records a quantum
+    /// the lock is not responsible for.
+    /// </remarks>
+    private static int WaiterCount => Math.Max(2, Math.Min(Environment.ProcessorCount - 2, MaxWaiters));
 
     /// <summary>
     /// Asserts that a blocked waiter pays for the critical section it is waiting on, and never for the
@@ -192,6 +227,7 @@ public class SpinLockLatencyTests
 
         ReportGranularity(granularityMs, bandMs);
         Report(stats, bandMs);
+        RequireMeasurableProbe(stats);
 
         double expectedCeilingMs = ExpectedHandoffCeilingMilliseconds(holdMicroseconds);
         int allowance = OutlierAllowance(stats.SampleCount);
@@ -206,10 +242,11 @@ public class SpinLockLatencyTests
                 $"only reachable by parking on the {granularityMs:F2} ms timer.");
 
             Assert.That(
-                stats.P99Milliseconds,
-                Is.LessThan(expectedCeilingMs),
-                $"99% of handoffs should cost about the {holdMicroseconds:N1} us critical section being waited " +
-                $"on, not {stats.P99Milliseconds * 1000.0:N1} us.");
+                stats.OverCeilingCount,
+                Is.LessThanOrEqualTo(allowance),
+                $"{stats.OverCeilingCount:N0} of {stats.SampleCount:N0} handoffs cost more than " +
+                $"{expectedCeilingMs:F2} ms; a handoff should cost about the {holdMicroseconds:N1} us critical " +
+                $"section being waited on. p99 was {stats.P99Milliseconds * 1000.0:N1} us.");
         }
     }
 
@@ -243,6 +280,8 @@ public class SpinLockLatencyTests
         ReportGranularity(granularityMs, bandMs);
         Report(controlStats, bandMs);
         Report(tunedStats, bandMs);
+        RequireMeasurableProbe(controlStats);
+        RequireMeasurableProbe(tunedStats);
 
         Assert.That(
             tunedStats.ParkedCount,
@@ -296,7 +335,7 @@ public class SpinLockLatencyTests
         TestContext.Out.WriteLine($"Handoff latency vs critical-section length ({WaiterCount} waiters, {ReportRounds} rounds):");
         TestContext.Out.WriteLine();
         TestContext.Out.WriteLine(
-            $"{"backoff",-18}{"held us",10} {"p50 us",12} {"p99 us",12} {"max us",12} {"parked",10}");
+            $"{"backoff",-18}{"held us",10} {"p50 us",12} {"p99 us",12} {"max us",12} {"parked",10} {"dropped",10}");
 
         foreach (double holdMicroseconds in ReportedHoldMicroseconds)
         {
@@ -336,10 +375,22 @@ public class SpinLockLatencyTests
     /// Runs <see cref="Rounds"/> controlled handoffs and records how long each waiter was blocked.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Every round the holder takes the lock <em>before</em> opening the gate, so each waiter is guaranteed
     /// to find it held and to block. The gate is a plain counter the waiters spin on rather than an event,
     /// so no waiter is ever asleep in the kernel when its round starts - a wake-up would cost more than the
     /// handoff being measured.
+    /// </para>
+    /// <para>
+    /// The holder also times its own critical section, from opening the gate to releasing the lock. That
+    /// window contains no lock waiting at all - it is a busy-wait of a known length - so an overrun can only
+    /// mean the operating system descheduled the holder, and every waiter in that round was then blocked for
+    /// however long the holder was away. Those rounds are discarded: they measure the runner, not the
+    /// backoff. This is the dominant source of noise on a shared CI machine, and it is also exactly the
+    /// pathological case the lock's <c>Sleep(1)</c> safety valve exists for - a waiter that spends its whole
+    /// budget and then parks because the holder is not running is behaving correctly, and must not be scored
+    /// as the quantum cliff this fixture is looking for.
+    /// </para>
     /// </remarks>
     /// <param name="name">Display name of the lock under test.</param>
     /// <param name="holdMicroseconds">How long the holder keeps the lock.</param>
@@ -358,14 +409,19 @@ public class SpinLockLatencyTests
         int waiterCount = WaiterCount;
         int totalRounds = WarmupRounds + rounds;
         long holdTicks = (long)(holdMicroseconds * Stopwatch.Frequency / 1_000_000.0);
+        long ceilingTicks =
+            (long)(ExpectedHandoffCeilingMilliseconds(holdMicroseconds) * Stopwatch.Frequency / 1000.0);
 
         var state = new HandoffState();
         long[][] samples = new long[waiterCount][];
+        long[][] gateDelays = new long[waiterCount][];
+        long[] heldTicks = new long[rounds];
         var waiters = new Thread[waiterCount];
 
         for (int w = 0; w < waiterCount; w++)
         {
             samples[w] = new long[rounds];
+            gateDelays[w] = new long[rounds];
         }
 
         for (int w = 0; w < waiterCount; w++)
@@ -373,6 +429,7 @@ public class SpinLockLatencyTests
             int index = w;
             waiters[w] = new Thread(() => {
                 long[] local = samples[index];
+                long[] localGateDelays = gateDelays[index];
 
                 for (int round = 1; round <= totalRounds; round++)
                 {
@@ -383,6 +440,10 @@ public class SpinLockLatencyTests
                         Thread.SpinWait(1);
                     }
 
+                    // How long this waiter took to notice a gate it was spinning on. Read before the clock
+                    // starts so the read itself is not charged to the lock.
+                    long opened = Interlocked.Read(ref state.OpenedAt);
+
                     long before = Stopwatch.GetTimestamp();
                     enter();
                     long acquired = Stopwatch.GetTimestamp();
@@ -390,7 +451,9 @@ public class SpinLockLatencyTests
 
                     if (round > WarmupRounds)
                     {
-                        local[round - WarmupRounds - 1] = acquired - before;
+                        int slot = round - WarmupRounds - 1;
+                        local[slot] = acquired - before;
+                        localGateDelays[slot] = before - opened;
                     }
 
                     Interlocked.Increment(ref state.Completed);
@@ -408,14 +471,23 @@ public class SpinLockLatencyTests
 
             // Take the lock before opening the gate, so every waiter is guaranteed to block on it.
             enter();
+
+            long opened = Stopwatch.GetTimestamp();
+            Interlocked.Exchange(ref state.OpenedAt, opened);
             Volatile.Write(ref state.Round, round);
 
             if (holdTicks > 0)
             {
-                BusyWait(holdTicks);
+                BusyWaitUntil(opened + holdTicks);
             }
 
             exit();
+            long released = Stopwatch.GetTimestamp();
+
+            if (round > WarmupRounds)
+            {
+                heldTicks[round - WarmupRounds - 1] = released - opened;
+            }
 
             // Drain the round. Spinning rather than waiting keeps the waiters hot for the next one.
             while (Volatile.Read(ref state.Completed) < waiterCount)
@@ -429,13 +501,14 @@ public class SpinLockLatencyTests
             waiters[w].Join();
         }
 
-        return HandoffStats.Create(name, waiterCount, holdMicroseconds, samples, rounds, quantumBandMilliseconds);
+        return HandoffStats.Create(
+            name, waiterCount, holdMicroseconds, samples, gateDelays, heldTicks, ceilingTicks, rounds,
+            quantumBandMilliseconds);
     }
 
-    /// <summary>Busy-waits for the given number of high performance counter ticks without ever sleeping.</summary>
-    private static void BusyWait(long ticks)
+    /// <summary>Busy-waits until the given high performance counter timestamp without ever sleeping.</summary>
+    private static void BusyWaitUntil(long deadline)
     {
-        long deadline = Stopwatch.GetTimestamp() + ticks;
         while (Stopwatch.GetTimestamp() < deadline)
         {
             Thread.SpinWait(1);
@@ -456,6 +529,12 @@ public class SpinLockLatencyTests
     /// Latency a healthy handoff of the given critical section should stay under: the critical section
     /// itself, plus whichever of a fixed headroom or a multiple of it is larger.
     /// </summary>
+    /// <remarks>
+    /// Applied to the holder as well as to the waiters. The holder's own window over the same critical
+    /// section is a busy-wait containing no lock waiting at all, so if it does not fit inside the budget a
+    /// healthy handoff of that critical section has, the holder was descheduled and the round is not a
+    /// measurement of the lock.
+    /// </remarks>
     private static double ExpectedHandoffCeilingMilliseconds(double holdMicroseconds)
     {
         double holdMs = holdMicroseconds / 1000.0;
@@ -467,12 +546,50 @@ public class SpinLockLatencyTests
 
     private static void RequireEnoughProcessors()
     {
-        if (Environment.ProcessorCount < 3)
+        if (Environment.ProcessorCount < 4)
         {
             Assert.Ignore(
-                "A controlled handoff needs a core for the holder and one per waiter. With fewer, a waiter " +
-                "cannot spin without starving the holder, and backing off is the correct behaviour.");
+                "A controlled handoff needs a core for the holder, one per waiter, and one left over for " +
+                "the rest of the machine. With fewer, a waiter cannot spin without starving the holder, and " +
+                "backing off is the correct behaviour.");
         }
+    }
+
+    /// <summary>
+    /// Ignores the test when the machine descheduled the probe's own threads often enough that the
+    /// surviving handoffs cannot be trusted either.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The discarded handoffs are more than waste: they are a measurement in their own right. A waiter's
+    /// gate spin and its subsequent wait on the lock are two windows of comparable length, on the same
+    /// thread, under the same scheduler, moments apart - so the rate at which the operating system was
+    /// caught interrupting the first is an estimate of how often it interrupted the second. Preemption
+    /// inside the second window is indistinguishable from the lock parking, and it is the one interval in
+    /// the probe that nothing can attribute.
+    /// </para>
+    /// <para>
+    /// So the discard rate is what says whether the survivors mean anything. Below the tolerance the
+    /// assertions already carry, the unattributable contamination is inside what they absorb and the probe
+    /// stands. Above it, a pass would be luck and a failure would be the runner, so the fixture declines to
+    /// score the run rather than reporting either. Ignoring routinely on a given machine is a real result -
+    /// it means the core budget in <see cref="WaiterCount"/> no longer fits it.
+    /// </para>
+    /// </remarks>
+    private static void RequireMeasurableProbe(HandoffStats stats)
+    {
+        int disturbed = stats.OfferedSamples - stats.SampleCount;
+        if (disturbed <= OutlierAllowance(stats.OfferedSamples))
+        {
+            return;
+        }
+
+        Assert.Ignore(
+            $"{disturbed:N0} of {stats.OfferedSamples:N0} {stats.Name} handoffs were taken while the " +
+            $"operating system had one of the probe's own threads descheduled ({stats.DiscardedRounds:N0} " +
+            $"rounds lost the holder mid-critical-section, {stats.DiscardedSamples:N0} further handoffs lost " +
+            "the waiter on the gate). At that rate the waits this cannot see inside are disturbed too, so " +
+            "the remaining handoffs measure the machine as much as the lock.");
     }
 
     private static double ToMilliseconds(double ticks)
@@ -491,12 +608,24 @@ public class SpinLockLatencyTests
         TestContext.Out.WriteLine(
             $"{stats.Name}: {stats.WaiterCount} waiters blocked on a {stats.HoldMicroseconds:N1} us " +
             $"critical section, {stats.SampleCount:N0} handoffs");
+        TestContext.Out.WriteLine(
+            $"{"  handoffs measured",-34} {stats.SampleCount,14:N0} of {stats.OfferedSamples:N0} " +
+            $"({stats.DiscardedRounds:N0} rounds descheduled the holder, " +
+            $"{stats.DiscardedSamples:N0} handoffs descheduled the waiter)");
+
+        if (stats.SampleCount == 0)
+        {
+            return;
+        }
+
         TestContext.Out.WriteLine($"{"  mean",-34} {stats.MeanMilliseconds * 1000.0,14:N2} us");
         TestContext.Out.WriteLine($"{"  p50",-34} {stats.P50Milliseconds * 1000.0,14:N2} us");
         TestContext.Out.WriteLine($"{"  p90",-34} {stats.P90Milliseconds * 1000.0,14:N2} us");
         TestContext.Out.WriteLine($"{"  p99",-34} {stats.P99Milliseconds * 1000.0,14:N2} us");
         TestContext.Out.WriteLine($"{"  max",-34} {stats.MaxMilliseconds * 1000.0,14:N2} us");
         TestContext.Out.WriteLine($"{"  parked (>= hold + band)",-34} {stats.ParkedCount,14:N0} ({stats.ParkedRatio:P2})");
+        TestContext.Out.WriteLine(
+            $"{"  over healthy ceiling",-34} {stats.OverCeilingCount,14:N0} ({stats.OverCeilingRatio:P2})");
         TestContext.Out.WriteLine($"{"  band",-34} {bandMs * 1000.0,14:N0} us");
     }
 
@@ -504,7 +633,7 @@ public class SpinLockLatencyTests
         => TestContext.Out.WriteLine(
             $"{stats.Name,-18}{stats.HoldMicroseconds,10:N0} {stats.P50Milliseconds * 1000.0,12:N2} " +
             $"{stats.P99Milliseconds * 1000.0,12:N2} {stats.MaxMilliseconds * 1000.0,12:N1} " +
-            $"{stats.ParkedRatio,10:P2}");
+            $"{stats.ParkedRatio,10:P2} {stats.OfferedSamples - stats.SampleCount,10:N0}");
 
     /// <summary>Shared, mutable state driving the handoff rounds. A class so every thread sees one copy.</summary>
     private sealed class HandoffState
@@ -514,6 +643,14 @@ public class SpinLockLatencyTests
 
         /// <summary>Waiters that have completed the current round.</summary>
         public int Completed;
+
+        /// <summary>
+        /// Timestamp at which the holder opened the current round, published before <see cref="Round"/> so
+        /// a waiter that has seen the gate has necessarily seen this. Written and read through
+        /// <see cref="Interlocked"/> because a <see cref="long"/> is not written atomically on the 32-bit
+        /// target frameworks.
+        /// </summary>
+        public long OpenedAt;
     }
 
     /// <summary>
@@ -530,6 +667,22 @@ public class SpinLockLatencyTests
         public int WaiterCount { get; set; }
         public double HoldMicroseconds { get; set; }
         public int SampleCount { get; set; }
+
+        /// <summary>Handoffs the probe attempted, before anything was discarded.</summary>
+        public int OfferedSamples { get; set; }
+
+        /// <summary>Rounds the holder ran undisturbed, and which therefore contributed samples.</summary>
+        public int MeasuredRounds { get; set; }
+
+        /// <summary>Rounds thrown away because the holder was descheduled inside its critical section.</summary>
+        public int DiscardedRounds { get; set; }
+
+        /// <summary>
+        /// Handoffs thrown away, within otherwise good rounds, because the waiter itself was descheduled
+        /// while spinning on the gate.
+        /// </summary>
+        public int DiscardedSamples { get; set; }
+
         public double MeanMilliseconds { get; set; }
         public double P50Milliseconds { get; set; }
         public double P90Milliseconds { get; set; }
@@ -538,24 +691,87 @@ public class SpinLockLatencyTests
         public int ParkedCount { get; set; }
         public double ParkedRatio { get; set; }
 
+        /// <summary>Handoffs that cost more than a healthy one of this critical section should.</summary>
+        public int OverCeilingCount { get; set; }
+
+        public double OverCeilingRatio { get; set; }
+
+        /// <param name="gateDelays">How long each waiter took to notice the gate, per waiter and round.</param>
+        /// <param name="heldTicks">How long the holder actually kept the lock, per measured round.</param>
+        /// <param name="ceilingTicks">
+        /// Cost a healthy handoff of this critical section stays under. Doubles as the budget for the two
+        /// intervals that bracket a handoff and belong to the machine rather than the lock - the holder's
+        /// critical section and the waiter's gate spin - either of which overrunning it means that thread
+        /// was descheduled and its measurement is not attributable to the backoff.
+        /// </param>
         public static HandoffStats Create(
             string name,
             int waiterCount,
             double holdMicroseconds,
             long[][] samples,
+            long[][] gateDelays,
+            long[] heldTicks,
+            long ceilingTicks,
             int rounds,
             double quantumBandMilliseconds)
         {
-            int total = waiterCount * rounds;
+            int measuredRounds = 0;
+            int kept = 0;
+
+            for (int r = 0; r < rounds; r++)
+            {
+                if (heldTicks[r] > ceilingTicks)
+                {
+                    continue;
+                }
+
+                measuredRounds++;
+                for (int w = 0; w < waiterCount; w++)
+                {
+                    if (gateDelays[w][r] <= ceilingTicks)
+                    {
+                        kept++;
+                    }
+                }
+            }
+
+            var stats = new HandoffStats {
+                Name = name,
+                WaiterCount = waiterCount,
+                HoldMicroseconds = holdMicroseconds,
+                OfferedSamples = waiterCount * rounds,
+                MeasuredRounds = measuredRounds,
+                DiscardedRounds = rounds - measuredRounds,
+                DiscardedSamples = (waiterCount * measuredRounds) - kept,
+            };
+
+            int total = kept;
+            if (total == 0)
+            {
+                return stats;
+            }
+
             long[] all = new long[total];
             double sum = 0.0;
+            int next = 0;
 
-            for (int w = 0; w < waiterCount; w++)
+            for (int r = 0; r < rounds; r++)
             {
-                Array.Copy(samples[w], 0, all, w * rounds, rounds);
-                for (int i = 0; i < rounds; i++)
+                if (heldTicks[r] > ceilingTicks)
                 {
-                    sum += samples[w][i];
+                    continue;
+                }
+
+                for (int w = 0; w < waiterCount; w++)
+                {
+                    if (gateDelays[w][r] > ceilingTicks)
+                    {
+                        continue;
+                    }
+
+                    long ticks = samples[w][r];
+                    all[next++] = ticks;
+                    sum += ticks;
                 }
             }
 
@@ -566,20 +782,20 @@ public class SpinLockLatencyTests
             double parkedThresholdMs = (holdMicroseconds / 1000.0) + quantumBandMilliseconds;
             long parkedTicks = (long)(parkedThresholdMs * Stopwatch.Frequency / 1000.0);
             int parked = total - LowerBound(all, parkedTicks);
+            int overCeiling = total - LowerBound(all, ceilingTicks);
 
-            return new HandoffStats {
-                Name = name,
-                WaiterCount = waiterCount,
-                HoldMicroseconds = holdMicroseconds,
-                SampleCount = total,
-                MeanMilliseconds = ToMilliseconds(sum / total),
-                P50Milliseconds = Percentile(all, 0.50),
-                P90Milliseconds = Percentile(all, 0.90),
-                P99Milliseconds = Percentile(all, 0.99),
-                MaxMilliseconds = ToMilliseconds(all[total - 1]),
-                ParkedCount = parked,
-                ParkedRatio = (double)parked / total,
-            };
+            stats.SampleCount = total;
+            stats.MeanMilliseconds = ToMilliseconds(sum / total);
+            stats.P50Milliseconds = Percentile(all, 0.50);
+            stats.P90Milliseconds = Percentile(all, 0.90);
+            stats.P99Milliseconds = Percentile(all, 0.99);
+            stats.MaxMilliseconds = ToMilliseconds(all[total - 1]);
+            stats.ParkedCount = parked;
+            stats.ParkedRatio = (double)parked / total;
+            stats.OverCeilingCount = overCeiling;
+            stats.OverCeilingRatio = (double)overCeiling / total;
+
+            return stats;
         }
 
         private static double Percentile(long[] sorted, double percentile)
