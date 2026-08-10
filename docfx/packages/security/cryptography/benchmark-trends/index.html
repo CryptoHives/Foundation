@@ -28,7 +28,13 @@
   table.data-table th { background: #f5f5f5; position: sticky; top: 0; z-index: 1; }
   table.data-table td.numeric, table.data-table th.numeric { text-align: right; }
   table.data-table tr.group-start td { border-top: 2px solid #bbb; }
-  table.data-table tr.baseline td { background: #fff6e6; font-weight: 600; }
+  /* Ours get a wash of the brand amber so they stand out from third parties at a glance; the
+     baseline is the same hue a shade deeper, so the two are related but never confusable. */
+  table.data-table tr.ours td { background: #fffcf4; }
+  table.data-table tr.baseline td { background: #ffeecc; font-weight: 600; }
+  table.data-table tr.experimental td { color: #6b5b3e; }
+  table.data-table td .flag { font-size: 0.72rem; color: #92400e; border: 1px solid #e6c893;
+    border-radius: 3px; padding: 0 0.25rem; margin-left: 0.35rem; white-space: nowrap; }
   table.data-table td.worse { color: #b91c1c; }
   table.data-table td.better { color: #15803d; }
   .table-note { font-size: 0.8rem; color: #666; margin: 0 0 0.6rem; }
@@ -188,6 +194,35 @@
     return raw.runtime ? `${commit} · .NET ${raw.runtime}` : commit;
   }
 
+  // Implementations compiled in for measurement but excluded from the published packages.
+  //
+  // common.props defines EXPERIMENTAL unless the packaging build passes
+  // /p:EnableExperimentalAlgorithms=false, so these paths exist in a local benchmark run and not in
+  // the NuGet output. Nothing in the recorded data marks them, so the list is declared here and
+  // derived from the `#if EXPERIMENTAL` guards in src/Security/Cryptography/Hash/.
+  //
+  // It has to be per (family, variant) rather than per variant: BLAKE2b's AVX2 path ships while
+  // BLAKE2s's does not, and the Keccak core's AVX2 and AVX-512 permutes are excluded with the
+  // comment "turned out to be slower than scalar keccak" while its Arm64 scalar path ships.
+  //
+  // Source of each entry:
+  //   Keccak core   KeccakCoreState.cs:147   (Avx512F, Avx2 - dispatch behind the guard)
+  //   BLAKE2b       Blake2bState.Avx2.cs:62  (Neon only; Avx2 is detected outside the guard)
+  //   BLAKE2s       Blake2s.Simd.cs:48       (Avx2, Sse2, Neon; Ssse3 is outside the guard)
+  //   BLAKE3        no guards - every path ships
+  const KECCAK_FAMILIES = /^(SHA3-|SHAKE|cSHAKE|Keccak-|KMAC-|KT\d|TurboSHAKE|ParallelHash)/;
+
+  function experimentalVariants(family) {
+    if (KECCAK_FAMILIES.test(family)) return ["CryptoHives-AVX2", "CryptoHives-AVX512F"];
+    if (family.startsWith("BLAKE2b")) return ["CryptoHives-Neon"];
+    if (family.startsWith("BLAKE2s")) return ["CryptoHives-AVX2", "CryptoHives-Sse2", "CryptoHives-Neon"];
+    return [];
+  }
+
+  function isExperimental(family, variant) {
+    return experimentalVariants(family).includes(variant);
+  }
+
   function isOurs(variant) {
     return variant === "CryptoHives" || variant.startsWith("CryptoHives-");
   }
@@ -223,6 +258,17 @@
       swatch.className = "legend-swatch";
       swatch.style.background = color;
       item.append(swatch, document.createTextNode(variant));
+      // The charts share the legend across whichever family is selected, so an experimental path
+      // is marked here too rather than only in the table - otherwise a line that will never appear
+      // in a released package looks like one that will.
+      if (isExperimental(familySel.value, variant)) {
+        const flag = document.createElement("span");
+        flag.className = "flag";
+        flag.textContent = "not in package";
+        flag.title = "Compiled in for measurement but excluded from the published NuGet package: " +
+                     "this path is guarded by #if EXPERIMENTAL.";
+        item.appendChild(flag);
+      }
       item.onclick = () => {
         if (hiddenVariants.has(variant)) hiddenVariants.delete(variant);
         else hiddenVariants.add(variant);
@@ -748,7 +794,10 @@
       for (const r of group) {
         const tr = document.createElement("tr");
         if (first) tr.classList.add("group-start");
+        if (isOurs(r.variant)) tr.classList.add("ours");
         if (r.variant === baselineVariant) tr.classList.add("baseline");
+        const experimental = isExperimental(familySel.value, r.variant);
+        if (experimental) tr.classList.add("experimental");
         first = false;
         const cmp = compareBy.get(r.variant + "\u001f" + (r.data_size_label || ""));
         const delta = (cmp && cmp.mean_ns) ? (r.mean_ns / cmp.mean_ns - 1) * 100 : null;
@@ -758,6 +807,14 @@
           if (col.numeric) td.classList.add("numeric");
           if (col.key === "description") {
             td.textContent = methodSel.value + " · " + familySel.value + " · " + r.variant;
+            if (experimental) {
+              const flag = document.createElement("span");
+              flag.className = "flag";
+              flag.textContent = "not in package";
+              flag.title = "Compiled in for measurement but excluded from the published NuGet " +
+                           "package: this path is guarded by #if EXPERIMENTAL.";
+              td.appendChild(flag);
+            }
           } else if (col.key === "size") {
             td.textContent = r.data_size_label || "-";
           } else if (col.key === "mean") {
@@ -791,8 +848,9 @@
     const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
     tableNoteEl.hidden = false;
     tableNoteEl.textContent =
-      "Baseline (highlighted) is this library's own implementation; Ratio is each row's mean over " +
-      "it, computed per data size." +
+      "This library's own implementations are shaded, the baseline more deeply; Ratio is each " +
+      "row's mean over that baseline, computed per data size. Rows marked “not in package” " +
+      "are compiled in for measurement only and excluded from the published NuGet package." +
       (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
                    " — positive means slower here." : "");
     statusEl.textContent = total + " row(s) from " + (chosen ? chosen.textContent.trim() : "the selected run");
