@@ -79,6 +79,40 @@ SIZE_MULTIPLIERS = {"B": 1, "KB": 1024, "MB": 1024 * 1024}
 SIZE_PATTERN = re.compile(r"^(?P<value>\d+)(?P<unit>B|KB|MB)$")
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
 
+# BenchmarkDotNet keeps job characteristics in the preamble only while they are constant across
+# the report; the moment one varies it becomes a table column instead. A single-runtime run says
+# "Toolchain=net10.0" above the table, while `--runtimes net8.0 net10.0` grows a "Runtime" column.
+#
+# Unlike Threading's parser - which identifies [Params] by exclusion, so an unknown column would
+# become a spurious parameter - this one reads columns by name and would simply ignore a Runtime
+# column. That failure is quieter and worse: every runtime's rows would share a primary key and
+# silently overwrite one another, leaving one runtime's numbers labelled as the run's.
+#
+# Kept as a deliberate sibling of FRAMEWORK_COLUMNS/normalize_framework in
+# scripts/threading-benchmark-trends/markdown_parser.py rather than shared, matching how the rest
+# of these two pipelines are organized.
+FRAMEWORK_COLUMNS = ("Runtime", "Job")
+
+_FRAMEWORK_DISPLAY = re.compile(r"^\.NET (?P<fw>Framework )?(?P<version>\d+(?:\.\d+){1,2})$")
+
+
+def normalize_framework(value):
+    """'.NET 10.0' -> 'net10.0', '.NET Framework 4.6.2' -> 'net462', 'net10.0' -> 'net10.0'.
+
+    Anything unrecognized is returned unchanged rather than dropped: a value this does not know
+    is still a truthful distinction between rows, and collapsing it would merge runs that differ.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    match = _FRAMEWORK_DISPLAY.match(value)
+    if not match:
+        return value
+    version = match.group("version")
+    if match.group("fw"):
+        return "net" + version.replace(".", "")
+    return "net" + ".".join(version.split(".")[:2])
+
 # The CryptoHives-authored variant names were renamed at various points in history (bare
 # "Managed"/"AVX2"/"AES-NI" etc. -> "CryptoHives-"-prefixed, confirmed by diffing the current
 # registries — HashAlgorithmRegistry.cs, CipherAlgorithmRegistry.cs — against old markdown
@@ -224,6 +258,14 @@ def parse_markdown_table(content: str):
         if mean_ns is None:
             continue  # failed/NA row
 
+        # Present only when the report covers more than one runtime; a single-runtime run leaves
+        # this None and the caller substitutes the framework the run directory names.
+        framework = None
+        for column in FRAMEWORK_COLUMNS:
+            if fields.get(column, "").strip():
+                framework = normalize_framework(fields[column])
+                break
+
         # The joined-cell era packs "Method · Category · Name" (or "Method · Name" for
         # Cipher) into a single raw cell using "·" as the separator; the pre-fix era instead
         # split on literal "|", arriving as separate raw cells already. Splitting every raw
@@ -255,6 +297,7 @@ def parse_markdown_table(content: str):
             "method": method,
             "family": family,
             "variant": variant,
+            "framework": framework,
             "data_size_label": size_label,
             "data_size_bytes": parse_data_size_bytes(size_label),
             "mean_ns": mean_ns,
@@ -498,6 +541,7 @@ def parse_machine_spec(text: str) -> dict:
         "bdn_version": None, "os": None, "cpu": None,
         "logical_cores": None, "physical_cores": None,
         "sdk_version": None, "runtime_version": None, "jit": None,
+        "framework": None,
     }
 
     match = _BDN_LINE.search(text)
@@ -520,6 +564,16 @@ def parse_machine_spec(text: str) -> dict:
     if match:
         spec["runtime_version"] = match.group("runtime")
         spec["jit"] = match.group("jit")
+
+    # "Job=.NET 10.0  Runtime=.NET 10.0  Toolchain=net10.0" - present only while the job is
+    # constant across the report, which is exactly when the table carries no Runtime column.
+    match = re.search(r"Toolchain=(\S+)", text)
+    if match:
+        spec["framework"] = match.group(1)
+    else:
+        match = re.search(r"Runtime=(\.NET(?: Framework)? \d+(?:\.\d+){1,2})", text)
+        if match:
+            spec["framework"] = normalize_framework(match.group(1))
 
     return spec
 

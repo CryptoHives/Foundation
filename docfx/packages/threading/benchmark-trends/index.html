@@ -30,6 +30,9 @@
   table.data-table tr.group-start td { border-top: 2px solid #bbb; }
   table.data-table tr.baseline td { background: #fff6e6; font-weight: 600; }
   table.data-table td.worse { color: #b91c1c; }
+  /* A delta whose competitor also changed version between the two runs. Not an error state -
+     the number is real - so it is marked rather than coloured, and carries its own tooltip. */
+  table.data-table td .pkg-changed { color: #92400e; cursor: help; margin-left: 0.3rem; }
   table.data-table td.better { color: #15803d; }
   .table-note { font-size: 0.8rem; color: #666; margin: 0 0 0.6rem; }
 </style>
@@ -61,6 +64,9 @@
 <div class="controls">
   <label>Platform
     <select id="platform"></select>
+  </label>
+  <label id="framework-picker" hidden>Framework
+    <select id="framework"></select>
   </label>
   <label>Family
     <select id="family"></select>
@@ -141,6 +147,8 @@
 (async function () {
   const statusEl = document.getElementById("status");
   const platformSel = document.getElementById("platform");
+  const frameworkSel = document.getElementById("framework");
+  const frameworkPickerEl = document.getElementById("framework-picker");
   const familySel = document.getElementById("family");
   const methodSel = document.getElementById("method");
   const cancellationSel = document.getElementById("cancellation");
@@ -282,6 +290,11 @@
   // Timeout instead of shifting depending on which variants happen to appear in one method's
   // result set. Rebuilt in refreshMethods(), which already runs on every platform/family change.
   let familyColors = new Map();
+  // Whether the archive holds more than one target framework at all. Until a second one is
+  // recorded the picker would be a single fixed option and the run labels would repeat the same
+  // word on every line, so both stay out of the way rather than advertising a dimension the data
+  // does not yet have.
+  let hasMultipleFrameworks = false;
 
   function distinct(column, whereSql, params) {
     const stmt = db.prepare(`SELECT DISTINCT ${column} FROM benchmark_results ${whereSql} ORDER BY ${column}`);
@@ -352,6 +365,7 @@
     if ([...params.keys()].length === 0) return null;
     return {
       platform: params.get("platform") ?? undefined,
+      framework: params.get("framework") ?? undefined,
       family: params.get("family") ?? undefined,
       method: params.get("method") ?? undefined,
       cancellation: params.get("cancellation") ?? undefined,
@@ -367,6 +381,7 @@
   function syncUrlHash() {
     const params = new URLSearchParams();
     params.set("platform", platformSel.value);
+    params.set("framework", frameworkSel.value);
     params.set("family", familySel.value);
     params.set("method", methodSel.value);
     params.set("cancellation", cancellationSel.value);
@@ -417,8 +432,19 @@
     return cutoff.toISOString();
   }
 
+  // Framework sits directly under platform in the cascade, because it narrows the same way a
+  // platform does: the same commit measured under net8.0 and net10.0 is two sets of numbers that
+  // must never share a line. Which frameworks exist is per platform - a net48 run only happens on
+  // Windows - so this is re-derived on every platform change rather than filled once.
+  function refreshFrameworks(preferred) {
+    const frameworks = distinct("framework", "WHERE platform = ?", [platformSel.value]);
+    populateSelect(frameworkSel, frameworks, null, preferred?.framework);
+    refreshFamilies(preferred);
+  }
+
   function refreshFamilies(preferred) {
-    const families = distinct("family", "WHERE platform = ?", [platformSel.value]);
+    const families = distinct("family", "WHERE platform = ? AND framework = ?",
+                              [platformSel.value, frameworkSel.value]);
     populateSelect(familySel, families, null, preferred?.family);
     refreshMethods(preferred);
   }
@@ -428,8 +454,8 @@
     // "Multiple") — these measure different scenarios and must never be plotted on one line.
     const methods = distinct(
       "method",
-      "WHERE platform = ? AND family = ?",
-      [platformSel.value, familySel.value]
+      "WHERE platform = ? AND framework = ? AND family = ?",
+      [platformSel.value, frameworkSel.value, familySel.value]
     );
     populateSelect(methodSel, methods, null, preferred?.method);
     refreshFamilyColors();
@@ -440,6 +466,10 @@
   // set — not just the ones present under the currently selected method — so e.g. "Pooled" is the
   // same color under Single, Multiple, and Timeout instead of shifting with whatever else happens
   // to be in that method's result set.
+  //
+  // Deliberately not narrowed by framework, for the same reason it is not narrowed by method: a
+  // variant should keep its colour when you switch from net10.0 to net8.0, which is exactly the
+  // moment you are comparing the two by eye.
   function refreshFamilyColors() {
     const variants = distinct(
       "variant",
@@ -468,8 +498,8 @@
     // making it the most comparable choice across the whole family.
     const states = distinct(
       "cancellation",
-      "WHERE platform = ? AND family = ? AND method = ?",
-      [platformSel.value, familySel.value, methodSel.value]
+      "WHERE platform = ? AND framework = ? AND family = ? AND method = ?",
+      [platformSel.value, frameworkSel.value, familySel.value, methodSel.value]
     );
     populateSelect(cancellationSel, states, null, preferred?.cancellation ?? "None", cancellationLabel);
     refreshParams();
@@ -490,14 +520,73 @@
     // query anyway, so a level with no rows for the selected state simply plots nothing.
     const stmt = db.prepare(
       `SELECT DISTINCT param_label, param_value FROM benchmark_results
-       WHERE platform = ? AND family = ? AND method = ? AND param_label IS NOT NULL
+       WHERE platform = ? AND framework = ? AND family = ? AND method = ?
+         AND param_label IS NOT NULL
        ORDER BY param_value`
     );
-    stmt.bind([platformSel.value, familySel.value, methodSel.value]);
+    stmt.bind([platformSel.value, frameworkSel.value, familySel.value, methodSel.value]);
     currentParams = [];
     while (stmt.step()) currentParams.push(stmt.getAsObject().param_label);
     stmt.free();
     renderChart();
+  }
+
+  // Which NuGet package supplies each competitor, so a step in that competitor's line can be
+  // attributed to the competitor shipping a release rather than to a change in this repository.
+  //
+  // Declared here rather than recorded, because nothing in a BenchmarkDotNet report names the
+  // package behind a display label - the labels are chosen in the benchmark classes, and only the
+  // classes know that "VS.Threading" means Microsoft.VisualStudio.Threading. Ids must match
+  // Directory.Packages.props exactly, since that is what ends up in benchmark_run_packages.
+  //
+  // Variants with no entry are deliberate, not omissions: Pooled* is our own code (identified by
+  // the run's commit), RefImpl is vendored source in tests/, and the BCL rows (Lock, SemaphoreSlim,
+  // Interlocked.*, ...) move with the runtime, which benchmark_runs already records.
+  const VARIANT_PACKAGES = {
+    "AsyncKeyedLock": "AsyncKeyedLock",
+    "AsyncKeyedLock (Striped)": "AsyncKeyedLock",
+    "AsyncUtilities (Striped)": "AsyncUtilities",
+    "Dao.IndividualLock": "Dao.IndividualLock",
+    "KeyedSemaphores": "KeyedSemaphores",
+    "KeyedSemaphores (Striped)": "KeyedSemaphores",
+    "NeoSmart": "NeoSmart.AsyncLock",
+    "Nito": "Nito.AsyncEx",
+    "ProtoPromise": "ProtoPromise",
+    "VS.Threading": "Microsoft.VisualStudio.Threading",
+  };
+
+  // (run_id + platform) -> { packageId: version }, loaded once at startup. Small enough to hold
+  // whole (a few hundred rows across the entire archive) that joining it per query would cost
+  // more than it saves.
+  let runPackages = new Map();
+  let runPackagesSource = new Map();
+
+  function loadRunPackages() {
+    runPackages = new Map();
+    runPackagesSource = new Map();
+    let stmt;
+    try {
+      stmt = db.prepare("SELECT run_id, platform, framework, package_id, version, source " +
+                        "FROM benchmark_run_packages");
+    } catch {
+      return;   // database built before the table existed; the UI just shows no versions
+    }
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      const key = runKey(row.run_id, row.platform, row.framework);
+      if (!runPackages.has(key)) runPackages.set(key, {});
+      runPackages.get(key)[row.package_id] = row.version;
+      if (row.source) runPackagesSource.set(key, row.source);
+    }
+    stmt.free();
+  }
+
+  // "AsyncKeyedLock 8.0.2" for a variant backed by a package in that run, otherwise null.
+  function packageLabel(variant, runId, platform, framework) {
+    const packageId = VARIANT_PACKAGES[variant];
+    if (!packageId) return null;
+    const version = runPackages.get(runKey(runId, platform, framework))?.[packageId];
+    return version ? `${packageId} ${version}` : null;
   }
 
   // The runtime a point was measured on belongs next to the commit: between the recorded runs so
@@ -505,8 +594,11 @@
   // in a line cannot be read as a code change without knowing whether the floor moved under it.
   // Older rows predate the environment table and simply omit it rather than showing a blank.
   function pointFooter(raw) {
-    const commit = `commit ${raw.commit?.slice(0, 8) ?? "?"}`;
-    return raw.runtime ? `${commit} · .NET ${raw.runtime}` : commit;
+    const parts = [`commit ${raw.commit?.slice(0, 8) ?? "?"}`];
+    if (raw.runtime) parts.push(`.NET ${raw.runtime}`);
+    // Only third-party series carry one; ours is pinned by the commit already in this footer.
+    if (raw.pkg) parts.push(raw.pkg);
+    return parts.join(" · ");
   }
 
   function renderChartInstance(datasets, scales, tooltipAfterLabel) {
@@ -540,16 +632,18 @@
     const cutoff = dateRangeCutoffIso();
     const paramClause = hasRealParams ? `AND param_label IN (${placeholders})` : "AND param_label IS NULL";
     const stmt = db.prepare(`
-      SELECT r.variant, r.param_label, r.run_date, r.commit_sha, b.runtime_version,
+      SELECT r.variant, r.param_label, r.run_date, r.run_id, r.commit_sha, b.runtime_version,
              r.${metric} AS value
       FROM benchmark_results r
       LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
-      WHERE r.platform = ? AND r.family = ? AND r.method = ? AND r.cancellation = ? ${paramClause.replace(/param_label/g, "r.param_label")}
+      WHERE r.platform = ? AND r.framework = ? AND r.family = ? AND r.method = ?
+        AND r.cancellation = ? ${paramClause.replace(/param_label/g, "r.param_label")}
         ${cutoff ? "AND r.run_date >= ?" : ""}
       ORDER BY r.variant, r.param_label, r.run_date
     `);
     stmt.bind([
-      platformSel.value, familySel.value, methodSel.value, cancellationSel.value,
+      platformSel.value, frameworkSel.value, familySel.value, methodSel.value,
+      cancellationSel.value,
       ...(hasRealParams ? params : []),
       ...(cutoff ? [cutoff] : []),
     ]);
@@ -562,6 +656,7 @@
       if (!seriesByKey.has(key)) seriesByKey.set(key, { variant: row.variant, paramLabel: row.param_label, points: [] });
       seriesByKey.get(key).points.push({
         x: row.run_date, y: row.value, commit: row.commit_sha, runtime: row.runtime_version,
+        pkg: packageLabel(row.variant, row.run_id, platformSel.value, frameworkSel.value),
       });
     }
     stmt.free();
@@ -635,15 +730,16 @@
     const hasRealParams = currentParams.length > 0;
     const paramClause = hasRealParams ? "AND r.param_label IS NOT NULL" : "AND r.param_label IS NULL";
     const stmt = db.prepare(`
-      SELECT r.variant, r.cancellation, r.param_value, r.param_label, r.run_date, r.commit_sha,
-             b.runtime_version, r.mean_ns, r.allocated_bytes
+      SELECT r.variant, r.cancellation, r.param_value, r.param_label, r.run_date, r.run_id,
+             r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
       FROM benchmark_results r
       LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
-      WHERE r.platform = ? AND r.family = ? AND r.method = ? ${paramClause}
+      WHERE r.platform = ? AND r.framework = ? AND r.family = ? AND r.method = ? ${paramClause}
         ${cutoff ? "AND r.run_date >= ?" : ""}
       ORDER BY r.variant, r.cancellation, r.param_value, r.run_date
     `);
-    stmt.bind([platformSel.value, familySel.value, methodSel.value, ...(cutoff ? [cutoff] : [])]);
+    stmt.bind([platformSel.value, frameworkSel.value, familySel.value, methodSel.value,
+               ...(cutoff ? [cutoff] : [])]);
 
     // ORDER BY run_date ASC means the last row seen for a given (variant, cancellation, level) is
     // the most recent recorded run within the selected date range - exactly the one we want for a
@@ -686,6 +782,7 @@
             param_label: hasRealParams ? r.param_label : "single scenario",
             commit: r.commit_sha,
             runtime: r.runtime_version,
+            pkg: packageLabel(variant, r.run_id, platformSel.value, frameworkSel.value),
           })),
           yAxisID: metric.axis,
           borderColor: familyColors.get(variant),
@@ -806,18 +903,25 @@
   let pendingRunFromUrl = null;
   let pendingCompareFromUrl = null;
 
-  function runKey(runId, platform) { return runId + " " + platform; }
+  // Identity of one recorded run. Framework is part of it because the archive nests a framework
+  // level under the platform: the same commit on the same machine under net8.0 and net10.0 is two
+  // runs, and collapsing them here would make each look up the other's package versions.
+  function runKey(runId, platform, framework) {
+    return runId + " " + platform + " " + framework;
+  }
 
   // Every (run, platform) carrying rows for the current family+method, newest first. Both pickers
   // are filled from this, which is what makes "macOS vs Windows at the same commit" fall out for
   // free: those two share a run_id and differ only in platform.
   function availableRuns() {
     const stmt = db.prepare(
-      "SELECT DISTINCT r.run_id, r.platform, r.run_date, r.commit_sha, b.runtime_version " +
+      "SELECT DISTINCT r.run_id, r.platform, r.framework, r.run_date, r.commit_sha, " +
+      "       b.runtime_version " +
       "FROM benchmark_results r " +
       "LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform " +
+      "                          AND b.framework = r.framework " +
       "WHERE r.family = ? AND r.method = ? " +
-      "ORDER BY r.run_date DESC, r.platform"
+      "ORDER BY r.run_date DESC, r.platform, r.framework"
     );
     stmt.bind([familySel.value, methodSel.value]);
     const runs = [];
@@ -830,7 +934,10 @@
     const date = (run.run_date || "").slice(0, 10);
     const sha = run.commit_sha ? run.commit_sha.slice(0, 8) : "?";
     const rt = run.runtime_version ? " · .NET " + run.runtime_version : "";
-    return date + " · " + run.platform + " · " + sha + rt;
+    // The framework only earns a place in the label once more than one has been recorded;
+    // otherwise it is the same word on every option and says nothing.
+    const fw = hasMultipleFrameworks ? " · " + run.framework : "";
+    return date + " · " + run.platform + fw + " · " + sha + rt;
   }
 
   function refreshRunPickers() {
@@ -841,19 +948,23 @@
     runSel.innerHTML = "";
     for (const run of runs) {
       const opt = document.createElement("option");
-      opt.value = runKey(run.run_id, run.platform);
+      opt.value = runKey(run.run_id, run.platform, run.framework);
       opt.textContent = runOptionLabel(run);
       runSel.appendChild(opt);
     }
     // Default to the newest run on the platform already selected above, so switching into table
     // mode shows the data the charts were showing rather than jumping to another machine.
-    const preferred = runs.find((r) => r.platform === platformSel.value) || runs[0];
+    const preferred = runs.find((r) => r.platform === platformSel.value
+                                   && r.framework === frameworkSel.value)
+                   || runs.find((r) => r.platform === platformSel.value)
+                   || runs[0];
     // A run named in the URL wins once, on first render, then normal selection takes over.
     const fromUrl = pendingRunFromUrl;
     pendingRunFromUrl = null;
-    const wanted = (fromUrl && runs.some((r) => runKey(r.run_id, r.platform) === fromUrl)) ? fromUrl
-                 : (runs.some((r) => runKey(r.run_id, r.platform) === previousRun) ? previousRun : null);
-    runSel.value = wanted || (preferred ? runKey(preferred.run_id, preferred.platform) : "");
+    const wanted = (fromUrl && runs.some((r) => runKey(r.run_id, r.platform, r.framework) === fromUrl)) ? fromUrl
+                 : (runs.some((r) => runKey(r.run_id, r.platform, r.framework) === previousRun) ? previousRun : null);
+    runSel.value = wanted
+      || (preferred ? runKey(preferred.run_id, preferred.platform, preferred.framework) : "");
 
     const chosenRunId = (runSel.value || "").split(" ")[0];
     compareSel.innerHTML = "";
@@ -862,9 +973,9 @@
     none.textContent = "(nothing — single run)";
     compareSel.appendChild(none);
     for (const run of runs) {
-      if (runKey(run.run_id, run.platform) === runSel.value) continue;
+      if (runKey(run.run_id, run.platform, run.framework) === runSel.value) continue;
       const opt = document.createElement("option");
-      opt.value = runKey(run.run_id, run.platform);
+      opt.value = runKey(run.run_id, run.platform, run.framework);
       opt.textContent = runOptionLabel(run) + (run.run_id === chosenRunId ? "   (same commit)" : "");
       compareSel.appendChild(opt);
     }
@@ -879,9 +990,10 @@
     const parts = key.split(" ");
     const stmt = db.prepare(
       "SELECT variant, cancellation, param_label, mean_ns, allocated_bytes " +
-      "FROM benchmark_results WHERE run_id = ? AND platform = ? AND family = ? AND method = ?"
+      "FROM benchmark_results WHERE run_id = ? AND platform = ? AND framework = ? " +
+      "  AND family = ? AND method = ?"
     );
-    stmt.bind([parts[0], parts[1], familySel.value, methodSel.value]);
+    stmt.bind([parts[0], parts[1], parts[2], familySel.value, methodSel.value]);
     const rows = [];
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
@@ -889,6 +1001,19 @@
   }
 
   const CANCELLATION_ORDER = ["None", "NotCancelled", "Cancelled", "Timed", "NotCancelledTimed"];
+
+  // Packages whose version differs between the two runs being compared. This is the whole point
+  // of recording them: a competitor's Δ Mean is only evidence about our code if that competitor
+  // was the same build in both runs, and across the recorded history several were not.
+  function changedPackages(keyA, keyB) {
+    const a = runPackages.get(keyA) || {};
+    const b = runPackages.get(keyB) || {};
+    const changed = new Map();
+    for (const id of Object.keys(a)) {
+      if (b[id] && b[id] !== a[id]) changed.set(id, [b[id], a[id]]);   // [compared, chosen]
+    }
+    return changed;
+  }
 
   function renderTableView() {
     const rows = fetchRunRows(runSel.value);
@@ -898,6 +1023,7 @@
       compareBy.set(r.variant + "" + r.cancellation + "" + (r.param_label || ""), r);
     }
     const comparing = compareSel.value !== "" && compareRows.length > 0;
+    const changed = comparing ? changedPackages(runSel.value, compareSel.value) : new Map();
 
     dataTableHeadEl.innerHTML = "";
     dataTableBodyEl.innerHTML = "";
@@ -987,6 +1113,7 @@
         const params = new Map(splitParams(r.param_label));
         const cmp = compareBy.get(r.variant + "" + r.cancellation + "" + (r.param_label || ""));
         const delta = (cmp && cmp.mean_ns) ? (r.mean_ns / cmp.mean_ns - 1) * 100 : null;
+        const movedPackage = comparing ? changed.get(VARIANT_PACKAGES[r.variant]) : undefined;
 
         for (const col of columns) {
           const td = document.createElement("td");
@@ -1016,6 +1143,15 @@
               // Signed against the comparison run: positive means this run took longer. Only
               // coloured past 5%, since run-to-run noise below that says nothing.
               if (Math.abs(delta) >= 5) td.classList.add(delta > 0 ? "worse" : "better");
+              if (movedPackage) {
+                const marker = document.createElement("span");
+                marker.className = "pkg-changed";
+                marker.textContent = "‡";
+                marker.title = VARIANT_PACKAGES[r.variant] + " " + movedPackage[0] + " → " +
+                  movedPackage[1] + " between these runs, so this delta is not attributable to " +
+                  "CryptoHives.Foundation alone.";
+                td.appendChild(marker);
+              }
             }
           }
           tr.appendChild(td);
@@ -1028,11 +1164,36 @@
     const chosen = Array.from(runSel.options).find((o) => o.value === runSel.value);
     const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
     tableNoteEl.hidden = false;
-    tableNoteEl.textContent =
+    let note =
       "Baseline (highlighted) is this library's own implementation; Ratio is each row's mean over it, " +
       "computed per parameter combination and cancellation state." +
       (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
                    " — positive means slower here." : "");
+
+    // Named explicitly rather than left to the per-row markers: a reader scanning for a regression
+    // should learn that a competitor moved underneath the comparison before reading any number,
+    // and the markers only appear on rows that happen to be on screen.
+    if (comparing && changed.size) {
+      note += "  Competitor versions differ between these runs — " +
+        Array.from(changed, ([id, [from, to]]) => `${id} ${from} → ${to}`).join(", ") +
+        ". Rows marked ‡ measure a different build of the library, not only different code here.";
+    } else if (!comparing) {
+      const packages = runPackages.get(runSel.value);
+      const measured = packages && Object.keys(VARIANT_PACKAGES)
+        .map((v) => VARIANT_PACKAGES[v])
+        .filter((id, i, all) => all.indexOf(id) === i && packages[id])
+        .map((id) => `${id} ${packages[id]}`);
+      if (measured && measured.length) {
+        // Declared central pins recovered from git read the same as a resolved graph, and they
+        // are not the same claim, so runs backfilled that way say so.
+        const source = runPackagesSource.get(runSel.value);
+        note += "  Measured against " + measured.join(", ") + "." +
+          (source === "Directory.Packages.props"
+            ? " (Versions recovered from the central pins at that commit, not from the run itself.)"
+            : "");
+      }
+    }
+    tableNoteEl.textContent = note;
     statusEl.textContent = total + " row(s) from " + (chosen ? chosen.textContent.trim() : "the selected run");
   }
 
@@ -1077,16 +1238,27 @@
     if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
     const buffer = await response.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buffer));
+    loadRunPackages();
 
     const restoreState = parseUrlState();
 
     populateSelect(platformSel, distinct("platform", ""), null, restoreState?.platform);
+    hasMultipleFrameworks = distinct("framework", "").length > 1;
+    frameworkPickerEl.hidden = !hasMultipleFrameworks;
     // Keep the current family/method/cancellation selected across a platform switch when the
     // other platform has that same combination too — e.g. flipping between windows and macos
     // shouldn't reset back to the first family/method every time. populateSelect() already falls
     // back to the first available option on its own when the preferred value doesn't exist for
     // the new platform, so this is safe even when the two platforms' data don't fully overlap.
-    platformSel.onchange = () => refreshFamilies({
+    platformSel.onchange = () => refreshFrameworks({
+      framework: frameworkSel.value,
+      family: familySel.value,
+      method: methodSel.value,
+      cancellation: cancellationSel.value,
+    });
+    // Same intent as the platform handler: keep the rest of the selection when the new framework
+    // also has it, which is the whole point of switching framework - you want the same chart.
+    frameworkSel.onchange = () => refreshFamilies({
       family: familySel.value,
       method: methodSel.value,
       cancellation: cancellationSel.value,
@@ -1122,7 +1294,7 @@
     pendingRunFromUrl = restoreState?.run ?? null;
     pendingCompareFromUrl = restoreState?.compare ?? null;
 
-    refreshFamilies(restoreState);
+    refreshFrameworks(restoreState);
   } catch (err) {
     statusEl.textContent = `Failed to load benchmark-history.sqlite: ${err.message}`;
     console.error(err);

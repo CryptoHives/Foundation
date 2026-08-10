@@ -19,13 +19,15 @@ Published results live in the interactive benchmark trends dashboard below rathe
 Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
 
 ```
-threading/<code-commit>/<platform>/
-    run.json          what the numbers measure
+threading/<code-commit>/<platform>/<framework>/
+    run.json          what the numbers measure, and against which library versions
     machine-spec.md   the machine and runtime they were measured on
     <scenario>.md     one report per benchmark class
 ```
 
 A run is keyed by the commit its binaries were built from, not by the commit that records it. Two machines measuring the same build therefore land in one run directory as two platform directories, which is what makes a cross-platform comparison possible at all.
+
+The framework level below that does the same job for target frameworks: the same commit on the same machine under net10.0 and net8.0 is two runs, so the Table view can put them side by side exactly as it does two platforms. Pass `-Framework` to `run-benchmarks.ps1` and the matching `-TargetFramework` to `update-benchmark-docs.ps1`. A single run covering several runtimes at once (`-Runtimes "net8.0, net10.0"`) works too and needs neither: BenchmarkDotNet emits a `Runtime` column when the runtime varies, and each row is recorded against its own framework.
 
 Run the benchmarks locally first (see below), then write the reports into a worktree of that branch:
 
@@ -35,6 +37,8 @@ git worktree add ../foundation-bench benchmarks
 ```
 
 `update-benchmark-docs.ps1` derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass `-CodeCommit` when recording a run after the fact, or when `HEAD` has moved on since the run. It never commits or pushes: review the result and commit in that worktree when the run is worth keeping.
+
+It also records the version of every third-party library the run measured against, read from the benchmark project's resolved NuGet graph. A competitor's trend line steps when that competitor ships a release just as readily as when this library changes, and nothing else in a recorded run tells the two apart — `Microsoft.VisualStudio.Threading` moved 17.14.15 to 18.7.23 between runs already in the archive. The dashboard shows the version in each point's tooltip, and marks any compared row whose library moved between the two runs. Pass `-TargetFramework` if the benchmarks did not run on the default `net10.0`.
 
 Pushing the branch republishes the site, because the dashboard database is generated at build time rather than committed.
 

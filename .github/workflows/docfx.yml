@@ -7,9 +7,9 @@ name: DocFX Deployment
 #
 # Also on push to `benchmarks`, the orphan branch holding recorded benchmark runs: the trends
 # database is generated from it at build time, so a newly recorded run has to republish the site
-# to become visible. `threading/**` is that branch's layout and matches nothing on main, so it
-# adds no spurious main builds. Note that `paths` applies to every listed branch, which is why the
-# archive needs its own entry rather than being covered by `docfx/**`.
+# to become visible. `threading/**` and `cryptography/**` are that branch's layout and match
+# nothing on main, so they add no spurious main builds. Note that `paths` applies to every listed
+# branch, which is why the archive needs its own entries rather than being covered by `docfx/**`.
 on:
   workflow_dispatch:
   push:
@@ -20,6 +20,7 @@ on:
       - 'docfx/**'
       - 'src/**'
       - 'threading/**'
+      - 'cryptography/**'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -95,6 +96,13 @@ jobs:
           if [ "$rows" -eq 0 ]; then
             echo "::error::$db is empty - refusing to publish a dashboard with no data."
             exit 1
+          fi
+          # The dashboard degrades quietly without these - tooltips just stop naming the
+          # competitor's version - so an empty table has to be loud rather than invisible.
+          packages=$(python -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('select count(*) from benchmark_run_packages').fetchone()[0])" "$db")
+          echo "$db: $packages package version(s)"
+          if [ "$packages" -eq 0 ]; then
+            echo "::warning::$db records no third-party package versions - competitor regressions cannot be attributed."
           fi
         done
 
