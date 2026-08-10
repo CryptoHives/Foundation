@@ -1,4 +1,4 @@
-# AsyncCountdownEvent
+﻿# AsyncCountdownEvent
 
 A pooled, allocation-free async countdown event that signals when a count reaches zero using ValueTask-based waiters.
 
@@ -202,9 +202,9 @@ ProtoPromise is included as an additional comparison point and is faster than th
 Only the pooled `AsyncCountdownEvent` is benchmarked in a contested and a uncontested scenario to proof that no memory allocations occur.
 The Nito.Async implementation can not be benchmarked due to its internal design which doesn't allow to Reset the event, a new allocation for the AsyncCountdownEvent were necessary for each run so it was left out of contest.
 
-[View live SignalAndWait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=SignalAndWait)
+[View live SignalAndWait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=SignalAndWait&mode=trend)
 
-[View live WaitAndSignal benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=WaitAndSignal)
+[View live WaitAndSignal benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=WaitAndSignal&mode=trend)
 
 ### Benchmark Analysis
 
