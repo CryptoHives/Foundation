@@ -446,7 +446,7 @@ public class AsyncManualResetEventTests
     }
 
     [Test]
-    public async Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSet()
+    public void WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSet()
     {
         using var pool = new TestObjectPool<bool>();
         var ev = new AsyncManualResetEvent(pool: pool);

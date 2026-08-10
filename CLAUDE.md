@@ -141,16 +141,16 @@ Roslyn analyzer + code-fix provider for the `Threading` NuGet package. Needs to 
 Diagnostics:
 | ID | Severity | Description |
 |---|---|---|
-| CHT001 | Error | ValueTask awaited multiple times |
+| CHT001 | Error | ValueTask consumed multiple times (await, AsTask, Preserve, GetResult) |
 | CHT002 | Warning | `GetAwaiter().GetResult()` on ValueTask (blocking) |
 | CHT003 | Warning | ValueTask stored in field |
-| CHT004 | Error | `AsTask()` called multiple times |
 | CHT005 | Warning | `.Result` accessed directly |
-| CHT006 | Warning | ValueTask passed to `WhenAll`/`WhenAny` or similar |
 | CHT007 | Info | `AsTask()` stored before signaling (perf) |
 | CHT008 | Warning | ValueTask not awaited or consumed |
 | CHT009 | Info | `SemaphoreSlim(1,1)` — replace with `AsyncLock` |
 | CHT010 | Warning | ValueTask captured in lambda/closure |
+| CHT011 | Warning | `async` method only forwards an awaited ValueTask; return it directly |
+| CHT012 | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
 
 ### `CryptoHives.Foundation.Memory`
 
@@ -167,7 +167,8 @@ Diagnostics:
 - Test framework: **NUnit 4**
 - Each test project has `OutputType=Exe` and links `tests/Common/Main.cs` (NUnit entry point)
 - Cryptography tests use **BouncyCastle**, **NaCl.Core**, **HashifyNET**, and other reference implementations for cross-validation
-- Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**
+- Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**, **KeyedSemaphores**, **Dao.IndividualLock**, **AsyncUtilities**, and **Microsoft.VisualStudio.Threading**
+- Benchmark runs are recorded on the orphan `benchmarks` branch, one directory per run keyed by the commit measured; the trends database under `docfx/**/benchmark-trends/` is generated from it at build time and is not committed. Record with `update-benchmark-docs.ps1 -DestDir <archive worktree>`, rebuild locally with `build-trends-database.ps1`
 - `tests/Directory.Build.props` imports the root props and adds shared `GlobalSuppressions.cs`
 - Some test-only packages (e.g., `Konscious.Security.Cryptography.Blake2`, `Blake3`) are excluded when strong-name signing is active because they are not signed
 

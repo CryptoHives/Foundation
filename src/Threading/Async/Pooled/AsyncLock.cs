@@ -246,11 +246,6 @@ public sealed class AsyncLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return LockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -273,6 +268,11 @@ public sealed class AsyncLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+            }
+
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -283,16 +283,16 @@ public sealed class AsyncLock : IResettable
 
             version = waiter.Version;
             _waiters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _timerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _timerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)
