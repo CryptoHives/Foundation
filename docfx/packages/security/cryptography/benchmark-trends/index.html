@@ -726,11 +726,10 @@
   ];
 
   function renderScalingChart() {
-    const metric = metricSel.value;
     const cutoff = dateRangeCutoffIso();
     const stmt = db.prepare(`
       SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_date, r.run_id,
-             r.commit_sha, b.runtime_version, r.${metric} AS value
+             r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
       FROM benchmark_results r
       LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
                                 AND b.framework = r.framework
@@ -751,7 +750,8 @@
       if (!latestByVariant.has(row.variant)) latestByVariant.set(row.variant, new Map());
       latestByVariant.get(row.variant).set(row.data_size_bytes, {
         x: row.data_size_bytes,
-        y: row.value,
+        mean_ns: row.mean_ns,
+        allocated_bytes: row.allocated_bytes,
         size_label: row.data_size_label,
         commit: row.commit_sha,
         runtime: row.runtime_version,
