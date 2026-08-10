@@ -165,7 +165,14 @@ def parse_measurement_ns(cell: str) -> float | None:
 
 def parse_allocated_bytes(cell: str) -> int | None:
     cell = cell.strip().replace(",", "")
-    if cell in ("", "-", "NA"):
+    # "-" is BenchmarkDotNet reporting a measured zero, not a missing measurement. Folding the two
+    # together made every allocation-free row NULL - 16,326 of 22,604 - so the Allocated metric
+    # dropped exactly the rows a managed crypto implementation exists to produce, reading as no
+    # data rather than as the flat zero it is. "NA" (diagnoser did not run) and an empty cell
+    # stay NULL.
+    if cell == "-":
+        return 0
+    if cell in ("", "NA"):
         return None
     cell = cell.rstrip("B").strip()
     try:
