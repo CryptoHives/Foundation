@@ -35,6 +35,47 @@ import sys
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
 CANCELLATION_COLUMN = "cancellationType"
 
+# BenchmarkDotNet keeps job characteristics in the preamble only while they are constant across
+# the report; the moment one varies it becomes a table column instead. So a run over a single
+# runtime says "Toolchain=net10.0" above the table and has no such column, while
+# `--runtimes net8.0 net10.0` drops the preamble line and grows a "Runtime" column.
+#
+# Both have to be understood, because both are the framework the row executed on - and the
+# alternative is worse than missing it. Parameters here are identified by exclusion, so an
+# unrecognized "Runtime" column would be treated as a [Params] axis: it would land in param_label,
+# split every series in two, and offer itself as a contention axis for the scaling chart.
+#
+# Ordered most specific first. "Job" is the fallback because BenchmarkDotNet uses it as the
+# catch-all label when several characteristics vary at once, in which case its value is a job id
+# ("Job-ABCDEF") rather than a runtime and normalize_framework leaves it alone.
+FRAMEWORK_COLUMNS = ("Runtime", "Job")
+
+# BenchmarkDotNet's display names for runtimes -> the target framework moniker used everywhere
+# else in this pipeline (the archive path, run.json, -Framework). ".NET 10.0" and "net10.0" are
+# the same thing recorded twice in two spellings, and the database should only know one.
+_FRAMEWORK_DISPLAY = re.compile(r"^\.NET (?P<fw>Framework )?(?P<version>\d+(?:\.\d+){1,2})$")
+
+
+def normalize_framework(value: str | None) -> str | None:
+    """'.NET 10.0' -> 'net10.0', '.NET Framework 4.8' -> 'net48', 'net10.0' -> 'net10.0'.
+
+    Anything unrecognized is returned unchanged rather than dropped: a value this does not know
+    is still a truthful distinction between rows, and silently collapsing it would merge runs
+    that are not the same.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    match = _FRAMEWORK_DISPLAY.match(value)
+    if not match:
+        return value
+    version = match.group("version")
+    # .NET Framework monikers drop the dots entirely (4.8 -> net48, 4.6.2 -> net462); .NET
+    # Core-era ones keep the single dot and never have a third component (10.0 -> net10.0).
+    if match.group("fw"):
+        return "net" + version.replace(".", "")
+    return "net" + ".".join(version.split(".")[:2])
+
 # Everything BenchmarkDotNet emits that measures rather than parameterizes. Parameters are
 # identified by exclusion rather than by a whitelist of known names: a whitelist silently drops
 # any [Params] axis nobody remembered to add to it, and because param_label is part of the
@@ -159,6 +200,14 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
 
         cancellation = fields.get(CANCELLATION_COLUMN, "").strip() or "None"
 
+        # Present only when the report covers more than one runtime; a single-runtime run leaves
+        # this None and the caller substitutes the framework the run directory names.
+        framework = None
+        for column in FRAMEWORK_COLUMNS:
+            if fields.get(column, "").strip():
+                framework = normalize_framework(fields[column])
+                break
+
         # Every parameter column, in the order the report lists them, composed into one label.
         # A benchmark with two axes (e.g. KeyCount x Iterations) needs both here: param_label is
         # part of the primary key, so a label naming only one of them makes every value of the
@@ -166,7 +215,8 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
         params = [
             (col, fields[col].strip())
             for col in header_cells[1:]
-            if col not in METRIC_COLUMNS and col != CANCELLATION_COLUMN and fields.get(col, "").strip()
+            if col not in METRIC_COLUMNS and col != CANCELLATION_COLUMN
+            and col not in FRAMEWORK_COLUMNS and fields.get(col, "").strip()
         ]
         param_label = ", ".join(f"{col}={value}" for col, value in params) or None
 
@@ -194,6 +244,7 @@ def parse_markdown_table(content: str, source_label: str = "<content>", normaliz
             "family": family,
             "variant": variant,
             "cancellation": cancellation,
+            "framework": framework,
             "param_label": param_label,
             "param_value": param_value,
             "mean_ns": mean_ns,
@@ -232,6 +283,7 @@ def parse_machine_spec(text: str) -> dict:
         "bdn_version": None, "os": None, "cpu": None,
         "logical_cores": None, "physical_cores": None,
         "sdk_version": None, "runtime_version": None, "jit": None,
+        "framework": None,
     }
 
     match = _BDN_LINE.search(text)
@@ -254,5 +306,17 @@ def parse_machine_spec(text: str) -> dict:
     if match:
         spec["runtime_version"] = match.group("runtime")
         spec["jit"] = match.group("jit")
+
+    # "Job=.NET 10.0  Runtime=.NET 10.0  Toolchain=net10.0" - present only while the job is
+    # constant across the report, which is exactly when the table carries no Runtime column.
+    # Toolchain is already a target framework moniker; Runtime is the display name and needs
+    # normalizing. Every run recorded so far carries both.
+    match = re.search(r"Toolchain=(\S+)", text)
+    if match:
+        spec["framework"] = match.group(1)
+    else:
+        match = re.search(r"Runtime=(\.NET(?: Framework)? \d+\.\d+)", text)
+        if match:
+            spec["framework"] = normalize_framework(match.group(1))
 
     return spec

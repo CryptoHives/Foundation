@@ -29,6 +29,7 @@ Design notes:
   each historical benchmark refresh shows up as a distinct point in the trends dashboard.
 """
 
+import json
 import os
 import re
 import sqlite3
@@ -77,6 +78,40 @@ LEGACY_KMAC_TOKEN_PATTERN = re.compile(r"^Kmac(?:128|256)_\w+$")
 SIZE_MULTIPLIERS = {"B": 1, "KB": 1024, "MB": 1024 * 1024}
 SIZE_PATTERN = re.compile(r"^(?P<value>\d+)(?P<unit>B|KB|MB)$")
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
+
+# BenchmarkDotNet keeps job characteristics in the preamble only while they are constant across
+# the report; the moment one varies it becomes a table column instead. A single-runtime run says
+# "Toolchain=net10.0" above the table, while `--runtimes net8.0 net10.0` grows a "Runtime" column.
+#
+# Unlike Threading's parser - which identifies [Params] by exclusion, so an unknown column would
+# become a spurious parameter - this one reads columns by name and would simply ignore a Runtime
+# column. That failure is quieter and worse: every runtime's rows would share a primary key and
+# silently overwrite one another, leaving one runtime's numbers labelled as the run's.
+#
+# Kept as a deliberate sibling of FRAMEWORK_COLUMNS/normalize_framework in
+# scripts/threading-benchmark-trends/markdown_parser.py rather than shared, matching how the rest
+# of these two pipelines are organized.
+FRAMEWORK_COLUMNS = ("Runtime", "Job")
+
+_FRAMEWORK_DISPLAY = re.compile(r"^\.NET (?P<fw>Framework )?(?P<version>\d+(?:\.\d+){1,2})$")
+
+
+def normalize_framework(value):
+    """'.NET 10.0' -> 'net10.0', '.NET Framework 4.6.2' -> 'net462', 'net10.0' -> 'net10.0'.
+
+    Anything unrecognized is returned unchanged rather than dropped: a value this does not know
+    is still a truthful distinction between rows, and collapsing it would merge runs that differ.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    match = _FRAMEWORK_DISPLAY.match(value)
+    if not match:
+        return value
+    version = match.group("version")
+    if match.group("fw"):
+        return "net" + version.replace(".", "")
+    return "net" + ".".join(version.split(".")[:2])
 
 # The CryptoHives-authored variant names were renamed at various points in history (bare
 # "Managed"/"AVX2"/"AES-NI" etc. -> "CryptoHives-"-prefixed, confirmed by diffing the current
@@ -165,7 +200,14 @@ def parse_measurement_ns(cell: str) -> float | None:
 
 def parse_allocated_bytes(cell: str) -> int | None:
     cell = cell.strip().replace(",", "")
-    if cell in ("", "-", "NA"):
+    # "-" is BenchmarkDotNet reporting a measured zero, not a missing measurement. Folding the two
+    # together made every allocation-free row NULL - 16,326 of 22,604 - so the Allocated metric
+    # dropped exactly the rows a managed crypto implementation exists to produce, reading as no
+    # data rather than as the flat zero it is. "NA" (diagnoser did not run) and an empty cell
+    # stay NULL.
+    if cell == "-":
+        return 0
+    if cell in ("", "NA"):
         return None
     cell = cell.rstrip("B").strip()
     try:
@@ -216,6 +258,14 @@ def parse_markdown_table(content: str):
         if mean_ns is None:
             continue  # failed/NA row
 
+        # Present only when the report covers more than one runtime; a single-runtime run leaves
+        # this None and the caller substitutes the framework the run directory names.
+        framework = None
+        for column in FRAMEWORK_COLUMNS:
+            if fields.get(column, "").strip():
+                framework = normalize_framework(fields[column])
+                break
+
         # The joined-cell era packs "Method · Category · Name" (or "Method · Name" for
         # Cipher) into a single raw cell using "·" as the separator; the pre-fix era instead
         # split on literal "|", arriving as separate raw cells already. Splitting every raw
@@ -247,6 +297,7 @@ def parse_markdown_table(content: str):
             "method": method,
             "family": family,
             "variant": variant,
+            "framework": framework,
             "data_size_label": size_label,
             "data_size_bytes": parse_data_size_bytes(size_label),
             "mean_ns": mean_ns,
@@ -294,16 +345,103 @@ def resolve_platform_and_filename(path: str):
     return None
 
 
+def read_machine_spec_text(sha: str, platform: str):
+    """The machine-spec.md that applies to `platform` at `sha`, or None.
+
+    Tries the per-platform path first and falls back to the flat-era root file, so both layouts
+    resolve without the caller needing to know which era a commit belongs to.
+    """
+    base = "docfx/packages/security/cryptography/benchmarks"
+    for path in (f"{base}/{platform}/machine-spec.md", f"{base}/machine-spec.md"):
+        try:
+            return git("show", f"{sha}:{path}")
+        except subprocess.CalledProcessError:
+            continue
+    return None
+
+
+def export_archive(dest_root: str) -> int:
+    """Writes every run reachable from history into the per-run directory layout.
+
+    One directory per run, keyed by the commit its binaries were built from, with a platform
+    directory inside - the layout the `benchmarks` branch uses and import_run_archive.py reads.
+    Unlike this module, that reader needs no git history at all, which is what lets CI build the
+    database from a shallow checkout.
+
+    These runs predate run.json, so one is synthesized and marked backfilled: results were
+    committed alongside the code they measured, so the recording commit is the code commit.
+    """
+    commits = discover_commits()
+    written_runs = 0
+    written_files = 0
+
+    for sha, date, paths in commits:
+        by_platform = {}
+        for path in paths:
+            resolved = resolve_platform_and_filename(path)
+            if resolved is None:
+                continue
+            platform, filename = resolved
+            if filename in EXCLUDE_FILENAMES or filename == "machine-spec.md":
+                continue
+            try:
+                content = git("show", f"{sha}:{path}")
+            except subprocess.CalledProcessError:
+                continue  # deleted in this commit
+            if not list(parse_markdown_table(content)):
+                continue  # nothing parseable - not a results table
+            by_platform.setdefault(platform, {})[filename] = content
+
+        for platform, files in sorted(by_platform.items()):
+            run_dir = os.path.join(dest_root, "cryptography", sha[:10], platform)
+            os.makedirs(run_dir, exist_ok=True)
+
+            spec = read_machine_spec_text(sha, platform)
+            if spec is not None:
+                files["machine-spec.md"] = spec
+
+            for filename, content in sorted(files.items()):
+                with open(os.path.join(run_dir, filename), "w", encoding="utf-8", newline="\n") as handle:
+                    handle.write(content)
+                written_files += 1
+
+            metadata = {
+                "codeCommit": sha,
+                "recordedAt": date,
+                "package": "cryptography",
+                "platform": platform,
+                "backfilled": True,
+                "note": "Recovered from git history, where results were committed alongside the "
+                        "code they measured, so the recording commit is the code commit.",
+            }
+            with open(os.path.join(run_dir, "run.json"), "w", encoding="utf-8", newline="\n") as handle:
+                json.dump(metadata, handle, indent=2)
+                handle.write("\n")
+            written_files += 1
+            written_runs += 1
+            print(f"  [export] {sha[:10]}/{platform}: {len(files)} file(s)")
+
+    print(f"\nExported {written_runs} run-platform(s), {written_files} file(s) to {dest_root}")
+    return 0
+
+
 def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", required=True, help="Path to the SQLite database file (created if missing)")
     parser.add_argument("--dry-run", action="store_true", help="Parse and report without writing to the database")
+    parser.add_argument("--export", metavar="DIR",
+                        help="Instead of importing, write every run found in history into DIR as "
+                             "cryptography/<code-commit>/<platform>/, the layout the benchmarks "
+                             "branch uses")
     args = parser.parse_args()
 
     with open(os.path.join(SCRIPT_DIR, "schema.sql"), encoding="utf-8") as f:
         schema_sql = f.read()
+
+    if args.export:
+        return export_archive(args.export)
 
     conn = sqlite3.connect(args.db)
     conn.executescript(schema_sql)
@@ -367,6 +505,77 @@ def main() -> int:
     print(f"\n{'Would insert' if args.dry_run else 'Inserted/updated'} {total_rows} row(s) "
           f"across {total_files} file-revision(s) from {len(commits)} commit(s).")
     return 0
+
+
+# Mirrors scripts/threading-benchmark-trends/markdown_parser.py. Duplicated rather than shared:
+# these two pipelines are deliberate siblings, each with its own parser and schema, and a third
+# module for one 50-line function would couple them for less than it costs. The preamble format is
+# BenchmarkDotNet's, so it does not drift with either package.
+# BenchmarkDotNet's machine-spec preamble, e.g.
+#
+#     BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8875/25H2/2025Update/HudsonValley2)
+#     AMD Ryzen 5 7600X 4.70GHz, 1 CPU, 12 logical and 6 physical cores
+#     .NET SDK 11.0.100-preview.5.26302.115
+#     [Host]    : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+#
+# Every field is optional: the flat era's files and the per-platform era's differ in wording, and
+# a missing line should leave a NULL column rather than abort the import of a whole run.
+_BDN_LINE = re.compile(r"^BenchmarkDotNet v(?P<bdn>[\w.\-+]+),\s*(?P<os>.+?)\s*$", re.M)
+_CPU_LINE = re.compile(
+    r"^(?P<cpu>.+?),\s*\d+ CPU,\s*(?P<logical>\d+) logical(?: and (?P<physical>\d+) physical)? cores",
+    re.M,
+)
+_SDK_LINE = re.compile(r"^\.NET SDK (?P<sdk>[\w.\-+]+)", re.M)
+_HOST_LINE = re.compile(
+    r"^\s*\[Host\]\s*:\s*\.NET (?P<runtime>[\w.\-+]+)\s*\([^)]*\),\s*(?P<jit>.+?)\s*$", re.M
+)
+
+
+def parse_machine_spec(text: str) -> dict:
+    """Extracts the environment fields from a machine-spec.md.
+
+    Returns a dict with bdn_version/os/cpu/logical_cores/physical_cores/sdk_version/
+    runtime_version/jit, each None when that line is absent.
+    """
+    spec = {
+        "bdn_version": None, "os": None, "cpu": None,
+        "logical_cores": None, "physical_cores": None,
+        "sdk_version": None, "runtime_version": None, "jit": None,
+        "framework": None,
+    }
+
+    match = _BDN_LINE.search(text)
+    if match:
+        spec["bdn_version"] = match.group("bdn")
+        spec["os"] = match.group("os")
+
+    match = _CPU_LINE.search(text)
+    if match:
+        spec["cpu"] = match.group("cpu").strip()
+        spec["logical_cores"] = int(match.group("logical"))
+        if match.group("physical"):
+            spec["physical_cores"] = int(match.group("physical"))
+
+    match = _SDK_LINE.search(text)
+    if match:
+        spec["sdk_version"] = match.group("sdk")
+
+    match = _HOST_LINE.search(text)
+    if match:
+        spec["runtime_version"] = match.group("runtime")
+        spec["jit"] = match.group("jit")
+
+    # "Job=.NET 10.0  Runtime=.NET 10.0  Toolchain=net10.0" - present only while the job is
+    # constant across the report, which is exactly when the table carries no Runtime column.
+    match = re.search(r"Toolchain=(\S+)", text)
+    if match:
+        spec["framework"] = match.group(1)
+    else:
+        match = re.search(r"Runtime=(\.NET(?: Framework)? \d+(?:\.\d+){1,2})", text)
+        if match:
+            spec["framework"] = normalize_framework(match.group(1))
+
+    return spec
 
 
 if __name__ == "__main__":

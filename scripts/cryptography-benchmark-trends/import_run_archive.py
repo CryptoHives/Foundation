@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 """
-Builds the Threading trends database from the benchmark run archive.
+Builds the Cryptography trends database from the benchmark run archive.
 
 The archive is a directory tree, one directory per run and one per platform inside it:
 
-    threading/<code-commit>/<platform>/<framework>/run.json
-    threading/<code-commit>/<platform>/<framework>/machine-spec.md
-    threading/<code-commit>/<platform>/<framework>/asynckeyedlock-multiple.md
+    cryptography/<code-commit>/<platform>/<framework>/run.json
+    cryptography/<code-commit>/<platform>/<framework>/machine-spec.md
+    cryptography/<code-commit>/<platform>/<framework>/aes-cbc-128.md
     ...
 
 The framework level exists because the same commit on the same machine under two target
@@ -16,17 +16,19 @@ frameworks is two different measurements that would otherwise share a directory 
 each other file by file. It is also the fallback source of the `framework` column: a report
 covering a single runtime carries no Runtime column, so the path is what names it.
 
-It normally lives on the `benchmarks` branch, kept out of main so that recording a run does not
-add to the working tree everyone clones. Point --archive at a worktree of that branch, or at any
-directory holding the same layout.
+It lives on the `benchmarks` branch, kept out of main so that recording a run does not add to the
+working tree everyone clones. Point --archive at a worktree of that branch, or at any directory
+holding the same layout. Sibling of scripts/threading-benchmark-trends/import_run_archive.py -
+same design, adapted for Cryptography's data shape (a category per file, and a data-size axis
+instead of a contention level).
 
 Why a directory per run rather than one path overwritten per run, which is what
 import_historical_markdown.py has to cope with:
 
-- The tree is the archive. Listing directories replaces replaying 179 file-revisions across 14
+- The tree is the archive. Listing directories replaces replaying 1,149 file-revisions across 25
   commits, so this reads the same data without git history at all - which matters because CI
   checks out shallow (fetch-depth 1) and would otherwise see nothing.
-- A run's metadata is durable. Under the old layout only the newest run's run.json survived,
+- A run's metadata is durable. Under the old layout only the newest run's run.json would survive,
   because every later run overwrote the same path; here nothing is ever overwritten.
 - A run can be corrected or withdrawn by editing one directory, instead of rewriting history.
 
@@ -43,19 +45,21 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 
-from import_historical_markdown import normalize_family_method_variant, normalize_variant  # noqa: E402
-from markdown_parser import parse_machine_spec, parse_markdown_table  # noqa: E402
+from import_historical_markdown import (  # noqa: E402
+    classify_category,
+    parse_machine_spec,
+    parse_markdown_table,
+)
 
-PACKAGE_DIR = "threading"
-NON_SCENARIO_FILES = {"machine-spec.md", "run.json", "README.md", "threading.md"}
+PACKAGE_DIR = "cryptography"
+NON_SCENARIO_FILES = {"machine-spec.md", "run.json", "README.md", "benchmarks.md"}
 
 
 def discover_runs(archive_root):
-    """Yields (run_id, platform, framework, run_dir, metadata) for every run in the archive.
+    """Yields (run_id, platform, framework, run_dir, metadata) for every run, oldest first.
 
-    Oldest first, ordered by the run date declared in run.json rather than by directory name,
-    since the directory is named for the commit measured, which says nothing about when it was
-    measured.
+    Ordered by the run date declared in run.json rather than by directory name: the directory is
+    named for the commit measured, which says nothing about when it was measured.
     """
     package_root = os.path.join(archive_root, PACKAGE_DIR)
     if not os.path.isdir(package_root):
@@ -89,6 +93,7 @@ def discover_runs(archive_root):
 
 
 def read_environment(run_dir):
+    """The machine and runtime a run was measured on, or None when the run carries no spec."""
     path = os.path.join(run_dir, "machine-spec.md")
     if not os.path.isfile(path):
         return None
@@ -138,31 +143,34 @@ def main():
         for filename in sorted(os.listdir(run_dir)):
             if filename in NON_SCENARIO_FILES or not filename.endswith(".md"):
                 continue
+            # Category is a property of which benchmark file this is (hash, cipher, mac), so it
+            # is derived from the file name exactly as the history importer derives it.
+            category = classify_category(filename)
             class_name = filename[:-3]
             with open(os.path.join(run_dir, filename), encoding="utf-8") as handle:
                 content = handle.read()
 
-            for row in parse_markdown_table(
-                    content, source_label=f"{run_id}/{platform}/{framework}/{filename}",
-                    normalize_variant=normalize_variant):
-                method, family, variant = normalize_family_method_variant(
-                    class_name, row["method"], row["family"], row["variant"])
+            for row in parse_markdown_table(content):
                 run_rows += 1
                 if args.dry_run:
                     continue
                 conn.execute(
                     "INSERT OR REPLACE INTO benchmark_results "
-                    "(run_id, run_date, commit_sha, branch, platform, framework, class_name, "
-                    " method, family, variant, cancellation, param_label, param_value, mean_ns, "
-                    " stddev_ns, allocated_bytes) "
+                    "(run_id, run_date, commit_sha, branch, platform, framework, category, "
+                    " class_name, method, family, variant, data_size_label, data_size_bytes, "
+                    " mean_ns, stddev_ns, allocated_bytes) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (run_id, run_date, commit_sha, branch, platform,
                      # A report covering several runtimes names each row's own; one covering a
                      # single runtime has no such column, so the directory is the authority.
                      row["framework"] or framework,
-                     class_name, method, family, variant, row["cancellation"], row["param_label"],
-                     row["param_value"], row["mean_ns"], row["stddev_ns"], row["allocated_bytes"]))
+                     category, class_name, row["method"], row["family"], row["variant"],
+                     row["data_size_label"], row["data_size_bytes"], row["mean_ns"],
+                     row["stddev_ns"], row["allocated_bytes"]))
 
+        # Recorded per (run, platform) so a step in a trend line can be checked against a runtime
+        # or SDK change before being read as a code regression - the recorded runs span .NET 10.0.2
+        # to 10.0.9 across three machines.
         environment = read_environment(run_dir)
         if environment and not args.dry_run:
             conn.execute(
