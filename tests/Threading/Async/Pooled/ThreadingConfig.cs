@@ -11,7 +11,9 @@ using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -32,11 +34,134 @@ public class ThreadingConfig : ManualConfig
         WithOptions(ConfigOptions.DisableLogFile);
 
         AddDiagnoser(MemoryDiagnoser.Default);
-        Orderer = new DefaultOrderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared);
+        Orderer = new ParameterGroupOrderer();
         HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "Alloc Ratio", "Gen0", "Gen1", "Gen2", "Method");
 
         AddColumn(new DescriptionColumn());
         AddExporter(ShortExporter);
+    }
+
+    /// <summary>
+    /// Orders the report's logical groups by their parameter values, so a group appears next to the ones
+    /// it varies from by a single parameter.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// BenchmarkDotNet forms a logical group per distinct parameter combination, and a variant that only
+    /// some implementations support - a timed wait, say - therefore lands in groups of its own. Under the
+    /// default group ordering those one-row groups collect at the very bottom of the report, far from the
+    /// rows they are meant to be read against, which makes the interesting comparison (the same
+    /// KeyCount and Iterations, with and without a timer) impossible to see.
+    /// </para>
+    /// <para>
+    /// Sorting groups by their parameter values in declaration order interleaves them instead: every
+    /// variant of KeyCount = 1, Iterations = 100 sits together regardless of how many implementations
+    /// contribute to each. The groups themselves are left intact - merging them would put several
+    /// baselines in one group, which BenchmarkDotNet rejects - so ratios still compare like with like.
+    /// </para>
+    /// </remarks>
+    private sealed class ParameterGroupOrderer : DefaultOrderer
+    {
+        public ParameterGroupOrderer()
+            : base(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Declared)
+        {
+        }
+
+        public override IEnumerable<IGrouping<string, BenchmarkCase>> GetLogicalGroupOrder(
+            IEnumerable<IGrouping<string, BenchmarkCase>> logicalGroups,
+            IEnumerable<BenchmarkLogicalGroupRule>? order = null)
+            => logicalGroups.OrderBy(group => group.First(), ParameterValueComparer.Instance);
+
+        /// <summary>
+        /// Compares benchmark cases by their parameter values, position by position: numbers numerically
+        /// so 100 follows 10 rather than preceding it, and wait configurations in the order they are
+        /// declared rather than alphabetically.
+        /// </summary>
+        private sealed class ParameterValueComparer : IComparer<BenchmarkCase>
+        {
+            public static readonly ParameterValueComparer Instance = new();
+
+            public int Compare(BenchmarkCase? x, BenchmarkCase? y)
+            {
+                if (ReferenceEquals(x, y)) return 0;
+                if (x is null) return -1;
+                if (y is null) return 1;
+
+                var left = x.Parameters.Items;
+                var right = y.Parameters.Items;
+                int shared = Math.Min(left.Count, right.Count);
+
+                for (int i = 0; i < shared; i++)
+                {
+                    int comparison = CompareValues(left[i].Value, right[i].Value);
+                    if (comparison != 0)
+                    {
+                        return comparison;
+                    }
+                }
+
+                return left.Count.CompareTo(right.Count);
+            }
+
+            private static int CompareValues(object? left, object? right)
+            {
+                if (left is null || right is null)
+                {
+                    return left is null ? (right is null ? 0 : -1) : 1;
+                }
+
+                if (left is IConvertible && right is IConvertible
+                    && TryToDouble(left, out double leftNumber) && TryToDouble(right, out double rightNumber))
+                {
+                    return leftNumber.CompareTo(rightNumber);
+                }
+
+                // Wait configurations sort by how they are declared, so the untimed baseline precedes the
+                // variants that add machinery to it.
+                int leftRank = WaitConfigurationRank(left);
+                int rightRank = WaitConfigurationRank(right);
+                if (leftRank != rightRank)
+                {
+                    return leftRank.CompareTo(rightRank);
+                }
+
+                return string.CompareOrdinal(left.ToString(), right.ToString());
+            }
+
+            private static bool TryToDouble(object value, out double result)
+            {
+                switch (value)
+                {
+                    case bool flag:
+                        result = flag ? 1 : 0;
+                        return true;
+                    case string:
+                        result = 0;
+                        return false;
+                    default:
+                        try
+                        {
+                            result = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                            return true;
+                        }
+                        catch (Exception e) when (e is FormatException or InvalidCastException or OverflowException)
+                        {
+                            result = 0;
+                            return false;
+                        }
+                }
+            }
+
+            private static int WaitConfigurationRank(object value)
+                => value.ToString() switch {
+                    "None" => 0,
+                    "NotCancelled" => 1,
+                    "Cancelled" => 2,
+                    "Timed" => 3,
+                    "NotCancelledTimed" => 4,
+                    _ => int.MaxValue,
+                };
+        }
     }
 
     /// <summary>
