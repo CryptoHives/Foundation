@@ -6,10 +6,15 @@ Builds the Cryptography trends database from the benchmark run archive.
 
 The archive is a directory tree, one directory per run and one per platform inside it:
 
-    cryptography/<code-commit>/<platform>/run.json
-    cryptography/<code-commit>/<platform>/machine-spec.md
-    cryptography/<code-commit>/<platform>/aes-cbc-128.md
+    cryptography/<code-commit>/<platform>/<framework>/run.json
+    cryptography/<code-commit>/<platform>/<framework>/machine-spec.md
+    cryptography/<code-commit>/<platform>/<framework>/aes-cbc-128.md
     ...
+
+The framework level exists because the same commit on the same machine under two target
+frameworks is two different measurements that would otherwise share a directory and overwrite
+each other file by file. It is also the fallback source of the `framework` column: a report
+covering a single runtime carries no Runtime column, so the path is what names it.
 
 It lives on the `benchmarks` branch, kept out of main so that recording a run does not add to the
 working tree everyone clones. Point --archive at a worktree of that branch, or at any directory
@@ -51,7 +56,7 @@ NON_SCENARIO_FILES = {"machine-spec.md", "run.json", "README.md", "benchmarks.md
 
 
 def discover_runs(archive_root):
-    """Yields (run_id, platform, run_dir, metadata) for every run-platform, oldest first.
+    """Yields (run_id, platform, framework, run_dir, metadata) for every run, oldest first.
 
     Ordered by the run date declared in run.json rather than by directory name: the directory is
     named for the commit measured, which says nothing about when it was measured.
@@ -66,20 +71,25 @@ def discover_runs(archive_root):
         if not os.path.isdir(run_root):
             continue
         for platform in sorted(os.listdir(run_root)):
-            run_dir = os.path.join(run_root, platform)
-            if not os.path.isdir(run_dir):
+            platform_root = os.path.join(run_root, platform)
+            if not os.path.isdir(platform_root):
                 continue
-            metadata_path = os.path.join(run_dir, "run.json")
-            if not os.path.isfile(metadata_path):
-                print(f"  [skip] {run_id}/{platform}: no run.json", file=sys.stderr)
-                continue
-            with open(metadata_path, encoding="utf-8") as handle:
-                metadata = json.load(handle)
-            found.append((metadata.get("recordedAt", ""), run_id, platform, run_dir, metadata))
+            for framework in sorted(os.listdir(platform_root)):
+                run_dir = os.path.join(platform_root, framework)
+                if not os.path.isdir(run_dir):
+                    continue
+                metadata_path = os.path.join(run_dir, "run.json")
+                if not os.path.isfile(metadata_path):
+                    print(f"  [skip] {run_id}/{platform}/{framework}: no run.json", file=sys.stderr)
+                    continue
+                with open(metadata_path, encoding="utf-8") as handle:
+                    metadata = json.load(handle)
+                found.append((metadata.get("recordedAt", ""), run_id, platform, framework,
+                              run_dir, metadata))
 
     found.sort(key=lambda entry: entry[0])
-    for _date, run_id, platform, run_dir, metadata in found:
-        yield run_id, platform, run_dir, metadata
+    for _date, run_id, platform, framework, run_dir, metadata in found:
+        yield run_id, platform, framework, run_dir, metadata
 
 
 def read_environment(run_dir):
@@ -120,10 +130,11 @@ def main():
     # failed import leaves the previous database intact instead of an empty one.
     conn.execute("DELETE FROM benchmark_results")
     conn.execute("DELETE FROM benchmark_runs")
+    conn.execute("DELETE FROM benchmark_run_packages")
 
     total_rows = 0
     total_runs = 0
-    for run_id, platform, run_dir, metadata in discover_runs(args.archive):
+    for run_id, platform, framework, run_dir, metadata in discover_runs(args.archive):
         run_date = metadata.get("recordedAt", "")
         commit_sha = metadata.get("codeCommit")
         branch = metadata.get("branch")
@@ -145,14 +156,17 @@ def main():
                     continue
                 conn.execute(
                     "INSERT OR REPLACE INTO benchmark_results "
-                    "(run_id, run_date, commit_sha, branch, platform, category, class_name, "
-                    " method, family, variant, data_size_label, data_size_bytes, mean_ns, "
-                    " stddev_ns, allocated_bytes) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (run_id, run_date, commit_sha, branch, platform, category, class_name,
-                     row["method"], row["family"], row["variant"], row["data_size_label"],
-                     row["data_size_bytes"], row["mean_ns"], row["stddev_ns"],
-                     row["allocated_bytes"]))
+                    "(run_id, run_date, commit_sha, branch, platform, framework, category, "
+                    " class_name, method, family, variant, data_size_label, data_size_bytes, "
+                    " mean_ns, stddev_ns, allocated_bytes) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (run_id, run_date, commit_sha, branch, platform,
+                     # A report covering several runtimes names each row's own; one covering a
+                     # single runtime has no such column, so the directory is the authority.
+                     row["framework"] or framework,
+                     category, class_name, row["method"], row["family"], row["variant"],
+                     row["data_size_label"], row["data_size_bytes"], row["mean_ns"],
+                     row["stddev_ns"], row["allocated_bytes"]))
 
         # Recorded per (run, platform) so a step in a trend line can be checked against a runtime
         # or SDK change before being read as a code regression - the recorded runs span .NET 10.0.2
@@ -161,18 +175,33 @@ def main():
         if environment and not args.dry_run:
             conn.execute(
                 "INSERT OR REPLACE INTO benchmark_runs "
-                "(run_id, platform, run_date, commit_sha, branch, bdn_version, os, cpu, "
-                " logical_cores, physical_cores, sdk_version, runtime_version, jit) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (run_id, platform, run_date, commit_sha, branch, environment["bdn_version"],
-                 environment["os"], environment["cpu"], environment["logical_cores"],
-                 environment["physical_cores"], environment["sdk_version"],
-                 environment["runtime_version"], environment["jit"]))
+                "(run_id, platform, framework, run_date, commit_sha, branch, bdn_version, os, "
+                " cpu, logical_cores, physical_cores, sdk_version, runtime_version, jit) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (run_id, platform, framework, run_date, commit_sha, branch,
+                 environment["bdn_version"], environment["os"], environment["cpu"],
+                 environment["logical_cores"], environment["physical_cores"],
+                 environment["sdk_version"], environment["runtime_version"], environment["jit"]))
         elif not environment:
-            print(f"  [warn] {run_id}/{platform}: no machine-spec.md; environment not recorded",
-                  file=sys.stderr)
+            print(f"  [warn] {run_id}/{platform}/{framework}: no machine-spec.md; environment "
+                  f"not recorded", file=sys.stderr)
 
-        print(f"  [{'dry-run' if args.dry_run else 'ok'}] {run_id}/{platform}: {run_rows} row(s)")
+        # The versions of the libraries this run measured against, so a step in a competitor's
+        # trend line can be attributed to that competitor shipping a release rather than to a
+        # change in ours. Absent for runs recorded before update-benchmark-docs.ps1 captured it
+        # and never backfilled - the dashboard shows nothing rather than guessing.
+        packages = metadata.get("packages") or {}
+        packages_source = metadata.get("packagesSource")
+        if packages and not args.dry_run:
+            conn.executemany(
+                "INSERT OR REPLACE INTO benchmark_run_packages "
+                "(run_id, platform, framework, package_id, version, source) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                [(run_id, platform, framework, package_id, str(version), packages_source)
+                 for package_id, version in sorted(packages.items())])
+
+        print(f"  [{'dry-run' if args.dry_run else 'ok'}] {run_id}/{platform}/{framework}: "
+              f"{run_rows} row(s)")
         total_rows += run_rows
         total_runs += 1
 
@@ -181,7 +210,7 @@ def main():
     conn.close()
 
     verb = "Would insert" if args.dry_run else "Inserted/updated"
-    print(f"{verb} {total_rows} row(s) from {total_runs} run-platform(s) in {args.archive}")
+    print(f"{verb} {total_rows} row(s) from {total_runs} run(s) in {args.archive}")
     return 0
 
 

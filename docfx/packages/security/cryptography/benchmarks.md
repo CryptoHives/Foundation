@@ -122,13 +122,20 @@ The following tables show the per-instance memory footprint (internal state + bu
    ```
 2. Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
    ```
-   cryptography/<code-commit>/<platform>/
-       run.json          what the numbers measure
+   cryptography/<code-commit>/<platform>/<framework>/
+       run.json          what the numbers measure, and against which library versions
        machine-spec.md   the machine and runtime they were measured on
        <scenario>.md     one report per benchmark class
    ```
    A run is keyed by the commit its binaries were built from, not by the commit that records it, so two
    machines measuring the same build land in one run directory as two platform directories.
+
+   The framework level below that does the same job for target frameworks: the same commit on the same
+   machine under net10.0 and net8.0 is two runs, so the Table view can put them side by side exactly as
+   it does two platforms. Pass `-Framework` to `run-benchmarks.ps1` and the matching `-TargetFramework`
+   to `update-benchmark-docs.ps1`. A single run covering several runtimes at once
+   (`-Runtimes "net8.0, net10.0"`) works too and needs neither: BenchmarkDotNet emits a `Runtime` column
+   when the runtime varies, and each row is recorded against its own framework.
 
    Write the reports into a worktree of that branch:
    ```powershell
@@ -138,7 +145,18 @@ The following tables show the per-instance memory footprint (internal state + bu
    The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId`
    for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass
    `-CodeCommit` when recording after the fact. It never commits or pushes: review the result and commit
-   in that worktree when the run is worth keeping. Pushing the branch republishes the site.
+   in that worktree when the run is worth keeping. Pushing the branch does not republish the site on
+   its own — GitHub only runs workflows that exist in the pushed branch, and the orphan archive branch
+   carries no `.github/`. Publish a new run deliberately with `gh workflow run docfx.yml`, or let the
+   next push to `main` pick it up.
+
+   It also records the version of every reference implementation the run measured against, read from the
+   benchmark project's resolved NuGet graph. A reference's trend line steps when that library ships a
+   release just as readily as when this library changes, and nothing else in a recorded run tells the two
+   apart — BouncyCastle moved 2.6.2 to 2.7.0, and Blake3 2.2.0 to 3.0.2, between runs already in the
+   archive. The dashboard shows the version in each point's tooltip, and marks any compared row whose
+   library moved between the two runs. Pass `-TargetFramework` if the benchmarks did not run on the
+   default `net10.0`.
 3. The dashboard database is a derived artifact, not a tracked file — SQLite rewrites pages throughout on
    every change, so committing it added a fresh multi-megabyte blob per rebuild for data that is fully
    reproducible from the archive. The docs workflow builds it, and so can you:
