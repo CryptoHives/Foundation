@@ -1,0 +1,8 @@
+{
+  "codeCommit": "60f114cc65f7260eb5c2a5e372a61878baf8c0c9",
+  "recordedAt": "2026-04-12T07:59:25+02:00",
+  "package": "cryptography",
+  "platform": "macos-arm64-apple-m4",
+  "backfilled": true,
+  "note": "Recovered from git history, where results were committed alongside the code they measured, so the recording commit is the code commit."
+}
