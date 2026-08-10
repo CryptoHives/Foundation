@@ -264,18 +264,110 @@ def read_machine_spec(sha: str, platform: str):
     return None
 
 
+def export_archive(dest_root: str) -> int:
+    """Writes every run reachable from history into the per-run directory layout.
+
+    One directory per run, keyed by the commit its binaries were built from, with a platform
+    directory inside. That is what lets the archive be read by listing directories instead of
+    replaying commits - and it is what makes a run's metadata durable, since nothing ever
+    overwrites another run's files.
+
+    Runs recorded before run.json existed get one synthesized, marked backfilled: for those the
+    recording commit and the code commit genuinely coincided, because results were committed
+    alongside the code they measured.
+    """
+    commits = discover_commits()
+    latest_per_platform = {}
+    for sha, _date, paths in commits:
+        for resolved in (resolve_platform_and_filename(x) for x in paths):
+            if resolved:
+                latest_per_platform[resolved[0]] = sha
+
+    written_runs = 0
+    written_files = 0
+    for sha, date, paths in commits:
+        by_platform = {}
+        for path in paths:
+            resolved = resolve_platform_and_filename(path)
+            if resolved is None:
+                continue
+            platform, filename = resolved
+            if filename in ("README.md", "threading.md", "run.json"):
+                continue
+            try:
+                content = git("show", f"{sha}:{path}")
+            except subprocess.CalledProcessError:
+                continue  # deleted in this commit
+            if filename != "machine-spec.md" and not list(parse_markdown_table(content, path)):
+                continue  # unparseable era, or not a results table - nothing to archive
+            by_platform.setdefault(platform, {})[filename] = content
+
+        for platform, files in sorted(by_platform.items()):
+            if not any(name != "machine-spec.md" for name in files):
+                continue  # spec-only commit; no measurements to archive
+
+            metadata = read_run_metadata(sha, platform)
+            if metadata is None and sha == latest_per_platform.get(platform):
+                metadata = read_latest_run_metadata(platform)
+            if metadata is None:
+                metadata = {
+                    "codeCommit": sha,
+                    "recordedAt": date,
+                    "package": "threading",
+                    "platform": platform,
+                    "backfilled": True,
+                    "note": "Recovered from git history, where results were committed alongside "
+                            "the code they measured, so the recording commit is the code commit.",
+                }
+            code_commit = metadata.get("codeCommit", sha)
+
+            run_dir = os.path.join(dest_root, "threading", code_commit[:10], platform)
+            os.makedirs(run_dir, exist_ok=True)
+            if "machine-spec.md" not in files:
+                spec_text = None
+                for candidate in (f"docfx/packages/threading/benchmarks/{platform}/machine-spec.md",
+                                  "docfx/packages/threading/benchmarks/machine-spec.md"):
+                    try:
+                        spec_text = git("show", f"{sha}:{candidate}")
+                        break
+                    except subprocess.CalledProcessError:
+                        continue
+                if spec_text is not None:
+                    files["machine-spec.md"] = spec_text
+
+            for filename, content in sorted(files.items()):
+                with open(os.path.join(run_dir, filename), "w", encoding="utf-8", newline="\n") as handle:
+                    handle.write(content)
+                written_files += 1
+            with open(os.path.join(run_dir, "run.json"), "w", encoding="utf-8", newline="\n") as handle:
+                json.dump(metadata, handle, indent=2)
+                handle.write("\n")
+            written_files += 1
+            written_runs += 1
+            print(f"  [export] {code_commit[:10]}/{platform}: {len(files)} file(s)")
+
+    print(f"\nExported {written_runs} run-platform(s), {written_files} file(s) to {dest_root}")
+    return 0
+
+
 def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", required=True, help="Path to the SQLite database file (created if missing)")
     parser.add_argument("--dry-run", action="store_true", help="Parse and report without writing to the database")
+    parser.add_argument("--export", metavar="DIR",
+                        help="Instead of importing, write every run found in history into DIR as "
+                             "threading/<code-commit>/<platform>/, the layout the benchmarks branch uses")
     args = parser.parse_args()
 
     import sqlite3
 
     with open(os.path.join(SCRIPT_DIR, "schema.sql"), encoding="utf-8") as f:
         schema_sql = f.read()
+
+    if args.export:
+        return export_archive(args.export)
 
     conn = sqlite3.connect(args.db)
     conn.executescript(schema_sql)
