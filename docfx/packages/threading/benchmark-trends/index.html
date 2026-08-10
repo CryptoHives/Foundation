@@ -14,6 +14,11 @@
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  /* A control the current view ignores. Disabled rather than hidden: it keeps the layout
+     stable while switching modes, and keeps the setting visible so you can see what it will be
+     when you switch back. The title attribute says why on hover. */
+  .controls > label.inert { opacity: 0.4; }
+  .controls > label.inert select, .controls > label.inert input { cursor: not-allowed; }
   .legend-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-bottom: 0.4rem; }
   .legend-row:empty { margin-bottom: 0; }
   .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: #333; cursor: pointer; user-select: none; }
@@ -28,7 +33,11 @@
   table.data-table th { background: #f5f5f5; position: sticky; top: 0; z-index: 1; }
   table.data-table td.numeric, table.data-table th.numeric { text-align: right; }
   table.data-table tr.group-start td { border-top: 2px solid #bbb; }
-  table.data-table tr.baseline td { background: #fff6e6; font-weight: 600; }
+  /* Ours get a wash of the brand amber so they stand out from third parties at a glance; the
+     baseline is the same hue a shade deeper, so the two are related but never confusable.
+     Identical to the Cryptography dashboard's table - the two are meant to read as one product. */
+  table.data-table tr.ours td { background: #fffcf4; }
+  table.data-table tr.baseline td { background: #ffeecc; font-weight: 600; }
   table.data-table td.worse { color: #b91c1c; }
   /* A delta whose competitor also changed version between the two runs. Not an error state -
      the number is real - so it is marked rather than coloured, and carries its own tooltip. */
@@ -51,7 +60,7 @@
   <code>CancellationToken</code> state, the Cancellation selector picks which state to plot (a
   live-but-unfired token adds overhead compared to <code>CancellationToken.None</code>, which is
   why it's kept as its own axis rather than doubling every legend entry). Runs entirely in your
-  browser (no server, no external database) — see the hint below the chart for the two view modes.
+  browser (no server, no external database) — see the notes below for the three view modes.
 </p>
 
 <fieldset class="mode-toggle">
@@ -74,10 +83,10 @@
   <label>Method
     <select id="method"></select>
   </label>
-  <label>Cancellation
+  <label id="cancellation-picker">Cancellation
     <select id="cancellation"></select>
   </label>
-  <label>Metric
+  <label id="metric-picker">Metric
     <select id="metric">
       <option value="mean_ns">Mean time (ns)</option>
       <option value="allocated_bytes">Allocated bytes</option>
@@ -89,14 +98,14 @@
   <label id="compare-picker" hidden>Compare with
     <select id="compare"></select>
   </label>
-  <label>Date range
+  <label id="range-picker">Date range
     <select id="date-range">
       <option value="all">All time</option>
       <option value="30">Last 30 days</option>
       <option value="90">Last 90 days</option>
     </select>
   </label>
-  <label style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
+  <label id="log-picker" style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
     <input type="checkbox" id="log-scale">
     Logarithmic Y axis
   </label>
@@ -157,6 +166,10 @@
   const legendColorsEl = document.getElementById("legend-colors");
   const legendDashesEl = document.getElementById("legend-dashes");
   const legendMetricsEl = document.getElementById("legend-metrics");
+  const cancellationPickerEl = document.getElementById("cancellation-picker");
+  const metricPickerEl = document.getElementById("metric-picker");
+  const rangePickerEl = document.getElementById("range-picker");
+  const logPickerEl = document.getElementById("log-picker");
   const copyLinkBtn = document.getElementById("copy-link");
   const copyLinkStatusEl = document.getElementById("copy-link-status");
   const dateRangeSel = document.getElementById("date-range");
@@ -599,6 +612,42 @@
     // Only third-party series carry one; ours is pinned by the commit already in this footer.
     if (raw.pkg) parts.push(raw.pkg);
     return parts.join(" · ");
+  }
+
+
+  // Which controls each view actually reads. A control left enabled but ignored is worse than one
+  // greyed out: changing it looks like it should do something, and the view simply does not move.
+  //
+  // Deliberately not listed: platform, framework, family and method drive the selector cascade in
+  // every mode, so they always apply - in Table mode they narrow which runs the picker offers,
+  // even though the picker has the final say on which one is shown.
+  function setInert(labelEl, inert, reason) {
+    if (!labelEl) return;
+    labelEl.classList.toggle("inert", inert);
+    const field = labelEl.querySelector("select, input");
+    if (field) field.disabled = inert;
+    if (inert) labelEl.title = reason;
+    else labelEl.removeAttribute("title");
+  }
+
+  // Threading:
+  //   Table   - shows one recorded run whole. Every cancellation state is a column and both
+  //             metrics are columns, so neither selector applies; the run picker replaces the
+  //             date range, and there is no chart to scale logarithmically.
+  //   Scaling - plots both metrics on two axes and every cancellation state as its own dash
+  //             pattern, so those two selectors are replaced by their legends.
+  //   Trend   - reads all of them.
+  function syncControlAvailability(mode) {
+    const table = mode === "table";
+    const scaling = mode === "scaling";
+    setInert(cancellationPickerEl, table || scaling,
+             table ? "The table shows every cancellation state as its own column."
+                   : "Scaling plots every cancellation state at once - use the dash legend below.");
+    setInert(metricPickerEl, table || scaling,
+             table ? "The table shows mean time and allocation as separate columns."
+                   : "Scaling plots both metrics on two axes - use the metric legend below.");
+    setInert(rangePickerEl, table, "The table shows one run, chosen with the Run picker.");
+    setInert(logPickerEl, table, "No chart axis to scale in table mode.");
   }
 
   function renderChartInstance(datasets, scales, tooltipAfterLabel) {
@@ -1108,6 +1157,7 @@
       for (const r of group) {
         const tr = document.createElement("tr");
         if (first) tr.classList.add("group-start");
+        if (isPooled(r.variant)) tr.classList.add("ours");
         if (r.variant === baselineVariant) tr.classList.add("baseline");
         first = false;
         const params = new Map(splitParams(r.param_label));
@@ -1165,8 +1215,8 @@
     const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
     tableNoteEl.hidden = false;
     let note =
-      "Baseline (highlighted) is this library's own implementation; Ratio is each row's mean over it, " +
-      "computed per parameter combination and cancellation state." +
+      "This library's own implementations are shaded, the baseline more deeply; Ratio is each " +
+      "row's mean over that baseline, computed per parameter combination and cancellation state." +
       (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
                    " — positive means slower here." : "");
 
@@ -1219,6 +1269,7 @@
     } else {
       renderTrendChart();
     }
+    syncControlAvailability(mode);
     syncUrlHash();
   }
 
