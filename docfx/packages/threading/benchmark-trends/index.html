@@ -49,18 +49,20 @@
 <body>
 <h1>CryptoHives Threading Benchmark Trends</h1>
 <p>
-  Benchmark history for <code>CryptoHives.Foundation.Threading</code>'s async synchronization
-  primitives — how each one performs against reference libraries (Nito.AsyncEx, NeoSmart,
-  ProtoPromise, Microsoft.VisualStudio.Threading), and against the synchronous BCL baselines they
-  replace (<code>lock</code>/<code>Monitor</code>, <code>SpinLock</code>, <code>Interlocked</code>,
-  <code>ReaderWriterLockSlim</code>, <code>Barrier</code>, <code>CountdownEvent</code>, ...) — across
-  platforms and contention levels, and how that's changed over time as the code evolves. Pick a
-  platform, primitive family, and operation below; every implementation is plotted as its own
-  line so they're directly comparable at a glance. Where a benchmark varies by
-  <code>CancellationToken</code> state, the Cancellation selector picks which state to plot (a
-  live-but-unfired token adds overhead compared to <code>CancellationToken.None</code>, which is
-  why it's kept as its own axis rather than doubling every legend entry). Runs entirely in your
-  browser (no server, no external database) — see the notes below for the three view modes.
+  Benchmark history for the async synchronization primitives in
+  <code>CryptoHives.Foundation.Threading</code>, measured against reference libraries
+  (Nito.AsyncEx, NeoSmart, ProtoPromise, Microsoft.VisualStudio.Threading) and against the
+  synchronous BCL primitives they replace (<code>lock</code>/<code>Monitor</code>,
+  <code>SpinLock</code>, <code>Interlocked</code>, <code>ReaderWriterLockSlim</code>,
+  <code>Barrier</code>, <code>CountdownEvent</code>), across platforms, target frameworks and
+  contention levels.
+</p>
+<p>
+  Select a platform, primitive family and operation; each implementation is drawn as its own
+  series. Where a benchmark varies by <code>CancellationToken</code> state, the Cancellation
+  selector chooses the state to plot: a live but unfired token carries measurable overhead
+  relative to <code>CancellationToken.None</code>. The page runs entirely in the browser, with no
+  server and no external database.
 </p>
 
 <fieldset class="mode-toggle">
@@ -116,7 +118,7 @@
 </div>
 
 <div id="status">Loading database…</div>
-<p id="legend-hint" class="legend-hint" hidden>Click a color or line style below to hide/show it.</p>
+<p id="legend-hint" class="legend-hint" hidden>Click a color, line style or point shape to hide or show that series.</p>
 <div id="legend-colors" class="legend-row"></div>
 <div id="legend-dashes" class="legend-row"></div>
 <div id="legend-metrics" class="legend-row"></div>
@@ -126,28 +128,33 @@
 
 <p class="hint">
   Data source: <code>benchmark-history.sqlite</code>, generated at build time by
-  <code>scripts/threading-benchmark-trends/import_run_archive.py</code> from the run archive on the
-  <code>benchmarks</code> branch — so it is a derived artifact rather than a committed file, and
-  any recorded run can be rebuilt from the archive at any time. <strong>Table (one run)</strong> is the default: it reproduces one run's
-  report, every dimension that run carried as its own column, grouped and ordered as
-  BenchmarkDotNet ordered it, with the baseline row highlighted and Ratio computed against it per
-  parameter combination and cancellation state. Pick any recorded run rather than only the newest,
-  and optionally a second one to compare against — two dates on one machine, or the same commit on
-  two machines, which the run list marks as <em>(same commit)</em>. The chart modes plot one point
-  per recorded run; hover a point for the exact commit, value and the .NET runtime it was measured
-  on. <strong>Trend over time</strong> plots every recorded
-  parameter combination for the current filters at once (use the line-style legend below to hide
-  ones you don't want). <strong>Scaling by contention</strong> plots the benchmark's parameterized
-  axis on the X axis using each implementation's most recent run — usually queued waiters, but
-  some benchmarks scale a different dimension (distinct keys or threads, for the keyed locks).
-  Because that view spends its X axis on the parameter, the line-style channel is free, so it
-  draws <em>every</em> cancellation state and <em>both</em> metrics at once — colour is the
-  implementation, line style the cancellation state, and time is read off the left axis with
-  allocation on the right. All three legends toggle. The Cancellation and Metric selectors above
-  therefore apply to <strong>Trend over time</strong> only, where the parameter needs the line
-  style and there is no channel left for them. Some methods aren't parameterized at all (e.g. a
-  plain uncontended-only benchmark) — those show a single point per implementation in both views.
-</p>
+  <code>scripts/threading-benchmark-trends/import_run_archive.py</code> from the run archive on
+  the <code>benchmarks</code> branch.
+  </p>
+
+  <p class="hint">
+  <strong>Table (one run)</strong> reproduces a single run's report: every dimension that run
+  carried as its own column, grouped and ordered as BenchmarkDotNet ordered it. Rows for this
+  library's own implementations are shaded, and the row the benchmark class declares as its
+  baseline more deeply. Ratio is the figure the report recorded, relative to that declared
+  baseline; BenchmarkDotNet fixes one baseline per benchmark class, so for some families the
+  reference row falls outside the current selection. Any recorded run can be shown, and a second
+  one compared against it — two dates on one machine, or one commit on two machines, which the
+  run list marks as <em>(same commit)</em>.
+  </p>
+
+  <p class="hint">
+  The chart modes plot one point per recorded run. Hovering a point gives the commit, the value,
+  the .NET runtime it was measured on, and the version of the reference library where one
+  applies. <strong>Trend over time</strong> plots every recorded parameter combination for the
+  current filters; the line-style legend hides individual combinations.
+  <strong>Scaling by contention</strong> plots the benchmark's parameterized axis — queued
+  waiters for most classes, distinct keys or threads for the keyed locks — using each
+  implementation's most recent run. It draws every cancellation state and both metrics together:
+  color identifies the implementation, line style the cancellation state, mean time is read from
+  the left axis and allocation from the right. All three legends toggle. The Cancellation and
+  Metric selectors apply to <strong>Trend over time</strong>, and are disabled in the other two
+  views. Methods with no parameterized axis show a single point per implementation.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -1255,10 +1262,8 @@
     const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
     tableNoteEl.hidden = false;
     let note =
-      "This library's own implementations are shaded, the baseline more deeply. Ratio is the " +
-      "report's own, relative to the method the benchmark class declares as its baseline — " +
-      "which BenchmarkDotNet fixes per class, so for some families that reference row is not " +
-      "among the ones shown here." +
+      "Shaded rows are this library's own implementations; the baseline is shaded more deeply. " +
+      "Ratio is as recorded by the run, relative to the baseline its benchmark class declares." +
       (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
                    " — positive means slower here." : "");
 
@@ -1266,9 +1271,9 @@
     // should learn that a competitor moved underneath the comparison before reading any number,
     // and the markers only appear on rows that happen to be on screen.
     if (comparing && changed.size) {
-      note += "  Competitor versions differ between these runs — " +
+      note += "  Reference library versions differ between these runs: " +
         Array.from(changed, ([id, [from, to]]) => `${id} ${from} → ${to}`).join(", ") +
-        ". Rows marked ‡ measure a different build of the library, not only different code here.";
+        ". Rows marked ‡ compare against a different build of that library.";
     } else if (!comparing) {
       const packages = runPackages.get(runSel.value);
       const measured = packages && Object.keys(VARIANT_PACKAGES)

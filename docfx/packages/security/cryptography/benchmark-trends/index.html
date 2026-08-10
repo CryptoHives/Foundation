@@ -51,13 +51,16 @@
 <body>
 <h1>CryptoHives Cryptography Benchmark Trends</h1>
 <p>
-  Benchmark history for <code>CryptoHives.Foundation.Security.Cryptography</code>'s hash, cipher,
-  and MAC implementations — how each one performs against reference libraries (the OS,
-  BouncyCastle, and others) across platforms and data sizes, and how that's changed over time as
-  the code evolves. Pick a platform, category, algorithm family, and method below; every
-  implementation is plotted as its own line so they're directly comparable at a glance. Runs
-  entirely in your browser (no server, no external database) — see the notes below for
-  the three view modes.
+  Benchmark history for the hash, cipher and MAC implementations in
+  <code>CryptoHives.Foundation.Security.Cryptography</code>, measured against reference
+  implementations (the operating system's own, BouncyCastle, and others) across platforms, target
+  frameworks and data sizes.
+</p>
+<p>
+  Select a platform, category, algorithm family and method; each implementation is drawn as its
+  own series, including the separate SIMD paths — AVX2, AVX-512, SSSE3, NEON and the portable
+  scalar fallback — where an algorithm provides them. The page runs entirely in the browser,
+  with no server and no external database.
 </p>
 
 <fieldset class="mode-toggle">
@@ -113,7 +116,7 @@
 </div>
 
 <div id="status">Loading database…</div>
-<p id="legend-hint" class="legend-hint" hidden>Click a color or line style below to hide/show it.</p>
+<p id="legend-hint" class="legend-hint" hidden>Click a color, line style or point shape to hide or show that series.</p>
 <div id="legend-colors" class="legend-row"></div>
 <div id="legend-dashes" class="legend-row"></div>
 <div id="legend-metrics" class="legend-row"></div>
@@ -125,18 +128,27 @@
 <p class="hint">
   Data source: <code>benchmark-history.sqlite</code>, generated at build time by
   <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
-  the <code>benchmarks</code> branch — so it is a derived artifact rather than a committed file, and
-  any recorded run can be rebuilt from the archive at any time.
-  <strong>Table (one run)</strong> is the default: it reproduces one run's report, with the baseline
-  row highlighted and Ratio computed against it per data size. Pick any recorded run rather than
-  only the newest, and optionally a second one to compare against — two dates on one machine, or
-  the same commit on two machines, which the run list marks as <em>(same commit)</em>.
-  The chart modes plot one point per recorded run; hover a point for the exact commit, value and
-  the .NET runtime it was measured on. <strong>Trend over time</strong> plots every recorded data
-  size for the current filters at once (use the line-style legend below to hide sizes you don't
-  want). <strong>Scaling by size</strong> plots data size on the X axis using each implementation's
-  most recent run, showing how it scales across sizes at a glance.
-</p>
+  the <code>benchmarks</code> branch.
+  </p>
+
+  <p class="hint">
+  <strong>Table (one run)</strong> reproduces a single run's report, grouped by data size. Rows
+  for this library's own implementations are shaded, and the baseline row more deeply; Ratio is
+  each row's mean over that baseline. Rows marked <em>not in package</em> are compiled in for
+  measurement only and are excluded from the published NuGet package. Any recorded run can be
+  shown, and a second one compared against it — two dates on one machine, or one commit on two
+  machines, which the run list marks as <em>(same commit)</em>.
+  </p>
+
+  <p class="hint">
+  The chart modes plot one point per recorded run. Hovering a point gives the commit, the value,
+  the .NET runtime it was measured on, and the version of the reference library where one
+  applies. <strong>Trend over time</strong> plots every recorded data size for the current
+  filters; the line-style legend hides individual sizes. <strong>Scaling by size</strong> plots
+  data size on the X axis using each implementation's most recent run, drawing both metrics
+  together: mean time is read from the left axis and allocation from the right, with point shape
+  distinguishing the two. The Metric selector applies to <strong>Trend over time</strong>, and is
+  disabled in the other two views.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -1086,18 +1098,19 @@
     const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
     tableNoteEl.hidden = false;
     let note =
-      "This library's own implementations are shaded, the baseline more deeply; Ratio is each " +
-      "row's mean over that baseline, computed per data size. Rows marked “not in package” " +
-      "are compiled in for measurement only and excluded from the published NuGet package." +
+      "Shaded rows are this library's own implementations; the baseline is shaded more deeply. " +
+      "Ratio is each row's mean over that baseline, per data size. Rows marked “not in " +
+      "package” are compiled in for measurement only and are excluded from the published " +
+      "NuGet package." +
       (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
                    " — positive means slower here." : "");
 
     // Named explicitly rather than left to the per-row markers: a reader scanning for a regression
     // should learn that a reference moved underneath the comparison before reading any number.
     if (comparing && changed.size) {
-      note += "  Reference versions differ between these runs — " +
+      note += "  Reference library versions differ between these runs: " +
         Array.from(changed, ([id, [from, to]]) => `${id} ${from} → ${to}`).join(", ") +
-        ". Rows marked ‡ measure a different build of the library, not only different code here.";
+        ". Rows marked ‡ compare against a different build of that library.";
     } else if (!comparing) {
       const packages = runPackages.get(runSel.value);
       const measured = packages && Object.values(VARIANT_PACKAGES)
