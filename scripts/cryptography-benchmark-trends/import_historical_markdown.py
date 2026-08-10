@@ -464,5 +464,65 @@ def main() -> int:
     return 0
 
 
+# Mirrors scripts/threading-benchmark-trends/markdown_parser.py. Duplicated rather than shared:
+# these two pipelines are deliberate siblings, each with its own parser and schema, and a third
+# module for one 50-line function would couple them for less than it costs. The preamble format is
+# BenchmarkDotNet's, so it does not drift with either package.
+# BenchmarkDotNet's machine-spec preamble, e.g.
+#
+#     BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8875/25H2/2025Update/HudsonValley2)
+#     AMD Ryzen 5 7600X 4.70GHz, 1 CPU, 12 logical and 6 physical cores
+#     .NET SDK 11.0.100-preview.5.26302.115
+#     [Host]    : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+#
+# Every field is optional: the flat era's files and the per-platform era's differ in wording, and
+# a missing line should leave a NULL column rather than abort the import of a whole run.
+_BDN_LINE = re.compile(r"^BenchmarkDotNet v(?P<bdn>[\w.\-+]+),\s*(?P<os>.+?)\s*$", re.M)
+_CPU_LINE = re.compile(
+    r"^(?P<cpu>.+?),\s*\d+ CPU,\s*(?P<logical>\d+) logical(?: and (?P<physical>\d+) physical)? cores",
+    re.M,
+)
+_SDK_LINE = re.compile(r"^\.NET SDK (?P<sdk>[\w.\-+]+)", re.M)
+_HOST_LINE = re.compile(
+    r"^\s*\[Host\]\s*:\s*\.NET (?P<runtime>[\w.\-+]+)\s*\([^)]*\),\s*(?P<jit>.+?)\s*$", re.M
+)
+
+
+def parse_machine_spec(text: str) -> dict:
+    """Extracts the environment fields from a machine-spec.md.
+
+    Returns a dict with bdn_version/os/cpu/logical_cores/physical_cores/sdk_version/
+    runtime_version/jit, each None when that line is absent.
+    """
+    spec = {
+        "bdn_version": None, "os": None, "cpu": None,
+        "logical_cores": None, "physical_cores": None,
+        "sdk_version": None, "runtime_version": None, "jit": None,
+    }
+
+    match = _BDN_LINE.search(text)
+    if match:
+        spec["bdn_version"] = match.group("bdn")
+        spec["os"] = match.group("os")
+
+    match = _CPU_LINE.search(text)
+    if match:
+        spec["cpu"] = match.group("cpu").strip()
+        spec["logical_cores"] = int(match.group("logical"))
+        if match.group("physical"):
+            spec["physical_cores"] = int(match.group("physical"))
+
+    match = _SDK_LINE.search(text)
+    if match:
+        spec["sdk_version"] = match.group("sdk")
+
+    match = _HOST_LINE.search(text)
+    if match:
+        spec["runtime_version"] = match.group("runtime")
+        spec["jit"] = match.group("jit")
+
+    return spec
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
