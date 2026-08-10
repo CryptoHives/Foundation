@@ -22,6 +22,16 @@
   .legend-hint { font-size: 0.78rem; color: #888; margin: -0.2rem 0 0.5rem; }
   #chart-container { position: relative; height: 480px; }
   .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
+  #table-container { overflow-x: auto; max-height: 70vh; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 0.3rem 0.55rem; text-align: left; white-space: nowrap; }
+  table.data-table th { background: #f5f5f5; position: sticky; top: 0; z-index: 1; }
+  table.data-table td.numeric, table.data-table th.numeric { text-align: right; }
+  table.data-table tr.group-start td { border-top: 2px solid #bbb; }
+  table.data-table tr.baseline td { background: #fff6e6; font-weight: 600; }
+  table.data-table td.worse { color: #b91c1c; }
+  table.data-table td.better { color: #15803d; }
+  .table-note { font-size: 0.8rem; color: #666; margin: 0 0 0.6rem; }
 </style>
 </head>
 <body>
@@ -45,6 +55,7 @@
   <legend>View</legend>
   <label><input type="radio" name="mode" value="trend" checked> Trend over time</label>
   <label><input type="radio" name="mode" value="scaling"> Scaling by contention</label>
+  <label><input type="radio" name="mode" value="table"> Table (one run)</label>
 </fieldset>
 
 <div class="controls">
@@ -65,6 +76,12 @@
       <option value="mean_ns">Mean time (ns)</option>
       <option value="allocated_bytes">Allocated bytes</option>
     </select>
+  </label>
+  <label id="run-picker" hidden>Run
+    <select id="run"></select>
+  </label>
+  <label id="compare-picker" hidden>Compare with
+    <select id="compare"></select>
   </label>
   <label>Date range
     <select id="date-range">
@@ -89,6 +106,8 @@
 <div id="legend-dashes" class="legend-row"></div>
 <div id="legend-metrics" class="legend-row"></div>
 <div id="chart-container"><canvas id="chart"></canvas></div>
+<p id="table-note" class="table-note" hidden></p>
+<div id="table-container" hidden><table class="data-table" id="data-table"><thead><tr id="data-table-head"></tr></thead><tbody id="data-table-body"></tbody></table></div>
 
 <p class="hint">
   Data source: <code>benchmark-history.sqlite</code>, rebuilt by
@@ -108,6 +127,12 @@
   therefore apply to <strong>Trend over time</strong> only, where the parameter needs the line
   style and there is no channel left for them. Some methods aren't parameterized at all (e.g. a
   plain uncontended-only benchmark) — those show a single point per implementation in both views.
+  <strong>Table (one run)</strong> drops the charts and reproduces one run's report: every
+  dimension that run carried as its own column, grouped and ordered as BenchmarkDotNet ordered it,
+  with the baseline row highlighted and Ratio computed against it per parameter combination and
+  cancellation state. Pick any recorded run rather than only the newest, and optionally a second
+  one to compare against — two dates on one machine, or the same commit on two machines, which
+  the run list marks as <em>(same commit)</em>.
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
@@ -130,6 +155,15 @@
   const dateRangeSel = document.getElementById("date-range");
   const legendHintEl = document.getElementById("legend-hint");
   const modeRadios = document.querySelectorAll('input[name="mode"]');
+  const runSel = document.getElementById("run");
+  const compareSel = document.getElementById("compare");
+  const runPickerEl = document.getElementById("run-picker");
+  const comparePickerEl = document.getElementById("compare-picker");
+  const chartContainerEl = document.getElementById("chart-container");
+  const tableContainerEl = document.getElementById("table-container");
+  const tableNoteEl = document.getElementById("table-note");
+  const dataTableHeadEl = document.getElementById("data-table-head");
+  const dataTableBodyEl = document.getElementById("data-table-body");
 
   // 16 entries (not 8): colors are now assigned per-family across *every* method's variants (see
   // refreshFamilyColors), and some families have more than 8 variants once every method's variants
@@ -326,6 +360,8 @@
       range: params.get("range") ?? undefined,
       mode: params.get("mode") ?? undefined,
       log: params.has("log") ? params.get("log") === "1" : undefined,
+      run: params.get("run") ?? undefined,
+      compare: params.get("compare") ?? undefined,
     };
   }
 
@@ -339,6 +375,13 @@
     params.set("range", dateRangeSel.value);
     params.set("mode", currentMode());
     params.set("log", logScaleCb.checked ? "1" : "0");
+    // Only in table mode, where which run is on screen is the whole point of the link. In the
+    // chart modes the run set is derived from the filters, so recording it would pin a link to a
+    // run that a later import may push out of view.
+    if (currentMode() === "table") {
+      if (runSel.value) params.set("run", runSel.value);
+      if (compareSel.value) params.set("compare", compareSel.value);
+    }
     const newHash = "#" + params.toString();
     if (location.hash !== newHash) history.replaceState(null, "", newHash);
   }
@@ -608,13 +651,13 @@
     // "current scaling" snapshot (or a rewind, if a shorter range is selected). When there's no
     // real contention level, every row's param_value is NULL, so key on a single fixed bucket (0)
     // instead - there's only ever one point per series in that case anyway.
-    const latest = new Map();      // "variant cancellation" -> Map(x -> row)
+    const latest = new Map();      // "variant\u001fcancellation" -> Map(x -> row)
     const variantOrder = [];
     const cancellations = [];
     while (stmt.step()) {
       const row = stmt.getAsObject();
       const x = hasRealParams ? row.param_value : 0;
-      const key = `${row.variant} ${row.cancellation}`;
+      const key = `${row.variant}\u001f${row.cancellation}`;
       if (!latest.has(key)) latest.set(key, new Map());
       latest.get(key).set(x, row);
       if (!variantOrder.includes(row.variant)) variantOrder.push(row.variant);
@@ -628,7 +671,7 @@
 
     const datasets = [];
     for (const [key, byX] of latest) {
-      const [variant, cancellation] = key.split(" ");
+      const [variant, cancellation] = key.split("\u001f");
       const points = Array.from(byX.values()).sort((a, b) => a.x - b.x);
       for (const metric of METRICS) {
         // An all-null metric contributes nothing but a legend row and an empty axis. Allocation
@@ -712,9 +755,310 @@
       : "No data for this selection yet.";
   }
 
+  // ---------------------------------------------------------------- table mode
+  //
+  // Reproduces what one benchmark run's markdown report looked like: every dimension that run
+  // carried, as its own column, grouped and ordered the way BenchmarkDotNet ordered it. The
+  // Description column is rebuilt from the parts the database splits it into, and the parameter
+  // columns are split back out of param_label, so a report row and a table row line up.
+  //
+  // Ratio is computed here rather than stored: the database keeps measurements, not derived
+  // columns, and a ratio is only meaningful against a chosen baseline within one logical group.
+
+  function formatMeanNs(ns) {
+    if (ns == null) return "-";
+    let value, unit;
+    if (ns < 1000) { value = ns; unit = "ns"; }
+    else if (ns < 1e6) { value = ns / 1000; unit = "μs"; }
+    else if (ns < 1e9) { value = ns / 1e6; unit = "ms"; }
+    else { value = ns / 1e9; unit = "s"; }
+    const digits = value < 10 ? 4 : value < 100 ? 3 : 2;
+    return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) + " " + unit;
+  }
+
+  function formatAllocated(bytes) {
+    if (bytes == null) return "?";
+    if (bytes === 0) return "-";              // the convention the reports use for a measured zero
+    if (bytes < 1024) return bytes.toLocaleString() + " B";
+    const kb = bytes / 1024;
+    return kb.toLocaleString(undefined, { maximumFractionDigits: kb < 10 ? 2 : 1 }) + " KB";
+  }
+
+  // "KeyCount=1, Iterations=10" -> [["KeyCount","1"],["Iterations","10"]]. Empty for benchmarks
+  // that carry no [Params] axis at all.
+  function splitParams(label) {
+    if (!label) return [];
+    return label.split(", ").map(function (part) {
+      const eq = part.indexOf("=");
+      return eq < 0 ? [part, ""] : [part.slice(0, eq), part.slice(eq + 1)];
+    });
+  }
+
+  // The report's baseline is this library's own implementation, and the database has no
+  // is-baseline flag to read it off - so pick it the same way the colour assignment does, and
+  // leave the ratio blank for a group that has none (the SyncLock family is all BCL primitives).
+  function baselineVariantOf(variants) {
+    if (variants.includes("Pooled")) return "Pooled";
+    const pooled = variants.filter(isPooled).sort();
+    return pooled.length ? pooled[0] : null;
+  }
+
+  // Set from the URL on load and consumed by the first refreshRunPickers() call.
+  let pendingRunFromUrl = null;
+  let pendingCompareFromUrl = null;
+
+  function runKey(runId, platform) { return runId + " " + platform; }
+
+  // Every (run, platform) carrying rows for the current family+method, newest first. Both pickers
+  // are filled from this, which is what makes "macOS vs Windows at the same commit" fall out for
+  // free: those two share a run_id and differ only in platform.
+  function availableRuns() {
+    const stmt = db.prepare(
+      "SELECT DISTINCT r.run_id, r.platform, r.run_date, r.commit_sha, b.runtime_version " +
+      "FROM benchmark_results r " +
+      "LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform " +
+      "WHERE r.family = ? AND r.method = ? " +
+      "ORDER BY r.run_date DESC, r.platform"
+    );
+    stmt.bind([familySel.value, methodSel.value]);
+    const runs = [];
+    while (stmt.step()) runs.push(stmt.getAsObject());
+    stmt.free();
+    return runs;
+  }
+
+  function runOptionLabel(run) {
+    const date = (run.run_date || "").slice(0, 10);
+    const sha = run.commit_sha ? run.commit_sha.slice(0, 8) : "?";
+    const rt = run.runtime_version ? " · .NET " + run.runtime_version : "";
+    return date + " · " + run.platform + " · " + sha + rt;
+  }
+
+  function refreshRunPickers() {
+    const runs = availableRuns();
+    const previousRun = runSel.value;
+    const previousCompare = compareSel.value;
+
+    runSel.innerHTML = "";
+    for (const run of runs) {
+      const opt = document.createElement("option");
+      opt.value = runKey(run.run_id, run.platform);
+      opt.textContent = runOptionLabel(run);
+      runSel.appendChild(opt);
+    }
+    // Default to the newest run on the platform already selected above, so switching into table
+    // mode shows the data the charts were showing rather than jumping to another machine.
+    const preferred = runs.find((r) => r.platform === platformSel.value) || runs[0];
+    // A run named in the URL wins once, on first render, then normal selection takes over.
+    const fromUrl = pendingRunFromUrl;
+    pendingRunFromUrl = null;
+    const wanted = (fromUrl && runs.some((r) => runKey(r.run_id, r.platform) === fromUrl)) ? fromUrl
+                 : (runs.some((r) => runKey(r.run_id, r.platform) === previousRun) ? previousRun : null);
+    runSel.value = wanted || (preferred ? runKey(preferred.run_id, preferred.platform) : "");
+
+    const chosenRunId = (runSel.value || "").split(" ")[0];
+    compareSel.innerHTML = "";
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "(nothing — single run)";
+    compareSel.appendChild(none);
+    for (const run of runs) {
+      if (runKey(run.run_id, run.platform) === runSel.value) continue;
+      const opt = document.createElement("option");
+      opt.value = runKey(run.run_id, run.platform);
+      opt.textContent = runOptionLabel(run) + (run.run_id === chosenRunId ? "   (same commit)" : "");
+      compareSel.appendChild(opt);
+    }
+    const wantedCompare = pendingCompareFromUrl ?? previousCompare;
+    pendingCompareFromUrl = null;
+    compareSel.value = Array.from(compareSel.options).some((o) => o.value === wantedCompare)
+      ? wantedCompare : "";
+  }
+
+  function fetchRunRows(key) {
+    if (!key) return [];
+    const parts = key.split(" ");
+    const stmt = db.prepare(
+      "SELECT variant, cancellation, param_label, mean_ns, allocated_bytes " +
+      "FROM benchmark_results WHERE run_id = ? AND platform = ? AND family = ? AND method = ?"
+    );
+    stmt.bind([parts[0], parts[1], familySel.value, methodSel.value]);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
+  }
+
+  const CANCELLATION_ORDER = ["None", "NotCancelled", "Cancelled", "Timed", "NotCancelledTimed"];
+
+  function renderTableView() {
+    const rows = fetchRunRows(runSel.value);
+    const compareRows = fetchRunRows(compareSel.value);
+    const compareBy = new Map();
+    for (const r of compareRows) {
+      compareBy.set(r.variant + "" + r.cancellation + "" + (r.param_label || ""), r);
+    }
+    const comparing = compareSel.value !== "" && compareRows.length > 0;
+
+    dataTableHeadEl.innerHTML = "";
+    dataTableBodyEl.innerHTML = "";
+    if (!rows.length) {
+      tableNoteEl.hidden = true;
+      statusEl.textContent = "No data for this run yet.";
+      return;
+    }
+
+    // The column set is derived from the run itself, so a run with no cancellation axis or no
+    // [Params] axis simply has no such column - exactly as its own report had none.
+    const paramNames = [];
+    for (const r of rows) {
+      for (const pair of splitParams(r.param_label)) {
+        if (!paramNames.includes(pair[0])) paramNames.push(pair[0]);
+      }
+    }
+    const cancellations = Array.from(new Set(rows.map((r) => r.cancellation)));
+    const showCancellation = cancellations.length > 1 || cancellations[0] !== "None";
+
+    // Grouped exactly as the report groups: one baseline per (parameter combination, state).
+    // Keyed by a joined string for lookup, but the two components are stored alongside rather
+    // than parsed back out: param_label contains both spaces and commas ("KeyCount=1,
+    // Iterations=10"), so splitting the key would mis-read every multi-parameter benchmark.
+    const groups = new Map();
+    for (const r of rows) {
+      const key = (r.param_label || "") + "" + r.cancellation;
+      if (!groups.has(key)) {
+        groups.set(key, { paramLabel: r.param_label || "", cancellation: r.cancellation, rows: [] });
+      }
+      groups.get(key).rows.push(r);
+    }
+
+    const columns = [{ key: "description", label: "Description" }];
+    for (const n of paramNames) columns.push({ key: "param:" + n, label: n, numeric: true });
+    if (showCancellation) columns.push({ key: "cancellation", label: "Cancellation" });
+    columns.push({ key: "mean", label: "Mean", numeric: true });
+    columns.push({ key: "ratio", label: "Ratio", numeric: true });
+    columns.push({ key: "allocated", label: "Allocated", numeric: true });
+    if (comparing) {
+      columns.push({ key: "cmpMean", label: "Mean (compared)", numeric: true });
+      columns.push({ key: "cmpDelta", label: "Δ Mean", numeric: true });
+      columns.push({ key: "cmpAlloc", label: "Allocated (compared)", numeric: true });
+    }
+
+    for (const col of columns) {
+      const th = document.createElement("th");
+      th.textContent = col.label;
+      if (col.numeric) th.classList.add("numeric");
+      dataTableHeadEl.appendChild(th);
+    }
+
+    // Groups ordered by their parameter values (numerically where they are numbers), ties broken
+    // by cancellation state; rows within a group by mean ascending, which is how reports read.
+    function groupSortKey(key) {
+      const g = groups.get(key);
+      const nums = splitParams(g.paramLabel).map(function (pair) {
+        const n = Number(pair[1]);
+        return Number.isFinite(n) ? n : pair[1];
+      });
+      return { nums: nums, rank: CANCELLATION_ORDER.indexOf(g.cancellation) };
+    }
+    const orderedKeys = Array.from(groups.keys()).sort(function (a, b) {
+      const ka = groupSortKey(a), kb = groupSortKey(b);
+      const n = Math.max(ka.nums.length, kb.nums.length);
+      for (let i = 0; i < n; i++) {
+        const x = ka.nums[i], y = kb.nums[i];
+        if (x === undefined) return -1;
+        if (y === undefined) return 1;
+        if (x < y) return -1;
+        if (x > y) return 1;
+      }
+      return ka.rank - kb.rank;
+    });
+
+    let total = 0;
+    for (const key of orderedKeys) {
+      const group = groups.get(key).rows.slice().sort((a, b) => a.mean_ns - b.mean_ns);
+      const baselineVariant = baselineVariantOf(group.map((r) => r.variant));
+      const baseline = group.find((r) => r.variant === baselineVariant);
+      let first = true;
+      for (const r of group) {
+        const tr = document.createElement("tr");
+        if (first) tr.classList.add("group-start");
+        if (r.variant === baselineVariant) tr.classList.add("baseline");
+        first = false;
+        const params = new Map(splitParams(r.param_label));
+        const cmp = compareBy.get(r.variant + "" + r.cancellation + "" + (r.param_label || ""));
+        const delta = (cmp && cmp.mean_ns) ? (r.mean_ns / cmp.mean_ns - 1) * 100 : null;
+
+        for (const col of columns) {
+          const td = document.createElement("td");
+          if (col.numeric) td.classList.add("numeric");
+          if (col.key === "description") {
+            td.textContent = methodSel.value + " · " + familySel.value + " · " + r.variant;
+          } else if (col.key.indexOf("param:") === 0) {
+            const v = params.get(col.key.slice(6));
+            td.textContent = v === undefined ? "-" : v;
+          } else if (col.key === "cancellation") {
+            td.textContent = cancellationLabel(r.cancellation);
+          } else if (col.key === "mean") {
+            td.textContent = formatMeanNs(r.mean_ns);
+          } else if (col.key === "ratio") {
+            td.textContent = (baseline && baseline.mean_ns) ? (r.mean_ns / baseline.mean_ns).toFixed(2) : "-";
+          } else if (col.key === "allocated") {
+            td.textContent = formatAllocated(r.allocated_bytes);
+          } else if (col.key === "cmpMean") {
+            td.textContent = cmp ? formatMeanNs(cmp.mean_ns) : "-";
+          } else if (col.key === "cmpAlloc") {
+            td.textContent = cmp ? formatAllocated(cmp.allocated_bytes) : "-";
+          } else if (col.key === "cmpDelta") {
+            if (delta === null) {
+              td.textContent = "-";
+            } else {
+              td.textContent = (delta >= 0 ? "+" : "") + delta.toFixed(1) + "%";
+              // Signed against the comparison run: positive means this run took longer. Only
+              // coloured past 5%, since run-to-run noise below that says nothing.
+              if (Math.abs(delta) >= 5) td.classList.add(delta > 0 ? "worse" : "better");
+            }
+          }
+          tr.appendChild(td);
+        }
+        dataTableBodyEl.appendChild(tr);
+        total++;
+      }
+    }
+
+    const chosen = Array.from(runSel.options).find((o) => o.value === runSel.value);
+    const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
+    tableNoteEl.hidden = false;
+    tableNoteEl.textContent =
+      "Baseline (highlighted) is this library's own implementation; Ratio is each row's mean over it, " +
+      "computed per parameter combination and cancellation state." +
+      (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
+                   " — positive means slower here." : "");
+    statusEl.textContent = total + " row(s) from " + (chosen ? chosen.textContent.trim() : "the selected run");
+  }
+
   function renderChart() {
-    if (currentMode() === "scaling") renderScalingChart();
-    else renderTrendChart();
+    const mode = currentMode();
+    const isTable = mode === "table";
+
+    chartContainerEl.hidden = isTable;
+    legendColorsEl.hidden = isTable;
+    legendDashesEl.hidden = isTable;
+    legendMetricsEl.hidden = isTable;
+    if (isTable) legendHintEl.hidden = true;   // otherwise left to renderColorLegend below
+    tableContainerEl.hidden = !isTable;
+    tableNoteEl.hidden = !isTable;
+    runPickerEl.hidden = !isTable;
+    comparePickerEl.hidden = !isTable;
+
+    if (isTable) {
+      refreshRunPickers();
+      renderTableView();
+    } else if (mode === "scaling") {
+      renderScalingChart();
+    } else {
+      renderTrendChart();
+    }
     syncUrlHash();
   }
 
@@ -755,6 +1099,10 @@
     dateRangeSel.onchange = renderChart;
     logScaleCb.onchange = renderChart;
     modeRadios.forEach((r) => (r.onchange = renderChart));
+    // The run picker drives which run the table shows; changing it also rebuilds the comparison
+    // list, since the currently-shown run must not appear as its own comparison.
+    runSel.onchange = () => { refreshRunPickers(); renderTableView(); syncUrlHash(); };
+    compareSel.onchange = () => { renderTableView(); syncUrlHash(); };
     copyLinkBtn.onclick = async () => {
       try {
         await navigator.clipboard.writeText(location.href);
@@ -772,6 +1120,8 @@
       if (radio) radio.checked = true;
     }
     if (restoreState?.log !== undefined) logScaleCb.checked = restoreState.log;
+    pendingRunFromUrl = restoreState?.run ?? null;
+    pendingCompareFromUrl = restoreState?.compare ?? null;
 
     refreshFamilies(restoreState);
   } catch (err) {
