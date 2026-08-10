@@ -1,0 +1,8 @@
+{
+  "codeCommit": "52374bf8143fb29ce527b9a813cf6b4820b19b2d",
+  "recordedAt": "2026-04-02T12:01:55+02:00",
+  "package": "threading",
+  "platform": "windows-x64-amd-ryzen-5-7600x",
+  "backfilled": true,
+  "note": "Recovered from git history, where results were committed alongside the code they measured, so the recording commit is the code commit."
+}
