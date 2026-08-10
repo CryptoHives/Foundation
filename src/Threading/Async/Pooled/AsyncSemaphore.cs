@@ -201,11 +201,6 @@ public sealed class AsyncSemaphore
             }
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask(Task.FromException(new TimeoutException()));
-        }
-
         return WaitAsyncImpl(timeout, cancellationToken);
     }
 
@@ -243,6 +238,11 @@ public sealed class AsyncSemaphore
                 return new ValueTask(Task.FromCanceled(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
+            }
+
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -252,16 +252,16 @@ public sealed class AsyncSemaphore
 
             version = waiter.Version;
             _waiters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)

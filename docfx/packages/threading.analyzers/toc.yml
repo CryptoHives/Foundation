@@ -2,18 +2,14 @@
   href: index.md
 - name: Diagnostic Rules
   items:
-    - name: CHT001 - Multiple Await on ValueTask
+    - name: CHT001 - Multiple Consumption of ValueTask
       href: CHT001.md
     - name: CHT002 - Blocking GetResult
       href: CHT002.md
     - name: CHT003 - Stored in Field
       href: CHT003.md
-    - name: CHT004 - Multiple AsTask
-      href: CHT004.md
     - name: CHT005 - Direct Result Access
       href: CHT005.md
-    - name: CHT006 - Unsafe Method
-      href: CHT006.md
     - name: CHT007 - AsTask Before Signal
       href: CHT007.md
     - name: CHT008 - Not Consumed
@@ -22,3 +18,7 @@
       href: CHT009.md
     - name: CHT010 - ValueTask capture in lambda/closure
       href: CHT010.md
+    - name: CHT011 - Redundant async forwarding
+      href: CHT011.md
+    - name: CHT012 - async wrapper boxes state machine
+      href: CHT012.md

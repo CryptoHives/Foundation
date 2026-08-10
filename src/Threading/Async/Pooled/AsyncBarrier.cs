@@ -262,12 +262,6 @@ public sealed class AsyncBarrier
 
                 version = waiter.Version;
                 _waiters.Enqueue(waiter);
-
-                if (timeout != Timeout.InfiniteTimeSpan)
-                {
-                    waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                        _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
-                }
             }
             else
             {
@@ -291,7 +285,16 @@ public sealed class AsyncBarrier
 
         if (waiter is not null)
         {
-            // Registered outside the lock: the callback can fire synchronously on this thread if the
+            // Outside the lock: creating a timer takes the runtime's process-global timer queue lock.
+            // See the remarks on ManualResetValueTaskSource<T>.TimeoutTimer for why the waiter is still
+            // safe to touch here.
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
+            }
+
+            // Registered after the timer: the callback can fire synchronously on this thread if the
             // token is already cancelled, and it takes the lock itself.
             if (cancellationToken.CanBeCanceled)
             {

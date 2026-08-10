@@ -199,7 +199,7 @@ public class ValueTaskPreserveTests
     }
 
     [Test, CancelAfter(1000)]
-    public async Task PreservePooledSourceWithExceptionCanBeAwaitedMultipleTimes()
+    public Task PreservePooledSourceWithExceptionCanBeAwaitedMultipleTimes()
     {
         using var pool = new TestObjectPool<int>();
         PooledManualResetValueTaskSource<int> source = pool.GetPooledWaiter(null);
@@ -228,6 +228,7 @@ public class ValueTaskPreserveTests
         }
 
         Assert.That(pool.ActiveCount, Is.Zero);
+        return Task.CompletedTask;
     }
 
     [Test, CancelAfter(1000)]

@@ -93,12 +93,12 @@ public async Task FetchAsync(CancellationToken ct)
 ## Hard rules (the `ValueTask` contract — enforced by the analyzer)
 
 1. **Await each returned `ValueTask` exactly once.** A second `await` or `AsTask()` throws
-   `InvalidOperationException` (CHT001/CHT004).
+   `InvalidOperationException` (CHT001).
 2. **Never store a `ValueTask` in a field** (CHT003) or **capture it in a lambda/closure**
    (CHT010). Await it locally.
 3. **Never block on it**: no `.Result` (CHT005), no `.GetAwaiter().GetResult()` (CHT002).
-4. **Never pass it to `Task.WhenAll`/`WhenAny`** (CHT006) — call `.AsTask()` once first, or
-   restructure.
+4. **Never pass it to `Task.WhenAll`/`WhenAny`** — call `.AsTask()` once first, or restructure.
+   The compiler enforces this on its own, since those methods take `Task`.
 5. **Always await or discard** every returned `ValueTask`/`Releaser` (CHT008), otherwise the
    pooled source never returns to the pool.
 6. **`AsyncLock` is not reentrant** — re-acquiring on the same call stack deadlocks. If the

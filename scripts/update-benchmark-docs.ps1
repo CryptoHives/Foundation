@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # update-benchmark-docs.ps1
@@ -20,6 +20,9 @@ param(
     [Parameter(HelpMessage = "Optional platform identifier override (for example: macos-arm64-apple-m4)")]
     [string]$PlatformId,
 
+    [Parameter(HelpMessage = "Commit the benchmarked binaries were built from. Defaults to HEAD; pass it explicitly when recording a run after the fact, or when HEAD has moved on since the run.")]
+    [string]$CodeCommit,
+
     [Parameter(HelpMessage = "Dry run - show actions without executing")]
     [switch]$DryRun
 )
@@ -32,13 +35,24 @@ $RepoRoot = Split-Path $PSScriptRoot
 $packageConfigurations = @{
     "Threading" = [ordered]@{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
-        # Local scratch output only (see .gitignore) — the published benchmark view is the
-        # SQLite-backed dashboard under docfx/packages/threading/benchmark-trends/, not a
-        # per-platform markdown tree, so this must not point back into docfx/.
-        DestDir   = "bench-results/threading"
+        # Recorded runs live on the `benchmarks` branch, not in docfx: the published view is the
+        # SQLite-backed dashboard, whose database is generated from that branch at build time. The
+        # default is a sibling worktree, so pass -DestDir if yours is elsewhere:
+        #     git worktree add ../foundation-bench benchmarks
+        DestDir   = "../foundation-bench/threading"
         Files     = @(
+            # AsyncLock
             @{ Source = "AsyncLockSingleBenchmark-report.md"; Target = "asynclock-single.md" }
             @{ Source = "AsyncLockMultipleBenchmark-report.md"; Target = "asynclock-multiple.md" }
+
+            # AsyncKeyedLock - uncontended, then contended, then multi-threaded
+            @{ Source = "AsyncKeyedLockSingleKeyBenchmark-report.md"; Target = "asynckeyedlock-singlekey.md" }
+            @{ Source = "AsyncKeyedLockTryLockBenchmark-report.md"; Target = "asynckeyedlock-trylock.md" }
+            @{ Source = "AsyncKeyedLockCardinalityBenchmark-report.md"; Target = "asynckeyedlock-cardinality.md" }
+            @{ Source = "AsyncKeyedLockRollingKeyBenchmark-report.md"; Target = "asynckeyedlock-rollingkey.md" }
+            @{ Source = "AsyncKeyedLockMultipleBenchmark-report.md"; Target = "asynckeyedlock-multiple.md" }
+            @{ Source = "AsyncKeyedLockConcurrentBenchmark-report.md"; Target = "asynckeyedlock-concurrent.md" }
+
             @{ Source = "AsyncAutoResetEventSetBenchmark-report.md"; Target = "asyncautoresetevent-set.md" }
             @{ Source = "AsyncAutoResetEventSetThenWaitBenchmark-report.md"; Target = "asyncautoresetevent-setthenw.md" }
             @{ Source = "AsyncAutoResetEventWaitThenSetBenchmark-report.md"; Target = "asyncautoresetevent-waitthenset.md" }
@@ -46,8 +60,12 @@ $packageConfigurations = @{
             @{ Source = "AsyncManualResetEventSetThenWaitBenchmark-report.md"; Target = "asyncmanualresetevent-setthenw.md" }
             @{ Source = "AsyncManualResetEventWaitThenSetBenchmark-report.md"; Target = "asyncmanualresetevent-waitthenset.md" }
             @{ Source = "AsyncSemaphoreSingleBenchmark-report.md"; Target = "asyncsemaphore-single.md" }
+            @{ Source = "AsyncSemaphoreMultipleBenchmark-report.md"; Target = "asyncsemaphore-multiple.md" }
             @{ Source = "AsyncCountdownEventSignalBenchmark-report.md"; Target = "asynccountdownevent-signal.md" }
+            @{ Source = "AsyncCountdownEventWaitersBenchmark-report.md"; Target = "asynccountdownevent-waiters.md" }
             @{ Source = "AsyncBarrierSignalAndWaitBenchmark-report.md"; Target = "asyncbarrier-signalandwait.md" }
+            @{ Source = "AsyncBarrierPostPhaseBenchmark-report.md"; Target = "asyncbarrier-postphase.md" }
+            @{ Source = "AsyncReaderWriterLockContentionBenchmark-report.md"; Target = "asyncreaderwriterlock-contention.md" }
             @{ Source = "AsyncReaderWriterLockReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-reader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradeableReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradeablereader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradedWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradedwriter.md" }
@@ -57,10 +75,7 @@ $packageConfigurations = @{
 
     "Cryptography" = [ordered]@{
         SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
-        # Local scratch output only (see .gitignore) — the published benchmark view is the
-        # SQLite-backed dashboard under docfx/packages/security/cryptography/benchmark-trends/,
-        # not a per-platform markdown tree, so this must not point back into docfx/.
-        DestDir   = "bench-results/cryptography"
+        DestDir   = "docfx/packages/security/cryptography/benchmarks"
         Files     = @(
             # SHA-2 individual algorithms
             @{ Source = "SHA224Benchmark-report.md"; Target = "sha224.md" }
@@ -523,6 +538,35 @@ $machineSpec
         [System.IO.File]::WriteAllText($machineSpecFile, $machineSpecContent, $Utf8Bom)
         Write-Host ""
         Write-Host "  [OK] machine-spec.md (extracted machine specification)" -ForegroundColor Green
+    }
+}
+
+# run.json records what the numbers measure, which the file layout cannot: the commit under test.
+#
+# Identifying a run by the commit that *recorded* it conflates two different things and breaks as
+# soon as two machines report separately - the 2026-08-09 Windows and 2026-08-10 macOS runs
+# measured byte-identical library and benchmark sources, but landed in different commits, so
+# nothing could tell they belonged together. Keyed by the code commit instead, they are one run
+# with two platform rows, which is what the database's (run_id, platform) key already assumes.
+if ($machineSpec -and $resolvedDestDir) {
+    if (-not $CodeCommit) {
+        $CodeCommit = (git -C $RepoRoot rev-parse HEAD).Trim()
+    }
+
+    $runJsonFile = Join-Path $resolvedDestDir "run.json"
+    $runMetadata = [ordered]@{
+        codeCommit = $CodeCommit
+        recordedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        package    = $Project.ToLowerInvariant()
+        platform   = $PlatformId
+    }
+    $runJsonContent = ($runMetadata | ConvertTo-Json -Depth 3) + "`n"
+
+    if ($DryRun) {
+        Write-Host "  [DRY RUN] Set-Content -Path $runJsonFile (code commit $CodeCommit)" -ForegroundColor Yellow
+    } else {
+        [System.IO.File]::WriteAllText($runJsonFile, $runJsonContent, (New-Object System.Text.UTF8Encoding $false))
+        Write-Host "  [OK] run.json (code commit $($CodeCommit.Substring(0, 8)))" -ForegroundColor Green
     }
 }
 

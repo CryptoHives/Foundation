@@ -1,4 +1,4 @@
-# CryptoHives.Foundation.Threading Package
+﻿# CryptoHives.Foundation.Threading Package
 
 ## Overview
 
@@ -47,6 +47,7 @@ using CryptoHives.Foundation.Threading.Pools;
 | Class | Description | Documentation |
 |-------|-------------|---------------|
 | [AsyncLock](asynclock.md) | Pooled async mutual exclusion lock | [Details](asynclock.md) |
+| [AsyncKeyedLock&lt;TKey&gt;](asynckeyedlock.md) | Pooled per-key async exclusive lock (different keys never block each other) | [Details](asynckeyedlock.md) |
 | [AsyncAutoResetEvent](asyncautoresetevent.md) | Pooled async auto-reset event (one waiter per signal) | [Details](asyncautoresetevent.md) |
 | [AsyncManualResetEvent](asyncmanualresetevent.md) | Pooled async manual-reset event (all waiters per signal) | [Details](asyncmanualresetevent.md) |
 | [AsyncSemaphore](asyncsemaphore.md) | Pooled async semaphore with configurable permit count | [Details](asyncsemaphore.md) |
@@ -82,7 +83,7 @@ using CryptoHives.Foundation.Threading.Pools;
 
 Not every primitive here beats its popular-library equivalent in every scenario — most of the time it does, but there are exceptions. `AsyncManualResetEvent`, for instance, pays for one `IValueTaskSource` per waiter because a single `ValueTask` can't be awaited by more than one caller. A `Task`-based implementation can let every waiter share the same underlying `Task`/`TaskCompletionSource` instead.
 
-See the [Benchmarks overview](benchmarks.md) for numbers. Raw run reports live under `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
+See the [Benchmarks overview](benchmarks.md) for numbers. A local run writes its reports to `tests/Threading/BenchmarkDotNet.Artifacts/results/`; recorded runs are archived on the `benchmarks` branch, which is what the published dashboard is built from.
 
 ## Quick Examples
 
@@ -267,6 +268,7 @@ public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetrie
 ## Performance Characteristics by Primitive
 
 - **AsyncLock**: O(1) acquire when uncontended, FIFO queue for waiters
+- **AsyncKeyedLock**: O(1) acquire per key when uncontended; one administrative lock guards the key registry
 - **AsyncAutoResetEvent**: O(1) Set/Wait, FIFO queue for single waiter release
 - **AsyncManualResetEvent**: O(n) Set broadcast to all n waiters, O(1) Reset
 
@@ -386,6 +388,7 @@ var evt = new AsyncAutoResetEvent(
 - [AsyncManualResetEvent](asyncmanualresetevent.md)
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md)
 - [AsyncLock](asynclock.md)
+- [AsyncKeyedLock](asynckeyedlock.md)
 - [AsyncCountdownEvent](asynccountdownevent.md)
 - [AsyncBarrier](asyncbarrier.md)
 - [AsyncSemaphore](asyncsemaphore.md)

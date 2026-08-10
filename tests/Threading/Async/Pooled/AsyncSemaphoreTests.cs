@@ -283,7 +283,7 @@ public class AsyncSemaphoreTests
     }
 
     [Test]
-    public async Task WaitAsyncWithZeroTimeoutThrowsWhenNoPermit()
+    public void WaitAsyncWithZeroTimeoutThrowsWhenNoPermit()
     {
         var semaphore = new AsyncSemaphore(0);
 
