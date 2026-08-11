@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 # update-benchmark-docs.ps1
-# Copies BenchmarkDotNet results to docfx benchmark documentation folder
-# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>] [-PlatformId <slug>] [-DryRun]
+# Records a BenchmarkDotNet run into the archive on the `benchmarks` branch, as
+# <package>/<code-commit>/<platform>/<framework>/. -DestDir names the package directory; the three
+# levels below it are derived from the commit under test and from the reports themselves.
+# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>]
+#            [-PlatformId <slug>] [-CodeCommit <sha>] [-TargetFramework <tfm>] [-DryRun]
 
 [CmdletBinding()]
 param(
@@ -560,6 +563,35 @@ function Assert-PlatformId {
     }
 }
 
+# The commit under test is a level of the archive layout, not merely a field in run.json: runs
+# live at <package>/<code-commit>/<platform>/<framework>/, and -DestDir names the package root.
+# Resolving it here, before anything is copied, is what puts each run in its own directory rather
+# than overwriting the previous run of the same platform and framework file by file.
+#
+# Resolved through rev-parse so that a ref or an abbreviated sha is recorded as the full sha, and
+# so an unresolvable one fails here rather than naming a directory after a typo.
+function Resolve-CodeCommit {
+    param([string]$Value)
+
+    $revision = if ([string]::IsNullOrWhiteSpace($Value)) { "HEAD" } else { $Value }
+    $resolved = git -C $RepoRoot rev-parse --verify --quiet "$revision^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($resolved)) {
+        throw "Could not resolve '$revision' to a commit in $RepoRoot. Pass -CodeCommit with a commit this checkout knows about."
+    }
+
+    return $resolved.Trim()
+}
+
+$CodeCommit = Resolve-CodeCommit -Value $CodeCommit
+# Ten characters, matching the run directories already in the archive.
+$codeCommitDir = $CodeCommit.Substring(0, 10)
+
+Write-Host "Code commit: $CodeCommit"
+if (-not $PSBoundParameters.ContainsKey('CodeCommit')) {
+    Write-Host "  (HEAD; pass -CodeCommit when recording a run after the fact)"
+}
+Write-Host ""
+
 Write-Host "Copying benchmark results..."
 Write-Host ""
 
@@ -567,7 +599,7 @@ $copied = 0
 $missing = 0
 $machineSpec = $null
 $machineSpecExtracted = $false
-$destinationRoot = $DestDir
+$destinationRoot = Join-Path $DestDir $codeCommitDir
 $resolvedDestDir = $null
 $resolvedFramework = $null
 
@@ -691,6 +723,19 @@ if ($machineSpec -and $resolvedDestDir) {
         package    = $Project.ToLowerInvariant()
         platform   = $PlatformId
         framework  = $resolvedFramework
+    }
+
+    # The importer reads a `branch` alongside the commit, so record which branch the measured
+    # commit was on - a sha alone does not say whether a step came from main or from a topic
+    # branch that was never merged. Only when this checkout is still *at* that commit and on a
+    # named branch: recording a run after the fact, or from a detached HEAD, would otherwise name
+    # whatever branch happens to be out now, which is worse than recording nothing.
+    $headCommit = git -C $RepoRoot rev-parse --verify --quiet HEAD 2>$null
+    if ($LASTEXITCODE -eq 0 -and $headCommit -and $headCommit.Trim() -eq $CodeCommit) {
+        $headBranch = git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $headBranch -and $headBranch.Trim() -ne 'HEAD') {
+            $runMetadata.branch = $headBranch.Trim()
+        }
     }
 
     if ($packageVersions) {
