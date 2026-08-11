@@ -244,6 +244,28 @@ if (-not $PSBoundParameters.ContainsKey('DestDir') -or [string]::IsNullOrWhiteSp
     $DestDir = Join-Path $RepoRoot $selectedConfig.DestDir
 }
 
+# A relative path is relative to the repository, not to wherever the shell happens to be sitting.
+# The documented invocation passes -DestDir ../foundation-bench/cryptography, which PowerShell
+# would otherwise resolve against the caller's current directory - from a Visual Studio developer
+# prompt that is C:\Program Files\Microsoft Visual Studio\18, and the run is written there or
+# fails outright. The defaults above are already repo-rooted, so this only affects explicit ones.
+foreach ($name in 'SourceDir', 'DestDir') {
+    $value = Get-Variable -Name $name -ValueOnly
+    if (-not [System.IO.Path]::IsPathRooted($value)) {
+        Set-Variable -Name $name -Value (Join-Path $RepoRoot $value)
+    }
+    # Collapse any '..' so the paths printed below name a real location.
+    Set-Variable -Name $name -Value ([System.IO.Path]::GetFullPath((Get-Variable -Name $name -ValueOnly)))
+}
+
+# Resolved here rather than just before run.json is written, because the archive is keyed by it:
+# the run directory is named for the commit measured. Ten characters, matching every directory
+# already on the branch.
+if (-not $CodeCommit) {
+    $CodeCommit = (git -C $RepoRoot rev-parse HEAD).Trim()
+}
+$RunId = $CodeCommit.Substring(0, 10)
+
 $benchmarkMappings = $selectedConfig.Files
 
 Write-Host ""
@@ -591,9 +613,12 @@ foreach ($mapping in $benchmarkMappings) {
                 Write-Host "  [WARN] Reports were produced under '$resolvedFramework' but -TargetFramework is '$TargetFramework'. Recording as '$resolvedFramework'; pass the matching -TargetFramework so the package versions come from the right graph." -ForegroundColor Yellow
             }
 
-            $resolvedDestDir = Join-Path (Join-Path $destinationRoot $PlatformId) $resolvedFramework
+            # <package>/<code-commit>/<platform>/<framework>. The commit level is what makes two
+            # machines measuring the same build land in one run, and what the importer reads back
+            # as run_id - leaving it out silently produced a directory the importer never sees.
+            $resolvedDestDir = Join-Path (Join-Path (Join-Path $destinationRoot $RunId) $PlatformId) $resolvedFramework
             Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
-            Write-Host "  [INFO] Recording under $PlatformId/$resolvedFramework" -ForegroundColor Cyan
+            Write-Host "  [INFO] Recording under $RunId/$PlatformId/$resolvedFramework" -ForegroundColor Cyan
         }
 
         if (-not $resolvedDestDir) {
@@ -656,10 +681,6 @@ $machineSpec
 # nothing could tell they belonged together. Keyed by the code commit instead, they are one run
 # with two platform rows, which is what the database's (run_id, platform) key already assumes.
 if ($machineSpec -and $resolvedDestDir) {
-    if (-not $CodeCommit) {
-        $CodeCommit = (git -C $RepoRoot rev-parse HEAD).Trim()
-    }
-
     $assetsFile = Join-Path $RepoRoot $selectedConfig.AssetsFile
     $packageVersions = Get-BenchmarkPackageVersions -AssetsPath $assetsFile -Framework $TargetFramework
 
