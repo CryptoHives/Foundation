@@ -261,14 +261,6 @@ foreach ($name in 'SourceDir', 'DestDir') {
     Set-Variable -Name $name -Value ([System.IO.Path]::GetFullPath((Get-Variable -Name $name -ValueOnly)))
 }
 
-# Resolved here rather than just before run.json is written, because the archive is keyed by it:
-# the run directory is named for the commit measured. Ten characters, matching every directory
-# already on the branch.
-if (-not $CodeCommit) {
-    $CodeCommit = (git -C $RepoRoot rev-parse HEAD).Trim()
-}
-$RunId = $CodeCommit.Substring(0, 10)
-
 $benchmarkMappings = $selectedConfig.Files
 
 Write-Host ""
@@ -645,12 +637,9 @@ foreach ($mapping in $benchmarkMappings) {
                 Write-Host "  [WARN] Reports were produced under '$resolvedFramework' but -TargetFramework is '$TargetFramework'. Recording as '$resolvedFramework'; pass the matching -TargetFramework so the package versions come from the right graph." -ForegroundColor Yellow
             }
 
-            # <package>/<code-commit>/<platform>/<framework>. The commit level is what makes two
-            # machines measuring the same build land in one run, and what the importer reads back
-            # as run_id - leaving it out silently produced a directory the importer never sees.
-            $resolvedDestDir = Join-Path (Join-Path (Join-Path $destinationRoot $RunId) $PlatformId) $resolvedFramework
+            $resolvedDestDir = Join-Path (Join-Path $destinationRoot $PlatformId) $resolvedFramework
             Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
-            Write-Host "  [INFO] Recording under $RunId/$PlatformId/$resolvedFramework" -ForegroundColor Cyan
+            Write-Host "  [INFO] Recording under $PlatformId/$resolvedFramework" -ForegroundColor Cyan
         }
 
         if (-not $resolvedDestDir) {
