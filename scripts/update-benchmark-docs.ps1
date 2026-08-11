@@ -247,6 +247,20 @@ if (-not $PSBoundParameters.ContainsKey('DestDir') -or [string]::IsNullOrWhiteSp
     $DestDir = Join-Path $RepoRoot $selectedConfig.DestDir
 }
 
+# A relative path is relative to the repository, not to wherever the shell happens to be sitting.
+# The documented invocation passes -DestDir ../foundation-bench/cryptography, which PowerShell
+# would otherwise resolve against the caller's current directory - from a Visual Studio developer
+# prompt that is C:\Program Files\Microsoft Visual Studio\18, and the run is written there or
+# fails outright. The defaults above are already repo-rooted, so this only affects explicit ones.
+foreach ($name in 'SourceDir', 'DestDir') {
+    $value = Get-Variable -Name $name -ValueOnly
+    if (-not [System.IO.Path]::IsPathRooted($value)) {
+        Set-Variable -Name $name -Value (Join-Path $RepoRoot $value)
+    }
+    # Collapse any '..' so the paths printed below name a real location.
+    Set-Variable -Name $name -Value ([System.IO.Path]::GetFullPath((Get-Variable -Name $name -ValueOnly)))
+}
+
 $benchmarkMappings = $selectedConfig.Files
 
 Write-Host ""
