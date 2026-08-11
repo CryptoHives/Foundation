@@ -44,7 +44,9 @@ public sealed partial class SHA1 : HashAlgorithm
     private readonly byte[] _buffer;
     private readonly uint[] _state;
     private readonly uint[] _w;
+#if NET8_0_OR_GREATER
     private readonly SimdSupport _simdSupport;
+#endif
     private long _bytesProcessed;
     private int _bufferLength;
     private bool _disposed;
@@ -66,7 +68,6 @@ public sealed partial class SHA1 : HashAlgorithm
         _buffer = new byte[BlockSizeBytes];
         _state = new uint[5];
         _w = new uint[80];
-        _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
         _simdSupport = simdSupport & SimdSupport;
 #endif
