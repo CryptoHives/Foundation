@@ -8,7 +8,7 @@ BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Thread
 
 ### Viewing Benchmark Results
 
-Published results live in the interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, primitive family, and operation, plotting every matching implementation as its own line — including a scaling-by-contention view and trend-over-time comparisons. Because `platform` is a free-form value in the database, results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
+Published results live in the interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, primitive family, and operation, plotting every matching implementation as its own line — including a scaling-by-contention view and trend-over-time comparisons. The single-run views — the table and the scaling chart — take any recorded run from the Run picker, not just the newest. Because `platform` is a free-form value in the database, results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
 
 <iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading benchmark trends dashboard"></iframe>
 

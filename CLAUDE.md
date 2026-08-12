@@ -170,5 +170,6 @@ Diagnostics:
 
 - **Nerdbank.GitVersioning** controls package versions (local builds only; CI injects versions separately via `.azurepipelines/set-version.ps1`)
 - CI pipelines: `.azurepipelines/test.yml` (test matrix across Windows/Linux/macOS), `azure-pipelines-nuget.yml` (NuGet packaging on main)
+- `.github/workflows/test-published-packages.yml` runs weekly (and on demand) against the packages published on nuget.org: `scripts/get-published-version.ps1` resolves the newest version all four packages share, the run checks out that version's release tag, and the tests build with `/p:UsePackedNuGetPackages=true` so they consume the published artifacts. The Threading and Cryptography suites need the `STRONG_NAME_KEY` secret (base64 of the signing key) because the published assemblies grant `InternalsVisibleTo` to a signed test assembly; without it the run narrows to Memory
 - `ContinuousIntegrationBuild=true` is set automatically in CI (enables deterministic builds, source linking); disabled when `CollectCoverage=true`
 - Deterministic builds require `CryptoHives.Foundation.Key.snk` to be present for strong-name signing

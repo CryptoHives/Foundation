@@ -12,6 +12,10 @@
   fieldset.mode-toggle label { font-size: 0.9rem; display: flex; align-items: center; gap: 0.3rem; }
   .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0 1.5rem; align-items: flex-start; }
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
+  /* The `hidden` attribute has to beat the rule above: the UA stylesheet's [hidden] { display: none }
+     loses to any author rule that sets display, so a picker hidden from JS stayed on screen — and in
+     the chart modes it read as a control that simply did nothing. */
+  .controls > label[hidden] { display: none; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
   /* A control the current view ignores. Disabled rather than hidden: it keeps the layout
@@ -141,14 +145,13 @@
   </p>
 
   <p class="hint">
-  The chart modes plot one point per recorded run. Hovering a point gives the commit, the value,
-  the .NET runtime it was measured on, and the version of the reference library where one
-  applies. <strong>Trend over time</strong> plots every recorded data size for the current
-  filters; the line-style legend hides individual sizes. <strong>Scaling by size</strong> plots
-  data size on the X axis using each implementation's most recent run, drawing both metrics
-  together: mean time is read from the left axis and allocation from the right, with point shape
-  distinguishing the two. The Metric selector applies to <strong>Trend over time</strong>, and is
-  disabled in the other two views.</p>
+  Hovering a point gives the commit, the value, the .NET runtime it was measured on, and the
+  version of the reference library where one applies. <strong>Trend over time</strong> plots one
+  point per recorded run, for every recorded data size under the current filters; the line-style
+  legend hides individual sizes, and Metric and Date range apply here. <strong>Scaling by
+  size</strong> plots data size on the X axis for a single run — the newest by default, any
+  recorded one through the Run picker — drawing both metrics together: mean time is read from the
+  left axis and allocation from the right, with point shape distinguishing the two.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -497,12 +500,12 @@
     params.set("range", dateRangeSel.value);
     params.set("mode", currentMode());
     params.set("log", logScaleCb.checked ? "1" : "0");
-    // Only in table mode, where which run is on screen is the whole point of the link. In the
-    // chart modes the run set is derived from the filters, so recording it would pin a link to a
-    // run that a later import may push out of view.
-    if (currentMode() === "table") {
+    // Only in the two single-run views, where which run is on screen is the whole point of the
+    // link. Trend derives its run set from the filters, so recording one there would pin a link to
+    // a run that a later import may push out of view. The comparison is table-only.
+    if (currentMode() !== "trend") {
       if (runSel.value) params.set("run", runSel.value);
-      if (compareSel.value) params.set("compare", compareSel.value);
+      if (currentMode() === "table" && compareSel.value) params.set("compare", compareSel.value);
     }
     const newHash = "#" + params.toString();
     if (location.hash !== newHash) history.replaceState(null, "", newHash);
@@ -616,7 +619,9 @@
   //   Table   - shows one recorded run whole, with mean time and allocation as separate columns,
   //             so the metric selector does not apply; the run picker replaces the date range,
   //             and there is no chart to scale logarithmically.
-  //   Scaling - plots both metrics on two axes, so the metric selector is replaced by its legend.
+  //   Scaling - plots both metrics on two axes, so the metric selector is replaced by its legend,
+  //             and draws one run chosen with the run picker, which leaves the date range nothing
+  //             to narrow.
   //   Trend   - reads all of them.
   function syncControlAvailability(mode) {
     const table = mode === "table";
@@ -624,7 +629,9 @@
     setInert(metricPickerEl, table || scaling,
              table ? "The table shows mean time and allocation as separate columns."
                    : "Scaling plots both metrics on two axes - use the metric legend below.");
-    setInert(rangePickerEl, table, "The table shows one run, chosen with the Run picker.");
+    setInert(rangePickerEl, table || scaling,
+             table ? "The table shows one run, chosen with the Run picker."
+                   : "Scaling plots one run, chosen with the Run picker.");
     setInert(logPickerEl, table, "No chart axis to scale in table mode.");
   }
 
@@ -737,42 +744,45 @@
     { key: "allocated_bytes", axis: "yAlloc", point: "rectRot", text: "Allocated" },
   ];
 
+  // One recorded run's size curve, chosen with the Run picker — the newest by default, which is
+  // what this view used to show and all it used to be able to show. Reading a scaling curve means
+  // reading one snapshot: rows stitched together from whichever run happened to be each series'
+  // latest would put a variant measured months ago on the same axes as one measured yesterday and
+  // present the pair as a comparison.
   function renderScalingChart() {
-    const cutoff = dateRangeCutoffIso();
-    const stmt = db.prepare(`
-      SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_date, r.run_id,
-             r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
-      FROM benchmark_results r
-      LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
-                                AND b.framework = r.framework
-      WHERE r.platform = ? AND r.framework = ? AND r.category = ? AND r.family = ?
-        AND r.method = ?
-        ${cutoff ? "AND r.run_date >= ?" : ""}
-      ORDER BY r.variant, r.data_size_bytes, r.run_date
-    `);
-    stmt.bind([platformSel.value, frameworkSel.value, categorySel.value, familySel.value,
-               methodSel.value, ...(cutoff ? [cutoff] : [])]);
-
-    // ORDER BY run_date ASC means the last row seen for a given (variant, size) is the most
-    // recent recorded run within the selected date range — exactly the one we want for a
-    // "current scaling" snapshot (or a rewind, if a shorter range is selected).
-    const latestByVariant = new Map();
-    while (stmt.step()) {
-      const row = stmt.getAsObject();
-      if (!latestByVariant.has(row.variant)) latestByVariant.set(row.variant, new Map());
-      latestByVariant.get(row.variant).set(row.data_size_bytes, {
-        x: row.data_size_bytes,
-        mean_ns: row.mean_ns,
-        allocated_bytes: row.allocated_bytes,
-        size_label: row.data_size_label,
-        commit: row.commit_sha,
-        runtime: row.runtime_version,
-        pkg: packageLabel(row.variant, row.run_id, platformSel.value, frameworkSel.value),
-      });
+    const runValue = runSel.value;
+    const [runId, runPlatform, runFramework] = (runValue || "").split(" ");
+    const rowsByVariant = new Map();
+    if (runValue) {
+      const stmt = db.prepare(`
+        SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_id,
+               r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
+        FROM benchmark_results r
+        LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
+                                  AND b.framework = r.framework
+        WHERE r.run_id = ? AND r.platform = ? AND r.framework = ?
+          AND r.category = ? AND r.family = ? AND r.method = ?
+        ORDER BY r.variant, r.data_size_bytes
+      `);
+      stmt.bind([runId, runPlatform, runFramework, categorySel.value, familySel.value,
+                 methodSel.value]);
+      while (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (!rowsByVariant.has(row.variant)) rowsByVariant.set(row.variant, new Map());
+        rowsByVariant.get(row.variant).set(row.data_size_bytes, {
+          x: row.data_size_bytes,
+          mean_ns: row.mean_ns,
+          allocated_bytes: row.allocated_bytes,
+          size_label: row.data_size_label,
+          commit: row.commit_sha,
+          runtime: row.runtime_version,
+          pkg: packageLabel(row.variant, row.run_id, runPlatform, runFramework),
+        });
+      }
+      stmt.free();
     }
-    stmt.free();
 
-    const variantOrder = Array.from(latestByVariant.keys());
+    const variantOrder = Array.from(rowsByVariant.keys());
     const colorForVariant = colorsForVariants(variantOrder);
 
     // Both measurements at once, on their own axes - the Metric selector is ignored here. Reading
@@ -781,7 +791,7 @@
     // the metric so a single colour still reads as one implementation across both axes.
     const datasets = [];
     for (const variant of variantOrder) {
-      const points = Array.from(latestByVariant.get(variant).values()).sort((a, b) => a.x - b.x);
+      const points = Array.from(rowsByVariant.get(variant).values()).sort((a, b) => a.x - b.x);
       for (const m of METRICS) {
         // An all-null metric contributes nothing but a legend row and an empty axis.
         if (points.every((p) => p[m.key] == null)) continue;
@@ -826,9 +836,11 @@
     renderDashLegend([]); // one line per variant here — no per-size distinction to show
     renderMetricLegend(METRICS.map((m) => ({ metric: m.key, text: m.text })));
 
+    const chosen = Array.from(runSel.options).find((o) => o.value === runValue);
     const visibleCount = datasets.filter((d) => !d.hidden).length;
     statusEl.textContent = datasets.length
-      ? `${visibleCount} of ${datasets.length} variant(s) shown, most recent run per size`
+      ? `${visibleCount} of ${datasets.length} series shown, from ` +
+        (chosen ? chosen.textContent.trim() : "the selected run")
       : "No data for this selection yet.";
   }
 
@@ -883,7 +895,13 @@
   // Every (run, platform) carrying rows for the current selection, newest first. Both pickers are
   // filled from this, which is what makes "the same commit on two machines" fall out for free:
   // those share a run_id and differ only in platform.
-  function availableRuns() {
+  //
+  // Scaling mode passes scoped=true and gets only the platform and framework already selected
+  // above: there the cascade decides which machine is on screen and the run picker only decides
+  // when, so offering another machine's runs would put the two selectors in disagreement. Table
+  // mode deliberately offers all of them — two machines side by side is what its compare column
+  // is for.
+  function availableRuns(scoped) {
     const stmt = db.prepare(
       "SELECT DISTINCT r.run_id, r.platform, r.framework, r.run_date, r.commit_sha, " +
       "       b.runtime_version " +
@@ -891,9 +909,11 @@
       "LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform " +
       "                          AND b.framework = r.framework " +
       "WHERE r.category = ? AND r.family = ? AND r.method = ? " +
+      (scoped ? "  AND r.platform = ? AND r.framework = ? " : "") +
       "ORDER BY r.run_date DESC, r.platform, r.framework"
     );
-    stmt.bind([categorySel.value, familySel.value, methodSel.value]);
+    stmt.bind([categorySel.value, familySel.value, methodSel.value,
+               ...(scoped ? [platformSel.value, frameworkSel.value] : [])]);
     const runs = [];
     while (stmt.step()) runs.push(stmt.getAsObject());
     stmt.free();
@@ -910,8 +930,8 @@
     return date + " · " + run.platform + fw + " · " + sha + rt;
   }
 
-  function refreshRunPickers() {
-    const runs = availableRuns();
+  function refreshRunPickers(mode) {
+    const runs = availableRuns(mode === "scaling");
     const previousRun = runSel.value;
     const previousCompare = compareSel.value;
 
@@ -923,8 +943,15 @@
       runSel.appendChild(opt);
     }
     // Default to the newest run on the platform already selected above, so switching into table
-    // mode shows the data the charts were showing rather than jumping to another machine.
-    const preferred = runs.find((r) => r.platform === platformSel.value
+    // mode shows the data the charts were showing rather than jumping to another machine. Ahead of
+    // that, keep the same commit if the new platform also recorded it: switching platform on a
+    // pinned run asks "and what does this commit do over there", which is the comparison the
+    // archive keys runs by commit to make possible - not "show me something newer".
+    const previousRunId = previousRun.split(" ")[0];
+    const preferred = runs.find((r) => r.run_id === previousRunId
+                                   && r.platform === platformSel.value
+                                   && r.framework === frameworkSel.value)
+                   || runs.find((r) => r.platform === platformSel.value
                                    && r.framework === frameworkSel.value)
                    || runs.find((r) => r.platform === platformSel.value)
                    || runs[0];
@@ -1133,6 +1160,7 @@
   function renderChart() {
     const mode = currentMode();
     const isTable = mode === "table";
+    const isScaling = mode === "scaling";
 
     chartContainerEl.hidden = isTable;
     legendColorsEl.hidden = isTable;
@@ -1141,13 +1169,15 @@
     if (isTable) legendHintEl.hidden = true;   // otherwise left to renderColorLegend below
     tableContainerEl.hidden = !isTable;
     tableNoteEl.hidden = !isTable;
-    runPickerEl.hidden = !isTable;
+    // Both single-run views need the run picker; only the table can hold two runs at once.
+    runPickerEl.hidden = !(isTable || isScaling);
     comparePickerEl.hidden = !isTable;
 
     if (isTable) {
-      refreshRunPickers();
+      refreshRunPickers(mode);
       renderTableView();
-    } else if (mode === "scaling") {
+    } else if (isScaling) {
+      refreshRunPickers(mode);
       renderScalingChart();
     } else {
       renderTrendChart();
@@ -1201,9 +1231,10 @@
     dateRangeSel.onchange = renderChart;
     logScaleCb.onchange = renderChart;
     modeRadios.forEach((r) => (r.onchange = renderChart));
-    // Changing the run also rebuilds the comparison list, since the shown run must not appear as
-    // its own comparison.
-    runSel.onchange = () => { refreshRunPickers(); renderTableView(); syncUrlHash(); };
+    // Straight through renderChart so the run picker drives whichever single-run view is showing —
+    // the table or the scaling chart. It rebuilds the comparison list on the way (the shown run
+    // must not appear as its own comparison) and keeps the just-chosen run selected.
+    runSel.onchange = renderChart;
     compareSel.onchange = () => { renderTableView(); syncUrlHash(); };
     copyLinkBtn.onclick = async () => {
       try {
