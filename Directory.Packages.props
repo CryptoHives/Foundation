@@ -7,14 +7,14 @@
     Referenced by src/*.csproj: real dependencies of the published NuGet packages.
   -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
-    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.11" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.11" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
@@ -44,9 +44,9 @@
     <PackageVersion Include="NeoSmart.AsyncLock" Version="3.3.0-preview1" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="Nito.AsyncEx" Version="5.1.2" />
-    <PackageVersion Include="Nuget.Packaging" Version="7.6.0" />
-    <PackageVersion Include="Nuget.Protocol" Version="7.6.0" />
-    <PackageVersion Include="Nuget.Resolver" Version="7.6.0" />
+    <PackageVersion Include="Nuget.Packaging" Version="7.9.0" />
+    <PackageVersion Include="Nuget.Protocol" Version="7.9.0" />
+    <PackageVersion Include="Nuget.Resolver" Version="7.9.0" />
     <PackageVersion Include="NUnit" Version="4.6.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.14.0" />
     <PackageVersion Include="NUnit.Console" Version="3.22.0" />
