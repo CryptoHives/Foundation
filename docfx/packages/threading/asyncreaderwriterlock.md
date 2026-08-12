@@ -1,4 +1,4 @@
-﻿# AsyncReaderWriterLock
+# AsyncReaderWriterLock
 
 A pooled, allocation-free async reader-writer lock that supports multiple concurrent readers or a single exclusive writer using ValueTask-based waiters with cancellation tokens.
 
@@ -194,6 +194,8 @@ Asynchronously acquires a writer lock, or throws `TimeoutException` if the timeo
 | `TimeSpan.Zero` and contested | No (immediate exception) |
 | Finite positive timeout | Yes — one instance, disposed on await |
 
+An already-cancelled token is checked before the zero timeout, on every acquisition method here and on `UpgradeToWriterLockAsync`: passing both a cancelled token and `TimeSpan.Zero` throws `OperationCanceledException` carrying that token, not a `TimeoutException`. This matches the other primitives in the package.
+
 ### Allocation Behavior
 
 Immediate lock acquisitions via the fast path are completely allocation-free using atomic operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<Releaser>` instances are reused to minimize allocation pressure across repeated lock operations.
@@ -334,6 +336,7 @@ catch (TimeoutException)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

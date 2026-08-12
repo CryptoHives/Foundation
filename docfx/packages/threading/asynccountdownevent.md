@@ -1,4 +1,4 @@
-﻿# AsyncCountdownEvent
+# AsyncCountdownEvent
 
 A pooled, allocation-free async countdown event that signals when a count reaches zero using ValueTask-based waiters.
 
@@ -252,6 +252,7 @@ catch (TimeoutException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
 - [Benchmarks](benchmarks.md) - Benchmark description

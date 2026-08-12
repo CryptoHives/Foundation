@@ -1,4 +1,4 @@
-﻿# AsyncSemaphore
+# AsyncSemaphore
 
 A pooled, allocation-free async semaphore that limits concurrent access using ValueTask-based waiters.
 
@@ -221,6 +221,7 @@ catch (TimeoutException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [Benchmarks](benchmarks.md) - Benchmark description
