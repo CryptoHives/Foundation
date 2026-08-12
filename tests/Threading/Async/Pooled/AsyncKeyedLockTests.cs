@@ -554,6 +554,9 @@ public class AsyncKeyedLockTests
         }
     }
 
+#if !NETFRAMEWORK
+    // GC.GetAllocatedBytesForCurrentThread does not exist on .NET Framework, so the allocation
+    // assertions below are measured on the .NET targets only.
     [Test]
     public async Task RepeatedLockOnCachedKeyDoesNotAllocate()
     {
@@ -647,6 +650,7 @@ public class AsyncKeyedLockTests
             using (await handles[i].ConfigureAwait(false)) { }
         }
     }
+#endif
 
     [Test]
     public async Task TimedOutEntryIsNotReusedBeforeItsWaiterIsReset()
@@ -907,6 +911,7 @@ public class AsyncKeyedLockTests
         }
     }
 
+#if !NETFRAMEWORK
     [Test]
     public async Task QueueBeyondMaxRetainedWaitersAllocates()
     {
@@ -972,6 +977,7 @@ public class AsyncKeyedLockTests
 
         return (double)allocated / waiters;
     }
+#endif
 
     private static TaskCompletionSource<TResult> CreateAsyncTaskSource<TResult>()
     {
