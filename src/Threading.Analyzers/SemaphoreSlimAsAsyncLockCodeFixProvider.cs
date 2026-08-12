@@ -142,13 +142,15 @@ public sealed class SemaphoreSlimAsAsyncLockCodeFixProvider : CodeFixProvider
             return root;
         }
 
-        // The annotation is what makes the elastic trivia elastic in practice: CodeAction's post
-        // processing formats only annotated nodes, so without it the trivia is emitted with the
-        // literal "\r\n" its name carries, regardless of what the rest of the document uses. That
-        // matched on Windows and inserted a lone CRLF line into an LF document everywhere else.
+        // Two things are needed for the formatter to supply the document's own line ending here, and
+        // neither is sufficient alone. The annotation, because CodeAction's post processing formats
+        // annotated nodes only. And ElasticLineFeed rather than ElasticCarriageReturnLineFeed,
+        // because the formatter leaves a "\r\n" it is asked to shorten to "\n" alone - so the CRLF
+        // spelling is elastic only in the direction that happens to match Windows, and inserts a
+        // lone CRLF line into an LF document. "\n" is rewritten in both directions.
         var newUsing = SyntaxFactory.UsingDirective(
                 SyntaxFactory.ParseName(" " + namespaceName))
-            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed)
+            .WithTrailingTrivia(SyntaxFactory.ElasticLineFeed)
             .WithAdditionalAnnotations(Formatter.Annotation);
 
         // Insert after the last existing using directive, or at the top of the file.
