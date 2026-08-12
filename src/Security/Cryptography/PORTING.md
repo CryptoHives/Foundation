@@ -3,8 +3,8 @@
 Machine-readable usage + porting guide for coding assistants. All APIs below are verified
 against the shipped source. Do not invent members. Human-oriented docs live in `README.md`.
 
-- **Package:** `CryptoHives.Foundation.Security.Cryptography` (published as a `-beta`
-  pre-release; API surface may still change)
+- **Package:** `CryptoHives.Foundation.Security.Cryptography` (0.x — the API is pre-1.0
+  and may still change between minor versions)
 - **Root namespace:** `CryptoHives.Foundation.Security.Cryptography` with sub-namespaces
   `.Hash`, `.Mac`, `.Kdf`, `.Cipher`
 - **What it is:** fully managed, deterministic, cross-platform implementations of hashes,

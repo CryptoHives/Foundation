@@ -261,7 +261,14 @@ public static class HashAlgorithmRegistry
     private static void AddSha1(List<HashImplementation> list)
     {
         list.Add(new HashImplementation("SHA-1", "OS", 160, SHA1.Create, Source.OS));
-        list.Add(new HashImplementation("SHA-1", "CryptoHives-Scalar", 160, CH.SHA1.Create, Source.Managed));
+        var sha1Simd = CH.SHA1.SimdSupport;
+        if ((sha1Simd & CHRoot.SimdSupport.ArmSha1) != 0)
+        {
+            list.Add(new("SHA-1", "ArmSha1", 160,
+                () => CH.SHA1.Create(CHRoot.SimdSupport.ArmSha1), Source.Simd));
+        }
+        list.Add(new HashImplementation("SHA-1", "CryptoHives-Scalar", 160,
+            () => CH.SHA1.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-1", "BouncyCastle", 160,
             () => new BouncyCastleHashAdapter(new BC.Sha1Digest()), Source.BouncyCastle));
     }

@@ -651,14 +651,14 @@ public sealed class AsyncReaderWriterLock : IResettable
                 }
             }
 
-            if (timeout == TimeSpan.Zero)
-            {
-                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-            }
-
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (!_localReaderWaiter.TryGetValueTaskSource(out waiter))
@@ -783,14 +783,14 @@ public sealed class AsyncReaderWriterLock : IResettable
                 }
             }
 
-            if (timeout == TimeSpan.Zero)
-            {
-                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-            }
-
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (!_localUpgradeableReaderWaiter.TryGetValueTaskSource(out waiter))
@@ -903,14 +903,14 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Writer));
             }
 
-            if (timeout == TimeSpan.Zero)
-            {
-                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-            }
-
             if (cancellationToken.IsCancellationRequested)
             {
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
+            }
+
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
             }
 
             if (!_localWriterWaiter.TryGetValueTaskSource(out waiter))

@@ -8,7 +8,7 @@ BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Thread
 
 ### Viewing Benchmark Results
 
-Published results live in the interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, primitive family, and operation, plotting every matching implementation as its own line — including a scaling-by-contention view and trend-over-time comparisons. Because `platform` is a free-form value in the database, results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
+Published results live in the interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, primitive family, and operation, plotting every matching implementation as its own line — including a scaling-by-contention view and trend-over-time comparisons. The single-run views — the table and the scaling chart — take any recorded run from the Run picker, not just the newest. Because `platform` is a free-form value in the database, results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
 
 <iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading benchmark trends dashboard"></iframe>
 
@@ -19,13 +19,15 @@ Published results live in the interactive benchmark trends dashboard below rathe
 Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
 
 ```
-threading/<code-commit>/<platform>/
-    run.json          what the numbers measure
+threading/<code-commit>/<platform>/<framework>/
+    run.json          what the numbers measure, and against which library versions
     machine-spec.md   the machine and runtime they were measured on
     <scenario>.md     one report per benchmark class
 ```
 
 A run is keyed by the commit its binaries were built from, not by the commit that records it. Two machines measuring the same build therefore land in one run directory as two platform directories, which is what makes a cross-platform comparison possible at all.
+
+The framework level below that does the same job for target frameworks: the same commit on the same machine under net10.0 and net8.0 is two runs, so the Table view can put them side by side exactly as it does two platforms. Pass `-Framework` to `run-benchmarks.ps1` and the matching `-TargetFramework` to `update-benchmark-docs.ps1`. A single run covering several runtimes at once (`-Runtimes "net8.0, net10.0"`) works too and needs neither: BenchmarkDotNet emits a `Runtime` column when the runtime varies, and each row is recorded against its own framework.
 
 Run the benchmarks locally first (see below), then write the reports into a worktree of that branch:
 
@@ -36,7 +38,9 @@ git worktree add ../foundation-bench benchmarks
 
 `update-benchmark-docs.ps1` derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass `-CodeCommit` when recording a run after the fact, or when `HEAD` has moved on since the run. It never commits or pushes: review the result and commit in that worktree when the run is worth keeping.
 
-Pushing the branch republishes the site, because the dashboard database is generated at build time rather than committed.
+It also records the version of every third-party library the run measured against, read from the benchmark project's resolved NuGet graph. The dashboard shows that version in each point's tooltip, and marks any compared row whose library differs between the two runs — a series can step because the library it measures shipped a release, independently of any change here. Pass `-TargetFramework` if the benchmarks did not run on the default `net10.0`.
+
+Pushing the branch does not republish the site on its own. The dashboard database is generated at build time rather than committed, so a new run becomes visible only when the docs workflow runs again — and a push to `benchmarks` cannot start it, because GitHub only runs workflows that exist in the pushed branch and that orphan branch carries no `.github/`. Publish it deliberately with `gh workflow run docfx.yml`, or let the next push to `main` pick it up.
 
 ### Rebuilding the dashboard database
 

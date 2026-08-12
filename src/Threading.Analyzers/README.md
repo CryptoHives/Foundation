@@ -41,7 +41,7 @@ Or as a development-only dependency (no runtime reference):
 | [CHT007](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT007.html) | Info | `AsTask()` stored before signaling (causes a performance hit) |
 | [CHT008](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT008.html) | Warning | `ValueTask` not awaited or consumed |
 | [CHT009](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT009.html) | Info | `SemaphoreSlim(1, 1)` used as an async lock; consider `AsyncLock` instead |
-| [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Error | `ValueTask` captured in a lambda/closure |
+| [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Warning | `ValueTask` captured in a lambda/closure |
 | [CHT011](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT011.html) | Warning | `async` method only forwards an awaited `ValueTask` |
 | [CHT012](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT012.html) | Info | `async` `ValueTask` wrapper boxes a state machine when it suspends |
 
