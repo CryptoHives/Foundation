@@ -12,8 +12,17 @@
   fieldset.mode-toggle label { font-size: 0.9rem; display: flex; align-items: center; gap: 0.3rem; }
   .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0 1.5rem; align-items: flex-start; }
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
+  /* The `hidden` attribute has to beat the rule above: the UA stylesheet's [hidden] { display: none }
+     loses to any author rule that sets display, so a picker hidden from JS stayed on screen — and in
+     the chart modes it read as a control that simply did nothing. */
+  .controls > label[hidden] { display: none; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  /* A control the current view ignores. Disabled rather than hidden: it keeps the layout
+     stable while switching modes, and keeps the setting visible so you can see what it will be
+     when you switch back. The title attribute says why on hover. */
+  .controls > label.inert { opacity: 0.4; }
+  .controls > label.inert select, .controls > label.inert input { cursor: not-allowed; }
   .legend-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-bottom: 0.4rem; }
   .legend-row:empty { margin-bottom: 0; }
   .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: #333; cursor: pointer; user-select: none; }
@@ -22,29 +31,55 @@
   .legend-hint { font-size: 0.78rem; color: #888; margin: -0.2rem 0 0.5rem; }
   #chart-container { position: relative; height: 480px; }
   .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
+  #table-container { overflow-x: auto; max-height: 70vh; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 0.3rem 0.55rem; text-align: left; white-space: nowrap; }
+  table.data-table th { background: #f5f5f5; position: sticky; top: 0; z-index: 1; }
+  table.data-table td.numeric, table.data-table th.numeric { text-align: right; }
+  table.data-table tr.group-start td { border-top: 2px solid #bbb; }
+  /* Ours get a wash of the brand amber so they stand out from third parties at a glance; the
+     baseline is the same hue a shade deeper, so the two are related but never confusable. */
+  table.data-table tr.ours td { background: #fffcf4; }
+  table.data-table tr.baseline td { background: #ffeecc; font-weight: 600; }
+  table.data-table tr.experimental td { color: #6b5b3e; }
+  table.data-table td .flag { font-size: 0.72rem; color: #92400e; border: 1px solid #e6c893;
+    border-radius: 3px; padding: 0 0.25rem; margin-left: 0.35rem; white-space: nowrap; }
+  table.data-table td.worse { color: #b91c1c; }
+  /* A delta whose reference implementation also changed version between the two runs. Not an
+     error state - the number is real - so it is marked rather than coloured. */
+  table.data-table td .pkg-changed { color: #92400e; cursor: help; margin-left: 0.3rem; }
+  table.data-table td.better { color: #15803d; }
+  .table-note { font-size: 0.8rem; color: #666; margin: 0 0 0.6rem; }
 </style>
 </head>
 <body>
-<h1>CryptoHives Benchmark Trends</h1>
+<h1>CryptoHives Cryptography Benchmark Trends</h1>
 <p>
-  Benchmark history for <code>CryptoHives.Foundation.Security.Cryptography</code>'s hash, cipher,
-  and MAC implementations — how each one performs against reference libraries (the OS,
-  BouncyCastle, and others) across platforms and data sizes, and how that's changed over time as
-  the code evolves. Pick a platform, category, algorithm family, and method below; every
-  implementation is plotted as its own line so they're directly comparable at a glance. Runs
-  entirely in your browser (no server, no external database) — see the hint below the chart for
-  the two view modes.
+  Benchmark history for the hash, cipher and MAC implementations in
+  <code>CryptoHives.Foundation.Security.Cryptography</code>, measured against reference
+  implementations (the operating system's own, BouncyCastle, and others) across platforms, target
+  frameworks and data sizes.
+</p>
+<p>
+  Select a platform, category, algorithm family and method; each implementation is drawn as its
+  own series, including the separate SIMD paths — AVX2, AVX-512, SSSE3, NEON and the portable
+  scalar fallback — where an algorithm provides them. The page runs entirely in the browser,
+  with no server and no external database.
 </p>
 
 <fieldset class="mode-toggle">
   <legend>View</legend>
-  <label><input type="radio" name="mode" value="trend" checked> Trend over time</label>
+  <label><input type="radio" name="mode" value="table" checked> Table (one run)</label>
+  <label><input type="radio" name="mode" value="trend"> Trend over time</label>
   <label><input type="radio" name="mode" value="scaling"> Scaling by size</label>
 </fieldset>
 
 <div class="controls">
   <label>Platform
     <select id="platform"></select>
+  </label>
+  <label id="framework-picker" hidden>Framework
+    <select id="framework"></select>
   </label>
   <label>Category
     <select id="category"></select>
@@ -55,20 +90,26 @@
   <label>Method
     <select id="method"></select>
   </label>
-  <label>Metric
+  <label id="metric-picker">Metric
     <select id="metric">
       <option value="mean_ns">Mean time (ns)</option>
       <option value="allocated_bytes">Allocated bytes</option>
     </select>
   </label>
-  <label>Date range
+  <label id="run-picker" hidden>Run
+    <select id="run"></select>
+  </label>
+  <label id="compare-picker" hidden>Compare with
+    <select id="compare"></select>
+  </label>
+  <label id="range-picker">Date range
     <select id="date-range">
       <option value="all">All time</option>
       <option value="30">Last 30 days</option>
       <option value="90">Last 90 days</option>
     </select>
   </label>
-  <label style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
+  <label id="log-picker" style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
     <input type="checkbox" id="log-scale">
     Logarithmic Y axis
   </label>
@@ -79,20 +120,38 @@
 </div>
 
 <div id="status">Loading database…</div>
-<p id="legend-hint" class="legend-hint" hidden>Click a color or line style below to hide/show it.</p>
+<p id="legend-hint" class="legend-hint" hidden>Click a color, line style or point shape to hide or show that series.</p>
 <div id="legend-colors" class="legend-row"></div>
 <div id="legend-dashes" class="legend-row"></div>
+<div id="legend-metrics" class="legend-row"></div>
 <div id="chart-container"><canvas id="chart"></canvas></div>
+<p id="table-note" class="table-note" hidden></p>
+<div id="table-container" hidden><table class="data-table" id="data-table">
+<thead><tr id="data-table-head"></tr></thead><tbody id="data-table-body"></tbody></table></div>
 
 <p class="hint">
-  Data source: <code>benchmark-history.sqlite</code>, appended to by
-  <code>scripts/cryptography-benchmark-trends/record-benchmark-run.ps1</code> whenever someone decides a local
-  run is worth keeping. Each point is one recorded run; hover a point for the exact commit and value.
-  <strong>Trend over time</strong> plots every recorded data size for the current filters at once
-  (use the line-style legend below to hide sizes you don't want). <strong>Scaling by size</strong>
-  plots data size on the X axis using each implementation's most recent run, showing how it scales
-  across sizes at a glance.
-</p>
+  Data source: <code>benchmark-history.sqlite</code>, generated at build time by
+  <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
+  the <code>benchmarks</code> branch.
+  </p>
+
+  <p class="hint">
+  <strong>Table (one run)</strong> reproduces a single run's report, grouped by data size. Rows
+  for this library's own implementations are shaded, and the baseline row more deeply; Ratio is
+  each row's mean over that baseline. Rows marked <em>not in package</em> are compiled in for
+  measurement only and are excluded from the published NuGet package. Any recorded run can be
+  shown, and a second one compared against it — two dates on one machine, or one commit on two
+  machines, which the run list marks as <em>(same commit)</em>.
+  </p>
+
+  <p class="hint">
+  Hovering a point gives the commit, the value, the .NET runtime it was measured on, and the
+  version of the reference library where one applies. <strong>Trend over time</strong> plots one
+  point per recorded run, for every recorded data size under the current filters; the line-style
+  legend hides individual sizes, and Metric and Date range apply here. <strong>Scaling by
+  size</strong> plots data size on the X axis for a single run — the newest by default, any
+  recorded one through the Run picker — drawing both metrics together: mean time is read from the
+  left axis and allocation from the right, with point shape distinguishing the two.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -101,6 +160,13 @@
 (async function () {
   const statusEl = document.getElementById("status");
   const platformSel = document.getElementById("platform");
+  const frameworkSel = document.getElementById("framework");
+  const frameworkPickerEl = document.getElementById("framework-picker");
+  // Whether the archive holds more than one target framework at all. Until a second one is
+  // recorded the picker would be a single fixed option and the run labels would repeat the same
+  // word on every line, so both stay out of the way rather than advertising a dimension the data
+  // does not yet have.
+  let hasMultipleFrameworks = false;
   const categorySel = document.getElementById("category");
   const familySel = document.getElementById("family");
   const methodSel = document.getElementById("method");
@@ -108,13 +174,179 @@
   const logScaleCb = document.getElementById("log-scale");
   const legendColorsEl = document.getElementById("legend-colors");
   const legendDashesEl = document.getElementById("legend-dashes");
+  const legendMetricsEl = document.getElementById("legend-metrics");
+  const metricPickerEl = document.getElementById("metric-picker");
+  const rangePickerEl = document.getElementById("range-picker");
+  const logPickerEl = document.getElementById("log-picker");
   const copyLinkBtn = document.getElementById("copy-link");
   const copyLinkStatusEl = document.getElementById("copy-link-status");
   const dateRangeSel = document.getElementById("date-range");
   const legendHintEl = document.getElementById("legend-hint");
   const modeRadios = document.querySelectorAll('input[name="mode"]');
+  const runSel = document.getElementById("run");
+  const compareSel = document.getElementById("compare");
+  const runPickerEl = document.getElementById("run-picker");
+  const comparePickerEl = document.getElementById("compare-picker");
+  const chartContainerEl = document.getElementById("chart-container");
+  const tableContainerEl = document.getElementById("table-container");
+  const tableNoteEl = document.getElementById("table-note");
+  const dataTableHeadEl = document.getElementById("data-table-head");
+  const dataTableBodyEl = document.getElementById("data-table-body");
 
-  const PALETTE = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
+  const PALETTE = [
+    "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#0891b2", "#db2777", "#65a30d",
+    "#0d9488", "#4f46e5", "#be123c", "#78716c", "#059669", "#0369a1",
+  ];
+
+  // This library's own implementations are pinned to the CryptoHives amber (#FFB643, sampled from
+  // the logo) rather than taking whatever the rotating palette hands them, so "ours" is the same
+  // colour on every chart instead of moving as the variant list changes between families.
+  //
+  // A family can expose several of ours at once - a scalar path plus AVX2, AVX-512, NEON and so on
+  // - so they walk a ramp around the brand colour: recognisably the same family, still told apart.
+  // The plain "CryptoHives" name, and then the portable scalar path, take the brand colour itself,
+  // since those are the ones a reader compares against. Amber tones were dropped from PALETTE above
+  // so no third-party variant can land near them.
+  const BRAND_AMBER = "#FFB643";
+  const OURS_RAMP = [
+    BRAND_AMBER, "#c2410c", "#a16207", "#f59e0b", "#7c2d12", "#fcd34d", "#ea580c", "#92400e",
+  ];
+
+  // Ours draw from their own ramp and everything else from PALETTE, counted separately so a
+  // family exposing many of our SIMD paths does not push the third-party variants along it.
+  function colorsForVariants(variantOrder) {
+    const ours = variantOrder.filter(isOurs).slice().sort((a, b) => oursRank(a) - oursRank(b) || a.localeCompare(b));
+    let otherIndex = 0;
+    return new Map(variantOrder.map((v) => {
+      if (isOurs(v)) return [v, OURS_RAMP[ours.indexOf(v) % OURS_RAMP.length]];
+      return [v, PALETTE[otherIndex++ % PALETTE.length]];
+    }));
+  }
+
+  // Which NuGet package supplies each reference implementation, so a step in that line can be
+  // attributed to the reference shipping a release rather than to a change in this repository.
+  // BouncyCastle went 2.6.2 -> 2.7.0 in #210, which no recorded run could previously show.
+  //
+  // Declared here rather than recorded, because nothing in a BenchmarkDotNet report names the
+  // package behind a display label. Ids must match Directory.Packages.props exactly.
+  //
+  // The three BLAKE3 entries are three genuinely different packages, not three builds of one:
+  // "Blake3" is xoofx's binding (aliased Blake3Managed in the csproj), "Blake3.Native" carries
+  // its native assets, and "Blake3.Managed" is Dissimilis's independent pure-C# implementation.
+  //
+  // No entry for CryptoHives-*, for "OS" (the platform's own System.Security.Cryptography, which
+  // moves with the runtime that benchmark_runs records) or for "ArmSha256" (an intrinsics probe
+  // in tests/, not a package).
+  const VARIANT_PACKAGES = {
+    "Blake2Fast": "SauceControl.Blake2Fast",
+    "Blake3Dissimilis": "Blake3.Managed",
+    "Blake3Managed": "Blake3",
+    "Blake3Native": "Blake3.Native",
+    "BouncyCastle": "BouncyCastle.Cryptography",
+    "HashifyNET": "HashifyNET",
+    "Konscious": "Konscious.Security.Cryptography.Blake2",
+    "NaCl.Core": "NaCl.Core",
+    "OpenGost": "OpenGost.Security.Cryptography",
+  };
+
+  // (run_id + platform) -> { packageId: version }, loaded once at startup. A few hundred rows
+  // across the whole archive, so joining it per query would cost more than it saves.
+  let runPackages = new Map();
+  let runPackagesSource = new Map();
+
+  function loadRunPackages() {
+    runPackages = new Map();
+    runPackagesSource = new Map();
+    let stmt;
+    try {
+      stmt = db.prepare("SELECT run_id, platform, framework, package_id, version, source " +
+                        "FROM benchmark_run_packages");
+    } catch {
+      return;   // database built before the table existed; the UI just shows no versions
+    }
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      const key = runKey(row.run_id, row.platform, row.framework);
+      if (!runPackages.has(key)) runPackages.set(key, {});
+      runPackages.get(key)[row.package_id] = row.version;
+      if (row.source) runPackagesSource.set(key, row.source);
+    }
+    stmt.free();
+  }
+
+  // "BouncyCastle.Cryptography 2.7.0" for a variant backed by a package in that run, else null.
+  function packageLabel(variant, runId, platform, framework) {
+    const packageId = VARIANT_PACKAGES[variant];
+    if (!packageId) return null;
+    const version = runPackages.get(runKey(runId, platform, framework))?.[packageId];
+    return version ? `${packageId} ${version}` : null;
+  }
+
+  // Packages whose version differs between the two runs being compared. This is the whole point
+  // of recording them: a reference implementation's Δ Mean is only evidence about our code if
+  // that reference was the same build in both runs, and several were not.
+  function changedPackages(keyA, keyB) {
+    const a = runPackages.get(keyA) || {};
+    const b = runPackages.get(keyB) || {};
+    const changed = new Map();
+    for (const id of Object.keys(a)) {
+      if (b[id] && b[id] !== a[id]) changed.set(id, [b[id], a[id]]);   // [compared, chosen]
+    }
+    return changed;
+  }
+
+  // The runtime a point was measured on belongs next to the commit: the recorded runs span .NET
+  // 10.0.2 to 10.0.10 across three machines, so a step in a line cannot be read as a code change
+  // without knowing whether the floor moved under it. Runs recorded before the environment table
+  // existed simply omit it rather than showing a blank.
+  function pointFooter(raw) {
+    const parts = [`commit ${raw.commit?.slice(0, 8) ?? "?"}`];
+    if (raw.runtime) parts.push(`.NET ${raw.runtime}`);
+    // Only reference-implementation series carry one; ours is pinned by the commit already here.
+    if (raw.pkg) parts.push(raw.pkg);
+    return parts.join(" · ");
+  }
+
+  // Implementations compiled in for measurement but excluded from the published packages.
+  //
+  // common.props defines EXPERIMENTAL unless the packaging build passes
+  // /p:EnableExperimentalAlgorithms=false, so these paths exist in a local benchmark run and not in
+  // the NuGet output. Nothing in the recorded data marks them, so the list is declared here and
+  // derived from the `#if EXPERIMENTAL` guards in src/Security/Cryptography/Hash/.
+  //
+  // It has to be per (family, variant) rather than per variant: BLAKE2b's AVX2 path ships while
+  // BLAKE2s's does not, and the Keccak core's AVX2 and AVX-512 permutes are excluded with the
+  // comment "turned out to be slower than scalar keccak" while its Arm64 scalar path ships.
+  //
+  // Source of each entry:
+  //   Keccak core   KeccakCoreState.cs:147   (Avx512F, Avx2 - dispatch behind the guard)
+  //   BLAKE2b       Blake2bState.Avx2.cs:62  (Neon only; Avx2 is detected outside the guard)
+  //   BLAKE2s       Blake2s.Simd.cs:48       (Avx2, Sse2, Neon; Ssse3 is outside the guard)
+  //   BLAKE3        no guards - every path ships
+  const KECCAK_FAMILIES = /^(SHA3-|SHAKE|cSHAKE|Keccak-|KMAC-|KT\d|TurboSHAKE|ParallelHash)/;
+
+  function experimentalVariants(family) {
+    if (KECCAK_FAMILIES.test(family)) return ["CryptoHives-AVX2", "CryptoHives-AVX512F"];
+    if (family.startsWith("BLAKE2b")) return ["CryptoHives-Neon"];
+    if (family.startsWith("BLAKE2s")) return ["CryptoHives-AVX2", "CryptoHives-Sse2", "CryptoHives-Neon"];
+    return [];
+  }
+
+  function isExperimental(family, variant) {
+    return experimentalVariants(family).includes(variant);
+  }
+
+  function isOurs(variant) {
+    return variant === "CryptoHives" || variant.startsWith("CryptoHives-");
+  }
+
+  // Order within the ramp: the plain name first, then the scalar path, then the rest as sorted.
+  // Deliberately not "whichever is fastest" - a baseline that moves with the data is not a baseline.
+  function oursRank(variant) {
+    if (variant === "CryptoHives") return 0;
+    if (variant === "CryptoHives-Scalar") return 1;
+    return 2;
+  }
 
   // Custom legends replace Chart.js's built-in one-entry-per-dataset legend, which would
   // otherwise show one row per (variant, size) combination in multi-size trend mode — e.g.
@@ -122,6 +354,7 @@
   // pattern (= size) into two small legends cuts that down to variants + sizes rows instead of
   // variants × sizes. Both stay clickable to toggle visibility, same as Chart.js's default.
   const hiddenVariants = new Set();
+  const hiddenMetrics = new Set();
   const hiddenSizes = new Set();
 
   function dashSwatchSvg(dash) {
@@ -139,12 +372,43 @@
       swatch.className = "legend-swatch";
       swatch.style.background = color;
       item.append(swatch, document.createTextNode(variant));
+      // The charts share the legend across whichever family is selected, so an experimental path
+      // is marked here too rather than only in the table - otherwise a line that will never appear
+      // in a released package looks like one that will.
+      if (isExperimental(familySel.value, variant)) {
+        const flag = document.createElement("span");
+        flag.className = "flag";
+        flag.textContent = "not in package";
+        flag.title = "Compiled in for measurement but excluded from the published NuGet package: " +
+                     "this path is guarded by #if EXPERIMENTAL.";
+        item.appendChild(flag);
+      }
       item.onclick = () => {
         if (hiddenVariants.has(variant)) hiddenVariants.delete(variant);
         else hiddenVariants.add(variant);
         renderChart();
       };
       legendColorsEl.appendChild(item);
+    }
+  }
+
+  // Sibling of the colour and dash legends: colour picks the implementation, dash the data size,
+  // and this the measurement. Scaling mode plots time and allocation together on two axes, so
+  // without a way to switch one off the two families of lines sit on top of each other.
+  function renderMetricLegend(entries) {
+    legendMetricsEl.innerHTML = "";
+    for (const { metric, text } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenMetrics.has(metric) ? " disabled" : "");
+      item.innerHTML = `<svg width="16" height="12" style="flex:none"><circle cx="8" cy="6" r="${metric === "mean_ns" ? 4 : 0}" fill="#555"/>` +
+        (metric === "mean_ns" ? "" : `<rect x="4" y="2" width="8" height="8" transform="rotate(45 8 6)" fill="#555"/>`) + `</svg>`;
+      item.append(document.createTextNode(text));
+      item.onclick = () => {
+        if (hiddenMetrics.has(metric)) hiddenMetrics.delete(metric);
+        else hiddenMetrics.add(metric);
+        renderChart();
+      };
+      legendMetricsEl.appendChild(item);
     }
   }
 
@@ -212,6 +476,7 @@
     if ([...params.keys()].length === 0) return null;
     return {
       platform: params.get("platform") ?? undefined,
+      framework: params.get("framework") ?? undefined,
       category: params.get("category") ?? undefined,
       family: params.get("family") ?? undefined,
       method: params.get("method") ?? undefined,
@@ -219,12 +484,15 @@
       range: params.get("range") ?? undefined,
       mode: params.get("mode") ?? undefined,
       log: params.has("log") ? params.get("log") === "1" : undefined,
+      run: params.get("run") ?? undefined,
+      compare: params.get("compare") ?? undefined,
     };
   }
 
   function syncUrlHash() {
     const params = new URLSearchParams();
     params.set("platform", platformSel.value);
+    params.set("framework", frameworkSel.value);
     params.set("category", categorySel.value);
     params.set("family", familySel.value);
     params.set("method", methodSel.value);
@@ -232,6 +500,13 @@
     params.set("range", dateRangeSel.value);
     params.set("mode", currentMode());
     params.set("log", logScaleCb.checked ? "1" : "0");
+    // Only in the two single-run views, where which run is on screen is the whole point of the
+    // link. Trend derives its run set from the filters, so recording one there would pin a link to
+    // a run that a later import may push out of view. The comparison is table-only.
+    if (currentMode() !== "trend") {
+      if (runSel.value) params.set("run", runSel.value);
+      if (currentMode() === "table" && compareSel.value) params.set("compare", compareSel.value);
+    }
     const newHash = "#" + params.toString();
     if (location.hash !== newHash) history.replaceState(null, "", newHash);
   }
@@ -268,11 +543,25 @@
     return cutoff.toISOString();
   }
 
+  // Framework sits directly under platform in the cascade, because it narrows the same way a
+  // platform does: the same commit measured under net8.0 and net10.0 is two sets of numbers that
+  // must never share a line. Which frameworks exist is per platform - a net48 run only happens on
+  // Windows - so this is re-derived on every platform change rather than filled once.
+  function refreshFrameworks(preferred) {
+    const frameworks = distinct("framework", "WHERE platform = ?", [platformSel.value]);
+    populateSelect(frameworkSel, frameworks, null, preferred?.framework);
+    populateSelect(categorySel,
+                   distinct("category", "WHERE platform = ? AND framework = ?",
+                            [platformSel.value, frameworkSel.value]),
+                   null, preferred?.category);
+    refreshFamilies(preferred);
+  }
+
   function refreshFamilies(preferred) {
     const families = distinct(
       "family",
-      "WHERE platform = ? AND category = ?",
-      [platformSel.value, categorySel.value]
+      "WHERE platform = ? AND framework = ? AND category = ?",
+      [platformSel.value, frameworkSel.value, categorySel.value]
     );
     populateSelect(familySel, families, null, preferred?.family);
     refreshMethods(preferred);
@@ -284,8 +573,8 @@
     // these measure different things and must never be plotted on the same line.
     const methods = distinct(
       "method",
-      "WHERE platform = ? AND category = ? AND family = ?",
-      [platformSel.value, categorySel.value, familySel.value]
+      "WHERE platform = ? AND framework = ? AND category = ? AND family = ?",
+      [platformSel.value, frameworkSel.value, categorySel.value, familySel.value]
     );
     populateSelect(methodSel, methods, null, preferred?.method);
     refreshSizes(preferred);
@@ -295,17 +584,55 @@
     // A new family/method means a different set of variants and sizes, so any prior
     // show/hide legend selections no longer refer to anything meaningful here.
     hiddenVariants.clear();
+    hiddenMetrics.clear();
     hiddenSizes.clear();
     const stmt = db.prepare(
       `SELECT DISTINCT data_size_label, data_size_bytes FROM benchmark_results
-       WHERE platform = ? AND category = ? AND family = ? AND method = ?
+       WHERE platform = ? AND framework = ? AND category = ? AND family = ? AND method = ?
        ORDER BY data_size_bytes`
     );
-    stmt.bind([platformSel.value, categorySel.value, familySel.value, methodSel.value]);
+    stmt.bind([platformSel.value, frameworkSel.value, categorySel.value, familySel.value,
+               methodSel.value]);
     currentSizes = [];
     while (stmt.step()) currentSizes.push(stmt.getAsObject().data_size_label);
     stmt.free();
     renderChart();
+  }
+
+
+  // Which controls each view actually reads. A control left enabled but ignored is worse than one
+  // greyed out: changing it looks like it should do something, and the view simply does not move.
+  //
+  // Deliberately not listed: platform, framework, family and method drive the selector cascade in
+  // every mode, so they always apply - in Table mode they narrow which runs the picker offers,
+  // even though the picker has the final say on which one is shown.
+  function setInert(labelEl, inert, reason) {
+    if (!labelEl) return;
+    labelEl.classList.toggle("inert", inert);
+    const field = labelEl.querySelector("select, input");
+    if (field) field.disabled = inert;
+    if (inert) labelEl.title = reason;
+    else labelEl.removeAttribute("title");
+  }
+
+  // Cryptography:
+  //   Table   - shows one recorded run whole, with mean time and allocation as separate columns,
+  //             so the metric selector does not apply; the run picker replaces the date range,
+  //             and there is no chart to scale logarithmically.
+  //   Scaling - plots both metrics on two axes, so the metric selector is replaced by its legend,
+  //             and draws one run chosen with the run picker, which leaves the date range nothing
+  //             to narrow.
+  //   Trend   - reads all of them.
+  function syncControlAvailability(mode) {
+    const table = mode === "table";
+    const scaling = mode === "scaling";
+    setInert(metricPickerEl, table || scaling,
+             table ? "The table shows mean time and allocation as separate columns."
+                   : "Scaling plots both metrics on two axes - use the metric legend below.");
+    setInert(rangePickerEl, table || scaling,
+             table ? "The table shows one run, chosen with the Run picker."
+                   : "Scaling plots one run, chosen with the Run picker.");
+    setInert(logPickerEl, table, "No chart axis to scale in table mode.");
   }
 
   function renderChartInstance(datasets, scales, tooltipAfterLabel) {
@@ -339,13 +666,17 @@
     const placeholders = sizes.map(() => "?").join(",");
     const cutoff = dateRangeCutoffIso();
     const stmt = db.prepare(`
-      SELECT variant, data_size_label, run_date, commit_sha, ${metric} AS value
-      FROM benchmark_results
-      WHERE platform = ? AND category = ? AND family = ? AND method = ? AND data_size_label IN (${placeholders})
-        ${cutoff ? "AND run_date >= ?" : ""}
-      ORDER BY variant, data_size_label, run_date
+      SELECT r.variant, r.data_size_label, r.run_date, r.run_id, r.commit_sha, b.runtime_version,
+             r.${metric} AS value
+      FROM benchmark_results r
+      LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
+      WHERE r.platform = ? AND r.framework = ? AND r.category = ? AND r.family = ?
+        AND r.method = ? AND r.data_size_label IN (${placeholders})
+        ${cutoff ? "AND r.run_date >= ?" : ""}
+      ORDER BY r.variant, r.data_size_label, r.run_date
     `);
-    stmt.bind([platformSel.value, categorySel.value, familySel.value, methodSel.value, ...sizes, ...(cutoff ? [cutoff] : [])]);
+    stmt.bind([platformSel.value, frameworkSel.value, categorySel.value, familySel.value,
+               methodSel.value, ...sizes, ...(cutoff ? [cutoff] : [])]);
 
     const multiSize = sizes.length > 1;
     const seriesByKey = new Map();
@@ -353,7 +684,10 @@
       const row = stmt.getAsObject();
       const key = multiSize ? `${row.variant} @ ${row.data_size_label}` : row.variant;
       if (!seriesByKey.has(key)) seriesByKey.set(key, { variant: row.variant, sizeLabel: row.data_size_label, points: [] });
-      seriesByKey.get(key).points.push({ x: row.run_date, y: row.value, commit: row.commit_sha });
+      seriesByKey.get(key).points.push({
+        x: row.run_date, y: row.value, commit: row.commit_sha, runtime: row.runtime_version,
+        pkg: packageLabel(row.variant, row.run_id, platformSel.value, frameworkSel.value),
+      });
     }
     stmt.free();
 
@@ -366,7 +700,7 @@
     for (const { variant } of seriesByKey.values()) {
       if (!variantOrder.includes(variant)) variantOrder.push(variant);
     }
-    const colorForVariant = new Map(variantOrder.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+    const colorForVariant = colorsForVariants(variantOrder);
 
     const DASH_PATTERNS = [[], [6, 3], [2, 2], [8, 3, 2, 3], [1, 3], [10, 4], [4, 2, 1, 2]];
     const dashForSize = new Map(sizes.map((label, i) => [label, DASH_PATTERNS[i % DASH_PATTERNS.length]]));
@@ -388,11 +722,12 @@
         x: { type: "time", time: { unit: "day" }, title: { display: true, text: "Run date" } },
         y: yAxisScale(metric),
       },
-      (ctx) => `commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+      (ctx) => pointFooter(ctx.raw)
     );
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
     renderDashLegend(multiSize ? sizes.map((label) => ({ sizeLabel: label, dash: dashForSize.get(label) })) : []);
+    renderMetricLegend([]);   // trend mode plots the single selected metric
 
     const visibleCount = datasets.filter((d) => !d.hidden).length;
     statusEl.textContent = datasets.length
@@ -401,68 +736,453 @@
       : "No data for this selection yet.";
   }
 
+  // Mean time and allocation are plotted together in Scaling mode, each on its own axis. Point
+  // shape distinguishes them so one implementation keeps one colour across both. Mirrors the same
+  // constant in the Threading dashboard.
+  const METRICS = [
+    { key: "mean_ns", axis: "y", point: "circle", text: "Mean time" },
+    { key: "allocated_bytes", axis: "yAlloc", point: "rectRot", text: "Allocated" },
+  ];
+
+  // One recorded run's size curve, chosen with the Run picker — the newest by default, which is
+  // what this view used to show and all it used to be able to show. Reading a scaling curve means
+  // reading one snapshot: rows stitched together from whichever run happened to be each series'
+  // latest would put a variant measured months ago on the same axes as one measured yesterday and
+  // present the pair as a comparison.
   function renderScalingChart() {
-    const metric = metricSel.value;
-    const cutoff = dateRangeCutoffIso();
-    const stmt = db.prepare(`
-      SELECT variant, data_size_bytes, data_size_label, run_date, commit_sha, ${metric} AS value
-      FROM benchmark_results
-      WHERE platform = ? AND category = ? AND family = ? AND method = ?
-        ${cutoff ? "AND run_date >= ?" : ""}
-      ORDER BY variant, data_size_bytes, run_date
-    `);
-    stmt.bind([platformSel.value, categorySel.value, familySel.value, methodSel.value, ...(cutoff ? [cutoff] : [])]);
-
-    // ORDER BY run_date ASC means the last row seen for a given (variant, size) is the most
-    // recent recorded run within the selected date range — exactly the one we want for a
-    // "current scaling" snapshot (or a rewind, if a shorter range is selected).
-    const latestByVariant = new Map();
-    while (stmt.step()) {
-      const row = stmt.getAsObject();
-      if (!latestByVariant.has(row.variant)) latestByVariant.set(row.variant, new Map());
-      latestByVariant.get(row.variant).set(row.data_size_bytes, {
-        x: row.data_size_bytes,
-        y: row.value,
-        size_label: row.data_size_label,
-        commit: row.commit_sha,
-      });
+    const runValue = runSel.value;
+    const [runId, runPlatform, runFramework] = (runValue || "").split(" ");
+    const rowsByVariant = new Map();
+    if (runValue) {
+      const stmt = db.prepare(`
+        SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_id,
+               r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
+        FROM benchmark_results r
+        LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
+                                  AND b.framework = r.framework
+        WHERE r.run_id = ? AND r.platform = ? AND r.framework = ?
+          AND r.category = ? AND r.family = ? AND r.method = ?
+        ORDER BY r.variant, r.data_size_bytes
+      `);
+      stmt.bind([runId, runPlatform, runFramework, categorySel.value, familySel.value,
+                 methodSel.value]);
+      while (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (!rowsByVariant.has(row.variant)) rowsByVariant.set(row.variant, new Map());
+        rowsByVariant.get(row.variant).set(row.data_size_bytes, {
+          x: row.data_size_bytes,
+          mean_ns: row.mean_ns,
+          allocated_bytes: row.allocated_bytes,
+          size_label: row.data_size_label,
+          commit: row.commit_sha,
+          runtime: row.runtime_version,
+          pkg: packageLabel(row.variant, row.run_id, runPlatform, runFramework),
+        });
+      }
+      stmt.free();
     }
-    stmt.free();
 
-    const variantOrder = Array.from(latestByVariant.keys());
-    const colorForVariant = new Map(variantOrder.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+    const variantOrder = Array.from(rowsByVariant.keys());
+    const colorForVariant = colorsForVariants(variantOrder);
 
-    const datasets = variantOrder.map((variant) => ({
-      label: variant,
-      data: Array.from(latestByVariant.get(variant).values()).sort((a, b) => a.x - b.x),
-      borderColor: colorForVariant.get(variant),
-      backgroundColor: colorForVariant.get(variant),
-      hidden: hiddenVariants.has(variant),
-      tension: 0.15,
-      pointRadius: 3,
-    }));
+    // Both measurements at once, on their own axes - the Metric selector is ignored here. Reading
+    // a cipher or hash means asking "how fast, and at what allocation cost", and answering that by
+    // flipping a dropdown makes the two impossible to see against each other. Point shape carries
+    // the metric so a single colour still reads as one implementation across both axes.
+    const datasets = [];
+    for (const variant of variantOrder) {
+      const points = Array.from(rowsByVariant.get(variant).values()).sort((a, b) => a.x - b.x);
+      for (const m of METRICS) {
+        // An all-null metric contributes nothing but a legend row and an empty axis.
+        if (points.every((p) => p[m.key] == null)) continue;
+        datasets.push({
+          label: `${variant} · ${m.text}`,
+          data: points.map((p) => ({ ...p, y: p[m.key] })),
+          yAxisID: m.axis,
+          borderColor: colorForVariant.get(variant),
+          backgroundColor: colorForVariant.get(variant),
+          pointStyle: m.point,
+          hidden: hiddenVariants.has(variant) || hiddenMetrics.has(m.key),
+          tension: 0.15,
+          pointRadius: 3,
+        });
+      }
+    }
+
+    const usesAlloc = datasets.some((d) => d.yAxisID === "yAlloc");
+    const scales = {
+      x: { type: "logarithmic", title: { display: true, text: "Data size (bytes)" } },
+      y: { ...yAxisScale("mean_ns"), position: "left" },
+    };
+    if (usesAlloc) {
+      // Allocation stays linear even when the time axis is logarithmic: an allocation-free series
+      // is a real and interesting result, and a log axis cannot plot zero - it would drop exactly
+      // the lines worth seeing. Gridlines are suppressed so the two axes do not draw two
+      // conflicting sets across the same plot area.
+      scales.yAlloc = {
+        type: "linear", position: "right", beginAtZero: true,
+        title: { display: true, text: metricLabel("allocated_bytes") },
+        grid: { drawOnChartArea: false },
+      };
+    }
 
     renderChartInstance(
       datasets,
-      {
-        x: { type: "logarithmic", title: { display: true, text: "Data size (bytes)" } },
-        y: yAxisScale(metric),
-      },
-      (ctx) => `${ctx.raw.size_label} · commit ${ctx.raw.commit?.slice(0, 8) ?? "?"}`
+      scales,
+      (ctx) => `${ctx.raw.size_label} · ${pointFooter(ctx.raw)}`
     );
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
     renderDashLegend([]); // one line per variant here — no per-size distinction to show
+    renderMetricLegend(METRICS.map((m) => ({ metric: m.key, text: m.text })));
 
+    const chosen = Array.from(runSel.options).find((o) => o.value === runValue);
     const visibleCount = datasets.filter((d) => !d.hidden).length;
     statusEl.textContent = datasets.length
-      ? `${visibleCount} of ${datasets.length} variant(s) shown, most recent run per size`
+      ? `${visibleCount} of ${datasets.length} series shown, from ` +
+        (chosen ? chosen.textContent.trim() : "the selected run")
       : "No data for this selection yet.";
   }
 
+  // ---------------------------------------------------------------- table mode
+  //
+  // Reproduces what one benchmark run's report looked like: every dimension that run carried as
+  // its own column, grouped and ordered the way BenchmarkDotNet ordered it. Sibling of the same
+  // mode in the Threading dashboard, adapted to this data shape - a data size where that one has
+  // a contention level, and no cancellation axis.
+  //
+  // Ratio is computed here rather than stored: the database keeps measurements, not derived
+  // columns, and these reports carry no Ratio column at all - BenchmarkDotNet was never told which
+  // row is the baseline.
+
+  function formatMeanNs(ns) {
+    if (ns == null) return "-";
+    let value, unit;
+    if (ns < 1000) { value = ns; unit = "ns"; }
+    else if (ns < 1e6) { value = ns / 1000; unit = "μs"; }
+    else if (ns < 1e9) { value = ns / 1e6; unit = "ms"; }
+    else { value = ns / 1e9; unit = "s"; }
+    const digits = value < 10 ? 4 : value < 100 ? 3 : 2;
+    return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) + " " + unit;
+  }
+
+  function formatAllocated(bytes) {
+    if (bytes == null) return "?";
+    if (bytes === 0) return "-";              // the convention the reports use for a measured zero
+    if (bytes < 1024) return bytes.toLocaleString() + " B";
+    const kb = bytes / 1024;
+    return kb.toLocaleString(undefined, { maximumFractionDigits: kb < 10 ? 2 : 1 }) + " KB";
+  }
+
+  // The baseline is this library's own implementation, and nothing in the data marks one - so it
+  // is chosen the same way the colour ramp orders ours, and left blank for a group with none (a
+  // family compared only against third parties).
+  function baselineVariantOf(variants) {
+    const ours = variants.filter(isOurs).slice().sort((a, b) => oursRank(a) - oursRank(b) || a.localeCompare(b));
+    return ours.length ? ours[0] : null;
+  }
+
+  // Identity of one recorded run. Framework is part of it because the archive nests a framework
+  // level under the platform: the same commit on the same machine under net8.0 and net10.0 is two
+  // runs, and collapsing them here would make each look up the other's package versions.
+  function runKey(runId, platform, framework) {
+    return runId + " " + platform + " " + framework;
+  }
+
+  let pendingRunFromUrl = null;
+  let pendingCompareFromUrl = null;
+
+  // Every (run, platform) carrying rows for the current selection, newest first. Both pickers are
+  // filled from this, which is what makes "the same commit on two machines" fall out for free:
+  // those share a run_id and differ only in platform.
+  //
+  // Scaling mode passes scoped=true and gets only the platform and framework already selected
+  // above: there the cascade decides which machine is on screen and the run picker only decides
+  // when, so offering another machine's runs would put the two selectors in disagreement. Table
+  // mode deliberately offers all of them — two machines side by side is what its compare column
+  // is for.
+  function availableRuns(scoped) {
+    const stmt = db.prepare(
+      "SELECT DISTINCT r.run_id, r.platform, r.framework, r.run_date, r.commit_sha, " +
+      "       b.runtime_version " +
+      "FROM benchmark_results r " +
+      "LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform " +
+      "                          AND b.framework = r.framework " +
+      "WHERE r.category = ? AND r.family = ? AND r.method = ? " +
+      (scoped ? "  AND r.platform = ? AND r.framework = ? " : "") +
+      "ORDER BY r.run_date DESC, r.platform, r.framework"
+    );
+    stmt.bind([categorySel.value, familySel.value, methodSel.value,
+               ...(scoped ? [platformSel.value, frameworkSel.value] : [])]);
+    const runs = [];
+    while (stmt.step()) runs.push(stmt.getAsObject());
+    stmt.free();
+    return runs;
+  }
+
+  function runOptionLabel(run) {
+    const date = (run.run_date || "").slice(0, 10);
+    const sha = run.commit_sha ? run.commit_sha.slice(0, 8) : "?";
+    const rt = run.runtime_version ? " · .NET " + run.runtime_version : "";
+    // The framework only earns a place in the label once more than one has been recorded;
+    // otherwise it is the same word on every option and says nothing.
+    const fw = hasMultipleFrameworks ? " · " + run.framework : "";
+    return date + " · " + run.platform + fw + " · " + sha + rt;
+  }
+
+  function refreshRunPickers(mode) {
+    const runs = availableRuns(mode === "scaling");
+    const previousRun = runSel.value;
+    const previousCompare = compareSel.value;
+
+    runSel.innerHTML = "";
+    for (const run of runs) {
+      const opt = document.createElement("option");
+      opt.value = runKey(run.run_id, run.platform, run.framework);
+      opt.textContent = runOptionLabel(run);
+      runSel.appendChild(opt);
+    }
+    // Default to the newest run on the platform already selected above, so switching into table
+    // mode shows the data the charts were showing rather than jumping to another machine. Ahead of
+    // that, keep the same commit if the new platform also recorded it: switching platform on a
+    // pinned run asks "and what does this commit do over there", which is the comparison the
+    // archive keys runs by commit to make possible - not "show me something newer".
+    const previousRunId = previousRun.split(" ")[0];
+    const preferred = runs.find((r) => r.run_id === previousRunId
+                                   && r.platform === platformSel.value
+                                   && r.framework === frameworkSel.value)
+                   || runs.find((r) => r.platform === platformSel.value
+                                   && r.framework === frameworkSel.value)
+                   || runs.find((r) => r.platform === platformSel.value)
+                   || runs[0];
+    const fromUrl = pendingRunFromUrl;
+    pendingRunFromUrl = null;
+    const wanted = (fromUrl && runs.some((r) => runKey(r.run_id, r.platform, r.framework) === fromUrl)) ? fromUrl
+                 : (runs.some((r) => runKey(r.run_id, r.platform, r.framework) === previousRun) ? previousRun : null);
+    runSel.value = wanted
+      || (preferred ? runKey(preferred.run_id, preferred.platform, preferred.framework) : "");
+
+    const chosenRunId = (runSel.value || "").split(" ")[0];
+    compareSel.innerHTML = "";
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "(nothing — single run)";
+    compareSel.appendChild(none);
+    for (const run of runs) {
+      if (runKey(run.run_id, run.platform, run.framework) === runSel.value) continue;
+      const opt = document.createElement("option");
+      opt.value = runKey(run.run_id, run.platform, run.framework);
+      opt.textContent = runOptionLabel(run) + (run.run_id === chosenRunId ? "   (same commit)" : "");
+      compareSel.appendChild(opt);
+    }
+    const wantedCompare = pendingCompareFromUrl ?? previousCompare;
+    pendingCompareFromUrl = null;
+    compareSel.value = Array.from(compareSel.options).some((o) => o.value === wantedCompare)
+      ? wantedCompare : "";
+  }
+
+  function fetchRunRows(key) {
+    if (!key) return [];
+    const parts = key.split(" ");
+    const stmt = db.prepare(
+      "SELECT variant, data_size_label, data_size_bytes, mean_ns, allocated_bytes " +
+      "FROM benchmark_results WHERE run_id = ? AND platform = ? AND framework = ? " +
+      "  AND category = ? AND family = ? AND method = ?"
+    );
+    stmt.bind([parts[0], parts[1], parts[2], categorySel.value, familySel.value, methodSel.value]);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
+  }
+
+  function renderTableView() {
+    const rows = fetchRunRows(runSel.value);
+    const compareRows = fetchRunRows(compareSel.value);
+    const compareBy = new Map();
+    for (const r of compareRows) {
+      compareBy.set(r.variant + "\u001f" + (r.data_size_label || ""), r);
+    }
+    const comparing = compareSel.value !== "" && compareRows.length > 0;
+    const changed = comparing ? changedPackages(runSel.value, compareSel.value) : new Map();
+
+    dataTableHeadEl.innerHTML = "";
+    dataTableBodyEl.innerHTML = "";
+    if (!rows.length) {
+      tableNoteEl.hidden = true;
+      statusEl.textContent = "No data for this run yet.";
+      return;
+    }
+
+    const hasSize = rows.some((r) => r.data_size_label);
+
+    // Grouped as the report groups: one baseline per data size.
+    const groups = new Map();
+    for (const r of rows) {
+      const key = r.data_size_label || "";
+      if (!groups.has(key)) groups.set(key, { sizeLabel: key, sizeBytes: r.data_size_bytes, rows: [] });
+      groups.get(key).rows.push(r);
+    }
+
+    const columns = [{ key: "description", label: "Description" }];
+    if (hasSize) columns.push({ key: "size", label: "TestDataSize", numeric: true });
+    columns.push({ key: "mean", label: "Mean", numeric: true });
+    columns.push({ key: "ratio", label: "Ratio", numeric: true });
+    columns.push({ key: "allocated", label: "Allocated", numeric: true });
+    if (comparing) {
+      columns.push({ key: "cmpMean", label: "Mean (compared)", numeric: true });
+      columns.push({ key: "cmpDelta", label: "Δ Mean", numeric: true });
+      columns.push({ key: "cmpAlloc", label: "Allocated (compared)", numeric: true });
+    }
+
+    for (const col of columns) {
+      const th = document.createElement("th");
+      th.textContent = col.label;
+      if (col.numeric) th.classList.add("numeric");
+      dataTableHeadEl.appendChild(th);
+    }
+
+    // Groups by data size ascending in bytes - "1KB" sorts before "128KB" numerically, which it
+    // would not as text. Rows within a group by mean ascending, which is how reports read.
+    const orderedKeys = Array.from(groups.keys()).sort((a, b) => {
+      const x = groups.get(a).sizeBytes, y = groups.get(b).sizeBytes;
+      if (x == null && y == null) return 0;
+      if (x == null) return -1;
+      if (y == null) return 1;
+      return x - y;
+    });
+
+    let total = 0;
+    for (const key of orderedKeys) {
+      const group = groups.get(key).rows.slice().sort((a, b) => a.mean_ns - b.mean_ns);
+      const baselineVariant = baselineVariantOf(group.map((r) => r.variant));
+      const baseline = group.find((r) => r.variant === baselineVariant);
+      let first = true;
+      for (const r of group) {
+        const tr = document.createElement("tr");
+        if (first) tr.classList.add("group-start");
+        if (isOurs(r.variant)) tr.classList.add("ours");
+        if (r.variant === baselineVariant) tr.classList.add("baseline");
+        const experimental = isExperimental(familySel.value, r.variant);
+        if (experimental) tr.classList.add("experimental");
+        first = false;
+        const cmp = compareBy.get(r.variant + "\u001f" + (r.data_size_label || ""));
+        const delta = (cmp && cmp.mean_ns) ? (r.mean_ns / cmp.mean_ns - 1) * 100 : null;
+        const movedPackage = comparing ? changed.get(VARIANT_PACKAGES[r.variant]) : undefined;
+
+        for (const col of columns) {
+          const td = document.createElement("td");
+          if (col.numeric) td.classList.add("numeric");
+          if (col.key === "description") {
+            td.textContent = methodSel.value + " · " + familySel.value + " · " + r.variant;
+            if (experimental) {
+              const flag = document.createElement("span");
+              flag.className = "flag";
+              flag.textContent = "not in package";
+              flag.title = "Compiled in for measurement but excluded from the published NuGet " +
+                           "package: this path is guarded by #if EXPERIMENTAL.";
+              td.appendChild(flag);
+            }
+          } else if (col.key === "size") {
+            td.textContent = r.data_size_label || "-";
+          } else if (col.key === "mean") {
+            td.textContent = formatMeanNs(r.mean_ns);
+          } else if (col.key === "ratio") {
+            td.textContent = (baseline && baseline.mean_ns) ? (r.mean_ns / baseline.mean_ns).toFixed(2) : "-";
+          } else if (col.key === "allocated") {
+            td.textContent = formatAllocated(r.allocated_bytes);
+          } else if (col.key === "cmpMean") {
+            td.textContent = cmp ? formatMeanNs(cmp.mean_ns) : "-";
+          } else if (col.key === "cmpAlloc") {
+            td.textContent = cmp ? formatAllocated(cmp.allocated_bytes) : "-";
+          } else if (col.key === "cmpDelta") {
+            if (delta === null) {
+              td.textContent = "-";
+            } else {
+              td.textContent = (delta >= 0 ? "+" : "") + delta.toFixed(1) + "%";
+              // Positive means this run took longer. Coloured only past 5%, since run-to-run
+              // noise below that says nothing.
+              if (Math.abs(delta) >= 5) td.classList.add(delta > 0 ? "worse" : "better");
+              if (movedPackage) {
+                const marker = document.createElement("span");
+                marker.className = "pkg-changed";
+                marker.textContent = "‡";
+                marker.title = VARIANT_PACKAGES[r.variant] + " " + movedPackage[0] + " → " +
+                  movedPackage[1] + " between these runs, so this delta is not attributable to " +
+                  "CryptoHives.Foundation alone.";
+                td.appendChild(marker);
+              }
+            }
+          }
+          tr.appendChild(td);
+        }
+        dataTableBodyEl.appendChild(tr);
+        total++;
+      }
+    }
+
+    const chosen = Array.from(runSel.options).find((o) => o.value === runSel.value);
+    const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
+    tableNoteEl.hidden = false;
+    let note =
+      "Shaded rows are this library's own implementations; the baseline is shaded more deeply. " +
+      "Ratio is each row's mean over that baseline, per data size. Rows marked “not in " +
+      "package” are compiled in for measurement only and are excluded from the published " +
+      "NuGet package." +
+      (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
+                   " — positive means slower here." : "");
+
+    // Named explicitly rather than left to the per-row markers: a reader scanning for a regression
+    // should learn that a reference moved underneath the comparison before reading any number.
+    if (comparing && changed.size) {
+      note += "  Reference library versions differ between these runs: " +
+        Array.from(changed, ([id, [from, to]]) => `${id} ${from} → ${to}`).join(", ") +
+        ". Rows marked ‡ compare against a different build of that library.";
+    } else if (!comparing) {
+      const packages = runPackages.get(runSel.value);
+      const measured = packages && Object.values(VARIANT_PACKAGES)
+        .filter((id, i, all) => all.indexOf(id) === i && packages[id])
+        .map((id) => `${id} ${packages[id]}`);
+      if (measured && measured.length) {
+        // Declared central pins recovered from git read the same as a resolved graph, and they
+        // are not the same claim, so runs backfilled that way say so.
+        const source = runPackagesSource.get(runSel.value);
+        note += "  Measured against " + measured.join(", ") + "." +
+          (source === "Directory.Packages.props"
+            ? " (Versions recovered from the central pins at that commit, not from the run itself.)"
+            : "");
+      }
+    }
+    tableNoteEl.textContent = note;
+    statusEl.textContent = total + " row(s) from " + (chosen ? chosen.textContent.trim() : "the selected run");
+  }
+
   function renderChart() {
-    if (currentMode() === "scaling") renderScalingChart();
-    else renderTrendChart();
+    const mode = currentMode();
+    const isTable = mode === "table";
+    const isScaling = mode === "scaling";
+
+    chartContainerEl.hidden = isTable;
+    legendColorsEl.hidden = isTable;
+    legendDashesEl.hidden = isTable;
+    legendMetricsEl.hidden = isTable;
+    if (isTable) legendHintEl.hidden = true;   // otherwise left to renderColorLegend below
+    tableContainerEl.hidden = !isTable;
+    tableNoteEl.hidden = !isTable;
+    // Both single-run views need the run picker; only the table can hold two runs at once.
+    runPickerEl.hidden = !(isTable || isScaling);
+    comparePickerEl.hidden = !isTable;
+
+    if (isTable) {
+      refreshRunPickers(mode);
+      renderTableView();
+    } else if (isScaling) {
+      refreshRunPickers(mode);
+      renderScalingChart();
+    } else {
+      renderTrendChart();
+    }
+    syncControlAvailability(mode);
     syncUrlHash();
   }
 
@@ -482,13 +1202,27 @@
     if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
     const buffer = await response.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buffer));
+    loadRunPackages();
 
     const restoreState = parseUrlState();
 
     populateSelect(platformSel, distinct("platform", ""), null, restoreState?.platform);
-    platformSel.onchange = () => {
-      populateSelect(categorySel, distinct("category", "WHERE platform = ?", [platformSel.value]));
-      refreshFamilies();
+    hasMultipleFrameworks = distinct("framework", "").length > 1;
+    frameworkPickerEl.hidden = !hasMultipleFrameworks;
+    platformSel.onchange = () => refreshFrameworks({
+      framework: frameworkSel.value,
+      category: categorySel.value,
+      family: familySel.value,
+      method: methodSel.value,
+    });
+    // Same intent as the platform handler: keep the rest of the selection when the new framework
+    // also has it, which is the whole point of switching framework - you want the same chart.
+    frameworkSel.onchange = () => {
+      populateSelect(categorySel,
+                     distinct("category", "WHERE platform = ? AND framework = ?",
+                              [platformSel.value, frameworkSel.value]),
+                     null, categorySel.value);
+      refreshFamilies({ family: familySel.value, method: methodSel.value });
     };
     categorySel.onchange = refreshFamilies;
     familySel.onchange = refreshMethods;
@@ -497,6 +1231,11 @@
     dateRangeSel.onchange = renderChart;
     logScaleCb.onchange = renderChart;
     modeRadios.forEach((r) => (r.onchange = renderChart));
+    // Straight through renderChart so the run picker drives whichever single-run view is showing —
+    // the table or the scaling chart. It rebuilds the comparison list on the way (the shown run
+    // must not appear as its own comparison) and keeps the just-chosen run selected.
+    runSel.onchange = renderChart;
+    compareSel.onchange = () => { renderTableView(); syncUrlHash(); };
     copyLinkBtn.onclick = async () => {
       try {
         await navigator.clipboard.writeText(location.href);
@@ -514,9 +1253,10 @@
       if (radio) radio.checked = true;
     }
     if (restoreState?.log !== undefined) logScaleCb.checked = restoreState.log;
+    pendingRunFromUrl = restoreState?.run ?? null;
+    pendingCompareFromUrl = restoreState?.compare ?? null;
 
-    populateSelect(categorySel, distinct("category", "WHERE platform = ?", [platformSel.value]), null, restoreState?.category);
-    refreshFamilies(restoreState);
+    refreshFrameworks(restoreState);
   } catch (err) {
     statusEl.textContent = `Failed to load benchmark-history.sqlite: ${err.message}`;
     console.error(err);

@@ -168,7 +168,7 @@ Diagnostics:
 - Each test project has `OutputType=Exe` and links `tests/Common/Main.cs` (NUnit entry point)
 - Cryptography tests use **BouncyCastle**, **NaCl.Core**, **HashifyNET**, and other reference implementations for cross-validation
 - Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**, **KeyedSemaphores**, **Dao.IndividualLock**, **AsyncUtilities**, and **Microsoft.VisualStudio.Threading**
-- Benchmark runs are recorded on the orphan `benchmarks` branch, one directory per run keyed by the commit measured; the trends database under `docfx/**/benchmark-trends/` is generated from it at build time and is not committed. Record with `update-benchmark-docs.ps1 -DestDir <archive worktree>`, rebuild locally with `build-trends-database.ps1`
+- Benchmark runs are recorded on the orphan `benchmarks` branch as `<package>/<code-commit>/<platform>/<framework>/`, keyed by the commit measured rather than the commit recording it; the trends database under `docfx/**/benchmark-trends/` is generated from it at build time and is not committed. Each run's `run.json` also records the resolved version of every third-party library it measured against. Record with `update-benchmark-docs.ps1 -DestDir <archive worktree>`, rebuild locally with `build-trends-database.ps1`
 - `tests/Directory.Build.props` imports the root props and adds shared `GlobalSuppressions.cs`
 - Some test-only packages (e.g., `Konscious.Security.Cryptography.Blake2`, `Blake3`) are excluded when strong-name signing is active because they are not signed
 
@@ -176,5 +176,6 @@ Diagnostics:
 
 - **Nerdbank.GitVersioning** controls package versions (local builds only; CI injects versions separately via `.azurepipelines/set-version.ps1`)
 - CI pipelines: `.azurepipelines/test.yml` (test matrix across Windows/Linux/macOS), `azure-pipelines-nuget.yml` (NuGet packaging on main)
+- `.github/workflows/test-published-packages.yml` runs weekly (and on demand) against the packages published on nuget.org: `scripts/get-published-version.ps1` resolves the newest version all four packages share, the run checks out that version's release tag, and the tests build with `/p:UsePackedNuGetPackages=true` so they consume the published artifacts. The Threading and Cryptography suites need the `STRONG_NAME_KEY` secret (base64 of the signing key) because the published assemblies grant `InternalsVisibleTo` to a signed test assembly; without it the run narrows to Memory
 - `ContinuousIntegrationBuild=true` is set automatically in CI (enables deterministic builds, source linking); disabled when `CollectCoverage=true`
 - Deterministic builds require `CryptoHives.Foundation.Key.snk` to be present for strong-name signing

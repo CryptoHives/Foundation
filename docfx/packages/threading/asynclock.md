@@ -18,6 +18,8 @@ public sealed class AsyncLock : IResettable
 
 `AsyncLock` provides async mutual exclusion, similar to `SemaphoreSlim(1,1)` but optimized for the common async locking pattern. It returns a small value-type releaser that implements `IDisposable`/`IAsyncDisposable` so the lock can be released with a `using` pattern. The implementation uses pooled `IValueTaskSource` instances to minimize allocations in high-throughput scenarios and a local reusable waiter to avoid allocations for the first queued waiter.
 
+It guards one resource. When the thing being guarded is one of many — a row, an account, a tenant, a cache entry — use [`AsyncKeyedLock<TKey>`](asynckeyedlock.md) instead of a lock per key or a dictionary of locks: it serializes callers per key while letting unrelated keys run fully in parallel.
+
 ## Benefits
 
 - **Zero-allocation fast path**: When the lock is uncontended the operation completes synchronously without heap allocations.
@@ -314,6 +316,7 @@ using (await _lock1.LockAsync())
 ## See Also
 
 - [Threading Package Overview](index.md)
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion; distinct keys never block each other
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock

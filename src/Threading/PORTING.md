@@ -26,7 +26,9 @@ Use these when an `await` must happen inside a critical section, or to remove
 | `CountdownEvent` (async) | `AsyncCountdownEvent` | |
 | `Barrier` (async) | `AsyncBarrier` | |
 | `ReaderWriterLockSlim` (async) | `AsyncReaderWriterLock` | |
-| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, single-key `AsyncKeyedLock` | `AsyncLock` | Verify no reentrancy. |
+| `Dictionary<TKey, SemaphoreSlim>` / one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other. Not reentrant. |
+| `AsyncKeyedLock` (third-party), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | |
+| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify no reentrancy. |
 
 ---
 
@@ -42,6 +44,18 @@ sealed class AsyncLock {
     readonly struct Releaser : IDisposable, IAsyncDisposable; // Dispose() releases the lock
 }
 
+// AsyncKeyedLock<TKey> — per-key exclusion, NOT reentrant. Distinct keys run in parallel.
+sealed class AsyncKeyedLock<TKey> where TKey : notnull {
+    AsyncKeyedLock(IEqualityComparer<TKey>? comparer = null, …, int maxIdleEntries = 128,
+                   int maxRetainedWaiters = 128);
+    ValueTask<Releaser> LockAsync(TKey key, CancellationToken cancellationToken = default);
+    ValueTask<Releaser> LockAsync(TKey key, TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryLock(TKey key, out Releaser releaser);   // never waits, never allocates
+    bool IsInUse(TKey key);                          // best-effort diagnostic
+    int  Count { get; }                              // keys currently held or awaited
+    readonly struct Releaser : IDisposable, IAsyncDisposable; // Dispose() releases that key
+}
+
 // AsyncSemaphore
 sealed class AsyncSemaphore {
     AsyncSemaphore(int initialCount, bool runContinuationAsynchronously = true, …);
@@ -53,7 +67,7 @@ sealed class AsyncSemaphore {
 }
 
 // AsyncManualResetEvent / AsyncAutoResetEvent
-new AsyncManualResetEvent(initialState: false);  // Set() releases ALL waiters, stays set until Reset()
+new AsyncManualResetEvent(set: false);           // Set() releases ALL waiters, stays set until Reset()
 new AsyncAutoResetEvent(initialState: false);    // Set() releases ONE waiter, auto-resets
 //   .Set(); .Reset(); ValueTask WaitAsync(CancellationToken); ValueTask WaitAsync(TimeSpan, CancellationToken);
 
@@ -112,7 +126,7 @@ public async Task FetchAsync(CancellationToken ct)
 
 1. Add `CryptoHives.Foundation.Threading` and the `…Threading.Analyzers` package.
 2. Swap primitives per the table above; keep the `using`-based release pattern.
-3. Build and drive every `CHT001`–`CHT010` diagnostic to zero (do not suppress without human
+3. Build and drive every `CHT001`–`CHT012` diagnostic to zero (do not suppress without human
    approval). Run existing tests.
 4. Report: `file:line` → old type → new type; plus any reentrant locks / bool-timeout waits
    left unported for human review.
