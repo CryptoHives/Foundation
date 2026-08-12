@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿# SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # run-benchmarks.ps1
@@ -565,11 +565,14 @@ try {
     Write-Host "  $resultsPath"
     Write-Host ""
     
-    if ($Project -eq "Cryptography") {
-        Write-Host "To record this run into the trends dashboard, run:"
-        Write-Host "  .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category <Hash|Cipher|Mac>"
-        Write-Host ""
-    }
+    # Recording is a separate, deliberate step: not every local run is worth keeping as history.
+    Write-Host "To record this run into the archive on the benchmarks branch:"
+    Write-Host "  git worktree add ../foundation-bench benchmarks"
+    Write-Host "  .\scripts\update-benchmark-docs.ps1 -Project $Project -DestDir ../foundation-bench/$($Project.ToLowerInvariant())"
+    Write-Host ""
+    Write-Host "Then commit in that worktree. To rebuild the dashboard database locally:"
+    Write-Host "  .\scripts\build-trends-database.ps1"
+    Write-Host ""
 }
 finally {
     Pop-Location
