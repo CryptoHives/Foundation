@@ -1,4 +1,4 @@
-﻿# AsyncAutoResetEvent
+# AsyncAutoResetEvent
 
 ## Overview
 
@@ -376,6 +376,7 @@ await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

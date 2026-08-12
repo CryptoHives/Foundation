@@ -199,10 +199,12 @@ public sealed class AsyncValueTaskBoxingCodeFixProvider : CodeFixProvider
         }
 
         // Elastic trivia rather than a hardcoded newline, so the formatter substitutes the line ending
-        // the rest of the document uses.
+        // the rest of the document uses - and ElasticLineFeed rather than the CarriageReturnLineFeed
+        // spelling, which the formatter declines to shorten to "\n" and so leaves a lone CRLF line in
+        // an LF document.
         UsingDirectiveSyntax directive = SyntaxFactory
             .UsingDirective(SyntaxFactory.ParseName(CompilerServicesNamespace))
-            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed)
+            .WithTrailingTrivia(SyntaxFactory.ElasticLineFeed)
             .WithAdditionalAnnotations(Formatter.Annotation);
 
         return unit.WithUsings(unit.Usings.Add(directive));

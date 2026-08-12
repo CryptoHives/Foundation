@@ -88,11 +88,13 @@ await DeserializeFromStreamAsync(stream, ct).ConfigureAwait(false);
 
 ```csharp
 using CryptoHives.Foundation.Memory.Pools;
+using Microsoft.Extensions.ObjectPool;
 
-var pool = ObjectPools.Create<MyExpensiveObject>();
+// Any Microsoft.Extensions.ObjectPool pool works; PoolFactory has ready-made ones
+ObjectPool<MyExpensiveObject> pool = ObjectPool.Create<MyExpensiveObject>();
 
 using var owner = new ObjectOwner<MyExpensiveObject>(pool);
-MyExpensiveObject obj = owner.Object;
+MyExpensiveObject obj = owner.PooledObject;
 
 // Use obj...
 
@@ -131,7 +133,7 @@ ISegmentOwner<byte> none = EmptySegment<byte>.Instance;
 | Resource | Link |
 |----------|------|
 | Full package documentation | [cryptohives.github.io/Foundation/packages/memory](https://cryptohives.github.io/Foundation/packages/memory/index.html) |
-| API reference | [cryptohives.github.io/Foundation/api](https://cryptohives.github.io/Foundation/api/index.html) |
+| API reference | [cryptohives.github.io/…/api/…Memory.Buffers](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Memory.Buffers.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |
 
 ---

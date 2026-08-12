@@ -1893,6 +1893,79 @@ public class AsyncReaderWriterLockTests
             await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
     }
 
+    // A caller passing both an already-cancelled token and TimeSpan.Zero gets
+    // OperationCanceledException, not TimeoutException: the token names why the wait was abandoned
+    // and a TimeoutException would not. Every other primitive in this package orders the two checks
+    // that way, and these pin the reader-writer lock to the same convention.
+
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task ReaderLockAsyncPreCancelledWithZeroTimeoutCancelsWhenContended(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
+
+        var cancelled = new CancellationToken(true);
+        // CatchAsync rather than ThrowsAsync: the cancelled task carries a TaskCanceledException,
+        // and what the contract promises is an OperationCanceledException naming the token.
+        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
+            await rwLock.ReaderLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
+    }
+
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task WriterLockAsyncPreCancelledWithZeroTimeoutCancelsWhenContended(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
+
+        var cancelled = new CancellationToken(true);
+        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
+            await rwLock.WriterLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
+    }
+
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task UpgradeableReaderLockAsyncPreCancelledWithZeroTimeoutCancelsWhenContended(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
+
+        var cancelled = new CancellationToken(true);
+        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
+            await rwLock.UpgradeableReaderLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
+    }
+
+    [Test, CancelAfter(CancelAfterMS)]
+    public async Task UpgradeToWriterLockAsyncPreCancelledWithZeroTimeoutCancelsWhenContended(CancellationToken ct)
+    {
+        using var pool = new TestObjectPool<AsyncReaderWriterLock.Releaser>();
+        var rwLock = new AsyncReaderWriterLock(
+            runContinuationAsynchronously: RunContinuationAsynchronously,
+            pool: pool);
+
+        // upgradeable reader + extra reader, so the immediate upgrade CompareExchange fails.
+        using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
+        using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
+
+        var cancelled = new CancellationToken(true);
+        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
+            await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
+    }
+
     [Test, CancelAfter(CancelAfterMS)]
     [Repeat(5)]
     public async Task LastReaderNextReaderRaceDoesNotAdmitWriterEarlyAsync(
