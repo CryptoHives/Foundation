@@ -157,7 +157,7 @@ public async Task<Item> DequeueAsync(CancellationToken ct)
 ### Broadcast — `AsyncManualResetEvent`
 
 ```csharp
-private readonly AsyncManualResetEvent _ready = new(initialState: false);
+private readonly AsyncManualResetEvent _ready = new(set: false);
 
 public async Task InitializeAsync()
 {
@@ -231,7 +231,7 @@ var evt = new AsyncAutoResetEvent(
 2. **Avoid calling `AsTask()` before the primitive signals.** With `RunContinuationsAsynchronously=true` (the default), storing the result of `AsTask()` too early causes a severe performance hit. Await the `ValueTask` directly wherever you can.
 3. **Always await or discard a waiter.** If it's left unconsumed, the underlying `IValueTaskSource` never makes it back to the pool.
 
-The bundled **Threading.Analyzers** package enforces these rules at compile time.
+The separate **Threading.Analyzers** package enforces these rules at compile time.
 
 ---
 
@@ -240,7 +240,7 @@ The bundled **Threading.Analyzers** package enforces these rules at compile time
 | Resource | Link |
 |----------|------|
 | Full package documentation | [cryptohives.github.io/Foundation/packages/threading](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| API reference | [cryptohives.github.io/Foundation/api](https://cryptohives.github.io/Foundation/api/index.html) |
+| API reference | [cryptohives.github.io/…/api/…Threading.Async.Pooled](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Threading.Async.Pooled.html) |
 | Benchmarks | [cryptohives.github.io/Foundation/packages/threading/benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) |
 | Threading.Analyzers | [cryptohives.github.io/Foundation/packages/threading.analyzers](https://cryptohives.github.io/Foundation/packages/threading.analyzers/index.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |

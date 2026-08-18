@@ -31,6 +31,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github ci", "github ci", "{
 		.github\in-solidarity.yml = .github\in-solidarity.yml
 		.github\workflows\sbom.yml = .github\workflows\sbom.yml
 		.github\workflows\stale.yml = .github\workflows\stale.yml
+		.github\workflows\test-published-packages.yml = .github\workflows\test-published-packages.yml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memory", "src\Memory\Memory.csproj", "{8F353D5E-D8D8-58B2-82A6-933750A0A2D0}"

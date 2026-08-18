@@ -1,0 +1,215 @@
+name: Test Published NuGet Packages
+
+# Runs the test suite against the packages actually published on nuget.org, the same way
+# .azurepipelines/nuget.yml validates the packages it has just built (UsePackedNuGetPackages
+# swaps every ProjectReference for a PackageReference at the pinned version).
+#
+# The difference is when it runs: this one runs weekly, long after release, so it catches the
+# things that only break with time — a dependency that changed or got unlisted, a new .NET SDK
+# or runtime that the shipped assemblies do not work with, or a package that simply cannot be
+# restored any more.
+#
+# By default it checks out the git tag matching the published version, so the tests are the ones
+# that shipped with that package. Point `ref` at a branch to run newer tests against the released
+# packages instead — expect compile errors there whenever main has grown API the release lacks.
+
+on:
+  schedule:
+    # Mondays, 05:00 UTC.
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'NuGet version to test. Empty = newest version published for all four packages.'
+        type: string
+        default: ''
+      include_prerelease:
+        description: 'Consider pre-release versions when resolving the newest one.'
+        type: boolean
+        default: false
+      ref:
+        description: 'Git ref supplying the tests. Empty = the tag matching the version under test.'
+        type: string
+        default: ''
+      run_macos:
+        description: 'Include the macOS (arm64) leg.'
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Resolve published version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      ref: ${{ steps.ref.outputs.ref }}
+      signing: ${{ steps.signing.outputs.signing }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        # Tags are how a published version maps back to the sources that produced it.
+        fetch-depth: 0
+
+    - name: Resolve version
+      id: version
+      shell: pwsh
+      # Dispatch inputs go through the environment rather than string interpolation, so nothing
+      # a dispatcher types can be parsed as script.
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+      run: |
+        if ($env:INPUT_VERSION) {
+          "version=$env:INPUT_VERSION" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Using the version from the dispatch input: $env:INPUT_VERSION"
+        }
+        else {
+          ./scripts/get-published-version.ps1 -IncludePrerelease:$${{ inputs.include_prerelease || false }} -Verbose
+        }
+
+    - name: Resolve test sources
+      id: ref
+      shell: pwsh
+      env:
+        INPUT_REF: ${{ inputs.ref }}
+        RESOLVED_VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        $requested = $env:INPUT_REF
+        if ($requested) {
+          "ref=$requested" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "::notice::Testing $requested against the published packages. Sources newer than the release may not compile against it."
+          exit 0
+        }
+
+        # Release tags carry the full assembly version (0.6.51.25133) while NuGet drops the
+        # fourth part (0.6.51), so match on the first three plus any pre-release label.
+        $version = $env:RESOLVED_VERSION
+        $release, $pre = $version -split '-', 2
+        $candidates = @(git tag --list "$release.*" | Where-Object {
+          $tagRelease, $tagPre = $_ -split '-', 2
+          ($tagRelease -split '\.')[0..2] -join '.' -eq $release -and $tagPre -eq $pre
+        } | Sort-Object)
+
+        if ($candidates.Count -eq 0) {
+          Write-Host "::error::No git tag matches the published version $version. Dispatch the workflow with a 'ref' input to choose the sources explicitly."
+          exit 1
+        }
+
+        $tag = $candidates[-1]
+        Write-Host "::notice::Testing package $version against its release tag $tag."
+        "ref=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    - name: Check for the strong-name key
+      id: signing
+      shell: pwsh
+      env:
+        STRONG_NAME_KEY: ${{ secrets.STRONG_NAME_KEY }}
+      run: |
+        # The published assemblies are strong-named, and their InternalsVisibleTo names a public
+        # key, so the Threading and Cryptography suites only compile when the test assembly is
+        # signed with the same key. Memory's tests touch no internals and run either way.
+        if ($env:STRONG_NAME_KEY) {
+          "signing=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Strong-name key available - running the full suite."
+        }
+        else {
+          "signing=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "::warning::Secret STRONG_NAME_KEY is not set, so only the Memory suite runs. Add the base64 of CryptoHives.Foundation.Key.snk as a repository secret to cover Threading and Cryptography, whose tests use InternalsVisibleTo against the signed packages."
+        }
+
+  test:
+    name: ${{matrix.csproj.name}}-${{matrix.os}}-${{matrix.framework}}
+    needs: resolve
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS (arm64) runners are costly, so the leg is optional - it is the only one that
+        # exercises the Arm crypto and NEON paths in the published binaries.
+        os: ${{ (github.event_name == 'schedule' || inputs.run_macos) && fromJSON('["ubuntu-latest", "windows-latest", "macOS-latest"]') || fromJSON('["ubuntu-latest", "windows-latest"]') }}
+        # Without the strong-name key only Memory can be built against the signed packages,
+        # so the matrix narrows to it rather than failing every leg on CS0281.
+        csproj: ${{ needs.resolve.outputs.signing == 'true' && fromJSON('[{"name":"Threading","folder":"./tests"},{"name":"Memory","folder":"./tests"},{"name":"Cryptography","folder":"./tests/Security"}]') || fromJSON('[{"name":"Memory","folder":"./tests"}]') }}
+        # The packages ship net462/net472/netstandard2.0/netstandard2.1/net8.0/net10.0; these
+        # three TFMs cover the modern assets plus the .NET Framework ones (through net48).
+        framework:
+          - 'net10.0'
+          - 'net8.0'
+          - 'net48'
+        exclude:
+          # .NET Framework only builds on Windows.
+          - os: ubuntu-latest
+            framework: 'net48'
+          - os: macOS-latest
+            framework: 'net48'
+          # Same split as buildandtest.yml: only the SIMD-heavy Cryptography suite earns the
+          # macOS runner; Threading and Memory add little arm64-specific coverage.
+          - os: macOS-latest
+            csproj:
+              name: Threading
+              folder: './tests'
+          - os: macOS-latest
+            csproj:
+              name: Memory
+              folder: './tests'
+
+    env:
+      CSPROJECT: "${{ matrix.csproj.folder }}/${{ matrix.csproj.name }}/${{ matrix.csproj.name }}.Tests.csproj"
+      TESTRESULTS: "TestResults-${{matrix.csproj.name}}-${{matrix.os}}-${{matrix.framework}}"
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ needs.resolve.outputs.ref }}
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: |
+          8.0.x
+          10.0.x
+
+    - name: Restore the strong-name key
+      if: ${{ needs.resolve.outputs.signing == 'true' }}
+      shell: pwsh
+      env:
+        STRONG_NAME_KEY: ${{ secrets.STRONG_NAME_KEY }}
+      run: |
+        # common.props turns signing on merely because this file exists, which is what makes the
+        # test assemblies match the InternalsVisibleTo public key baked into the published ones.
+        [IO.File]::WriteAllBytes('CryptoHives.Foundation.Key.snk', [Convert]::FromBase64String($env:STRONG_NAME_KEY))
+        Write-Host "Strong-name key restored."
+
+    - name: Build against ${{ needs.resolve.outputs.version }}
+      # EnableExperimentalAlgorithms=false matches how the packages are built: the #if EXPERIMENTAL
+      # paths are not in them, so the tests must not expect them either.
+      run: >
+        dotnet build ${{ env.CSPROJECT }} --force --configuration Release
+        /p:UsePackedNuGetPackages=true
+        /p:NuGetPackageVersion=${{ needs.resolve.outputs.version }}
+        /p:CustomTestTarget=${{ matrix.framework }}
+        /p:EnableExperimentalAlgorithms=false
+
+    - name: Test
+      run: >
+        dotnet test ${{ env.CSPROJECT }} --no-build --configuration Release --logger trx
+        /p:UsePackedNuGetPackages=true
+        /p:NuGetPackageVersion=${{ needs.resolve.outputs.version }}
+        /p:CustomTestTarget=${{ matrix.framework }}
+        /p:EnableExperimentalAlgorithms=false
+        --results-directory ${{ env.TESTRESULTS }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v7
+      if: ${{ always() }}
+      with:
+        name: published-package-results-${{matrix.csproj.name}}-${{matrix.os}}-${{matrix.framework}}
+        path: ${{ env.TESTRESULTS }}
