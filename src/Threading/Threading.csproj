@@ -8,11 +8,11 @@
     <AssemblyName>$(AssemblyPrefix).Threading</AssemblyName>
     <PackageId>$(PackagePrefix).Threading</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <Description>CryptoHives Threading Library</Description>
+    <Description>Allocation-free async synchronization primitives for .NET: an async lock (AsyncLock), async keyed lock, async semaphore, async reader writer lock, async auto reset event, async manual reset event, async barrier and async countdown event. Every primitive returns ValueTask backed by pooled IValueTaskSource waiters, so both the uncontended fast path and contended waiters allocate nothing — a drop-in, zero-allocation alternative to SemaphoreSlim(1,1), ReaderWriterLockSlim and Task-based coordination helpers. Supports .NET Framework 4.6.2, netstandard2.0, netstandard2.1, .NET 8 and .NET 10, with AOT-compatible and trim-safe builds on .NET 8+.</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Threading Async ValueTask AsyncLock AsyncReaderWriterLock</PackageTags>
+    <PackageTags>$(PackageTags) Threading Async Await Asynchronous Concurrency Synchronization Lock Locking Mutex Semaphore AsyncLock AsyncMutex AsyncSemaphore AsyncKeyedLock KeyedLock AsyncReaderWriterLock ReaderWriterLock ReaderWriterLockSlim AsyncAutoResetEvent AsyncManualResetEvent AsyncBarrier AsyncCountdownEvent SemaphoreSlim ValueTask IValueTaskSource TaskCompletionSource ObjectPool Pooling Allocation-Free ZeroAllocation LowLatency HighPerformance Performance AOT TrimSafe</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
   </PropertyGroup>
