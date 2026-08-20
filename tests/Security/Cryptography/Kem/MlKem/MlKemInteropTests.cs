@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Kem.MlKem;
@@ -302,8 +302,7 @@ public class MlKemInteropTests
 #pragma warning restore SYSLIB5006
 #endif
 
-    private static MLKemParameters BcParameters(string name) => name switch
-    {
+    private static MLKemParameters BcParameters(string name) => name switch {
         "ML-KEM-512" => MLKemParameters.ml_kem_512,
         "ML-KEM-768" => MLKemParameters.ml_kem_768,
         "ML-KEM-1024" => MLKemParameters.ml_kem_1024,

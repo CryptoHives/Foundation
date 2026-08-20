@@ -99,7 +99,7 @@ public class MlKemApiTests
         byte[] dk = original.ExportDecapsulationKey();
 
         // Corrupt the stored H(ekPKE): dk = dkPKE ‖ ekPKE ‖ H(ekPKE) ‖ z.
-        dk[dk.Length - 64] ^= 0x01;
+        dk[^64] ^= 0x01;
 
         Assert.That(() => MlKem.ImportDecapsulationKey(algorithm, dk),
             Throws.InstanceOf<CryptographicException>(),
@@ -174,8 +174,7 @@ public class MlKemApiTests
     [Test]
     public void AlgorithmDescriptors_ReportFips203Sizes()
     {
-        Assert.Multiple(() =>
-        {
+        Assert.Multiple(() => {
             Assert.That(MlKemAlgorithm.MlKem512.EncapsulationKeySizeInBytes, Is.EqualTo(800));
             Assert.That(MlKemAlgorithm.MlKem512.DecapsulationKeySizeInBytes, Is.EqualTo(1632));
             Assert.That(MlKemAlgorithm.MlKem512.CiphertextSizeInBytes, Is.EqualTo(768));
