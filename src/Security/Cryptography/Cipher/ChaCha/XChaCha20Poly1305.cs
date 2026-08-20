@@ -127,6 +127,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     internal static XChaCha20Poly1305 Create(SimdSupport simdSupport, byte[] key) => new(simdSupport, key);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     [SkipLocalsInit]
     public void Encrypt(
         ReadOnlySpan<byte> nonce,
@@ -135,6 +136,8 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         Span<byte> tag,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(XChaCha20Poly1305));
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
         if (ciphertext.Length < plaintext.Length)
@@ -164,6 +167,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public bool Decrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
@@ -171,6 +175,8 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         Span<byte> plaintext,
         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(XChaCha20Poly1305));
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
         if (tag.Length != TagSizeBytesConst)

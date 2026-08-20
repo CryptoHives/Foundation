@@ -2,27 +2,33 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
+# CI (push) trigger: full pipeline only for main/release branches. Feature-branch pushes are
+# still fully validated via the pr: trigger below when a PR is open; restricting this trigger
+# avoids running the whole multi-stage pipeline a second time on every push to an open PR's
+# source branch (previously: push trigger + pr trigger both fired for the same commit).
 trigger:
   batch: 'true'
   branches:
     include:
-    - '*'
+    - main
+    - releases/*
   paths:
-    include:
-    - '*' 
     exclude:
-    - 'docs/*' 
-    - 'docfx/*' 
-    - '*.md' 
+    # '**' matches nested folders too, unlike a bare '*' which only matches direct children.
+    - docfx/**
+    - .github/**
+    - '**/*.md'
 
-pr: 
+pr:
   autoCancel: 'true'
   branches:
     include:
     - '*'
   paths:
-    include:
-    - '*' 
+    exclude:
+    - docfx/**
+    - .github/**
+    - '**/*.md'
 
 variables:
   FullBuild: ${{ or(ne(variables['Build.Reason'], 'PullRequest'), ne(variables['System.PullRequest.IsFork'], 'False')) }}

@@ -112,7 +112,7 @@ await vt;  // Throws InvalidOperationException!
 public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously waits for the event to be set, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously waits for the event to be set, or throws `TimeoutException` if the timeout elapses first.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocating a `TimeProvider`).
@@ -120,7 +120,8 @@ Asynchronously waits for the event to be set, or throws `OperationCanceledExcept
 **Returns**: A `ValueTask` that completes when the event is set.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before the event is set.
+- `TimeoutException` — If the timeout elapses before the event is set.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -230,20 +231,20 @@ The following benchmarks compare `AsyncManualResetEvent` against popular alterna
 
 Measures the performance of rapid uncontended Set/Reset cycles. No surprises here except for Nito and Refimpl which expose some memory allocations, probably for a TaskCompletionSource instance.
 
-[!INCLUDE[Set Reset Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setreset.md)]
+[View live Set/Reset Cycle benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetReset&mode=trend)
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before waiters arrive (synchronous completion path). Again no surprises here; all implementations complete synchronously but Nito and Refimpl require allocations.
 
-[!INCLUDE[Set Then Wait Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-setthenw.md)]
+[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetThenWait&mode=trend)
 
 ### Wait Then Set Benchmark
 
 Measures the pattern where waiters are queued before the event is signaled (asynchronous completion path). The pooled implementation shows strong performance here without allocations, especially when a cancellation token is provided. 
 Nito and Refimpl again show higher allocation counts due to TaskCompletionSource usage. In the tests for non cancellable tokens, Nito is ahead of the pack because it can share a single TaskCompletionSource with all waiters, but falls back when real cancellable tokens are used.
 
-[!INCLUDE[Wait Then Set Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncmanualresetevent-waitthenset.md)]
+[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=WaitThenSet&mode=trend)
 
 ### Benchmark Analysis
 
@@ -357,7 +358,7 @@ try
     await _event.WaitAsync(TimeSpan.FromSeconds(10));
     ProcessData();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
@@ -373,6 +374,7 @@ catch (OperationCanceledException)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

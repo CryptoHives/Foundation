@@ -59,6 +59,10 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
 #endif
     private ValueTask<AsyncKeyedLock.AsyncNonKeyedLockReleaser>[]? _lockNonKeyedHandle;
     private Task<Microsoft.VisualStudio.Threading.AsyncSemaphore.Releaser>[]? _lockVSThreadingHandle;
+
+    // SemaphoreSlim's timed overload returns Task<bool> rather than Task, so the timed benchmark below
+    // cannot reuse the untimed handle array.
+    private Task<bool>[]? _semaphoreSlimTimedHandle;
 #if !NETFRAMEWORK
     private Task<IDisposable>[]? _lockNeoSmartHandle;
     private Proto.Promises.Promise<Proto.Promises.Threading.AsyncLock.Key>[]? _lockProtoPromiseHandle;
@@ -126,12 +130,17 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     }
 
     [Test]
-    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
     public Task LockUnlockPooledMultipleTestAsync(CancellationType cancellationType)
     {
         PooledGlobalSetup();
         return LockUnlockPooledMultipleAsync(cancellationType);
     }
+
+    // Note: only this variant carries the timed dimension. It is the baseline, so its timed row is
+    // directly comparable to its own untimed one, which is the measurement that matters - what a timer
+    // per queued waiter costs. Repeating it across every Pooled shape would multiply the matrix without
+    // adding a distinct question.
 
     [GlobalSetup(Target = nameof(LockUnlockPooledMultipleAsync))]
     public void PooledGlobalSetup()
@@ -150,14 +159,16 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// </remarks>
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Multiple", "Pooled (ValueTask)")]
-    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
     public async Task LockUnlockPooledMultipleAsync(CancellationType cancellationType)
     {
-        using (await _lockPooled.LockAsync(cancellationType.CancellationToken).ConfigureAwait(false))
+        // Timeout is InfiniteTimeSpan for the untimed variants, which the implementation treats as "arm
+        // no timer" - so one call site serves every variant without branching.
+        using (await _lockPooled.LockAsync(cancellationType.Timeout, cancellationType.CancellationToken).ConfigureAwait(false))
         {
             for (int i = 0; i < Iterations; i++)
             {
-                _lockHandle![i] = _lockPooled.LockAsync(cancellationType.CancellationToken);
+                _lockHandle![i] = _lockPooled.LockAsync(cancellationType.Timeout, cancellationType.CancellationToken);
             }
         }
 
@@ -441,7 +452,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// Benchmark for Visual Studio Threading async semaphore used as an async lock with multiple queued waiters.
     /// </summary>
     [Benchmark]
-    [BenchmarkCategory("Multiple", "VS.Threading", "AsyncSemaphore")]
+    [BenchmarkCategory("Multiple", "VS.Threading")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockVSThreadingMultipleAsync(CancellationType cancellationType)
     {
@@ -450,6 +461,98 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
             for (int i = 0; i < Iterations; i++)
             {
                 _lockVSThreadingHandle![i] = _lockVSThreading.EnterAsync(cancellationType.CancellationToken);
+            }
+        }
+
+        foreach (var handle in _lockVSThreadingHandle!)
+        {
+            using (await handle.ConfigureAwait(false)) { }
+        }
+    }
+
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public Task LockUnlockSemaphoreSlimTimedMultipleTestAsync(CancellationType cancellationType)
+    {
+        SemaphoreSlimTimedGlobalSetup();
+        return LockUnlockSemaphoreSlimTimedMultipleAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockSemaphoreSlimTimedMultipleAsync))]
+    public void SemaphoreSlimTimedGlobalSetup()
+    {
+        base.GlobalSetup();
+        _semaphoreSlimTimedHandle = new Task<bool>[Iterations];
+    }
+
+    /// <summary>
+    /// Timed counterpart to <see cref="LockUnlockSemaphoreSlimMultipleAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// A separate method because the timed overload returns <c>Task&lt;bool&gt;</c> - reporting whether
+    /// the wait succeeded - where the untimed one returns a bare <c>Task</c>, so the two cannot share a
+    /// handle array. The timeout never elapses, so the result is always <see langword="true"/> and what
+    /// is measured is the cost of arming and disposing a timer per queued waiter.
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "System", "SemaphoreSlim")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public async Task LockUnlockSemaphoreSlimTimedMultipleAsync(CancellationType cancellationType)
+    {
+        await _semaphoreSlim.WaitAsync(cancellationType.Timeout, cancellationType.CancellationToken).ConfigureAwait(false);
+        try
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _semaphoreSlimTimedHandle![i] =
+                    _semaphoreSlim.WaitAsync(cancellationType.Timeout, cancellationType.CancellationToken);
+            }
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
+
+        foreach (Task<bool> handle in _semaphoreSlimTimedHandle!)
+        {
+            await handle.ConfigureAwait(false);
+            _semaphoreSlim.Release();
+        }
+    }
+
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public Task LockUnlockVSThreadingTimedMultipleTestAsync(CancellationType cancellationType)
+    {
+        VSThreadingTimedGlobalSetup();
+        return LockUnlockVSThreadingTimedMultipleAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockVSThreadingTimedMultipleAsync))]
+    public void VSThreadingTimedGlobalSetup()
+    {
+        base.GlobalSetup();
+        _lockVSThreadingHandle = new Task<Microsoft.VisualStudio.Threading.AsyncSemaphore.Releaser>[Iterations];
+    }
+
+    /// <summary>
+    /// Timed counterpart to <see cref="LockUnlockVSThreadingMultipleAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// The return type matches its untimed sibling here, but the overload takes a timeout <em>instead
+    /// of</em> a cancellation token rather than alongside one, so it still needs its own method rather
+    /// than another variant of the existing one.
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "VS.Threading")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]
+    public async Task LockUnlockVSThreadingTimedMultipleAsync(CancellationType cancellationType)
+    {
+        using (await _lockVSThreading.EnterAsync(cancellationType.Timeout).ConfigureAwait(false))
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _lockVSThreadingHandle![i] = _lockVSThreading.EnterAsync(cancellationType.Timeout);
             }
         }
 

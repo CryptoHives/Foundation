@@ -145,9 +145,9 @@ Asynchronously acquires a reader lock. Multiple readers can hold the lock concur
 public ValueTask<Releaser> ReaderLockAsync(TimeSpan timeout)
 ```
 
-Asynchronously acquires a reader lock, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously acquires a reader lock, or throws `TimeoutException` if the timeout elapses first.
 
-**Throws**: `OperationCanceledException` if the timeout elapses, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 
 ### UpgradeableReaderLockAsync
 
@@ -163,9 +163,9 @@ Asynchronously acquires an upgradeable reader lock. One upgradeable reader can c
 public ValueTask<Releaser> UpgradeableReaderLockAsync(TimeSpan timeout)
 ```
 
-Asynchronously acquires an upgradeable reader lock, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously acquires an upgradeable reader lock, or throws `TimeoutException` if the timeout elapses first.
 
-**Throws**: `OperationCanceledException` if the timeout elapses, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 
 ### WriterLockAsync
 
@@ -181,9 +181,9 @@ Asynchronously acquires a writer lock. Only one writer can hold the lock.
 public ValueTask<Releaser> WriterLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously acquires a writer lock, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously acquires a writer lock, or throws `TimeoutException` if the timeout elapses first.
 
-**Throws**: `OperationCanceledException` if the timeout elapses, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+**Throws**: `TimeoutException` if the timeout elapses, `OperationCanceledException` if the operation is canceled via the cancellation token, `ArgumentOutOfRangeException` if `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes for all timeout overloads**:
 
@@ -193,6 +193,8 @@ Asynchronously acquires a writer lock, or throws `OperationCanceledException` if
 | `Timeout.InfiniteTimeSpan` | No |
 | `TimeSpan.Zero` and contested | No (immediate exception) |
 | Finite positive timeout | Yes — one instance, disposed on await |
+
+An already-cancelled token is checked before the zero timeout, on every acquisition method here and on `UpgradeToWriterLockAsync`: passing both a cancelled token and `TimeSpan.Zero` throws `OperationCanceledException` carrying that token, not a `TimeoutException`. This matches the other primitives in the package.
 
 ### Allocation Behavior
 
@@ -208,7 +210,7 @@ try
         return await ReadDataAsync();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
@@ -255,25 +257,25 @@ The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLo
 
 Measures the performance of acquiring and releasing reader locks with varying numbers of nested acquisitions. At the lowest iteration count (Iterations = 0), the pooled implementation achieves lower latency than Proto.Promises; from Iterations = 1 onward, Proto.Promises achieves lower per-operation latency, reflecting a lower per-lock-call overhead at the cost of a slightly higher fixed invocation overhead. Both operate with zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency at all iteration counts.
 
-[!INCLUDE[Reader Lock Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-reader.md)]
+[View live Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=ReaderLock&mode=trend)
 
 ### Writer Lock Benchmark
 
 Measures the performance of acquiring and releasing a single writer lock. Proto.Promises achieves lower uncontended latency than the pooled implementation, with both operating at zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency.
 
-[!INCLUDE[Writer Lock Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-writer.md)]
+[View live Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=WriterLock&mode=trend)
 
 ### Upgradeable Reader Lock Benchmark
 
 Measures the performance of acquiring an upgradeable reader lock in combination with varying numbers of additional reader locks. At the lowest iteration count (Iterations = 0), the pooled implementation is marginally faster; Proto.Promises achieves lower per-operation latency as the number of additional reader locks increases. Both operate with zero allocations. VS.Threading allocates per acquisition and shows substantially higher latency across all iteration counts.
 
-[!INCLUDE[Upgradeable Reader Lock Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-upgradeablereader.md)]
+[View live Upgradeable Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradeableReaderLock&mode=trend)
 
 ### Upgraded Writer Lock Benchmark
 
 Measures the performance of acquiring an upgradeable reader lock, holding additional reader locks concurrently, then upgrading to an exclusive writer lock. The pooled implementation is marginally faster at the lowest iteration count (Iterations = 0); Proto.Promises achieves lower per-operation latency as the number of held reader locks increases. Both operate with zero allocations. VS.Threading allocates proportionally to the number of held reader locks and shows substantially higher latency across all configurations.
 
-[!INCLUDE[Upgraded Writer Lock Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncreaderwriterlock-upgradedwriter.md)]
+[View live Upgraded Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradedWriterLock&mode=trend)
 
 ### Benchmark Analysis
 
@@ -307,7 +309,7 @@ try
         await SaveDataAsync();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
@@ -334,6 +336,7 @@ catch (OperationCanceledException)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

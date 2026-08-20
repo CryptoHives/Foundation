@@ -39,6 +39,21 @@ public class HashAlgorithmFactoryTests
 #pragma warning restore CS0618
 
     /// <summary>
+    /// Verifies that a disposed instance throws instead of silently hashing with cleared state.
+    /// </summary>
+    /// <param name="factory">The hash algorithm factory.</param>
+    [Test]
+    [TestCaseSource(typeof(CryptoHivesManagedImplementations), nameof(CryptoHivesManagedImplementations.All))]
+    public void DisposedInstanceThrows(HashAlgorithmFactory factory)
+    {
+        var hash = factory.Create();
+        hash.ComputeHash(TestData);
+        hash.Dispose();
+
+        Assert.Throws<System.ObjectDisposedException>(() => hash.ComputeHash(TestData));
+    }
+
+    /// <summary>
     /// Verifies that XOF algorithms support custom output length.
     /// </summary>
     [Test]

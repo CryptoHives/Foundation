@@ -586,6 +586,21 @@ public class KMacTests
         Assert.That(hash1, Is.Not.EqualTo(hash2));
     }
 
+    /// <summary>
+    /// A disposed instance throws instead of silently authenticating with cleared state.
+    /// </summary>
+    [Test]
+    public void DisposedInstanceThrows()
+    {
+        byte[] key = Encoding.UTF8.GetBytes("test-key-12345678");
+        var kmac = KMac128.Create(key, 32, "");
+        kmac.ComputeHash(Encoding.UTF8.GetBytes("test"));
+
+        kmac.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => kmac.ComputeHash(Encoding.UTF8.GetBytes("test")));
+    }
+
     #endregion
 
     #region Helper Methods

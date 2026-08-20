@@ -2,15 +2,34 @@
 
 name: DocFX Deployment
 
-# Trigger the action on push to main
+# Trigger on push to main, but only when documentation or the API-doc sources change.
+# (API reference is generated from src/**; other churn does not affect the site.)
+#
+# Recording a benchmark run does NOT publish it. The trends databases are generated at build time
+# from the orphan `benchmarks` branch, so a new run only becomes visible once this workflow runs
+# again - but a push to that branch cannot start it. For push events GitHub only runs workflows
+# that exist in the pushed ref, and `benchmarks` carries nothing but README.md and the two run
+# directories; it has no .github/ at all. Listing it here looked right and never once fired.
+#
+# So after pushing a recorded run, publish it deliberately:
+#
+#     gh workflow run docfx.yml
+#
+# which is what workflow_dispatch below is for. Any later push to main republishes it too, since
+# the build always reads the archive branch fresh.
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
+    paths:
+      - 'docfx/**'
+      - 'src/**'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   actions: read
+  contents: read
   pages: write
   id-token: write
 
@@ -19,7 +38,7 @@ permissions:
 concurrency:
   group: "pages"
   cancel-in-progress: false
-  
+
 jobs:
   publish-docs:
     environment:
@@ -27,12 +46,70 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+    # Explicitly main, never the triggering ref: a push to `benchmarks` would otherwise check out
+    # the orphan data branch, which has no docfx/, src/ or scripts/, and the build would fail
+    # before it started.
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Dotnet Setup
-      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 8.x
+        ref: main
+
+    # The run archive, into a directory of its own. It lives outside docfx/, so nothing here is
+    # picked up as site content.
+    - name: Checkout benchmark run archive
+      uses: actions/checkout@v7
+      with:
+        ref: benchmarks
+        path: .benchmarks-archive
+
+    - name: Dotnet Setup
+      uses: actions/setup-dotnet@v6
+      with:
+        # 8.x for docfx itself, which ships a net8.0 tool; 10.x so the API metadata step can load
+        # the projects, whose target frameworks include net10.0.
+        dotnet-version: |
+          8.x
+          10.x
+
+    - name: Python Setup
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+
+    # The trends database is a derived artifact, rebuilt here rather than committed: it is a
+    # multi-megabyte binary that sqlite rewrites wholesale on every change, so committing it added
+    # a fresh incompressible blob to history for data that is fully reproducible from the archive.
+    - name: Build benchmark trends databases
+      run: |
+        python scripts/threading-benchmark-trends/import_run_archive.py \
+          --archive .benchmarks-archive \
+          --db docfx/packages/threading/benchmark-trends/benchmark-history.sqlite
+        python scripts/cryptography-benchmark-trends/import_run_archive.py \
+          --archive .benchmarks-archive \
+          --db docfx/packages/security/cryptography/benchmark-trends/benchmark-history.sqlite
+
+    # Publishing a dashboard with no data is worse than failing, because it looks like a result.
+    # The importer exits non-zero when the archive is missing entirely; this catches the subtler
+    # case where it ran, found nothing to import, and left an empty database behind.
+    - name: Verify the trends databases have data
+      run: |
+        for db in docfx/packages/threading/benchmark-trends/benchmark-history.sqlite \
+                  docfx/packages/security/cryptography/benchmark-trends/benchmark-history.sqlite; do
+          rows=$(python -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('select count(*) from benchmark_results').fetchone()[0])" "$db")
+          echo "$db: $rows row(s)"
+          if [ "$rows" -eq 0 ]; then
+            echo "::error::$db is empty - refusing to publish a dashboard with no data."
+            exit 1
+          fi
+          # The dashboard degrades quietly without these - tooltips just stop naming the
+          # competitor's version - so an empty table has to be loud rather than invisible.
+          packages=$(python -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('select count(*) from benchmark_run_packages').fetchone()[0])" "$db")
+          echo "$db: $packages package version(s)"
+          if [ "$packages" -eq 0 ]; then
+            echo "::warning::$db records no third-party package versions - competitor regressions cannot be attributed."
+          fi
+        done
+
     - run: dotnet tool update -g docfx
     - run: docfx docfx/docfx.json
     - name: Upload artifact

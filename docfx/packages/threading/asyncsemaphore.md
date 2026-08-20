@@ -87,7 +87,7 @@ Asynchronously waits to acquire a permit from the semaphore.
 public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously waits to acquire a permit, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously waits to acquire a permit, or throws `TimeoutException` if the timeout elapses first.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely.
@@ -95,7 +95,8 @@ Asynchronously waits to acquire a permit, or throws `OperationCanceledException`
 **Returns**: A `ValueTask` that completes when a permit is acquired.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before a permit becomes available.
+- `TimeoutException` — If the timeout elapses before a permit becomes available.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -122,7 +123,7 @@ try
         _semaphore.Release();
     }
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // Permit was not available within 5 seconds
     HandleTimeout();
@@ -158,7 +159,7 @@ TODO: Currently benchmarks are only available on uncontended scenarios to measur
 
 Measures the performance of acquiring and releasing a single permit. In the current published results, ProtoPromise is slightly faster than the pooled implementation on raw uncontended throughput, while the pooled implementation preserves the same `ValueTask`-first design and behavior used across this library.
 
-[!INCLUDE[Semaphore Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncsemaphore-single.md)]
+[View live Single Wait/Release benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncSemaphore&method=WaitRelease&mode=trend)
 
 ### Benchmark Analysis
 
@@ -206,7 +207,7 @@ try
     await DoWorkAsync();
     _semaphore.Release();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     // No permit available within the timeout
     HandleTimeout();
@@ -220,6 +221,7 @@ catch (OperationCanceledException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [Benchmarks](benchmarks.md) - Benchmark description

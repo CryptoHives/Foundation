@@ -124,10 +124,13 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
     internal static ChaCha20Poly1305 Create(SimdSupport simdSupport, byte[] key) => new(simdSupport, key);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
                         Span<byte> ciphertext, Span<byte> tag,
                         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(ChaCha20Poly1305));
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
         if (ciphertext.Length < plaintext.Length)
@@ -148,10 +151,13 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
                         ReadOnlySpan<byte> tag, Span<byte> plaintext,
                         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(ChaCha20Poly1305));
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
         if (tag.Length != TagSizeBytesConst)

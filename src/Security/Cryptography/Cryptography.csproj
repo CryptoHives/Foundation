@@ -7,11 +7,11 @@
     <AssemblyName>$(AssemblyPrefix).Security.Cryptography</AssemblyName>
     <PackageId>$(PackagePrefix).Security.Cryptography</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <Description>CryptoHives Security Cryptography Library</Description>
+    <Description>Fully managed, OS-independent cryptography for .NET — hash algorithm, MAC, KDF and cipher implementations written from NIST, RFC and ISO specifications and validated against the official test vectors. Every type extends System.Security.Cryptography base types, so it is a drop-in for anything consuming HashAlgorithm, and results are identical on Windows, Linux, macOS and anywhere else .NET runs, with no dependency on the OS crypto provider. Covers SHA-2, SHA-3, Keccak (Ethereum-compatible), SHAKE, cSHAKE, TurboSHAKE, KT, ParallelHash, BLAKE2b, BLAKE2s, BLAKE3, Ascon, SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160, HMAC, CMAC, GMAC, KMAC, Poly1305, HKDF, PBKDF2, KBKDF, ConcatKDF, AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, AES, ChaCha20, SM4, ARIA, Camellia, Kuznyechik, Kalyna and SEED. Hardware intrinsics are dispatched automatically where available (AES-NI, PCLMULQDQ, SSE2, SSSE3, AVX2, AVX-512 on x86/x64; ARM AES, ARM SHA-1/SHA-2, PMULL and NEON on Arm64) with a scalar fallback always present. Span-based allocation-free APIs, XOF streaming, and support for .NET Framework 4.6.2/4.7.2, netstandard2.0, netstandard2.1, .NET 8 and .NET 10.</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Cryptography Hash MAC Ascon BLAKE SHA SHAKE SM3 Keccak Gost LSH Kupyna</PackageTags>
+    <PackageTags>$(PackageTags) Cryptography Crypto Security Encryption Managed HashAlgorithm Hash Digest Checksum MAC KDF Cipher AEAD XOF SHA1 SHA2 SHA224 SHA256 SHA384 SHA512 SHA3 Keccak Ethereum SHAKE SHAKE128 SHAKE256 cSHAKE TurboSHAKE KangarooTwelve KT128 ParallelHash BLAKE2 BLAKE2b BLAKE2s BLAKE3 Ascon MD5 RIPEMD160 SM3 Gost Streebog Kupyna LSH Whirlpool HMAC CMAC GMAC KMAC Poly1305 HKDF PBKDF2 KBKDF ConcatKDF AES AESGCM AESCCM GCM CCM CTR CBC ChaCha20 XChaCha20 SM4 Aria Camellia Kuznyechik Kalyna Seed NIST RFC SP800-185 Intrinsics SIMD AESNI AVX2 NEON Arm64 CrossPlatform AOT TrimSafe</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -75,6 +75,12 @@
     <None Include="../../../docfx/packages/security/cryptography/specs/*.md" Link="specs/%(Filename)%(Extension)" />
     <None Include="../../../docfx/packages/security/cryptography/specs/*.yml" Link="specs/%(Filename)%(Extension)" />
     <None Include="../../../docfx/packages/security/cryptography/benchmarks/*.md" Link="docfx/benchmarks/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- LLM/agent usage + porting guide, shipped at the package root -->
+  <ItemGroup>
+    <None Include="PORTING.md" Pack="true" PackagePath="" />
+    <None Update="README.md" Visible="true" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />

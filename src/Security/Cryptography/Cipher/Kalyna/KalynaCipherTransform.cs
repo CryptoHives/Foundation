@@ -13,14 +13,16 @@ using System.Runtime.CompilerServices;
 internal sealed class KalynaCipherTransform : BlockCipherTransform
 {
     private KalynaCore _core;
+    private readonly int _blockSizeBytes;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="KalynaCipherTransform"/> class.
     /// </summary>
-    public KalynaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
-        : base(iv, encrypting, mode, padding)
+    public KalynaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding, int blockSizeBytes)
+        : base(iv, encrypting, mode, padding, blockSizeBytes)
     {
-        _core = KalynaCore.Create(key);
+        _blockSizeBytes = blockSizeBytes;
+        _core = KalynaCore.Create(key, blockSizeBytes);
     }
 
     /// <inheritdoc/>
@@ -29,9 +31,12 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
         // Only the hot CBC path is overridden here; all other modes fall through to the base
         // class. This avoids per-block virtual dispatch, per-block stackalloc, and byte-by-byte
         // XOR by operating directly on ulong pairs in little-endian byte order.
-        int blocks = input.Length / 16;
-        if (CurrentMode != CipherMode.CBC || input.Length < 16 || output.Length < blocks * 16)
+        int blocks = input.Length / _blockSizeBytes;
+        if (CurrentMode != CipherMode.CBC || _blockSizeBytes != 16 || input.Length < _blockSizeBytes || output.Length < blocks * _blockSizeBytes)
+        {
             return base.TransformBlock(input, output);
+        }
+
         Span<byte> fb = FeedbackSpan;
 
         if (IsEncrypting)
@@ -40,8 +45,8 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
             ulong fbk1 = BinaryPrimitives.ReadUInt64LittleEndian(fb.Slice(8));
             for (int i = 0; i < blocks; i++)
             {
-                ReadOnlySpan<byte> inBlk = input.Slice(i * 16, 16);
-                Span<byte> outBlk = output.Slice(i * 16, 16);
+                ReadOnlySpan<byte> inBlk = input.Slice(i * _blockSizeBytes, _blockSizeBytes);
+                Span<byte> outBlk = output.Slice(i * _blockSizeBytes, _blockSizeBytes);
                 ulong w0 = BinaryPrimitives.ReadUInt64LittleEndian(inBlk) ^ fbk0;
                 ulong w1 = BinaryPrimitives.ReadUInt64LittleEndian(inBlk.Slice(8)) ^ fbk1;
                 _core.EncryptBlock(ref w0, ref w1);
@@ -74,7 +79,7 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
             BinaryPrimitives.WriteUInt64LittleEndian(fb.Slice(8), fbk1);
         }
 
-        return blocks * 16;
+        return blocks * _blockSizeBytes;
     }
 
     /// <inheritdoc/>

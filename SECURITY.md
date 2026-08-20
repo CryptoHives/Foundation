@@ -1,4 +1,4 @@
-# 🛡️ Security Policy — CryptoHives Open Source Initiative
+# Security Policy
 
 Thank you for helping to keep **CryptoHives Open Source Initiative** and its ecosystem secure.
 
@@ -7,7 +7,7 @@ If you discover a potential vulnerability, please report it responsibly using th
 
 ---
 
-## 🔒 Reporting a Vulnerability
+## Reporting a Vulnerability
 
 **Do not open public GitHub issues for security reports.**  
 Instead, please report vulnerabilities through one of the following private channels:
@@ -28,32 +28,7 @@ Encrypt your message using our PGP public key (see below).
 
 ---
 
-## 📅 Response Timeline
-
-Once this project is fully funded and the Nuget packages are in a released state, the following response timeline will be implemented:
-
-| Stage | Response Time |
-|--------|----------------|
-| Acknowledgement of report | within **48 hours** |
-| Initial assessment | within **5 business days** |
-| Fix development | depends on complexity |
-| Public disclosure | after a verified fix is released |
-
-We’ll keep you informed throughout the process and credit you for responsible disclosure if desired.
-
----
-
-## ✅ Supported Versions
-
-| Version | Supported |
-|----------|------------|
-| Latest release | ✅ Supported |
-| Older releases | ❌ Not supported |
-| Pre releases | ❌ Not supported |
-
----
-
-## 🔑 PGP Public Key
+## PGP Public Key
 
 Use the following PGP key to encrypt sensitive information before sending it to us:
 
@@ -84,7 +59,7 @@ o/ZuuOhQXECjaAAScxO8HbxOJv1dMLQB7PRyk6G+bE3PNRbEWyG99g+CSrPfstfL 52BSJm5xhdizxnu
 
 ---
 
-## ⚖️ Responsible Disclosure Guidelines
+## Responsible Disclosure Guidelines
 
 We ask all researchers to:
 - Avoid publicly disclosing details until a fix is released.

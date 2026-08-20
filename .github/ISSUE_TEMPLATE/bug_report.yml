@@ -1,0 +1,93 @@
+name: 🐛 Bug report
+description: Report a defect in a CryptoHives.Foundation package
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report! Please fill out the sections below so we can reproduce and fix the issue quickly.
+
+        ⚠️ **Found a security vulnerability?** Do **not** file it here — report it privately following our [security policy](https://github.com/CryptoHives/Foundation/blob/main/SECURITY.md).
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checklist
+      options:
+        - label: I searched existing issues and this has not already been reported.
+          required: true
+        - label: I am using a supported version of the package and .NET.
+          required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package
+      options:
+        - CryptoHives.Foundation.Memory
+        - CryptoHives.Foundation.Security.Cryptography
+        - CryptoHives.Foundation.Threading
+        - CryptoHives.Foundation.Threading.Analyzers
+        - Build / CI / NuGet packaging
+        - Multiple / Not sure
+    validations:
+      required: true
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version
+      description: The NuGet package version, or the commit SHA if built from source.
+      placeholder: "0.6.23"
+    validations:
+      required: true
+  - type: input
+    id: tfm
+    attributes:
+      label: Target framework(s)
+      description: The target framework(s) you observe the bug on.
+      placeholder: "net10.0 (also seen on net8.0, netstandard2.0)"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS / architecture / runtime
+      placeholder: "Windows 11 x64 / .NET 10.0.100 — also repro on Linux arm64"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or a self-contained code snippet that reproduces the problem.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include any exception messages and stack traces.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: >-
+        Anything else that helps — e.g. whether it reproduces with hardware intrinsics disabled,
+        whether it is timing/threading dependent, or how it compares to a reference implementation.
+    validations:
+      required: false

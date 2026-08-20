@@ -27,6 +27,7 @@ public abstract class KeccakCore : HashAlgorithm
     private protected readonly byte[] _buffer;
     private protected readonly int _rateBytes;
     private protected int _bufferLength;
+    private protected bool _disposed;
 
     internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.KeccakDefault)
         : this(rateBytes, 0, simdSupport)
@@ -41,8 +42,11 @@ public abstract class KeccakCore : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(GetType().Name);
+
         _keccakCore.Reset();
         ClearBuffer(_buffer);
         _bufferLength = 0;
@@ -54,8 +58,11 @@ public abstract class KeccakCore : HashAlgorithm
     internal static new SimdSupport SimdSupport => KeccakCoreState.SimdSupport;
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(GetType().Name);
+
         int offset = 0;
 
         // If we have data in buffer, fill it first
@@ -95,6 +102,7 @@ public abstract class KeccakCore : HashAlgorithm
         {
             _keccakCore.Reset();
             ClearBuffer(_buffer);
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

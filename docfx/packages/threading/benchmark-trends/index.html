@@ -1,0 +1,1435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CryptoHives Threading Benchmark Trends</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 2rem; max-width: 1100px; }
+  h1 { font-size: 1.4rem; }
+  fieldset.mode-toggle { display: flex; gap: 1rem; margin: 0 0 1rem; border: 1px solid #ddd; border-radius: 6px; padding: 0.5rem 1rem; }
+  fieldset.mode-toggle legend { font-size: 0.8rem; color: #666; padding: 0 0.3rem; }
+  fieldset.mode-toggle label { font-size: 0.9rem; display: flex; align-items: center; gap: 0.3rem; }
+  .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0 1.5rem; align-items: flex-start; }
+  .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
+  /* The `hidden` attribute has to beat the rule above: the UA stylesheet's [hidden] { display: none }
+     loses to any author rule that sets display, so a picker hidden from JS stayed on screen — and in
+     the chart modes it read as a control that simply did nothing. */
+  .controls > label[hidden] { display: none; }
+  select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
+  #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  /* A control the current view ignores. Disabled rather than hidden: it keeps the layout
+     stable while switching modes, and keeps the setting visible so you can see what it will be
+     when you switch back. The title attribute says why on hover. */
+  .controls > label.inert { opacity: 0.4; }
+  .controls > label.inert select, .controls > label.inert input { cursor: not-allowed; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-bottom: 0.4rem; }
+  .legend-row:empty { margin-bottom: 0; }
+  .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: #333; cursor: pointer; user-select: none; }
+  .legend-item.disabled { opacity: 0.35; text-decoration: line-through; }
+  .legend-swatch { width: 13px; height: 13px; border-radius: 2px; flex: none; }
+  .legend-hint { font-size: 0.78rem; color: #888; margin: -0.2rem 0 0.5rem; }
+  #chart-container { position: relative; height: 480px; }
+  .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
+  #table-container { overflow-x: auto; max-height: 70vh; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 0.3rem 0.55rem; text-align: left; white-space: nowrap; }
+  table.data-table th { background: #f5f5f5; position: sticky; top: 0; z-index: 1; }
+  table.data-table td.numeric, table.data-table th.numeric { text-align: right; }
+  table.data-table tr.group-start td { border-top: 2px solid #bbb; }
+  /* Ours get a wash of the brand amber so they stand out from third parties at a glance; the
+     baseline is the same hue a shade deeper, so the two are related but never confusable.
+     Identical to the Cryptography dashboard's table - the two are meant to read as one product. */
+  table.data-table tr.ours td { background: #fffcf4; }
+  table.data-table tr.baseline td { background: #ffeecc; font-weight: 600; }
+  table.data-table td.worse { color: #b91c1c; }
+  /* A delta whose competitor also changed version between the two runs. Not an error state -
+     the number is real - so it is marked rather than coloured, and carries its own tooltip. */
+  table.data-table td .pkg-changed { color: #92400e; cursor: help; margin-left: 0.3rem; }
+  table.data-table td.better { color: #15803d; }
+  .table-note { font-size: 0.8rem; color: #666; margin: 0 0 0.6rem; }
+</style>
+</head>
+<body>
+<h1>CryptoHives Threading Benchmark Trends</h1>
+<p>
+  Benchmark history for the async synchronization primitives in
+  <code>CryptoHives.Foundation.Threading</code>, measured against reference libraries
+  (Nito.AsyncEx, NeoSmart, ProtoPromise, Microsoft.VisualStudio.Threading) and against the
+  synchronous BCL primitives they replace (<code>lock</code>/<code>Monitor</code>,
+  <code>SpinLock</code>, <code>Interlocked</code>, <code>ReaderWriterLockSlim</code>,
+  <code>Barrier</code>, <code>CountdownEvent</code>), across platforms, target frameworks and
+  contention levels.
+</p>
+<p>
+  Select a platform, primitive family and operation; each implementation is drawn as its own
+  series. Where a benchmark varies by <code>CancellationToken</code> state, the Cancellation
+  selector chooses the state to plot: a live but unfired token carries measurable overhead
+  relative to <code>CancellationToken.None</code>. The page runs entirely in the browser, with no
+  server and no external database.
+</p>
+
+<fieldset class="mode-toggle">
+  <legend>View</legend>
+  <label><input type="radio" name="mode" value="table" checked> Table (one run)</label>
+  <label><input type="radio" name="mode" value="trend"> Trend over time</label>
+  <label><input type="radio" name="mode" value="scaling"> Scaling by contention</label>
+</fieldset>
+
+<div class="controls">
+  <label>Platform
+    <select id="platform"></select>
+  </label>
+  <label id="framework-picker" hidden>Framework
+    <select id="framework"></select>
+  </label>
+  <label>Family
+    <select id="family"></select>
+  </label>
+  <label>Method
+    <select id="method"></select>
+  </label>
+  <label id="cancellation-picker">Cancellation
+    <select id="cancellation"></select>
+  </label>
+  <label id="metric-picker">Metric
+    <select id="metric">
+      <option value="mean_ns">Mean time (ns)</option>
+      <option value="allocated_bytes">Allocated bytes</option>
+    </select>
+  </label>
+  <label id="run-picker" hidden>Run
+    <select id="run"></select>
+  </label>
+  <label id="compare-picker" hidden>Compare with
+    <select id="compare"></select>
+  </label>
+  <label id="range-picker">Date range
+    <select id="date-range">
+      <option value="all">All time</option>
+      <option value="30">Last 30 days</option>
+      <option value="90">Last 90 days</option>
+    </select>
+  </label>
+  <label id="log-picker" style="flex-direction: row; align-items: center; gap: 0.4rem; margin-top: 1.2rem;">
+    <input type="checkbox" id="log-scale">
+    Logarithmic Y axis
+  </label>
+  <label style="flex-direction: row; align-items: center; gap: 0.5rem; margin-top: 1.2rem;">
+    <button type="button" id="copy-link">🔗 Copy link to this view</button>
+    <span id="copy-link-status" style="font-size: 0.8rem; color: #666;"></span>
+  </label>
+</div>
+
+<div id="status">Loading database…</div>
+<p id="legend-hint" class="legend-hint" hidden>Click a color, line style or point shape to hide or show that series.</p>
+<div id="legend-colors" class="legend-row"></div>
+<div id="legend-dashes" class="legend-row"></div>
+<div id="legend-metrics" class="legend-row"></div>
+<div id="chart-container"><canvas id="chart"></canvas></div>
+<p id="table-note" class="table-note" hidden></p>
+<div id="table-container" hidden><table class="data-table" id="data-table"><thead><tr id="data-table-head"></tr></thead><tbody id="data-table-body"></tbody></table></div>
+
+<p class="hint">
+  Data source: <code>benchmark-history.sqlite</code>, generated at build time by
+  <code>scripts/threading-benchmark-trends/import_run_archive.py</code> from the run archive on
+  the <code>benchmarks</code> branch.
+  </p>
+
+  <p class="hint">
+  <strong>Table (one run)</strong> reproduces a single run's report: every dimension that run
+  carried as its own column, grouped and ordered as BenchmarkDotNet ordered it. Rows for this
+  library's own implementations are shaded, and the row the benchmark class declares as its
+  baseline more deeply. Ratio is the figure the report recorded, relative to that declared
+  baseline; BenchmarkDotNet fixes one baseline per benchmark class, so for some families the
+  reference row falls outside the current selection. Any recorded run can be shown, and a second
+  one compared against it — two dates on one machine, or one commit on two machines, which the
+  run list marks as <em>(same commit)</em>.
+  </p>
+
+  <p class="hint">
+  Hovering a point gives the commit, the value, the .NET runtime it was measured on, and the
+  version of the reference library where one applies. <strong>Trend over time</strong> plots one
+  point per recorded run, for every recorded parameter combination under the current filters; the
+  line-style legend hides individual combinations, and Cancellation, Metric and Date range apply
+  here. <strong>Scaling by contention</strong> plots the benchmark's parameterized axis — queued
+  waiters for most classes, distinct keys or threads for the keyed locks — for a single run, the
+  newest by default and any recorded one through the Run picker. It draws every cancellation state
+  and both metrics together: color identifies the implementation, line style the cancellation
+  state, mean time is read from the left axis and allocation from the right. All three legends
+  toggle. Methods with no parameterized axis show a single point per implementation.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+(async function () {
+  const statusEl = document.getElementById("status");
+  const platformSel = document.getElementById("platform");
+  const frameworkSel = document.getElementById("framework");
+  const frameworkPickerEl = document.getElementById("framework-picker");
+  const familySel = document.getElementById("family");
+  const methodSel = document.getElementById("method");
+  const cancellationSel = document.getElementById("cancellation");
+  const metricSel = document.getElementById("metric");
+  const logScaleCb = document.getElementById("log-scale");
+  const legendColorsEl = document.getElementById("legend-colors");
+  const legendDashesEl = document.getElementById("legend-dashes");
+  const legendMetricsEl = document.getElementById("legend-metrics");
+  const cancellationPickerEl = document.getElementById("cancellation-picker");
+  const metricPickerEl = document.getElementById("metric-picker");
+  const rangePickerEl = document.getElementById("range-picker");
+  const logPickerEl = document.getElementById("log-picker");
+  const copyLinkBtn = document.getElementById("copy-link");
+  const copyLinkStatusEl = document.getElementById("copy-link-status");
+  const dateRangeSel = document.getElementById("date-range");
+  const legendHintEl = document.getElementById("legend-hint");
+  const modeRadios = document.querySelectorAll('input[name="mode"]');
+  const runSel = document.getElementById("run");
+  const compareSel = document.getElementById("compare");
+  const runPickerEl = document.getElementById("run-picker");
+  const comparePickerEl = document.getElementById("compare-picker");
+  const chartContainerEl = document.getElementById("chart-container");
+  const tableContainerEl = document.getElementById("table-container");
+  const tableNoteEl = document.getElementById("table-note");
+  const dataTableHeadEl = document.getElementById("data-table-head");
+  const dataTableBodyEl = document.getElementById("data-table-body");
+
+  // 16 entries (not 8): colors are now assigned per-family across *every* method's variants (see
+  // refreshFamilyColors), and some families have more than 8 variants once every method's variants
+  // are pooled together (e.g. AsyncLock's Multiple-only "Pooled (Task)"/"Pooled (ValueTask)" add to
+  // its Single/Timeout variants; SyncLock has 11 on its own) — an 8-color palette would silently
+  // wrap and give two variants the same color.
+  const PALETTE = [
+    "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#0891b2", "#db2777", "#65a30d",
+    "#0d9488", "#4f46e5", "#be123c", "#78716c", "#059669", "#0369a1", "#9333ea", "#475569",
+  ];
+
+  // This library's own implementations are pinned to the CryptoHives amber (#FFB643, sampled from
+  // the logo) rather than taking whatever the rotating palette hands them, so "ours" is the same
+  // colour on every chart instead of moving as the variant list changes between families.
+  //
+  // The plain "Pooled" baseline always gets the brand colour itself. Families whose variants are
+  // all qualified — AsyncManualResetEvent has "Pooled (ValueTask)", "Pooled (AsTask)" and so on,
+  // with no unqualified entry — give it to whichever sorts first, so those charts still anchor on
+  // the brand colour. Remaining Pooled variants walk a ramp around it: recognisably the same
+  // family, still told apart. Two amber tones were dropped from PALETTE above so no unrelated
+  // variant can land near them.
+  // Eight entries, because AsyncAutoResetEvent and AsyncManualResetEvent each expose seven Pooled
+  // variants once every method's variants are pooled together (ValueTask/AsTask/AsValueTask, each
+  // with a SyncCont pair). A six-colour ramp wrapped and gave the seventh the brand colour, which
+  // is the one thing this must never do.
+  const BRAND_AMBER = "#FFB643";
+  const POOLED_RAMP = [
+    BRAND_AMBER, "#c2410c", "#a16207", "#f59e0b", "#7c2d12", "#fcd34d", "#ea580c", "#92400e",
+  ];
+
+  function isPooled(variant) {
+    return variant === "Pooled" || variant.startsWith("Pooled (");
+  }
+
+  // Custom legends replace Chart.js's built-in one-entry-per-dataset legend, which would
+  // otherwise show one row per (variant, contention level) combination in multi-level trend
+  // mode. Splitting color (= variant) from dash pattern (= contention level) into two small
+  // legends cuts that down to variants + levels rows instead of variants × levels. Both stay
+  // clickable to toggle visibility, same as Chart.js's default.
+  const hiddenVariants = new Set();
+  const hiddenParams = new Set();
+  // Scaling mode plots every cancellation state and both metrics at once, so each needs its own
+  // hide set - the selectors above only narrow what is queried, not what is drawn.
+  const hiddenCancellations = new Set();
+  const hiddenMetrics = new Set();
+
+  function dashSwatchSvg(dash) {
+    const dasharray = dash && dash.length ? dash.join(",") : "";
+    return `<svg width="26" height="12" style="flex:none"><line x1="1" y1="6" x2="25" y2="6" stroke="#555" stroke-width="2"${dasharray ? ` stroke-dasharray="${dasharray}"` : ""}/></svg>`;
+  }
+
+  function renderColorLegend(entries) {
+    legendColorsEl.innerHTML = "";
+    legendHintEl.hidden = entries.length === 0;
+    for (const { variant, color } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenVariants.has(variant) ? " disabled" : "");
+      const swatch = document.createElement("span");
+      swatch.className = "legend-swatch";
+      swatch.style.background = color;
+      item.append(swatch, document.createTextNode(variant));
+      item.onclick = () => {
+        if (hiddenVariants.has(variant)) hiddenVariants.delete(variant);
+        else hiddenVariants.add(variant);
+        renderChart();
+      };
+      legendColorsEl.appendChild(item);
+    }
+  }
+
+  // Line style means contention level in Trend mode and cancellation state in Scaling mode -
+  // the two views have different channel budgets, since Scaling spends its X axis on the
+  // parameter and Trend spends it on the date. `hiddenSet` says which one is being toggled.
+  function renderDashLegend(entries, hiddenSet = hiddenParams) {
+    legendDashesEl.innerHTML = "";
+    for (const { paramLabel, dash, text } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenSet.has(paramLabel) ? " disabled" : "");
+      item.innerHTML = dashSwatchSvg(dash);
+      item.append(document.createTextNode(text ?? paramLabel));
+      item.onclick = () => {
+        if (hiddenSet.has(paramLabel)) hiddenSet.delete(paramLabel);
+        else hiddenSet.add(paramLabel);
+        renderChart();
+      };
+      legendDashesEl.appendChild(item);
+    }
+  }
+
+  // Metric legend: which Y axis each entry belongs to is shown by the axis title, so the swatch
+  // only has to distinguish the two point shapes used for them.
+  function renderMetricLegend(entries) {
+    legendMetricsEl.innerHTML = "";
+    for (const { metric, text } of entries) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenMetrics.has(metric) ? " disabled" : "");
+      item.innerHTML = `<svg width="16" height="12" style="flex:none"><circle cx="8" cy="6" r="${metric === "mean_ns" ? 4 : 0}" fill="#555"/>` +
+        (metric === "mean_ns" ? "" : `<rect x="4" y="2" width="8" height="8" transform="rotate(45 8 6)" fill="#555"/>`) + `</svg>`;
+      item.append(document.createTextNode(text));
+      item.onclick = () => {
+        if (hiddenMetrics.has(metric)) hiddenMetrics.delete(metric);
+        else hiddenMetrics.add(metric);
+        renderChart();
+      };
+      legendMetricsEl.appendChild(item);
+    }
+  }
+
+  let db;
+  let chart;
+  // Every recorded contention level for the current platform/family/method is always queried;
+  // the dash-pattern legend (click to hide/show, same as the color legend) is the only way to
+  // focus on a subset — there's no separate picker to keep in sync with it.
+  let currentParams = [];
+  // Colors are assigned once per (platform, family) from the *full* set of variants that family
+  // ever has — not per-method — so e.g. "Pooled" stays the same color across Single/Multiple/
+  // Timeout instead of shifting depending on which variants happen to appear in one method's
+  // result set. Rebuilt in refreshMethods(), which already runs on every platform/family change.
+  let familyColors = new Map();
+  // Whether the archive holds more than one target framework at all. Until a second one is
+  // recorded the picker would be a single fixed option and the run labels would repeat the same
+  // word on every line, so both stay out of the way rather than advertising a dimension the data
+  // does not yet have.
+  let hasMultipleFrameworks = false;
+
+  function distinct(column, whereSql, params) {
+    const stmt = db.prepare(`SELECT DISTINCT ${column} FROM benchmark_results ${whereSql} ORDER BY ${column}`);
+    stmt.bind(params || []);
+    const values = [];
+    while (stmt.step()) values.push(stmt.getAsObject()[column]);
+    stmt.free();
+    return values;
+  }
+
+  function populateSelect(selectEl, values, placeholder, preferredValue, labelFor) {
+    selectEl.innerHTML = "";
+    if (placeholder) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = placeholder;
+      selectEl.appendChild(opt);
+    }
+    for (const v of values) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = labelFor ? labelFor(v) : v;
+      selectEl.appendChild(opt);
+    }
+    if (preferredValue !== undefined && values.includes(preferredValue)) {
+      selectEl.value = preferredValue;
+    }
+  }
+
+  // How a benchmarked wait was configured. Kept as its own selector (like contention level)
+  // instead of a suffix on every variant name, so the legend doesn't double in size for every
+  // implementation that supports cancellation.
+  //
+  //   None               CancellationToken.None, or no token at all for implementations that
+  //                      don't support one
+  //   NotCancelled       a live, registered token that never fired — the overhead of supporting
+  //                      cancellation, not the cost of an actual cancellation
+  //   Cancelled          a token already cancelled on entry — the unwind path
+  //   Timed              a timeout long enough never to elapse — the cost of arming and
+  //                      disposing the timer
+  //   NotCancelledTimed  both at once
+  //
+  // Table-driven rather than a chain of comparisons: this started as a two-way branch that
+  // returned "None" for everything that wasn't NotCancelled, so Timed rows — added when the
+  // timeout benchmarks landed — silently displayed as None. An unknown value now shows itself
+  // rather than being absorbed into a neighbour.
+  const CANCELLATION_LABELS = {
+    None: "None",
+    NotCancelled: "Cancellable (token not fired)",
+    Cancelled: "Cancelled on entry",
+    Timed: "Timed (timer armed, never fires)",
+    NotCancelledTimed: "Cancellable + timed",
+  };
+
+  function cancellationLabel(value) {
+    return CANCELLATION_LABELS[value] ?? value;
+  }
+
+  // Shareable-URL support: the current selection set (platform/family/method/metric/mode/log)
+  // round-trips through the URL hash, so a copied link reproduces exactly this view for someone
+  // else — no server involved, it's just parsed back out on load. Contention level is not part
+  // of this: every level is always queried, and which ones are visible is a hiddenParams
+  // legend-click choice (same as hiddenVariants), neither of which is synced to the URL today.
+  function parseUrlState() {
+    const raw = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
+    if (!raw) return null;
+    const params = new URLSearchParams(raw);
+    if ([...params.keys()].length === 0) return null;
+    return {
+      platform: params.get("platform") ?? undefined,
+      framework: params.get("framework") ?? undefined,
+      family: params.get("family") ?? undefined,
+      method: params.get("method") ?? undefined,
+      cancellation: params.get("cancellation") ?? undefined,
+      metric: params.get("metric") ?? undefined,
+      range: params.get("range") ?? undefined,
+      mode: params.get("mode") ?? undefined,
+      log: params.has("log") ? params.get("log") === "1" : undefined,
+      run: params.get("run") ?? undefined,
+      compare: params.get("compare") ?? undefined,
+    };
+  }
+
+  function syncUrlHash() {
+    const params = new URLSearchParams();
+    params.set("platform", platformSel.value);
+    params.set("framework", frameworkSel.value);
+    params.set("family", familySel.value);
+    params.set("method", methodSel.value);
+    params.set("cancellation", cancellationSel.value);
+    params.set("metric", metricSel.value);
+    params.set("range", dateRangeSel.value);
+    params.set("mode", currentMode());
+    params.set("log", logScaleCb.checked ? "1" : "0");
+    // Only in the two single-run views, where which run is on screen is the whole point of the
+    // link. Trend derives its run set from the filters, so recording one there would pin a link to
+    // a run that a later import may push out of view. The comparison is table-only.
+    if (currentMode() !== "trend") {
+      if (runSel.value) params.set("run", runSel.value);
+      if (currentMode() === "table" && compareSel.value) params.set("compare", compareSel.value);
+    }
+    const newHash = "#" + params.toString();
+    if (location.hash !== newHash) history.replaceState(null, "", newHash);
+  }
+
+  function currentMode() {
+    return Array.from(modeRadios).find((r) => r.checked).value;
+  }
+
+  function metricLabel(metric) {
+    return metric === "mean_ns" ? "Mean time (ns)" : "Allocated bytes";
+  }
+
+  // Some implementations are far slower/heavier under contention than others, which flattens
+  // the faster lines into an unreadable strip on a linear axis — logarithmic makes every line
+  // legible at once. Zero-valued points are simply not plottable on a log axis; Chart.js skips
+  // them rather than erroring.
+  function yAxisScale(metric) {
+    const useLog = logScaleCb.checked;
+    return {
+      type: useLog ? "logarithmic" : "linear",
+      title: { display: true, text: metricLabel(metric) },
+      beginAtZero: useLog ? undefined : true,
+    };
+  }
+
+  // All history is already loaded client-side (it's one sql.js database fetched once), so a
+  // preset date-range filter is just an extra WHERE clause — no re-fetching, no extra library.
+  // Returns an ISO cutoff string, or null for "All time".
+  function dateRangeCutoffIso() {
+    const days = dateRangeSel.value === "30" ? 30 : dateRangeSel.value === "90" ? 90 : null;
+    if (days == null) return null;
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - days);
+    return cutoff.toISOString();
+  }
+
+  // Framework sits directly under platform in the cascade, because it narrows the same way a
+  // platform does: the same commit measured under net8.0 and net10.0 is two sets of numbers that
+  // must never share a line. Which frameworks exist is per platform - a net48 run only happens on
+  // Windows - so this is re-derived on every platform change rather than filled once.
+  function refreshFrameworks(preferred) {
+    const frameworks = distinct("framework", "WHERE platform = ?", [platformSel.value]);
+    populateSelect(frameworkSel, frameworks, null, preferred?.framework);
+    refreshFamilies(preferred);
+  }
+
+  function refreshFamilies(preferred) {
+    const families = distinct("family", "WHERE platform = ? AND framework = ?",
+                              [platformSel.value, frameworkSel.value]);
+    populateSelect(familySel, families, null, preferred?.family);
+    refreshMethods(preferred);
+  }
+
+  function refreshMethods(preferred) {
+    // A family can span multiple benchmark operations (e.g. AsyncLock has both "Single" and
+    // "Multiple") — these measure different scenarios and must never be plotted on one line.
+    const methods = distinct(
+      "method",
+      "WHERE platform = ? AND framework = ? AND family = ?",
+      [platformSel.value, frameworkSel.value, familySel.value]
+    );
+    populateSelect(methodSel, methods, null, preferred?.method);
+    refreshFamilyColors();
+    refreshCancellation(preferred);
+  }
+
+  // Assigns each variant in this (platform, family) a fixed color from the whole family's variant
+  // set — not just the ones present under the currently selected method — so e.g. "Pooled" is the
+  // same color under Single, Multiple, and Timeout instead of shifting with whatever else happens
+  // to be in that method's result set.
+  //
+  // Deliberately not narrowed by framework, for the same reason it is not narrowed by method: a
+  // variant should keep its colour when you switch from net10.0 to net8.0, which is exactly the
+  // moment you are comparing the two by eye.
+  function refreshFamilyColors() {
+    const variants = distinct(
+      "variant",
+      "WHERE platform = ? AND family = ?",
+      [platformSel.value, familySel.value]
+    );
+    // Pooled variants are coloured from their own ramp and everything else from PALETTE, each
+    // counted separately so a family with many Pooled variants doesn't push the others along the
+    // palette. The unqualified "Pooled" is pulled to the front of its ramp so it takes the brand
+    // colour whatever its alphabetical position; families without one fall back to first-sorted.
+    const pooled = variants.filter(isPooled);
+    pooled.sort((a, b) => (a === "Pooled" ? -1 : b === "Pooled" ? 1 : 0));
+
+    let otherIndex = 0;
+    familyColors = new Map(variants.map((v) => {
+      if (isPooled(v)) {
+        return [v, POOLED_RAMP[pooled.indexOf(v) % POOLED_RAMP.length]];
+      }
+      return [v, PALETTE[otherIndex++ % PALETTE.length]];
+    }));
+  }
+
+  function refreshCancellation(preferred) {
+    // Not every method varies by cancellation state (most sync baselines only ever run with
+    // "None"); default to "None" since it's the one state every implementation has a row for,
+    // making it the most comparable choice across the whole family.
+    const states = distinct(
+      "cancellation",
+      "WHERE platform = ? AND framework = ? AND family = ? AND method = ?",
+      [platformSel.value, frameworkSel.value, familySel.value, methodSel.value]
+    );
+    populateSelect(cancellationSel, states, null, preferred?.cancellation ?? "None", cancellationLabel);
+    refreshParams();
+  }
+
+  function refreshParams() {
+    // A new family/method/cancellation-state means a different set of variants, contention levels
+    // and cancellation states, so any prior show/hide legend selections no longer refer to
+    // anything meaningful here. All four sets are cleared together: leaving one behind strands a
+    // hidden series whose legend entry no longer exists, which reads as data silently missing.
+    hiddenVariants.clear();
+    hiddenParams.clear();
+    hiddenCancellations.clear();
+    hiddenMetrics.clear();
+    // Deliberately not filtered by the cancellation selector: this answers "is this method
+    // parameterized at all", which is a property of the method rather than of one cancellation
+    // state, and Scaling mode ignores that selector entirely. Trend mode filters by it in its own
+    // query anyway, so a level with no rows for the selected state simply plots nothing.
+    const stmt = db.prepare(
+      `SELECT DISTINCT param_label, param_value FROM benchmark_results
+       WHERE platform = ? AND framework = ? AND family = ? AND method = ?
+         AND param_label IS NOT NULL
+       ORDER BY param_value`
+    );
+    stmt.bind([platformSel.value, frameworkSel.value, familySel.value, methodSel.value]);
+    currentParams = [];
+    while (stmt.step()) currentParams.push(stmt.getAsObject().param_label);
+    stmt.free();
+    renderChart();
+  }
+
+  // Which NuGet package supplies each competitor, so a step in that competitor's line can be
+  // attributed to the competitor shipping a release rather than to a change in this repository.
+  //
+  // Declared here rather than recorded, because nothing in a BenchmarkDotNet report names the
+  // package behind a display label - the labels are chosen in the benchmark classes, and only the
+  // classes know that "VS.Threading" means Microsoft.VisualStudio.Threading. Ids must match
+  // Directory.Packages.props exactly, since that is what ends up in benchmark_run_packages.
+  //
+  // Variants with no entry are deliberate, not omissions: Pooled* is our own code (identified by
+  // the run's commit), RefImpl is vendored source in tests/, and the BCL rows (Lock, SemaphoreSlim,
+  // Interlocked.*, ...) move with the runtime, which benchmark_runs already records.
+  const VARIANT_PACKAGES = {
+    "AsyncKeyedLock": "AsyncKeyedLock",
+    "AsyncKeyedLock (Striped)": "AsyncKeyedLock",
+    "AsyncUtilities (Striped)": "AsyncUtilities",
+    "Dao.IndividualLock": "Dao.IndividualLock",
+    "KeyedSemaphores": "KeyedSemaphores",
+    "KeyedSemaphores (Striped)": "KeyedSemaphores",
+    "NeoSmart": "NeoSmart.AsyncLock",
+    "Nito": "Nito.AsyncEx",
+    "ProtoPromise": "ProtoPromise",
+    "VS.Threading": "Microsoft.VisualStudio.Threading",
+  };
+
+  // (run_id + platform) -> { packageId: version }, loaded once at startup. Small enough to hold
+  // whole (a few hundred rows across the entire archive) that joining it per query would cost
+  // more than it saves.
+  let runPackages = new Map();
+  let runPackagesSource = new Map();
+
+  function loadRunPackages() {
+    runPackages = new Map();
+    runPackagesSource = new Map();
+    let stmt;
+    try {
+      stmt = db.prepare("SELECT run_id, platform, framework, package_id, version, source " +
+                        "FROM benchmark_run_packages");
+    } catch {
+      return;   // database built before the table existed; the UI just shows no versions
+    }
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      const key = runKey(row.run_id, row.platform, row.framework);
+      if (!runPackages.has(key)) runPackages.set(key, {});
+      runPackages.get(key)[row.package_id] = row.version;
+      if (row.source) runPackagesSource.set(key, row.source);
+    }
+    stmt.free();
+  }
+
+  // "AsyncKeyedLock 8.0.2" for a variant backed by a package in that run, otherwise null.
+  function packageLabel(variant, runId, platform, framework) {
+    const packageId = VARIANT_PACKAGES[variant];
+    if (!packageId) return null;
+    const version = runPackages.get(runKey(runId, platform, framework))?.[packageId];
+    return version ? `${packageId} ${version}` : null;
+  }
+
+  // The runtime a point was measured on belongs next to the commit: between the recorded runs so
+  // far the .NET version moved almost every time (10.0.3 -> 10.0.5 -> 10.0.9 -> 10.0.10), so a step
+  // in a line cannot be read as a code change without knowing whether the floor moved under it.
+  // Older rows predate the environment table and simply omit it rather than showing a blank.
+  function pointFooter(raw) {
+    const parts = [`commit ${raw.commit?.slice(0, 8) ?? "?"}`];
+    if (raw.runtime) parts.push(`.NET ${raw.runtime}`);
+    // Only third-party series carry one; ours is pinned by the commit already in this footer.
+    if (raw.pkg) parts.push(raw.pkg);
+    return parts.join(" · ");
+  }
+
+
+  // Which controls each view actually reads. A control left enabled but ignored is worse than one
+  // greyed out: changing it looks like it should do something, and the view simply does not move.
+  //
+  // Deliberately not listed: platform, framework, family and method drive the selector cascade in
+  // every mode, so they always apply - in Table mode they narrow which runs the picker offers,
+  // even though the picker has the final say on which one is shown.
+  function setInert(labelEl, inert, reason) {
+    if (!labelEl) return;
+    labelEl.classList.toggle("inert", inert);
+    const field = labelEl.querySelector("select, input");
+    if (field) field.disabled = inert;
+    if (inert) labelEl.title = reason;
+    else labelEl.removeAttribute("title");
+  }
+
+  // Threading:
+  //   Table   - shows one recorded run whole. Every cancellation state is a column and both
+  //             metrics are columns, so neither selector applies; the run picker replaces the
+  //             date range, and there is no chart to scale logarithmically.
+  //   Scaling - plots both metrics on two axes and every cancellation state as its own dash
+  //             pattern, so those two selectors are replaced by their legends; it draws one run
+  //             chosen with the run picker, which leaves the date range nothing to narrow.
+  //   Trend   - reads all of them.
+  function syncControlAvailability(mode) {
+    const table = mode === "table";
+    const scaling = mode === "scaling";
+    setInert(cancellationPickerEl, table || scaling,
+             table ? "The table shows every cancellation state as its own column."
+                   : "Scaling plots every cancellation state at once - use the dash legend below.");
+    setInert(metricPickerEl, table || scaling,
+             table ? "The table shows mean time and allocation as separate columns."
+                   : "Scaling plots both metrics on two axes - use the metric legend below.");
+    setInert(rangePickerEl, table || scaling,
+             table ? "The table shows one run, chosen with the Run picker."
+                   : "Scaling plots one run, chosen with the Run picker.");
+    setInert(logPickerEl, table, "No chart axis to scale in table mode.");
+  }
+
+  function renderChartInstance(datasets, scales, tooltipAfterLabel) {
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales,
+        plugins: {
+          legend: { display: false }, // replaced by the custom color/dash legends above the chart
+          tooltip: {
+            callbacks: { afterLabel: tooltipAfterLabel },
+          },
+        },
+      },
+    });
+  }
+
+  function renderTrendChart() {
+    const metric = metricSel.value;
+    // A method with no contention parameter at all (e.g. a fixed uncontended-only benchmark)
+    // has an empty currentParams — query with a single implicit "no level" bucket instead of
+    // bailing out, so those still render as one point per variant.
+    const params = currentParams.length ? currentParams : [null];
+    const hasRealParams = currentParams.length > 0;
+
+    const placeholders = params.map(() => "?").join(",");
+    const cutoff = dateRangeCutoffIso();
+    const paramClause = hasRealParams ? `AND param_label IN (${placeholders})` : "AND param_label IS NULL";
+    const stmt = db.prepare(`
+      SELECT r.variant, r.param_label, r.run_date, r.run_id, r.commit_sha, b.runtime_version,
+             r.${metric} AS value
+      FROM benchmark_results r
+      LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
+      WHERE r.platform = ? AND r.framework = ? AND r.family = ? AND r.method = ?
+        AND r.cancellation = ? ${paramClause.replace(/param_label/g, "r.param_label")}
+        ${cutoff ? "AND r.run_date >= ?" : ""}
+      ORDER BY r.variant, r.param_label, r.run_date
+    `);
+    stmt.bind([
+      platformSel.value, frameworkSel.value, familySel.value, methodSel.value,
+      cancellationSel.value,
+      ...(hasRealParams ? params : []),
+      ...(cutoff ? [cutoff] : []),
+    ]);
+
+    const multiParam = hasRealParams && params.length > 1;
+    const seriesByKey = new Map();
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      const key = multiParam ? `${row.variant} @ ${row.param_label}` : row.variant;
+      if (!seriesByKey.has(key)) seriesByKey.set(key, { variant: row.variant, paramLabel: row.param_label, points: [] });
+      seriesByKey.get(key).points.push({
+        x: row.run_date, y: row.value, commit: row.commit_sha, runtime: row.runtime_version,
+        pkg: packageLabel(row.variant, row.run_id, platformSel.value, frameworkSel.value),
+      });
+    }
+    stmt.free();
+
+    // Color tracks the variant/implementation, not the (variant, contention level) combination
+    // — so the same implementation stays the same color at every level, and what changes per
+    // level is the dash pattern. That way an implementation's trend is easy to follow by eye.
+    // The color itself comes from familyColors (fixed per platform+family, built in
+    // refreshFamilyColors), not from this query's result order, so it stays stable across methods.
+    const variantOrder = [];
+    for (const { variant } of seriesByKey.values()) {
+      if (!variantOrder.includes(variant)) variantOrder.push(variant);
+    }
+
+    const DASH_PATTERNS = [[], [6, 3], [2, 2], [8, 3, 2, 3], [1, 3], [10, 4], [4, 2, 1, 2]];
+    const dashForParam = new Map(params.map((label, i) => [label, DASH_PATTERNS[i % DASH_PATTERNS.length]]));
+
+    const datasets = Array.from(seriesByKey.entries()).map(([label, { variant, paramLabel, points }]) => ({
+      label,
+      data: points,
+      borderColor: familyColors.get(variant),
+      backgroundColor: familyColors.get(variant),
+      borderDash: multiParam ? dashForParam.get(paramLabel) : [],
+      hidden: hiddenVariants.has(variant) || (paramLabel != null && hiddenParams.has(paramLabel)),
+      tension: 0.15,
+      pointRadius: 3,
+    }));
+
+    renderChartInstance(
+      datasets,
+      {
+        x: { type: "time", time: { unit: "day" }, title: { display: true, text: "Run date" } },
+        y: yAxisScale(metric),
+      },
+      (ctx) => pointFooter(ctx.raw)
+    );
+
+    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: familyColors.get(v) })));
+    renderDashLegend(
+      multiParam ? params.map((label) => ({ paramLabel: label, dash: dashForParam.get(label) })) : []
+    );
+
+    const visibleCount = datasets.filter((d) => !d.hidden).length;
+    statusEl.textContent = datasets.length
+      ? `${visibleCount} of ${datasets.length} series shown, ` +
+        `${datasets.filter((d) => !d.hidden).reduce((n, d) => n + d.data.length, 0)} data point(s)`
+      : "No data for this selection yet.";
+  }
+
+  // Scaling mode spends its X axis on the benchmark's parameter, which frees the line-style
+  // channel that Trend mode needs for it. That budget is what lets this view draw every
+  // cancellation state and both metrics at once instead of making them selectors:
+  //
+  //   colour      implementation (stable per family - see refreshFamilyColors)
+  //   line style  cancellation state
+  //   Y axis      metric: time on the left, allocation on the right
+  //
+  // Worst case here is 6 variants x 3 cancellations x 2 metrics = 36 lines, against the 432 the
+  // same encoding would produce in Trend mode, where the parameter also needs a channel.
+  const METRICS = [
+    { key: "mean_ns", axis: "y", point: "circle", text: "Mean time" },
+    { key: "allocated_bytes", axis: "yAlloc", point: "rectRot", text: "Allocated" },
+  ];
+
+  // One recorded run's contention curve, chosen with the Run picker - the newest by default, which
+  // is what this view used to show and all it used to be able to show. Reading a scaling curve
+  // means reading one snapshot: rows stitched together from whichever run happened to be each
+  // series' latest would put a variant measured months ago on the same axes as one measured
+  // yesterday and present the pair as a comparison.
+  function renderScalingChart() {
+    const runValue = runSel.value;
+    const [runId, runPlatform, runFramework] = (runValue || "").split(" ");
+    // Some methods (e.g. AsyncRWLock's WriterLock) aren't contention-parameterized at all - every
+    // row has a NULL param_label. Requiring "param_label IS NOT NULL" unconditionally would leave
+    // those with zero rows and an empty chart; fall back to the NULL-param rows instead, same as
+    // renderTrendChart already does, so every method plots something in both view modes.
+    const hasRealParams = currentParams.length > 0;
+    const paramClause = hasRealParams ? "AND r.param_label IS NOT NULL" : "AND r.param_label IS NULL";
+
+    // When there's no real contention level, every row's param_value is NULL, so key on a single
+    // fixed bucket (0) instead - there's only ever one point per series in that case anyway.
+    const rowsByKey = new Map();   // "variant\u001fcancellation" -> Map(x -> row)
+    const variantOrder = [];
+    const cancellations = [];
+    if (runValue) {
+      const stmt = db.prepare(`
+        SELECT r.variant, r.cancellation, r.param_value, r.param_label, r.run_id,
+               r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
+        FROM benchmark_results r
+        LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
+                                  AND b.framework = r.framework
+        WHERE r.run_id = ? AND r.platform = ? AND r.framework = ?
+          AND r.family = ? AND r.method = ? ${paramClause}
+        ORDER BY r.variant, r.cancellation, r.param_value
+      `);
+      stmt.bind([runId, runPlatform, runFramework, familySel.value, methodSel.value]);
+      while (stmt.step()) {
+        const row = stmt.getAsObject();
+        const x = hasRealParams ? row.param_value : 0;
+        const key = `${row.variant}\u001f${row.cancellation}`;
+        if (!rowsByKey.has(key)) rowsByKey.set(key, new Map());
+        rowsByKey.get(key).set(x, row);
+        if (!variantOrder.includes(row.variant)) variantOrder.push(row.variant);
+        if (!cancellations.includes(row.cancellation)) cancellations.push(row.cancellation);
+      }
+      stmt.free();
+    }
+
+    const DASH_PATTERNS = [[], [6, 3], [2, 2], [8, 3, 2, 3], [1, 3]];
+    const dashFor = new Map(cancellations.map((c, i) => [c, DASH_PATTERNS[i % DASH_PATTERNS.length]]));
+    const multiCancellation = cancellations.length > 1;
+
+    const datasets = [];
+    for (const [key, byX] of rowsByKey) {
+      const [variant, cancellation] = key.split("\u001f");
+      const points = Array.from(byX.values()).sort((a, b) => a.x - b.x);
+      for (const metric of METRICS) {
+        // An all-null metric contributes nothing but a legend row and an empty axis. Allocation
+        // is never null now that a measured zero is stored as 0, so in practice this only skips
+        // a metric a report genuinely didn't carry.
+        if (points.every((r) => r[metric.key] == null)) continue;
+        datasets.push({
+          label: multiCancellation ? `${variant} · ${cancellationLabel(cancellation)} · ${metric.text}`
+                                   : `${variant} · ${metric.text}`,
+          data: points.map((r) => ({
+            x: hasRealParams ? r.param_value : 0,
+            y: r[metric.key],
+            param_label: hasRealParams ? r.param_label : "single scenario",
+            commit: r.commit_sha,
+            runtime: r.runtime_version,
+            pkg: packageLabel(variant, r.run_id, runPlatform, runFramework),
+          })),
+          yAxisID: metric.axis,
+          borderColor: familyColors.get(variant),
+          backgroundColor: familyColors.get(variant),
+          borderDash: dashFor.get(cancellation),
+          pointStyle: metric.point,
+          // hiddenCancellations is only honoured when the dash legend is actually rendered:
+          // with a single cancellation state that legend is empty, so a stale hide would blank
+          // the chart with no control left to restore it.
+          hidden: hiddenVariants.has(variant)
+                  || (multiCancellation && hiddenCancellations.has(cancellation))
+                  || hiddenMetrics.has(metric.key),
+          tension: 0.15,
+          pointRadius: 3,
+        });
+      }
+    }
+
+    const usesAlloc = datasets.some((d) => d.yAxisID === "yAlloc");
+    const scales = {
+      x: {
+        type: "linear",
+        title: { display: true, text: hasRealParams ? "Contention level" : "(single, fixed scenario - no contention axis)" },
+        ticks: hasRealParams ? undefined : { display: false },
+      },
+      y: { ...yAxisScale("mean_ns"), position: "left" },
+    };
+    if (usesAlloc) {
+      // Allocation stays linear even when the time axis is logarithmic: a zero-allocation series
+      // is the result this library exists to produce, and a log axis cannot plot zero - it would
+      // drop exactly the lines that matter. Its gridlines are suppressed so the two axes don't
+      // draw two conflicting sets across the same plot area.
+      scales.yAlloc = {
+        type: "linear", position: "right", beginAtZero: true,
+        title: { display: true, text: metricLabel("allocated_bytes") },
+        grid: { drawOnChartArea: false },
+      };
+    }
+
+    renderChartInstance(
+      datasets,
+      scales,
+      // param_label names its own axes (e.g. "KeyCount=1, Iterations=10"), so no unit word is
+      // appended here. Most benchmarks scale queued waiters, but not all do - keyed locks scale
+      // distinct keys or threads - and a fixed "waiters" suffix was wrong for those.
+      (ctx) => hasRealParams
+        ? `${ctx.raw.param_label} · ${pointFooter(ctx.raw)}`
+        : pointFooter(ctx.raw)
+    );
+
+    renderColorLegend(variantOrder.map((v) => ({ variant: v, color: familyColors.get(v) })));
+    renderDashLegend(
+      multiCancellation
+        ? cancellations.map((c) => ({ paramLabel: c, dash: dashFor.get(c), text: cancellationLabel(c) }))
+        : [],
+      hiddenCancellations
+    );
+    renderMetricLegend(
+      METRICS.filter((m) => datasets.some((d) => d.yAxisID === m.axis))
+             .map((m) => ({ metric: m.key, text: m.text }))
+    );
+
+    const chosen = Array.from(runSel.options).find((o) => o.value === runValue);
+    const visibleCount = datasets.filter((d) => !d.hidden).length;
+    statusEl.textContent = datasets.length
+      ? `${visibleCount} of ${datasets.length} series shown` + (hasRealParams ? "" : " (single scenario)") +
+        ", from " + (chosen ? chosen.textContent.trim() : "the selected run")
+      : "No data for this selection yet.";
+  }
+
+  // ---------------------------------------------------------------- table mode
+  //
+  // Reproduces what one benchmark run's markdown report looked like: every dimension that run
+  // carried, as its own column, grouped and ordered the way BenchmarkDotNet ordered it. The
+  // Description column is rebuilt from the parts the database splits it into, and the parameter
+  // columns are split back out of param_label, so a report row and a table row line up.
+  //
+  // Ratio is computed here rather than stored: the database keeps measurements, not derived
+  // columns, and a ratio is only meaningful against a chosen baseline within one logical group.
+
+  function formatMeanNs(ns) {
+    if (ns == null) return "-";
+    let value, unit;
+    if (ns < 1000) { value = ns; unit = "ns"; }
+    else if (ns < 1e6) { value = ns / 1000; unit = "μs"; }
+    else if (ns < 1e9) { value = ns / 1e6; unit = "ms"; }
+    else { value = ns / 1e9; unit = "s"; }
+    const digits = value < 10 ? 4 : value < 100 ? 3 : 2;
+    return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) + " " + unit;
+  }
+
+  function formatAllocated(bytes) {
+    if (bytes == null) return "?";
+    if (bytes === 0) return "-";              // the convention the reports use for a measured zero
+    if (bytes < 1024) return bytes.toLocaleString() + " B";
+    const kb = bytes / 1024;
+    return kb.toLocaleString(undefined, { maximumFractionDigits: kb < 10 ? 2 : 1 }) + " KB";
+  }
+
+  // "KeyCount=1, Iterations=10" -> [["KeyCount","1"],["Iterations","10"]]. Empty for benchmarks
+  // that carry no [Params] axis at all.
+  function splitParams(label) {
+    if (!label) return [];
+    return label.split(", ").map(function (part) {
+      const eq = part.indexOf("=");
+      return eq < 0 ? [part, ""] : [part.slice(0, eq), part.slice(eq + 1)];
+    });
+  }
+
+  // The report's baseline is this library's own implementation, and the database has no
+  // is-baseline flag to read it off - so pick it the same way the colour assignment does, and
+  // leave the ratio blank for a group that has none (the SyncLock family is all BCL primitives).
+  // Which row the report treated as its reference.
+  //
+  // Every Threading benchmark class marks one method `[Benchmark(Baseline = true)]`, and
+  // BenchmarkDotNet records that as Ratio = 1.00 in every parameter group. Reading it back beats
+  // guessing: the previous version returned the alphabetically first "Pooled" variant, which
+  // picked "Pooled (AsTask)" over the declared "Pooled (ValueTask)" and got the baseline wrong in
+  // 7 of a full run's 23 reports - and with it every Ratio in those tables.
+  //
+  // A variant qualifies only if it is 1.00 in *every* group it appears in. One group's row can
+  // land on 1.00 by rounding; the declared baseline is 1.00 throughout, because it is the same
+  // method being compared to itself.
+  //
+  // Returns null when the baseline is not among these rows at all, which is a real case rather
+  // than a failure: BenchmarkDotNet computes Ratio per benchmark class, while this table is
+  // filtered to one family and method. asynclock-single's baseline is AsyncLock's "Pooled", so
+  // selecting the SyncLock family shows rows whose reference sits outside the view.
+  function baselineVariantOf(rows) {
+    const ratios = new Map();
+    for (const r of rows) {
+      if (r.ratio == null) continue;
+      if (!ratios.has(r.variant)) ratios.set(r.variant, []);
+      ratios.get(r.variant).push(r.ratio);
+    }
+    const declared = Array.from(ratios).filter(([, rs]) => rs.every((x) => x === 1));
+    if (declared.length === 1) return declared[0][0];
+
+    // Nothing recorded a ratio - data from a report without the column. Fall back to the old
+    // guess, which is still right whenever a plain "Pooled" is present.
+    if (ratios.size === 0) {
+      const variants = rows.map((r) => r.variant);
+      if (variants.includes("Pooled")) return "Pooled";
+      const pooled = variants.filter(isPooled).sort();
+      return pooled.length ? pooled[0] : null;
+    }
+    return null;
+  }
+
+  // Set from the URL on load and consumed by the first refreshRunPickers() call.
+  let pendingRunFromUrl = null;
+  let pendingCompareFromUrl = null;
+
+  // Identity of one recorded run. Framework is part of it because the archive nests a framework
+  // level under the platform: the same commit on the same machine under net8.0 and net10.0 is two
+  // runs, and collapsing them here would make each look up the other's package versions.
+  function runKey(runId, platform, framework) {
+    return runId + " " + platform + " " + framework;
+  }
+
+  // Every (run, platform) carrying rows for the current family+method, newest first. Both pickers
+  // are filled from this, which is what makes "macOS vs Windows at the same commit" fall out for
+  // free: those two share a run_id and differ only in platform.
+  //
+  // Scaling mode passes scoped=true and gets only the platform and framework already selected
+  // above: there the cascade decides which machine is on screen and the run picker only decides
+  // when, so offering another machine's runs would put the two selectors in disagreement. Table
+  // mode deliberately offers all of them - two machines side by side is what its compare column
+  // is for.
+  function availableRuns(scoped) {
+    const stmt = db.prepare(
+      "SELECT DISTINCT r.run_id, r.platform, r.framework, r.run_date, r.commit_sha, " +
+      "       b.runtime_version " +
+      "FROM benchmark_results r " +
+      "LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform " +
+      "                          AND b.framework = r.framework " +
+      "WHERE r.family = ? AND r.method = ? " +
+      (scoped ? "  AND r.platform = ? AND r.framework = ? " : "") +
+      "ORDER BY r.run_date DESC, r.platform, r.framework"
+    );
+    stmt.bind([familySel.value, methodSel.value,
+               ...(scoped ? [platformSel.value, frameworkSel.value] : [])]);
+    const runs = [];
+    while (stmt.step()) runs.push(stmt.getAsObject());
+    stmt.free();
+    return runs;
+  }
+
+  function runOptionLabel(run) {
+    const date = (run.run_date || "").slice(0, 10);
+    const sha = run.commit_sha ? run.commit_sha.slice(0, 8) : "?";
+    const rt = run.runtime_version ? " · .NET " + run.runtime_version : "";
+    // The framework only earns a place in the label once more than one has been recorded;
+    // otherwise it is the same word on every option and says nothing.
+    const fw = hasMultipleFrameworks ? " · " + run.framework : "";
+    return date + " · " + run.platform + fw + " · " + sha + rt;
+  }
+
+  function refreshRunPickers(mode) {
+    const runs = availableRuns(mode === "scaling");
+    const previousRun = runSel.value;
+    const previousCompare = compareSel.value;
+
+    runSel.innerHTML = "";
+    for (const run of runs) {
+      const opt = document.createElement("option");
+      opt.value = runKey(run.run_id, run.platform, run.framework);
+      opt.textContent = runOptionLabel(run);
+      runSel.appendChild(opt);
+    }
+    // Default to the newest run on the platform already selected above, so switching into table
+    // mode shows the data the charts were showing rather than jumping to another machine. Ahead of
+    // that, keep the same commit if the new platform also recorded it: switching platform on a
+    // pinned run asks "and what does this commit do over there", which is the comparison the
+    // archive keys runs by commit to make possible - not "show me something newer".
+    const previousRunId = previousRun.split(" ")[0];
+    const preferred = runs.find((r) => r.run_id === previousRunId
+                                   && r.platform === platformSel.value
+                                   && r.framework === frameworkSel.value)
+                   || runs.find((r) => r.platform === platformSel.value
+                                   && r.framework === frameworkSel.value)
+                   || runs.find((r) => r.platform === platformSel.value)
+                   || runs[0];
+    // A run named in the URL wins once, on first render, then normal selection takes over.
+    const fromUrl = pendingRunFromUrl;
+    pendingRunFromUrl = null;
+    const wanted = (fromUrl && runs.some((r) => runKey(r.run_id, r.platform, r.framework) === fromUrl)) ? fromUrl
+                 : (runs.some((r) => runKey(r.run_id, r.platform, r.framework) === previousRun) ? previousRun : null);
+    runSel.value = wanted
+      || (preferred ? runKey(preferred.run_id, preferred.platform, preferred.framework) : "");
+
+    const chosenRunId = (runSel.value || "").split(" ")[0];
+    compareSel.innerHTML = "";
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "(nothing — single run)";
+    compareSel.appendChild(none);
+    for (const run of runs) {
+      if (runKey(run.run_id, run.platform, run.framework) === runSel.value) continue;
+      const opt = document.createElement("option");
+      opt.value = runKey(run.run_id, run.platform, run.framework);
+      opt.textContent = runOptionLabel(run) + (run.run_id === chosenRunId ? "   (same commit)" : "");
+      compareSel.appendChild(opt);
+    }
+    const wantedCompare = pendingCompareFromUrl ?? previousCompare;
+    pendingCompareFromUrl = null;
+    compareSel.value = Array.from(compareSel.options).some((o) => o.value === wantedCompare)
+      ? wantedCompare : "";
+  }
+
+  function fetchRunRows(key) {
+    if (!key) return [];
+    const parts = key.split(" ");
+    const stmt = db.prepare(
+      "SELECT variant, cancellation, param_label, mean_ns, allocated_bytes, ratio " +
+      "FROM benchmark_results WHERE run_id = ? AND platform = ? AND framework = ? " +
+      "  AND family = ? AND method = ?"
+    );
+    stmt.bind([parts[0], parts[1], parts[2], familySel.value, methodSel.value]);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
+  }
+
+  const CANCELLATION_ORDER = ["None", "NotCancelled", "Cancelled", "Timed", "NotCancelledTimed"];
+
+  // Packages whose version differs between the two runs being compared. This is the whole point
+  // of recording them: a competitor's Δ Mean is only evidence about our code if that competitor
+  // was the same build in both runs, and across the recorded history several were not.
+  function changedPackages(keyA, keyB) {
+    const a = runPackages.get(keyA) || {};
+    const b = runPackages.get(keyB) || {};
+    const changed = new Map();
+    for (const id of Object.keys(a)) {
+      if (b[id] && b[id] !== a[id]) changed.set(id, [b[id], a[id]]);   // [compared, chosen]
+    }
+    return changed;
+  }
+
+  function renderTableView() {
+    const rows = fetchRunRows(runSel.value);
+    const compareRows = fetchRunRows(compareSel.value);
+    const compareBy = new Map();
+    for (const r of compareRows) {
+      compareBy.set(r.variant + "" + r.cancellation + "" + (r.param_label || ""), r);
+    }
+    const comparing = compareSel.value !== "" && compareRows.length > 0;
+    const changed = comparing ? changedPackages(runSel.value, compareSel.value) : new Map();
+
+    dataTableHeadEl.innerHTML = "";
+    dataTableBodyEl.innerHTML = "";
+    if (!rows.length) {
+      tableNoteEl.hidden = true;
+      statusEl.textContent = "No data for this run yet.";
+      return;
+    }
+
+    // The column set is derived from the run itself, so a run with no cancellation axis or no
+    // [Params] axis simply has no such column - exactly as its own report had none.
+    const paramNames = [];
+    for (const r of rows) {
+      for (const pair of splitParams(r.param_label)) {
+        if (!paramNames.includes(pair[0])) paramNames.push(pair[0]);
+      }
+    }
+    const cancellations = Array.from(new Set(rows.map((r) => r.cancellation)));
+    const showCancellation = cancellations.length > 1 || cancellations[0] !== "None";
+
+    // The baseline is a property of the benchmark class, not of one parameter group, so it is
+    // resolved once over every row rather than per group - which also lets a variant be rejected
+    // for being 1.00 in only some groups.
+    const baselineVariant = baselineVariantOf(rows);
+
+    // Grouped exactly as the report groups: one baseline per (parameter combination, state).
+    // Keyed by a joined string for lookup, but the two components are stored alongside rather
+    // than parsed back out: param_label contains both spaces and commas ("KeyCount=1,
+    // Iterations=10"), so splitting the key would mis-read every multi-parameter benchmark.
+    const groups = new Map();
+    for (const r of rows) {
+      const key = (r.param_label || "") + "" + r.cancellation;
+      if (!groups.has(key)) {
+        groups.set(key, { paramLabel: r.param_label || "", cancellation: r.cancellation, rows: [] });
+      }
+      groups.get(key).rows.push(r);
+    }
+
+    const columns = [{ key: "description", label: "Description" }];
+    for (const n of paramNames) columns.push({ key: "param:" + n, label: n, numeric: true });
+    if (showCancellation) columns.push({ key: "cancellation", label: "Cancellation" });
+    columns.push({ key: "mean", label: "Mean", numeric: true });
+    columns.push({ key: "ratio", label: "Ratio", numeric: true });
+    columns.push({ key: "allocated", label: "Allocated", numeric: true });
+    if (comparing) {
+      columns.push({ key: "cmpMean", label: "Mean (compared)", numeric: true });
+      columns.push({ key: "cmpDelta", label: "Δ Mean", numeric: true });
+      columns.push({ key: "cmpAlloc", label: "Allocated (compared)", numeric: true });
+    }
+
+    for (const col of columns) {
+      const th = document.createElement("th");
+      th.textContent = col.label;
+      if (col.numeric) th.classList.add("numeric");
+      dataTableHeadEl.appendChild(th);
+    }
+
+    // Groups ordered by their parameter values (numerically where they are numbers), ties broken
+    // by cancellation state; rows within a group by mean ascending, which is how reports read.
+    function groupSortKey(key) {
+      const g = groups.get(key);
+      const nums = splitParams(g.paramLabel).map(function (pair) {
+        const n = Number(pair[1]);
+        return Number.isFinite(n) ? n : pair[1];
+      });
+      return { nums: nums, rank: CANCELLATION_ORDER.indexOf(g.cancellation) };
+    }
+    const orderedKeys = Array.from(groups.keys()).sort(function (a, b) {
+      const ka = groupSortKey(a), kb = groupSortKey(b);
+      const n = Math.max(ka.nums.length, kb.nums.length);
+      for (let i = 0; i < n; i++) {
+        const x = ka.nums[i], y = kb.nums[i];
+        if (x === undefined) return -1;
+        if (y === undefined) return 1;
+        if (x < y) return -1;
+        if (x > y) return 1;
+      }
+      return ka.rank - kb.rank;
+    });
+
+    let total = 0;
+    for (const key of orderedKeys) {
+      const group = groups.get(key).rows.slice().sort((a, b) => a.mean_ns - b.mean_ns);
+      const baseline = group.find((r) => r.variant === baselineVariant);
+      let first = true;
+      for (const r of group) {
+        const tr = document.createElement("tr");
+        if (first) tr.classList.add("group-start");
+        if (isPooled(r.variant)) tr.classList.add("ours");
+        if (r.variant === baselineVariant) tr.classList.add("baseline");
+        first = false;
+        const params = new Map(splitParams(r.param_label));
+        const cmp = compareBy.get(r.variant + "" + r.cancellation + "" + (r.param_label || ""));
+        const delta = (cmp && cmp.mean_ns) ? (r.mean_ns / cmp.mean_ns - 1) * 100 : null;
+        const movedPackage = comparing ? changed.get(VARIANT_PACKAGES[r.variant]) : undefined;
+
+        for (const col of columns) {
+          const td = document.createElement("td");
+          if (col.numeric) td.classList.add("numeric");
+          if (col.key === "description") {
+            td.textContent = methodSel.value + " · " + familySel.value + " · " + r.variant;
+          } else if (col.key.indexOf("param:") === 0) {
+            const v = params.get(col.key.slice(6));
+            td.textContent = v === undefined ? "-" : v;
+          } else if (col.key === "cancellation") {
+            td.textContent = cancellationLabel(r.cancellation);
+          } else if (col.key === "mean") {
+            td.textContent = formatMeanNs(r.mean_ns);
+          } else if (col.key === "ratio") {
+            // The recorded value wherever there is one: it is what the report printed, and it
+            // stays correct when the baseline is outside this view - recomputing against an
+            // in-view row would quietly answer a different question. Computed only as a fallback
+            // for data recorded without a Ratio column.
+            td.textContent = r.ratio != null ? r.ratio.toFixed(2)
+              : (baseline && baseline.mean_ns) ? (r.mean_ns / baseline.mean_ns).toFixed(2) : "-";
+          } else if (col.key === "allocated") {
+            td.textContent = formatAllocated(r.allocated_bytes);
+          } else if (col.key === "cmpMean") {
+            td.textContent = cmp ? formatMeanNs(cmp.mean_ns) : "-";
+          } else if (col.key === "cmpAlloc") {
+            td.textContent = cmp ? formatAllocated(cmp.allocated_bytes) : "-";
+          } else if (col.key === "cmpDelta") {
+            if (delta === null) {
+              td.textContent = "-";
+            } else {
+              td.textContent = (delta >= 0 ? "+" : "") + delta.toFixed(1) + "%";
+              // Signed against the comparison run: positive means this run took longer. Only
+              // coloured past 5%, since run-to-run noise below that says nothing.
+              if (Math.abs(delta) >= 5) td.classList.add(delta > 0 ? "worse" : "better");
+              if (movedPackage) {
+                const marker = document.createElement("span");
+                marker.className = "pkg-changed";
+                marker.textContent = "‡";
+                marker.title = VARIANT_PACKAGES[r.variant] + " " + movedPackage[0] + " → " +
+                  movedPackage[1] + " between these runs, so this delta is not attributable to " +
+                  "CryptoHives.Foundation alone.";
+                td.appendChild(marker);
+              }
+            }
+          }
+          tr.appendChild(td);
+        }
+        dataTableBodyEl.appendChild(tr);
+        total++;
+      }
+    }
+
+    const chosen = Array.from(runSel.options).find((o) => o.value === runSel.value);
+    const against = Array.from(compareSel.options).find((o) => o.value === compareSel.value);
+    tableNoteEl.hidden = false;
+    let note =
+      "Shaded rows are this library's own implementations; the baseline is shaded more deeply. " +
+      "Ratio is as recorded by the run, relative to the baseline its benchmark class declares." +
+      (comparing ? "  Δ Mean is against " + (against ? against.textContent.trim() : "the second run") +
+                   " — positive means slower here." : "");
+
+    // Named explicitly rather than left to the per-row markers: a reader scanning for a regression
+    // should learn that a competitor moved underneath the comparison before reading any number,
+    // and the markers only appear on rows that happen to be on screen.
+    if (comparing && changed.size) {
+      note += "  Reference library versions differ between these runs: " +
+        Array.from(changed, ([id, [from, to]]) => `${id} ${from} → ${to}`).join(", ") +
+        ". Rows marked ‡ compare against a different build of that library.";
+    } else if (!comparing) {
+      const packages = runPackages.get(runSel.value);
+      const measured = packages && Object.keys(VARIANT_PACKAGES)
+        .map((v) => VARIANT_PACKAGES[v])
+        .filter((id, i, all) => all.indexOf(id) === i && packages[id])
+        .map((id) => `${id} ${packages[id]}`);
+      if (measured && measured.length) {
+        // Declared central pins recovered from git read the same as a resolved graph, and they
+        // are not the same claim, so runs backfilled that way say so.
+        const source = runPackagesSource.get(runSel.value);
+        note += "  Measured against " + measured.join(", ") + "." +
+          (source === "Directory.Packages.props"
+            ? " (Versions recovered from the central pins at that commit, not from the run itself.)"
+            : "");
+      }
+    }
+    tableNoteEl.textContent = note;
+    statusEl.textContent = total + " row(s) from " + (chosen ? chosen.textContent.trim() : "the selected run");
+  }
+
+  function renderChart() {
+    const mode = currentMode();
+    const isTable = mode === "table";
+    const isScaling = mode === "scaling";
+
+    chartContainerEl.hidden = isTable;
+    legendColorsEl.hidden = isTable;
+    legendDashesEl.hidden = isTable;
+    legendMetricsEl.hidden = isTable;
+    if (isTable) legendHintEl.hidden = true;   // otherwise left to renderColorLegend below
+    tableContainerEl.hidden = !isTable;
+    tableNoteEl.hidden = !isTable;
+    // Both single-run views need the run picker; only the table can hold two runs at once.
+    runPickerEl.hidden = !(isTable || isScaling);
+    comparePickerEl.hidden = !isTable;
+
+    if (isTable) {
+      refreshRunPickers(mode);
+      renderTableView();
+    } else if (isScaling) {
+      refreshRunPickers(mode);
+      renderScalingChart();
+    } else {
+      renderTrendChart();
+    }
+    syncControlAvailability(mode);
+    syncUrlHash();
+  }
+
+  if (location.protocol === "file:") {
+    statusEl.textContent =
+      "This page was opened directly from disk (file://) — browsers block fetch() of local files " +
+      "regardless of what's in the folder. Serve it over HTTP instead, e.g. from this folder run: " +
+      "python3 -m http.server 8000, then open http://localhost:8000/";
+    return;
+  }
+
+  try {
+    const SQL = await initSqlJs({
+      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
+    });
+    const response = await fetch("benchmark-history.sqlite");
+    if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
+    const buffer = await response.arrayBuffer();
+    db = new SQL.Database(new Uint8Array(buffer));
+    loadRunPackages();
+
+    const restoreState = parseUrlState();
+
+    populateSelect(platformSel, distinct("platform", ""), null, restoreState?.platform);
+    hasMultipleFrameworks = distinct("framework", "").length > 1;
+    frameworkPickerEl.hidden = !hasMultipleFrameworks;
+    // Keep the current family/method/cancellation selected across a platform switch when the
+    // other platform has that same combination too — e.g. flipping between windows and macos
+    // shouldn't reset back to the first family/method every time. populateSelect() already falls
+    // back to the first available option on its own when the preferred value doesn't exist for
+    // the new platform, so this is safe even when the two platforms' data don't fully overlap.
+    platformSel.onchange = () => refreshFrameworks({
+      framework: frameworkSel.value,
+      family: familySel.value,
+      method: methodSel.value,
+      cancellation: cancellationSel.value,
+    });
+    // Same intent as the platform handler: keep the rest of the selection when the new framework
+    // also has it, which is the whole point of switching framework - you want the same chart.
+    frameworkSel.onchange = () => refreshFamilies({
+      family: familySel.value,
+      method: methodSel.value,
+      cancellation: cancellationSel.value,
+    });
+    familySel.onchange = refreshMethods;
+    methodSel.onchange = () => refreshCancellation();
+    cancellationSel.onchange = refreshParams;
+    metricSel.onchange = renderChart;
+    dateRangeSel.onchange = renderChart;
+    logScaleCb.onchange = renderChart;
+    modeRadios.forEach((r) => (r.onchange = renderChart));
+    // Straight through renderChart so the run picker drives whichever single-run view is showing -
+    // the table or the scaling chart. It rebuilds the comparison list on the way (the shown run
+    // must not appear as its own comparison) and keeps the just-chosen run selected.
+    runSel.onchange = renderChart;
+    compareSel.onchange = () => { renderTableView(); syncUrlHash(); };
+    copyLinkBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        copyLinkStatusEl.textContent = "Copied!";
+      } catch {
+        copyLinkStatusEl.textContent = location.href;
+      }
+      setTimeout(() => { copyLinkStatusEl.textContent = ""; }, 2500);
+    };
+
+    if (restoreState?.metric) metricSel.value = restoreState.metric;
+    if (restoreState?.range) dateRangeSel.value = restoreState.range;
+    if (restoreState?.mode) {
+      const radio = Array.from(modeRadios).find((r) => r.value === restoreState.mode);
+      if (radio) radio.checked = true;
+    }
+    if (restoreState?.log !== undefined) logScaleCb.checked = restoreState.log;
+    pendingRunFromUrl = restoreState?.run ?? null;
+    pendingCompareFromUrl = restoreState?.compare ?? null;
+
+    refreshFrameworks(restoreState);
+  } catch (err) {
+    statusEl.textContent = `Failed to load benchmark-history.sqlite: ${err.message}`;
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>

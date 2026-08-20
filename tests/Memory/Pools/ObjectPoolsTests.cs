@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Memory.Pools;
 using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -49,6 +50,8 @@ public class ObjectPoolsTests
     }
 
     [Test]
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types",
+        Justification = "Test needs to capture all exceptions to verify thread safety")]
     public void GetStringBuilderCanBeUsedConcurrently()
     {
         const int concurrency = 32;

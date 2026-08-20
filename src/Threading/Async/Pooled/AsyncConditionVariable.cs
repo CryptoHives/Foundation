@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1508 // Avoid dead conditional code
@@ -128,7 +128,7 @@ public sealed class AsyncConditionVariable
     /// </exception>
     public async ValueTask WaitAsync(AsyncLock asyncLock, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(asyncLock);
+        if (asyncLock is null) throw new ArgumentNullException(nameof(asyncLock));
 
         // Check before enqueuing: don't release the lock if already cancelled.
         if (cancellationToken.IsCancellationRequested)

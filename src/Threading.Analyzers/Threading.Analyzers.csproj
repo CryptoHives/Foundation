@@ -8,11 +8,11 @@
     <AssemblyName>$(AssemblyPrefix).Threading.Analyzers</AssemblyName>
     <PackageId>$(PackagePrefix).Threading.Analyzers</PackageId>
     <RootNamespace>CryptoHives.Foundation.Threading.Analyzers</RootNamespace>
-    <Description>Roslyn analyzers for detecting common ValueTask misuse patterns in CryptoHives Threading Library</Description>
+    <Description>Roslyn analyzers and code fixes that catch ValueTask misuse at compile time in any C# codebase — the undefined behaviour and performance pitfalls that static analysis usually misses. Twelve diagnostics (CHT001-CHT012) flag a ValueTask consumed more than once, blocking on GetAwaiter().GetResult() or .Result, a ValueTask stored in a field or captured in a closure, a ValueTask that is never awaited, async wrappers that only forward an awaited ValueTask or needlessly box a state machine, and SemaphoreSlim(1,1) used as an async lock. Install as a development-only dependency with PrivateAssets="all" — no runtime reference and no dependency on any other package. Complements AsyncFixer and the built-in .NET analyzers; knows about CryptoHives.Foundation.Threading pooled primitives but works on any project.</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Threading Async ValueTask Analyzers Roslyn CodeFix</PackageTags>
+    <PackageTags>$(PackageTags) Analyzer Analyzers Roslyn RoslynAnalyzer CodeFix CodeAnalysis StaticAnalysis Diagnostics Lint Linter Threading Async Await Asynchronous Concurrency ValueTask IValueTaskSource Task AsyncLock SemaphoreSlim BestPractices Performance DevelopmentDependency</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
@@ -57,6 +57,10 @@
   <ItemGroup>
     <None Include="../../docfx/packages/threading.analyzers/*.md" Link="docfx/%(Filename)%(Extension)" />
     <None Include="../../docfx/packages/threading.analyzers/*.yml" Link="docfx/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="README.md" Visible="true" />
   </ItemGroup>
 
 </Project>

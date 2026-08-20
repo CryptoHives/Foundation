@@ -116,7 +116,7 @@ await vt;  // Throws InvalidOperationException!
 public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
 ```
 
-Asynchronously waits for the event to be signaled, or throws `OperationCanceledException` if the timeout elapses first.
+Asynchronously waits for the event to be signaled, or throws `TimeoutException` if the timeout elapses first.
 
 **Parameters**:
 - `timeout` — The maximum time to wait. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely (delegates to `WaitAsync()` without allocation).
@@ -124,7 +124,8 @@ Asynchronously waits for the event to be signaled, or throws `OperationCanceledE
 **Returns**: A `ValueTask` that completes when the event is signaled.
 
 **Throws**:
-- `OperationCanceledException` — If the timeout elapses before the event is signaled.
+- `TimeoutException` — If the timeout elapses before the event is signaled.
+- `OperationCanceledException` — If the operation is canceled via the cancellation token.
 - `ArgumentOutOfRangeException` — If `timeout` is negative and not equal to `Timeout.InfiniteTimeSpan`.
 
 **Allocation notes**:
@@ -236,14 +237,14 @@ The benchmarks compare various `AsyncAutoResetEvent` implementations:
 
 Measures the performance of signaling the event when no waiters are queued. There is no contention and no allocation cost in all implementations.
 
-[!INCLUDE[Set Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-set.md)]
+[View live Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=Set&mode=trend)
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before a waiter arrives (synchronous completion path).
 For the pooled implementation this is the fast path and an immediate return from WaitAsync is possible. There is no contention and no allocation cost in all implementations.
 
-[!INCLUDE[Set Then Wait Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-setthenw.md)]
+[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=SetThenWait&mode=trend)
 
 ### Wait Then Set Benchmark
 
@@ -255,7 +256,7 @@ ProtoPromise is now included as an additional low-allocation competitor and is o
 The Nito.AsyncEx implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
 The pooled implementation starts to allocate memory only when the pool is exhausted (high contention), when the ValueTask is converted to Task by AsTask() or when cancellable tokens are used in legacy .NET versions prior to .NET 6 (due to registration overhead).
 
-[!INCLUDE[Wait Then Set Benchmark](benchmarks/windows-x64-amd-ryzen-5-7600x/asyncautoresetevent-waitthenset.md)]
+[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=WaitThenSet&mode=trend)
 
 ### Benchmark Analysis
 
@@ -356,7 +357,7 @@ try
     await _event.WaitAsync(TimeSpan.FromSeconds(2));
     ProcessSignal();
 }
-catch (OperationCanceledException)
+catch (TimeoutException)
 {
     HandleTimeout();
 }
@@ -375,6 +376,7 @@ await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

@@ -58,6 +58,7 @@ public sealed class SM3 : HashAlgorithm
     private readonly byte[] _buffer;
     private int _bufferLength;
     private ulong _totalLength;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SM3"/> class.
@@ -118,8 +119,10 @@ public sealed class SM3 : HashAlgorithm
         => HashAlgorithmPool<SM3>.HashData(source);
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SM3));
         _v0 = IV0;
         _v1 = IV1;
         _v2 = IV2;
@@ -134,8 +137,10 @@ public sealed class SM3 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SM3));
         _totalLength += (ulong)source.Length;
         int offset = 0;
 
@@ -208,6 +213,7 @@ public sealed class SM3 : HashAlgorithm
         {
             ClearBuffer(_buffer);
             _v0 = _v1 = _v2 = _v3 = _v4 = _v5 = _v6 = _v7 = 0;
+            _disposed = true;
         }
         base.Dispose(disposing);
     }

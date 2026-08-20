@@ -2,7 +2,10 @@
   href: index.md
 - name: Getting Started
   href: getting-started.md
+- name: Porting Guide
+  href: porting-to-cryptohives.md
 - name: Packages
+  href: packages/index.md
   items:
     - name: Memory
       href: packages/memory/index.md
@@ -15,7 +18,13 @@
           href: packages/security/index.md
         - name: Cryptography
           href: packages/security/cryptography/index.md
+- name: Benchmarks
+  items:
+    - name: Threading
+      href: packages/threading/benchmarks.md
+    - name: Cryptography
+      href: packages/security/cryptography/benchmarks.md
 - name: API Documentation
-  href: api/
+  href: api/index.md
 - name: Impressum
   href: impressum.md

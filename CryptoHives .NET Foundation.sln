@@ -9,6 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		CLA.txt = CLA.txt
+		CLAUDE.md = CLAUDE.md
 		CONTRIBUTING.md = CONTRIBUTING.md
 		LICENSE = LICENSE
 		ORG-OWNERSHIP.md = ORG-OWNERSHIP.md
@@ -21,7 +22,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github ci", "github ci", "{
 		.github\workflows\api-compat.yml = .github\workflows\api-compat.yml
 		.github\workflows\buildandtest.yml = .github\workflows\buildandtest.yml
 		.github\workflows\codeql-analysis.yml = .github\workflows\codeql-analysis.yml
-		.github\copilot-instructions.md = .github\copilot-instructions.md
 		.github\dependabot.yml = .github\dependabot.yml
 		.github\workflows\dependency-review.yml = .github\workflows\dependency-review.yml
 		.github\workflows\devskim.yml = .github\workflows\devskim.yml
@@ -30,6 +30,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github ci", "github ci", "{
 		.github\in-solidarity.yml = .github\in-solidarity.yml
 		.github\workflows\sbom.yml = .github\workflows\sbom.yml
 		.github\workflows\stale.yml = .github\workflows\stale.yml
+		.github\workflows\test-published-packages.yml = .github\workflows\test-published-packages.yml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memory", "src\Memory\Memory.csproj", "{8F353D5E-D8D8-58B2-82A6-933750A0A2D0}"
@@ -57,7 +58,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nuget", "nuget", "{51D53384
 		nuget\logo.jpg = nuget\logo.jpg
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{69C6A38B-5F20-4894-9543-10EFF1AA4203}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{69C6A38B-5F20-4894-9543-10EFF1AA4203}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "devops ci", "devops ci", "{509454EF-E537-4120-81D8-8C2DAA768D31}"
 	ProjectSection(SolutionItems) = preProject

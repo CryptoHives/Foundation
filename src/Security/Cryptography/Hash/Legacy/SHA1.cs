@@ -24,7 +24,7 @@ using System.Runtime.CompilerServices;
 /// </para>
 /// </remarks>
 [Obsolete("SHA-1 is cryptographically weak and should not be used for security purposes.")]
-public sealed class SHA1 : HashAlgorithm
+public sealed partial class SHA1 : HashAlgorithm
 {
     /// <summary>
     /// The hash size in bits.
@@ -44,19 +44,49 @@ public sealed class SHA1 : HashAlgorithm
     private readonly byte[] _buffer;
     private readonly uint[] _state;
     private readonly uint[] _w;
+#if NET8_0_OR_GREATER
+    private readonly SimdSupport _simdSupport;
+#endif
     private long _bytesProcessed;
     private int _bufferLength;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA1"/> class.
     /// </summary>
-    public SHA1()
+    public SHA1() : this(SimdSupport.All)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SHA1"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    internal SHA1(SimdSupport simdSupport)
     {
         HashSizeValue = HashSizeBits;
         _buffer = new byte[BlockSizeBytes];
         _state = new uint[5];
         _w = new uint[80];
+#if NET8_0_OR_GREATER
+        _simdSupport = simdSupport & SimdSupport;
+#endif
         Initialize();
+    }
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by SHA-1 on the current platform.
+    /// </summary>
+    internal new static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (IsArmSha1Supported) support |= SimdSupport.ArmSha1;
+#endif
+            return support;
+        }
     }
 
     /// <inheritdoc/>
@@ -71,6 +101,13 @@ public sealed class SHA1 : HashAlgorithm
     /// <returns>A new SHA-1 hash algorithm instance.</returns>
 #pragma warning disable CS0618 // Type or member is obsolete
     public static new SHA1 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="SHA1"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new SHA-1 hash algorithm instance.</returns>
+    internal static SHA1 Create(SimdSupport simdSupport) => new(simdSupport);
 #pragma warning restore CS0618
 
     /// <summary>
@@ -96,8 +133,11 @@ public sealed class SHA1 : HashAlgorithm
 #pragma warning restore CS0618
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override void Initialize()
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SHA1));
+
         // SHA-1 initialization constants
         _state[0] = 0x67452301;
         _state[1] = 0xefcdab89;
@@ -111,8 +151,11 @@ public sealed class SHA1 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SHA1));
+
         int offset = 0;
 
         if (_bufferLength > 0)
@@ -145,8 +188,10 @@ public sealed class SHA1 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SHA1));
         if (destination.Length < HashSizeBytes)
         {
             bytesWritten = 0;
@@ -173,6 +218,7 @@ public sealed class SHA1 : HashAlgorithm
             ClearBuffer(_buffer);
             Array.Clear(_state, 0, _state.Length);
             Array.Clear(_w, 0, _w.Length);
+            _disposed = true;
         }
         base.Dispose(disposing);
     }
@@ -180,6 +226,13 @@ public sealed class SHA1 : HashAlgorithm
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
+#if NET8_0_OR_GREATER
+        if ((_simdSupport & SimdSupport.ArmSha1) != 0)
+        {
+            ProcessBlockArm(block, _state);
+            return;
+        }
+#endif
         unchecked
         {
             // Parse block into 16 32-bit words (big-endian)

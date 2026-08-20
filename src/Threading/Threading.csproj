@@ -8,11 +8,11 @@
     <AssemblyName>$(AssemblyPrefix).Threading</AssemblyName>
     <PackageId>$(PackagePrefix).Threading</PackageId>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <Description>CryptoHives Threading Library</Description>
+    <Description>Allocation-free async synchronization primitives for .NET: an async lock (AsyncLock), async keyed lock, async semaphore, async reader writer lock, async auto reset event, async manual reset event, async barrier and async countdown event. Every primitive returns ValueTask backed by pooled IValueTaskSource waiters, so both the uncontended fast path and contended waiters allocate nothing — a drop-in, zero-allocation alternative to SemaphoreSlim(1,1), ReaderWriterLockSlim and Task-based coordination helpers. Supports .NET Framework 4.6.2, netstandard2.0, netstandard2.1, .NET 8 and .NET 10, with AOT-compatible and trim-safe builds on .NET 8+.</Description>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile></PackageLicenseFile>
-    <PackageTags>$(PackageTags) Threading Async ValueTask AsyncLock AsyncReaderWriterLock</PackageTags>
+    <PackageTags>$(PackageTags) Threading Async Await Asynchronous Concurrency Synchronization Lock Locking Mutex Semaphore AsyncLock AsyncMutex AsyncSemaphore AsyncKeyedLock KeyedLock AsyncReaderWriterLock ReaderWriterLock ReaderWriterLockSlim AsyncAutoResetEvent AsyncManualResetEvent AsyncBarrier AsyncCountdownEvent SemaphoreSlim ValueTask IValueTaskSource TaskCompletionSource ObjectPool Pooling Allocation-Free ZeroAllocation LowLatency HighPerformance Performance AOT TrimSafe</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>
   </PropertyGroup>
@@ -64,19 +64,6 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" />
   </ItemGroup>
 
-  <!-- Include the Threading.Analyzers in this package for transitive analyzer support -->
-  <ItemGroup>
-    <ProjectReference Include="../Threading.Analyzers/Threading.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
-  </ItemGroup>
-
-  <!-- Pack the analyzer DLL into the analyzers folder - this makes it transitive to consumers -->
-  <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../Threading.Analyzers/bin/$(Configuration)/netstandard2.0/$(AssemblyPrefix).Threading.Analyzers.dll" 
-          Pack="true" 
-          PackagePath="analyzers/dotnet/cs" 
-          Visible="false" 
-          Condition="Exists('$(MSBuildThisFileDirectory)../Threading.Analyzers/bin/$(Configuration)/netstandard2.0/$(AssemblyPrefix).Threading.Analyzers.dll')" />
-  </ItemGroup>
 
   <!-- DocFX Documentation -->
   <ItemGroup>
@@ -88,6 +75,12 @@
   <!-- Shared classes -->
   <ItemGroup>
     <Compile Include="../Security/Cryptography/shared/MethodImplOptionsEx.cs" Link="shared/MethodImplOptionsEx.cs" />
+  </ItemGroup>
+
+  <!-- LLM/agent usage + porting guide, shipped at the package root -->
+  <ItemGroup>
+    <None Include="PORTING.md" Pack="true" PackagePath="" />
+    <None Update="README.md" Visible="true" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
