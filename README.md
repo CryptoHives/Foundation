@@ -18,8 +18,8 @@ The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the
 
 - 📖 **[Full Documentation](https://cryptohives.github.io/Foundation/)** — guides, API reference, examples
 - 🚀 [Getting Started Guide](https://cryptohives.github.io/Foundation/getting-started.html)
-- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html)
-- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html)
+- 📦 [Package Documentation](https://cryptohives.github.io/Foundation/packages/index.html) — what each package gives you, with links to its guides
+- 📚 [API Reference](https://cryptohives.github.io/Foundation/api/index.html) — every public namespace, generated from the source
 - ⏱️ **Live benchmark dashboards** — [Cryptography](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) · [Threading](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html)
 
 ---
@@ -59,6 +59,7 @@ Pooled buffer management for transformation pipelines and high-frequency I/O:
 Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
 
 - `AsyncLock` — mutual exclusion
+- `AsyncKeyedLock<TKey>` — per-key mutual exclusion
 - `AsyncSemaphore` — counting semaphore
 - `AsyncAutoResetEvent` / `AsyncManualResetEvent`
 - `AsyncReaderWriterLock`
@@ -117,13 +118,13 @@ Measured with BenchmarkDotNet across a range of payload sizes, comparing our man
 │     Memory         │   │      Threading        │   │  Security.Cryptography     │
 ├────────────────────┤   ├───────────────────────┤   ├────────────────────────────┤
 │ ArrayPool-         │   │ AsyncLock             │   │ Hash                       │
-│    MemoryStream    │   │ AsyncSemaphore        │   │  SHA-2 · SHA-3             │
-│ ArrayPool-         │   │ AsyncAutoResetEvent   │   │  SHAKE · cSHAKE            │
-│    BufferWriter<T> │   │ AsyncManualResetEvent │   │  TurboSHAKE · KT128/256    │
-│ ReadOnlySequence-  │   │ AsyncReaderWriterLock │   │  ParallelHash (SP 800-185) │
-│    MemoryStream    │   │ AsyncBarrier          │   │  KMAC128 · KMAC256         │
-│ ISegmentOwner<T>   │   │ AsyncCountdownEvent   │   │  Keccak · BLAKE2 · BLAKE3  │
-│  PooledSegment     │   │                       │   │  Ascon · Regional · Legacy │
+│    MemoryStream    │   │ AsyncKeyedLock<TKey>  │   │  SHA-2 · SHA-3             │
+│ ArrayPool-         │   │ AsyncSemaphore        │   │  SHAKE · cSHAKE            │
+│    BufferWriter<T> │   │ AsyncAutoResetEvent   │   │  TurboSHAKE · KT128/256    │
+│ ReadOnlySequence-  │   │ AsyncManualResetEvent │   │  ParallelHash (SP 800-185) │
+│    MemoryStream    │   │ AsyncReaderWriterLock │   │  KMAC128 · KMAC256         │
+│ ISegmentOwner<T>   │   │ AsyncBarrier          │   │  Keccak · BLAKE2 · BLAKE3  │
+│  PooledSegment     │   │ AsyncCountdownEvent   │   │  Ascon · Regional · Legacy │
 │  AllocatedSegment  │   │ IValueTaskSource<T>   │   │                            │
 │  EmptySegment      │   │    backed by          │   │ MAC                        │
 │                    │   │   ObjectPool<T>       │   │  HMAC · KMAC               │

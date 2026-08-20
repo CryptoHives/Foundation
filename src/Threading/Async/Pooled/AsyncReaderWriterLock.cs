@@ -624,11 +624,6 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Reader));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return ReaderLockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -661,6 +656,11 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+            }
+
             if (!_localReaderWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -670,16 +670,16 @@ public sealed class AsyncReaderWriterLock : IResettable
 
             version = waiter.Version;
             _waitingReaders.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _readerTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _readerTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)
@@ -757,11 +757,6 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.UpgradeableReader));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return UpgradeableReaderLockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -793,6 +788,11 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+            }
+
             if (!_localUpgradeableReaderWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -802,16 +802,16 @@ public sealed class AsyncReaderWriterLock : IResettable
 
             version = waiter.Version;
             _waitingUpgradeableReaders.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _upgradeableReaderTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _upgradeableReaderTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)
@@ -886,11 +886,6 @@ public sealed class AsyncReaderWriterLock : IResettable
             return new ValueTask<Releaser>(new Releaser(this, Releaser.ReleaserType.Writer));
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
-        }
-
         return WriterLockAsyncImpl(timeout, cancellationToken);
     }
 
@@ -913,6 +908,11 @@ public sealed class AsyncReaderWriterLock : IResettable
                 return new ValueTask<Releaser>(Task.FromCanceled<Releaser>(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask<Releaser>(Task.FromException<Releaser>(new TimeoutException()));
+            }
+
             if (!_localWriterWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -922,16 +922,16 @@ public sealed class AsyncReaderWriterLock : IResettable
 
             version = waiter.Version;
             _waitingWriters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _writerTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _writerTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)
@@ -993,16 +993,16 @@ public sealed class AsyncReaderWriterLock : IResettable
 
             version = waiter.Version;
             _waitingUpgradedWriters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _upgradedWriterTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _upgradedWriterTimerCallbackAction, new TimeoutState<Releaser>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)

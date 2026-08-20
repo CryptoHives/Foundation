@@ -111,7 +111,7 @@ public class AsyncReaderWriterLockUpgradedWriterBenchmark : AsyncReaderWriterLoc
     }
 
     [Test]
-    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
     public Task ReaderLockPooledMultipleTestAsync(CancellationType cancellationType)
     {
         PooledGlobalSetup();
@@ -131,7 +131,7 @@ public class AsyncReaderWriterLockUpgradedWriterBenchmark : AsyncReaderWriterLoc
     /// </summary>
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("UpgradedWriterLock", "Pooled")]
-    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
     public async Task UpgradedWriterLockPooledAsync(CancellationType cancellationType)
     {
         using var reader = await _rwLockPooled.UpgradeableReaderLockAsync(cancellationType.CancellationToken).ConfigureAwait(false);
@@ -140,7 +140,10 @@ public class AsyncReaderWriterLockUpgradedWriterBenchmark : AsyncReaderWriterLoc
             _rwLockPooledHandle![i] = await _rwLockPooled.ReaderLockAsync(cancellationType.CancellationToken).ConfigureAwait(false);
         }
 
-        var writerLock = reader.UpgradeToWriterLockAsync(cancellationType.CancellationToken);
+        // Only this acquisition carries the timeout, because it is the only one here that actually waits:
+        // the reader locks above are awaited immediately and complete synchronously, and a timeout costs
+        // nothing until an operation has to queue. Timing them too would add rows measuring nothing.
+        var writerLock = reader.UpgradeToWriterLockAsync(cancellationType.Timeout, cancellationType.CancellationToken);
         for (int i = 0; i < Iterations; i++)
         {
             _rwLockPooledHandle![i].Dispose();

@@ -41,7 +41,9 @@ Async synchronization primitives built for low allocation and high throughput.
 - An optional Roslyn analyzer package that catches common `ValueTask` misuse at compile time
 - Full `CancellationToken` support across every wait/lock primitive
 - `IValueTaskSource<T>`-based implementations backed by `ObjectPool<T>`, so waiter objects get recycled instead of allocated
+- Optional timeout on every acquisition, with a timer allocated only once a call actually has to wait
 - `AsyncLock` for async mutual exclusion, with scoped locking via the `IDisposable` pattern
+- `AsyncKeyedLock<TKey>` for per-key exclusion, where unrelated keys never block each other
 - `AsyncAutoResetEvent` and `AsyncManualResetEvent`, complementing the existing `Task`-based equivalents
 - `AsyncBarrier` as an async-aware replacement for the .NET barrier
 - Pooled `AsyncReaderWriterLock`, `AsyncSemaphore`, and `AsyncCountdownEvent`, all with async wait support
@@ -59,6 +61,7 @@ Specification-based implementations of hash algorithms, MACs, ciphers, and key d
 - SHAKE and cSHAKE extendable-output functions (XOF) for variable-length output
 - TurboSHAKE and KangarooTwelve (KT128/KT256), the high-performance XOFs
 - KMAC (Keccak Message Authentication Code) for authenticated hashing
+- ParallelHash (SP 800-185), with an incremental variant for streaming input
 - Ascon lightweight hashing and AEAD (NIST SP 800-232) for constrained environments
 - BLAKE2b, BLAKE2s, and BLAKE3, with keyed modes
 - Keccak-256/384/512 for Ethereum compatibility
@@ -72,6 +75,28 @@ Specification-based implementations of hash algorithms, MACs, ciphers, and key d
 - Cross-platform consistency with no dependency on OS crypto APIs
 
 [Explore the Security.Cryptography package →](packages/security/cryptography/index.md)
+
+## Benchmarks
+
+Both the Threading and the Cryptography package are measured with BenchmarkDotNet against the
+reference implementations people actually use — the OS-provided algorithms, BouncyCastle,
+Nito.AsyncEx, Microsoft.VisualStudio.Threading and others — and every recorded run is published.
+
+The results are browsable rather than pasted into a table: each page embeds an interactive
+dashboard that loads the run history as a small SQLite database in your browser, with no server
+involved. It offers three views — one run reproduced as a table, with a second run comparable
+against it; a trend over time per commit; and a scaling curve over data size or contention level.
+Every point names the commit, the .NET runtime and the reference library version it was measured
+against, so a step in a line can be attributed rather than guessed at.
+
+- [Threading benchmarks](packages/threading/benchmarks.md) — contended and uncontended acquisition
+  across the async primitives, per-waiter allocation included
+- [Cryptography benchmarks](packages/security/cryptography/benchmarks.md) — hash, cipher and MAC
+  throughput across data sizes, including the separate SIMD paths, plus per-instance memory
+  footprint tables
+
+Runs are archived per commit and per machine, so results measured on any contributor's hardware can
+appear side by side rather than only those from a fixed set of CI hosts.
 
 ## Platform Support
 

@@ -39,9 +39,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         DiagnosticDescriptors.MultipleAwait,
         DiagnosticDescriptors.BlockingGetResult,
         DiagnosticDescriptors.StoredInField,
-        DiagnosticDescriptors.MultipleAsTask,
         DiagnosticDescriptors.DirectResultAccess,
-        DiagnosticDescriptors.PassedToUnsafeMethod,
         DiagnosticDescriptors.AsTaskStoredBeforeSignal,
         DiagnosticDescriptors.NotConsumed,
         DiagnosticDescriptors.CapturedInClosure);
@@ -409,7 +407,19 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                         }
                     }
 
-                    // Check if initialized with AsTask() call pattern that's stored
+                    // NOTE: this is unreachable as written, and deliberately left that way for now. The
+                    // enclosing check inspects the type of the initializer, but the initializer here is
+                    // the result of AsTask(), which is a Task and never a ValueTask, so the two
+                    // conditions are mutually exclusive and CHT007 never fires.
+                    //
+                    // Simply hoisting it out of the enclosing check is not the fix. Doing so was tried
+                    // and makes the rule fire on every `Task t = valueTask.AsTask()` local - the ordinary
+                    // conversion idiom - including the code CHT001's own code fix generates, so the two
+                    // rules then contradict each other. It also exposes CHT007's code fix producing
+                    // malformed source ("ValueTask<int>vt = ..."). Making this rule real needs it
+                    // narrowed to what its documentation actually describes - a Task stored, other
+                    // statements run, and only then awaited - plus a working fix. See the analyzer
+                    // backlog rather than un-guarding this in place.
                     if (variable.Initializer.Value is InvocationExpressionSyntax invocation &&
                         IsAsTaskCall(invocation))
                     {
@@ -598,48 +608,10 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                 }
             }
 
-            // Check for passing ValueTask to potentially unsafe methods
-            CheckUnsafeMethodArguments(invocation);
-
             // Recursively analyze arguments
             foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments)
             {
                 AnalyzeExpressionRecursive(argument.Expression, isConsumed: false);
-            }
-        }
-
-        private void CheckUnsafeMethodArguments(InvocationExpressionSyntax invocation)
-        {
-            SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(invocation, _context.CancellationToken);
-            if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
-            {
-                return;
-            }
-
-            string methodName = methodSymbol.Name;
-            string? containingType = methodSymbol.ContainingType?.ToDisplayString();
-
-            // Check for Task.WhenAll, Task.WhenAny, Task.WaitAll, Task.WaitAny, etc.
-            bool isUnsafeMethod = (containingType == "System.Threading.Tasks.Task" &&
-                                   (methodName == "WhenAll" || methodName == "WhenAny" ||
-                                    methodName == "WaitAll" || methodName == "WaitAny")) ||
-                                  (containingType == "System.Threading.Tasks.ValueTask" &&
-                                   (methodName == "WhenAll" || methodName == "WhenAny"));
-
-            if (isUnsafeMethod)
-            {
-                foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments)
-                {
-                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(argument.Expression, _context.CancellationToken);
-                    if (IsValueTaskType(typeInfo.Type))
-                    {
-                        var diagnostic = Diagnostic.Create(
-                            DiagnosticDescriptors.PassedToUnsafeMethod,
-                            argument.GetLocation(),
-                            methodName);
-                        _context.ReportDiagnostic(diagnostic);
-                    }
-                }
             }
         }
 

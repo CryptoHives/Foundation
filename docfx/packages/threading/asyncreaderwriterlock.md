@@ -194,6 +194,8 @@ Asynchronously acquires a writer lock, or throws `TimeoutException` if the timeo
 | `TimeSpan.Zero` and contested | No (immediate exception) |
 | Finite positive timeout | Yes — one instance, disposed on await |
 
+An already-cancelled token is checked before the zero timeout, on every acquisition method here and on `UpgradeToWriterLockAsync`: passing both a cancelled token and `TimeSpan.Zero` throws `OperationCanceledException` carrying that token, not a `TimeoutException`. This matches the other primitives in the package.
+
 ### Allocation Behavior
 
 Immediate lock acquisitions via the fast path are completely allocation-free using atomic operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<Releaser>` instances are reused to minimize allocation pressure across repeated lock operations.
@@ -255,25 +257,25 @@ The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLo
 
 Measures the performance of acquiring and releasing reader locks with varying numbers of nested acquisitions. At the lowest iteration count (Iterations = 0), the pooled implementation achieves lower latency than Proto.Promises; from Iterations = 1 onward, Proto.Promises achieves lower per-operation latency, reflecting a lower per-lock-call overhead at the cost of a slightly higher fixed invocation overhead. Both operate with zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency at all iteration counts.
 
-[View live Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=ReaderLock)
+[View live Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=ReaderLock&mode=trend)
 
 ### Writer Lock Benchmark
 
 Measures the performance of acquiring and releasing a single writer lock. Proto.Promises achieves lower uncontended latency than the pooled implementation, with both operating at zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency.
 
-[View live Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=WriterLock)
+[View live Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=WriterLock&mode=trend)
 
 ### Upgradeable Reader Lock Benchmark
 
 Measures the performance of acquiring an upgradeable reader lock in combination with varying numbers of additional reader locks. At the lowest iteration count (Iterations = 0), the pooled implementation is marginally faster; Proto.Promises achieves lower per-operation latency as the number of additional reader locks increases. Both operate with zero allocations. VS.Threading allocates per acquisition and shows substantially higher latency across all iteration counts.
 
-[View live Upgradeable Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradeableReaderLock)
+[View live Upgradeable Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradeableReaderLock&mode=trend)
 
 ### Upgraded Writer Lock Benchmark
 
 Measures the performance of acquiring an upgradeable reader lock, holding additional reader locks concurrently, then upgrading to an exclusive writer lock. The pooled implementation is marginally faster at the lowest iteration count (Iterations = 0); Proto.Promises achieves lower per-operation latency as the number of held reader locks increases. Both operate with zero allocations. VS.Threading allocates proportionally to the number of held reader locks and shows substantially higher latency across all configurations.
 
-[View live Upgraded Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradedWriterLock)
+[View live Upgraded Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradedWriterLock&mode=trend)
 
 ### Benchmark Analysis
 
@@ -334,6 +336,7 @@ catch (TimeoutException)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

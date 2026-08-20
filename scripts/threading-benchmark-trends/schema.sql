@@ -32,12 +32,30 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     family      TEXT    NOT NULL,  -- e.g. 'AsyncLock', 'AsyncBarrier' (the primitive/type compared)
     variant     TEXT    NOT NULL,  -- e.g. 'Pooled (ValueTask)', 'Nito', 'Lock.EnterScope'
     cancellation TEXT   NOT NULL DEFAULT 'None', -- 'None' or 'NotCancelled' (CancellationToken state)
+    -- The target framework the row executed on, e.g. 'net10.0', 'net8.0', 'net48'. Part of the
+    -- primary key: the same commit measured on the same machine under two frameworks is two
+    -- distinct results, and without this they would overwrite each other. NOT NULL rather than
+    -- nullable because SQLite treats NULLs in a key as distinct, so a nullable key column
+    -- silently appends a duplicate row on every rebuild instead of replacing - the bug that
+    -- inflated this database from 4,718 rows to 6,413 when param_label was left nullable.
+    -- No DEFAULT for the same reason: the importer always knows the framework (the archive path
+    -- names it), so a missing value means something upstream broke and should fail loudly rather
+    -- than be labelled with whatever was current when this file was written.
+    framework   TEXT    NOT NULL,
     param_label TEXT,              -- e.g. '10' (contention level; NULL for non-parameterized benchmarks)
     param_value INTEGER,           -- 10 (for numeric sort/filter; NULL alongside label)
     mean_ns     REAL    NOT NULL,
     stddev_ns   REAL,              -- usually NULL: ThreadingConfig hides the StdDev/Error columns
     allocated_bytes REAL,
-    PRIMARY KEY (run_id, platform, class_name, method, family, variant, cancellation, param_label)
+    -- The report's Ratio column, kept solely to identify the declared baseline: every Threading
+    -- benchmark marks one method `[Benchmark(Baseline = true)]`, and BenchmarkDotNet records that
+    -- as Ratio = 1.00 in every parameter group. Nothing else in the recorded data says which row
+    -- the report treated as its reference, and guessing got it wrong in 7 of 23 reports.
+    --
+    -- NULL for Cryptography-shaped data and for any report without the column. Not part of the
+    -- primary key - it is a derived measurement, not a dimension.
+    ratio       REAL,
+    PRIMARY KEY (run_id, platform, framework, class_name, method, family, variant, cancellation, param_label)
 );
 
 -- Powers "all variants of one family/contention-level over time" and "one variant across
@@ -45,3 +63,67 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
 CREATE INDEX IF NOT EXISTS idx_family_variant ON benchmark_results(family, variant);
 CREATE INDEX IF NOT EXISTS idx_run_date        ON benchmark_results(run_date);
 CREATE INDEX IF NOT EXISTS idx_platform        ON benchmark_results(platform);
+
+-- One row per (run, platform): the environment the numbers were produced in.
+--
+-- Kept beside benchmark_results rather than folded into it, since it is constant across a run's
+-- ~900 rows. Every field is parsed out of the machine-spec.md that sits next to the scenario
+-- tables and has been committed alongside them since the first run, so this backfills across the
+-- whole history rather than starting empty.
+--
+-- The point is attribution: the .NET runtime moved between nearly every recorded run so far
+-- (10.0.3 -> 10.0.5 -> 10.0.9 -> 10.0.10, with the SDK jumping to an 11.0 preview), so a step in
+-- a trend line cannot be read as a code regression without knowing whether the floor moved too.
+CREATE TABLE IF NOT EXISTS benchmark_runs (
+    run_id          TEXT NOT NULL,
+    platform        TEXT NOT NULL,  -- matches benchmark_results.platform
+    run_date        TEXT,           -- ISO 8601, same value as the results rows
+    commit_sha      TEXT,
+    branch          TEXT,
+    bdn_version     TEXT,           -- e.g. '0.15.8'
+    os              TEXT,           -- e.g. 'Windows 11 (10.0.26200.8875/25H2/...)'
+    cpu             TEXT,           -- e.g. 'AMD Ryzen 5 7600X 4.70GHz'
+    logical_cores   INTEGER,
+    physical_cores  INTEGER,
+    sdk_version     TEXT,           -- e.g. '11.0.100-preview.5.26302.115'
+    runtime_version TEXT,           -- host runtime, e.g. '10.0.10'
+    jit             TEXT,           -- e.g. 'X64 RyuJIT x86-64-v4'
+    framework       TEXT NOT NULL,  -- target framework, e.g. 'net10.0' - see benchmark_results
+    PRIMARY KEY (run_id, platform, framework)
+);
+
+CREATE INDEX IF NOT EXISTS idx_runs_runtime ON benchmark_runs(runtime_version);
+CREATE INDEX IF NOT EXISTS idx_runs_framework ON benchmark_runs(framework);
+
+-- One row per (run, platform, package): the versions of the libraries the run measured against.
+--
+-- benchmark_runs answers "what machine and runtime", this answers "what did we compare to". A
+-- competitor's line steps when that competitor ships a new version just as readily as when our
+-- code changes, and until this table existed the two were indistinguishable in a trend chart -
+-- AsyncKeyedLock went 7.1.8 -> 8.0.0 -> 8.0.1 -> 8.0.2 across the recorded history, and
+-- Cryptography's BouncyCastle went 2.6.2 -> 2.7.0 in #210, with nothing in the recorded data to
+-- show for any of it.
+--
+-- Its own table rather than columns on benchmark_runs because the set of packages is neither
+-- fixed nor small, and it changes as competitors are added and dropped.
+--
+-- Populated from the `packages` block of each run's run.json. `source` records where that block
+-- came from: 'project.assets.json' is the resolved restore graph, recorded at run time and
+-- authoritative; 'Directory.Packages.props' is the declared central pin, recovered from git for
+-- runs made before the resolved graph was captured. Central pinning makes the two agree in
+-- practice, but declared is a minimum and resolved is a fact, so they are not interchangeable.
+CREATE TABLE IF NOT EXISTS benchmark_run_packages (
+    run_id      TEXT NOT NULL,
+    platform    TEXT NOT NULL,  -- matches benchmark_runs.platform
+    package_id  TEXT NOT NULL,  -- NuGet id, e.g. 'AsyncKeyedLock'
+    version     TEXT NOT NULL,  -- e.g. '8.0.2'
+    source      TEXT,           -- 'project.assets.json' or 'Directory.Packages.props'
+    -- Keyed by framework as well, because the resolved graph genuinely differs between them:
+    -- several competitors are referenced only for some target frameworks (Cryptography's Blake3
+    -- packages are net8.0+ only, Threading's KeyedSemaphores and ProtoPromise exclude net48), so
+    -- one run's package set is not the other's.
+    framework   TEXT NOT NULL,
+    PRIMARY KEY (run_id, platform, framework, package_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_run_packages_id ON benchmark_run_packages(package_id);

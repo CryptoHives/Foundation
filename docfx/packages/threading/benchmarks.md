@@ -1,4 +1,4 @@
-## Threading Benchmarks
+﻿## Threading Benchmarks
 
 This page documents how the benchmarks are executed which are included in the Threading library.
 
@@ -8,7 +8,7 @@ BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Thread
 
 ### Viewing Benchmark Results
 
-Published results live in the interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, primitive family, and operation, plotting every matching implementation as its own line — including a scaling-by-contention view and trend-over-time comparisons. Because `platform` is a free-form value in the database, results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
+Published results live in the interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small SQLite database client-side (no server) and lets you pick platform, primitive family, and operation, plotting every matching implementation as its own line — including a scaling-by-contention view and trend-over-time comparisons. The single-run views — the table and the scaling chart — take any recorded run from the Run picker, not just the newest. Because `platform` is a free-form value in the database, results from any contributor's machine can appear side by side, not just a fixed set of CI hosts.
 
 <iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading benchmark trends dashboard"></iframe>
 
@@ -16,19 +16,42 @@ Published results live in the interactive benchmark trends dashboard below rathe
 
 ### Recording a benchmark run
 
-First run the benchmarks locally (see below). For a quick local before/after comparison, mirror the generated markdown into a scratch folder (not published, see `.gitignore`):
+Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
 
-```powershell
-.\scripts\update-benchmark-docs.ps1 -Project Threading
+```
+threading/<code-commit>/<platform>/<framework>/
+    run.json          what the numbers measure, and against which library versions
+    machine-spec.md   the machine and runtime they were measured on
+    <scenario>.md     one report per benchmark class
 ```
 
-Only if the run is worth keeping as a trend data point, record it into the tracked dashboard database — a deliberate, separate step since not every local run needs to become history:
+A run is keyed by the commit its binaries were built from, not by the commit that records it. Two machines measuring the same build therefore land in one run directory as two platform directories, which is what makes a cross-platform comparison possible at all.
+
+The framework level below that does the same job for target frameworks: the same commit on the same machine under net10.0 and net8.0 is two runs, so the Table view can put them side by side exactly as it does two platforms. Pass `-Framework` to `run-benchmarks.ps1` and the matching `-TargetFramework` to `update-benchmark-docs.ps1`. A single run covering several runtimes at once (`-Runtimes "net8.0, net10.0"`) works too and needs neither: BenchmarkDotNet emits a `Runtime` column when the runtime varies, and each row is recorded against its own framework.
+
+Run the benchmarks locally first (see below), then write the reports into a worktree of that branch:
 
 ```powershell
-.\scripts\threading-benchmark-trends\record-benchmark-run.ps1
+git worktree add ../foundation-bench benchmarks
+.\scripts\update-benchmark-docs.ps1 -Project Threading -DestDir ../foundation-bench/threading
 ```
 
-The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported/custom machines), tags the run with the current commit/branch, and appends it to `benchmark-trends/benchmark-history.sqlite`. It never commits or pushes — review the diff and commit yourself if you want the run published.
+`update-benchmark-docs.ps1` derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass `-CodeCommit` when recording a run after the fact, or when `HEAD` has moved on since the run. It never commits or pushes: review the result and commit in that worktree when the run is worth keeping.
+
+It also records the version of every third-party library the run measured against, read from the benchmark project's resolved NuGet graph. The dashboard shows that version in each point's tooltip, and marks any compared row whose library differs between the two runs — a series can step because the library it measures shipped a release, independently of any change here. Pass `-TargetFramework` if the benchmarks did not run on the default `net10.0`.
+
+Pushing the branch does not republish the site on its own. The dashboard database is generated at build time rather than committed, so a new run becomes visible only when the docs workflow runs again — and a push to `benchmarks` cannot start it, because GitHub only runs workflows that exist in the pushed branch and that orphan branch carries no `.github/`. Publish it deliberately with `gh workflow run docfx.yml`, or let the next push to `main` pick it up.
+
+### Rebuilding the dashboard database
+
+`benchmark-history.sqlite` is a derived artifact, not a tracked file: SQLite rewrites pages throughout on every change, so committing it added a fresh multi-megabyte blob per rebuild for data that is fully reproducible from the archive. The docs workflow builds it, and so can you:
+
+```powershell
+.\scripts\build-trends-database.ps1          # from the committed branch, via a throwaway worktree
+.\scripts\build-trends-database.ps1 -Archive ../foundation-bench   # including runs you have not committed
+```
+
+`.\scripts\run-docfx.ps1` does this for you before building, so the local site always has data.
 
 ### Included benchmark suites
 
@@ -88,7 +111,7 @@ Notes:
 When run locally in `Release` mode, BenchmarkDotNet writes results and artifacts to:
 - `tests/Threading/BenchmarkDotNet.Artifacts/results/`
 
-After running benchmarks, see "Recording a benchmark run" above for how to compare locally or record a run into the published dashboard.
+After running benchmarks, see "Recording a benchmark run" above for how to record a run into the archive so it appears in the published dashboard.
 
 ### Adding a new benchmark
 
@@ -96,7 +119,7 @@ After running benchmarks, see "Recording a benchmark run" above for how to compa
 2. Include `[Benchmark]` methods and `[GlobalSetup]` where needed.
 3. Add a `[Params]` or `FixtureArgs` entry if parameterized runs are required.
 4. Run locally and inspect generated artifacts in `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
-5. Once the results look right, record the run into the trends dashboard (see "Recording a benchmark run" above).
+5. Once the results look right, record the run into the archive (see "Recording a benchmark run" above). A new benchmark class also needs an entry in `scripts/update-benchmark-docs.ps1`, which maps report file names onto the archive's scenario names.
 
 ## See Also
 

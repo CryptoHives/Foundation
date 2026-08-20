@@ -159,7 +159,7 @@ TODO: Currently benchmarks are only available on uncontended scenarios to measur
 
 Measures the performance of acquiring and releasing a single permit. In the current published results, ProtoPromise is slightly faster than the pooled implementation on raw uncontended throughput, while the pooled implementation preserves the same `ValueTask`-first design and behavior used across this library.
 
-[View live Single Wait/Release benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncSemaphore&method=WaitRelease)
+[View live Single Wait/Release benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncSemaphore&method=WaitRelease&mode=trend)
 
 ### Benchmark Analysis
 
@@ -221,6 +221,7 @@ catch (TimeoutException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [Benchmarks](benchmarks.md) - Benchmark description

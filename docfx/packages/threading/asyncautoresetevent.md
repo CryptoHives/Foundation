@@ -237,14 +237,14 @@ The benchmarks compare various `AsyncAutoResetEvent` implementations:
 
 Measures the performance of signaling the event when no waiters are queued. There is no contention and no allocation cost in all implementations.
 
-[View live Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=Set)
+[View live Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=Set&mode=trend)
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before a waiter arrives (synchronous completion path).
 For the pooled implementation this is the fast path and an immediate return from WaitAsync is possible. There is no contention and no allocation cost in all implementations.
 
-[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=SetThenWait)
+[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=SetThenWait&mode=trend)
 
 ### Wait Then Set Benchmark
 
@@ -256,7 +256,7 @@ ProtoPromise is now included as an additional low-allocation competitor and is o
 The Nito.AsyncEx implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
 The pooled implementation starts to allocate memory only when the pool is exhausted (high contention), when the ValueTask is converted to Task by AsTask() or when cancellable tokens are used in legacy .NET versions prior to .NET 6 (due to registration overhead).
 
-[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=WaitThenSet)
+[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=WaitThenSet&mode=trend)
 
 ### Benchmark Analysis
 
@@ -376,6 +376,7 @@ await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

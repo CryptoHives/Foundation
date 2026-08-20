@@ -25,7 +25,7 @@ mapping below, leave it unchanged and record it in the "Unmapped" report at the 
    `ValueTask`/`ValueTask<T>`. It may be awaited **exactly once** and must never be stored
    in a field, awaited twice, `.Result`-ed, or passed to `Task.WhenAll`/`WhenAny`. The
    `CryptoHives.Foundation.Threading.Analyzers` package enforces this — **add it and treat
-   its diagnostics as the source of truth** (see §2.4).
+   its diagnostics as the source of truth** (see §2.5).
 4. Match surrounding code style: nullable is enabled, warnings are errors in this repo;
    any code you add must compile clean under `TreatWarningsAsErrors=true`.
 
@@ -77,7 +77,9 @@ If the target project uses Central Package Management (`Directory.Packages.props
 | `CountdownEvent` awaited async | `AsyncCountdownEvent` | |
 | `Barrier` awaited async | `AsyncBarrier` | |
 | `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | |
-| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` (single-key) | `AsyncLock` | Verify the source did not rely on reentrancy. |
+| `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
+| `AsyncKeyedLock` (the third-party package), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | Same per-key semantics, without the striping some libraries use. |
+| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify the source did not rely on reentrancy. |
 
 ### 2.2 `AsyncLock` — exact usage
 
@@ -139,23 +141,54 @@ Note: there is **no** `SemaphoreSlim`-style bool-returning `WaitAsync(timeout)`.
 pattern `if (await sem.WaitAsync(timeout)) { … }` must be rewritten to try/catch on
 `TimeoutException`, or use a `CancellationToken`.
 
-### 2.4 Enforce correctness with the analyzer
+### 2.4 `AsyncKeyedLock<TKey>` — exact usage
 
-After porting, build. The analyzer emits (see `CLAUDE.md` for the full table):
+```csharp
+private readonly AsyncKeyedLock<string> _locks = new();
+
+public async Task UpdateAsync(string id, CancellationToken ct)
+{
+    using (await _locks.LockAsync(id, ct))      // other ids proceed in parallel
+    {
+        await MutateAsync(id);
+    }
+}
+```
+
+Signatures actually present:
+
+- `AsyncKeyedLock(IEqualityComparer<TKey>? comparer = null, IGetPooledManualResetValueTaskSource<Releaser>? pool = null, int maxIdleEntries = 128, int maxRetainedWaiters = 128)`
+- `ValueTask<Releaser> LockAsync(TKey key, CancellationToken cancellationToken = default)`
+- `ValueTask<Releaser> LockAsync(TKey key, TimeSpan timeout, CancellationToken cancellationToken = default)`
+- `bool TryLock(TKey key, out Releaser releaser)` — never waits and never allocates
+- `bool IsInUse(TKey key)` / `int Count { get; }` — best-effort diagnostics, not synchronization
+
+Rules:
+- **Not reentrant**, exactly like `AsyncLock`: re-acquiring the same key on one call stack deadlocks.
+- Hold **one instance** for the lifetime of the component. A new instance per call gets its own
+  registry and serializes nothing.
+- `maxIdleEntries` bounds key cardinality and `maxRetainedWaiters` bounds simultaneous contention;
+  past either the lock still works, it just stops being allocation-free.
+
+### 2.5 Enforce correctness with the analyzer
+
+After porting, build. The analyzer emits (full descriptions:
+<https://cryptohives.github.io/Foundation/packages/threading.analyzers/index.html>):
 
 | ID | Meaning — fix |
 |---|---|
-| CHT001 (Error) | `ValueTask` awaited multiple times — await once, capture the result. |
+| CHT001 (Error) | `ValueTask` consumed multiple times — consume once, capture the result. |
 | CHT002 (Warn) | `.GetAwaiter().GetResult()` on `ValueTask` — make the caller async and `await`. |
 | CHT003 (Warn) | `ValueTask` stored in a field — don't; await it locally. |
-| CHT004 (Error) | `AsTask()` called multiple times. |
 | CHT005 (Warn) | `.Result` on a `ValueTask` — `await` instead. |
-| CHT006 (Warn) | `ValueTask` passed to `WhenAll`/`WhenAny` — call `.AsTask()` once first, or restructure. |
+| CHT007 (Info) | `AsTask()` stored before the primitive signals — await the `ValueTask` directly. |
 | CHT008 (Warn) | `ValueTask` not awaited/consumed. |
 | CHT009 (Info) | `SemaphoreSlim(1,1)` — switch to `AsyncLock`. |
 | CHT010 (Warn) | `ValueTask` captured in a lambda/closure. |
+| CHT011 (Warn) | `async` method only forwards an awaited `ValueTask` — return it directly. |
+| CHT012 (Info) | `async` `ValueTask` wrapper boxes a state machine when it suspends. |
 
-Resolve every CHT00x before considering the async phase done. Do not suppress them to make
+Resolve every CHT0xx before considering the async phase done. Do not suppress them to make
 the build pass unless a human explicitly approves a specific instance.
 
 ---
@@ -270,7 +303,7 @@ if (seg.TrySetSegment(offset: 16, length: 64))
 // AllocatedSegment<T> — wraps an existing GC-managed array, no pool
 byte[] raw = new byte[256];
 using ISegmentOwner<byte> alloc = AllocatedSegment<byte>.Create(raw);
-Process(alloc.Segment.AsSpan());
+Process(alloc);
 // only the wrapper is cleared on Dispose; the array itself is unchanged
 
 // EmptySegment<T> — null-object sentinel
@@ -386,7 +419,7 @@ do not "upgrade" it silently.
 Work phase by phase; build + test after each:
 
 1. **Wire packages** (§1). Restore/build.
-2. **Async** (§2): swap primitives, add the analyzer, drive CHT00x to zero.
+2. **Async** (§2): swap primitives, add the analyzer, drive CHT0xx to zero.
 3. **Memory** (§3): swap buffer/stream/pool patterns; verify every new type is `using`-scoped.
 4. **Hashing** (§4): swap hash implementations; confirm identical digests.
 

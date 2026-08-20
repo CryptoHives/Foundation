@@ -256,16 +256,18 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     [Test]
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("WaitThenSet", "Pooled (ValueTask)")]
-    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
-    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledTimedGroup))]
     public async Task PooledAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
     {
 
         _eventPooled.Reset();
 
+        // The event is reset first, so every wait below queues and a timeout genuinely arms a timer.
+        // Timeout is InfiniteTimeSpan for the untimed variants, meaning "arm no timer".
         for (int i = 0; i < Iterations; i++)
         {
-            _valueTask[i] = _eventPooled.WaitAsync(cancellationType.CancellationToken);
+            _valueTask[i] = _eventPooled.WaitAsync(cancellationType.Timeout, cancellationType.CancellationToken);
         }
 
         _eventPooled.Set();

@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -141,9 +142,16 @@ public sealed class SemaphoreSlimAsAsyncLockCodeFixProvider : CodeFixProvider
             return root;
         }
 
+        // Two things are needed for the formatter to supply the document's own line ending here, and
+        // neither is sufficient alone. The annotation, because CodeAction's post processing formats
+        // annotated nodes only. And ElasticLineFeed rather than ElasticCarriageReturnLineFeed,
+        // because the formatter leaves a "\r\n" it is asked to shorten to "\n" alone - so the CRLF
+        // spelling is elastic only in the direction that happens to match Windows, and inserts a
+        // lone CRLF line into an LF document. "\n" is rewritten in both directions.
         var newUsing = SyntaxFactory.UsingDirective(
                 SyntaxFactory.ParseName(" " + namespaceName))
-            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed);
+            .WithTrailingTrivia(SyntaxFactory.ElasticLineFeed)
+            .WithAdditionalAnnotations(Formatter.Annotation);
 
         // Insert after the last existing using directive, or at the top of the file.
         if (compilationUnit.Usings.Count > 0)

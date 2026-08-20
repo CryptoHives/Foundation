@@ -1,9 +1,12 @@
-# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
 # update-benchmark-docs.ps1
-# Copies BenchmarkDotNet results to docfx benchmark documentation folder
-# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>] [-PlatformId <slug>] [-DryRun]
+# Records a BenchmarkDotNet run into the archive on the `benchmarks` branch, as
+# <package>/<code-commit>/<platform>/<framework>/. -DestDir names the package directory; the three
+# levels below it are derived from the commit under test and from the reports themselves.
+# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>]
+#            [-PlatformId <slug>] [-CodeCommit <sha>] [-TargetFramework <tfm>] [-DryRun]
 
 [CmdletBinding()]
 param(
@@ -20,6 +23,12 @@ param(
     [Parameter(HelpMessage = "Optional platform identifier override (for example: macos-arm64-apple-m4)")]
     [string]$PlatformId,
 
+    [Parameter(HelpMessage = "Commit the benchmarked binaries were built from. Defaults to HEAD; pass it explicitly when recording a run after the fact, or when HEAD has moved on since the run.")]
+    [string]$CodeCommit,
+
+    [Parameter(HelpMessage = "Target framework the benchmarks ran under. Must match run-benchmarks.ps1 -Framework, since the competitor package versions are read from that framework's resolved dependency graph.")]
+    [string]$TargetFramework = "net10.0",
+
     [Parameter(HelpMessage = "Dry run - show actions without executing")]
     [switch]$DryRun
 )
@@ -32,13 +41,27 @@ $RepoRoot = Split-Path $PSScriptRoot
 $packageConfigurations = @{
     "Threading" = [ordered]@{
         SourceDir = "tests/Threading/BenchmarkDotNet.Artifacts/results"
-        # Local scratch output only (see .gitignore) — the published benchmark view is the
-        # SQLite-backed dashboard under docfx/packages/threading/benchmark-trends/, not a
-        # per-platform markdown tree, so this must not point back into docfx/.
-        DestDir   = "bench-results/threading"
+        # NuGet's restore output for the benchmark project, read to record which version of each
+        # competitor library produced the numbers. See Get-BenchmarkPackageVersions.
+        AssetsFile = "tests/Threading/obj/project.assets.json"
+        # Recorded runs live on the `benchmarks` branch, not in docfx: the published view is the
+        # SQLite-backed dashboard, whose database is generated from that branch at build time. The
+        # default is a sibling worktree, so pass -DestDir if yours is elsewhere:
+        #     git worktree add ../foundation-bench benchmarks
+        DestDir   = "../foundation-bench/threading"
         Files     = @(
+            # AsyncLock
             @{ Source = "AsyncLockSingleBenchmark-report.md"; Target = "asynclock-single.md" }
             @{ Source = "AsyncLockMultipleBenchmark-report.md"; Target = "asynclock-multiple.md" }
+
+            # AsyncKeyedLock - uncontended, then contended, then multi-threaded
+            @{ Source = "AsyncKeyedLockSingleKeyBenchmark-report.md"; Target = "asynckeyedlock-singlekey.md" }
+            @{ Source = "AsyncKeyedLockTryLockBenchmark-report.md"; Target = "asynckeyedlock-trylock.md" }
+            @{ Source = "AsyncKeyedLockCardinalityBenchmark-report.md"; Target = "asynckeyedlock-cardinality.md" }
+            @{ Source = "AsyncKeyedLockRollingKeyBenchmark-report.md"; Target = "asynckeyedlock-rollingkey.md" }
+            @{ Source = "AsyncKeyedLockMultipleBenchmark-report.md"; Target = "asynckeyedlock-multiple.md" }
+            @{ Source = "AsyncKeyedLockConcurrentBenchmark-report.md"; Target = "asynckeyedlock-concurrent.md" }
+
             @{ Source = "AsyncAutoResetEventSetBenchmark-report.md"; Target = "asyncautoresetevent-set.md" }
             @{ Source = "AsyncAutoResetEventSetThenWaitBenchmark-report.md"; Target = "asyncautoresetevent-setthenw.md" }
             @{ Source = "AsyncAutoResetEventWaitThenSetBenchmark-report.md"; Target = "asyncautoresetevent-waitthenset.md" }
@@ -46,8 +69,12 @@ $packageConfigurations = @{
             @{ Source = "AsyncManualResetEventSetThenWaitBenchmark-report.md"; Target = "asyncmanualresetevent-setthenw.md" }
             @{ Source = "AsyncManualResetEventWaitThenSetBenchmark-report.md"; Target = "asyncmanualresetevent-waitthenset.md" }
             @{ Source = "AsyncSemaphoreSingleBenchmark-report.md"; Target = "asyncsemaphore-single.md" }
+            @{ Source = "AsyncSemaphoreMultipleBenchmark-report.md"; Target = "asyncsemaphore-multiple.md" }
             @{ Source = "AsyncCountdownEventSignalBenchmark-report.md"; Target = "asynccountdownevent-signal.md" }
+            @{ Source = "AsyncCountdownEventWaitersBenchmark-report.md"; Target = "asynccountdownevent-waiters.md" }
             @{ Source = "AsyncBarrierSignalAndWaitBenchmark-report.md"; Target = "asyncbarrier-signalandwait.md" }
+            @{ Source = "AsyncBarrierPostPhaseBenchmark-report.md"; Target = "asyncbarrier-postphase.md" }
+            @{ Source = "AsyncReaderWriterLockContentionBenchmark-report.md"; Target = "asyncreaderwriterlock-contention.md" }
             @{ Source = "AsyncReaderWriterLockReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-reader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradeableReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradeablereader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradedWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradedwriter.md" }
@@ -57,10 +84,10 @@ $packageConfigurations = @{
 
     "Cryptography" = [ordered]@{
         SourceDir = "tests/Security/Cryptography/BenchmarkDotNet.Artifacts/results"
-        # Local scratch output only (see .gitignore) — the published benchmark view is the
-        # SQLite-backed dashboard under docfx/packages/security/cryptography/benchmark-trends/,
-        # not a per-platform markdown tree, so this must not point back into docfx/.
-        DestDir   = "bench-results/cryptography"
+        AssetsFile = "tests/Security/Cryptography/obj/project.assets.json"
+        # Recorded runs live on the `benchmarks` branch, not in docfx - see the Threading entry
+        # above for why. Default is a sibling worktree; pass -DestDir if yours is elsewhere.
+        DestDir   = "../foundation-bench/cryptography"
         Files     = @(
             # SHA-2 individual algorithms
             @{ Source = "SHA224Benchmark-report.md"; Target = "sha224.md" }
@@ -218,6 +245,20 @@ if (-not $PSBoundParameters.ContainsKey('SourceDir') -or [string]::IsNullOrWhite
 
 if (-not $PSBoundParameters.ContainsKey('DestDir') -or [string]::IsNullOrWhiteSpace($DestDir)) {
     $DestDir = Join-Path $RepoRoot $selectedConfig.DestDir
+}
+
+# A relative path is relative to the repository, not to wherever the shell happens to be sitting.
+# The documented invocation passes -DestDir ../foundation-bench/cryptography, which PowerShell
+# would otherwise resolve against the caller's current directory - from a Visual Studio developer
+# prompt that is C:\Program Files\Microsoft Visual Studio\18, and the run is written there or
+# fails outright. The defaults above are already repo-rooted, so this only affects explicit ones.
+foreach ($name in 'SourceDir', 'DestDir') {
+    $value = Get-Variable -Name $name -ValueOnly
+    if (-not [System.IO.Path]::IsPathRooted($value)) {
+        Set-Variable -Name $name -Value (Join-Path $RepoRoot $value)
+    }
+    # Collapse any '..' so the paths printed below name a real location.
+    Set-Variable -Name $name -Value ([System.IO.Path]::GetFullPath((Get-Variable -Name $name -ValueOnly)))
 }
 
 $benchmarkMappings = $selectedConfig.Files
@@ -401,6 +442,93 @@ function Get-PlatformIdFromMachineSpec {
     return "$osSlug-$archSlug-$cpuSlug"
 }
 
+# Reads the versions of the third-party libraries the benchmarks measured against.
+#
+# The machine spec already pins the hardware and the runtime, but a competitor's line can also
+# step because that competitor shipped a new version - BouncyCastle went 2.6.2 -> 2.7.0 in #210,
+# and nothing in a recorded run said so. Without this, such a step is indistinguishable from a
+# regression in our own code, which is the one thing the trend charts exist to detect.
+#
+# Read from NuGet's restore output rather than Directory.Packages.props, because that is the
+# resolved graph - what was actually loaded - and central pinning declares a *minimum*. The two
+# agree today; they stop agreeing the moment a version is unavailable or floats.
+#
+# Restricted to the benchmark project's own direct references: transitive closure would add
+# hundreds of framework packages that say nothing about a measurement. autoReferenced entries
+# (ILLink and friends) are SDK-injected rather than chosen, and CryptoHives.Foundation.* is our
+# own code, already identified by codeCommit.
+function Get-BenchmarkPackageVersions {
+    param(
+        [string]$AssetsPath,
+        [string]$Framework
+    )
+
+    if (-not (Test-Path $AssetsPath)) {
+        Write-Host "  [warn] $AssetsPath not found; package versions not recorded." -ForegroundColor Yellow
+        return $null
+    }
+
+    $assets = Get-Content -Raw -LiteralPath $AssetsPath | ConvertFrom-Json
+
+    $declared = $assets.project.frameworks.$Framework
+    $resolved = $assets.targets.$Framework
+    if (-not $declared -or -not $resolved) {
+        Write-Host "  [warn] $AssetsPath has no '$Framework' target; package versions not recorded." -ForegroundColor Yellow
+        return $null
+    }
+
+    # targets entries are keyed "PackageId/1.2.3"; split on the last slash so ids containing one
+    # (there are none today, but the format allows it) survive.
+    $resolvedVersions = @{}
+    foreach ($key in $resolved.PSObject.Properties.Name) {
+        $slash = $key.LastIndexOf('/')
+        if ($slash -gt 0) {
+            $resolvedVersions[$key.Substring(0, $slash)] = $key.Substring($slash + 1)
+        }
+    }
+
+    $versions = [ordered]@{}
+    foreach ($id in ($declared.dependencies.PSObject.Properties.Name | Sort-Object)) {
+        if ($declared.dependencies.$id.autoReferenced) { continue }
+        if ($id -like 'CryptoHives.Foundation.*') { continue }
+        if ($resolvedVersions.ContainsKey($id)) {
+            $versions[$id] = $resolvedVersions[$id]
+        }
+    }
+
+    if ($versions.Count -eq 0) { return $null }
+    return $versions
+}
+
+# The target framework the reports were produced under, taken from the machine-spec preamble.
+#
+# Preferred over the -TargetFramework parameter because it is what BenchmarkDotNet actually used
+# rather than what the caller believes was used, and the two can disagree - passing
+# -Framework net10.0 -Runtimes net8.0 builds for one and measures on the other. The parameter is
+# still the fallback: BenchmarkDotNet drops the "Job=... Toolchain=..." line from the preamble as
+# soon as a job characteristic varies across the report, which is exactly the multi-runtime case,
+# and there the run has no single framework to name the directory with.
+function Get-FrameworkFromMachineSpec {
+    param([string]$MachineSpec)
+
+    if ($MachineSpec -match 'Toolchain=(\S+)') {
+        return $Matches[1]
+    }
+
+    # No Toolchain line: fall back to the runtime display name, e.g. "Runtime=.NET Framework 4.8".
+    if ($MachineSpec -match 'Runtime=(\.NET(?: Framework)? \d+(?:\.\d+){1,2})') {
+        $version = $Matches[1]
+        if ($version -match '^\.NET Framework (.+)$') {
+            return "net" + ($Matches[1] -replace '\.', '')
+        }
+        if ($version -match '^\.NET (\d+)\.(\d+)') {
+            return "net$($Matches[1]).$($Matches[2])"
+        }
+    }
+
+    return $null
+}
+
 function Test-PlatformIdFormat {
     param([string]$Value)
 
@@ -427,6 +555,35 @@ function Assert-PlatformId {
     }
 }
 
+# The commit under test is a level of the archive layout, not merely a field in run.json: runs
+# live at <package>/<code-commit>/<platform>/<framework>/, and -DestDir names the package root.
+# Resolving it here, before anything is copied, is what puts each run in its own directory rather
+# than overwriting the previous run of the same platform and framework file by file.
+#
+# Resolved through rev-parse so that a ref or an abbreviated sha is recorded as the full sha, and
+# so an unresolvable one fails here rather than naming a directory after a typo.
+function Resolve-CodeCommit {
+    param([string]$Value)
+
+    $revision = if ([string]::IsNullOrWhiteSpace($Value)) { "HEAD" } else { $Value }
+    $resolved = git -C $RepoRoot rev-parse --verify --quiet "$revision^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($resolved)) {
+        throw "Could not resolve '$revision' to a commit in $RepoRoot. Pass -CodeCommit with a commit this checkout knows about."
+    }
+
+    return $resolved.Trim()
+}
+
+$CodeCommit = Resolve-CodeCommit -Value $CodeCommit
+# Ten characters, matching the run directories already in the archive.
+$codeCommitDir = $CodeCommit.Substring(0, 10)
+
+Write-Host "Code commit: $CodeCommit"
+if (-not $PSBoundParameters.ContainsKey('CodeCommit')) {
+    Write-Host "  (HEAD; pass -CodeCommit when recording a run after the fact)"
+}
+Write-Host ""
+
 Write-Host "Copying benchmark results..."
 Write-Host ""
 
@@ -434,16 +591,11 @@ $copied = 0
 $missing = 0
 $machineSpec = $null
 $machineSpecExtracted = $false
-$destinationRoot = $DestDir
+$destinationRoot = Join-Path $DestDir $codeCommitDir
 $resolvedDestDir = $null
+$resolvedFramework = $null
 
 Ensure-Directory -Path $destinationRoot -DryRunMode:$DryRun
-
-if (-not [string]::IsNullOrWhiteSpace($PlatformId)) {
-    Assert-PlatformId -Value $PlatformId -SourceLabel "-PlatformId"
-    $resolvedDestDir = Join-Path $destinationRoot $PlatformId
-    Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
-}
 
 Write-Host "Destination root: $destinationRoot"
 if ($PlatformId) {
@@ -468,10 +620,26 @@ foreach ($mapping in $benchmarkMappings) {
             if (-not $PlatformId) {
                 $PlatformId = Get-PlatformIdFromMachineSpec -MachineSpec $machineSpec
                 Assert-PlatformId -Value $PlatformId -SourceLabel "machine specification"
-                $resolvedDestDir = Join-Path $destinationRoot $PlatformId
-                Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
                 Write-Host "  [INFO] Derived platform identifier: $PlatformId" -ForegroundColor Cyan
+            } else {
+                Assert-PlatformId -Value $PlatformId -SourceLabel "-PlatformId"
             }
+
+            # The framework is its own level below the platform, so the same commit measured on
+            # the same machine under net8.0 and net10.0 is two runs rather than one overwriting
+            # the other - which is what happened before this level existed, silently and file by
+            # file, since every report name is the same for both.
+            $resolvedFramework = Get-FrameworkFromMachineSpec -MachineSpec $machineSpec
+            if (-not $resolvedFramework) {
+                $resolvedFramework = $TargetFramework
+                Write-Host "  [INFO] No single framework in the machine spec (a multi-runtime run?); using -TargetFramework $TargetFramework" -ForegroundColor Cyan
+            } elseif ($resolvedFramework -ne $TargetFramework) {
+                Write-Host "  [WARN] Reports were produced under '$resolvedFramework' but -TargetFramework is '$TargetFramework'. Recording as '$resolvedFramework'; pass the matching -TargetFramework so the package versions come from the right graph." -ForegroundColor Yellow
+            }
+
+            $resolvedDestDir = Join-Path (Join-Path $destinationRoot $PlatformId) $resolvedFramework
+            Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
+            Write-Host "  [INFO] Recording under $PlatformId/$resolvedFramework" -ForegroundColor Cyan
         }
 
         if (-not $resolvedDestDir) {
@@ -526,12 +694,69 @@ $machineSpec
     }
 }
 
+# run.json records what the numbers measure, which the file layout cannot: the commit under test.
+#
+# Identifying a run by the commit that *recorded* it conflates two different things and breaks as
+# soon as two machines report separately - the 2026-08-09 Windows and 2026-08-10 macOS runs
+# measured byte-identical library and benchmark sources, but landed in different commits, so
+# nothing could tell they belonged together. Keyed by the code commit instead, they are one run
+# with two platform rows, which is what the database's (run_id, platform) key already assumes.
+if ($machineSpec -and $resolvedDestDir) {
+    $assetsFile = Join-Path $RepoRoot $selectedConfig.AssetsFile
+    $packageVersions = Get-BenchmarkPackageVersions -AssetsPath $assetsFile -Framework $TargetFramework
+
+    $runJsonFile = Join-Path $resolvedDestDir "run.json"
+    $runMetadata = [ordered]@{
+        codeCommit = $CodeCommit
+        recordedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        package    = $Project.ToLowerInvariant()
+        platform   = $PlatformId
+        framework  = $resolvedFramework
+    }
+
+    # The importer reads a `branch` alongside the commit, so record which branch the measured
+    # commit was on - a sha alone does not say whether a step came from main or from a topic
+    # branch that was never merged. Only when this checkout is still *at* that commit and on a
+    # named branch: recording a run after the fact, or from a detached HEAD, would otherwise name
+    # whatever branch happens to be out now, which is worse than recording nothing.
+    $headCommit = git -C $RepoRoot rev-parse --verify --quiet HEAD 2>$null
+    if ($LASTEXITCODE -eq 0 -and $headCommit -and $headCommit.Trim() -eq $CodeCommit) {
+        $headBranch = git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $headBranch -and $headBranch.Trim() -ne 'HEAD') {
+            $runMetadata.branch = $headBranch.Trim()
+        }
+    }
+
+    if ($packageVersions) {
+        # The graph the versions came from, which is -TargetFramework and not necessarily the
+        # framework the run executed on. Recorded separately from `framework` so the two are
+        # never silently conflated: a run built for net10.0 but measured on net8.0 resolved its
+        # packages against net10.0, and the record should say so.
+        $runMetadata.packagesFramework = $TargetFramework
+        # Provenance matters: runs recorded before this existed are backfilled from
+        # Directory.Packages.props, which declares rather than resolves. Say which one this is.
+        $runMetadata.packagesSource = "project.assets.json"
+        $runMetadata.packages = $packageVersions
+    }
+    $runJsonContent = ($runMetadata | ConvertTo-Json -Depth 3) + "`n"
+
+    if ($DryRun) {
+        Write-Host "  [DRY RUN] Set-Content -Path $runJsonFile (code commit $CodeCommit)" -ForegroundColor Yellow
+    } else {
+        [System.IO.File]::WriteAllText($runJsonFile, $runJsonContent, (New-Object System.Text.UTF8Encoding $false))
+        Write-Host "  [OK] run.json (code commit $($CodeCommit.Substring(0, 8)))" -ForegroundColor Green
+    }
+}
+
 Write-Host ""
 Write-Host "========================================"
 Write-Host " Benchmark documentation updated!"
 Write-Host " Copied: $copied, Missing: $missing"
 if ($PlatformId) {
     Write-Host " Platform: $PlatformId"
+}
+if ($resolvedFramework) {
+    Write-Host " Framework: $resolvedFramework"
 }
 Write-Host "========================================"
 Write-Host ""

@@ -1,6 +1,7 @@
 # Cryptographic Test Vectors
 
-This folder contains test vectors for cryptographic hash algorithms from official sources.
+This folder contains test vectors for the hash, MAC and cipher algorithms in this package, from
+official sources.
 
 ## Implementation Status
 
@@ -35,10 +36,13 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | cSHAKE256 | 256 bits | ✅ Implemented | `CShake256` |
 | KMAC128 | 128 bits | ✅ Implemented | `KMac128` |
 | KMAC256 | 256 bits | ✅ Implemented | `KMac256` |
+| ParallelHash128 | 128 bits | ✅ Implemented | `ParallelHash`, `IncrementalParallelHash` |
+| ParallelHash256 | 256 bits | ✅ Implemented | `ParallelHash`, `IncrementalParallelHash` |
 | TupleHash128 | 128 bits | ⬜ Not implemented | - |
 | TupleHash256 | 256 bits | ⬜ Not implemented | - |
-| ParallelHash128 | 128 bits | ⬜ Not implemented | - |
-| ParallelHash256 | 256 bits | ⬜ Not implemented | - |
+
+> **ParallelHash:** one-shot via `ParallelHash.ComputeHash128`/`ComputeHash256`, streaming via
+> `IncrementalParallelHash`. Test vectors: [ParallelHash-vectors.md](ParallelHash-vectors.md).
 
 ### RFC 9861 (TurboSHAKE and KangarooTwelve)
 
@@ -52,14 +56,15 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 > **Note:** KT128 and KT256 (formerly KangarooTwelve and MarsupilamiFourteen) are defined in RFC 9861.
 > They use reduced-round Keccak (12 rounds) for ~2× faster performance than SHAKE.
 
-### NIST FIPS 207 (Ascon Lightweight Cryptography)
+### NIST SP 800-232 (Ascon Lightweight Cryptography)
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
 | Ascon-Hash256 | 256 bits | ✅ Implemented | `AsconHash256` |
 | Ascon-XOF128 | Variable | ✅ Implemented | `AsconXof128` |
 
-> **Note:** Ascon was selected as the NIST Lightweight Cryptography standard in 2023.
+> **Note:** Ascon was selected as the NIST Lightweight Cryptography standard in 2023 and
+> published as SP 800-232. See [NIST-SP-800-232.md](NIST-SP-800-232.md).
 > It is designed for constrained environments (IoT, embedded systems).
 
 ### Keccak (Original Algorithm)
@@ -103,7 +108,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 |------|--------|----------------|-------------|
 | Hash | ✅ | `Blake3.Create()` | Standard cryptographic hashing |
 | Keyed Hash | ✅ | `Blake3.CreateKeyed(key)` | MAC with 32-byte key |
-| Derive Key | ✅ | `Blake3.CreateDeriveKey(context)` | Key derivation from context + input |
+| Derive Key | ⬜ | - | `Blake3Mode.DeriveKey` is declared but no constructor selects it |
 | XOF | ✅ | `Blake3.Create(outputBytes)` | Extendable output (any length) |
 
 ### RIPEMD Family
@@ -182,6 +187,8 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | HMAC-SHA-384 | SHA-384 | 48 bytes | ✅ Implemented | `HmacSha384` |
 | HMAC-SHA-512 | SHA-512 | 64 bytes | ✅ Implemented | `HmacSha512` |
 | HMAC-SHA3-256 | SHA3-256 | 32 bytes | ✅ Implemented | `HmacSha3_256` |
+| HMAC-SHA3-384 | SHA3-384 | 48 bytes | ✅ Implemented | `HmacSha3_384` |
+| HMAC-SHA3-512 | SHA3-512 | 64 bytes | ✅ Implemented | `HmacSha3_512` |
 | HMAC-SHA-1 | SHA-1 | 20 bytes | ✅ Implemented (legacy) | `HmacSha1` |
 | HMAC-MD5 | MD5 | 16 bytes | ✅ Implemented (legacy) | `HmacMd5` |
 
@@ -243,6 +250,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | Algorithm | Key Size | Status | Class |
 |-----------|----------|--------|-------|
 | AES-128-CCM | 128 bits | ✅ Implemented | `AesCcm128` |
+| AES-192-CCM | 192 bits | ✅ Implemented | `AesCcm192` |
 | AES-256-CCM | 256 bits | ✅ Implemented | `AesCcm256` |
 
 > **Hardware acceleration:** AES-NI on .NET 8+ for CTR and CBC-MAC block operations.
@@ -252,7 +260,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | Algorithm | Key Size | Status | Class |
 |-----------|----------|--------|-------|
 | ChaCha20 | 256 bits | ✅ Implemented | `ChaCha20` |
-| Poly1305 | 256 bits | ✅ Implemented | `Poly1305` |
+| Poly1305 | 256 bits | ✅ Implemented | `Poly1305Mac` |
 | ChaCha20-Poly1305 | 256 bits | ✅ Implemented | `ChaCha20Poly1305` |
 
 > **Hardware acceleration:** SSSE3 (single-block) and AVX2 (dual-block) on .NET 8+.
@@ -266,6 +274,43 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 > **Note:** XChaCha20-Poly1305 extends ChaCha20-Poly1305 with a 24-byte nonce (vs 12-byte),
 > making random nonce generation safe for a practically unlimited number of messages.
+> There is no standalone `XChaCha20` stream cipher — only the AEAD construction.
+
+### NIST SP 800-232 (Ascon-AEAD128)
+
+| Algorithm | Key Size | Nonce Size | Status | Class |
+|-----------|----------|------------|--------|-------|
+| Ascon-AEAD128 | 128 bits | 128 bits | ✅ Implemented | `AsconAead128` |
+
+### Regional Block Ciphers
+
+| Algorithm | Key Size | Block Size | Mode | Standard | Status | Class |
+|-----------|----------|------------|------|----------|--------|-------|
+| SM4 | 128 bits | 128 bits | ECB/CBC/CTR | GB/T 32907-2016 (China) | ✅ Implemented | `Sm4` |
+| ARIA-128 | 128 bits | 128 bits | ECB/CBC/CTR | RFC 5794 (Korea) | ✅ Implemented | `Aria128` |
+| ARIA-192 | 192 bits | 128 bits | ECB/CBC/CTR | RFC 5794 (Korea) | ✅ Implemented | `Aria192` |
+| ARIA-256 | 256 bits | 128 bits | ECB/CBC/CTR | RFC 5794 (Korea) | ✅ Implemented | `Aria256` |
+| SEED | 128 bits | 128 bits | ECB/CBC/CTR | RFC 4269 (Korea) | ✅ Implemented | `Seed` |
+| Camellia-128 | 128 bits | 128 bits | ECB/CBC/CTR | RFC 3713 (Japan) | ✅ Implemented | `Camellia128` |
+| Camellia-192 | 192 bits | 128 bits | ECB/CBC/CTR | RFC 3713 (Japan) | ✅ Implemented | `Camellia192` |
+| Camellia-256 | 256 bits | 128 bits | ECB/CBC/CTR | RFC 3713 (Japan) | ✅ Implemented | `Camellia256` |
+| Kuznyechik | 256 bits | 128 bits | ECB/CBC/CTR | GOST R 34.12-2015 (Russia) | ✅ Implemented | `Kuznyechik` |
+| Kalyna-128/128 | 128 bits | 128 bits | ECB/CBC/CTR | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna128` |
+| Kalyna-128/256 | 256 bits | 128 bits | ECB/CBC/CTR | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna256` |
+| Kalyna-256/256, -256/512 | 256/512 bits | 256 bits | ECB/CBC/CTR | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna512` |
+
+> **Modes:** every block cipher here supports ECB (testing only), CBC and CTR. CFB and OFB exist as
+> `[Obsolete]` values on `CipherMode` and throw `NotSupportedException`; Kalyna's 512-bit block
+> variant, and the GCM/CCM/XTS/MGM modes the regional standards define, are not implemented.
+
+### Key Derivation Functions
+
+| Algorithm | Standard | Status | Class |
+|-----------|----------|--------|-------|
+| HKDF | RFC 5869 | ✅ Implemented | `Hkdf` |
+| KBKDF | NIST SP 800-108 | ✅ Implemented | `Kbkdf` |
+| Concat KDF | NIST SP 800-56A | ✅ Implemented | `ConcatKdf` |
+| PBKDF2 | RFC 8018 / NIST SP 800-132 | ✅ Implemented | `Pbkdf2` |
 
 ---
 
@@ -443,6 +488,7 @@ specs/
 ├── MD5-vectors.md         # MD5 test vectors (legacy)
 ├── HMAC-vectors.md        # HMAC-SHA-256/384/512 test vectors (RFC 4231)
 ├── CMAC-vectors.md        # AES-CMAC test vectors (SP 800-38B)
+├── ParallelHash-vectors.md # ParallelHash128/256 test vectors (SP 800-185)
 ├── AES-vectors.md         # AES ECB/GCM/CCM test vectors
 ├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
 └── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
@@ -451,7 +497,7 @@ specs/
 ## Usage
 
 These test vectors are used by the unit tests in `tests/Security/Cryptography/` to verify
-the correctness of our hash implementations against known good values from official sources.
+the correctness of our implementations against known good values from official sources.
 
 ## License
 
