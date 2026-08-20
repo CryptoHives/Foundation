@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
-#pragma warning disable CA1711 // "Ex" suffix requested explicitly to name this as the reentrant counterpart to AsyncLock during prototyping; revisit before this leaves prototype status
 
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
@@ -112,7 +111,7 @@ using System.Threading.Tasks;
 /// currently-unresolved gap in the prototype, not just a documentation caveat.
 /// </para>
 /// </remarks>
-public sealed class AsyncLockEx
+public sealed class AsyncReentrantLock
 {
     private readonly AsyncLocal<AmbientState> _ambient = new();
 
@@ -130,9 +129,9 @@ public sealed class AsyncLockEx
     private int _depthsCreated;
 
     /// <summary>
-    /// Constructs a new <see cref="AsyncLockEx"/>.
+    /// Constructs a new <see cref="AsyncReentrantLock"/>.
     /// </summary>
-    public AsyncLockEx()
+    public AsyncReentrantLock()
     {
         _depth0Lock = new DepthLock();
         _depthLocks = new DepthLock?[4];
@@ -264,12 +263,12 @@ public sealed class AsyncLockEx
     /// </summary>
     public readonly struct Releaser : IDisposable, IAsyncDisposable, IEquatable<Releaser>
     {
-        private readonly AsyncLockEx _owner;
+        private readonly AsyncReentrantLock _owner;
         private readonly AsyncLock.Releaser _inner;
         private readonly AmbientState _stateBeforeAcquisition;
         private readonly int _depth;
 
-        internal Releaser(AsyncLockEx owner, AsyncLock.Releaser inner, AmbientState stateBeforeAcquisition, int depth)
+        internal Releaser(AsyncReentrantLock owner, AsyncLock.Releaser inner, AmbientState stateBeforeAcquisition, int depth)
         {
             _owner = owner;
             _inner = inner;
@@ -302,7 +301,7 @@ public sealed class AsyncLockEx
             if (deeper is not null && deeper.Lock.IsTaken)
             {
                 throw new InvalidOperationException(
-                    $"AsyncLockEx: depth {_depth} was released while depth {_depth + 1} was still held. " +
+                    $"AsyncReentrantLock: depth {_depth} was released while depth {_depth + 1} was still held. " +
                     "This means a fire-and-forget call (e.g. an unawaited Task.Run) nested under this " +
                     "acquisition outlived it - the lock was still released cleanly, but that descendant " +
                     "is now orphaned and no longer safely tracked. See the type-level remarks.");
@@ -370,7 +369,7 @@ public sealed class AsyncLockEx
         {
             // Deliberately NOT an `async` method: crossing an async method's own state machine
             // boundary resets AsyncLocal mutations for its caller on return, even on a fully
-            // synchronous completion with no real suspension - see AsyncLockExTests.
+            // synchronous completion with no real suspension - see AsyncReentrantLockTests.
             // DepthBumpIsVisibleToCallerAfterUncontendedAcquisition for a direct empirical proof.
             // Staying in the caller's own frame for this fast, uncontended path is what makes the
             // depth bump below actually visible to whatever runs next in the caller.

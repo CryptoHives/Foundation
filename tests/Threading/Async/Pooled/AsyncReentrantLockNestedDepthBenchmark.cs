@@ -9,19 +9,19 @@ using NUnit.Framework;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Benchmarks measuring how <see cref="AsyncLockEx"/>'s cost scales with reentrant nesting depth.
+/// Benchmarks measuring how <see cref="AsyncReentrantLock"/>'s cost scales with reentrant nesting depth.
 /// </summary>
 /// <remarks>
 /// <para>
 /// There is no baseline to compare against here - plain <see cref="AsyncLock"/> cannot nest at all
-/// (it would deadlock), which is the entire reason <see cref="AsyncLockEx"/> exists. This benchmark
+/// (it would deadlock), which is the entire reason <see cref="AsyncReentrantLock"/> exists. This benchmark
 /// isolates the incremental per-level cost instead: each additional depth pays for one more
 /// <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/> lookup/insert (the
 /// first time that depth is reached), one more generation check against the parent depth, and one more
 /// <see cref="System.Threading.AsyncLocal{T}"/> read/write pair on both the way in and the way out.
 /// </para>
 /// <para>
-/// <b>Test scenario:</b> Recursively acquire the same <see cref="AsyncLockEx"/> <see cref="Depth"/> times
+/// <b>Test scenario:</b> Recursively acquire the same <see cref="AsyncReentrantLock"/> <see cref="Depth"/> times
 /// in a row (each acquisition nested inside the previous one's <c>using</c> block), then unwind.
 /// </para>
 /// <para>
@@ -33,10 +33,10 @@ using System.Threading.Tasks;
 [TestFixtureSource(nameof(FixtureArgs))]
 [Config(typeof(ThreadingConfig))]
 [NonParallelizable]
-[BenchmarkCategory("AsyncLockEx")]
-public class AsyncLockExNestedDepthBenchmark
+[BenchmarkCategory("AsyncReentrantLock")]
+public class AsyncReentrantLockNestedDepthBenchmark
 {
-    private AsyncLockEx _lockEx = null!;
+    private AsyncReentrantLock _reentrantLock = null!;
     private volatile int _counter;
 
     public static readonly object[] FixtureArgs = {
@@ -52,9 +52,9 @@ public class AsyncLockExNestedDepthBenchmark
     [Params(1, 2, 4, 8)]
     public int Depth { get; set; } = 1;
 
-    public AsyncLockExNestedDepthBenchmark() { }
+    public AsyncReentrantLockNestedDepthBenchmark() { }
 
-    public AsyncLockExNestedDepthBenchmark(int depth)
+    public AsyncReentrantLockNestedDepthBenchmark(int depth)
     {
         Depth = depth;
     }
@@ -64,11 +64,11 @@ public class AsyncLockExNestedDepthBenchmark
     /// </summary>
     [OneTimeSetUp]
     [GlobalSetup]
-    public void GlobalSetup() => _lockEx = new();
+    public void GlobalSetup() => _reentrantLock = new();
 
     private async Task RecurseAsync(int remaining)
     {
-        using (await _lockEx.LockAsync().ConfigureAwait(false))
+        using (await _reentrantLock.LockAsync().ConfigureAwait(false))
         {
             unchecked { _counter++; }
 
@@ -80,10 +80,10 @@ public class AsyncLockExNestedDepthBenchmark
     }
 
     /// <summary>
-    /// Benchmark for reentrantly acquiring AsyncLockEx <see cref="Depth"/> levels deep.
+    /// Benchmark for reentrantly acquiring AsyncReentrantLock <see cref="Depth"/> levels deep.
     /// </summary>
     [Test]
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("NestedDepth", "AsyncLockEx")]
+    [BenchmarkCategory("NestedDepth", "AsyncReentrantLock")]
     public Task NestedReentrantAcquireAsync() => RecurseAsync(Depth);
 }

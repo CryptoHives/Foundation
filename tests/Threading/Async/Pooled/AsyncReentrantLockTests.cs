@@ -13,21 +13,21 @@ using System.Threading.Tasks;
 
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class AsyncLockExTests
+public class AsyncReentrantLockTests
 {
     [Test, CancelAfter(5000)]
     public async Task DepthBumpIsVisibleToCallerAfterUncontendedAcquisition()
     {
         // Pins down the exact behavior LockAsync's non-async fast path depends on: an AsyncLocal
         // mutation made inside an `async` method is NOT visible to that method's own caller once it
-        // returns, even on a fully synchronous completion - see the type-level remarks on AsyncLockEx.
+        // returns, even on a fully synchronous completion - see the type-level remarks on AsyncReentrantLock.
         // If this regresses (e.g. LockAsync's fast path is refactored back into an async method),
         // every nested/reentrant acquisition silently breaks, so this is worth its own direct test.
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
 
         Assert.That(mutex.CurrentDepth, Is.Zero);
 
-        AsyncLockEx.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
+        AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
         Assert.That(mutex.CurrentDepth, Is.EqualTo(1), "depth should be 1 right after the outer acquisition, before any nested call");
 
         outer.Dispose();
@@ -37,7 +37,7 @@ public class AsyncLockExTests
     [Test]
     public async Task LockAsyncPermitsSingleAcquisition()
     {
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
 
         using (await mutex.LockAsync().ConfigureAwait(false)) { }
 
@@ -49,7 +49,7 @@ public class AsyncLockExTests
     {
         // The whole point of this type: re-entering the same lock from a call nested inside an
         // already-held acquisition must not deadlock, unlike AsyncLock.
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
 
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
@@ -68,7 +68,7 @@ public class AsyncLockExTests
     [Test, CancelAfter(5000)]
     public async Task DepthIsRestoredAfterOuterAcquisitionCompletes()
     {
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
 
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
@@ -87,7 +87,7 @@ public class AsyncLockExTests
     {
         // Two completely unrelated logical flows both acquiring at depth 0 must genuinely serialize -
         // this is ordinary mutual exclusion and must hold regardless of the reentrancy machinery.
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
         int insideCount = 0;
         int violations = 0;
 
@@ -118,7 +118,7 @@ public class AsyncLockExTests
         // acquisition both inherit the same ambient depth, so a flag-based design would let both believe
         // they're safely reentrant and race inside the region. Here they must instead genuinely
         // contend for the same depth-1 lock and never run concurrently.
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
         int insideDepth1 = 0;
         int violations = 0;
 
@@ -152,7 +152,7 @@ public class AsyncLockExTests
     [Test, CancelAfter(5000)]
     public async Task LockAsyncWithTimeoutSupportsReentrancyToo()
     {
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
 
         using (await mutex.LockAsync(System.TimeSpan.FromSeconds(5)).ConfigureAwait(false))
         {
@@ -180,7 +180,7 @@ public class AsyncLockExTests
         //
         // The type-level remarks describe (2) as "further nesting is not reliably tracked", which
         // understates it: it is not merely mistracked, it is a guaranteed self-deadlock.
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
         var winnerHasDepth1 = new TaskCompletionSource();
         var loserIsWaiting = new TaskCompletionSource();
         Exception? loserNestedResult = null;
@@ -203,7 +203,7 @@ public class AsyncLockExTests
             {
                 await winnerHasDepth1.Task.ConfigureAwait(false);
 
-                ValueTask<AsyncLockEx.Releaser> contended = mutex.LockAsync();
+                ValueTask<AsyncReentrantLock.Releaser> contended = mutex.LockAsync();
                 loserIsWaiting.SetResult();
 
                 using (await contended.ConfigureAwait(false))
@@ -229,7 +229,7 @@ public class AsyncLockExTests
             Is.TypeOf<TimeoutException>(),
             "Expected the known self-deadlock (nesting after a contended acquisition targets the depth "
             + "the caller already holds). If this now succeeds, the underlying flaw was fixed - flip this "
-            + "test to assert successful nested acquisition and update the AsyncLockEx remarks.");
+            + "test to assert successful nested acquisition and update the AsyncReentrantLock remarks.");
     }
 
     [Test, CancelAfter(5000)]
@@ -242,7 +242,7 @@ public class AsyncLockExTests
         // depth-0 generation is stale and fall back to contending for depth 0 itself, NOT skip ahead to
         // depth 1 - proven here by DepthsCreated staying at 1 (depth 1 is never touched at all) and the
         // child observing depth 1 (0 + 1 from its own fallback acquisition), not depth 2.
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
         var parentReleased = new TaskCompletionSource();
         int observedDepthAfterChildAcquire = -1;
 
@@ -280,11 +280,11 @@ public class AsyncLockExTests
         // nesting misuse this type warns against - the release must still happen cleanly, but disposal
         // must throw afterward to surface the bug immediately instead of letting it manifest later as
         // unexplained contention.
-        var mutex = new AsyncLockEx();
+        var mutex = new AsyncReentrantLock();
         var childHasLock = new TaskCompletionSource();
         var childCanRelease = new TaskCompletionSource();
 
-        AsyncLockEx.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
+        AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
 
         Task childTask = Task.Run(async () =>
         {

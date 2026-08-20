@@ -9,13 +9,13 @@ using NUnit.Framework;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Benchmarks measuring the overhead <see cref="AsyncLockEx"/>'s reentrancy machinery adds over plain
+/// Benchmarks measuring the overhead <see cref="AsyncReentrantLock"/>'s reentrancy machinery adds over plain
 /// <see cref="AsyncLock"/> for a single, uncontended, non-nested acquisition.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This is a narrow, self-contained benchmark, not part of the competitive third-party comparison suite
-/// the other Threading benchmarks use: <see cref="AsyncLockEx"/> is explicitly prototype-status (see its
+/// the other Threading benchmarks use: <see cref="AsyncReentrantLock"/> is explicitly prototype-status (see its
 /// type-level remarks) and solves a different problem (reentrancy) than the primitives compared
 /// elsewhere, so putting it side by side with hardened, allocation-optimized libraries would misleadingly
 /// imply it's a finished, directly comparable primitive. The point here is only to quantify its own
@@ -30,23 +30,23 @@ using System.Threading.Tasks;
 /// </para>
 /// <list type="bullet">
 /// <item><description><b>AsyncLock (baseline):</b> The plain, non-reentrant, allocation-free pooled lock this whole library is built around.</description></item>
-/// <item><description><b>AsyncLockEx:</b> The reentrant prototype - one <see cref="System.Threading.AsyncLocal{T}"/> read, a <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/> lookup for the depth-0 lock, a generation check, and an <see cref="System.Threading.AsyncLocal{T}"/> write, on top of the same underlying AsyncLock acquisition.</description></item>
+/// <item><description><b>AsyncReentrantLock:</b> The reentrant prototype - one <see cref="System.Threading.AsyncLocal{T}"/> read, a <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/> lookup for the depth-0 lock, a generation check, and an <see cref="System.Threading.AsyncLocal{T}"/> write, on top of the same underlying AsyncLock acquisition.</description></item>
 /// </list>
 /// <para>
 /// <b>Key metric:</b> how much the reentrancy bookkeeping costs even when nothing is actually nested -
-/// the best case for <see cref="AsyncLockEx"/>, since every acquisition here targets depth 0 with no
+/// the best case for <see cref="AsyncReentrantLock"/>, since every acquisition here targets depth 0 with no
 /// fallback or misuse-guard work to do.
 /// </para>
 /// </remarks>
 [TestFixture]
 [Config(typeof(ThreadingConfig))]
-[Description("Measures single uncontended lock/unlock overhead: AsyncLockEx vs the plain AsyncLock it wraps.")]
+[Description("Measures single uncontended lock/unlock overhead: AsyncReentrantLock vs the plain AsyncLock it wraps.")]
 [NonParallelizable]
-[BenchmarkCategory("AsyncLockEx")]
-public class AsyncLockExBenchmark
+[BenchmarkCategory("AsyncReentrantLock")]
+public class AsyncReentrantLockBenchmark
 {
     private AsyncLock _lockPlain = null!;
-    private AsyncLockEx _lockEx = null!;
+    private AsyncReentrantLock _reentrantLock = null!;
     private volatile int _counter;
 
     /// <summary>
@@ -57,7 +57,7 @@ public class AsyncLockExBenchmark
     public void GlobalSetup()
     {
         _lockPlain = new();
-        _lockEx = new();
+        _reentrantLock = new();
     }
 
     /// <summary>
@@ -75,14 +75,14 @@ public class AsyncLockExBenchmark
     }
 
     /// <summary>
-    /// Benchmark for the reentrant AsyncLockEx prototype (single uncontended, non-nested acquisition).
+    /// Benchmark for the reentrant AsyncReentrantLock prototype (single uncontended, non-nested acquisition).
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Single", "AsyncLockEx")]
-    public async Task LockUnlockExSingleAsync()
+    [BenchmarkCategory("Single", "AsyncReentrantLock")]
+    public async Task LockUnlockReentrantSingleAsync()
     {
-        using (await _lockEx.LockAsync().ConfigureAwait(false))
+        using (await _reentrantLock.LockAsync().ConfigureAwait(false))
         {
             unchecked { _counter++; }
         }
