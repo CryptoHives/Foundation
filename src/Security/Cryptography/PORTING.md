@@ -6,10 +6,11 @@ against the shipped source. Do not invent members. Human-oriented docs live in `
 - **Package:** `CryptoHives.Foundation.Security.Cryptography` (0.x — the API is pre-1.0
   and may still change between minor versions)
 - **Root namespace:** `CryptoHives.Foundation.Security.Cryptography` with sub-namespaces
-  `.Hash`, `.Mac`, `.Kdf`, `.Cipher`
+  `.Hash`, `.Mac`, `.Kdf`, `.Cipher`, `.Kem`
 - **What it is:** fully managed, deterministic, cross-platform implementations of hashes,
-  MACs, KDFs, and ciphers. Hash and cipher types **extend the
-  `System.Security.Cryptography` base types**, so they are drop-in where those are expected.
+  MACs, KDFs, ciphers, and post-quantum KEMs. Hash and cipher types **extend the
+  `System.Security.Cryptography` base types**, and `.Kem` **mirrors their names and
+  signatures**, so they are drop-in where those are expected.
   Hardware intrinsics (AES-NI, ARM Crypto, AVX2, NEON, SSE/SSSE3) are used for performance
   where available but are never required for correctness.
 
@@ -144,6 +145,71 @@ AEAD types: `AesGcm128/192/256`, `AesCcm128/192/256`, `ChaCha20Poly1305`,
 
 **Cipher hard rules:** never reuse a `(key, nonce)` pair for AEAD; a `false`/throwing
 `Decrypt` means tampering or wrong key — discard the output, never use partial plaintext.
+
+---
+
+## Post-Quantum KEM — `…Kem`
+
+`using CryptoHives.Foundation.Security.Cryptography.Kem;`
+
+ML-KEM (FIPS 203), all three parameter sets. **`MLKem` and `MLKemAlgorithm` deliberately carry
+the same names and signatures as `System.Security.Cryptography.MLKem` / `MLKemAlgorithm` from
+.NET 10**, so porting from the in-box type is a `using` swap and nothing else:
+
+```diff
+-using System.Security.Cryptography;
++using CryptoHives.Foundation.Security.Cryptography.Kem;
+```
+
+Importing both namespaces in one file is `CS0104` on .NET 10 — that is the intended
+consequence of matching the names. Alias one side if a file needs both:
+`using Bcl = System.Security.Cryptography;`.
+
+`MLKem.IsSupported` is always `true` here: it is a fully managed implementation and never
+depends on Windows CNG or OpenSSL, so it works on every target framework down to net462.
+
+```csharp
+using var receiver = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);   // MLKem512 / MLKem768 / MLKem1024
+byte[] ek = receiver.ExportEncapsulationKey();
+
+using var sender = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, ek);
+sender.Encapsulate(out byte[] ciphertext, out byte[] senderSecret);
+
+byte[] receiverSecret = receiver.Decapsulate(ciphertext);          // == senderSecret
+```
+
+Members (the full in-box surface except the key formats listed below):
+
+- `static bool IsSupported` — always `true`.
+- `static MLKem GenerateKey(MLKemAlgorithm)`.
+- `static MLKem ImportPrivateSeed | ImportDecapsulationKey | ImportEncapsulationKey(MLKemAlgorithm, ReadOnlySpan<byte>)`,
+  each with a `byte[]` overload.
+- `void Encapsulate(Span<byte> ciphertext, Span<byte> sharedSecret)` and
+  `void Encapsulate(out byte[] ciphertext, out byte[] sharedSecret)`.
+- `void Decapsulate(ReadOnlySpan<byte> ciphertext, Span<byte> sharedSecret)` and
+  `byte[] Decapsulate(byte[] ciphertext)`.
+- `byte[] ExportPrivateSeed() | ExportEncapsulationKey() | ExportDecapsulationKey()`, each with a
+  `(Span<byte> destination)` overload.
+- `MLKemAlgorithm Algorithm { get; }`; `MLKemAlgorithm` exposes `Name`,
+  `EncapsulationKeySizeInBytes`, `DecapsulationKeySizeInBytes`, `CiphertextSizeInBytes`,
+  `SharedSecretSizeInBytes`, `PrivateSeedSizeInBytes`, and value equality (`IEquatable<>`, `==`, `!=`).
+- `Dispose()` zeroizes the retained seed and decapsulation key.
+
+**Do not invent these — they are not implemented yet:** `ImportPkcs8PrivateKey`,
+`ImportSubjectPublicKeyInfo`, `ImportFromPem`, `ImportEncryptedPkcs8PrivateKey`,
+`ImportFromEncryptedPem`, `ExportPkcs8PrivateKey[Pem]`, `ExportSubjectPublicKeyInfo[Pem]`,
+`ExportEncryptedPkcs8PrivateKey[Pem]`, `TryExport*`. If a port needs PKCS#8/SPKI/PEM key
+storage, keep the in-box `MLKem` for that path or store the raw 64-byte seed instead — do not
+hand-roll the ASN.1.
+
+There is also a lower-level stateless API for protocol code that owns its key bytes:
+`IKem` with `MLKem512`, `MLKem768`, `MLKem1024` (`MLKem768.Create()`, then
+`GenerateKeyPair` / `Encapsulate` / `Decapsulate` taking explicit key spans, plus
+deterministic seed overloads). This one has no BCL counterpart.
+
+**KEM hard rules:** the shared secret is *not* a key — run it through a KDF (`Hkdf`) before use.
+Decapsulation uses implicit rejection: a tampered ciphertext yields a pseudorandom secret rather
+than an error, so never treat "decapsulation succeeded" as authentication.
 
 ---
 

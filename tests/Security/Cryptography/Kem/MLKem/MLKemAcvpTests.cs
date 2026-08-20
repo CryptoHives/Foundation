@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Kem.MlKem;
+namespace Cryptography.Tests.Kem.MLKem;
 
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 using NUnit.Framework;
@@ -19,7 +19,7 @@ using System;
 /// </remarks>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class MlKemAcvpTests
+public class MLKemAcvpTests
 {
     private static readonly object[] KeyGenVectors =
     [
@@ -220,9 +220,9 @@ public class MlKemAcvpTests
     }
 
     private static IKem CreateKem(string parameterSet) => parameterSet switch {
-        "ML-KEM-512" => MlKem512.Create(),
-        "ML-KEM-768" => MlKem768.Create(),
-        "ML-KEM-1024" => MlKem1024.Create(),
+        "ML-KEM-512" => MLKem512.Create(),
+        "ML-KEM-768" => MLKem768.Create(),
+        "ML-KEM-1024" => MLKem1024.Create(),
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 

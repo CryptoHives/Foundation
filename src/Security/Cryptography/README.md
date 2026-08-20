@@ -122,28 +122,44 @@ if (!aesGcm.Decrypt(nonce, ciphertext, tag, recovered, associatedData))
 
 ### Post-Quantum Key Encapsulation (`ML-KEM`)
 
+`MLKem` and `MLKemAlgorithm` carry the same names and the same member signatures as
+`System.Security.Cryptography.MLKem` from .NET 10, so switching to the managed
+implementation is a one-line change — swap the `using`, and everything downstream compiles
+unchanged:
+
+```diff
+-using System.Security.Cryptography;   // .NET 10 only, and only where the OS provides ML-KEM
++using CryptoHives.Foundation.Security.Cryptography.Kem;
+```
+
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 
-// The API mirrors System.Security.Cryptography.MLKem from .NET 10,
-// but runs fully managed on every target framework down to net462.
-using var receiver = MlKem.GenerateKey(MlKemAlgorithm.MlKem768);
+// MLKem.IsSupported is always true here: no OS or hardware dependency,
+// on every target framework down to net462.
+using var receiver = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);
 byte[] encapsulationKey = receiver.ExportEncapsulationKey();
 
 // Sender: encapsulate a shared secret for the receiver.
-using var sender = MlKem.ImportEncapsulationKey(MlKemAlgorithm.MlKem768, encapsulationKey);
-byte[] ciphertext   = new byte[sender.Algorithm.CiphertextSizeInBytes];
-byte[] senderSecret = new byte[sender.Algorithm.SharedSecretSizeInBytes];
-sender.Encapsulate(ciphertext, senderSecret);
+using var sender = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, encapsulationKey);
+sender.Encapsulate(out byte[] ciphertext, out byte[] senderSecret);
 
 // Receiver: recover the same shared secret.
-byte[] receiverSecret = new byte[receiver.Algorithm.SharedSecretSizeInBytes];
-receiver.Decapsulate(ciphertext, receiverSecret);
+byte[] receiverSecret = receiver.Decapsulate(ciphertext);
 ```
+
+Both the allocating overloads above and the allocation-free span overloads
+(`Encapsulate(Span<byte>, Span<byte>)`, `Decapsulate(ReadOnlySpan<byte>, Span<byte>)`) are
+available, matching the in-box type.
 
 Keys are validated on import per FIPS 203 §7.2/§7.3, decapsulation uses constant-time
 implicit rejection, and all three parameter sets are verified against the official
 NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
+
+> **Not yet implemented:** the PKCS#8, SubjectPublicKeyInfo and PEM import/export members
+> (`ImportPkcs8PrivateKey`, `ExportSubjectPublicKeyInfo`, `ImportFromPem`, …). Raw key and
+> seed import/export is complete. See the
+> [KEM roadmap](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html).
 
 ### cSHAKE — Domain-Separated XOF
 

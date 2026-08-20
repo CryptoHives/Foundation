@@ -27,7 +27,7 @@ internal static class Encode
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ByteEncode12(short[] coeffs, Span<byte> output)
     {
-        for (int i = 0; i < MlKemParams.N / 2; i++)
+        for (int i = 0; i < MLKemParams.N / 2; i++)
         {
             ushort a = (ushort)coeffs[2 * i];
             ushort b = (ushort)coeffs[2 * i + 1];
@@ -49,7 +49,7 @@ internal static class Encode
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ByteDecode12(ReadOnlySpan<byte> input, short[] coeffs)
     {
-        for (int i = 0; i < MlKemParams.N / 2; i++)
+        for (int i = 0; i < MLKemParams.N / 2; i++)
         {
             int b0 = input[3 * i];
             int b1 = input[3 * i + 1];
@@ -71,7 +71,7 @@ internal static class Encode
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ByteEncode1(short[] coeffs, Span<byte> output)
     {
-        for (int i = 0; i < MlKemParams.N / 8; i++)
+        for (int i = 0; i < MLKemParams.N / 8; i++)
         {
             byte val = 0;
             for (int j = 0; j < 8; j++)
@@ -94,7 +94,7 @@ internal static class Encode
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ByteDecode1(ReadOnlySpan<byte> input, short[] coeffs)
     {
-        for (int i = 0; i < MlKemParams.N / 8; i++)
+        for (int i = 0; i < MLKemParams.N / 8; i++)
         {
             byte val = input[i];
             for (int j = 0; j < 8; j++)
@@ -131,7 +131,7 @@ internal static class Encode
 
         int bitPos = 0;
         output.Clear();
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             uint val = (uint)(ushort)coeffs[i];
             for (int b = 0; b < d; b++)
@@ -171,7 +171,7 @@ internal static class Encode
 
         int mask = (1 << d) - 1;
         int bitPos = 0;
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             uint val = 0;
             for (int b = 0; b < d; b++)

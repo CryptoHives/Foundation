@@ -17,8 +17,9 @@ using OS = System.Security.Cryptography;
 /// </para>
 /// <para>
 /// An instance holds either a full key pair (created via <see cref="GenerateKey"/>,
-/// <see cref="ImportPrivateSeed"/>, or <see cref="ImportDecapsulationKey"/>) or only an
-/// encapsulation key (via <see cref="ImportEncapsulationKey"/>). Keys generated from a
+/// <see cref="ImportPrivateSeed(MLKemAlgorithm, ReadOnlySpan{byte})"/>, or
+/// <see cref="ImportDecapsulationKey(MLKemAlgorithm, ReadOnlySpan{byte})"/>) or only an
+/// encapsulation key (via <see cref="ImportEncapsulationKey(MLKemAlgorithm, ReadOnlySpan{byte})"/>). Keys generated from a
 /// seed retain the 64-byte (d ‖ z) seed, the storage format recommended by FIPS 203;
 /// keys imported from an expanded decapsulation key cannot export a seed.
 /// </para>
@@ -30,11 +31,11 @@ using OS = System.Security.Cryptography;
 /// <para>
 /// <b>Example usage:</b>
 /// <code>
-/// using var receiver = MlKem.GenerateKey(MlKemAlgorithm.MlKem768);
+/// using var receiver = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);
 /// byte[] ek = receiver.ExportEncapsulationKey();
 ///
 /// // Sender:
-/// using var sender = MlKem.ImportEncapsulationKey(MlKemAlgorithm.MlKem768, ek);
+/// using var sender = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, ek);
 /// byte[] ciphertext = new byte[sender.Algorithm.CiphertextSizeInBytes];
 /// byte[] secret1 = new byte[sender.Algorithm.SharedSecretSizeInBytes];
 /// sender.Encapsulate(ciphertext, secret1);
@@ -46,14 +47,14 @@ using OS = System.Security.Cryptography;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class MlKem : IDisposable
+public sealed class MLKem : IDisposable
 {
     private readonly byte[]? _seed;
     private readonly byte[]? _decapsulationKey;
     private readonly byte[] _encapsulationKey;
     private bool _disposed;
 
-    private MlKem(MlKemAlgorithm algorithm, byte[]? seed, byte[]? decapsulationKey, byte[] encapsulationKey)
+    private MLKem(MLKemAlgorithm algorithm, byte[]? seed, byte[]? decapsulationKey, byte[] encapsulationKey)
     {
         Algorithm = algorithm;
         _seed = seed;
@@ -62,9 +63,19 @@ public sealed class MlKem : IDisposable
     }
 
     /// <summary>
+    /// Gets a value indicating whether ML-KEM is supported on the current platform.
+    /// </summary>
+    /// <remarks>
+    /// Always <see langword="true"/>. This is a fully managed implementation, so unlike
+    /// <c>System.Security.Cryptography.MLKem.IsSupported</c> it never depends on the
+    /// operating system providing ML-KEM.
+    /// </remarks>
+    public static bool IsSupported => true;
+
+    /// <summary>
     /// Gets the ML-KEM parameter set of this key.
     /// </summary>
-    public MlKemAlgorithm Algorithm { get; }
+    public MLKemAlgorithm Algorithm { get; }
 
     /// <summary>
     /// Generates a new ML-KEM key pair.
@@ -72,13 +83,13 @@ public sealed class MlKem : IDisposable
     /// <param name="algorithm">The parameter set to generate a key for.</param>
     /// <returns>A new instance holding the generated key pair and its private seed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
-    public static MlKem GenerateKey(MlKemAlgorithm algorithm)
+    public static MLKem GenerateKey(MLKemAlgorithm algorithm)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
 
-        byte[] seed = new byte[MlKemParams.KeyGenSeedBytes];
-        MlKemCore.GenerateRandomSeed(seed);
+        byte[] seed = new byte[MLKemParams.KeyGenSeedBytes];
+        MLKemCore.GenerateRandomSeed(seed);
         return FromSeed(algorithm, seed);
     }
 
@@ -90,14 +101,30 @@ public sealed class MlKem : IDisposable
     /// <returns>A new instance holding the key pair and the seed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
-    public static MlKem ImportPrivateSeed(MlKemAlgorithm algorithm, ReadOnlySpan<byte> source)
+    public static MLKem ImportPrivateSeed(MLKemAlgorithm algorithm, ReadOnlySpan<byte> source)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
-        if (source.Length != MlKemParams.KeyGenSeedBytes)
-            throw new ArgumentException($"Private seed must be exactly {MlKemParams.KeyGenSeedBytes} bytes.", nameof(source));
+        if (source.Length != MLKemParams.KeyGenSeedBytes)
+            throw new ArgumentException($"Private seed must be exactly {MLKemParams.KeyGenSeedBytes} bytes.", nameof(source));
 
         return FromSeed(algorithm, source.ToArray());
+    }
+
+    /// <summary>
+    /// Imports an ML-KEM private seed (d ‖ z) and expands it into a key pair.
+    /// </summary>
+    /// <param name="algorithm">The parameter set of the key.</param>
+    /// <param name="source">The 64-byte private seed.</param>
+    /// <returns>A new instance holding the key pair and the seed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> or <paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
+    public static MLKem ImportPrivateSeed(MLKemAlgorithm algorithm, byte[] source)
+    {
+        if (source is null)
+            throw new ArgumentNullException(nameof(source));
+
+        return ImportPrivateSeed(algorithm, new ReadOnlySpan<byte>(source));
     }
 
     /// <summary>
@@ -113,19 +140,40 @@ public sealed class MlKem : IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
     /// <exception cref="OS.CryptographicException">The key failed the FIPS 203 §7.3 hash check.</exception>
-    public static MlKem ImportDecapsulationKey(MlKemAlgorithm algorithm, ReadOnlySpan<byte> source)
+    public static MLKem ImportDecapsulationKey(MLKemAlgorithm algorithm, ReadOnlySpan<byte> source)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
         if (source.Length != algorithm.DecapsulationKeySizeInBytes)
             throw new ArgumentException($"Decapsulation key must be exactly {algorithm.DecapsulationKeySizeInBytes} bytes.", nameof(source));
-        if (!MlKemCore.IsValidDecapsulationKey(algorithm.Parameters, source))
+        if (!MLKemCore.IsValidDecapsulationKey(algorithm.Parameters, source))
             throw new OS.CryptographicException("Decapsulation key failed the FIPS 203 §7.3 hash check.");
 
         // dk = dkPKE ‖ ekPKE ‖ H(ekPKE) ‖ z — extract the embedded encapsulation key.
-        MlKemParams p = algorithm.Parameters;
+        MLKemParams p = algorithm.Parameters;
         byte[] encapsulationKey = source.Slice(p.PolyVecEncodedBytes, p.EncapsulationKeyBytes).ToArray();
-        return new MlKem(algorithm, seed: null, source.ToArray(), encapsulationKey);
+        return new MLKem(algorithm, seed: null, source.ToArray(), encapsulationKey);
+    }
+
+    /// <summary>
+    /// Imports an expanded ML-KEM decapsulation key.
+    /// </summary>
+    /// <remarks>
+    /// The key is validated with the FIPS 203 §7.3 hash check. A key imported this way
+    /// holds no private seed, so <see cref="ExportPrivateSeed()"/> is unavailable.
+    /// </remarks>
+    /// <param name="algorithm">The parameter set of the key.</param>
+    /// <param name="source">The expanded decapsulation key.</param>
+    /// <returns>A new instance holding the key pair.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> or <paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
+    /// <exception cref="OS.CryptographicException">The key failed the FIPS 203 §7.3 hash check.</exception>
+    public static MLKem ImportDecapsulationKey(MLKemAlgorithm algorithm, byte[] source)
+    {
+        if (source is null)
+            throw new ArgumentNullException(nameof(source));
+
+        return ImportDecapsulationKey(algorithm, new ReadOnlySpan<byte>(source));
     }
 
     /// <summary>
@@ -141,25 +189,47 @@ public sealed class MlKem : IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
     /// <exception cref="OS.CryptographicException">The key failed the FIPS 203 §7.2 modulus check.</exception>
-    public static MlKem ImportEncapsulationKey(MlKemAlgorithm algorithm, ReadOnlySpan<byte> source)
+    public static MLKem ImportEncapsulationKey(MLKemAlgorithm algorithm, ReadOnlySpan<byte> source)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
         if (source.Length != algorithm.EncapsulationKeySizeInBytes)
             throw new ArgumentException($"Encapsulation key must be exactly {algorithm.EncapsulationKeySizeInBytes} bytes.", nameof(source));
-        if (!MlKemCore.IsValidEncapsulationKey(algorithm.Parameters, source))
+        if (!MLKemCore.IsValidEncapsulationKey(algorithm.Parameters, source))
             throw new OS.CryptographicException("Encapsulation key failed the FIPS 203 §7.2 modulus check.");
 
-        return new MlKem(algorithm, seed: null, decapsulationKey: null, source.ToArray());
+        return new MLKem(algorithm, seed: null, decapsulationKey: null, source.ToArray());
+    }
+
+    /// <summary>
+    /// Imports an ML-KEM encapsulation (public) key.
+    /// </summary>
+    /// <remarks>
+    /// The key is validated with the FIPS 203 §7.2 modulus check. The resulting instance
+    /// can encapsulate but not decapsulate.
+    /// </remarks>
+    /// <param name="algorithm">The parameter set of the key.</param>
+    /// <param name="source">The encapsulation key.</param>
+    /// <returns>A new instance holding only the public key.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> or <paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
+    /// <exception cref="OS.CryptographicException">The key failed the FIPS 203 §7.2 modulus check.</exception>
+    public static MLKem ImportEncapsulationKey(MLKemAlgorithm algorithm, byte[] source)
+    {
+        if (source is null)
+            throw new ArgumentNullException(nameof(source));
+
+        return ImportEncapsulationKey(algorithm, new ReadOnlySpan<byte>(source));
     }
 
     /// <summary>
     /// Creates a ciphertext and shared secret for the holder of this key's decapsulation key.
     /// </summary>
-    /// <param name="ciphertext">The buffer to receive the ciphertext; must be exactly <see cref="MlKemAlgorithm.CiphertextSizeInBytes"/> bytes.</param>
-    /// <param name="sharedSecret">The buffer to receive the shared secret; must be exactly <see cref="MlKemAlgorithm.SharedSecretSizeInBytes"/> bytes.</param>
+    /// <param name="ciphertext">The buffer to receive the ciphertext; must be exactly <see cref="MLKemAlgorithm.CiphertextSizeInBytes"/> bytes.</param>
+    /// <param name="sharedSecret">The buffer to receive the shared secret; must be exactly <see cref="MLKemAlgorithm.SharedSecretSizeInBytes"/> bytes.</param>
     /// <exception cref="ArgumentException">A buffer has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The buffers overlap.</exception>
     public void Encapsulate(Span<byte> ciphertext, Span<byte> sharedSecret)
     {
         ThrowIfDisposed();
@@ -167,11 +237,33 @@ public sealed class MlKem : IDisposable
             throw new ArgumentException($"Ciphertext buffer must be exactly {Algorithm.CiphertextSizeInBytes} bytes.", nameof(ciphertext));
         if (sharedSecret.Length != Algorithm.SharedSecretSizeInBytes)
             throw new ArgumentException($"Shared secret buffer must be exactly {Algorithm.SharedSecretSizeInBytes} bytes.", nameof(sharedSecret));
+        if (ciphertext.Overlaps(sharedSecret))
+            throw new OS.CryptographicException("The ciphertext and shared secret buffers must not overlap.");
 
-        Span<byte> m = stackalloc byte[MlKemParams.EncapsSeedBytes];
-        MlKemCore.GenerateRandomSeed(m);
-        MlKemCore.Encaps(Algorithm.Parameters, _encapsulationKey, m, ciphertext, sharedSecret);
+        Span<byte> m = stackalloc byte[MLKemParams.EncapsSeedBytes];
+        MLKemCore.GenerateRandomSeed(m);
+        MLKemCore.Encaps(Algorithm.Parameters, _encapsulationKey, m, ciphertext, sharedSecret);
         CryptographicOperations.ZeroMemory(m);
+    }
+
+    /// <summary>
+    /// Creates a ciphertext and shared secret for the holder of this key's decapsulation key,
+    /// returning both as new arrays.
+    /// </summary>
+    /// <param name="ciphertext">When this method returns, the ciphertext.</param>
+    /// <param name="sharedSecret">When this method returns, the shared secret.</param>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public void Encapsulate(out byte[] ciphertext, out byte[] sharedSecret)
+    {
+        ThrowIfDisposed();
+
+        byte[] localCiphertext = new byte[Algorithm.CiphertextSizeInBytes];
+        byte[] localSharedSecret = new byte[Algorithm.SharedSecretSizeInBytes];
+
+        Encapsulate(localCiphertext, localSharedSecret);
+
+        ciphertext = localCiphertext;
+        sharedSecret = localSharedSecret;
     }
 
     /// <summary>
@@ -181,8 +273,8 @@ public sealed class MlKem : IDisposable
     /// ML-KEM uses implicit rejection: an invalid ciphertext of the correct length does not
     /// throw, but yields a pseudorandom secret unrelated to the sender's.
     /// </remarks>
-    /// <param name="ciphertext">The ciphertext; must be exactly <see cref="MlKemAlgorithm.CiphertextSizeInBytes"/> bytes.</param>
-    /// <param name="sharedSecret">The buffer to receive the shared secret; must be exactly <see cref="MlKemAlgorithm.SharedSecretSizeInBytes"/> bytes.</param>
+    /// <param name="ciphertext">The ciphertext; must be exactly <see cref="MLKemAlgorithm.CiphertextSizeInBytes"/> bytes.</param>
+    /// <param name="sharedSecret">The buffer to receive the shared secret; must be exactly <see cref="MLKemAlgorithm.SharedSecretSizeInBytes"/> bytes.</param>
     /// <exception cref="ArgumentException">A buffer has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no decapsulation key.</exception>
@@ -196,7 +288,35 @@ public sealed class MlKem : IDisposable
         if (sharedSecret.Length != Algorithm.SharedSecretSizeInBytes)
             throw new ArgumentException($"Shared secret buffer must be exactly {Algorithm.SharedSecretSizeInBytes} bytes.", nameof(sharedSecret));
 
-        MlKemCore.Decaps(Algorithm.Parameters, _decapsulationKey, ciphertext, sharedSecret);
+        MLKemCore.Decaps(Algorithm.Parameters, _decapsulationKey, ciphertext, sharedSecret);
+    }
+
+    /// <summary>
+    /// Recovers the shared secret from a ciphertext using this key's decapsulation key,
+    /// returning it as a new array.
+    /// </summary>
+    /// <remarks>
+    /// ML-KEM uses implicit rejection: an invalid ciphertext of the correct length does not
+    /// throw, but yields a pseudorandom secret unrelated to the sender's.
+    /// </remarks>
+    /// <param name="ciphertext">The ciphertext; must be exactly <see cref="MLKemAlgorithm.CiphertextSizeInBytes"/> bytes.</param>
+    /// <returns>The shared secret.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="ciphertext"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="ciphertext"/> has an incorrect length.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no decapsulation key.</exception>
+    public byte[] Decapsulate(byte[] ciphertext)
+    {
+        if (ciphertext is null)
+            throw new ArgumentNullException(nameof(ciphertext));
+        if (ciphertext.Length != Algorithm.CiphertextSizeInBytes)
+            throw new ArgumentException($"Ciphertext must be exactly {Algorithm.CiphertextSizeInBytes} bytes.", nameof(ciphertext));
+
+        ThrowIfDisposed();
+
+        byte[] sharedSecret = new byte[Algorithm.SharedSecretSizeInBytes];
+        Decapsulate(ciphertext, sharedSecret);
+        return sharedSecret;
     }
 
     /// <summary>
@@ -207,7 +327,7 @@ public sealed class MlKem : IDisposable
     /// <exception cref="OS.CryptographicException">The key was not created from a seed.</exception>
     public byte[] ExportPrivateSeed()
     {
-        byte[] destination = new byte[MlKemParams.KeyGenSeedBytes];
+        byte[] destination = new byte[MLKemParams.KeyGenSeedBytes];
         ExportPrivateSeed(destination);
         return destination;
     }
@@ -215,7 +335,7 @@ public sealed class MlKem : IDisposable
     /// <summary>
     /// Exports the 64-byte private seed (d ‖ z) into a buffer.
     /// </summary>
-    /// <param name="destination">The buffer to receive the seed; must be exactly <see cref="MlKemAlgorithm.PrivateSeedSizeInBytes"/> bytes.</param>
+    /// <param name="destination">The buffer to receive the seed; must be exactly <see cref="MLKemAlgorithm.PrivateSeedSizeInBytes"/> bytes.</param>
     /// <exception cref="ArgumentException"><paramref name="destination"/> has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The key was not created from a seed.</exception>
@@ -224,8 +344,8 @@ public sealed class MlKem : IDisposable
         ThrowIfDisposed();
         if (_seed is null)
             throw new OS.CryptographicException("The key was not created from a private seed.");
-        if (destination.Length != MlKemParams.KeyGenSeedBytes)
-            throw new ArgumentException($"Destination must be exactly {MlKemParams.KeyGenSeedBytes} bytes.", nameof(destination));
+        if (destination.Length != MLKemParams.KeyGenSeedBytes)
+            throw new ArgumentException($"Destination must be exactly {MLKemParams.KeyGenSeedBytes} bytes.", nameof(destination));
 
         _seed.AsSpan().CopyTo(destination);
     }
@@ -245,7 +365,7 @@ public sealed class MlKem : IDisposable
     /// <summary>
     /// Exports the encapsulation (public) key into a buffer.
     /// </summary>
-    /// <param name="destination">The buffer to receive the key; must be exactly <see cref="MlKemAlgorithm.EncapsulationKeySizeInBytes"/> bytes.</param>
+    /// <param name="destination">The buffer to receive the key; must be exactly <see cref="MLKemAlgorithm.EncapsulationKeySizeInBytes"/> bytes.</param>
     /// <exception cref="ArgumentException"><paramref name="destination"/> has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     public void ExportEncapsulationKey(Span<byte> destination)
@@ -273,7 +393,7 @@ public sealed class MlKem : IDisposable
     /// <summary>
     /// Exports the expanded decapsulation (private) key into a buffer.
     /// </summary>
-    /// <param name="destination">The buffer to receive the key; must be exactly <see cref="MlKemAlgorithm.DecapsulationKeySizeInBytes"/> bytes.</param>
+    /// <param name="destination">The buffer to receive the key; must be exactly <see cref="MLKemAlgorithm.DecapsulationKeySizeInBytes"/> bytes.</param>
     /// <exception cref="ArgumentException"><paramref name="destination"/> has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no decapsulation key.</exception>
@@ -310,19 +430,19 @@ public sealed class MlKem : IDisposable
         }
     }
 
-    private static MlKem FromSeed(MlKemAlgorithm algorithm, byte[] seed)
+    private static MLKem FromSeed(MLKemAlgorithm algorithm, byte[] seed)
     {
         byte[] encapsulationKey = new byte[algorithm.EncapsulationKeySizeInBytes];
         byte[] decapsulationKey = new byte[algorithm.DecapsulationKeySizeInBytes];
-        MlKemCore.KeyGen(algorithm.Parameters, seed, encapsulationKey, decapsulationKey);
-        return new MlKem(algorithm, seed, decapsulationKey, encapsulationKey);
+        MLKemCore.KeyGen(algorithm.Parameters, seed, encapsulationKey, decapsulationKey);
+        return new MLKem(algorithm, seed, decapsulationKey, encapsulationKey);
     }
 
     private void ThrowIfDisposed()
     {
         if (_disposed)
         {
-            throw new ObjectDisposedException(nameof(MlKem));
+            throw new ObjectDisposedException(typeof(MLKem).FullName);
         }
     }
 }

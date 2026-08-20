@@ -6,13 +6,13 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 using System;
 
 /// <summary>
-/// ML-KEM-768 Key Encapsulation Mechanism (NIST security category 3).
+/// ML-KEM-512 Key Encapsulation Mechanism (NIST security category 1).
 /// </summary>
 /// <remarks>
 /// <para>
-/// ML-KEM-768 is a post-quantum key encapsulation mechanism standardized in
+/// ML-KEM-512 is a post-quantum key encapsulation mechanism standardized in
 /// <see href="https://csrc.nist.gov/pubs/fips/203/final">FIPS 203</see>.
-/// It provides NIST security category 3 (equivalent to AES-192).
+/// It provides NIST security category 1 (equivalent to AES-128).
 /// </para>
 /// <para>
 /// ML-KEM is based on the Module-Lattice problem and is designed to be secure
@@ -21,82 +21,82 @@ using System;
 /// <para>
 /// <b>Parameters (FIPS 203 Table 1):</b>
 /// <list type="bullet">
-///   <item><description>k = 3, η₁ = 2, η₂ = 2</description></item>
-///   <item><description>Encapsulation key: 1184 bytes</description></item>
-///   <item><description>Decapsulation key: 2400 bytes</description></item>
-///   <item><description>Ciphertext: 1088 bytes</description></item>
+///   <item><description>k = 2, η₁ = 3, η₂ = 2</description></item>
+///   <item><description>Encapsulation key: 800 bytes</description></item>
+///   <item><description>Decapsulation key: 1632 bytes</description></item>
+///   <item><description>Ciphertext: 768 bytes</description></item>
 ///   <item><description>Shared secret: 32 bytes</description></item>
 /// </list>
 /// </para>
 /// <para>
 /// <b>Example usage:</b>
 /// <code>
-/// using var kem = MlKem768.Create();
+/// using var kem = MLKem512.Create();
 ///
 /// // Key generation
-/// byte[] ek = new byte[MlKem768.EncapsulationKeySizeBytesConst];
-/// byte[] dk = new byte[MlKem768.DecapsulationKeySizeBytesConst];
+/// byte[] ek = new byte[MLKem512.EncapsulationKeySizeBytesConst];
+/// byte[] dk = new byte[MLKem512.DecapsulationKeySizeBytesConst];
 /// kem.GenerateKeyPair(ek, dk);
 ///
 /// // Encapsulation (sender)
-/// byte[] ct = new byte[MlKem768.CiphertextSizeBytesConst];
-/// byte[] ss1 = new byte[MlKem768.SharedSecretSizeBytesConst];
+/// byte[] ct = new byte[MLKem512.CiphertextSizeBytesConst];
+/// byte[] ss1 = new byte[MLKem512.SharedSecretSizeBytesConst];
 /// kem.Encapsulate(ek, ct, ss1);
 ///
 /// // Decapsulation (receiver)
-/// byte[] ss2 = new byte[MlKem768.SharedSecretSizeBytesConst];
+/// byte[] ss2 = new byte[MLKem512.SharedSecretSizeBytesConst];
 /// kem.Decapsulate(dk, ct, ss2);
 /// // ss1 and ss2 are now identical 32-byte shared secrets
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class MlKem768 : IKem
+public sealed class MLKem512 : IKem
 {
-    private static readonly MlKemParams Params = MlKemParams.MlKem768;
+    private static readonly MLKemParams Params = MLKemParams.MLKem512;
 
     /// <summary>
     /// The shared secret size in bytes (32 bytes).
     /// </summary>
-    public const int SharedSecretSizeBytesConst = MlKemParams.SharedSecretBytes;
+    public const int SharedSecretSizeBytesConst = MLKemParams.SharedSecretBytes;
 
     /// <summary>
-    /// The encapsulation key size in bytes (1184 bytes).
+    /// The encapsulation key size in bytes (800 bytes).
     /// </summary>
-    public const int EncapsulationKeySizeBytesConst = 1184;
+    public const int EncapsulationKeySizeBytesConst = 800;
 
     /// <summary>
-    /// The decapsulation key size in bytes (2400 bytes).
+    /// The decapsulation key size in bytes (1632 bytes).
     /// </summary>
-    public const int DecapsulationKeySizeBytesConst = 2400;
+    public const int DecapsulationKeySizeBytesConst = 1632;
 
     /// <summary>
-    /// The ciphertext size in bytes (1088 bytes).
+    /// The ciphertext size in bytes (768 bytes).
     /// </summary>
-    public const int CiphertextSizeBytesConst = 1088;
+    public const int CiphertextSizeBytesConst = 768;
 
     /// <summary>
     /// The key generation seed size in bytes (64 bytes).
     /// </summary>
-    public const int KeyGenSeedSizeBytesConst = MlKemParams.KeyGenSeedBytes;
+    public const int KeyGenSeedSizeBytesConst = MLKemParams.KeyGenSeedBytes;
 
     /// <summary>
     /// The encapsulation seed size in bytes (32 bytes).
     /// </summary>
-    public const int EncapsSeedSizeBytesConst = MlKemParams.EncapsSeedBytes;
+    public const int EncapsSeedSizeBytesConst = MLKemParams.EncapsSeedBytes;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MlKem768"/> class.
+    /// Initializes a new instance of the <see cref="MLKem512"/> class.
     /// </summary>
-    public MlKem768() { }
+    public MLKem512() { }
 
     /// <summary>
-    /// Creates a new ML-KEM-768 instance.
+    /// Creates a new ML-KEM-512 instance.
     /// </summary>
-    /// <returns>A new ML-KEM-768 instance.</returns>
-    public static MlKem768 Create() => new();
+    /// <returns>A new ML-KEM-512 instance.</returns>
+    public static MLKem512 Create() => new();
 
     /// <inheritdoc/>
-    public string AlgorithmName => "ML-KEM-768";
+    public string AlgorithmName => "ML-KEM-512";
 
     /// <inheritdoc/>
     public int SharedSecretSizeBytes => SharedSecretSizeBytesConst;
@@ -118,22 +118,22 @@ public sealed class MlKem768 : IKem
         if (decapsulationKey.Length < DecapsulationKeySizeBytesConst)
             throw new ArgumentException($"Decapsulation key buffer must be at least {DecapsulationKeySizeBytesConst} bytes.", nameof(decapsulationKey));
 
-        Span<byte> seed = stackalloc byte[MlKemParams.KeyGenSeedBytes];
-        MlKemCore.GenerateRandomSeed(seed);
-        MlKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey);
+        Span<byte> seed = stackalloc byte[MLKemParams.KeyGenSeedBytes];
+        MLKemCore.GenerateRandomSeed(seed);
+        MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey);
     }
 
     /// <inheritdoc/>
     public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> encapsulationKey, Span<byte> decapsulationKey)
     {
-        if (seed.Length != MlKemParams.KeyGenSeedBytes)
-            throw new ArgumentException($"Seed must be exactly {MlKemParams.KeyGenSeedBytes} bytes.", nameof(seed));
+        if (seed.Length != MLKemParams.KeyGenSeedBytes)
+            throw new ArgumentException($"Seed must be exactly {MLKemParams.KeyGenSeedBytes} bytes.", nameof(seed));
         if (encapsulationKey.Length < EncapsulationKeySizeBytesConst)
             throw new ArgumentException($"Encapsulation key buffer must be at least {EncapsulationKeySizeBytesConst} bytes.", nameof(encapsulationKey));
         if (decapsulationKey.Length < DecapsulationKeySizeBytesConst)
             throw new ArgumentException($"Decapsulation key buffer must be at least {DecapsulationKeySizeBytesConst} bytes.", nameof(decapsulationKey));
 
-        MlKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey);
+        MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey);
     }
 
     /// <inheritdoc/>
@@ -146,12 +146,12 @@ public sealed class MlKem768 : IKem
         if (sharedSecret.Length < SharedSecretSizeBytesConst)
             throw new ArgumentException($"Shared secret buffer must be at least {SharedSecretSizeBytesConst} bytes.", nameof(sharedSecret));
 
-        if (!MlKemCore.IsValidEncapsulationKey(Params, encapsulationKey))
+        if (!MLKemCore.IsValidEncapsulationKey(Params, encapsulationKey))
             throw new ArgumentException("Encapsulation key failed the FIPS 203 §7.2 modulus check.", nameof(encapsulationKey));
 
-        Span<byte> m = stackalloc byte[MlKemParams.EncapsSeedBytes];
-        MlKemCore.GenerateRandomSeed(m);
-        MlKemCore.Encaps(Params, encapsulationKey, m, ciphertext, sharedSecret);
+        Span<byte> m = stackalloc byte[MLKemParams.EncapsSeedBytes];
+        MLKemCore.GenerateRandomSeed(m);
+        MLKemCore.Encaps(Params, encapsulationKey, m, ciphertext, sharedSecret);
     }
 
     /// <inheritdoc/>
@@ -160,17 +160,17 @@ public sealed class MlKem768 : IKem
     {
         if (encapsulationKey.Length != EncapsulationKeySizeBytesConst)
             throw new ArgumentException($"Encapsulation key must be exactly {EncapsulationKeySizeBytesConst} bytes.", nameof(encapsulationKey));
-        if (seed.Length != MlKemParams.EncapsSeedBytes)
-            throw new ArgumentException($"Seed must be exactly {MlKemParams.EncapsSeedBytes} bytes.", nameof(seed));
+        if (seed.Length != MLKemParams.EncapsSeedBytes)
+            throw new ArgumentException($"Seed must be exactly {MLKemParams.EncapsSeedBytes} bytes.", nameof(seed));
         if (ciphertext.Length < CiphertextSizeBytesConst)
             throw new ArgumentException($"Ciphertext buffer must be at least {CiphertextSizeBytesConst} bytes.", nameof(ciphertext));
         if (sharedSecret.Length < SharedSecretSizeBytesConst)
             throw new ArgumentException($"Shared secret buffer must be at least {SharedSecretSizeBytesConst} bytes.", nameof(sharedSecret));
 
-        if (!MlKemCore.IsValidEncapsulationKey(Params, encapsulationKey))
+        if (!MLKemCore.IsValidEncapsulationKey(Params, encapsulationKey))
             throw new ArgumentException("Encapsulation key failed the FIPS 203 §7.2 modulus check.", nameof(encapsulationKey));
 
-        MlKemCore.Encaps(Params, encapsulationKey, seed, ciphertext, sharedSecret);
+        MLKemCore.Encaps(Params, encapsulationKey, seed, ciphertext, sharedSecret);
     }
 
     /// <inheritdoc/>
@@ -184,10 +184,10 @@ public sealed class MlKem768 : IKem
         if (sharedSecret.Length < SharedSecretSizeBytesConst)
             throw new ArgumentException($"Shared secret buffer must be at least {SharedSecretSizeBytesConst} bytes.", nameof(sharedSecret));
 
-        if (!MlKemCore.IsValidDecapsulationKey(Params, decapsulationKey))
+        if (!MLKemCore.IsValidDecapsulationKey(Params, decapsulationKey))
             throw new ArgumentException("Decapsulation key failed the FIPS 203 §7.3 hash check.", nameof(decapsulationKey));
 
-        MlKemCore.Decaps(Params, decapsulationKey, ciphertext, sharedSecret);
+        MLKemCore.Decaps(Params, decapsulationKey, ciphertext, sharedSecret);
     }
 
     /// <inheritdoc/>

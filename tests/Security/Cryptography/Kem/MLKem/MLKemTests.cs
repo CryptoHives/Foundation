@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Kem.MlKem;
+namespace Cryptography.Tests.Kem.MLKem;
 
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 using NUnit.Framework;
@@ -17,16 +17,16 @@ using System.Linq;
 /// </remarks>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class MlKemTests
+public class MLKemTests
 {
     // ========================================================================
     // Parameter Size Verification Tests
     // ========================================================================
 
     [Test]
-    public void MlKem512_ParameterSizes()
+    public void MLKem512_ParameterSizes()
     {
-        using var kem = MlKem512.Create();
+        using var kem = MLKem512.Create();
         Assert.That(kem.AlgorithmName, Is.EqualTo("ML-KEM-512"));
         Assert.That(kem.SharedSecretSizeBytes, Is.EqualTo(32));
         Assert.That(kem.EncapsulationKeySizeBytes, Is.EqualTo(800));
@@ -35,9 +35,9 @@ public class MlKemTests
     }
 
     [Test]
-    public void MlKem768_ParameterSizes()
+    public void MLKem768_ParameterSizes()
     {
-        using var kem = MlKem768.Create();
+        using var kem = MLKem768.Create();
         Assert.That(kem.AlgorithmName, Is.EqualTo("ML-KEM-768"));
         Assert.That(kem.SharedSecretSizeBytes, Is.EqualTo(32));
         Assert.That(kem.EncapsulationKeySizeBytes, Is.EqualTo(1184));
@@ -46,9 +46,9 @@ public class MlKemTests
     }
 
     [Test]
-    public void MlKem1024_ParameterSizes()
+    public void MLKem1024_ParameterSizes()
     {
-        using var kem = MlKem1024.Create();
+        using var kem = MLKem1024.Create();
         Assert.That(kem.AlgorithmName, Is.EqualTo("ML-KEM-1024"));
         Assert.That(kem.SharedSecretSizeBytes, Is.EqualTo(32));
         Assert.That(kem.EncapsulationKeySizeBytes, Is.EqualTo(1568));
@@ -61,21 +61,21 @@ public class MlKemTests
     // ========================================================================
 
     [Test]
-    public void MlKem512_RoundTrip()
+    public void MLKem512_RoundTrip()
     {
-        RoundTripTest(MlKem512.Create());
+        RoundTripTest(MLKem512.Create());
     }
 
     [Test]
-    public void MlKem768_RoundTrip()
+    public void MLKem768_RoundTrip()
     {
-        RoundTripTest(MlKem768.Create());
+        RoundTripTest(MLKem768.Create());
     }
 
     [Test]
-    public void MlKem1024_RoundTrip()
+    public void MLKem1024_RoundTrip()
     {
-        RoundTripTest(MlKem1024.Create());
+        RoundTripTest(MLKem1024.Create());
     }
 
     // ========================================================================
@@ -83,21 +83,21 @@ public class MlKemTests
     // ========================================================================
 
     [Test]
-    public void MlKem512_DeterministicKeyGen()
+    public void MLKem512_DeterministicKeyGen()
     {
-        DeterministicKeyGenTest(MlKem512.Create());
+        DeterministicKeyGenTest(MLKem512.Create());
     }
 
     [Test]
-    public void MlKem768_DeterministicKeyGen()
+    public void MLKem768_DeterministicKeyGen()
     {
-        DeterministicKeyGenTest(MlKem768.Create());
+        DeterministicKeyGenTest(MLKem768.Create());
     }
 
     [Test]
-    public void MlKem1024_DeterministicKeyGen()
+    public void MLKem1024_DeterministicKeyGen()
     {
-        DeterministicKeyGenTest(MlKem1024.Create());
+        DeterministicKeyGenTest(MLKem1024.Create());
     }
 
     // ========================================================================
@@ -105,21 +105,21 @@ public class MlKemTests
     // ========================================================================
 
     [Test]
-    public void MlKem512_DeterministicEncaps()
+    public void MLKem512_DeterministicEncaps()
     {
-        DeterministicEncapsTest(MlKem512.Create());
+        DeterministicEncapsTest(MLKem512.Create());
     }
 
     [Test]
-    public void MlKem768_DeterministicEncaps()
+    public void MLKem768_DeterministicEncaps()
     {
-        DeterministicEncapsTest(MlKem768.Create());
+        DeterministicEncapsTest(MLKem768.Create());
     }
 
     [Test]
-    public void MlKem1024_DeterministicEncaps()
+    public void MLKem1024_DeterministicEncaps()
     {
-        DeterministicEncapsTest(MlKem1024.Create());
+        DeterministicEncapsTest(MLKem1024.Create());
     }
 
     // ========================================================================
@@ -127,21 +127,21 @@ public class MlKemTests
     // ========================================================================
 
     [Test]
-    public void MlKem512_ImplicitRejection()
+    public void MLKem512_ImplicitRejection()
     {
-        ImplicitRejectionTest(MlKem512.Create());
+        ImplicitRejectionTest(MLKem512.Create());
     }
 
     [Test]
-    public void MlKem768_ImplicitRejection()
+    public void MLKem768_ImplicitRejection()
     {
-        ImplicitRejectionTest(MlKem768.Create());
+        ImplicitRejectionTest(MLKem768.Create());
     }
 
     [Test]
-    public void MlKem1024_ImplicitRejection()
+    public void MLKem1024_ImplicitRejection()
     {
-        ImplicitRejectionTest(MlKem1024.Create());
+        ImplicitRejectionTest(MLKem1024.Create());
     }
 
     // ========================================================================
@@ -149,21 +149,21 @@ public class MlKemTests
     // ========================================================================
 
     [Test]
-    public void MlKem512_MultipleEncapsulations()
+    public void MLKem512_MultipleEncapsulations()
     {
-        MultipleEncapsulationsTest(MlKem512.Create());
+        MultipleEncapsulationsTest(MLKem512.Create());
     }
 
     [Test]
-    public void MlKem768_MultipleEncapsulations()
+    public void MLKem768_MultipleEncapsulations()
     {
-        MultipleEncapsulationsTest(MlKem768.Create());
+        MultipleEncapsulationsTest(MLKem768.Create());
     }
 
     [Test]
-    public void MlKem1024_MultipleEncapsulations()
+    public void MLKem1024_MultipleEncapsulations()
     {
-        MultipleEncapsulationsTest(MlKem1024.Create());
+        MultipleEncapsulationsTest(MLKem1024.Create());
     }
 
     // ========================================================================
@@ -175,9 +175,9 @@ public class MlKemTests
     /// consistent results with a fixed seed. This validates the entire pipeline.
     /// </summary>
     [Test]
-    public void MlKem512_Fips203_DeterministicPipeline()
+    public void MLKem512_Fips203_DeterministicPipeline()
     {
-        using var kem = MlKem512.Create();
+        using var kem = MLKem512.Create();
 
         // Fixed seed for deterministic keygen (d ‖ z = 64 bytes)
         byte[] keyGenSeed = new byte[64];
@@ -218,9 +218,9 @@ public class MlKemTests
     /// ML-KEM-768 deterministic pipeline test.
     /// </summary>
     [Test]
-    public void MlKem768_Fips203_DeterministicPipeline()
+    public void MLKem768_Fips203_DeterministicPipeline()
     {
-        using var kem = MlKem768.Create();
+        using var kem = MLKem768.Create();
 
         byte[] keyGenSeed = new byte[64];
         for (int i = 0; i < 64; i++) keyGenSeed[i] = (byte)i;
@@ -246,9 +246,9 @@ public class MlKemTests
     /// ML-KEM-1024 deterministic pipeline test.
     /// </summary>
     [Test]
-    public void MlKem1024_Fips203_DeterministicPipeline()
+    public void MLKem1024_Fips203_DeterministicPipeline()
     {
-        using var kem = MlKem1024.Create();
+        using var kem = MLKem1024.Create();
 
         byte[] keyGenSeed = new byte[64];
         for (int i = 0; i < 64; i++) keyGenSeed[i] = (byte)i;
@@ -275,9 +275,9 @@ public class MlKemTests
     // ========================================================================
 
     [Test]
-    public void MlKem512_InvalidSeedSize_Throws()
+    public void MLKem512_InvalidSeedSize_Throws()
     {
-        using var kem = MlKem512.Create();
+        using var kem = MLKem512.Create();
         byte[] shortSeed = new byte[32];
         byte[] ek = new byte[kem.EncapsulationKeySizeBytes];
         byte[] dk = new byte[kem.DecapsulationKeySizeBytes];
@@ -286,9 +286,9 @@ public class MlKemTests
     }
 
     [Test]
-    public void MlKem512_InvalidEncapsulationKeySize_Throws()
+    public void MLKem512_InvalidEncapsulationKeySize_Throws()
     {
-        using var kem = MlKem512.Create();
+        using var kem = MLKem512.Create();
         byte[] shortEk = new byte[100];
         byte[] ct = new byte[kem.CiphertextSizeBytes];
         byte[] ss = new byte[kem.SharedSecretSizeBytes];
@@ -297,9 +297,9 @@ public class MlKemTests
     }
 
     [Test]
-    public void MlKem512_InvalidDecapsulationKeySize_Throws()
+    public void MLKem512_InvalidDecapsulationKeySize_Throws()
     {
-        using var kem = MlKem512.Create();
+        using var kem = MLKem512.Create();
         byte[] shortDk = new byte[100];
         byte[] ct = new byte[kem.CiphertextSizeBytes];
         byte[] ss = new byte[kem.SharedSecretSizeBytes];
@@ -308,9 +308,9 @@ public class MlKemTests
     }
 
     [Test]
-    public void MlKem512_InvalidCiphertextSize_Throws()
+    public void MLKem512_InvalidCiphertextSize_Throws()
     {
-        using var kem = MlKem512.Create();
+        using var kem = MLKem512.Create();
         byte[] dk = new byte[kem.DecapsulationKeySizeBytes];
         byte[] shortCt = new byte[100];
         byte[] ss = new byte[kem.SharedSecretSizeBytes];
@@ -327,14 +327,14 @@ public class MlKemTests
     /// </summary>
     private static readonly object[] AllParameterSets =
     [
-        new object[] { "ML-KEM-512", new Func<IKem>(() => MlKem512.Create()), 800, 1632, 768, 32 },
-        new object[] { "ML-KEM-768", new Func<IKem>(() => MlKem768.Create()), 1184, 2400, 1088, 32 },
-        new object[] { "ML-KEM-1024", new Func<IKem>(() => MlKem1024.Create()), 1568, 3168, 1568, 32 }
+        new object[] { "ML-KEM-512", new Func<IKem>(() => MLKem512.Create()), 800, 1632, 768, 32 },
+        new object[] { "ML-KEM-768", new Func<IKem>(() => MLKem768.Create()), 1184, 2400, 1088, 32 },
+        new object[] { "ML-KEM-1024", new Func<IKem>(() => MLKem1024.Create()), 1568, 3168, 1568, 32 }
     ];
 
     [Test]
     [TestCaseSource(nameof(AllParameterSets))]
-    public void MlKem_EncapsulationKeyContainsPublicSeed(
+    public void MLKem_EncapsulationKeyContainsPublicSeed(
         string name, Func<IKem> factory, int ekSize, int dkSize, int ctSize, int ssSize)
     {
         using var kem = factory();
@@ -353,7 +353,7 @@ public class MlKemTests
 
     [Test]
     [TestCaseSource(nameof(AllParameterSets))]
-    public void MlKem_DecapsulationKeyContainsEncapsulationKey(
+    public void MLKem_DecapsulationKeyContainsEncapsulationKey(
         string name, Func<IKem> factory, int ekSize, int dkSize, int ctSize, int ssSize)
     {
         using var kem = factory();
@@ -374,7 +374,7 @@ public class MlKemTests
 
     [Test]
     [TestCaseSource(nameof(AllParameterSets))]
-    public void MlKem_DifferentSeedsProduceDifferentKeys(
+    public void MLKem_DifferentSeedsProduceDifferentKeys(
         string name, Func<IKem> factory, int ekSize, int dkSize, int ctSize, int ssSize)
     {
         using var kem = factory();
@@ -538,7 +538,7 @@ public class MlKemTests
         var rng = new Random(42);
         for (int i = 0; i < 256; i++)
         {
-            poly[i] = (short)rng.Next(0, MlKemParams.Q);
+            poly[i] = (short)rng.Next(0, MLKemParams.Q);
             orig[i] = poly[i];
         }
 
@@ -551,8 +551,8 @@ public class MlKemTests
         for (int i = 0; i < 256; i++)
         {
             short normalized = Ntt.ConditionalSubQ(Ntt.BarrettReduce(poly[i]));
-            int expected = (int)((long)orig[i] * R % MlKemParams.Q);
-            if (expected < 0) expected += MlKemParams.Q;
+            int expected = (int)((long)orig[i] * R % MLKemParams.Q);
+            if (expected < 0) expected += MLKemParams.Q;
             Assert.That(normalized, Is.EqualTo((short)expected), $"NTT round-trip mismatch at index {i}");
         }
     }
@@ -560,13 +560,13 @@ public class MlKemTests
     [Test]
     public void Diagnostic_KPkeRoundTrip()
     {
-        var p = MlKemParams.MlKem512;
+        var p = MLKemParams.MLKem512;
         byte[] d = new byte[32];
         for (int i = 0; i < 32; i++) d[i] = (byte)(i + 1);
 
         byte[] ekPke = new byte[p.EncapsulationKeyBytes];
         byte[] dkPke = new byte[p.PolyVecEncodedBytes];
-        MlKemCore.KPkeKeyGen(p, d, ekPke, dkPke);
+        MLKemCore.KPkeKeyGen(p, d, ekPke, dkPke);
 
         byte[] msg = new byte[32];
         for (int i = 0; i < 32; i++) msg[i] = (byte)(0xAA ^ i);
@@ -575,10 +575,10 @@ public class MlKemTests
         for (int i = 0; i < 32; i++) r[i] = (byte)(0x55 + i);
 
         byte[] ct = new byte[p.CiphertextBytes];
-        MlKemCore.KPkeEncrypt(p, ekPke, msg, r, ct);
+        MLKemCore.KPkeEncrypt(p, ekPke, msg, r, ct);
 
         byte[] recovered = new byte[32];
-        MlKemCore.KPkeDecrypt(p, dkPke, ct, recovered);
+        MLKemCore.KPkeDecrypt(p, dkPke, ct, recovered);
 
         Assert.That(recovered, Is.EqualTo(msg), "K-PKE encrypt/decrypt must round-trip.");
     }

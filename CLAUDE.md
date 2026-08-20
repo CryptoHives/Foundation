@@ -103,10 +103,10 @@ Self-contained managed implementations of cryptographic algorithms — no OS/har
 - HKDF, KBKDF, ConcatKDF, PBKDF2
 
 **KEM (`src/Security/Cryptography/Kem/`):**
-- `IKem` — low-level stateless span-based KEM interface; `MlKem512`/`MlKem768`/`MlKem1024` implement it
-- `MlKem` + `MlKemAlgorithm` — key-holding API mirroring .NET 10's `System.Security.Cryptography.MLKem` (seed retention, §7.2/§7.3 import checks, zeroization on dispose)
-- `MlKemCore` — FIPS 203 K-PKE and ML-KEM algorithms; `Ntt`/`Poly`/`PolyVec`/`Cbd`/`Compress`/`Encode` are the ML-KEM-specific math layer (q = 3329; do not reuse for ML-DSA, which needs int-based polys)
-- Conformance: NIST ACVP vectors in `MlKemAcvpTests.cs` (keyGen, encaps, decaps incl. implicit rejection, key checks); interop vs BouncyCastle and .NET 10 `MLKem` in `MlKemInteropTests.cs`
+- `IKem` — low-level stateless span-based KEM interface; `MLKem512`/`MLKem768`/`MLKem1024` implement it
+- `MLKem` + `MLKemAlgorithm` — key-holding API mirroring .NET 10's `System.Security.Cryptography.MLKem` (seed retention, §7.2/§7.3 import checks, zeroization on dispose)
+- `MLKemCore` — FIPS 203 K-PKE and ML-KEM algorithms; `Ntt`/`Poly`/`PolyVec`/`Cbd`/`Compress`/`Encode` are the ML-KEM-specific math layer (q = 3329; do not reuse for ML-DSA, which needs int-based polys)
+- Conformance: NIST ACVP vectors in `MLKemAcvpTests.cs` (keyGen, encaps, decaps incl. implicit rejection, key checks); interop vs BouncyCastle and .NET 10 `MLKem` in `MLKemInteropTests.cs`
 
 ### `CryptoHives.Foundation.Threading`
 

@@ -6,16 +6,16 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 /// <summary>
 /// Defines the parameter sets for ML-KEM as specified in FIPS 203 Table 1.
 /// </summary>
-internal sealed class MlKemParams
+internal sealed class MLKemParams
 {
     /// <summary>ML-KEM-512 parameter set (NIST security category 1).</summary>
-    public static readonly MlKemParams MlKem512 = new(k: 2, eta1: 3, eta2: 2, du: 10, dv: 4);
+    public static readonly MLKemParams MLKem512 = new(k: 2, eta1: 3, eta2: 2, du: 10, dv: 4);
 
     /// <summary>ML-KEM-768 parameter set (NIST security category 3).</summary>
-    public static readonly MlKemParams MlKem768 = new(k: 3, eta1: 2, eta2: 2, du: 10, dv: 4);
+    public static readonly MLKemParams MLKem768 = new(k: 3, eta1: 2, eta2: 2, du: 10, dv: 4);
 
     /// <summary>ML-KEM-1024 parameter set (NIST security category 5).</summary>
-    public static readonly MlKemParams MlKem1024 = new(k: 4, eta1: 2, eta2: 2, du: 11, dv: 5);
+    public static readonly MLKemParams MLKem1024 = new(k: 4, eta1: 2, eta2: 2, du: 11, dv: 5);
 
     /// <summary>The polynomial degree.</summary>
     public const int N = 256;
@@ -65,7 +65,7 @@ internal sealed class MlKemParams
     /// <summary>Byte size of the compressed v polynomial: 32·dv.</summary>
     public readonly int PolyCompressedBytes;
 
-    private MlKemParams(int k, int eta1, int eta2, int du, int dv)
+    private MLKemParams(int k, int eta1, int eta2, int du, int dv)
     {
         K = k;
         Eta1 = eta1;

@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Kem.MlKem;
+namespace Cryptography.Tests.Kem.MLKem;
 
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 using NUnit.Framework;
@@ -10,6 +10,8 @@ using Org.BouncyCastle.Crypto.Kems;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
 using System;
+using Bcl = System.Security.Cryptography;
+using Ours = CryptoHives.Foundation.Security.Cryptography.Kem;
 
 /// <summary>
 /// Cross-validation tests for ML-KEM against independent implementations.
@@ -21,13 +23,13 @@ using System;
 /// </remarks>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class MlKemInteropTests
+public class MLKemInteropTests
 {
     private static readonly object[] ParameterSets =
     [
-        new object[] { "ML-KEM-512", new Func<IKem>(() => MlKem512.Create()) },
-        new object[] { "ML-KEM-768", new Func<IKem>(() => MlKem768.Create()) },
-        new object[] { "ML-KEM-1024", new Func<IKem>(() => MlKem1024.Create()) }
+        new object[] { "ML-KEM-512", new Func<IKem>(() => MLKem512.Create()) },
+        new object[] { "ML-KEM-768", new Func<IKem>(() => MLKem768.Create()) },
+        new object[] { "ML-KEM-1024", new Func<IKem>(() => MLKem1024.Create()) }
     ];
 
     [Test]
@@ -298,6 +300,56 @@ public class MlKemInteropTests
         "ML-KEM-1024" => System.Security.Cryptography.MLKemAlgorithm.MLKem1024,
         _ => throw new ArgumentException($"Unknown parameter set: {name}", nameof(name)),
     };
+
+    /// <summary>
+    /// The drop-in claim, stated as code: the same sequence of statements compiles and behaves
+    /// identically whether <c>Kem</c> resolves to the in-box types or to ours.
+    /// </summary>
+    /// <remarks>
+    /// The two halves are deliberately kept character-for-character identical apart from the
+    /// alias prefix. If a rename ever diverges from the BCL surface, this stops compiling.
+    /// </remarks>
+    [Test]
+    public void DropInSurface_CompilesAndAgrees()
+    {
+        if (!System.Security.Cryptography.MLKem.IsSupported)
+        {
+            Assert.Ignore("System.Security.Cryptography.MLKem is not supported on this platform.");
+        }
+
+        byte[] seed = new byte[64];
+        for (int i = 0; i < 64; i++) seed[i] = (byte)((i * 13 + 7) & 0xFF);
+
+        // --- written against System.Security.Cryptography ---
+        using var bcl = Bcl.MLKem.ImportPrivateSeed(Bcl.MLKemAlgorithm.MLKem768, seed);
+        byte[] bclEk = bcl.ExportEncapsulationKey();
+        byte[] bclDk = bcl.ExportDecapsulationKey();
+        byte[] bclSeed = bcl.ExportPrivateSeed();
+        bcl.Encapsulate(out byte[] bclCt, out byte[] bclSs);
+        byte[] bclRecovered = bcl.Decapsulate(bclCt);
+
+        // --- the same statements, only the alias changed ---
+        using var ours = Ours.MLKem.ImportPrivateSeed(Ours.MLKemAlgorithm.MLKem768, seed);
+        byte[] oursEk = ours.ExportEncapsulationKey();
+        byte[] oursDk = ours.ExportDecapsulationKey();
+        byte[] oursSeed = ours.ExportPrivateSeed();
+        ours.Encapsulate(out byte[] oursCt, out byte[] oursSs);
+        byte[] oursRecovered = ours.Decapsulate(oursCt);
+
+        Assert.Multiple(() => {
+            Assert.That(oursEk, Is.EqualTo(bclEk), "Encapsulation keys must match for the same seed.");
+            Assert.That(oursDk, Is.EqualTo(bclDk), "Decapsulation keys must match for the same seed.");
+            Assert.That(oursSeed, Is.EqualTo(bclSeed));
+            Assert.That(oursRecovered, Is.EqualTo(oursSs));
+            Assert.That(bclRecovered, Is.EqualTo(bclSs));
+
+            // Sizes are reported identically, and each side decapsulates the other's ciphertext.
+            Assert.That(ours.Algorithm.CiphertextSizeInBytes, Is.EqualTo(bcl.Algorithm.CiphertextSizeInBytes));
+            Assert.That(ours.Algorithm.Name, Is.EqualTo(bcl.Algorithm.Name));
+            Assert.That(ours.Decapsulate(bclCt), Is.EqualTo(bclSs));
+            Assert.That(bcl.Decapsulate(oursCt), Is.EqualTo(oursSs));
+        });
+    }
 
 #pragma warning restore SYSLIB5006
 #endif

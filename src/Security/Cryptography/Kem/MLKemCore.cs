@@ -28,7 +28,7 @@ using OS = System.Security.Cryptography;
 /// </list>
 /// </para>
 /// </remarks>
-internal static class MlKemCore
+internal static class MLKemCore
 {
     // ========================================================================
     // K-PKE (Inner PKE Scheme) — FIPS 203 §6
@@ -45,7 +45,7 @@ internal static class MlKemCore
     /// <param name="ekPke">Output: encryption key (384·k + 32 bytes).</param>
     /// <param name="dkPke">Output: decryption key (384·k bytes).</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void KPkeKeyGen(MlKemParams p, ReadOnlySpan<byte> d, Span<byte> ekPke, Span<byte> dkPke)
+    public static void KPkeKeyGen(MLKemParams p, ReadOnlySpan<byte> d, Span<byte> ekPke, Span<byte> dkPke)
     {
         int k = p.K;
 
@@ -117,7 +117,7 @@ internal static class MlKemCore
     /// <param name="r">The 32-byte randomness seed.</param>
     /// <param name="ciphertext">Output: the ciphertext.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void KPkeEncrypt(MlKemParams p, ReadOnlySpan<byte> ekPke, ReadOnlySpan<byte> msg,
+    public static void KPkeEncrypt(MLKemParams p, ReadOnlySpan<byte> ekPke, ReadOnlySpan<byte> msg,
                                    ReadOnlySpan<byte> r, Span<byte> ciphertext)
     {
         int k = p.K;
@@ -144,7 +144,7 @@ internal static class MlKemCore
             SampleCbd(r, nonce++, p.Eta2, e1[i]);
         }
 
-        short[] e2 = new short[MlKemParams.N];
+        short[] e2 = new short[MLKemParams.N];
         SampleCbd(r, nonce, p.Eta2, e2);
 
         // NTT(r)
@@ -158,11 +158,11 @@ internal static class MlKemCore
         PolyVec.Reduce(u);
 
         // v = NTT⁻¹(t̂ᵀ ◦ r̂) + e₂ + Decompress₁(ByteDecode₁(m))
-        short[] v = new short[MlKemParams.N];
+        short[] v = new short[MLKemParams.N];
         PolyVec.InnerProduct(v, tHat, rv);
         Ntt.Inverse(v);
 
-        short[] msgPoly = new short[MlKemParams.N];
+        short[] msgPoly = new short[MLKemParams.N];
         Poly.FromMessage(msg, msgPoly);
 
         Poly.Add(v, v, e2);
@@ -195,7 +195,7 @@ internal static class MlKemCore
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="msg">Output: the 32-byte decrypted message.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void KPkeDecrypt(MlKemParams p, ReadOnlySpan<byte> dkPke, ReadOnlySpan<byte> ciphertext,
+    public static void KPkeDecrypt(MLKemParams p, ReadOnlySpan<byte> dkPke, ReadOnlySpan<byte> ciphertext,
                                    Span<byte> msg)
     {
         int k = p.K;
@@ -205,7 +205,7 @@ internal static class MlKemCore
         PolyVec.DecodeAndDecompress(ciphertext.Slice(0, p.PolyVecCompressedBytes), p.Du, u);
 
         // Decode v from c₂
-        short[] v = new short[MlKemParams.N];
+        short[] v = new short[MLKemParams.N];
         Encode.ByteDecodeD(ciphertext.Slice(p.PolyVecCompressedBytes, p.PolyCompressedBytes), p.Dv, v);
         Compress.DecompressPoly(v, p.Dv);
 
@@ -217,7 +217,7 @@ internal static class MlKemCore
         PolyVec.Ntt(u);
 
         // w = NTT⁻¹(ŝᵀ ◦ û)
-        short[] w = new short[MlKemParams.N];
+        short[] w = new short[MLKemParams.N];
         PolyVec.InnerProduct(w, sHat, u);
         Ntt.Inverse(w);
 
@@ -248,7 +248,7 @@ internal static class MlKemCore
     /// <param name="seed">The 64-byte seed (d ‖ z).</param>
     /// <param name="ek">Output: encapsulation key (384·k + 32 bytes).</param>
     /// <param name="dk">Output: decapsulation key (768·k + 96 bytes).</param>
-    public static void KeyGen(MlKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk)
+    public static void KeyGen(MLKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk)
     {
         ReadOnlySpan<byte> d = seed.Slice(0, 32);
         ReadOnlySpan<byte> z = seed.Slice(32, 32);
@@ -275,14 +275,14 @@ internal static class MlKemCore
     /// round-trip, as expected by FIPS 140-3 for key generation.
     /// </summary>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
-    private static void PairwiseConsistencyTest(MlKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> dk)
+    private static void PairwiseConsistencyTest(MLKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> dk)
     {
-        Span<byte> m = stackalloc byte[MlKemParams.EncapsSeedBytes];
+        Span<byte> m = stackalloc byte[MLKemParams.EncapsSeedBytes];
         GenerateRandomSeed(m);
 
         byte[] ct = new byte[p.CiphertextBytes];
-        Span<byte> ss1 = stackalloc byte[MlKemParams.SharedSecretBytes];
-        Span<byte> ss2 = stackalloc byte[MlKemParams.SharedSecretBytes];
+        Span<byte> ss1 = stackalloc byte[MLKemParams.SharedSecretBytes];
+        Span<byte> ss2 = stackalloc byte[MLKemParams.SharedSecretBytes];
 
         Encaps(p, ek, m, ct, ss1);
         Decaps(p, dk, ct, ss2);
@@ -309,7 +309,7 @@ internal static class MlKemCore
     /// <param name="p">The ML-KEM parameter set.</param>
     /// <param name="ek">The encapsulation key (must already be length-checked).</param>
     /// <returns>True if the key passes the modulus check.</returns>
-    public static bool IsValidEncapsulationKey(MlKemParams p, ReadOnlySpan<byte> ek)
+    public static bool IsValidEncapsulationKey(MLKemParams p, ReadOnlySpan<byte> ek)
     {
         ReadOnlySpan<byte> encoded = ek.Slice(0, p.PolyVecEncodedBytes);
         for (int i = 0; i < encoded.Length; i += 3)
@@ -317,7 +317,7 @@ internal static class MlKemCore
             int b1 = encoded[i + 1];
             int c0 = (encoded[i] | (b1 << 8)) & 0xFFF;
             int c1 = ((b1 >> 4) | (encoded[i + 2] << 4)) & 0xFFF;
-            if (c0 >= MlKemParams.Q || c1 >= MlKemParams.Q)
+            if (c0 >= MLKemParams.Q || c1 >= MLKemParams.Q)
             {
                 return false;
             }
@@ -336,7 +336,7 @@ internal static class MlKemCore
     /// <param name="p">The ML-KEM parameter set.</param>
     /// <param name="dk">The decapsulation key (must already be length-checked).</param>
     /// <returns>True if the key passes the hash check.</returns>
-    public static bool IsValidDecapsulationKey(MlKemParams p, ReadOnlySpan<byte> dk)
+    public static bool IsValidDecapsulationKey(MLKemParams p, ReadOnlySpan<byte> dk)
     {
         ReadOnlySpan<byte> ekPke = dk.Slice(p.PolyVecEncodedBytes, p.EncapsulationKeyBytes);
         ReadOnlySpan<byte> h = dk.Slice(p.PolyVecEncodedBytes + p.EncapsulationKeyBytes, 32);
@@ -358,7 +358,7 @@ internal static class MlKemCore
     /// <param name="m">The 32-byte random message seed.</param>
     /// <param name="ciphertext">Output: the ciphertext.</param>
     /// <param name="sharedSecret">Output: the 32-byte shared secret.</param>
-    public static void Encaps(MlKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> m,
+    public static void Encaps(MLKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> m,
                               Span<byte> ciphertext, Span<byte> sharedSecret)
     {
         // (K, r) = G(m ‖ H(ek))
@@ -396,7 +396,7 @@ internal static class MlKemCore
     /// <param name="dk">The decapsulation key (768·k + 96 bytes).</param>
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="sharedSecret">Output: the 32-byte shared secret.</param>
-    public static void Decaps(MlKemParams p, ReadOnlySpan<byte> dk, ReadOnlySpan<byte> ciphertext,
+    public static void Decaps(MLKemParams p, ReadOnlySpan<byte> dk, ReadOnlySpan<byte> ciphertext,
                               Span<byte> sharedSecret)
     {
         // Parse dk = dkPKE ‖ ekPKE ‖ h ‖ z
@@ -522,7 +522,7 @@ internal static class MlKemCore
             mat[i] = new short[k][];
             for (int j = 0; j < k; j++)
             {
-                mat[i][j] = new short[MlKemParams.N];
+                mat[i][j] = new short[MLKemParams.N];
                 seed[32] = (byte)j;
                 seed[33] = (byte)i;
                 Poly.SampleNtt(seed, mat[i][j]);
