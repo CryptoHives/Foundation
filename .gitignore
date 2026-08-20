@@ -22,6 +22,9 @@ mono_crash.*
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+# Per-version release notes live at the repo root; the build-output pattern above
+# is unanchored and would otherwise swallow them.
+!/releases/
 x64/
 x86/
 [Ww][Ii][Nn]32/
