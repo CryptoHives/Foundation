@@ -45,7 +45,8 @@
   <PropertyGroup>
     <PackageIcon>images/logo.jpg</PackageIcon>
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <!-- MIT imposes no obligation worth an install-time prompt; requiring acceptance only adds friction. -->
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -94,5 +95,19 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
+
+  <!-- Point at this version's notes in releases/. The file is keyed by the NuGet package version
+       rather than the release tag: tags carry the fourth assembly version part that NuGet drops
+       (0.6.79.4022 vs 0.6.79, see .github/workflows/test-published-packages.yml), and only the
+       package version is available here - the pack step passes PackageVersion and nothing else.
+       Nerdbank.GitVersioning computes it in a target, well after this file is evaluated, hence the
+       deferral to pack time. Links to main, not to the tag: the notes are written and committed
+       after the release is cut, so the tagged commit does not contain them. If the version is
+       somehow unset, the PackageReleaseNotes fallback above keeps a working URL. -->
+  <Target Name="SetVersionedReleaseNotes" BeforeTargets="GenerateNuspec">
+    <PropertyGroup Condition="'$(PackageVersion)' != ''">
+      <PackageReleaseNotes>$(RepositoryUrl)/blob/main/releases/$(PackageVersion).md</PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
 </Project>
 
