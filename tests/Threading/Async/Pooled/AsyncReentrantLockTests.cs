@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1849 // Call async methods when in an async method
@@ -163,27 +163,30 @@ public class AsyncReentrantLockTests
     }
 
     [Test, CancelAfter(10000)]
-    public async Task KNOWNBUG_NestingAfterAContendedAcquisitionSelfDeadlocks()
+    public async Task NestingAfterAContendedAcquisitionSucceeds()
     {
-        // CHARACTERIZATION TEST for a real, currently-unfixed self-deadlock - it asserts the BROKEN
-        // behavior on purpose, so the day the underlying flaw is fixed this test fails loudly and gets
-        // flipped to assert success instead.
+        // REGRESSION TEST for a self-deadlock this type used to have. It was previously a
+        // characterization test asserting the broken behavior on purpose; it now asserts the fix.
         //
-        // Chain of causation:
-        //  1. AsyncLocal mutations inside an `async` method never propagate back to that method's caller
-        //     (the documented limitation that forced LockAsync's fast path to be non-async).
-        //  2. The CONTENDED path still has to go through `async AwaitAndBumpDepth`, so a caller that had
-        //     to genuinely wait for its depth-level lock resumes with its ambient state UNCHANGED - it
-        //     believes it is still at its pre-call depth, even though it now holds one level deeper.
-        //  3. When that caller nests again, ResolveTargetDepth computes the target from that stale state
-        //     and hands back the depth the caller ALREADY HOLDS - so it waits on itself. Deadlock.
+        // The original chain of causation:
+        //  1. An AsyncLocal SLOT write inside an `async` method never propagates back to that method's
+        //     caller (the limitation that forced LockAsync's fast path to be non-async).
+        //  2. The contended path has to go through `async AwaitAndBumpDepth`, so a caller that had to
+        //     genuinely wait for its depth-level lock resumed with its ambient state UNCHANGED - it
+        //     believed it was still at its pre-call depth, even though it now held one level deeper.
+        //  3. When that caller nested again, ResolveTargetDepth computed the target from that stale
+        //     state and handed back the depth the caller ALREADY HELD - so it waited on itself.
         //
-        // The type-level remarks describe (2) as "further nesting is not reliably tracked", which
-        // understates it: it is not merely mistracked, it is a guaranteed self-deadlock.
+        // The fix breaks step (2): LockAsync installs a mutable AmbientState object into the slot from
+        // the caller's own frame, before the acquisition can suspend, and the contended path MUTATES
+        // that object rather than writing the slot. Object mutation is not a slot write, so it is not
+        // discarded at the async boundary and the caller sees it through its own reference.
         var mutex = new AsyncReentrantLock();
-        var winnerHasDepth1 = new TaskCompletionSource();
-        var loserIsWaiting = new TaskCompletionSource();
+        var winnerHasDepth1 = new TaskCompletionSource<bool>();
+        var loserIsWaiting = new TaskCompletionSource<bool>();
         Exception? loserNestedResult = null;
+        int loserDepthWhileHolding = -1;
+        int loserDepthWhileNested = -1;
 
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
@@ -192,27 +195,33 @@ public class AsyncReentrantLockTests
             {
                 using (await mutex.LockAsync().ConfigureAwait(false))
                 {
-                    winnerHasDepth1.SetResult();
+                    winnerHasDepth1.SetResult(true);
                     await loserIsWaiting.Task.ConfigureAwait(false);
                 }
             }
 
-            // Loser: must genuinely WAIT for depth 1, so it resumes via the async AwaitAndBumpDepth path
-            // and therefore loses its ambient depth bump - then it nests again.
+            // Loser: must genuinely WAIT for depth 1, so it resumes via the async AwaitAndBumpDepth
+            // path - the exact path that used to lose its ambient depth bump - and then nests again.
             async Task LoserAsync()
             {
                 await winnerHasDepth1.Task.ConfigureAwait(false);
 
                 ValueTask<AsyncReentrantLock.Releaser> contended = mutex.LockAsync();
-                loserIsWaiting.SetResult();
+                loserIsWaiting.SetResult(true);
 
                 using (await contended.ConfigureAwait(false))
                 {
-                    // Now holding depth 1 via the contended path. Nest once more, with a finite timeout
-                    // so a deadlock surfaces as a TimeoutException instead of hanging the test run.
+                    // Resumed from a real suspension: the depth bump must still be visible right here.
+                    loserDepthWhileHolding = mutex.CurrentDepth;
+
+                    // Nest once more, with a finite timeout so a regression surfaces as a
+                    // TimeoutException instead of hanging the whole test run.
                     try
                     {
-                        using (await mutex.LockAsync(System.TimeSpan.FromMilliseconds(500)).ConfigureAwait(false)) { }
+                        using (await mutex.LockAsync(TimeSpan.FromMilliseconds(500)).ConfigureAwait(false))
+                        {
+                            loserDepthWhileNested = mutex.CurrentDepth;
+                        }
                     }
                     catch (TimeoutException ex)
                     {
@@ -224,12 +233,21 @@ public class AsyncReentrantLockTests
             await Task.WhenAll(WinnerAsync(), LoserAsync()).ConfigureAwait(false);
         }
 
-        Assert.That(
-            loserNestedResult,
-            Is.TypeOf<TimeoutException>(),
-            "Expected the known self-deadlock (nesting after a contended acquisition targets the depth "
-            + "the caller already holds). If this now succeeds, the underlying flaw was fixed - flip this "
-            + "test to assert successful nested acquisition and update the AsyncReentrantLock remarks.");
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                loserNestedResult,
+                Is.Null,
+                "nesting after a contended acquisition must not self-deadlock");
+            Assert.That(
+                loserDepthWhileHolding,
+                Is.EqualTo(2),
+                "the contended acquisition's depth bump must be visible to the caller once it resumes");
+            Assert.That(
+                loserDepthWhileNested,
+                Is.EqualTo(3),
+                "the nested acquisition must target the next depth down, not the one already held");
+        });
     }
 
     [Test, CancelAfter(5000)]
@@ -243,7 +261,7 @@ public class AsyncReentrantLockTests
         // depth 1 - proven here by DepthsCreated staying at 1 (depth 1 is never touched at all) and the
         // child observing depth 1 (0 + 1 from its own fallback acquisition), not depth 2.
         var mutex = new AsyncReentrantLock();
-        var parentReleased = new TaskCompletionSource();
+        var parentReleased = new TaskCompletionSource<bool>();
         int observedDepthAfterChildAcquire = -1;
 
         Task childTask;
@@ -262,7 +280,7 @@ public class AsyncReentrantLockTests
             });
         }
 
-        parentReleased.SetResult();
+        parentReleased.SetResult(true);
         await childTask.ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
@@ -281,8 +299,8 @@ public class AsyncReentrantLockTests
         // must throw afterward to surface the bug immediately instead of letting it manifest later as
         // unexplained contention.
         var mutex = new AsyncReentrantLock();
-        var childHasLock = new TaskCompletionSource();
-        var childCanRelease = new TaskCompletionSource();
+        var childHasLock = new TaskCompletionSource<bool>();
+        var childCanRelease = new TaskCompletionSource<bool>();
 
         AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
 
@@ -290,7 +308,7 @@ public class AsyncReentrantLockTests
         {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                childHasLock.SetResult();
+                childHasLock.SetResult(true);
                 await childCanRelease.Task.ConfigureAwait(false);
             }
         });
@@ -304,7 +322,7 @@ public class AsyncReentrantLockTests
         // The guard only checks "is something still held one level deeper," not "was it specifically
         // spawned by me" - it can't tell those apart without real per-acquisition ancestry tracking,
         // which this prototype doesn't have. See the type-level remarks.
-        childCanRelease.SetResult();
+        childCanRelease.SetResult(true);
         await childTask.ConfigureAwait(false);
 
         // The underlying depth-0 lock must have been released despite the throw - prove it's usable

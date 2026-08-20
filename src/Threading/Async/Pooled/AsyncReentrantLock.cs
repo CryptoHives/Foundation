@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1034 // Nested types should not be visible
@@ -95,25 +95,29 @@ using System.Threading.Tasks;
 /// has ever reached.
 /// </para>
 /// <para>
-/// <b>A more fundamental limitation found while prototyping this:</b> an <see cref="AsyncLocal{T}"/>
-/// mutation made inside an <see langword="async"/> method is never visible to that method's own caller
-/// once it returns - not even on a fully synchronous completion with zero real suspension. Crossing an
-/// async method's state machine boundary resets the caller's ambient context on return, unconditionally.
-/// That means <see cref="LockAsync(CancellationToken)"/> and
-/// <see cref="LockAsync(TimeSpan, CancellationToken)"/> are deliberately written as plain (non-async)
-/// methods with an inline fast path specifically so the depth bump for an uncontended acquisition
-/// happens in the <em>caller's own frame</em>, never crossing that boundary. This works for the primary
-/// case reentrancy exists for - a nested call reaching a depth no other flow currently occupies, which is
-/// always uncontended by construction. It does NOT work for a call that had to genuinely wait for its own
-/// depth-level lock (e.g. the losing side of two <c>Task.WhenAll</c> siblings racing for the same depth):
-/// once that call resumes from a real suspension, its own depth bump is invisible to whatever it does
-/// next, so further nesting from inside that specific call is not reliably tracked. This is a real,
-/// currently-unresolved gap in the prototype, not just a documentation caveat.
+/// <b>How the ambient depth survives an <see langword="async"/> boundary:</b> an
+/// <see cref="AsyncLocal{T}"/> <em>slot write</em> made inside an <see langword="async"/> method is never
+/// visible to that method's own caller once it returns - not even on a fully synchronous completion with
+/// zero real suspension, because crossing an async method's state machine boundary restores the caller's
+/// ambient context on return, unconditionally. Mutating an <em>object the slot already points at</em> is
+/// not a slot write and is not affected by any of that. This type is built on that distinction. Both
+/// <see cref="LockAsync(CancellationToken)"/> and <see cref="LockAsync(TimeSpan, CancellationToken)"/>
+/// are deliberately plain (non-async) methods that, before starting the acquisition and while still in
+/// the <em>caller's own frame</em>, install a fresh mutable <c>AmbientState</c> into the slot - seeded
+/// with the values the flow inherited, so nothing is observably changed yet. The depth bump is then a
+/// mutation of that object, and it reaches the caller whether it happened inline on the uncontended fast
+/// path or later inside the <see langword="async"/> continuation of a contended one. A call that had to
+/// genuinely wait for its own depth-level lock - the losing side of two <c>Task.WhenAll</c> siblings
+/// racing for the same depth - therefore resumes correctly tracked, and can nest further from there.
+/// Isolation between siblings is preserved because each acquisition installs its <em>own</em> instance
+/// and only ever mutates that one: two flows branching from the same held region inherit the same object
+/// by reference, but the first thing either does is replace it, and the AsyncLocal map's copy-on-write
+/// keeps that replacement private to the flow that made it.
 /// </para>
 /// </remarks>
 public sealed class AsyncReentrantLock
 {
-    private readonly AsyncLocal<AmbientState> _ambient = new();
+    private readonly AsyncLocal<AmbientState?> _ambient = new();
 
     // Depths are small, dense, non-negative ints, so a copy-on-write array indexed directly by depth
     // beats a ConcurrentDictionary's hashing and bucket walk on the hot path. Reads take the array
@@ -144,15 +148,50 @@ public sealed class AsyncReentrantLock
     /// generation it observed its immediate parent depth to have at the moment it was (believed to be)
     /// validly acquired. Depth 0 has no parent to validate against.
     /// </summary>
-    internal readonly struct AmbientState
+    /// <remarks>
+    /// <para>
+    /// Deliberately a <em>mutable reference type</em> rather than a struct, and this is load-bearing:
+    /// each acquisition installs its own instance into <c>_ambient</c> from the caller's own frame
+    /// before anything can suspend, and then only ever mutates <em>that instance's fields</em>
+    /// afterwards. Because the caller's <see cref="AsyncLocal{T}"/> slot holds a reference to that same
+    /// object, a mutation made later - including one made after a real await, inside an
+    /// <see langword="async"/> continuation - is visible to the caller, even though a write to the slot
+    /// itself would not be. See the type-level remarks for why that distinction is what makes nesting
+    /// after a contended acquisition work at all.
+    /// </para>
+    /// <para>
+    /// One instance is only ever mutated by the single flow that created it. It can still be
+    /// <em>read</em> concurrently by a detached descendant that inherited the reference mid-flight, so
+    /// the fields are accessed with <see cref="Volatile"/> ops: the pair is published generation-first
+    /// and read depth-first, so a reader that catches a torn pair sees a generation that cannot match,
+    /// which <c>ResolveTargetDepth</c> already treats as a stale claim and falls back on. Nothing here
+    /// needs a lock.
+    /// </para>
+    /// </remarks>
+    internal sealed class AmbientState
     {
-        public readonly int Depth;
-        public readonly int ParentGeneration;
+        private int _depth;
+        private int _parentGeneration;
 
         public AmbientState(int depth, int parentGeneration)
         {
-            Depth = depth;
-            ParentGeneration = parentGeneration;
+            _depth = depth;
+            _parentGeneration = parentGeneration;
+        }
+
+        public int Depth => Volatile.Read(ref _depth);
+
+        public int ParentGeneration => Volatile.Read(ref _parentGeneration);
+
+        /// <summary>
+        /// Publishes a new (depth, parent generation) pair. The generation is written first so a
+        /// concurrent reader taking the depth first can never pair a new depth with a stale generation
+        /// in a way that reads as a <em>valid</em> nesting claim.
+        /// </summary>
+        public void Set(int depth, int parentGeneration)
+        {
+            Volatile.Write(ref _parentGeneration, parentGeneration);
+            Volatile.Write(ref _depth, depth);
         }
     }
 
@@ -265,10 +304,10 @@ public sealed class AsyncReentrantLock
     {
         private readonly AsyncReentrantLock _owner;
         private readonly AsyncLock.Releaser _inner;
-        private readonly AmbientState _stateBeforeAcquisition;
+        private readonly AmbientState? _stateBeforeAcquisition;
         private readonly int _depth;
 
-        internal Releaser(AsyncReentrantLock owner, AsyncLock.Releaser inner, AmbientState stateBeforeAcquisition, int depth)
+        internal Releaser(AsyncReentrantLock owner, AsyncLock.Releaser inner, AmbientState? stateBeforeAcquisition, int depth)
         {
             _owner = owner;
             _inner = inner;
@@ -360,41 +399,70 @@ public sealed class AsyncReentrantLock
     /// </returns>
     public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default)
     {
-        AmbientState state = _ambient.Value;
-        int targetDepth = ResolveTargetDepth(state);
+        AmbientState? inherited = _ambient.Value;
+        int targetDepth = ResolveTargetDepth(inherited);
         DepthLock depthLock = GetDepthLock(targetDepth);
+
+        // Install this acquisition's own ambient state object BEFORE starting the acquisition, while
+        // still in the caller's own frame, so that the slot write lands in the caller's own
+        // ExecutionContext. Everything after this point mutates that object instead of the slot.
+        AmbientState state = InstallAmbientState(inherited);
+
         ValueTask<AsyncLock.Releaser> innerTask = depthLock.Lock.LockAsync(cancellationToken);
 
         if (innerTask.IsCompletedSuccessfully)
         {
-            // Deliberately NOT an `async` method: crossing an async method's own state machine
-            // boundary resets AsyncLocal mutations for its caller on return, even on a fully
-            // synchronous completion with no real suspension - see AsyncReentrantLockTests.
-            // DepthBumpIsVisibleToCallerAfterUncontendedAcquisition for a direct empirical proof.
-            // Staying in the caller's own frame for this fast, uncontended path is what makes the
-            // depth bump below actually visible to whatever runs next in the caller.
             int myGeneration = depthLock.BumpGeneration();
-            _ambient.Value = new AmbientState(targetDepth + 1, myGeneration);
-            return new ValueTask<Releaser>(new Releaser(this, innerTask.Result, state, targetDepth));
+            state.Set(targetDepth + 1, myGeneration);
+            return new ValueTask<Releaser>(new Releaser(this, innerTask.Result, inherited, targetDepth));
         }
 
-        return AwaitAndBumpDepth(innerTask, depthLock, state, targetDepth);
+        return AwaitAndBumpDepth(innerTask, depthLock, state, inherited, targetDepth);
     }
 
-    private async ValueTask<Releaser> AwaitAndBumpDepth(ValueTask<AsyncLock.Releaser> innerTask, DepthLock depthLock, AmbientState stateBeforeAcquisition, int depth)
+    private async ValueTask<Releaser> AwaitAndBumpDepth(ValueTask<AsyncLock.Releaser> innerTask, DepthLock depthLock, AmbientState state, AmbientState? stateBeforeAcquisition, int depth)
     {
         AsyncLock.Releaser inner = await innerTask.ConfigureAwait(false);
 
-        // This mutation is scoped to whatever runs after this point within THIS call's own
-        // continuation - it will NOT be visible to the code that originally called LockAsync once
-        // this method returns to it, for the same AsyncLocal-scoping reason the fast path above has
-        // to avoid `async` entirely. Practically: a call that had to genuinely wait for its own
-        // depth-level lock (e.g. the losing side of two Task.WhenAll siblings racing for the same
-        // depth) will not correctly track further nesting after it resumes. See the type-level
-        // remarks.
+        // Mutating the state OBJECT, never the AsyncLocal slot. A slot write here would be discarded
+        // when this async method's state machine completes, and so would be invisible to the caller -
+        // but `state` was installed into the caller's own slot before this method was ever entered, so
+        // the caller reads this update through its own still-valid reference to it. That is what lets a
+        // call which genuinely had to wait for its depth-level lock (the losing side of two
+        // Task.WhenAll siblings racing for the same depth) go on to nest correctly after it resumes.
         int myGeneration = depthLock.BumpGeneration();
-        _ambient.Value = new AmbientState(depth + 1, myGeneration);
+        state.Set(depth + 1, myGeneration);
         return new Releaser(this, inner, stateBeforeAcquisition, depth);
+    }
+
+    /// <summary>
+    /// Creates this acquisition's own <see cref="AmbientState"/>, seeded from whatever the calling flow
+    /// inherited, and installs it into <c>_ambient</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Must only ever be called from a non-<see langword="async"/> frame - i.e. directly from a
+    /// <c>LockAsync</c> overload, which is deliberately not <see langword="async"/> for exactly this
+    /// reason: the slot write has to land in the caller's own ExecutionContext to be visible to it
+    /// afterwards. An ordinary synchronous call like this one is transparent to ExecutionContext; only
+    /// an async state machine would swallow the write.
+    /// </para>
+    /// <para>
+    /// A fresh instance per acquisition is what keeps concurrent siblings isolated. Two flows branching
+    /// out of the same held region inherit the <em>same</em> object by reference, but neither mutates
+    /// it - each installs its own copy into its own flow first, and the copy-on-write of the AsyncLocal
+    /// map keeps that write private to the flow that made it.
+    /// </para>
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private AmbientState InstallAmbientState(AmbientState? inherited)
+    {
+        AmbientState state = inherited is null
+            ? new AmbientState(0, 0)
+            : new AmbientState(inherited.Depth, inherited.ParentGeneration);
+
+        _ambient.Value = state;
+        return state;
     }
 
     /// <summary>
@@ -411,19 +479,23 @@ public sealed class AsyncReentrantLock
     /// <exception cref="TimeoutException">Thrown when the timeout elapses before the lock can be acquired.</exception>
     public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        AmbientState state = _ambient.Value;
-        int targetDepth = ResolveTargetDepth(state);
+        AmbientState? inherited = _ambient.Value;
+        int targetDepth = ResolveTargetDepth(inherited);
         DepthLock depthLock = GetDepthLock(targetDepth);
+
+        // Installed in the caller's own frame, before the acquisition can suspend - see the other overload.
+        AmbientState state = InstallAmbientState(inherited);
+
         ValueTask<AsyncLock.Releaser> innerTask = depthLock.Lock.LockAsync(timeout, cancellationToken);
 
         if (innerTask.IsCompletedSuccessfully)
         {
             int myGeneration = depthLock.BumpGeneration();
-            _ambient.Value = new AmbientState(targetDepth + 1, myGeneration);
-            return new ValueTask<Releaser>(new Releaser(this, innerTask.Result, state, targetDepth));
+            state.Set(targetDepth + 1, myGeneration);
+            return new ValueTask<Releaser>(new Releaser(this, innerTask.Result, inherited, targetDepth));
         }
 
-        return AwaitAndBumpDepth(innerTask, depthLock, state, targetDepth);
+        return AwaitAndBumpDepth(innerTask, depthLock, state, inherited, targetDepth);
     }
 
     /// <summary>
@@ -432,20 +504,26 @@ public sealed class AsyncReentrantLock
     /// back, as an ordinary (not assumed-nested) acquisition, if that claim no longer holds. See the
     /// type-level remarks for why a single-level fallback is sufficient and always safe.
     /// </summary>
-    private int ResolveTargetDepth(AmbientState state)
+    private int ResolveTargetDepth(AmbientState? state)
     {
-        if (state.Depth == 0)
+        if (state is null)
         {
             return 0;
         }
 
-        int parentDepth = state.Depth - 1;
+        int depth = state.Depth;
+        if (depth == 0)
+        {
+            return 0;
+        }
+
+        int parentDepth = depth - 1;
         DepthLock? parent = TryGetDepthLock(parentDepth);
         if (parent is not null
             && parent.Lock.IsTaken
             && parent.Generation == state.ParentGeneration)
         {
-            return state.Depth;
+            return depth;
         }
 
         return parentDepth;
@@ -461,5 +539,5 @@ public sealed class AsyncReentrantLock
     /// <summary>
     /// Diagnostic-only: the ambient depth this instance currently sees for the calling flow.
     /// </summary>
-    internal int CurrentDepth => _ambient.Value.Depth;
+    internal int CurrentDepth => _ambient.Value?.Depth ?? 0;
 }
