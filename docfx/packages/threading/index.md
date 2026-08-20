@@ -53,6 +53,8 @@ using CryptoHives.Foundation.Threading.Pools;
 | [AsyncSemaphore](asyncsemaphore.md) | Pooled async semaphore with configurable permit count | [Details](asyncsemaphore.md) |
 | [AsyncCountdownEvent](asynccountdownevent.md) | Pooled async countdown event (signals when count reaches zero) | [Details](asynccountdownevent.md) |
 | [AsyncBarrier](asyncbarrier.md) | Pooled async barrier (synchronizes multiple participants) | [Details](asyncbarrier.md) |
+| [AsyncConditionVariable](asyncconditionvariable.md) | Pooled async condition variable (wait until a condition guarded by an `AsyncLock` holds) | [Details](asyncconditionvariable.md) |
+| [AsyncExchange&lt;T&gt;](asyncexchange.md) | Pooled two-party rendezvous that swaps a value between two tasks | [Details](asyncexchange.md) |
 | [AsyncReaderWriterLock](asyncreaderwriterlock.md) | Pooled async reader-writer lock (multiple readers or single writer) | [Details](asyncreaderwriterlock.md) |
 
 ### Pooling Support Classes
@@ -306,6 +308,8 @@ Every wait and every acquisition takes an optional timeout, as an overload that 
 | `AsyncManualResetEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
 | `AsyncCountdownEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
 | `AsyncBarrier` | `SignalAndWaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncConditionVariable` | `WaitAsync(AsyncLock, TimeSpan, CancellationToken)` |
+| `AsyncExchange<T>` | `ExchangeAsync(T, TimeSpan, CancellationToken)` |
 | `AsyncReaderWriterLock` | `ReaderLockAsync` / `UpgradeableReaderLockAsync` / `WriterLockAsync(TimeSpan, CancellationToken)`, and `UpgradeToWriterLockAsync(TimeSpan, CancellationToken)` on an upgradeable releaser |
 
 The semantics are the same across every primitive:
@@ -505,6 +509,8 @@ var evt = new AsyncAutoResetEvent(
 - [AsyncCountdownEvent](asynccountdownevent.md)
 - [AsyncBarrier](asyncbarrier.md)
 - [AsyncSemaphore](asyncsemaphore.md)
+- [AsyncConditionVariable](asyncconditionvariable.md)
+- [AsyncExchange](asyncexchange.md)
 - [Benchmarks](benchmarks.md)
 
 ---

@@ -1,4 +1,4 @@
-- name: Threading Package
+﻿- name: Threading Package
   href: index.md
 - name: Benchmarks
   href: benchmarks.md
@@ -18,6 +18,10 @@
       href: asynccountdownevent.md
     - name: AsyncBarrier
       href: asyncbarrier.md
+    - name: AsyncConditionVariable
+      href: asyncconditionvariable.md
+    - name: AsyncExchange
+      href: asyncexchange.md
     - name: AsyncReaderWriterLock
       href: asyncreaderwriterlock.md
 - name: Analyzers
