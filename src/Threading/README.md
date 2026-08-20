@@ -1,4 +1,4 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+﻿## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
@@ -27,6 +27,8 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 | [AsyncCountdownEvent](https://cryptohives.github.io/Foundation/packages/threading/asynccountdownevent.html) | Pooled async countdown event (signals when count reaches zero)
 | [AsyncBarrier](https://cryptohives.github.io/Foundation/packages/threading/asyncbarrier.html) | Pooled async barrier (synchronizes multiple participants)
 | [AsyncReaderWriterLock](https://cryptohives.github.io/Foundation/packages/threading/asyncreaderwriterlock.html) | Pooled async reader-writer lock (multiple readers or single writer)
+| [AsyncConditionVariable](https://cryptohives.github.io/Foundation/packages/threading/asyncconditionvariable.html) | Pooled async condition variable (wait until a condition guarded by an `AsyncLock` holds)
+| [AsyncExchange&lt;T&gt;](https://cryptohives.github.io/Foundation/packages/threading/asyncexchange.html) | Pooled two-party rendezvous that swaps a value between two tasks
 
 All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths.
 

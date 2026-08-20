@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Threading.Tests.Async.Pooled;
@@ -576,5 +576,303 @@ public class AsyncConditionVariableTests
         await waiter.ConfigureAwait(false);
 
         Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    // -------------------------------------------------------------------------
+    // A consumed signal is never swallowed by a late cancellation
+    // -------------------------------------------------------------------------
+
+    [Test, CancelAfter(10000)]
+    public async Task SignalIsNotSwallowedWhenCancellationFiresAfterTheSignal()
+    {
+        // Consumer 1 takes the signal and is then cancelled while it is queued behind the
+        // lock. If that cancellation were reported, the signal it consumed would be lost
+        // and consumer 2 would never wake up.
+        using var pool = new TestObjectPool<bool>();
+        var mutex = new AsyncLock();
+        var cv = new AsyncConditionVariable(pool: pool);
+
+        using var cts1 = new CancellationTokenSource();
+
+        var c1Ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var c2Ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var consumer1 = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                c1Ready.SetResult(true);
+                try
+                {
+                    await cv.WaitAsync(mutex, cts1.Token).ConfigureAwait(false);
+                    return "signaled";
+                }
+                catch (OperationCanceledException)
+                {
+                    return "cancelled";
+                }
+            }
+        });
+
+        await c1Ready.Task.ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
+
+        var consumer2 = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                c2Ready.SetResult(true);
+                await cv.WaitAsync(mutex).ConfigureAwait(false);
+            }
+        });
+
+        await c2Ready.Task.ConfigureAwait(false);
+        while (cv.WaiterCount < 2) { await Task.Delay(5).ConfigureAwait(false); }
+
+        // Hold the lock so the signalled waiter cannot finish re-acquiring it, then cancel it.
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            cv.Signal();
+            await Task.Delay(100).ConfigureAwait(false);
+            await AsyncAssert.CancelAsync(cts1).ConfigureAwait(false);
+            await Task.Delay(100).ConfigureAwait(false);
+        }
+
+        Assert.That(await consumer1.ConfigureAwait(false), Is.EqualTo("signaled"));
+
+        // Consumer 2 is still waiting for its own signal, and gets it.
+        Assert.That(consumer2.IsCompleted, Is.False);
+        cv.Signal();
+        await consumer2.ConfigureAwait(false);
+
+        Assert.That(cv.WaiterCount, Is.Zero);
+    }
+
+    // -------------------------------------------------------------------------
+    // Misuse guards
+    // -------------------------------------------------------------------------
+
+    [Test]
+    public void WaitAsyncThrowsForNullLock()
+    {
+        var cv = new AsyncConditionVariable();
+        Assert.ThrowsAsync<ArgumentNullException>(async () => await cv.WaitAsync(null!).ConfigureAwait(false));
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncThrowsWhenTheLockIsNotHeld()
+    {
+        var mutex = new AsyncLock();
+        var cv = new AsyncConditionVariable();
+
+        Assert.ThrowsAsync<SynchronizationLockException>(async () => await cv.WaitAsync(mutex).ConfigureAwait(false));
+
+        // The unheld lock is untouched and still usable.
+        Assert.That(mutex.IsTaken, Is.False);
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken, Is.True);
+        }
+
+        Assert.That(cv.WaiterCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task WaitAsyncThrowsWhenUsedWithASecondLock()
+    {
+        var mutex = new AsyncLock();
+        var other = new AsyncLock();
+        var cv = new AsyncConditionVariable();
+
+        var waiter = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                await cv.WaitAsync(mutex).ConfigureAwait(false);
+            }
+        });
+
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
+
+        using (await other.LockAsync().ConfigureAwait(false))
+        {
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await cv.WaitAsync(other).ConfigureAwait(false));
+            // The rejected wait left the second lock held by this caller.
+            Assert.That(other.IsTaken, Is.True);
+        }
+
+        cv.Signal();
+        await waiter.ConfigureAwait(false);
+    }
+
+    // -------------------------------------------------------------------------
+    // Timeout
+    // -------------------------------------------------------------------------
+
+    [Test]
+    public void NegativeTimeoutThrows()
+    {
+        var mutex = new AsyncLock();
+        var cv = new AsyncConditionVariable();
+        Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            async () => await cv.WaitAsync(mutex, TimeSpan.FromMilliseconds(-2)).ConfigureAwait(false));
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task ZeroTimeoutTimesOutWithoutReleasingTheLock()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var mutex = new AsyncLock();
+        var cv = new AsyncConditionVariable(pool: pool);
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Assert.ThrowsAsync<TimeoutException>(
+                async () => await cv.WaitAsync(mutex, TimeSpan.Zero).ConfigureAwait(false));
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(mutex.IsTaken, Is.True);
+                Assert.That(cv.WaiterCount, Is.Zero);
+            }
+        }
+
+        Assert.That(mutex.IsTaken, Is.False);
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(10000)]
+    public async Task TimeoutThrowsAndReAcquiresTheLock()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var mutex = new AsyncLock();
+        var cv = new AsyncConditionVariable(pool: pool);
+
+        bool heldOnThrow = false;
+
+        var waiter = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                try
+                {
+                    await cv.WaitAsync(mutex, TimeSpan.FromMilliseconds(50)).ConfigureAwait(false);
+                    return false;
+                }
+                catch (TimeoutException)
+                {
+                    heldOnThrow = mutex.IsTaken;
+                    return true;
+                }
+            }
+        });
+
+        Assert.That(await waiter.ConfigureAwait(false), Is.True);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(heldOnThrow, Is.True, "the lock must be re-acquired before the timeout is reported");
+            Assert.That(mutex.IsTaken, Is.False);
+            Assert.That(cv.WaiterCount, Is.Zero);
+        }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(10000)]
+    public async Task TimeoutDoesNotFireWhenSignalledInTime()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var mutex = new AsyncLock();
+        var cv = new AsyncConditionVariable(pool: pool);
+
+        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var waiter = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                ready.SetResult(true);
+                await cv.WaitAsync(mutex, TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+                return mutex.IsTaken;
+            }
+        });
+
+        await ready.Task.ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
+
+        cv.Signal();
+
+        Assert.That(await waiter.ConfigureAwait(false), Is.True);
+
+        // The timer must have been disposed with the waiter; nothing fires afterwards.
+        await Task.Delay(100).ConfigureAwait(false);
+        Assert.That(mutex.IsTaken, Is.False);
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    // -------------------------------------------------------------------------
+    // IResettable
+    // -------------------------------------------------------------------------
+
+    [Test]
+    public void TryResetSucceedsWhenIdle()
+    {
+        var cv = new AsyncConditionVariable(runContinuationAsynchronously: false);
+        Assert.That(cv.TryReset(), Is.True);
+        Assert.That(cv.RunContinuationAsynchronously, Is.True, "a recycled instance starts from the default");
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task TryResetDeclinesWhileAWaiterIsQueued()
+    {
+        using var pool = new TestObjectPool<bool>();
+        var mutex = new AsyncLock();
+        var cv = new AsyncConditionVariable(pool: pool);
+
+        var waiter = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                await cv.WaitAsync(mutex).ConfigureAwait(false);
+            }
+        });
+
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
+
+        Assert.That(cv.TryReset(), Is.False);
+
+        cv.Signal();
+        await waiter.ConfigureAwait(false);
+
+        Assert.That(cv.TryReset(), Is.True);
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task TryResetClearsTheLockBinding()
+    {
+        var mutex = new AsyncLock();
+        var other = new AsyncLock();
+        var cv = new AsyncConditionVariable();
+
+        var waiter = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                await cv.WaitAsync(mutex).ConfigureAwait(false);
+            }
+        });
+
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
+        cv.Signal();
+        await waiter.ConfigureAwait(false);
+
+        Assert.That(cv.TryReset(), Is.True);
+
+        // After the reset the instance may be paired with a different lock.
+        var second = Task.Run(async () => {
+            using (await other.LockAsync().ConfigureAwait(false))
+            {
+                await cv.WaitAsync(other).ConfigureAwait(false);
+            }
+        });
+
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
+        cv.Signal();
+        await second.ConfigureAwait(false);
     }
 }

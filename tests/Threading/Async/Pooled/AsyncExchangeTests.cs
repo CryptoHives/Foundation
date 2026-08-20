@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA2012 // ValueTask instances should only be consumed once — intentional in race tests
@@ -278,14 +278,16 @@ public class AsyncExchangeTests
             }
 
             int waiterResult = await waiter.ConfigureAwait(false);
-            int arrivingResult = arriving.IsCompleted ? await arriving.ConfigureAwait(false) : -1;
 
+            // IsCompleted must be read once and only before the ValueTask is consumed;
+            // reading it again after the await throws (CHT001).
             if (!arriving.IsCompleted)
             {
                 // Second party became a new waiter — drain it
                 try { await ex.ExchangeAsync(0).ConfigureAwait(false); } catch { }
-                await arriving.ConfigureAwait(false);
             }
+
+            int arrivingResult = await arriving.ConfigureAwait(false);
 
             // In every iteration the exchange ends in a consistent state
             Assert.That(ex.HasWaiter, Is.False, $"Iteration {i}: slot should be empty");
@@ -412,5 +414,163 @@ public class AsyncExchangeTests
         Assert.That(results.Sum(), Is.EqualTo(allInputs.Sum()));
 
         Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    // -------------------------------------------------------------------------
+    // Contention: the slot may empty between any observation and the pairing
+    // -------------------------------------------------------------------------
+
+    [Test, CancelAfter(10000)]
+    public async Task ManyPartiesArrivingAtOnceAllComplete()
+    {
+        // Three or more parties arriving together are the case where a party can observe a
+        // pending waiter that another party takes first. Every call must still complete.
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+        const int parties = 64;
+
+        for (int round = 0; round < 20; round++)
+        {
+            // An asynchronous gate, not a Barrier: blocking thread pool threads to line the
+            // parties up would starve the pool this test needs to create contention.
+            var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tasks = Enumerable.Range(0, parties)
+                .Select(i => Task.Run(async () => {
+                    await gate.Task.ConfigureAwait(false);
+                    return await ex.ExchangeAsync(i).ConfigureAwait(false);
+                }))
+                .ToArray();
+
+            gate.SetResult(true);
+
+            int[] results = await Task.WhenAll(tasks).ConfigureAwait(false);
+            Assert.That(results.Sum(), Is.EqualTo(Enumerable.Range(0, parties).Sum()));
+            Assert.That(ex.HasWaiter, Is.False, $"Round {round}: slot should be empty");
+        }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    // -------------------------------------------------------------------------
+    // Timeout
+    // -------------------------------------------------------------------------
+
+    [Test]
+    public void NegativeTimeoutThrows()
+    {
+        var ex = new AsyncExchange<int>();
+
+#pragma warning disable VSTHRD110 // Observe the awaitable result
+        Assert.Throws<ArgumentOutOfRangeException>(() => ex.ExchangeAsync(1, TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110
+    }
+
+    [Test, CancelAfter(3000)]
+    public void ZeroTimeoutThrowsWhenNoCounterpartIsWaiting()
+    {
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+
+        Assert.ThrowsAsync<TimeoutException>(
+            async () => await ex.ExchangeAsync(1, TimeSpan.Zero).ConfigureAwait(false));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex.HasWaiter, Is.False, "a zero timeout must never occupy the slot");
+            Assert.That(ex.InternalWaiterInUse, Is.False);
+        }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task ZeroTimeoutPairsWithAWaitingCounterpart()
+    {
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+
+        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiter = Task.Run(async () => {
+            ready.SetResult(true);
+            return await ex.ExchangeAsync(1).ConfigureAwait(false);
+        });
+
+        await ready.Task.ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
+
+        Assert.That(await ex.ExchangeAsync(2, TimeSpan.Zero).ConfigureAwait(false), Is.EqualTo(1));
+        Assert.That(await waiter.ConfigureAwait(false), Is.EqualTo(2));
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(10000)]
+    public void TimeoutThrowsAndClearsTheSlot()
+    {
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+
+        Assert.ThrowsAsync<TimeoutException>(
+            async () => await ex.ExchangeAsync(1, TimeSpan.FromMilliseconds(50)).ConfigureAwait(false));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex.HasWaiter, Is.False);
+            Assert.That(ex.InternalWaiterInUse, Is.False);
+        }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(10000)]
+    public async Task TimeoutDoesNotFireWhenTheCounterpartArrivesInTime()
+    {
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+
+        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiter = Task.Run(async () => {
+            ready.SetResult(true);
+            return await ex.ExchangeAsync(1, TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+        });
+
+        await ready.Task.ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
+
+        Assert.That(await ex.ExchangeAsync(2).ConfigureAwait(false), Is.EqualTo(1));
+        Assert.That(await waiter.ConfigureAwait(false), Is.EqualTo(2));
+
+        // The timer must have been disposed with the waiter; nothing fires afterwards.
+        await Task.Delay(100).ConfigureAwait(false);
+        Assert.That(ex.HasWaiter, Is.False);
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    // -------------------------------------------------------------------------
+    // IResettable
+    // -------------------------------------------------------------------------
+
+    [Test, CancelAfter(3000)]
+    public async Task TryResetDeclinesWhileAResultIsUnobserved()
+    {
+        var ex = new AsyncExchange<int>();
+
+        ValueTask<int> a = ex.ExchangeAsync(1);   // becomes the pending waiter (local source)
+        ValueTask<int> b = ex.ExchangeAsync(2);   // pairs, completes a's source, clears the slot
+
+        // The slot is empty, but party A has not observed its result yet: recycling the
+        // instance now would bump the version underneath A's ValueTask.
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex.HasWaiter, Is.False);
+            Assert.That(ex.TryReset(), Is.False);
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(await a.ConfigureAwait(false), Is.EqualTo(2));
+            Assert.That(await b.ConfigureAwait(false), Is.EqualTo(1));
+        }
+
+        Assert.That(ex.TryReset(), Is.True);
     }
 }

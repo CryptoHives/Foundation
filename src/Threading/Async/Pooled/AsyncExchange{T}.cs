@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1508 // Avoid dead conditional code
@@ -44,10 +44,23 @@ using System.Threading.Tasks.Sources;
 /// </code>
 /// </example>
 /// <para>
+/// <b>Optional timeout and cancellation token</b> parameters on
+/// <see cref="ExchangeAsync(T, TimeSpan, CancellationToken)"/>. A timeout of
+/// <see cref="TimeSpan.Zero"/> turns the call into a try-exchange: it pairs with a counterpart
+/// that is already waiting and throws <see cref="TimeoutException"/> otherwise, without ever
+/// occupying the slot.
+/// </para>
+/// <para>
 /// This implementation uses <see cref="ValueTask{TResult}"/> for waiters and provides
 /// allocation-free exchange by reusing a per-instance <see cref="LocalManualResetValueTaskSource{T}"/>
 /// for the common single-waiter case and falling back to a pooled
 /// <see cref="IGetPooledManualResetValueTaskSource{T}"/> for concurrent contention.
+/// </para>
+/// <para>
+/// <b>Important Usage Note:</b> awaiting a <see cref="ValueTask{TResult}"/> has its own caveats, as
+/// it is a struct that can only be awaited or converted with AsTask() ONE single time. Additional
+/// attempts to await, to convert, or even to read <c>IsCompleted</c> after the first await throw an
+/// <see cref="InvalidOperationException"/>.
 /// </para>
 /// <para>
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance
@@ -63,7 +76,16 @@ public sealed class AsyncExchange<T> : IResettable
     private T _pendingValue;
     private bool _runContinuationAsynchronously;
 
-    // Per-T lazy default pool; avoids the need for a named entry in ValueTaskSourceObjectPools.
+    /// <summary>
+    /// Holds the shared per-<typeparamref name="T"/> waiter pool.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ValueTaskSourceObjectPools"/> cannot hold this pool because the exchanged type is
+    /// generic. Declaring it in a nested generic class instead means the CLR creates one shared
+    /// static pool per closed <typeparamref name="T"/>, the same technique
+    /// <see cref="System.Buffers.ArrayPool{T}.Shared"/> and
+    /// <see cref="ValueTaskSourceObjectPools{TKey}"/> use.
+    /// </remarks>
     private static class DefaultPool
     {
         internal static readonly ValueTaskSourceObjectPool<T> Instance =
@@ -97,7 +119,11 @@ public sealed class AsyncExchange<T> : IResettable
 
         try
         {
-            if (_pendingWaiter is not null)
+            // A pending waiter means the exchange is mid-flight. A local waiter that is still
+            // in use means a party has been handed its result but has not observed it yet:
+            // resetting now would bump the version underneath that ValueTask and make the
+            // await throw. Both cases decline the reset.
+            if (_pendingWaiter is not null || _localWaiter.InUse)
             {
                 return false;
             }
@@ -161,58 +187,65 @@ public sealed class AsyncExchange<T> : IResettable
     /// </exception>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public ValueTask<T> ExchangeAsync(T value, CancellationToken cancellationToken = default)
-    {
-        // Fast path: a counterpart is already waiting — grab their value and complete them.
-        if (_pendingWaiter is not null)
-        {
-            return ExchangeWithWaiterFastPath(value);
-        }
+        => ExchangeAsyncImpl(value, Timeout.InfiniteTimeSpan, cancellationToken);
 
-        return ExchangeAsyncImpl(value, cancellationToken);
+    /// <summary>
+    /// Exchanges <paramref name="value"/> with a counterpart task and returns that task's value,
+    /// or fails once <paramref name="timeout"/> has elapsed.
+    /// </summary>
+    /// <remarks>
+    /// If a counterpart is already waiting the exchange completes immediately without allocating
+    /// any timeout infrastructure. A timer is allocated only when this caller has to wait and a
+    /// finite positive timeout is requested; it is disposed automatically when the returned
+    /// <see cref="ValueTask{T}"/> is awaited.
+    /// </remarks>
+    /// <param name="value">The value to offer to the counterpart.</param>
+    /// <param name="timeout">
+    /// The maximum time to wait for a counterpart. Use <see cref="Timeout.InfiniteTimeSpan"/> to
+    /// wait indefinitely, or <see cref="TimeSpan.Zero"/> to pair only with a counterpart that is
+    /// already waiting.
+    /// </param>
+    /// <param name="cancellationToken">Token to cancel the wait.</param>
+    /// <returns>
+    /// A <see cref="ValueTask{T}"/> that completes with the counterpart's offered value.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="TimeoutException">
+    /// Thrown when the timeout elapses before a counterpart arrives.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled while waiting.
+    /// </exception>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public ValueTask<T> ExchangeAsync(T value, TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        return ExchangeAsyncImpl(value, timeout, cancellationToken);
     }
 
+    /// <remarks>
+    /// Both outcomes - pairing with a waiting counterpart and becoming the pending waiter - are
+    /// decided under the spin lock in one pass. There is deliberately no lock-free pre-check that
+    /// falls back into this method: the fallback would have to re-enter the non-reentrant spin
+    /// lock, and the slot can empty between any such check and the acquisition.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<T> ExchangeWithWaiterFastPath(T value)
-    {
-        ManualResetValueTaskSource<T>? toComplete;
-        T theirValue;
-
-        _spinLock.Enter();
-        try
-        {
-            if (_pendingWaiter is null)
-            {
-                // Race: waiter was cancelled or taken between the check and the lock.
-                // Fall through to the slow path.
-                return ExchangeAsyncImpl(value, CancellationToken.None);
-            }
-
-            toComplete = _pendingWaiter;
-            theirValue = _pendingValue;
-            _pendingWaiter = null;
-            _pendingValue = default!;
-        }
-        finally
-        {
-            _spinLock.Exit();
-        }
-
-        toComplete.SetResult(value);
-        return new ValueTask<T>(theirValue);
-    }
-
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private ValueTask<T> ExchangeAsyncImpl(T value, CancellationToken cancellationToken)
+    private ValueTask<T> ExchangeAsyncImpl(T value, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ManualResetValueTaskSource<T>? toComplete = null;
+        ManualResetValueTaskSource<T>? pending = null;
         T theirValue = default!;
+        short version = 0;
 
         _spinLock.Enter();
         try
         {
             if (_pendingWaiter is not null)
             {
-                // A waiter arrived between our check and the lock — pair with them.
+                // A counterpart is waiting - take their value and hand them ours.
                 toComplete = _pendingWaiter;
                 theirValue = _pendingValue;
                 _pendingWaiter = null;
@@ -220,38 +253,28 @@ public sealed class AsyncExchange<T> : IResettable
             }
             else
             {
-                // No counterpart — become the pending waiter.
+                // No counterpart - become the pending waiter.
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
                 }
 
-                ManualResetValueTaskSource<T> waiter;
-                if (!_localWaiter.TryGetValueTaskSource(out waiter))
+                if (timeout == TimeSpan.Zero)
+                {
+                    return new ValueTask<T>(Task.FromException<T>(new TimeoutException()));
+                }
+
+                if (!_localWaiter.TryGetValueTaskSource(out ManualResetValueTaskSource<T> waiter))
                 {
                     waiter = _pool.GetPooledWaiter(this);
                 }
                 waiter.RunContinuationsAsynchronously = _runContinuationAsynchronously;
                 waiter.CancellationToken = cancellationToken;
 
-                if (cancellationToken.CanBeCanceled)
-                {
-#if NET6_0_OR_GREATER
-                    waiter.CancellationTokenRegistration =
-                        cancellationToken.UnsafeRegister(_cancellationCallbackAction, waiter);
-#else
-                    waiter.CancellationTokenRegistration =
-                        cancellationToken.Register(CancellationCallback, waiter, useSynchronizationContext: false);
-#endif
-                }
-                else
-                {
-                    Debug.Assert(waiter.CancellationTokenRegistration == default);
-                }
-
+                version = waiter.Version;
                 _pendingWaiter = waiter;
                 _pendingValue = value;
-                return new ValueTask<T>(waiter, waiter.Version);
+                pending = waiter;
             }
         }
         finally
@@ -259,9 +282,52 @@ public sealed class AsyncExchange<T> : IResettable
             _spinLock.Exit();
         }
 
-        toComplete.SetResult(value);
-        return new ValueTask<T>(theirValue);
+        if (pending is null)
+        {
+            toComplete!.SetResult(value);
+            return new ValueTask<T>(theirValue);
+        }
+
+        // The timer and the cancellation registration are armed after the spin lock is released.
+        // Both callbacks take that same lock, and registering an already-cancelled token runs the
+        // callback synchronously on this thread, which would deadlock against the non-reentrant
+        // spin lock. Arming after the waiter is published also means a callback that does fire
+        // immediately finds the waiter it is supposed to remove.
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            pending.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _timerCallbackAction, new TimeoutState<T>(pending), timeout, Timeout.InfiniteTimeSpan);
+        }
+
+        if (cancellationToken.CanBeCanceled)
+        {
+#if NET6_0_OR_GREATER
+            // Use UnsafeRegister on .NET 6+ for allocation free registration
+            pending.CancellationTokenRegistration =
+                cancellationToken.UnsafeRegister(_cancellationCallbackAction, pending);
+#else
+            pending.CancellationTokenRegistration =
+                cancellationToken.Register(CancellationCallback, pending, useSynchronizationContext: false);
+#endif
+        }
+        else
+        {
+            Debug.Assert(pending.CancellationTokenRegistration == default);
+        }
+
+        return new ValueTask<T>(pending, version);
     }
+
+    /// <summary>
+    /// Callback used with <see cref="TimeProvider"/> to trigger timeout.
+    /// The stamped version guards against a stale callback observing a recycled waiter.
+    /// </summary>
+    private static readonly TimerCallback _timerCallbackAction = static state => {
+        var timeoutState = (TimeoutState<T>)state!;
+        var context = (AsyncExchange<T>)timeoutState.Source.Owner!;
+        ManualResetValueTaskSource<T>? toCancel = context.RemoveWaiter(timeoutState.Source, timeoutState.Version);
+        toCancel?.SetException(new TimeoutException());
+    };
 
 #if NET6_0_OR_GREATER
     private static readonly Action<object?, CancellationToken> _cancellationCallbackAction = static (state, ct) => {
@@ -280,19 +346,31 @@ public sealed class AsyncExchange<T> : IResettable
             return;
         }
 #endif
+        // The version is stable here: GetResult disposes the registration before the
+        // waiter is recycled, and disposal waits for an in-flight callback.
+        ManualResetValueTaskSource<T>? toCancel = RemoveWaiter(waiter, waiter.Version);
+        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+    }
 
-        ManualResetValueTaskSource<T>? toCancel = null;
-
+    /// <summary>
+    /// Clears the slot if <paramref name="waiter"/> is still the pending one.
+    /// </summary>
+    /// <remarks>
+    /// The arriving party may have taken and completed the waiter between the callback firing and
+    /// this call, and the local waiter may since have been recycled into a new exchange, so both
+    /// the identity and the version have to match before the slot is cleared.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ManualResetValueTaskSource<T>? RemoveWaiter(ManualResetValueTaskSource<T> waiter, short version)
+    {
         _spinLock.Enter();
         try
         {
-            // Only cancel if this waiter is still the pending one — the arriving party
-            // might have already taken and completed it between the CT firing and here.
-            if (ReferenceEquals(_pendingWaiter, waiter))
+            if (ReferenceEquals(_pendingWaiter, waiter) && waiter.Version == version)
             {
-                toCancel = _pendingWaiter;
                 _pendingWaiter = null;
                 _pendingValue = default!;
+                return waiter;
             }
         }
         finally
@@ -300,6 +378,6 @@ public sealed class AsyncExchange<T> : IResettable
             _spinLock.Exit();
         }
 
-        toCancel?.SetException(new OperationCanceledException(waiter.CancellationToken));
+        return null;
     }
 }
