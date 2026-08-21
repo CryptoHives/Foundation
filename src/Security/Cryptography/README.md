@@ -9,7 +9,7 @@ An open, community-driven collection of cryptography and performance libraries f
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-Fully managed, OS-independent implementations of hash, MAC, KDF, and cipher algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
+Fully managed, OS-independent implementations of hash, MAC, KDF, cipher, and post-quantum KEM algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
 
 No OS crypto dependency means deterministic results on every platform. Where the hardware supports it, intrinsics are used automatically — AES-NI, PCLMULQDQ/VPCLMULQDQ, SSE2, SSSE3, AVX2 and AVX-512 on x86/x64; ARM AES, ARM SHA-1/SHA-2, PMULL and NEON on Arm64.
 
@@ -54,6 +54,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
+| Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 
 ---
 
@@ -118,6 +119,47 @@ if (!aesGcm.Decrypt(nonce, ciphertext, tag, recovered, associatedData))
     throw new CryptographicException("Authentication failed.");
 }
 ```
+
+### Post-Quantum Key Encapsulation (`ML-KEM`)
+
+`MLKem` and `MLKemAlgorithm` carry the same names and the same member signatures as
+`System.Security.Cryptography.MLKem` from .NET 10, so switching to the managed
+implementation is a one-line change — swap the `using`, and everything downstream compiles
+unchanged:
+
+```diff
+-using System.Security.Cryptography;   // .NET 10 only, and only where the OS provides ML-KEM
++using CryptoHives.Foundation.Security.Cryptography.Kem;
+```
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kem;
+
+// MLKem.IsSupported is always true here: no OS or hardware dependency,
+// on every target framework down to net462.
+using var receiver = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);
+byte[] encapsulationKey = receiver.ExportEncapsulationKey();
+
+// Sender: encapsulate a shared secret for the receiver.
+using var sender = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, encapsulationKey);
+sender.Encapsulate(out byte[] ciphertext, out byte[] senderSecret);
+
+// Receiver: recover the same shared secret.
+byte[] receiverSecret = receiver.Decapsulate(ciphertext);
+```
+
+Both the allocating overloads above and the allocation-free span overloads
+(`Encapsulate(Span<byte>, Span<byte>)`, `Decapsulate(ReadOnlySpan<byte>, Span<byte>)`) are
+available, matching the in-box type.
+
+Keys are validated on import per FIPS 203 §7.2/§7.3, decapsulation uses constant-time
+implicit rejection, and all three parameter sets are verified against the official
+NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
+
+> **Not yet implemented:** the PKCS#8, SubjectPublicKeyInfo and PEM import/export members
+> (`ImportPkcs8PrivateKey`, `ExportSubjectPublicKeyInfo`, `ImportFromPem`, …). Raw key and
+> seed import/export is complete. See the
+> [KEM roadmap](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html).
 
 ### cSHAKE — Domain-Separated XOF
 
