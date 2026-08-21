@@ -194,7 +194,8 @@ public class KemConfig : ManualConfig
             var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
 
             var fileName = $"{typeName}-report.md";
-            var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
+            var safeFileName = Path.GetFileName(fileName);
+            var filePath = Path.Combine(summary.ResultsDirectoryPath, safeFileName);
 
             using var writer = new StreamWriter(filePath);
             using var logger = new StreamLogger(writer);
